@@ -1,0 +1,7 @@
+streamlit
+google-cloud-vision
+google-generativeai
+opencv-python-headless
+Pillow
+numpy
+python-dotenv

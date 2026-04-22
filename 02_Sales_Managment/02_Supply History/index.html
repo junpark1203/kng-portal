@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K&G 현장 자재 납품 관리 시스템 (Dark Theme)</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        * { box-sizing: border-box; }
+        
+        /* The VC 스타일 다크 모드 변수 설정 */
+        :root {
+            color-scheme: dark; /* 브라우저 기본 스크롤바, 달력 등도 다크모드로 변경 */
+            --bg-color: #17181c; /* 앱 전체 배경 (가장 어두운 남색/블랙) */
+            --card-bg: #212329; /* 카드 배경 (살짝 밝은 패널) */
+            --input-bg: #141518; /* 입력창 배경 */
+            --border-color: #343741; /* 테두리 색상 */
+            --border-hover: #4b4f5e;
+            
+            --text-main: #f8fafc; /* 기본 흰색 텍스트 */
+            --text-muted: #94a3b8; /* 서브 텍스트 (회색) */
+            
+            --primary-color: #6d4aff; /* The VC 시그니처 보라색 */
+            --primary-hover: #5a3be0;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+
+        body { font-family: 'Pretendard', sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-main); }
+        .container { max-width: 1600px; width: 98%; margin: 0 auto; }
+        
+        /* 헤더 */
+        .header-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+        .header-title::before { content: ''; display: inline-block; width: 4px; height: 24px; background-color: var(--primary-color); border-radius: 2px; }
+
+        /* 카드 패널 */
+        .card { background: var(--card-bg); padding: 25px 30px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 20px rgba(0,0,0,0.2); margin-bottom: 25px; }
+        .card h2 { font-size: 1.125rem; font-weight: 600; margin-top: 0; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+
+        /* 입력 폼 */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 0.85rem; font-weight: 500; margin-bottom: 8px; color: var(--text-muted); }
+        .form-group input, .form-group select { 
+            padding: 10px 12px; background-color: var(--input-bg); color: var(--text-main);
+            border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.95rem; font-family: inherit; transition: all 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(109, 74, 255, 0.2); }
+
+        /* 버튼 */
+        button { border: none; padding: 10px 18px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: 0.2s; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-safe { background-color: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .btn-safe:hover { background-color: rgba(16, 185, 129, 0.3); }
+        .btn-misc { background-color: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+        .btn-misc:hover { background-color: rgba(148, 163, 184, 0.3); }
+        .btn-unclassified { background-color: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .btn-unclassified:hover { background-color: rgba(239, 68, 68, 0.3); }
+        .btn-excel { background-color: #272a31; color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-excel:hover { background-color: #343741; }
+        .btn-edit { background-color: #2d3039; color: var(--text-muted); padding: 6px 12px; font-size: 0.85rem; border: 1px solid var(--border-color); }
+        .btn-edit:hover { background-color: #3e424d; color: var(--text-main); }
+
+        /* 검색 바 */
+        .filter-bar { display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-bottom: 20px; background: #1a1c21; padding: 16px 20px; border-radius: 8px; border: 1px solid var(--border-color); }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-group label { font-weight: 500; font-size: 0.85rem; color: var(--text-muted); }
+        .filter-group input, .filter-group select { padding: 9px 12px; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; font-family: inherit; }
+        .filter-action { margin-left: auto; display: flex; gap: 10px; }
+
+        /* 일괄 처리 바 */
+        .action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: rgba(109, 74, 255, 0.1); padding: 12px 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(109, 74, 255, 0.2); }
+        .action-text { font-size: 0.9rem; font-weight: 600; color: #a78bfa; margin-right: 10px; }
+
+        /* 태그 스타일 (네온 다크 스타일) */
+        .tag { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; display: inline-block; border: 1px solid transparent; }
+        .tag-안전자재 { background-color: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .tag-잡자재 { background-color: rgba(148, 163, 184, 0.15); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+        .tag-미분류 { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+
+        /* 테이블 */
+        .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--card-bg); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; } 
+        th, td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); word-break: keep-all; line-height: 1.4; color: var(--text-main); }
+        th { background-color: #1a1c21; font-weight: 500; color: var(--text-muted); cursor: pointer; user-select: none; white-space: nowrap; font-size: 0.85rem; }
+        th:hover { background-color: #21242b; color: var(--text-main); }
+        
+        tr:hover td { background-color: rgba(255, 255, 255, 0.03); }
+        
+        .text-right { text-align: right; white-space: nowrap; }
+        .text-center { text-align: center; white-space: nowrap; }
+        .total-row { background-color: #1a1c21 !important; font-weight: 600; color: var(--primary-color); }
+        .total-row td { border-top: 2px solid var(--border-color); }
+
+        /* 커스텀 체크박스 */
+        input[type="checkbox"] { 
+            appearance: none; width: 16px; height: 16px; border: 1px solid var(--text-muted); border-radius: 4px; background-color: var(--input-bg); cursor: pointer; position: relative;
+        }
+        input[type="checkbox"]:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+        input[type="checkbox"]:checked::after { content: '✔'; color: white; position: absolute; font-size: 10px; left: 3px; top: 1px; }
+
+        /* 요약 섹션 스타일 */
+        #summarySection { margin-bottom: 20px; }
+        .summary-card { background: #1a1c21; border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; }
+        .summary-header-info { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px; }
+        .summary-title { font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
+        .summary-total { font-size: 1.2rem; font-weight: 700; color: #a78bfa; }
+        
+        /* 현장별 통계 그리드 */
+        .site-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+        .site-stat-item { background: var(--card-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .site-stat-item:hover { transform: translateY(-3px); border-color: var(--primary-color); background: #252831; }
+        .site-stat-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: 500; font-size: 0.95rem; color: var(--text-main); }
+        .site-stat-amount { font-weight: 600; color: var(--text-muted); font-size: 0.85rem; }
+        .progress-bg { background: #2c2f38; height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+        .progress-bar { background: var(--primary-color); height: 100%; border-radius: 3px; transition: width 0.5s ease-in-out; }
+        .site-stat-percent { font-size: 0.8rem; color: var(--text-muted); text-align: right; font-weight: 500; }
+
+        /* 팝업(모달) 스타일 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); width: 95%; max-width: 600px; border-radius: 12px; padding: 24px; border: 1px solid var(--border-color); box-shadow: 0 10px 40px rgba(0,0,0,0.5); max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px; }
+        .modal-header h3 { margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 600; }
+        .modal-close-btn { background: #2c2f38; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .modal-close-btn:hover { background: #3e424d; color: white; }
+        .modal-body { overflow-y: auto; padding-right: 5px; }
+        .modal-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        .modal-table th, .modal-table td { padding: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .modal-table th { background: #1a1c21; font-weight: 500; color: var(--text-muted); position: sticky; top: 0; z-index: 1; cursor: pointer; }
+        .modal-table tr:hover td { background-color: rgba(255, 255, 255, 0.03); }
+        
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #4b4f5e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">K&G 현장 자재 납품 관리</div>
+
+    <div class="card">
+        <h2>신규 납품 내역 등록</h2>
+        <form id="dataForm">
+            <div class="form-grid">
+                <div class="form-group" style="max-width: 120px;">
+                    <label>연도</label>
+                    <input type="number" id="inputYear" required>
+                </div>
+                <div class="form-group">
+                    <label>월/일 (예: 3/3)</label>
+                    <input type="text" id="inputMonthDay" placeholder="3/3" required>
+                </div>
+                <div class="form-group"><label>현장명</label><input type="text" id="site" placeholder="현장명" required></div>
+                <div class="form-group"><label>품목명</label><input type="text" id="item" placeholder="품목명" required></div>
+                <div class="form-group"><label>수량</label><input type="number" id="quantity" class="text-right" required></div>
+                <div class="form-group"><label>단가</label><input type="number" id="price" class="text-right" required></div>
+                <div class="form-group">
+                    <label>구분</label>
+                    <select id="category">
+                        <option value="미분류" selected>미분류</option>
+                        <option value="안전자재">안전자재</option>
+                        <option value="잡자재">잡자재</option>
+                    </select>
+                </div>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="submit" id="submitBtn" class="btn-primary" style="width: 200px;">데이터 저장하기</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>납품 내역 현황</h2>
+        
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label>조회 기간</label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <input type="date" id="startDate">
+                    <span style="color:var(--text-muted)">~</span>
+                    <input type="date" id="endDate">
+                </div>
+            </div>
+            <div class="filter-group" style="flex-grow: 1; max-width: 200px;">
+                <label>현장명 검색</label>
+                <input type="text" id="filterSite" placeholder="검색어 입력">
+            </div>
+            <div class="filter-group" style="flex-grow: 1; max-width: 200px;">
+                <label>품목명 검색</label>
+                <input type="text" id="filterItem" placeholder="검색어 입력">
+            </div>
+            <div class="filter-group" style="min-width: 120px;">
+                <label>구분</label>
+                <select id="filterCategory">
+                    <option value="">전체</option>
+                    <option value="미분류">미분류</option>
+                    <option value="안전자재">안전자재</option>
+                    <option value="잡자재">잡자재</option>
+                </select>
+            </div>
+            <div class="filter-action">
+                <button type="button" onclick="loadData()" class="btn-primary">조회하기</button>
+                <button type="button" onclick="exportToExcel()" class="btn-excel">엑셀 다운로드</button>
+            </div>
+        </div>
+
+        <div id="summarySection" style="display: none;"></div>
+
+        <div class="action-bar" id="actionBar" style="display: none;">
+            <span class="action-text"><span id="selectedCount">0</span>개 선택됨</span>
+            <button onclick="batchUpdate('안전자재')" class="btn-safe">안전자재로 변경</button>
+            <button onclick="batchUpdate('잡자재')" class="btn-misc">잡자재로 변경</button>
+            <button onclick="batchUpdate('미분류')" class="btn-unclassified">미분류로 되돌리기</button>
+        </div>
+
+        <div class="table-responsive">
+            <table id="recordTable">
+                <thead>
+                    <tr>
+                        <th class="text-center"><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+                        <th onclick="sortTable(1, 'date')" class="text-center">일자</th>
+                        <th onclick="sortTable(2, 'string')">현장명</th>
+                        <th onclick="sortTable(3, 'string')">품목명</th>
+                        <th onclick="sortTable(4, 'number')" class="text-right">수량</th>
+                        <th onclick="sortTable(5, 'number')" class="text-right">단가</th>
+                        <th onclick="sortTable(6, 'number')" class="text-right">합계금액</th>
+                        <th onclick="sortTable(7, 'number')" class="text-center">순번</th>
+                        <th onclick="sortTable(8, 'string')" class="text-center">구분</th>
+                        <th class="text-center">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="10" class="text-center" style="padding: 40px; color: var(--text-muted);">데이터를 조회해 주세요.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="siteModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalSiteName">현장명 상세정보</h3>
+            <button class="modal-close-btn" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <table class="modal-table">
+                <thead>
+                    <tr>
+                        <th onclick="sortModalTable(0, 'string')">납품 품목명 ↕️</th>
+                        <th class="text-right" onclick="sortModalTable(1, 'number')">합계 수량 ↕️</th>
+                        <th class="text-right" onclick="sortModalTable(2, 'number')">합계 금액 ↕️</th>
+                    </tr>
+                </thead>
+                <tbody id="modalTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>납품 내역 수정</h3>
+            <button class="modal-close-btn" type="button" onclick="closeEditModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="editForm">
+                <input type="hidden" id="editRowIndex">
+                <div class="form-grid">
+                    <div class="form-group" style="max-width: 120px;">
+                        <label>연도</label><input type="number" id="editYear" required>
+                    </div>
+                    <div class="form-group">
+                        <label>월/일 (예: 3/3)</label><input type="text" id="editMonthDay" required>
+                    </div>
+                    <div class="form-group"><label>현장명</label><input type="text" id="editSite" required></div>
+                    <div class="form-group" style="grid-column: span 2;"><label>품목명</label><input type="text" id="editItem" required></div>
+                    <div class="form-group"><label>수량</label><input type="number" id="editQuantity" class="text-right" required></div>
+                    <div class="form-group"><label>단가</label><input type="number" id="editPrice" class="text-right" required></div>
+                    <div class="form-group">
+                        <label>구분</label>
+                        <select id="editCategory">
+                            <option value="미분류">미분류</option>
+                            <option value="안전자재">안전자재</option>
+                            <option value="잡자재">잡자재</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 24px;">
+                    <button type="button" onclick="closeEditModal()" class="btn-edit" style="margin-right: 10px; padding: 10px 18px;">취소</button>
+                    <button type="submit" id="editSubmitBtn" class="btn-primary" style="width: 150px;">수정 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ★ 기존에 쓰시던 SCRIPT_URL 유지
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby_VSdKbTkclk_Skf63w6SssnHAP-l1FS_SwhN-eGkgkkN7_fzprv6oo_o32KbK_yNn6A/exec';
+    
+    let currentFilteredData = [];
+    let sortStatus = { colIdx: -1, isAsc: true };
+
+    let currentModalData = [];
+    let modalSortStatus = { colIdx: 2, isAsc: false };
+
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    
+    document.getElementById('inputYear').value = today.getFullYear();
+    document.getElementById('inputMonthDay').value = `${today.getMonth() + 1}/${today.getDate()}`;
+    
+    document.getElementById('startDate').value = formatDate(firstDay);
+    document.getElementById('endDate').value = formatDate(today);
+
+    // [1. 신규 데이터 저장]
+    document.getElementById('dataForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true; btn.innerText = '저장 중...';
+
+        let mdInput = document.getElementById('inputMonthDay').value.trim();
+        let formattedMD = mdInput.replace(/[-.]/g, '/');
+        let parts = formattedMD.split('/');
+        if (parts.length >= 2) {
+            let m = parts[0].padStart(2, '0');
+            let d = parts[1].padStart(2, '0');
+            formattedMD = `${m}/${d}`; 
+        }
+        
+        const year = document.getElementById('inputYear').value;
+
+        const params = new URLSearchParams();
+        params.append('action', 'save');
+        params.append('year', year);         
+        params.append('date', formattedMD);  
+        params.append('site', document.getElementById('site').value);
+        params.append('item', document.getElementById('item').value);
+        params.append('quantity', document.getElementById('quantity').value);
+        params.append('price', document.getElementById('price').value);
+        params.append('category', document.getElementById('category').value);
+
+        fetch(SCRIPT_URL, { method: 'POST', body: params })
+        .then(res => res.json())
+        .then(() => { 
+            alert('성공적으로 저장되었습니다!'); 
+            document.getElementById('site').value = '';
+            document.getElementById('item').value = '';
+            document.getElementById('quantity').value = '';
+            document.getElementById('price').value = '';
+            loadData(); 
+        })
+        .finally(() => { btn.disabled = false; btn.innerText = '데이터 저장하기'; });
+    });
+
+    // [2. 데이터 조회]
+    function loadData() {
+        const tbody = document.getElementById('tableBody');
+        const startVal = document.getElementById('startDate').value;
+        const endVal = document.getElementById('endDate').value;
+        const siteKey = document.getElementById('filterSite').value.trim().toLowerCase();
+        const itemKey = document.getElementById('filterItem').value.trim().toLowerCase();
+        const catKey = document.getElementById('filterCategory').value;
+
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center" style="padding: 40px; color: var(--text-muted);">데이터를 불러오는 중입니다...</td></tr>';
+        document.getElementById('selectAll').checked = false;
+        updateCheckCount();
+
+        fetch(SCRIPT_URL).then(res => res.json()).then(data => {
+            currentFilteredData = data.filter(row => {
+                if (!row.일자 || !row.품목명) return false;
+
+                const origDate = String(row.일자).trim();
+                const seqMatch = origDate.match(/-\s*(\d+)$/);
+                row.seqStr = seqMatch ? seqMatch[1] : ''; 
+                row.numSeq = seqMatch ? parseInt(seqMatch[1], 10) : 0; 
+                
+                let justDate = origDate.replace(/\s*-\s*\d+$/, '').replace(/[-.]/g, '/');
+                let pts = justDate.split('/');
+                
+                let yPart = row.연도 ? String(row.연도).trim() : String(today.getFullYear());
+                let m = '01', d = '01';
+
+                if (pts.length >= 3) {
+                    yPart = pts[0]; 
+                    m = pts[1].padStart(2, '0');
+                    d = pts[2].padStart(2, '0');
+                } else if (pts.length === 2) {
+                    m = pts[0].padStart(2, '0');
+                    d = pts[1].padStart(2, '0');
+                }
+
+                row.standardDate = `${yPart}-${m}-${d}`;
+                row.displayDate = `${yPart}/${m}/${d}`; 
+
+                row.numQty = Number(row.수량.toString().replace(/[^0-9-]/g, ''));
+                row.numPrc = Number(row.단가.toString().replace(/[^0-9-]/g, ''));
+                row.numTotal = row.numQty * row.numPrc;
+                row.cat = row.구분 || '미분류';
+
+                if (startVal && row.standardDate < startVal) return false;
+                if (endVal && row.standardDate > endVal) return false;
+                if (siteKey && !String(row.현장명).toLowerCase().includes(siteKey)) return false;
+                if (itemKey && !String(row.품목명).toLowerCase().includes(itemKey)) return false;
+                if (catKey && row.cat !== catKey) return false;
+                
+                return true;
+            });
+            renderTable();
+        });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = '';
+        let sum = 0;
+        let siteTotals = {};
+
+        currentFilteredData.forEach((row) => {
+            sum += row.numTotal;
+            
+            const siteName = row.현장명 || '알 수 없음';
+            if (!siteTotals[siteName]) siteTotals[siteName] = 0;
+            siteTotals[siteName] += row.numTotal;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="text-center"><input type="checkbox" class="row-check" value="${row.rowIndex}" onclick="updateCheckCount()"></td>
+                <td class="text-center" style="color: var(--text-muted);">${row.displayDate}</td>
+                <td style="font-weight: 500;">${row.현장명}</td>
+                <td>${row.품목명}</td>
+                <td class="text-right">${row.numQty.toLocaleString()}</td>
+                <td class="text-right">${row.numPrc.toLocaleString()}</td>
+                <td class="text-right"><strong style="color: #a78bfa;">${row.numTotal.toLocaleString()}</strong></td>
+                <td class="text-center" style="color: var(--text-muted);">${row.seqStr}</td>
+                <td class="text-center"><span class="tag tag-${row.cat}">${row.cat}</span></td>
+                <td class="text-center"><button class="btn-edit" onclick="openEditModal(${row.rowIndex})">수정</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const footer = document.createElement('tr');
+        footer.className = 'total-row';
+        footer.innerHTML = `<td colspan="6" class="text-right">합계 (${currentFilteredData.length}건)</td><td class="text-right">${sum.toLocaleString()}원</td><td colspan="3"></td>`;
+        tbody.appendChild(footer);
+
+        renderSummary(sum, siteTotals);
+    }
+
+    function renderSummary(totalSum, siteTotals) {
+        const summarySection = document.getElementById('summarySection');
+        if (currentFilteredData.length === 0) { summarySection.style.display = 'none'; return; }
+        summarySection.style.display = 'block';
+
+        const siteArray = Object.keys(siteTotals).map(site => {
+            return {
+                name: site,
+                amount: siteTotals[site],
+                percent: totalSum > 0 ? ((siteTotals[site] / totalSum) * 100).toFixed(1) : 0
+            };
+        }).sort((a, b) => b.amount - a.amount);
+
+        let statsHtml = `<div class="site-stats-grid">`;
+        siteArray.forEach(site => {
+            statsHtml += `
+                <div class="site-stat-item" onclick="openModal('${site.name}')" title="상세 품목 보기">
+                    <div class="site-stat-header">
+                        <span>${site.name}</span>
+                        <span class="site-stat-amount">${site.amount.toLocaleString()}원</span>
+                    </div>
+                    <div class="progress-bg">
+                        <div class="progress-bar" style="width: ${site.percent}%;"></div>
+                    </div>
+                    <div class="site-stat-percent">${site.percent}%</div>
+                </div>
+            `;
+        });
+        statsHtml += `</div>`;
+
+        summarySection.innerHTML = `
+            <div class="summary-card">
+                <div class="summary-header-info">
+                    <div class="summary-title">조회 내역 통계 <span style="color:var(--text-muted); font-size:0.85rem; font-weight:normal; margin-left:8px;">(총 ${currentFilteredData.length}건)</span></div>
+                    <div class="summary-total">${totalSum.toLocaleString()}원</div>
+                </div>
+                ${statsHtml}
+            </div>
+        `;
+    }
+
+    // [3. 모달 (팝업) 관련 함수]
+    function openModal(siteName) {
+        document.getElementById('modalSiteName').innerHTML = `<b>${siteName}</b> 상세 내역`;
+        let itemStats = {};
+        currentFilteredData.forEach(row => {
+            if (row.현장명 === siteName) {
+                if (!itemStats[row.품목명]) { itemStats[row.품목명] = { qty: 0, total: 0 }; }
+                itemStats[row.품목명].qty += row.numQty;
+                itemStats[row.품목명].total += row.numTotal;
+            }
+        });
+
+        currentModalData = Object.keys(itemStats).map(name => ({
+            name: name, qty: itemStats[name].qty, total: itemStats[name].total
+        }));
+        modalSortStatus = { colIdx: 2, isAsc: false };
+        sortModalData();
+        document.getElementById('siteModal').style.display = 'flex';
+    }
+
+    function sortModalTable(idx, type) {
+        if (modalSortStatus.colIdx === idx) { modalSortStatus.isAsc = !modalSortStatus.isAsc; } 
+        else { modalSortStatus.colIdx = idx; modalSortStatus.isAsc = type === 'string' ? true : false; }
+        sortModalData();
+    }
+
+    function sortModalData() {
+        const idx = modalSortStatus.colIdx;
+        const isAsc = modalSortStatus.isAsc;
+        currentModalData.sort((a, b) => {
+            let valA, valB;
+            if (idx === 0) { valA = a.name; valB = b.name; }
+            else if (idx === 1) { valA = a.qty; valB = b.qty; }
+            else if (idx === 2) { valA = a.total; valB = b.total; }
+            if (valA < valB) return isAsc ? -1 : 1;
+            if (valA > valB) return isAsc ? 1 : -1;
+            return 0;
+        });
+        renderModalTable();
+    }
+
+    function renderModalTable() {
+        const tbody = document.getElementById('modalTableBody');
+        tbody.innerHTML = '';
+        let sumQty = 0, sumTotal = 0;
+        currentModalData.forEach(item => {
+            sumQty += item.qty; sumTotal += item.total;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.name}</td><td class="text-right">${item.qty.toLocaleString()}</td><td class="text-right" style="color:#a78bfa;">${item.total.toLocaleString()}원</td>`;
+            tbody.appendChild(tr);
+        });
+        const footer = document.createElement('tr');
+        footer.style.fontWeight = '600'; footer.style.backgroundColor = '#1a1c21';
+        footer.innerHTML = `<td class="text-center" style="color:var(--text-muted)">총 ${currentModalData.length}개 품목</td><td class="text-right" style="color:var(--primary-color)">${sumQty.toLocaleString()}</td><td class="text-right" style="color:var(--primary-color)">${sumTotal.toLocaleString()}원</td>`;
+        tbody.appendChild(footer);
+    }
+
+    function closeModal() { document.getElementById('siteModal').style.display = 'none'; }
+    
+    window.onclick = function(event) { 
+        const siteModal = document.getElementById('siteModal'); 
+        const editModal = document.getElementById('editModal');
+        if (event.target === siteModal) closeModal(); 
+        if (event.target === editModal) closeEditModal();
+    }
+
+    // [4. 개별 데이터 수정 관련 함수]
+    function openEditModal(rowIndex) {
+        const rowData = currentFilteredData.find(r => r.rowIndex === rowIndex);
+        if (!rowData) return;
+
+        document.getElementById('editRowIndex').value = rowIndex;
+        
+        const yPart = rowData.displayDate.split('/')[0];
+        const mdPart = rowData.displayDate.split('/').slice(1).join('/');
+        
+        document.getElementById('editYear').value = yPart;
+        document.getElementById('editMonthDay').value = mdPart;
+        document.getElementById('editSite').value = rowData.현장명;
+        document.getElementById('editItem').value = rowData.품목명;
+        document.getElementById('editQuantity').value = rowData.numQty;
+        document.getElementById('editPrice').value = rowData.numPrc;
+        document.getElementById('editCategory').value = rowData.cat;
+
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('editSubmitBtn');
+        btn.disabled = true; btn.innerText = '수정 중...';
+
+        let mdInput = document.getElementById('editMonthDay').value.trim();
+        let formattedMD = mdInput.replace(/[-.]/g, '/');
+        let parts = formattedMD.split('/');
+        if (parts.length >= 2) {
+            let m = parts[0].padStart(2, '0');
+            let d = parts[1].padStart(2, '0');
+            formattedMD = `${m}/${d}`; 
+        }
+        
+        const year = document.getElementById('editYear').value;
+
+        const params = new URLSearchParams();
+        params.append('action', 'updateRow');
+        params.append('rowIndex', document.getElementById('editRowIndex').value);
+        params.append('year', year);         
+        params.append('date', formattedMD);  
+        params.append('site', document.getElementById('editSite').value);
+        params.append('item', document.getElementById('editItem').value);
+        params.append('quantity', document.getElementById('editQuantity').value);
+        params.append('price', document.getElementById('editPrice').value);
+        params.append('category', document.getElementById('editCategory').value);
+
+        fetch(SCRIPT_URL, { method: 'POST', body: params })
+        .then(res => res.json())
+        .then(() => { 
+            alert('성공적으로 수정되었습니다!'); 
+            closeEditModal();
+            loadData();
+        })
+        .finally(() => { btn.disabled = false; btn.innerText = '수정 완료'; });
+    });
+
+
+    // [5. 일괄 구분 수정 및 정렬 로직]
+    function batchUpdate(newCat) {
+        const selected = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+        if(selected.length === 0) return;
+        if(!confirm(`${selected.length}개 항목을 '${newCat}'(으)로 변경하시겠습니까?`)) return;
+        const params = new URLSearchParams();
+        params.append('action', 'updateCategory');
+        params.append('rowIndices', JSON.stringify(selected));
+        params.append('newCategory', newCat);
+        fetch(SCRIPT_URL, { method: 'POST', body: params }).then(res => res.json()).then(res => {
+            if(res.result === 'success') { alert('변경되었습니다.'); loadData(); }
+        });
+    }
+
+    function toggleAll(master) { document.querySelectorAll('.row-check').forEach(cb => cb.checked = master.checked); updateCheckCount(); }
+    function updateCheckCount() {
+        const count = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('selectedCount').innerText = count;
+        document.getElementById('actionBar').style.display = count > 0 ? 'flex' : 'none';
+    }
+
+    function sortTable(idx, type) {
+        if (sortStatus.colIdx === idx) sortStatus.isAsc = !sortStatus.isAsc;
+        else { sortStatus.colIdx = idx; sortStatus.isAsc = true; }
+        currentFilteredData.sort((a, b) => {
+            let valA, valB;
+            if (idx === 1) { valA = a.standardDate; valB = b.standardDate; }
+            else if (idx === 4) { valA = a.numQty; valB = b.numQty; }
+            else if (idx === 5) { valA = a.numPrc; valB = b.numPrc; }
+            else if (idx === 6) { valA = a.numTotal; valB = b.numTotal; }
+            else if (idx === 7) { valA = a.numSeq; valB = b.numSeq; }
+            else { 
+                const keys = ['', '', '현장명', '품목명', '', '', '', '', 'cat'];
+                valA = a[keys[idx]] || ''; valB = b[keys[idx]] || '';
+            }
+            if (valA < valB) return sortStatus.isAsc ? -1 : 1;
+            if (valA > valB) return sortStatus.isAsc ? 1 : -1;
+            return 0;
+        });
+        renderTable();
+    }
+
+    function exportToExcel() {
+        let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="utf-8"></head><body><table border="1">
+        <tr style="background:#1a1c21; color:#ffffff; font-weight:bold;"><td>연도</td><td>일자</td><td>현장명</td><td>품목명</td><td>수량</td><td>단가</td><td>합계금액</td><td>순번</td><td>구분</td></tr>`;
+        currentFilteredData.forEach(row => {
+            const exportYear = row.displayDate.split('/')[0];
+            html += `<tr><td>${exportYear}</td><td>${row.displayDate}</td><td>${row.현장명}</td><td>${row.품목명}</td><td>${row.numQty}</td><td>${row.numPrc}</td><td>${row.numTotal}</td><td>${row.seqStr}</td><td>${row.cat}</td></tr>`;
+        });
+        html += `</table></body></html>`;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([html], { type: 'application/vnd.ms-excel' }));
+        a.download = `K&G_자재납품내역.xls`; a.click();
+    }
+</script>
+</body>
+</html>

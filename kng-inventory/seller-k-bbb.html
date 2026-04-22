@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K&G ??촋 ??BBB</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="seller-k-products.css">
+</head>
+<body>
+    <div class="app-container hidden" id="mainApp">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        <aside class="sidebar" id="sidebar">
+            <div class="brand"><img src="libraries/logo/20251208 KNG Logo_ENG.png" alt="K&G Logo" class="brand-logo"></div>
+            <nav class="menu">
+                <div class="menu-label">硫붾돱</div>
+                <a href="index.html#dashboard"><i class='bx bx-grid-alt'></i> <span>??쒕낫??/span></a>
+                <a href="index.html#forms"><i class='bx bx-plus-circle'></i> <span>?낆텧怨??깅줉</span></a>
+                <a href="index.html#inventory"><i class='bx bx-box'></i> <span>?ш퀬 紐⑸줉</span></a>
+                <a href="index.html#transactions"><i class='bx bx-list-ul'></i> <span>?낆텧怨??댁뿭</span></a>
+                <div class="menu-label">??촋</div>
+                <div class="menu-group open" id="sellerKMenuGroup">
+                    <div class="menu-group-toggle" id="sellerKToggle">
+                        <i class='bx bx-store'></i><span>?ㅻ쭏?몄뒪?좎뼱</span><i class='bx bx-chevron-down menu-arrow'></i>
+                    </div>
+                    <div class="menu-group-items">
+                        <a href="seller-k-products.html"><i class='bx bx-receipt'></i> <span>留ㅼ엯?곹뭹 由ъ뒪??/span></a>
+                        <a href="seller-k-bbb.html" class="active"><i class='bx bx-bar-chart-alt-2'></i> <span>BBB</span></a>
+                        <a href="seller-k-ccc.html"><i class='bx bx-cog'></i> <span>CCC</span></a>
+                    </div>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" id="logoutBtn" class="logout-btn"><i class='bx bx-log-out'></i> 濡쒓렇?꾩썐</a>
+                <div class="connection-status"><span id="firebaseStatus" class="status"><i class='bx bx-loader-alt bx-spin'></i> ?곌껐 以?..</span></div>
+            </div>
+        </aside>
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="硫붾돱 ?닿린"><i class='bx bx-menu'></i></button>
+                    <h2 style="font-size:14px;font-weight:600;color:var(--gray-700);margin:0;">BBB</h2>
+                </div>
+            </header>
+            <div class="page-body">
+                <div class="empty-state" style="padding:120px 20px;">
+                    <i class='bx bx-hard-hat' style="font-size:64px;"></i>
+                    <p style="font-size:18px;margin-top:16px;">?섏씠吏 以鍮?以?/p>
+                    <span class="hint" style="font-size:13px;">??湲곕뒫? 怨?異붽????덉젙?낅땲??</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+        const app = initializeApp({apiKey:"AIzaSyDqdzlXTddvoBYWaVbTM7_ERO_rUGWjIgE",authDomain:"kng-inventory.firebaseapp.com",projectId:"kng-inventory",storageBucket:"kng-inventory.firebasestorage.app",messagingSenderId:"647181899026",appId:"1:647181899026:web:7cd3b62a7a10771b204fcb"});
+        const auth = getAuth(app);
+        onAuthStateChanged(auth, function(user) { if(!user) { window.location.href='index.html'; } else { document.getElementById('mainApp').classList.remove('hidden'); } });
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value)
+                .catch(function() { document.getElementById('loginError').classList.remove('hidden'); });
+        });
+        document.getElementById('logoutBtn').addEventListener('click', function(e) { e.preventDefault(); signOut(auth).then(function(){location.reload();}); });
+        var t = document.getElementById('sellerKToggle'), g = document.getElementById('sellerKMenuGroup');
+        if(t&&g) t.addEventListener('click', function(e){ e.preventDefault(); g.classList.toggle('open'); });
+        var h = document.getElementById('hamburgerBtn'), s = document.getElementById('sidebar'), o = document.getElementById('sidebarOverlay');
+        if(h&&s) h.addEventListener('click', function(){ s.classList.toggle('open'); if(o) o.classList.toggle('active'); });
+        if(o) o.addEventListener('click', function(){ s.classList.remove('open'); o.classList.remove('active'); });
+    </script>
+</body>
+</html>
+

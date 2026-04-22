@@ -1,0 +1,25 @@
+node_modules/
+package-lock.json
+package.json
+_deploy/
+seller-k-mass-upload/
+_deploy/
+
+# Dev tools
+dev-server.js
+fix_modules.js
+generate_categories.js
+parse_category.js
+parse_template.js
+template_b64.txt
+
+# IDE
+*.code-workspace
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Templates folder (원본 엑셀)
+Templates/

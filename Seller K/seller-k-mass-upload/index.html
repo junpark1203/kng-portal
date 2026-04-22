@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="K&G 셀러K 스마트스토어 대량 업로드 툴 — 상품 등록, 엑셀 생성, 이미지 관리">
+    <title>K&G 셀러K — 스마트스토어 대량 업로드</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="uploader.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+
+<body>
+    <!-- 로그인 오버레이 -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <div class="login-header">
+                <div style="font-size:36px;color:var(--primary);margin-bottom:8px;"><i class='bx bx-store'></i></div>
+                <h2 style="margin:0 0 4px 0;font-size:20px;">K&G 셀러K</h2>
+                <p style="margin:0;color:var(--gray-500);font-size:13px;">스마트스토어 대량 업로드 툴</p>
+            </div>
+            <form id="loginForm" style="margin-top:24px;">
+                <div class="fg" style="margin-bottom:12px;">
+                    <label for="loginEmail" style="font-size:13px;font-weight:500;">아이디 (이메일)</label>
+                    <input type="email" id="loginEmail" required placeholder="admin@kng.com" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;">
+                </div>
+                <div class="fg" style="margin-bottom:16px;">
+                    <label for="loginPassword" style="font-size:13px;font-weight:500;">비밀번호</label>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;">
+                </div>
+                <button type="submit" class="btn-primary" id="loginBtn" style="width:100%;padding:12px;font-size:14px;">
+                    로그인
+                </button>
+            </form>
+            <div id="loginError" class="hidden" style="margin-top:12px;padding:10px;background:#fee;border-radius:6px;color:#c00;font-size:13px;text-align:center;">아이디 또는 비밀번호가 틀렸습니다.</div>
+        </div>
+    </div>
+
+    <div class="app-container hidden" id="mainApp">
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class='bx bx-store'></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">대량 업로드</span>
+                    <span class="brand-subtitle">SmartStore</span>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <div class="menu-label">상품 관리</div>
+                <a href="#register" id="navRegister" class="active">
+                    <i class='bx bx-edit'></i> <span>상품 등록</span>
+                </a>
+                <a href="#products" id="navProducts">
+                    <i class='bx bx-list-ul'></i> <span>상품 목록</span>
+                </a>
+                <a href="#export" id="navExport">
+                    <i class='bx bx-download'></i> <span>엑셀 생성</span>
+                </a>
+
+                <div class="menu-label">설정</div>
+                <a href="#presets" id="navPresets">
+                    <i class='bx bx-slider'></i> <span>프리셋 관리</span>
+                </a>
+                <a href="#addresses" id="navAddresses">
+                    <i class='bx bx-map'></i> <span>주소 관리</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <a href="#" id="logoutBtn" class="logout-btn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--gray-500);font-size:13px;text-decoration:none;border-radius:6px;transition:background 0.2s;">
+                    <i class='bx bx-log-out'></i> 로그아웃
+                </a>
+                <div class="status">
+                    <i class='bx bxs-circle'></i>
+                    <span>연결 중...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="메뉴 열기">
+                        <i class='bx bx-menu'></i>
+                    </button>
+                    <span class="topbar-title" id="topbarTitle">상품 등록</span>
+                    <button id="btnCancelEdit" class="btn-outline btn-sm hidden" style="margin-left: 16px; padding: 4px 10px; font-size: 12px;">
+                        <i class='bx bx-arrow-back'></i> 리스트로 돌아가기
+                    </button>
+                </div>
+                <div class="topbar-right">
+                    <span style="font-size:11px; color:var(--gray-500);" id="productCountBadge">등록 상품: 0건</span>
+                </div>
+            </header>
+
+            <div class="page-body" id="pageBody">
+
+                <!-- ═══ PAGE: 상품 등록 ═══ -->
+                <div class="page-view active" id="pageRegister">
+                    <!-- Wizard Steps -->
+                    <div class="wizard-steps" id="wizardSteps">
+                        <div class="wizard-step active" data-step="1">
+                            <div class="wizard-step-circle">1</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">상품 기본</span>
+                            </div>
+                        </div>
+                        <div class="wizard-step" data-step="2">
+                            <div class="wizard-step-circle">2</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">가격/배송</span>
+                            </div>
+                        </div>
+                        <div class="wizard-step" data-step="3">
+                            <div class="wizard-step-circle">3</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">옵션</span>
+                            </div>
+                        </div>
+                        <div class="wizard-step" data-step="4">
+                            <div class="wizard-step-circle">4</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">이미지</span>
+                            </div>
+                        </div>
+                        <div class="wizard-step" data-step="5">
+                            <div class="wizard-step-circle">5</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">상품 상세</span>
+                            </div>
+                        </div>
+                        <div class="wizard-step" data-step="6">
+                            <div class="wizard-step-circle">6</div>
+                            <div class="wizard-step-info">
+                                <span class="wizard-step-label">미리보기</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="wizard-body">
+                        <!-- Step 1: 상품 기본 -->
+                        <div class="step-panel active" id="step1">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-box'></i> 상품 기본
+                            </div>
+                            <div class="form-grid">
+                                <div class="fg">
+                                    <label>관리번호</label>
+                                    <input type="text" id="fldCode" readonly class="font-mono"
+                                        style="background:var(--surface-container-high); color: var(--primary); font-weight:700;">
+                                </div>
+                                <div class="fg">
+                                    <label>상품상태</label>
+                                    <select id="fldStatus">
+                                        <option value="신상품">신상품</option>
+                                        <option value="중고">중고</option>
+                                        <option value="리퍼">리퍼</option>
+                                    </select>
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>카테고리 <span class="required">*</span></label>
+                                    <div class="category-search-container" id="categorySearchContainer">
+                                        <div class="category-search-input-wrap">
+                                            <i class='bx bx-search'></i>
+                                            <input type="text" id="fldCategorySearch"
+                                                placeholder="카테고리 검색 (예: 안전화, 작업복...)" autocomplete="off">
+                                        </div>
+                                        <div class="category-dropdown hidden" id="categoryDropdown">
+                                            <div class="category-recent" id="categoryRecent">
+                                                <div class="category-section-label">최근 선택 카테고리</div>
+                                            </div>
+                                            <div class="category-results" id="categoryResults"></div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="fldCategoryId">
+                                    <div class="category-selected hidden" id="categorySelected">
+                                        <i class='bx bx-folder'></i>
+                                        <span id="categoryPath"></span>
+                                        <button class="category-clear" id="btnClearCategory">&times;</button>
+                                    </div>
+                                </div>
+                                <!-- 단위가격 필수 알림 (카테고리 선택 시 자동 표시) -->
+                                <div class="fg fg-full hidden" id="unitPriceAlertWrap">
+                                    <div id="unitPriceAlert" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#FFF8E1,#FFFDE7);border:1px solid #FFD54F;border-radius:10px;font-size:12px;">
+                                        <i class='bx bx-info-circle' style="font-size:18px;color:#F57F17;"></i>
+                                        <div style="flex:1;">
+                                            <div style="font-weight:700;color:#E65100;margin-bottom:2px;">⚠️ 단위가격 필수 입력 대상 카테고리</div>
+                                            <div style="color:#795548;" id="unitPriceInfo">표시용량: - / 표시단위: -</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="fg hidden" id="unitPriceTotalVolumeWrap">
+                                    <label>총용량 <span class="required">*</span></label>
+                                    <input type="number" id="fldTotalVolume" min="0" step="any" placeholder="상품의 실제 총용량">
+                                    <span class="form-help" style="margin-top:2px;font-size:10px;color:var(--gray-400);" id="totalVolumeHelp">해당 카테고리의 총용량을 입력하세요</span>
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>실제 상품명</label>
+                                    <input type="text" id="fldInternalName"
+                                        placeholder="내부 관리용 실제 상품명 (예: 3M 안전화 Pro-500)">
+                                    <span class="form-help"
+                                        style="margin-top:2px;font-size:10px;color:var(--gray-400);">seller-k 매입상품 연동 시
+                                        사용되는 내부 명칭</span>
+                                </div>
+                                <div class="fg fg-full">
+                                    <label style="display:flex;align-items:center;gap:6px;">
+                                        스토어 상품명 <span class="required">*</span>
+                                        <span id="nameCounter"
+                                            style="margin-left:auto;font-size:11px;font-weight:600;color:var(--gray-400);font-family:'SF Mono',monospace;">0/100</span>
+                                    </label>
+                                    <input type="text" id="fldProductName" placeholder="SEO 최적화된 스토어 표시용 상품명 (최대 100자)"
+                                        maxlength="100">
+                                    <span class="form-help"
+                                        style="margin-top:2px;font-size:10px;color:var(--gray-400);">네이버 스마트스토어에 표시되는
+                                        상품명 — 엑셀 다운로드에 사용</span>
+                                </div>
+                                
+                            </div>
+                            <div class="wizard-footer">
+                                <button class="btn-primary" id="btnNext1">다음 <i
+                                        class='bx bx-right-arrow-alt'></i></button>
+                                <div></div>
+                            </div>
+                        
+                        </div>
+
+                        <!-- Step 2: 가격 / 배송 -->
+                        <div class="step-panel" id="step2">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-won'></i> 가격 / 배송
+                            </div>
+                            <div class="form-grid">
+                                <div class="fg fg-full">
+                                    <label>배송 프리셋 <span class="required">*</span></label>
+                                    <select id="fldShippingPreset" onchange="if(typeof renderPresetSummary === 'function') renderPresetSummary(this.value)">
+                                        <option value="">프리셋 선택</option>
+                                    </select>
+                                    <span class="form-help" style="margin-top:2px;font-size:10px;color:var(--gray-400);">프리셋 관리 메뉴에서 배송 설정을 등록하세요.</span>
+                                </div>
+                                <div class="fg fg-full" id="presetSummaryWrap" style="display:none;">
+                                    <div id="presetSummaryCard" style="padding:14px 16px;background:var(--surface-container);border-radius:10px;border:1px solid var(--surface-container-high);"></div>
+                                </div>
+                                <div class="fg">
+                                    <label>출고지</label>
+                                    <select id="fldShippingAddress"><option value="">주소 선택</option></select>
+                                </div>
+                                <div class="fg">
+                                    <label>반품/교환지</label>
+                                    <select id="fldReturnAddress"><option value="">주소 선택</option></select>
+                                </div>
+                                <div class="fg">
+                                    <label>판매 배송비 <span style="font-size:10px;color:var(--gray-400);font-weight:400;">(부가세 포함)</span></label>
+                                    <input type="number" id="fldSaleShippingFee" min="0" placeholder="0" value="0">
+                                </div>
+                                <div class="fg">
+                                    <label>매입 배송비 <span style="font-size:10px;color:var(--gray-400);font-weight:400;">(공급가 기준)</span></label>
+                                    <input type="number" id="fldBuyShippingFee" min="0" placeholder="0" value="0">
+                                </div>
+                                <div class="fg">
+                                    <label style="display:flex;align-items:center;gap:6px;">
+                                        판매가 <span class="required">*</span>
+                                        <label style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;color:var(--gray-500);margin-left:auto;cursor:default;">
+                                            <input type="checkbox" id="fldVatIncluded" checked disabled style="width:12px;height:12px;accent-color:var(--primary);cursor:default;">
+                                            부가세 포함
+                                        </label>
+                                    </label>
+                                    <input type="number" id="fldSalePrice" min="0" placeholder="0">
+                                </div>
+                                <div class="fg">
+                                    <label>매입가 <span style="font-size:10px;color:var(--gray-400);font-weight:400;">(공급가 기준)</span></label>
+                                    <input type="number" id="fldBuyPrice" min="0" placeholder="0">
+                                </div>
+                                <div class="fg fg-full" id="marginDisplayWrap" style="display:none;">
+                                    <div id="marginDisplay" style="display:flex;gap:20px;padding:8px 14px;background:var(--surface-container-low);border-radius:8px;font-size:12px;align-items:center;">
+                                        <span style="color:var(--gray-500);">💰 마진</span>
+                                        <span style="font-weight:700;color:var(--on-surface);" id="marginAmount">-</span>
+                                        <span style="width:1px;height:14px;background:var(--border);"></span>
+                                        <span style="color:var(--gray-500);">마진율</span>
+                                        <span style="font-weight:700;" id="marginRate">-</span>
+                                    </div>
+                                </div>
+                                <div class="fg">
+                                    <label>재고수량</label>
+                                    <input type="text" id="fldStock" placeholder="추후 옵션에서 입력" style="color:var(--gray-400);">
+                                    <span class="form-help" style="margin-top:2px;font-size:10px;color:var(--gray-400);">옵션 설정 시 Step 3에서 입력</span>
+                                </div>
+                                <div class="fg">
+                                    <label>부가세</label>
+                                    <select id="fldVat">
+                                        <option value="과세상품">과세상품</option>
+                                        <option value="면세상품">면세상품</option>
+                                        <option value="비과세상품">비과세상품</option>
+                                    </select>
+                                </div>
+                                <div class="fg">
+                                    <label>미성년자 구매</label>
+                                    <select id="fldMinorPurchase">
+                                        <option value="Y">가능</option>
+                                        <option value="N">불가</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="wizard-section-title" style="margin-top:24px;">
+                                <i class='bx bx-support'></i> A/S 정보
+                            </div>
+                            <div class="form-grid">
+                                <div class="fg">
+                                    <label>A/S 전화번호</label>
+                                    <input type="text" id="fldAsPhone" placeholder="02-000-0000">
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>A/S 안내</label>
+                                    <textarea id="fldAsGuide" rows="2" placeholder="A/S 관련 안내사항"></textarea>
+                                </div>
+                            </div>
+                            <div class="wizard-footer">
+                                <button class="btn-primary" id="btnNext2">다음 <i class='bx bx-right-arrow-alt'></i></button>
+                                <button class="btn-secondary" id="btnPrev2"><i class='bx bx-left-arrow-alt'></i> 이전</button>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: 옵션 및 재고 -->
+                        <div class="step-panel" id="step3">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-list-plus'></i> 옵션 및 재고
+                            </div>
+
+                            <!-- 선택형 토글 -->
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                                <label style="font-size:13px;font-weight:600;color:var(--on-surface);">선택형 옵션</label>
+                                <div class="option-toggle-group">
+                                    <button class="option-toggle-btn" id="btnOptionOn">설정함</button>
+                                    <button class="option-toggle-btn active" id="btnOptionOff">설정안함</button>
+                                </div>
+                            </div>
+
+                            <!-- 옵션 설정안함: 단순 재고 -->
+                            <div id="noOptionSection">
+                                <div class="form-grid">
+                                    <div class="fg">
+                                        <label>재고수량 <span class="required">*</span></label>
+                                        <input type="number" id="fldNoOptionStock" min="0" value="0"
+                                            placeholder="재고수량 입력">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 옵션 설정함: 옵션 빌더 -->
+                            <div id="optionBuilderSection" class="hidden">
+                                <!-- 옵션 입력 행들 -->
+                                <div id="optionRows"></div>
+
+                                <div style="display:flex;align-items:center;gap:12px;margin:12px 0;">
+                                    <div class="fg" style="flex:0 0 auto;">
+                                        <label style="font-size:11px;">정렬 순서</label>
+                                        <select id="fldOptionSort" style="width:120px;">
+                                            <option value="등록순">등록순</option>
+                                            <option value="가나다순">가나다순</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn-primary" id="btnApplyOptions"
+                                        style="margin-top:auto;height:38px;">
+                                        <i class='bx bx-list-check'></i> 옵션목록으로 적용
+                                    </button>
+                                </div>
+
+                                <!-- 옵션 조합 테이블 -->
+                                <div id="optionTableWrap" class="hidden" style="margin-top:16px;">
+                                    <div
+                                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                        <span style="font-size:13px;font-weight:700;">옵션목록 (<span
+                                                id="optionCombCount">0</span>개)</span>
+                                        <span style="font-size:10px;color:var(--gray-400);">셀 더블클릭으로 개별 수정</span>
+                                    </div>
+                                    <div class="option-table-scroll">
+                                        <table class="option-comb-table" id="optionCombTable">
+                                            <thead id="optionCombHead"></thead>
+                                            <tbody id="optionCombBody"></tbody>
+                                        </table>
+                                    </div>
+                                    <div class="option-bulk-bar">
+                                        <label class="bulk-label">일괄적용</label>
+                                        <div class="bulk-group">
+                                            <span class="bulk-tag">재고</span>
+                                            <input type="number" id="bulkStock" min="0" value="0" style="width:80px;">
+                                            <button class="btn-outline btn-sm" id="btnBulkStock">적용</button>
+                                        </div>
+                                        <div class="bulk-group">
+                                            <span class="bulk-tag">옵션가</span>
+                                            <input type="number" id="bulkPrice" min="0" value="0" style="width:80px;">
+                                            <button class="btn-outline btn-sm" id="btnBulkPrice">적용</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="wizard-footer">
+                                <button class="btn-primary" id="btnNext3">다음 <i
+                                        class='bx bx-right-arrow-alt'></i></button>
+                                <button class="btn-secondary" id="btnPrev3"><i class='bx bx-left-arrow-alt'></i>
+                                    이전</button>
+                            </div>
+                        
+                        </div>
+
+                        <!-- Step 4: 이미지 -->
+                        <div class="step-panel" id="step4">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-image'></i> 이미지 관리
+                            </div>
+                            <div class="image-manager" id="imageManager">
+                                <!-- 대표 이미지 -->
+                                <div class="image-section">
+                                    <div class="image-section-title">
+                                        <i class='bx bx-camera'></i> 대표 이미지
+                                        <span class="label-required">필수</span>
+                                    </div>
+                                    <div class="main-image-preview" id="mainImageArea">
+                                        <div class="image-upload-zone" id="mainImageUpload">
+                                            <i class='bx bx-cloud-upload'></i>
+                                            <span>클릭 또는 드래그</span>
+                                            <input type="file" accept="image/*" id="mainImageInput">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-url-add" id="btnMainImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
+                                </div>
+
+                                <!-- 추가 이미지 -->
+                                <div class="image-section">
+                                    <div class="image-section-title">
+                                        <i class='bx bx-images'></i> 추가 이미지
+                                        <span class="label-count" id="addImageCount">0/9</span>
+                                    </div>
+                                    <div class="image-grid" id="addImageGrid">
+                                        <div class="image-upload-small" id="addImageUpload">
+                                            <i class='bx bx-cloud-upload'></i>
+                                            <span>클릭 또는 드래그하여 추가</span>
+                                            <input type="file" accept="image/*" multiple id="addImageInput">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-url-add" id="btnAddImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
+                                </div>
+
+                                <!-- 상세 이미지 -->
+                                <div class="image-section">
+                                    <div class="image-section-title">
+                                        <i class='bx bx-detail'></i> 상세페이지 이미지
+                                        <span class="label-count" id="detailImageCount">0장</span>
+                                    </div>
+                                    <p class="form-help" style="margin-bottom:8px;">
+                                        상세페이지에 표시될 이미지입니다. 엑셀의 '상세설명' 컬럼에 &lt;img&gt; 태그로 자동 변환됩니다.
+                                    </p>
+                                    <div class="image-grid" id="detailImageGrid">
+                                        <div class="image-upload-small" id="detailImageUpload">
+                                            <i class='bx bx-cloud-upload'></i>
+                                            <span>클릭 또는 드래그하여 추가</span>
+                                            <input type="file" accept="image/*" multiple id="detailImageInput">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn-url-add" id="btnDetailImageUrl"><i class='bx bx-link'></i> URL로 추가</button>
+                                </div>
+                            </div>
+                            <div class="wizard-footer">
+                                <button class="btn-primary" id="btnNext4">다음 <i
+                                        class='bx bx-right-arrow-alt'></i></button>
+                                <button class="btn-secondary" id="btnPrev4"><i class='bx bx-left-arrow-alt'></i>
+                                    이전</button>
+                            </div>
+                        
+                        </div>
+
+                        <!-- Step 5: 상품 상세 -->
+                        <div class="step-panel" id="step5">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-detail'></i> 상품 상세 정보
+                            </div>
+                            <div class="form-grid">
+                                <div class="fg">
+                                    <label>브랜드</label>
+                                    <input type="text" id="fldBrand" placeholder="브랜드명 입력">
+                                </div>
+                                <div class="fg">
+                                    <label>제조사</label>
+                                    <input type="text" id="fldManufacturer" placeholder="제조사명 입력">
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>원산지 <span class="required">*</span></label>
+                                    <div class="origin-search-container" id="originSearchContainer">
+                                        <div class="category-search-input-wrap">
+                                            <i class='bx bx-globe'></i>
+                                            <input type="text" id="fldOriginSearch"
+                                                placeholder="원산지 검색 (예: 중국, 베트남, 서울...)" autocomplete="off">
+                                        </div>
+                                        <div class="category-dropdown hidden" id="originDropdown">
+                                            <div class="origin-quick" id="originQuick">
+                                                <div class="category-section-label">자주 사용</div>
+                                            </div>
+                                            <div class="category-results" id="originResults"></div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" id="fldOriginCode">
+                                    <div class="category-selected hidden" id="originSelected">
+                                        <i class='bx bx-map-pin'></i>
+                                        <span id="originPath"></span>
+                                        <button class="category-clear" id="btnClearOrigin">&times;</button>
+                                    </div>
+                                </div>
+                                <div class="fg">
+                                    <label>제조일자</label>
+                                    <input type="date" id="fldMfgDate">
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>상품 요약 설명</label>
+                                    <textarea id="fldSummary" rows="2" placeholder="상품 한 줄 요약 (검색 결과에 노출)"></textarea>
+                                </div>
+                                <div class="fg fg-full">
+                                    <label>태그 (콤마 구분)</label>
+                                    <input type="text" id="fldTags" placeholder="안전화, 작업화, 안전용품">
+                                </div>
+                            </div>
+                            <div class="wizard-section-title" style="margin-top:24px;">
+                                <i class='bx bx-info-circle'></i> 상품정보제공고시
+                            </div>
+                            <div class="form-grid">
+                                <div class="fg">
+                                    <label>품명</label>
+                                    <input type="text" id="fldNotice_name" placeholder="품명 입력" value="상세설명에 표시">
+                                </div>
+                                <div class="fg">
+                                    <label>모델명</label>
+                                    <input type="text" id="fldNotice_model" placeholder="모델명 입력" value="상세설명에 표시">
+                                </div>
+                                <div class="fg">
+                                    <label>인증사항</label>
+                                    <input type="text" id="fldNotice_cert" placeholder="KC인증 등" value="상세설명에 표시">
+                                </div>
+                                <div class="fg">
+                                    <label>제조자</label>
+                                    <input type="text" id="fldNotice_maker" placeholder="제조자 입력" value="상세설명에 표시">
+                                </div>
+                            </div>
+                            <div class="wizard-footer">
+                                <button class="btn-primary" id="btnNext5">다음 <i
+                                        class='bx bx-right-arrow-alt'></i></button>
+                                <button class="btn-secondary" id="btnPrev5"><i class='bx bx-left-arrow-alt'></i>
+                                    이전</button>
+                            </div>
+                        
+                        </div>
+
+                        <!-- Step 6: 미리보기 -->
+                        <div class="step-panel" id="step6">
+                            <div class="wizard-section-title">
+                                <i class='bx bx-show'></i> 상품 미리보기
+                            </div>
+                            <div class="preview-card" id="previewContent">
+                                <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
+                                    상품 정보를 입력하면 미리보기가 표시됩니다.
+                                </p>
+                            </div>
+                            <div class="wizard-footer">
+                                <div style="display:flex;gap:8px;">
+                                    <button class="btn-outline" id="btnDraft"><i class='bx bx-save'></i> 임시저장</button>
+                                    <button class="btn-primary" id="btnSave"><i class='bx bx-check'></i> 저장</button>
+                                </div>
+                                <button class="btn-secondary" id="btnPrev6"><i class='bx bx-left-arrow-alt'></i>
+                                    이전</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ PAGE: 상품 목록 ═══ -->
+                <div class="page-view" id="pageProducts">
+                    <div class="product-list-header">
+                        <h2 style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;">등록 상품</h2>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn-outline btn-sm" id="btnDeleteSelected"><i class='bx bx-trash'></i> 선택 삭제</button>
+                            <button class="btn-primary btn-sm" id="btnAddExportCart"><i class='bx bx-list-plus'></i> 엑셀 추출 대상으로 지정</button>
+                        </div>
+                    </div>
+                    <div class="product-table-wrap"
+                        style="background:var(--surface-container-lowest);border-radius:var(--radius-lg);border:1px solid var(--surface-container-high);overflow:hidden;">
+                        <table class="data-table" id="productTable" style="table-layout:fixed;width:100%;">
+                            <thead>
+                                <tr>
+                                    <th width="40" style="text-align:center;"><input type="checkbox" id="checkAll"
+                                            style="margin:0;"></th>
+                                    <th width="12%">관리번호</th>
+                                    <th width="28%">상품명</th>
+                                    <th width="15%">카테고리</th>
+                                    <th width="12%" style="text-align:right;">판매가(원)</th>
+                                    <th width="8%" style="text-align:right;">재고</th>
+                                    <th width="8%" style="text-align:center;">상태</th>
+                                    <th width="12%" style="text-align:center;">등록일</th>
+                                    <th width="50" style="text-align:center;">편집</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productTableBody"></tbody>
+                        </table>
+                        <div class="empty-state" id="emptyProducts">
+                            <i class='bx bx-package' style="font-size:48px;color:var(--gray-300);"></i>
+                            <p>등록된 상품이 없습니다.</p>
+                            <button class="btn-primary btn-sm" onclick="location.hash='#register'">상품 등록하기</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ PAGE: 엑셀 생성 ═══ -->
+                <div class="page-view" id="pageExport">
+                    <div class="export-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                        <div class="wizard-section-title" style="margin-bottom:0;">
+                            <i class='bx bx-list-ul'></i> 엑셀 출력 대기열
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn-outline btn-sm" id="btnRemoveFromCart"><i class='bx bx-minus'></i> 대상에서 제외</button>
+                            <button class="btn-outline-danger btn-sm" id="btnClearCart"><i class='bx bx-trash'></i> 대기열 전체 비우기</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Cart Table Wrap -->
+                    <div class="product-table-wrap" style="background:var(--surface-container-lowest);border-radius:var(--radius-lg);border:1px solid var(--surface-container-high);overflow:hidden; margin-bottom: 20px;">
+                        <table class="data-table" id="exportCartTable" style="table-layout:fixed;width:100%;">
+                            <thead>
+                                <tr>
+                                    <th width="40" style="text-align:center;"><input type="checkbox" id="checkAllCart" style="margin:0;"></th>
+                                    <th width="12%">관리번호</th>
+                                    <th width="35%">상품명</th>
+                                    <th width="15%">카테고리</th>
+                                    <th width="15%" style="text-align:right;">판매가(원)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="exportCartTableBody"></tbody>
+                        </table>
+                        <div class="empty-state" id="emptyCart" style="display:none;">
+                            <i class='bx bx-list-ul' style="font-size:48px;color:var(--gray-300);"></i>
+                            <p>엑셀 출력 대기열에 지정된 상품이 없습니다.</p>
+                            <button class="btn-primary btn-sm" onclick="location.hash='#products'">상품 목록으로 가기</button>
+                        </div>
+                    </div>
+
+                    <div class="export-summary" id="exportSummary">
+                        <div class="export-card">
+                            <div class="export-card-value" id="exportProductCount">0</div>
+                            <div class="export-card-label">체크된 상품</div>
+                        </div>
+                        <div class="export-card">
+                            <div class="export-card-value" id="exportImageCount">0</div>
+                            <div class="export-card-label">체크된 옵션(예상)수</div>
+                        </div>
+                    </div>
+                    <div class="export-actions">
+                        <button class="btn-primary btn-lg" id="btnDownloadExcel">
+                            <i class='bx bx-spreadsheet'></i> 선택 내역 엑셀 파일 추출
+                        </button>
+                        <button class="btn-outline btn-lg" id="btnDownloadZip">
+                            <i class='bx bx-archive'></i> 선택 내역 이미지 ZIP 추출
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ═══ PAGE: 프리셋 관리 ═══ -->
+                <div class="page-view" id="pagePresets">
+                    <div class="wizard-section-title">
+                        <i class='bx bx-slider'></i> 배송 프리셋 관리
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <button class="btn-primary btn-sm" id="btnAddPreset"><i class='bx bx-plus'></i> 프리셋 추가</button>
+                    </div>
+                    <div id="presetList"></div>
+                    <div id="presetForm" class="hidden" style="margin-top:16px;">
+                        <div class="form-grid">
+                            <div class="fg">
+                                <label>프리셋명 <span class="required">*</span></label>
+                                <input type="text" id="fldPresetName" placeholder="예: 기본 배송 (프로그램 내부용)">
+                            </div>
+                            <input type="hidden" id="fldPresetTemplateCode" value="">
+                            <div class="fg">
+                                <label>배송 방법 <span class="required">*</span></label>
+                                <select id="fldPresetMethod">
+                                    <option value="택배, 소포, 등기">택배, 소포, 등기</option>
+                                    <option value="직접배송(화물배달)">직접배송(화물배달)</option>
+                                </select>
+                            </div>
+                            <div class="fg" style="position:relative;">
+                                <label>택배사 <span class="required">*</span></label>
+                                <div class="category-search-input-wrap">
+                                    <i class="bx bx-search search-icon"></i>
+                                    <input type="text" id="fldPresetCourierSearch" autocomplete="off"
+                                        placeholder="예: CJ대한통운">
+                                    <input type="hidden" id="fldPresetCourierCode">
+                                    <button type="button" class="clear-btn" id="btnCourierClear"
+                                        style="display:none;"><i class="bx bx-x"></i></button>
+                                </div>
+                                <div class="category-dropdown hidden" id="presetCourierDropdown" style="z-index: 10;">
+                                    <div class="category-results" id="presetCourierResults"></div>
+                                </div>
+                            </div>
+                            <div class="fg">
+                                <label>배송비 유형 <span class="required">*</span></label>
+                                <select id="fldPresetFeeType">
+                                    <option value="무료">무료</option>
+                                    <option value="조건부 무료">조건부 무료</option>
+                                    <option value="유료">유료</option>
+                                    <option value="수량별">수량별</option>
+                                    <option value="구간별">구간별</option>
+                                </select>
+                            </div>
+                            <div class="fg fee-condition conditional-base">
+                                <label>기본 배송비 (원)</label>
+                                <input type="number" id="fldPresetFee" min="0" value="3000">
+                            </div>
+                            <div class="fg fee-condition conditional-base">
+                                <label>배송비 결제방식</label>
+                                <select id="fldPresetPayMethod">
+                                    <option value="선결제">선결제</option>
+                                    <option value="착불">착불</option>
+                                    <option value="착불 또는 선결제">착불 또는 선결제</option>
+                                </select>
+                            </div>
+                            <div class="fg fee-condition conditional-condition-free hidden">
+                                <label>조건부무료-상품판매가 합계 (원)</label>
+                                <input type="number" id="fldPresetFreeCondition" min="0" value="0">
+                            </div>
+                            <div class="fg fee-condition conditional-quantity hidden">
+                                <label>수량별부과-수량 (개마다 부과)</label>
+                                <input type="number" id="fldPresetQuantity" min="1" value="1">
+                            </div>
+                            <div class="fg fee-condition conditional-section hidden">
+                                <label>구간별-2구간수량 (기본배송비만 부과되는 최대수량)</label>
+                                <input type="number" id="fldPresetSection2Qty" min="1" value="">
+                            </div>
+                            <div class="fg fee-condition conditional-section hidden">
+                                <label>구간별-추가배송비 (초과 시 부과될 배송비)</label>
+                                <input type="number" id="fldPresetAddFee" min="10" value="">
+                            </div>
+                            <div class="fg fee-condition conditional-section hidden">
+                                <label>구간별-3구간수량 (N개 구매까지 3구간배송비 부과)</label>
+                                <input type="number" id="fldPresetSection3Qty" min="1" value=""
+                                    placeholder="미입력시 2구간 사용">
+                            </div>
+                            <div class="fg fee-condition conditional-section hidden">
+                                <label>구간별-3구간배송비</label>
+                                <input type="number" id="fldPresetSection3Fee" min="10" value="">
+                            </div>
+                            <div class="fg">
+                                <label>반품 배송비 (편도) <span class="required">*</span></label>
+                                <input type="number" id="fldPresetReturnFee" min="0" value="3000">
+                            </div>
+                            <div class="fg">
+                                <label>교환 배송비 (왕복) <span class="required">*</span></label>
+                                <input type="number" id="fldPresetExchangeFee" min="0" value="6000">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button class="btn-primary btn-sm" id="btnSavePreset">저장</button>
+                            <button class="btn-outline btn-sm" id="btnCancelPreset">취소</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ PAGE: 주소 관리 ═══ -->
+                <div class="page-view" id="pageAddresses">
+                    <div class="wizard-section-title">
+                        <i class='bx bx-map'></i> 주소 관리
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <button class="btn-primary btn-sm" id="btnAddAddress"><i class='bx bx-plus'></i> 주소 추가</button>
+                    </div>
+                    <div id="addressList"></div>
+                    <div id="addressForm" class="hidden" style="margin-top:16px;">
+                        <div class="form-grid">
+                            <div class="fg">
+                                <label>주소 이름</label>
+                                <input type="text" id="fldAddrName" placeholder="예: 본사 창고">
+                            </div>
+                            <div class="fg fg-full">
+                                <label>주소</label>
+                                <input type="text" id="fldAddrAddress" placeholder="전체 주소 입력">
+                            </div>
+                            <div class="fg">
+                                <label>연락처</label>
+                                <input type="text" id="fldAddrPhone" placeholder="02-000-0000">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-top:12px;">
+                            <button class="btn-primary btn-sm" id="btnSaveAddress">저장</button>
+                            <button class="btn-outline btn-sm" id="btnCancelAddress">취소</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"
+        style="position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;"></div>
+
+    <!-- Scripts -->
+    <script src="template-data.js"></script>
+    <script src="unitprice-data.js"></script>
+    <script src="storage.js"></script>
+    <script src="category-data.js"></script>
+    <script src="origin-data.js"></script>
+    <script src="delivery-data.js"></script>
+    <script src="utils.js"></script>
+    <script src="option-builder.js"></script>
+    <script src="app.js"></script>
+    <script src="app-features.js"></script>
+    <script type="module" src="auth.js"></script>
+</body>
+
+</html>

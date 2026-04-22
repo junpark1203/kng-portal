@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Logs
+Logs/
+
+# Backups
+backups/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+*.code-workspace
+
+# Build artifacts
+dist/
+build/
+
+# Temp files
+*.tmp
+*.bak
+
+# Sensitive / secret files
+.env
+*.json.key
+google_vision_key.json
+
+# Wrangler cache
+.wrangler/
