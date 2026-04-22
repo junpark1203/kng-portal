@@ -1414,29 +1414,41 @@ document.addEventListener('DOMContentLoaded', function() {
     var searchWrap = document.getElementById('searchWrap');
     var globalVatBtn = document.getElementById('globalVatBtn');
 
-    /** 내부 페이지 모드로 전환 */
+    /** 내부 페이지 모드로 전환 — 선택한 섹션만 표시 */
+    var internalSections = ['dashboard', 'forms', 'inventory', 'transactions'];
+
     function showInternalView(href, label) {
         // iframe 숨기고 내부 페이지 표시
         if (iframeContainer) iframeContainer.classList.add('hidden');
         if (appIframe) appIframe.src = 'about:blank';
         if (internalPages) internalPages.style.display = '';
 
-        // 검색바 / VAT 버튼 표시 (내부 재고 기능에서만 필요)
-        var isInventorySection = ['#forms', '#inventory', '#transactions', '#dashboard'].indexOf(href) !== -1;
-        if (searchWrap) searchWrap.style.display = isInventorySection ? '' : 'none';
-        if (globalVatBtn) globalVatBtn.style.display = isInventorySection ? '' : 'none';
+        // 모든 내부 섹션 숨기기
+        internalSections.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+
+        // 선택한 섹션만 표시
+        var targetId = href.replace('#', '');
+        var targetEl = document.getElementById(targetId);
+        if (targetEl) targetEl.style.display = '';
+
+        // dashboard 클릭 시 KPI strip도 함께 표시
+        if (targetId === 'dashboard') {
+            // dashboard는 kpi-strip이므로 바로 표시됨
+        }
+
+        // 검색바 / VAT 버튼: 재고 관련 페이지에서만 표시
+        var showControls = ['forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
+        if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
+        if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
 
         // 페이지 타이틀 업데이트
         if (topbarPageTitle) topbarPageTitle.textContent = label || '요약정보';
 
-        // 스크롤
-        if (href === '#dashboard' || href === '#quickmenu') {
-            var pageBody = document.getElementById('internalPages');
-            if (pageBody) pageBody.scrollTo({ top: 0, behavior: 'smooth' });
-        } else {
-            var section = document.querySelector(href);
-            if (section) section.scrollIntoView({ behavior: 'smooth' });
-        }
+        // 스크롤 맨 위로
+        if (internalPages) internalPages.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     /** iframe 모드로 전환 */
