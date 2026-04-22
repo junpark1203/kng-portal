@@ -13,6 +13,22 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="seller-k-products.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 포털 임베드 모드: 사이드바/탑바/로그인 숨김 -->
+    <script>
+        if (new URLSearchParams(window.location.search).get('embed') === 'true') {
+            document.documentElement.classList.add('embed-mode');
+        }
+    </script>
+    <style>
+        .embed-mode .sidebar,
+        .embed-mode .sidebar-overlay,
+        .embed-mode .topbar,
+        .embed-mode .login-overlay,
+        .embed-mode .sidebar-footer { display: none !important; }
+        .embed-mode .app-container { display: block !important; }
+        .embed-mode .app-container.hidden { display: block !important; }
+        .embed-mode .main-content { margin-left: 0; }
+    </style>
 </head>
 
 <body>
