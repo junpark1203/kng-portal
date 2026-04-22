@@ -2,8 +2,9 @@
 node_modules/
 package-lock.json
 
-# Server (API 백엔드 - NAS에서만 사용)
-server/
+# Server (백엔드 소스는 추적, 빌드/데이터만 제외)
+server/node_modules/
+server/data/
 _patch3.js
 fix.py
 

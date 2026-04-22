@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  kng-server:
+    build: .
+    container_name: kng_inventory_server
+    restart: always
+    environment:
+      - UPLOAD_DIR=/usr/src/app/uploads
+      - IMG_BASE_URL=https://ss-upload-img.junparks.com
+    volumes:
+      - ./data:/usr/src/app/data
+      - ./public:/usr/src/app/public
+      - /volume1/docker/upload_images/smart_store:/usr/src/app/uploads  # NAS 이미지 폴더
+
+  # Cloudflare Tunnel — 외부망 HTTPS 접속
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: kng_cloudflared
+    restart: always
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiZDk3YWNjYzU2MjdmODIwYmY5OTlkNzVkMTZlNGNkY2YiLCJ0IjoiMWIyMzRkNGMtM2RmMC00NDA4LWJkZDEtNTg2YTdiMDQ4YjIwIiwicyI6Ik56RXdZVFExTldFdFpHVmxZaTAwTmpRd0xXSTFaR010TWpSak5qVXdZakl4TjJNNCJ9
+    depends_on:
+      - kng-server

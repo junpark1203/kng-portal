@@ -1,0 +1,4 @@
+K&G API Server is running on port 3000
+http://localhost:3000/api/seller-k/products
+SQLite 데이터베이스 연결 완료: W:\home\KNG WEBPAGE\kng-inventory\server\data\kng.db
+seller_k_products 테이블 확인 완료
