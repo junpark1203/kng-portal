@@ -13,103 +13,16 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="seller-k-products.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- 포털 임베드 모드: 사이드바/탑바/로그인 숨김 -->
-    <script>
-        if (new URLSearchParams(window.location.search).get('embed') === 'true') {
-            document.documentElement.classList.add('embed-mode');
-        }
-    </script>
     <style>
-        .embed-mode .sidebar,
-        .embed-mode .sidebar-overlay,
-        .embed-mode .topbar,
-        .embed-mode .login-overlay,
-        .embed-mode .sidebar-footer { display: none !important; }
-        .embed-mode .app-container { display: block !important; }
-        .embed-mode .app-container.hidden { display: block !important; }
-        .embed-mode .main-content { margin-left: 0; }
+        /* 포털 전용: 사이드바 없이 전체 너비 사용 */
+        .main-content { margin-left: 0; }
     </style>
 </head>
 
 <body>
-    <!-- 로그인 오버레이 -->
-    <div id="loginOverlay" class="login-overlay hidden">
-        <div class="login-box">
-            <div class="login-header">
-                <img src="libraries/logo/20251208 KNG Logo_ENG.png" alt="K&G Logo" class="login-logo">
-                <h2>K&G System Login</h2>
-                <p>시스템 접근 권한이 필요합니다.</p>
-            </div>
-            <form id="loginForm">
-                <div class="fg">
-                    <label for="loginEmail">아이디 (이메일)</label>
-                    <div class="input-icon">
-                        <i class='bx bx-user'></i>
-                        <input type="email" id="loginEmail" required placeholder="admin@kng.com">
-                    </div>
-                </div>
-                <div class="fg">
-                    <label for="loginPassword">비밀번호</label>
-                    <div class="input-icon">
-                        <i class='bx bx-lock-alt'></i>
-                        <input type="password" id="loginPassword" required placeholder="••••••••">
-                    </div>
-                </div>
-                <button type="submit" class="btn-submit" id="loginBtn" style="margin-top: 15px;">
-                    로그인
-                </button>
-            </form>
-            <div id="loginError" class="login-error hidden">아이디 또는 비밀번호가 틀렸습니다.</div>
-        </div>
-    </div>
-
-    <!-- 메인 앱 -->
-    <div class="app-container hidden" id="mainApp">
-        <div class="sidebar-overlay" id="sidebarOverlay"></div>
-        <aside class="sidebar" id="sidebar">
-            <div class="brand">
-                <img src="libraries/logo/20251208 KNG Logo_ENG.png" alt="K&G Logo" class="brand-logo">
-            </div>
-            <nav class="menu">
-                <div class="menu-label">메뉴</div>
-                <a href="index.html#dashboard"><i class='bx bx-grid-alt'></i> <span>대시보드</span></a>
-                <a href="index.html#forms"><i class='bx bx-plus-circle'></i> <span>입출고 등록</span></a>
-                <a href="index.html#inventory"><i class='bx bx-box'></i> <span>재고 목록</span></a>
-                <a href="index.html#transactions"><i class='bx bx-list-ul'></i> <span>입출고 내역</span></a>
-                <div class="menu-label">셀러K</div>
-                <div class="menu-group open" id="sellerKMenuGroup">
-                    <div class="menu-group-toggle" id="sellerKToggle">
-                        <i class='bx bx-store'></i>
-                        <span>스마트스토어</span>
-                        <i class='bx bx-chevron-down menu-arrow'></i>
-                    </div>
-                    <div class="menu-group-items">
-                        <a href="seller-k-products.html" class="active"><i class='bx bx-receipt'></i> <span>매입상품 리스트</span></a>
-                        <a href="seller-k-bbb.html"><i class='bx bx-bar-chart-alt-2'></i> <span>BBB</span></a>
-                        <a href="seller-k-ccc.html"><i class='bx bx-cog'></i> <span>CCC</span></a>
-                    </div>
-                </div>
-            </nav>
-            <div class="sidebar-footer">
-                <a href="#" id="logoutBtn" class="logout-btn"><i class='bx bx-log-out'></i> 로그아웃</a>
-                <div class="connection-status">
-                    <span id="firebaseStatus" class="status"><i class='bx bx-loader-alt bx-spin'></i> 연결 중...</span>
-                </div>
-            </div>
-        </aside>
+    <!-- 메인 앱 (포털 iframe 전용) -->
+    <div class="app-container" id="mainApp">
         <main class="main-content">
-            <header class="topbar">
-                <div class="topbar-left">
-                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="메뉴 열기"><i class='bx bx-menu'></i></button>
-                    <div class="search-wrap">
-                        <i class='bx bx-search'></i>
-                        <input type="text" id="searchInput" placeholder="상품명, 매입처 검색...">
-                    </div>
-                </div>
-                <div class="topbar-right">
-                    <!-- 유저 알림이나 프로필 영역이 들어갈 수 있습니다 -->
-                </div>
-            </header>
             <div class="page-body">
                 <!-- Products Table Section -->
                 <section class="section-block" id="productsSection">

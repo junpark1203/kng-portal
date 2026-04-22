@@ -17,51 +17,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- 포털 임베드 모드: 사이드바/탑바/로그인 숨김 -->
-    <script>
-        if (new URLSearchParams(window.location.search).get('embed') === 'true') {
-            document.documentElement.classList.add('embed-mode');
-        }
-    </script>
-    <style>
-        .embed-mode .sidebar,
-        .embed-mode .sidebar-overlay,
-        .embed-mode .topbar,
-        .embed-mode .login-overlay,
-        .embed-mode .sidebar-footer { display: none !important; }
-        .embed-mode .app-container { display: block !important; }
-        .embed-mode .app-container.hidden { display: block !important; }
-        .embed-mode .main-content { margin-left: 0; }
-    </style>
 </head>
 
 <body>
-    <!-- 로그인 오버레이 -->
-    <div id="loginOverlay" class="login-overlay">
-        <div class="login-box">
-            <div class="login-header">
-                <div style="font-size:36px;color:var(--primary);margin-bottom:8px;"><i class='bx bx-store'></i></div>
-                <h2 style="margin:0 0 4px 0;font-size:20px;">K&G 셀러K</h2>
-                <p style="margin:0;color:var(--gray-500);font-size:13px;">스마트스토어 대량 업로드 툴</p>
-            </div>
-            <form id="loginForm" style="margin-top:24px;">
-                <div class="fg" style="margin-bottom:12px;">
-                    <label for="loginEmail" style="font-size:13px;font-weight:500;">아이디 (이메일)</label>
-                    <input type="email" id="loginEmail" required placeholder="admin@kng.com" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;">
-                </div>
-                <div class="fg" style="margin-bottom:16px;">
-                    <label for="loginPassword" style="font-size:13px;font-weight:500;">비밀번호</label>
-                    <input type="password" id="loginPassword" required placeholder="••••••••" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;">
-                </div>
-                <button type="submit" class="btn-primary" id="loginBtn" style="width:100%;padding:12px;font-size:14px;">
-                    로그인
-                </button>
-            </form>
-            <div id="loginError" class="hidden" style="margin-top:12px;padding:10px;background:#fee;border-radius:6px;color:#c00;font-size:13px;text-align:center;">아이디 또는 비밀번호가 틀렸습니다.</div>
-        </div>
-    </div>
-
-    <div class="app-container hidden" id="mainApp">
+    <!-- 메인 앱 (포털 iframe 전용 — 로그인은 포털에서 처리) -->
+    <div class="app-container" id="mainApp">
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
         <!-- ═══ SIDEBAR ═══ -->

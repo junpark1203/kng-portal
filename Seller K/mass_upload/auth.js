@@ -19,34 +19,11 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const auth = getAuth(fbApp);
 
-// ── 인증 상태 감시 ──
-var isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
-
-if (isEmbed) {
-    // 포털 임베드 모드: 인증 건너뛰고 바로 앱 표시
-    var loginOverlay = document.getElementById('loginOverlay');
-    var mainApp = document.getElementById('mainApp');
-    if (loginOverlay) loginOverlay.classList.add('hidden');
-    if (mainApp) mainApp.classList.remove('hidden');
-    console.log('[Auth] 포털 임베드 모드 — 인증 건너뜀');
-} else {
-    onAuthStateChanged(auth, function(user) {
-        var loginOverlay = document.getElementById('loginOverlay');
-        var mainApp = document.getElementById('mainApp');
-        
-        if (user) {
-            // 로그인 상태 → 앱 표시
-            if (loginOverlay) loginOverlay.classList.add('hidden');
-            if (mainApp) mainApp.classList.remove('hidden');
-            console.log('[Auth] 로그인됨:', user.email);
-        } else {
-            // 비로그인 → 로그인 화면 표시
-            if (loginOverlay) loginOverlay.classList.remove('hidden');
-            if (mainApp) mainApp.classList.add('hidden');
-            console.log('[Auth] 로그아웃 상태');
-        }
-    });
-}
+// ── 포털 전용: 인증은 포털(index.html)에서 처리 ──
+// 바로 앱 표시
+var mainApp = document.getElementById('mainApp');
+if (mainApp) mainApp.classList.remove('hidden');
+console.log('[Auth] 포털 전용 모드 — 앱 바로 표시');
 
 // ── 로그인 폼 핸들러 ──
 document.addEventListener('DOMContentLoaded', function() {

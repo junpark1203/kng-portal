@@ -552,34 +552,8 @@ function updateCalcPreview() {
 // 인증 (Firebase Auth)
 // ==========================================
 function setupAuth() {
-    var mainApp = document.getElementById('mainApp');
-    var logoutBtn = document.getElementById('logoutBtn');
-    var isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
-
-    // 포털 임베드 모드: 인증 건너뛰고 바로 앱 표시 + 데이터 로드
-    if (isEmbed) {
-        if (mainApp) mainApp.classList.remove('hidden');
-        loadProducts();
-        return;
-    }
-
-    onAuthStateChanged(auth, function(user) {
-        if (user) {
-            if (mainApp) mainApp.classList.remove('hidden');
-            loadProducts();
-        } else {
-            window.location.href = 'index.html';
-        }
-    });
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            signOut(auth).then(function() {
-                window.location.href = 'index.html';
-            });
-        });
-    }
+    // 포털 전용: 인증은 포털(index.html)에서 처리하므로 바로 데이터 로드
+    loadProducts();
 }
 
 // ==========================================
