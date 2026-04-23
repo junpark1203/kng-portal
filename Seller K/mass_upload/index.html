@@ -17,79 +17,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* 포털 전용: 사이드바 없이 전체 너비 사용 */
+        .main-content { margin-left: 0; }
+        .portal-tabs {
+            display: flex; align-items: center; gap: 4px;
+            padding: 8px 16px; background: var(--bg-secondary, #f8f9fa);
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+            flex-wrap: wrap;
+        }
+        .portal-tabs a {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 6px;
+            font-size: 13px; font-weight: 500; color: var(--gray-600, #555);
+            text-decoration: none; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .portal-tabs a:hover { background: var(--bg-hover, #e9ecef); color: var(--gray-800, #333); }
+        .portal-tabs a.active { background: var(--primary, #4f46e5); color: #fff; }
+        .portal-tabs .tab-divider {
+            width: 1px; height: 20px; background: var(--border-color, #ddd); margin: 0 4px;
+        }
+        .portal-tabs .tab-badge {
+            font-size: 11px; color: var(--gray-500); margin-left: auto; padding-left: 12px;
+        }
+    </style>
 </head>
 
 <body>
-    <!-- 메인 앱 (포털 iframe 전용 — 로그인은 포털에서 처리) -->
+    <!-- 메인 앱 (포털 iframe 전용) -->
     <div class="app-container" id="mainApp">
-        <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-        <!-- ═══ SIDEBAR ═══ -->
-        <aside class="sidebar" id="sidebar">
-            <div class="brand">
-                <div class="brand-icon">
-                    <i class='bx bx-store'></i>
-                </div>
-                <div class="brand-text">
-                    <span class="brand-title">대량 업로드</span>
-                    <span class="brand-subtitle">SmartStore</span>
-                </div>
-            </div>
-
-            <nav class="menu">
-                <div class="menu-label">상품 관리</div>
-                <a href="#register" id="navRegister" class="active">
-                    <i class='bx bx-edit'></i> <span>상품 등록</span>
-                </a>
-                <a href="#products" id="navProducts">
-                    <i class='bx bx-list-ul'></i> <span>상품 목록</span>
-                </a>
-                <a href="#export" id="navExport">
-                    <i class='bx bx-download'></i> <span>엑셀 생성</span>
-                </a>
-
-                <div class="menu-label">설정</div>
-                <a href="#presets" id="navPresets">
-                    <i class='bx bx-slider'></i> <span>배송 프리셋</span>
-                </a>
-                <a href="#marginPresets" id="navMarginPresets">
-                    <i class='bx bx-calculator'></i> <span>마진 프리셋</span>
-                </a>
-                <a href="#addresses" id="navAddresses">
-                    <i class='bx bx-map'></i> <span>주소록</span>
-                </a>
-                <a href="#footerImages" id="navFooterImages">
-                    <i class='bx bx-images'></i> <span>안내 이미지</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <a href="#" id="logoutBtn" class="logout-btn" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--gray-500);font-size:13px;text-decoration:none;border-radius:6px;transition:background 0.2s;">
-                    <i class='bx bx-log-out'></i> 로그아웃
-                </a>
-                <div class="status">
-                    <i class='bx bxs-circle'></i>
-                    <span>연결 중...</span>
-                </div>
-            </div>
-        </aside>
-
-        <!-- ═══ MAIN CONTENT ═══ -->
         <main class="main-content">
-            <header class="topbar">
-                <div class="topbar-left">
-                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="메뉴 열기">
-                        <i class='bx bx-menu'></i>
-                    </button>
-                    <span class="topbar-title" id="topbarTitle">상품 등록</span>
-                    <button id="btnCancelEdit" class="btn-outline btn-sm hidden" style="margin-left: 16px; padding: 4px 10px; font-size: 12px;">
-                        <i class='bx bx-arrow-back'></i> 리스트로 돌아가기
-                    </button>
-                </div>
-                <div class="topbar-right">
-                    <span style="font-size:11px; color:var(--gray-500);" id="productCountBadge">등록 상품: 0건</span>
-                </div>
-            </header>
+            <!-- 상단 탭 네비게이션 (사이드바 대체) -->
+            <nav class="portal-tabs" id="portalTabs">
+                <a href="#register" id="navRegister" class="active"><i class='bx bx-edit'></i> 상품 등록</a>
+                <a href="#products" id="navProducts"><i class='bx bx-list-ul'></i> 상품 목록</a>
+                <a href="#export" id="navExport"><i class='bx bx-download'></i> 엑셀 생성</a>
+                <span class="tab-divider"></span>
+                <a href="#presets" id="navPresets"><i class='bx bx-slider'></i> 배송</a>
+                <a href="#marginPresets" id="navMarginPresets"><i class='bx bx-calculator'></i> 마진</a>
+                <a href="#addresses" id="navAddresses"><i class='bx bx-map'></i> 주소록</a>
+                <a href="#footerImages" id="navFooterImages"><i class='bx bx-images'></i> 안내 이미지</a>
+                <span class="tab-badge" id="productCountBadge">등록 상품: 0건</span>
+            </nav>
 
             <div class="page-body" id="pageBody">
 

@@ -68,13 +68,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function updateConnectionStatus(online) {
-    var statusEl = document.querySelector('.sidebar-footer .status');
-    if (!statusEl) return;
-    if (online) {
-        statusEl.innerHTML = "<i class='bx bxs-circle' style='color:var(--primary);'></i><span>서버 연결됨</span>";
-    } else {
-        statusEl.innerHTML = "<i class='bx bxs-circle' style='color:var(--danger);'></i><span>오프라인 모드</span>";
-    }
+    // 포털 전용 — 상태 표시 생략
+    console.log('[App] 서버 연결 상태:', online ? '연결됨' : '오프라인');
 }
 
 // ════════════════════════════════════════
@@ -122,8 +117,8 @@ function initRouter() {
         });
     }
 
-    // "상품등록" 사이드바 메뉴 클릭 시: 같은 해시(register→register)에서도 새 상품 폼 전환
-    var registerLink = document.querySelector('.menu a[href="#register"]');
+    // "상품등록" 탭 클릭 시: 같은 해시(register→register)에서도 새 상품 폼 전환
+    var registerLink = document.querySelector('#portalTabs a[href="#register"]') || document.querySelector('.menu a[href="#register"]');
     if (registerLink) {
         registerLink.addEventListener('click', function(e) {
             var currentHash = location.hash.replace('#', '') || 'register';
@@ -155,7 +150,8 @@ function handleRoute() {
         var el = document.getElementById(pageId);
         if (el) el.classList.add('active');
     }
-    document.getElementById('topbarTitle').textContent = titles[hash] || '상품 등록';
+    var topbarEl = document.getElementById('topbarTitle');
+    if (topbarEl) topbarEl.textContent = titles[hash] || '상품 등록';
     
     var btnCancel = document.getElementById('btnCancelEdit');
     if (btnCancel) {
@@ -163,7 +159,9 @@ function handleRoute() {
         else btnCancel.classList.add('hidden');
     }
 
-    document.querySelectorAll('.menu a').forEach(function(a) {
+    // 탭 네비게이션 active 상태 업데이트 (portal-tabs 또는 .menu)
+    var tabSelector = document.getElementById('portalTabs') ? '#portalTabs a' : '.menu a';
+    document.querySelectorAll(tabSelector).forEach(function(a) {
         a.classList.toggle('active', a.getAttribute('href') === '#' + hash);
     });
     if (hash === 'products') refreshProductList();
@@ -197,14 +195,10 @@ function updateExportSummary() {
 }
 
 // ════════════════════════════════════════
-// SIDEBAR
+// SIDEBAR (포털 전용 — 탭 네비게이션으로 대체됨)
 // ════════════════════════════════════════
 function initSidebar() {
-    var btn = document.getElementById('hamburgerBtn');
-    var sidebar = document.getElementById('sidebar');
-    var overlay = document.getElementById('sidebarOverlay');
-    if (btn) btn.addEventListener('click', function() { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-    if (overlay) overlay.addEventListener('click', function() { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+    // 사이드바 제거됨 — 탭 네비게이션은 hashchange로 자동 동작
 }
 
 // ════════════════════════════════════════
