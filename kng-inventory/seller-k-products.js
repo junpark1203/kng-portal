@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -275,34 +275,42 @@ function renderTable() {
             var profit = calcProfit(buyTotal, sellTotal, commission);
             var profitRate = calcProfitRate(profit, sellTotal);
 
-            var shippingBasisLabel = p.shippingBasis || '';
-            if (p.shippingBasis === '수량별') shippingBasisLabel += ' (' + (p.shippingQty || 1) + '개당)';
+            // 날짜 yy/mm/dd 포맷
+            var shortDate = '';
+            if (p.uploadDate) {
+                var parts = p.uploadDate.split('-');
+                if (parts.length === 3) shortDate = parts[0].slice(2) + '/' + parts[1] + '/' + parts[2];
+                else shortDate = p.uploadDate;
+            }
+
+            // 매입운임 툴팁 (수량별이면 "N개당" 표시)
+            var shippingTooltip = '';
+            if (p.shippingBasis === '수량별') shippingTooltip = (p.shippingQty || 1) + '개당';
+            else if (p.shippingBasis) shippingTooltip = p.shippingBasis;
 
             var profitClass = profit > 0 ? 'text-success' : (profit < 0 ? 'text-danger' : '');
             var badgeClass = profitRate > 20 ? 'badge-success' : 'badge-neutral';
 
             var sellPriceHtml = formatCurrency(p.sellPrice || 0);
             if (p.isLowestPrice) {
-                sellPriceHtml += '<br><span style="font-size:10px; background:#fff3cd; color:#856404; padding:2px 4px; border-radius:3px; margin-top:4px; display:inline-block; font-weight:600;">최저가</span>';
+                sellPriceHtml += '<br><span style="font-size:9px; background:#fff3cd; color:#856404; padding:1px 3px; border-radius:3px; font-weight:600;">최저가</span>';
             }
 
             var nameHtml = '<strong>' + escapeHtml(p.name) + '</strong>';
             if (p.isSoldOut) {
-                nameHtml += ' <span style="font-size:10px; background:#dc3545; color:#fff; padding:2px 4px; border-radius:3px; margin-left:4px; font-weight:600;">품절</span>';
+                nameHtml += ' <span style="font-size:9px; background:#dc3545; color:#fff; padding:1px 3px; border-radius:3px; font-weight:600;">품절</span>';
             }
             var trStyle = p.isSoldOut ? 'opacity:0.6; background-color:#fbfbfb; cursor:pointer;' : 'cursor:pointer;';
 
             html += '<tr class="product-row" data-id="' + escapeHtml(p.id) + '" style="' + trStyle + '">' +
                 '<td class="col-check"><input type="checkbox" class="sk-checkbox" value="' + escapeHtml(p.id) + '"></td>' +
-                '<td class="col-date">' + escapeHtml(p.uploadDate) + '</td>' +
+                '<td class="col-date">' + shortDate + '</td>' +
                 '<td class="col-supplier">' + escapeHtml(p.supplier) + '</td>' +
                 '<td class="col-brand">' + escapeHtml(p.brand) + '</td>' +
-                '<td class="col-name" title="' + escapeHtml(p.name) + '">' + nameHtml + '</td>' +
+                '<td class="col-name">' + nameHtml + '</td>' +
                 '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
-                '<td class="col-size">' + escapeHtml(p.size) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
-                '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
-                '<td class="buy-col" style="font-size:10px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
+                '<td class="col-num buy-col"' + (shippingTooltip ? ' title="' + escapeHtml(shippingTooltip) + '"' : '') + '>' + formatCurrency(p.buyShipping || 0) + '</td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
@@ -310,8 +318,6 @@ function renderTable() {
                 '<td class="col-num profit-col" style="color:var(--danger)">' + formatCurrency(commission) + '</td>' +
                 '<td class="col-num profit-col ' + profitClass + '" style="font-weight:bold;">' + formatCurrency(profit) + '</td>' +
                 '<td class="col-num profit-col"><span class="badge ' + badgeClass + '">' + profitRate.toFixed(1) + '%</span></td>' +
-                '<td class="col-remarks" title="' + escapeHtml(p.remarks || '') + '">' + escapeHtml(p.remarks || '') + '</td>' +
-                '<td class="col-updated">' + formatDateTime(p.updatedAt) + (p.lastChangeLog ? '<br><span style="font-size:9px; color:var(--text-secondary);">(' + escapeHtml(p.lastChangeLog) + ')</span>' : '') + '</td>' +
                 '</tr>';
         });
     }
