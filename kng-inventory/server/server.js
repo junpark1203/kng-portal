@@ -12,8 +12,8 @@ const { initMassUploadTables } = require('./db-mass-upload');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// 보안 헤더
+// 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
+app.set('trust proxy', 1);
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
