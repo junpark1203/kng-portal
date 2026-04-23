@@ -60,8 +60,12 @@ app.use(express.json({ limit: '10mb' }));
 // API 접속 횟수 제한 (IP당 15분에 100회)
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' }
+    max: 5000, // 넉넉하게 늘려서 정상 사용 차단 방지
+    message: { error: '요청이 너무 많습니다. 잠시 후 다시 시도하세요.' },
+    keyGenerator: function(req) {
+        // Cloudflare를 거쳐 올 경우 실제 접속자 IP를 식별
+        return req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.ip;
+    }
 });
 app.use('/api/', apiLimiter);
 
