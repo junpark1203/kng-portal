@@ -133,6 +133,25 @@ function initDb() {
             db.run('ALTER TABLE unit_prices ADD COLUMN sellPrice TEXT', () => {});
         }
     });
+
+    // 자재 공급 내역 테이블
+    db.run(`
+        CREATE TABLE IF NOT EXISTS supply_history (
+            id TEXT PRIMARY KEY,
+            supplyDate TEXT,
+            site TEXT,
+            item TEXT,
+            qty INTEGER,
+            price INTEGER,
+            total INTEGER,
+            category TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        )
+    `, (err) => {
+        if (err) console.error('supply_history 테이블 생성 오류:', err.message);
+        else console.log('supply_history 테이블 확인 완료');
+    });
 }
 
 // ----------------------------------------------------
@@ -288,6 +307,91 @@ app.post('/api/unit-prices/bulk', (req, res) => {
     items.forEach((p, i) => {
         const id = p.id || ('UP-MIG-' + String(i).padStart(3, '0'));
         stmt.run([id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.sellPrice||'', p.history||'', p.note||'', now, now], function(err) {
+            if (!err && this.changes > 0) inserted++;
+        });
+    });
+    stmt.finalize((err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '일괄 등록 완료', insertedCount: inserted, totalCount: items.length });
+    });
+});
+
+// ==========================================
+// 4. 자재 공급 내역 API (/api/supply-history)
+// ==========================================
+// 목록 조회
+app.get('/api/supply-history', (req, res) => {
+    db.all('SELECT * FROM supply_history ORDER BY supplyDate DESC, createdAt DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 신규 등록
+app.post('/api/supply-history', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('SH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO supply_history (id, supplyDate, site, item, qty, price, total, category, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id: id });
+    });
+});
+
+// 단일 수정
+app.put('/api/supply-history/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE supply_history SET supplyDate=?, site=?, item=?, qty=?, price=?, total=?, category=?, updatedAt=? WHERE id=?`;
+    const params = [p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, id];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 다중 선택 삭제
+app.post('/api/supply-history/delete', (req, res) => {
+    const ids = req.body.ids;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: '삭제할 ID 목록이 필요합니다.' });
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `DELETE FROM supply_history WHERE id IN (${placeholders})`;
+    db.run(sql, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
+// 일괄 카테고리 수정
+app.post('/api/supply-history/update-category', (req, res) => {
+    const { ids, category } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0 || !category) return res.status(400).json({ error: '데이터가 올바르지 않습니다.' });
+    const now = new Date().toISOString();
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `UPDATE supply_history SET category=?, updatedAt=? WHERE id IN (${placeholders})`;
+    db.run(sql, [category, now, ...ids], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '수정 완료', updatedCount: this.changes });
+    });
+});
+
+// 일괄 등록 (마이그레이션용)
+app.post('/api/supply-history/bulk', (req, res) => {
+    const items = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ error: '배열이 필요합니다.' });
+    const now = new Date().toISOString();
+    const sql = `INSERT OR IGNORE INTO supply_history (id, supplyDate, site, item, qty, price, total, category, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    let inserted = 0;
+    const stmt = db.prepare(sql);
+    items.forEach((p, i) => {
+        const id = p.id || ('SH-MIG-' + String(i).padStart(4, '0'));
+        stmt.run([id, p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now], function(err) {
             if (!err && this.changes > 0) inserted++;
         });
     });
