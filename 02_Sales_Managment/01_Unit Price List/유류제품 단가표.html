@@ -4,101 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>정렬 기능 포함 단가 관리 시스템</title>
+    <meta name="description" content="K&G 유류소모품 단가 관리 시스템">
+    <title>유류소모품 단가 관리</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- 포털과 동일한 디자인을 위해 kng-inventory의 스타일을 재사용하거나 가져옵니다 -->
+    <link rel="stylesheet" href="../../kng-inventory/styles.css">
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --text: #1e293b;
-        }
-
-        body {
-            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
-            margin: 0;
-            padding: 15px;
-            background-color: var(--bg);
-            color: var(--text);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: auto;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-            color: #0f172a;
-        }
-
-        .search-box {
+        /* 포털 전용: 사이드바 없이 전체 너비 사용 */
+        .main-content { margin-left: 0; }
+        
+        /* 모달 폼 그리드 조정 */
+        .modal-form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
         }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-
-        .table-wrapper {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 900px;
-        }
-
-        /* 헤더 스타일 및 정렬 화살표 */
-        th {
-            background-color: #f1f5f9;
-            padding: 12px;
-            text-align: left;
-            border-bottom: 2px solid #e2e8f0;
-            font-size: 13px;
-            cursor: pointer;
-            user-select: none;
-            position: relative;
-        }
-
-        th:hover {
-            background-color: #e2e8f0;
-        }
-
-        th.sort-asc::after {
-            content: " ▲";
-            color: var(--primary);
-        }
-
-        th.sort-desc::after {
-            content: " ▼";
-            color: var(--primary);
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 14px;
-        }
-
+        .fg-full { grid-column: 1 / -1; }
+        
         .mfr-tag {
             color: #059669;
             font-weight: 600;
         }
-
         .btn-history {
             padding: 6px 12px;
             background: #eff6ff;
@@ -108,426 +37,140 @@
             cursor: pointer;
             font-size: 12px;
         }
-
-        #modalOverlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 20px 25px rgba(0, 0, 0, 0.1);
-        }
-
-        .btn-close {
-            width: 100%;
-            margin-top: 20px;
-            padding: 12px;
-            background: #1e293b;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        /* 폼 추가 관련 스타일 */
-        .add-section {
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-        }
-
-        .add-section h3 {
-            margin: 0 0 15px 0;
-            font-size: 1.1rem;
-            color: #334155;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .form-group label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #475569;
-        }
-
-        .form-group select,
-        .form-group input,
-        .form-group textarea {
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: inherit;
-        }
-
-        .form-group select:focus,
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-group textarea {
-            height: 40px;
-            resize: none;
-            overflow-y: auto;
-        }
-
-        .add-btn {
-            margin-top: 15px;
-            padding: 12px 15px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            width: 100%;
-            transition: background 0.2s;
-        }
-
-        .add-btn:hover {
-            background: #1d4ed8;
-        }
-
-        .code-result {
-            margin-top: 15px;
-            padding: 15px;
-            background: #1e293b;
-            color: #10b981;
-            border-radius: 8px;
-            font-size: 13px;
-            display: none;
-            line-height: 1.5;
-            word-break: break-all;
-        }
-
-        .code-result span.code-block {
-            display: block;
-            margin-top: 10px;
-            background: #0f172a;
-            padding: 10px;
-            border-radius: 6px;
-            color: #e2e8f0;
-            user-select: all;
-            font-family: monospace;
-            border: 1px solid #334155;
-        }
     </style>
 </head>
 
 <body>
-
-    <div class="container">
-        <h2>📊 유류소모품 단가 관리</h2>
-
-        <!-- 단가 추가 폼 -->
-        <div class="add-section">
-            <h3>+ 단가 추가 <span style="font-size:12px; font-weight:normal; color:#64748b">(입력 후 콤보박스에서 찾거나 직접 기입할 수
-                    있습니다)</span></h3>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>거래처</label>
-                    <input type="text" id="inpCo" list="listCo" placeholder="선택 또는 직접 입력">
-                    <datalist id="listCo"></datalist>
-                </div>
-                <div class="form-group">
-                    <label>제조사</label>
-                    <input type="text" id="inpMfr" list="listMfr" placeholder="선택 또는 직접 입력">
-                    <datalist id="listMfr"></datalist>
-                </div>
-                <div class="form-group">
-                    <label>품목</label>
-                    <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력">
-                    <datalist id="listItem"></datalist>
-                </div>
-                <div class="form-group">
-                    <label>규격</label>
-                    <input type="text" id="inpSpec" list="listSpec" placeholder="선택 또는 직접 입력">
-                    <datalist id="listSpec"></datalist>
-                </div>
-                <div class="form-group">
-                    <label>단가</label>
-                    <input type="text" id="inpPrice" placeholder="예: 55,000" oninput="formatPrice(this)">
-                </div>
-                <div class="form-group">
-                    <label>이력 (줄바꿈 가능)</label>
-                    <textarea id="inpHistory" placeholder="예: 2026-04-13: 55,000&#10;이전단가: 50,000"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>비고</label>
-                    <input type="text" id="inpNote" placeholder="입력">
-                </div>
+    <!-- 메인 앱 (포털 iframe 전용) -->
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="page-body">
+                <!-- Products Table Section -->
+                <section class="section-block" id="unitPriceSection">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2><i class='bx bx-data'></i> 유류소모품 단가 관리 <span class="product-count-text" id="totalCount">0건</span></h2>
+                            <div class="header-actions">
+                                <div class="table-search-wrap">
+                                    <select id="searchField" class="search-field-select">
+                                        <option value="all">통합검색</option>
+                                        <option value="co">거래처</option>
+                                        <option value="mfr">제조사</option>
+                                        <option value="item">품목</option>
+                                        <option value="spec">규격</option>
+                                    </select>
+                                    <div class="table-search-input">
+                                        <i class='bx bx-search'></i>
+                                        <input type="text" id="searchInput" placeholder="검색어 입력...">
+                                    </div>
+                                </div>
+                                <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                                <button id="addBtn" class="btn-primary" style="margin-left:8px;"><i class='bx bx-plus-circle'></i> 단가 추가</button>
+                                <button id="migrateBtn" class="btn-outline" style="margin-left:8px;" title="기존 하드코딩 데이터를 DB로 일괄 전송합니다"><i class='bx bx-cloud-upload'></i> 데이터 마이그레이션</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table" id="dataTable">
+                                <thead>
+                                    <tr>
+                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th class="sortable" data-sort="co">거래처 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="mfr">제조사 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="item">품목 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                        <th>이력</th>
+                                        <th class="sortable" data-sort="note">비고 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="updatedAt">최종수정일 <i class='bx bx-sort'></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    <tr class="loading-row"><td colspan="9"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="pagination"></div>
+                    </div>
+                </section>
             </div>
-            <button class="add-btn" onclick="addNewItem()">⬇ 현재 화면 리스트에 적용 및 HTML 코드 형태 변환</button>
-            <div id="codeResult" class="code-result"></div>
-        </div>
+        </main>
+    </div>
 
-        <div class="search-box">
-            <input type="text" id="searchCo" onkeyup="filter()" placeholder="거래처 검색...">
-            <input type="text" id="searchMfr" onkeyup="filter()" placeholder="제조사 검색...">
-            <input type="text" id="searchItem" onkeyup="filter()" placeholder="품목/규격 검색...">
-        </div>
-
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th onclick="sortTable(0, 'string')">거래처</th>
-                        <th onclick="sortTable(1, 'string')">제조사</th>
-                        <th onclick="sortTable(2, 'string')">품목</th>
-                        <th onclick="sortTable(3, 'string')">규격</th>
-                        <th onclick="sortTable(4, 'number')">단가</th>
-                        <th>이력</th>
-                        <th onclick="sortTable(6, 'string')">비고</th>
-                    </tr>
-                </thead>
-                <tbody id="mainTable"></tbody>
-            </table>
+    <!-- Add/Edit Modal -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content" style="max-width:600px;">
+            <div class="modal-header">
+                <h2 id="modalTitle">단가 등록</h2>
+                <button type="button" class="btn-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    <div class="modal-form-grid">
+                        <div class="fg">
+                            <label for="inpCo">거래처</label>
+                            <input type="text" id="inpCo" list="listCo" placeholder="선택 또는 직접 입력" required>
+                            <datalist id="listCo"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpMfr">제조사</label>
+                            <input type="text" id="inpMfr" list="listMfr" placeholder="선택 또는 직접 입력" required>
+                            <datalist id="listMfr"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpItem">품목</label>
+                            <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력" required>
+                            <datalist id="listItem"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpSpec">규격</label>
+                            <input type="text" id="inpSpec" list="listSpec" placeholder="선택 또는 직접 입력">
+                            <datalist id="listSpec"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpPrice">단가</label>
+                            <input type="text" id="inpPrice" placeholder="예: 55,000" oninput="formatPrice(this)" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpNote">비고</label>
+                            <input type="text" id="inpNote" placeholder="입력">
+                        </div>
+                        <div class="fg fg-full">
+                            <label>단가 이력 (수정 시 자동으로 이전 가격이 누적됩니다)</label>
+                            <textarea id="inpHistory" rows="4" readonly style="background-color: var(--bg-secondary); cursor: not-allowed;"></textarea>
+                        </div>
+                    </div>
+                    <div id="timestampDisplay" style="color:var(--text-secondary); font-size:12px; margin-top:10px; margin-bottom:5px; text-align:right;"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-outline" id="cancelBtn">취소</button>
+                        <button type="submit" class="btn-primary" id="saveBtn"><i class='bx bx-save'></i> 저장</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div id="modalOverlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header" id="modalTitle" style="font-weight:bold; margin-bottom:15px;"></div>
-            <div class="modal-body" id="modalBody" style="white-space:pre-wrap; font-size:14px;"></div>
-            <button class="btn-close" onclick="closeModal()">닫기</button>
+    <!-- History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h2 id="historyModalTitle">이력 보기</h2>
+                <button type="button" class="btn-close" id="closeHistoryModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" id="historyModalBody" style="white-space:pre-wrap; font-size:14px; padding: 10px 0;">
+            </div>
         </div>
     </div>
 
+    <div id="toastContainer" class="toast-container"></div>
+    <script type="module" src="unit-prices.js"></script>
     <script>
-        // 초기 데이터
-        let priceData = [
-            { co: "양지유화", mfr: "SHELL", item: "Hydraulic 46", spec: "200L(D/M)", price: "437,000", history: "2026-00-00: 437,000\n2026-00-00: -", note: "유압유" },
-            { co: "양지유화", mfr: "SHELL", item: "Hydraulic 46", spec: "20L(P/L)", price: "46,000", history: "2026-00-00: 46,000\n2026-00-00: -", note: "유압유" },
-            { co: "양지유화", mfr: "SHELL", item: "Hydraulic 68", spec: "200L(D/M)", price: "437,000", history: "2026-00-00: 437,000\n2026-00-00: -", note: "유압유" },
-            { co: "양지유화", mfr: "SHELL", item: "Hydraulic 68", spec: "20L(P/L)", price: "46,000", history: "2026-00-00: 46,000\n2026-00-00: -", note: "유압유" },
-            { co: "양지유화", mfr: "SHELL", item: "Tellus S2 MX 68", spec: "200L(D/M)", price: "578,000", history: "2026-00-00: 578,000\n2026-00-00: -", note: "유압유" },
-            { co: "양지유화", mfr: "SHELL", item: "Tellus S2 MX 46", spec: "20L(P/L)", price: "98,000", history: "2026-04-08: 98,000\n2026-00-00: 78,000", note: "유압유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 46", spec: "20L(P/L)", price: "55,000", history: "2026-04-01: 55,000\n2026-03-24: 42,000\n2026-00-00: 36,000", note: "유압유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 46", spec: "200L(D/M)", price: "528,000", history: "2026-04-01: 528,000\n2026-03-24: 420,000\n2026-00-00: 360,000", note: "유압유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 68", spec: "20L(P/L)", price: "56,000", history: "2026-04-01: 56,000\n2026-03-24: 44,000\n2026-00-00: 38,000", note: "유압유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 68", spec: "200L(D/M)", price: "538,000", history: "2026-04-01: 538,000\n2026-03-24: 430,000\n2026-00-00: 370,000", note: "유압유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 150", spec: "20L(P/L)", price: "64,000", history: "2026-04-01: 64,000\n2026-03-24: 53,000\n2026-00-00: 48,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 150", spec: "200L(D/M)", price: "605,000", history: "2026-04-01: 605,000\n2026-03-24: 500,000\n2026-00-00: 470,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 220", spec: "20L(P/L)", price: "64,000", history: "2026-04-01: 64,000\n2026-03-24: 53,000\n2026-00-00: 48,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 220", spec: "200L(D/M)", price: "605,000", history: "2026-04-01: 605,000\n2026-03-24: 500,000\n2026-00-00: 470,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 320", spec: "20L(P/L)", price: "65,000", history: "2026-04-01: 65,000\n2026-03-24: 54,000\n2026-00-00: 49,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 320", spec: "200L(D/M)", price: "615,000", history: "2026-04-01: 615,000\n2026-03-24: 510,000\n2026-00-00: 480,000", note: "기어유" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 0", spec: "15kg(P/L)", price: "73,000", history: "2026-04-01: 73,000\n2026-03-24: 62,000\n2026-00-00: 55,000", note: "그리스" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 1", spec: "15kg(P/L)", price: "75,000", history: "2026-04-01: 75,000\n2026-03-24: 65,000\n2026-00-00: 60,000", note: "그리스" },
-            { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 2", spec: "15kg(P/L)", price: "76,000", history: "2026-04-01: 76,000\n2026-03-24: 67,000\n2026-00-00: 62,000", note: "그리스" },
-            { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #1", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-            { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #2", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-            { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #3", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-            { co: "맥테크놀로지", mfr: "맥테크", item: "MAK SEAL 270", spec: "KG", price: "1,760", history: "2026-04-20: 1,760\n(기존 500원->변경 280원 인상, 2026-04-20~2026-05-31 공급분 적용)\n이전: 1,480", note: "테일씰그리스(일반굴진용)" },
-            { co: "맥테크놀로지", mfr: "맥테크", item: "MAK SEAL 230", spec: "KG", price: "1,810", history: "2026-04-20: 1,810\n(기존 500원->변경 280원 인상, 2026-04-20~2026-05-31 공급분 적용)\n이전: 1,530", note: "테일씰그리스(초기굴진용)" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 2 Grease", spec: "15kg(P/L)", price: "58,500", history: "2025-03-30: 58,500", note: "그리스" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 1 Grease", spec: "15kg(P/L)", price: "57,000", history: "2025-03-30: 57,000", note: "그리스" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 0 Grease", spec: "15kg(P/L)", price: "52,500", history: "2025-03-30: 52,500", note: "그리스" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 46S", spec: "20L(P/L)", price: "44,000", history: "2026-04-06: 44,000\n2026-01-16: 34,000", note: "유압유" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 46S", spec: "200L(D/M)", price: "413,000", history: "2026-04-06: 413,000\n2026-01-16: 320,000", note: "유압유" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 68S", spec: "20L(P/L)", price: "46,000", history: "2026-04-06: 46,000\n2026-01-16: 36,000", note: "유압유" },
-            { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 68S", spec: "200L(D/M)", price: "440,000", history: "2026-04-06: 440,000\n2026-01-16: 340,000", note: "유압유" },
-            { co: "DRT(디알티)", mfr: "RECORD", item: "TMT-100", spec: "KG", price: "1,450-운임별도", history: "2026-01-15: 1,450\n2026-01-02: 1,600", note: "테일씰그리스\n70KG 보유재고분" },
-            { co: "-", mfr: "-", item: "-", spec: "-", price: "-", history: "-", note: "-" }
-        ];
-
-        let currentSort = { column: -1, asc: true };
-        let currentDisplayedData = []; // 💡 현재 화면에 표시된 데이터 목록을 따로 저장하는 변수
-
-        function displayData(list) {
-            currentDisplayedData = list; // 화면이 바뀔 때마다 현재 리스트 업데이트
-            const tbody = document.getElementById('mainTable');
-            tbody.innerHTML = list.map((d, index) => `
-            <tr>
-                <td><strong>${d.co}</strong></td>
-                <td class="mfr-tag">${d.mfr}</td>
-                <td>${d.item}</td>
-                <td>${d.spec}</td>
-                <td>${d.price}</td>
-                <td><button class="btn-history" onclick="showHistory(${index})">보기</button></td>
-                <td>${d.note}</td>
-            </tr>
-        `).join('');
-        }
-
-        // 정렬 함수
-        function sortTable(columnIndex, type) {
-            const keys = ['co', 'mfr', 'item', 'spec', 'price', '', 'note'];
-            const key = keys[columnIndex];
-
-            // 정렬 상태 업데이트
-            if (currentSort.column === columnIndex) {
-                currentSort.asc = !currentSort.asc;
-            } else {
-                currentSort.column = columnIndex;
-                currentSort.asc = true;
-            }
-
-            // 헤더 스타일 업데이트
-            const ths = document.querySelectorAll('th');
-            ths.forEach((th, idx) => {
-                th.classList.remove('sort-asc', 'sort-desc');
-                if (idx === columnIndex) {
-                    th.classList.add(currentSort.asc ? 'sort-asc' : 'sort-desc');
-                }
-            });
-
-            // 실제 정렬 로직
-            priceData.sort((a, b) => {
-                let valA = a[key];
-                let valB = b[key];
-
-                if (type === 'number') {
-                    valA = parseInt(valA.replace(/,/g, '')) || 0;
-                    valB = parseInt(valB.replace(/,/g, '')) || 0;
-                }
-
-                if (valA < valB) return currentSort.asc ? -1 : 1;
-                if (valA > valB) return currentSort.asc ? 1 : -1;
-                return 0;
-            });
-
-            filter(); // 정렬 후 현재 검색 조건에 맞춰 다시 필터링하여 표시
-        }
-
-        // 💡 순번을 받아 실제 데이터에서 이력을 꺼내오도록 수정
-        function showHistory(index) {
-            const item = currentDisplayedData[index];
-            document.getElementById('modalTitle').innerText = `${item.mfr} - ${item.item} 이력`;
-            document.getElementById('modalBody').innerText = item.history;
-            document.getElementById('modalOverlay').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
-
-        function filter() {
-            const coVal = document.getElementById('searchCo').value.toLowerCase();
-            const mfrVal = document.getElementById('searchMfr').value.toLowerCase();
-            const itemVal = document.getElementById('searchItem').value.toLowerCase();
-
-            const filtered = priceData.filter(d =>
-                d.co.toLowerCase().includes(coVal) &&
-                d.mfr.toLowerCase().includes(mfrVal) &&
-                (d.item.toLowerCase().includes(itemVal) || d.spec.toLowerCase().includes(itemVal))
-            );
-            displayData(filtered);
-        }
-
-        // 단가 자동 콤마 기능
         function formatPrice(input) {
             let val = input.value.replace(/,/g, '');
             input.value = val.replace(/\d+/g, function (match) {
                 return Number(match).toLocaleString();
             });
         }
-
-        // 폼 제어 및 추가 로직
-        function populateSelects() {
-            const coSet = new Set(), mfrSet = new Set(), itemSet = new Set(), specSet = new Set();
-            priceData.forEach(d => {
-                if (d.co && d.co !== "-") coSet.add(d.co);
-                if (d.mfr && d.mfr !== "-") mfrSet.add(d.mfr);
-                if (d.item && d.item !== "-") itemSet.add(d.item);
-                if (d.spec && d.spec !== "-") specSet.add(d.spec);
-            });
-
-            fillDatalist('listCo', coSet);
-            fillDatalist('listMfr', mfrSet);
-            fillDatalist('listItem', itemSet);
-            fillDatalist('listSpec', specSet);
-        }
-
-        function fillDatalist(id, set) {
-            const dl = document.getElementById(id);
-            let html = '';
-            [...set].sort().forEach(val => {
-                html += `<option value="${val}">`;
-            });
-            dl.innerHTML = html;
-        }
-
-        function addNewItem() {
-            const co = document.getElementById('inpCo').value.trim() || "-";
-            const mfr = document.getElementById('inpMfr').value.trim() || "-";
-            const item = document.getElementById('inpItem').value.trim() || "-";
-            const spec = document.getElementById('inpSpec').value.trim() || "-";
-            const price = document.getElementById('inpPrice').value.trim() || "-";
-            const history = document.getElementById('inpHistory').value.trim() || "-";
-            const note = document.getElementById('inpNote').value.trim() || "-";
-
-            if (co === "-" || item === "-") {
-                alert("입력 오류: 거래처와 품목은 필수 입력사항입니다!");
-                return;
-            }
-
-            const newItem = { co, mfr, item, spec, price, history, note };
-
-            // 더미 데이터 위에 새 데이터를 삽입
-            const emptyIdx = priceData.findIndex(d => d.co === "-");
-            if (emptyIdx !== -1) {
-                priceData.splice(emptyIdx, 0, newItem);
-            } else {
-                priceData.push(newItem);
-            }
-
-            // 목록 및 드롭다운 갱신
-            populateSelects();
-            filter();
-
-            // 코드 반환
-            const safeHistory = history.replace(/\n/g, '\\n').replace(/"/g, '\\"');
-            const codeStr = `{ co: "${co}", mfr: "${mfr}", item: "${item}", spec: "${spec}", price: "${price}", history: "${safeHistory}", note: "${note}" },`;
-
-            const resDiv = document.getElementById('codeResult');
-            resDiv.style.display = 'block';
-            resDiv.innerHTML = `<strong>✅ 단가가 리스트에 반영되었습니다.</strong><br>
-        영구적으로 보존하려면 아래 완성된 코드를 복사해서 HTML 파일 본문의 <code>priceData</code> 배열에 붙여넣기 해두시면 됩니다.<br>
-        <span class="code-block">${codeStr}</span>`;
-
-            // 입력 칸 리셋 (동일 품목이나 거래처 반복 입력을 위해, 가격과 이력/비고만 우선 비움 처리)
-            document.getElementById('inpPrice').value = '';
-            document.getElementById('inpHistory').value = '';
-            document.getElementById('inpNote').value = '';
-            // 다음 입력 편의를 위해 포커스 이동
-            document.getElementById('inpCo').focus();
-        }
-
-        // 실행
-        populateSelects();
-        displayData(priceData);
     </script>
-
 </body>
-
 </html>

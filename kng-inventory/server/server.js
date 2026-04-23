@@ -109,6 +109,25 @@ function initDb() {
         if (err) console.error('테이블 생성 오류:', err.message);
         else console.log('seller_k_products 테이블 확인 완료');
     });
+
+    // 유류소모품 단가 테이블
+    db.run(`
+        CREATE TABLE IF NOT EXISTS unit_prices (
+            id TEXT PRIMARY KEY,
+            co TEXT,
+            mfr TEXT,
+            item TEXT,
+            spec TEXT,
+            price TEXT,
+            history TEXT,
+            note TEXT,
+            createdAt TEXT,
+            updatedAt TEXT
+        )
+    `, (err) => {
+        if (err) console.error('unit_prices 테이블 생성 오류:', err.message);
+        else console.log('unit_prices 테이블 확인 완료');
+    });
 }
 
 // ----------------------------------------------------
@@ -179,6 +198,103 @@ app.post('/api/seller-k/products/delete', (req, res) => {
     const sql = `DELETE FROM seller_k_products WHERE id IN (${placeholders})`;
     
     db.run(sql, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
+// ==========================================
+// 유류소모품 단가 API
+// ==========================================
+
+// 전체 목록 조회
+app.get('/api/unit-prices', (req, res) => {
+    db.all('SELECT * FROM unit_prices ORDER BY co, mfr, item', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 단가 등록
+app.post('/api/unit-prices', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('UP-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO unit_prices (id, co, mfr, item, spec, price, history, note, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.history||'', p.note||'', now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id: id });
+    });
+});
+
+// 단가 수정 (이력 자동 추가)
+app.put('/api/unit-prices/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    // 먼저 기존 데이터 조회 → 가격 변경 시 이력 자동 추가
+    db.get('SELECT * FROM unit_prices WHERE id = ?', [id], (err, existing) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!existing) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+
+        let history = p.history || existing.history || '';
+        // 가격이 변경되었으면 이력에 자동 추가
+        if (existing.price !== p.price && p.price) {
+            const dateStr = now.split('T')[0];
+            const newEntry = dateStr + ': ' + p.price;
+            history = newEntry + (history ? '\n' + history : '');
+        }
+
+        const sql = `UPDATE unit_prices SET co=?, mfr=?, item=?, spec=?, price=?, history=?, note=?, updatedAt=? WHERE id=?`;
+        const params = [p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', history, p.note||'', now, id];
+        db.run(sql, params, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+            res.json({ message: '수정 성공' });
+        });
+    });
+});
+
+// 단가 삭제
+app.delete('/api/unit-prices/:id', (req, res) => {
+    db.run('DELETE FROM unit_prices WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+        res.json({ message: '삭제 성공' });
+    });
+});
+
+// 일괄 등록 (마이그레이션용)
+app.post('/api/unit-prices/bulk', (req, res) => {
+    const items = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ error: '배열이 필요합니다.' });
+    const now = new Date().toISOString();
+    const sql = `INSERT OR IGNORE INTO unit_prices (id, co, mfr, item, spec, price, history, note, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    let inserted = 0;
+    const stmt = db.prepare(sql);
+    items.forEach((p, i) => {
+        const id = p.id || ('UP-MIG-' + String(i).padStart(3, '0'));
+        stmt.run([id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.history||'', p.note||'', now, now], function(err) {
+            if (!err && this.changes > 0) inserted++;
+        });
+    });
+    stmt.finalize((err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '일괄 등록 완료', insertedCount: inserted, totalCount: items.length });
+    });
+});
+
+// 다중 삭제
+app.post('/api/unit-prices/delete', (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`DELETE FROM unit_prices WHERE id IN (${placeholders})`, ids, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: '삭제 성공', deletedCount: this.changes });
     });
