@@ -253,6 +253,41 @@ app.post('/api/seller-k/products/delete', (req, res) => {
     });
 });
 
+// 5. 상품 대량 등록 (엑셀 업로드 및 일괄등록 연동용)
+app.post('/api/seller-k/products/bulk', (req, res) => {
+    const { products } = req.body;
+    if (!products || !Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ error: '등록할 상품 배열이 필요합니다.' });
+    }
+    
+    const now = new Date().toISOString();
+    const sql = `
+        INSERT OR IGNORE INTO seller_k_products (
+            id, supplier, brand, name, color, size, uploadDate, 
+            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    let inserted = 0;
+    const stmt = db.prepare(sql);
+    
+    products.forEach((p, i) => {
+        const id = p.id || ('SK-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6) + i);
+        stmt.run([
+            id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
+            p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
+            p.sellPrice || 0, p.sellShipping || 0, now, now
+        ], function(err) {
+            if (!err && this.changes > 0) inserted++;
+        });
+    });
+    
+    stmt.finalize((err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '대량 등록 성공', insertedCount: inserted });
+    });
+});
+
 // ==========================================
 // 유류소모품 단가 API
 // ==========================================
