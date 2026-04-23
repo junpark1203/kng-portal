@@ -294,15 +294,15 @@ function renderTable() {
 
             html += '<tr class="product-row" data-id="' + escapeHtml(p.id) + '" style="' + trStyle + '">' +
                 '<td class="col-check"><input type="checkbox" class="sk-checkbox" value="' + escapeHtml(p.id) + '"></td>' +
-                '<td>' + escapeHtml(p.uploadDate) + '</td>' +
-                '<td>' + escapeHtml(p.supplier) + '</td>' +
-                '<td>' + escapeHtml(p.brand) + '</td>' +
-                '<td>' + nameHtml + '</td>' +
-                '<td>' + escapeHtml(p.color) + '</td>' +
-                '<td>' + escapeHtml(p.size) + '</td>' +
+                '<td class="col-date">' + escapeHtml(p.uploadDate) + '</td>' +
+                '<td class="col-supplier">' + escapeHtml(p.supplier) + '</td>' +
+                '<td class="col-brand">' + escapeHtml(p.brand) + '</td>' +
+                '<td class="col-name" title="' + escapeHtml(p.name) + '">' + nameHtml + '</td>' +
+                '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
+                '<td class="col-size">' + escapeHtml(p.size) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
-                '<td class="buy-col" style="font-size:12px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
+                '<td class="buy-col" style="font-size:10px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
@@ -310,8 +310,8 @@ function renderTable() {
                 '<td class="col-num profit-col" style="color:var(--danger)">' + formatCurrency(commission) + '</td>' +
                 '<td class="col-num profit-col ' + profitClass + '" style="font-weight:bold;">' + formatCurrency(profit) + '</td>' +
                 '<td class="col-num profit-col"><span class="badge ' + badgeClass + '">' + profitRate.toFixed(1) + '%</span></td>' +
-                '<td style="font-size:11px; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;" title="' + escapeHtml(p.remarks || '') + '">' + escapeHtml(p.remarks || '') + '</td>' +
-                '<td><span style="font-size:11px; color:#555;">' + formatDateTime(p.updatedAt) + '</span>' + (p.lastChangeLog ? '<br><span style="font-size:10px; color:var(--text-secondary);">(' + escapeHtml(p.lastChangeLog) + ')</span>' : '') + '</td>' +
+                '<td class="col-remarks" title="' + escapeHtml(p.remarks || '') + '">' + escapeHtml(p.remarks || '') + '</td>' +
+                '<td class="col-updated">' + formatDateTime(p.updatedAt) + (p.lastChangeLog ? '<br><span style="font-size:9px; color:var(--text-secondary);">(' + escapeHtml(p.lastChangeLog) + ')</span>' : '') + '</td>' +
                 '</tr>';
         });
     }
