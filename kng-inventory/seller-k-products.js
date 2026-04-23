@@ -96,7 +96,7 @@ function loadProducts() {
             showToast('데이터를 불러오는데 실패했습니다.', 'error');
             updateConnectionStatus(false);
             document.getElementById('skTableBody').innerHTML =
-                '<tr><td colspan="15" style="text-align:center; padding:30px;">API 서버 연결 실패</td></tr>';
+                '<tr><td colspan="16" style="text-align:center; padding:30px;">API 서버 연결 실패</td></tr>';
         });
 }
 
@@ -266,7 +266,7 @@ function renderTable() {
 
     if (filteredProducts.length === 0) {
         var emptyMsg = products.length === 0 ? '등록된 매입상품이 없습니다.' : '검색 결과가 없습니다.';
-        html = '<tr><td colspan="15" style="text-align:center; padding:30px; color:var(--gray-500);">' + emptyMsg + '</td></tr>';
+        html = '<tr><td colspan="16" style="text-align:center; padding:30px; color:var(--gray-500);">' + emptyMsg + '</td></tr>';
     } else {
         pageProducts.forEach(function(p) {
             var buyTotal = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
@@ -310,7 +310,8 @@ function renderTable() {
                 '<td class="col-name">' + nameHtml + '</td>' +
                 '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
-                '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + (shippingTooltip ? '<br><span class="shipping-basis-tag">' + escapeHtml(shippingTooltip) + '</span>' : '') + '</td>' +
+                '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
+                '<td class="buy-col col-basis"' + (p.shippingBasis === '수량별' ? ' title="' + (p.shippingQty || 1) + '개당"' : '') + '><span class="shipping-basis-tag">' + escapeHtml(p.shippingBasis || '-') + '</span></td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +

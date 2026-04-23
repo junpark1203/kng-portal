@@ -1083,6 +1083,20 @@ input:focus, select:focus {
     background: var(--surface-container-low);
 }
 
+/* sk-table: zebra 비활성화 — 매입/매출/정산 틴트 보존 */
+.sk-table tbody tr:nth-child(even) td {
+    background: transparent;
+}
+.sk-table tbody tr:nth-child(even) td.buy-col {
+    background: rgba(79, 110, 247, 0.035);
+}
+.sk-table tbody tr:nth-child(even) td.sell-col {
+    background: rgba(34, 197, 94, 0.035);
+}
+.sk-table tbody tr:nth-child(even) td.profit-col {
+    background: rgba(245, 158, 11, 0.035);
+}
+
 .data-table tbody tr:hover td {
     background: var(--primary-muted);
 }
