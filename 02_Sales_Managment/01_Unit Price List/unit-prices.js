@@ -4,7 +4,7 @@
    - CRUD 및 마이그레이션 기능 포함
 ========================================================================= */
 
-const API_BASE = '/api/unit-prices';
+const API_BASE = 'https://kng.junparks.com/api/unit-prices';
 let itemsData = [];
 let filteredData = [];
 let currentSort = { column: 'updatedAt', asc: false };
