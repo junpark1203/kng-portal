@@ -1708,7 +1708,7 @@ function exportToInventory() {
     if (!supplier.trim()) supplier = '미지정';
     
     var allProducts = Storage.getProducts();
-    var idsToExport = Array.from(checks).map(function(cb) { return cb.value; });
+    var idsToExport = Array.from(checks).map(function(cb) { return cb.dataset.id; });
     
     var exportPayload = [];
     var todayStr = new Date().toISOString().split('T')[0];
