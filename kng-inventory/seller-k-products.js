@@ -310,7 +310,7 @@ function renderTable() {
                 '<td class="col-name">' + nameHtml + '</td>' +
                 '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
-                '<td class="col-num buy-col"' + (shippingTooltip ? ' title="' + escapeHtml(shippingTooltip) + '"' : '') + '>' + formatCurrency(p.buyShipping || 0) + '</td>' +
+                '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + (shippingTooltip ? '<br><span class="shipping-basis-tag">' + escapeHtml(shippingTooltip) + '</span>' : '') + '</td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
