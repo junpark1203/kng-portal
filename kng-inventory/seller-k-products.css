@@ -19,12 +19,13 @@
 }
 
 /* ── Column widths ── */
-.sk-table .col-check { width: 34px; }
+.sk-table .col-check { width: 30px; }
 .sk-table .col-date { width: 64px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); }
-.sk-table .col-supplier { width: 74px; }
-.sk-table .col-brand { width: 74px; }
+.sk-table .col-supplier { width: 84px; }
+.sk-table .col-brand { width: 120px; }
 .sk-table .col-name { width: auto; text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
-.sk-table .col-color { width: 60px; }
+.sk-table .col-color { width: 72px; }
+.sk-table .col-num { width: 74px; }
 
 /* ── Table Header Groups ── */
 .th-group-purchase {
@@ -70,7 +71,7 @@ td.profit-col {
 
 /* 운임기준 태그 */
 .col-basis {
-    width: 48px;
+    width: 52px;
     text-align: center !important;
     padding: 4px 2px !important;
 }
