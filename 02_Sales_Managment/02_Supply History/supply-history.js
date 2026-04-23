@@ -11,6 +11,10 @@ let itemsData = [];
 let filteredData = [];
 let currentSort = { column: 'supplyDate', asc: false };
 
+// Pagination state
+let currentPage = 1;
+let pageSize = 50;
+
 // Elements
 const elTableBody = document.getElementById('tableBody');
 const elTableFoot = document.getElementById('tableFoot');
@@ -214,20 +218,36 @@ function renderTable() {
     if (elSelectAll) elSelectAll.checked = false;
     updateActionBar();
 
+    const elPagination = document.getElementById('pagination');
+
     if (filteredData.length === 0) {
         elTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--gray-500);">데이터가 없습니다.</td></tr>';
         elTableFoot.style.display = 'none';
+        if (elPagination) elPagination.innerHTML = '';
         return;
     }
+
+    // Pagination calculation
+    const totalFiltered = filteredData.length;
+    const effectivePageSize = (pageSize === 0) ? totalFiltered : pageSize;
+    const totalPages = effectivePageSize > 0 ? Math.max(1, Math.ceil(totalFiltered / effectivePageSize)) : 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    const startIdx = (currentPage - 1) * effectivePageSize;
+    const endIdx = (pageSize === 0) ? totalFiltered : Math.min(startIdx + effectivePageSize, totalFiltered);
+    const pageItems = filteredData.slice(startIdx, endIdx);
 
     let html = '';
     let sumQty = 0;
     let sumTotal = 0;
 
+    // Sum all filtered data (not just current page)
     filteredData.forEach(item => {
         sumQty += item.qty || 0;
         sumTotal += item.total || 0;
+    });
 
+    pageItems.forEach(item => {
         let catColor = '';
         if (item.category === '안전자재') catColor = 'style="color:#10b981; font-weight:600;"';
         else if (item.category === '잡자재') catColor = 'style="color:#64748b; font-weight:600;"';
@@ -252,7 +272,60 @@ function renderTable() {
     document.getElementById('sumQty').textContent = sumQty.toLocaleString();
     document.getElementById('sumTotal').textContent = sumTotal.toLocaleString();
     elTableFoot.style.display = 'table-footer-group';
+    renderPagination(totalFiltered, totalPages, startIdx, endIdx);
 }
+
+function getPageNumbers(current, total) {
+    const pages = [];
+    const maxVisible = 5;
+    let start = Math.max(1, current - Math.floor(maxVisible / 2));
+    let end = start + maxVisible - 1;
+    if (end > total) { end = total; start = Math.max(1, end - maxVisible + 1); }
+    if (start > 1) { pages.push(1); if (start > 2) pages.push('...'); }
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < total) { if (end < total - 1) pages.push('...'); pages.push(total); }
+    return pages;
+}
+
+function renderPagination(totalFiltered, totalPages, startIdx, endIdx) {
+    const container = document.getElementById('pagination');
+    if (!container) return;
+    if (totalFiltered === 0) { container.innerHTML = ''; return; }
+
+    let html = '<div class="pagination-bar">';
+    html += '<div class="pagination-info">';
+    html += '<div class="page-size-wrap">';
+    html += '<label for="pageSizeSelect">페이지당</label>';
+    html += '<select id="pageSizeSelect" class="page-size-select">';
+    [{ value: 50, label: '50개' }, { value: 100, label: '100개' }, { value: 150, label: '150개' }, { value: 200, label: '200개' }, { value: 0, label: '전체' }].forEach(s => {
+        html += `<option value="${s.value}"${s.value === pageSize ? ' selected' : ''}>${s.label}</option>`;
+    });
+    html += '</select></div>';
+    html += `<span class="pagination-summary">총 <strong>${totalFiltered}</strong>건`;
+    if (totalFiltered !== itemsData.length) html += ` <span class="filtered-note">(검색결과, 전체 ${itemsData.length}건)</span>`;
+    if (pageSize !== 0 && totalFiltered > 0) html += `  |  <strong>${startIdx + 1}</strong> – <strong>${endIdx}</strong>번째`;
+    html += '</span></div>';
+
+    if (totalPages > 1) {
+        html += '<div class="pagination-controls">';
+        html += `<button class="page-btn" onclick="goToPage(1)"${currentPage === 1 ? ' disabled' : ''} title="처음"><i class='bx bx-chevrons-left'></i></button>`;
+        html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})"${currentPage === 1 ? ' disabled' : ''} title="이전"><i class='bx bx-chevron-left'></i></button>`;
+        getPageNumbers(currentPage, totalPages).forEach(pg => {
+            if (pg === '...') html += '<span class="page-ellipsis">…</span>';
+            else html += `<button class="page-btn${pg === currentPage ? ' active' : ''}" onclick="goToPage(${pg})">${pg}</button>`;
+        });
+        html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})"${currentPage === totalPages ? ' disabled' : ''} title="다음"><i class='bx bx-chevron-right'></i></button>`;
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})"${currentPage === totalPages ? ' disabled' : ''} title="끝"><i class='bx bx-chevrons-right'></i></button>`;
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+
+    const sizeSelect = document.getElementById('pageSizeSelect');
+    if (sizeSelect) sizeSelect.addEventListener('change', function() { pageSize = parseInt(this.value, 10); currentPage = 1; renderTable(); });
+}
+
+window.goToPage = function(page) { currentPage = page; renderTable(); };
 
 // ==========================================
 // CRUD 로직
