@@ -26,11 +26,14 @@ const allowedOrigins = [
     // KNG 통합 포털
     'https://kng-portal.pages.dev',
     /\.kng-portal\.pages\.dev$/,      // preview 배포 (*.kng-portal.pages.dev)
+    'https://kng-portal.junparks.com', // Cloudflare Tunnel 커스텀 도메인
     // Mass Upload 프론트엔드
     'https://seller-k-mass-upload.pages.dev',
     /\.seller-k-mass-upload\.pages\.dev$/,  // preview 배포
     /kng-mass-upload\.pages\.dev$/,
     /\.kng-mass-upload\.pages\.dev$/,
+    // API 서버 자체 (같은 도메인에서의 요청)
+    'https://kng.junparks.com',
     'http://localhost:8788',            // 로컬 개발용
     'http://localhost:3000',
     'http://localhost:8090',            // mass_upload dev-server
