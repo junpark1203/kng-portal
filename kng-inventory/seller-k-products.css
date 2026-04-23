@@ -33,7 +33,7 @@
 .sk-table .col-name { width: auto; }
 .sk-table td.col-name { text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
 .sk-table .col-color { width: 72px; text-align: center; }
-.sk-table .col-num { width: 68px; }
+.sk-table .col-num { width: 70px; }
 .sk-table th.col-num, .sk-table td.col-num { text-align: center !important; }
 
 /* ── Table Header Groups ── */
