@@ -211,8 +211,8 @@ function renderTable() {
                 <td onclick="openModal('${item.id}')" class="mfr-tag">${item.mfr || '-'}</td>
                 <td onclick="openModal('${item.id}')">${item.item || '-'}</td>
                 <td onclick="openModal('${item.id}')">${item.spec || '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.price || '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.sellPrice || '-'}</td>
+                <td onclick="openModal('${item.id}')">${item.price && item.price !== '-' ? '\\ ' + item.price : '-'}</td>
+                <td onclick="openModal('${item.id}')">${item.sellPrice && item.sellPrice !== '-' ? '\\ ' + item.sellPrice : '-'}</td>
                 <td onclick="openModal('${item.id}')" style="font-weight:600; color:var(--primary);">${marginText}</td>
                 <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${item.id}')">보기</button></td>
                 <td onclick="openModal('${item.id}')">${item.note || ''}</td>
