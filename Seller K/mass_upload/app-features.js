@@ -1715,12 +1715,34 @@ function exportToInventory() {
     
     allProducts.forEach(function(p) {
         if (idsToExport.indexOf(p.id) !== -1) {
-            // Option B: Comma separated colors
+            // Parse options intelligently into color and size
             var colorStr = '';
-            if (p.optionValues && p.optionValues.length > 0 && Array.isArray(p.optionValues[0])) {
-                colorStr = p.optionValues[0].join(', ');
-            } else if (p.optionValues && p.optionValues.length > 0 && typeof p.optionValues[0] === 'string') {
-                colorStr = p.optionValues.join(', ');
+            var sizeStr = '';
+            
+            if (p.optionNames && Array.isArray(p.optionNames) && p.optionValues && Array.isArray(p.optionValues)) {
+                for (var i = 0; i < p.optionNames.length; i++) {
+                    var optName = (p.optionNames[i] || '').toLowerCase();
+                    var vals = p.optionValues[i] || [];
+                    var joined = Array.isArray(vals) ? vals.join(', ') : String(vals);
+                    
+                    if (optName.indexOf('컬러') !== -1 || optName.indexOf('색상') !== -1 || optName.indexOf('color') !== -1) {
+                        colorStr = joined;
+                    } else if (optName.indexOf('사이즈') !== -1 || optName.indexOf('크기') !== -1 || optName.indexOf('size') !== -1) {
+                        sizeStr = joined;
+                    } else {
+                        if (i === 0 && !colorStr) colorStr = joined;
+                        else if (i === 1 && !sizeStr) sizeStr = joined;
+                    }
+                }
+            } else if (p.optionValues && p.optionValues.length > 0) {
+                if (Array.isArray(p.optionValues[0])) {
+                    colorStr = p.optionValues[0].join(', ');
+                    if (p.optionValues.length > 1 && Array.isArray(p.optionValues[1])) {
+                        sizeStr = p.optionValues[1].join(', ');
+                    }
+                } else if (typeof p.optionValues[0] === 'string') {
+                    colorStr = p.optionValues.join(', ');
+                }
             }
             
             exportPayload.push({
@@ -1728,7 +1750,7 @@ function exportToInventory() {
                 brand: p.brand || '',
                 name: p.internalName || p.productName || '',
                 color: colorStr || '',
-                size: '',
+                size: sizeStr || '',
                 uploadDate: todayStr,
                 buyPrice: p.buyPrice || 0,
                 buyShipping: p.buyShippingFee || 0,
