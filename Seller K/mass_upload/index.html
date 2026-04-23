@@ -20,47 +20,13 @@
     <style>
         /* 포털 전용: 사이드바 없이 전체 너비 사용 */
         .main-content { margin-left: 0; }
-        .portal-tabs {
-            display: flex; align-items: center; gap: 4px;
-            padding: 8px 16px; background: var(--bg-secondary, #f8f9fa);
-            border-bottom: 1px solid var(--border-color, #e5e7eb);
-            flex-wrap: wrap;
-        }
-        .portal-tabs a {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 14px; border-radius: 6px;
-            font-size: 13px; font-weight: 500; color: var(--gray-600, #555);
-            text-decoration: none; transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .portal-tabs a:hover { background: var(--bg-hover, #e9ecef); color: var(--gray-800, #333); }
-        .portal-tabs a.active { background: var(--primary, #4f46e5); color: #fff; }
-        .portal-tabs .tab-divider {
-            width: 1px; height: 20px; background: var(--border-color, #ddd); margin: 0 4px;
-        }
-        .portal-tabs .tab-badge {
-            font-size: 11px; color: var(--gray-500); margin-left: auto; padding-left: 12px;
-        }
     </style>
 </head>
 
 <body>
-    <!-- 메인 앱 (포털 iframe 전용) -->
+    <!-- 메인 앱 (포털 iframe 전용 — 네비게이션은 포털 사이드바에서 처리) -->
     <div class="app-container" id="mainApp">
         <main class="main-content">
-            <!-- 상단 탭 네비게이션 (사이드바 대체) -->
-            <nav class="portal-tabs" id="portalTabs">
-                <a href="#register" id="navRegister" class="active"><i class='bx bx-edit'></i> 상품 등록</a>
-                <a href="#products" id="navProducts"><i class='bx bx-list-ul'></i> 상품 목록</a>
-                <a href="#export" id="navExport"><i class='bx bx-download'></i> 엑셀 생성</a>
-                <span class="tab-divider"></span>
-                <a href="#presets" id="navPresets"><i class='bx bx-slider'></i> 배송</a>
-                <a href="#marginPresets" id="navMarginPresets"><i class='bx bx-calculator'></i> 마진</a>
-                <a href="#addresses" id="navAddresses"><i class='bx bx-map'></i> 주소록</a>
-                <a href="#footerImages" id="navFooterImages"><i class='bx bx-images'></i> 안내 이미지</a>
-                <span class="tab-badge" id="productCountBadge">등록 상품: 0건</span>
-            </nav>
-
             <div class="page-body" id="pageBody">
 
                 <!-- ═══ PAGE: 상품 등록 ═══ -->

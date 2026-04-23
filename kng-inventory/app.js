@@ -1456,8 +1456,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // 내부 페이지 숨기고 iframe 표시
         if (internalPages) internalPages.style.display = 'none';
         if (iframeContainer) iframeContainer.classList.remove('hidden');
-        // embed 파라미터 추가 — 서브앱이 포털 내 임베드 모드를 감지할 수 있도록
-        var embedSrc = src + (src.indexOf('?') === -1 ? '?embed=true' : '&embed=true');
+        // embed 파라미터 추가 — 해시(#) 앞에 삽입
+        var hashIdx = src.indexOf('#');
+        var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
+        var hash = hashIdx !== -1 ? src.substring(hashIdx) : '';
+        var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true') + hash;
         if (appIframe) appIframe.src = embedSrc;
 
         // 검색바 / VAT 버튼 숨김 (외부 앱에서는 불필요)
