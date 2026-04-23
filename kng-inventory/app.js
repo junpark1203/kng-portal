@@ -1461,7 +1461,30 @@ document.addEventListener('DOMContentLoaded', function() {
         var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
         var hash = hashIdx !== -1 ? src.substring(hashIdx) : '';
         var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true') + hash;
-        if (appIframe) appIframe.src = embedSrc;
+
+        if (appIframe) {
+            // 같은 base URL이 이미 로드되어 있으면 해시만 변경 (깜빡임 방지)
+            var currentSrc = '';
+            try { currentSrc = appIframe.contentWindow.location.href; } catch(e) {}
+            var currentBase = currentSrc.split('#')[0].split('?')[0];
+            var newBase = base.split('?')[0];
+            // 상대 경로 비교를 위해 끝부분만 비교
+            var currentEnd = currentBase.split('/').slice(-2).join('/');
+            var newEnd = newBase.split('/').slice(-2).join('/');
+
+            if (currentEnd && newEnd && currentEnd === newEnd && hash) {
+                // 같은 앱 — 해시만 변경 (리로드 없이)
+                try {
+                    appIframe.contentWindow.location.hash = hash;
+                    // hashchange 이벤트 강제 트리거
+                    appIframe.contentWindow.dispatchEvent(new HashChangeEvent('hashchange'));
+                } catch(e) {
+                    appIframe.src = embedSrc;
+                }
+            } else {
+                appIframe.src = embedSrc;
+            }
+        }
 
         // 검색바 / VAT 버튼 숨김 (외부 앱에서는 불필요)
         if (searchWrap) searchWrap.style.display = 'none';
