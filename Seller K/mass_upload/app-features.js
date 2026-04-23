@@ -282,6 +282,8 @@ function initProductList() {
     });
     var delBtn = document.getElementById('btnDeleteSelected');
     if (delBtn) delBtn.addEventListener('click', deleteSelectedProducts);
+    var exportInvBtn = document.getElementById('btnExportToInventory');
+    if (exportInvBtn) exportInvBtn.addEventListener('click', exportToInventory);
     refreshProductList();
 }
 
@@ -1692,4 +1694,74 @@ function renderFooterImagePreviews() {
             consentPreview.style.display = 'none';
         }
     }
+}
+
+function exportToInventory() {
+    var checks = document.querySelectorAll('.product-row-check:checked');
+    if (checks.length === 0) {
+        showToast('내보낼 상품을 선택하세요.', 'warning');
+        return;
+    }
+    
+    var supplier = prompt('해당 상품의 매입처를 적어주세요\n(빈칸으로 두시면 \'미지정\'으로 들어갑니다)', '');
+    if (supplier === null) return; // User cancelled
+    if (!supplier.trim()) supplier = '미지정';
+    
+    var allProducts = Storage.getProducts();
+    var idsToExport = Array.from(checks).map(function(cb) { return cb.value; });
+    
+    var exportPayload = [];
+    var todayStr = new Date().toISOString().split('T')[0];
+    
+    allProducts.forEach(function(p) {
+        if (idsToExport.indexOf(p.id) !== -1) {
+            // Option B: Comma separated colors
+            var colorStr = '';
+            if (p.optionValues && p.optionValues.length > 0 && Array.isArray(p.optionValues[0])) {
+                colorStr = p.optionValues[0].join(', ');
+            } else if (p.optionValues && p.optionValues.length > 0 && typeof p.optionValues[0] === 'string') {
+                colorStr = p.optionValues.join(', ');
+            }
+            
+            exportPayload.push({
+                supplier: supplier,
+                brand: p.brand || '',
+                name: p.internalName || p.productName || '',
+                color: colorStr || '',
+                size: '',
+                uploadDate: todayStr,
+                buyPrice: p.buyPrice || 0,
+                buyShipping: p.buyShippingFee || 0,
+                shippingBasis: p.deliveryFeeType || '수량별',
+                shippingQty: p.shippingQty || 1,
+                sellPrice: p.salePrice || 0,
+                sellShipping: p.deliveryFee || 0,
+                isLowestPrice: 0,
+                isSoldOut: 0,
+                remarks: ''
+            });
+        }
+    });
+    
+    if (exportPayload.length === 0) return;
+    
+    fetch('https://kng.junparks.com/api/seller-k/products/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: exportPayload })
+    })
+    .then(function(res) {
+        if (!res.ok) throw new Error('서버 응답 오류');
+        return res.json();
+    })
+    .then(function(result) {
+        showToast(exportPayload.length + '건 매입 상품 목록으로 내보내기 성공!', 'success');
+        checks.forEach(function(cb) { cb.checked = false; });
+        var checkAll = document.getElementById('checkAll');
+        if (checkAll) checkAll.checked = false;
+    })
+    .catch(function(err) {
+        console.error(err);
+        showToast('내보내기 실패: ' + err.message, 'error');
+    });
 }
