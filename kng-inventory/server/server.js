@@ -152,6 +152,29 @@ function initDb() {
         if (err) console.error('supply_history 테이블 생성 오류:', err.message);
         else console.log('supply_history 테이블 확인 완료');
     });
+
+    // 유류 자재 공급 내역 테이블
+    db.run(`
+        CREATE TABLE IF NOT EXISTS oil_supply_history (
+            id TEXT PRIMARY KEY,
+            date TEXT,
+            site TEXT,
+            supplier TEXT,
+            manufacturer TEXT,
+            category TEXT,
+            item TEXT,
+            spec TEXT,
+            totalQty TEXT,
+            qty INTEGER,
+            price INTEGER,
+            total INTEGER,
+            createdAt TEXT,
+            updatedAt TEXT
+        )
+    `, (err) => {
+        if (err) console.error('oil_supply_history 테이블 생성 오류:', err.message);
+        else console.log('oil_supply_history 테이블 확인 완료');
+    });
 }
 
 // ----------------------------------------------------
@@ -401,7 +424,79 @@ app.post('/api/supply-history/bulk', (req, res) => {
     });
 });
 
-// 다중 삭제
+// ==========================================
+// 5. 유류 자재 공급 내역 API (/api/oil-supply-history)
+// ==========================================
+// 목록 조회
+app.get('/api/oil-supply-history', (req, res) => {
+    db.all('SELECT * FROM oil_supply_history ORDER BY date DESC, createdAt DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 신규 등록
+app.post('/api/oil-supply-history', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('OSH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO oil_supply_history (id, date, site, supplier, manufacturer, category, item, spec, totalQty, qty, price, total, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.date||'', p.site||'', p.supplier||'', p.manufacturer||'', p.category||'', p.item||'', p.spec||'', p.totalQty||'', p.qty||0, p.price||0, p.total||0, now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id: id });
+    });
+});
+
+// 단일 수정
+app.put('/api/oil-supply-history/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE oil_supply_history SET date=?, site=?, supplier=?, manufacturer=?, category=?, item=?, spec=?, totalQty=?, qty=?, price=?, total=?, updatedAt=? WHERE id=?`;
+    const params = [p.date||'', p.site||'', p.supplier||'', p.manufacturer||'', p.category||'', p.item||'', p.spec||'', p.totalQty||'', p.qty||0, p.price||0, p.total||0, now, id];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 다중 선택 삭제
+app.post('/api/oil-supply-history/delete', (req, res) => {
+    const ids = req.body.ids;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: '삭제할 ID 목록이 필요합니다.' });
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `DELETE FROM oil_supply_history WHERE id IN (${placeholders})`;
+    db.run(sql, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
+// 일괄 등록 (마이그레이션 및 엑셀 업로드용)
+app.post('/api/oil-supply-history/bulk', (req, res) => {
+    const items = req.body;
+    if (!Array.isArray(items)) return res.status(400).json({ error: '배열이 필요합니다.' });
+    const now = new Date().toISOString();
+    const sql = `INSERT OR IGNORE INTO oil_supply_history (id, date, site, supplier, manufacturer, category, item, spec, totalQty, qty, price, total, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    let inserted = 0;
+    const stmt = db.prepare(sql);
+    items.forEach((p, i) => {
+        const id = p.id || ('OSH-MIG-' + String(i).padStart(4, '0'));
+        stmt.run([id, p.date||'', p.site||'', p.supplier||'', p.manufacturer||'', p.category||'', p.item||'', p.spec||'', p.totalQty||'', p.qty||0, p.price||0, p.total||0, now, now], function(err) {
+            if (!err && this.changes > 0) inserted++;
+        });
+    });
+    stmt.finalize((err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '일괄 등록 완료', insertedCount: inserted, totalCount: items.length });
+    });
+});
+
+// 다중 삭제 (단가표)
 app.post('/api/unit-prices/delete', (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {

@@ -2,888 +2,172 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>현장별 소모품 공급 현황</title>
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현장별 유류 자재 공급 현황</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <link rel="stylesheet" href="../../../kng-inventory/styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --primary: #3b82f6;      
-            --primary-hover: #2563eb;
-            --success: #10b981;      
-            --success-hover: #059669;
-            --danger: #ef4444;       
-            --danger-hover: #dc2626;
-            --warning: #f59e0b;      
-            --warning-hover: #d97706;
-            --excel: #059669;        
-            --excel-hover: #047857;
-            --bg-color: #f8fafc;     
-            --card-bg: #ffffff;      
-            --text-main: #334155;    
-            --text-muted: #64748b;   
-            --border: #e2e8f0;       
-        }
-
-        body { 
-            font-family: 'Pretendard', 'Malgun Gothic', sans-serif; 
-            background-color: var(--bg-color); 
-            color: var(--text-main); 
-            padding: 30px 20px; 
-            margin: 0;
-        }
-        
-        .container { 
-            max-width: 1600px; 
-            margin: 0 auto; 
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 25px;
-        }
-        .page-header h1 { margin: 0; font-size: 28px; color: #0f172a; letter-spacing: -0.5px; }
-        .page-header p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 15px; }
-
-        .card { 
-            background: var(--card-bg); 
-            border-radius: 12px; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.025); 
-            padding: 24px; 
-            margin-bottom: 24px; 
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-
-        .top-action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .help-text { color: var(--text-muted); font-size: 14px; background: #f0fdf4; padding: 8px 12px; border-radius: 6px; border-left: 4px solid var(--success); }
-
-        button { 
-            font-family: 'Pretendard', sans-serif; 
-            padding: 10px 18px; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-weight: 600; 
-            font-size: 14px; 
-            transition: all 0.2s ease-in-out; 
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .btn-save { background-color: var(--primary); color: white; padding: 12px 24px; font-size: 15px; }
-        .btn-save:hover { background-color: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); }
-        .btn-excel { background-color: var(--excel); color: white; }
-        .btn-excel:hover { background-color: var(--excel-hover); }
-        .btn-reset { background-color: #e2e8f0; color: var(--text-main); }
-        .btn-reset:hover { background-color: #cbd5e1; }
-        .btn-add, .btn-remove { padding: 6px 12px; }
-        .btn-add { background-color: var(--primary); color: white; }
-        .btn-add:hover { background-color: var(--primary-hover); }
-        .btn-remove { background-color: var(--danger); color: white; }
-        .btn-remove:hover { background-color: var(--danger-hover); }
-        .action-btn { padding: 6px 12px; font-size: 12px; margin-bottom: 4px; width: 100%; border-radius: 4px;}
-        .edit-btn { background-color: var(--warning); color: white; }
-        .edit-btn:hover { background-color: var(--warning-hover); }
-        .delete-btn { background-color: var(--danger); color: white; }
-        .delete-btn:hover { background-color: var(--danger-hover); }
-        .save-edit-btn { background-color: var(--success); color: white; }
-
-        input { 
-            font-family: 'Pretendard', sans-serif;
-            width: 100%; 
-            box-sizing: border-box; 
-            padding: 10px 12px; 
-            border: 1px solid var(--border); 
-            border-radius: 6px; 
-            font-size: 14px; 
-            color: var(--text-main);
-            transition: border-color 0.2s, box-shadow 0.2s;
-            outline: none;
-        }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .readonly-input { background-color: transparent; border: none !important; text-align: center; font-weight: 700; color: var(--primary); outline: none; }
-        
-        table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { padding: 14px 10px; text-align: center; vertical-align: middle; }
-        th { 
-            background-color: #f1f5f9; 
-            color: #475569; 
-            font-weight: 600; 
-            font-size: 13px; 
-            border-bottom: 2px solid var(--border); 
-            position: relative;
-        }
-        td { border-bottom: 1px solid var(--border); font-size: 14px; }
-        tbody tr:hover td { background-color: #f8fafc; }
-        
-        .sortable { cursor: pointer; transition: background-color 0.2s; user-select: none; }
-        .sortable:hover { background-color: #e2e8f0; color: #0f172a; }
-        .sort-icon { font-size: 11px; margin-left: 4px; color: var(--primary); display: inline-block; width: 12px; }
-
-        .input-table th { background-color: #334155; color: white; border-bottom: none; cursor: default; }
-        .input-table td { padding: 8px 6px; }
-        .input-table input { padding: 8px 10px; }
-        .td-readonly { background-color: #f1f5f9; border-radius: 4px; }
-
-        .filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .filter-header h2 { margin: 0; font-size: 18px; color: #1e293b; }
-        .filter-grid { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
-        .filter-group { display: flex; flex-direction: column; gap: 6px; }
-        .filter-group label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
-        .filter-group input { width: 160px; }
-        
-        .summary-box { 
-            background: linear-gradient(to right, #eff6ff, #f0fdf4); 
-            border: 1px solid #bfdbfe; 
-            border-radius: 8px; 
-            padding: 16px 20px; 
-            display: flex;
-            gap: 40px;
-            align-items: center;
-        }
-        .summary-item { display: flex; flex-direction: column; }
-        .summary-label { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
-        .summary-value { font-size: 20px; font-weight: 700; color: #1e293b; }
-        .summary-value.highlight { color: var(--primary); }
-    </style>
 </head>
 <body>
-
-<div class="container">
-    <div class="page-header">
-        <div>
-            <h1>현장별 소모품 공급 현황</h1>
-            <p>Google Apps Script 연동 / 2026-04-03 박준영</p>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="top-action-bar">
-            <span class="help-text">💡 상단영역에 데이터 입력 후 저장</span>
-            <button class="btn-save" onclick="saveAllData()">저장</button>
-        </div>
-        
-        <table class="input-table">
-            <thead>
-                <tr>
-                    <th style="width: 9%;">날짜</th>
-                    <th style="width: 10%;">현장명</th>
-                    <th style="width: 9%;">공급사</th>
-                    <th style="width: 9%;">제조사</th>
-                    <th style="width: 9%;">구분</th>
-                    <th style="width: 14%;">품명</th>
-                    <th style="width: 9%;">규격</th>
-                    <th style="width: 6%;">수량</th>
-                    <th style="width: 9%;">전체수량</th>
-                    <th style="width: 9%;">단가(원)</th>
-                    <th style="width: 7%;">관리</th>
-                </tr>
-            </thead>
-            <tbody id="inputTbody">
-            </tbody>
-        </table>
-    </div>
-
-    <div class="card">
-        <div class="filter-header">
-            <h2>🔍 상세 검색 및 데이터 추출</h2>
-            <div style="display: flex; gap: 8px;">
-                <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelUpload(event)">
-                <button class="btn-excel" onclick="document.getElementById('excelUpload').click()" style="background-color: #10b981;">📁 엑셀 업로드</button>
-                <button class="btn-excel" onclick="downloadExcel()">📊 엑셀 다운로드</button>
-            </div>
-        </div>
-        
-        <div class="filter-grid">
-            <div class="filter-group">
-              <label>조회 기간 (년 또는 년-월)</label>
-              <input type="text" id="filterMonth" placeholder="예: 2025 또는 2025-02" onkeyup="filterData()">
-            </div>
-            <div class="filter-group">
-                <label>현장명</label>
-                <input type="text" id="filterSite" placeholder="예: 당진공장" onkeyup="filterData()">
-            </div>
-            <div class="filter-group">
-                <label>구분</label>
-                <input type="text" id="filterCategory" placeholder="예: 안전용품" onkeyup="filterData()">
-            </div>
-            <div class="filter-group">
-                <label>공급사</label>
-                <input type="text" id="filterSupplier" placeholder="예: 양지유화" onkeyup="filterData()">
-            </div>
-            <div class="filter-group">
-                <label>품명</label>
-                <input type="text" id="filterItem" placeholder="예: Xteer IGO" onkeyup="filterData()">
-            </div>
-            <button class="btn-reset" onclick="clearFilters()" style="margin-bottom: 2px;">초기화</button>
-        </div>
-        
-        <div id="summaryBox" class="summary-box">
-        </div>
-    </div>
-
-    <div class="card" style="padding: 0; overflow: hidden;">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th class="sortable" onclick="sortTable('date')">공급일자 <span class="sort-icon" id="sort-icon-date"></span></th>
-                    <th class="sortable" onclick="sortTable('site')">현장명 <span class="sort-icon" id="sort-icon-site"></span></th>
-                    <th class="sortable" onclick="sortTable('supplier')">공급사 <span class="sort-icon" id="sort-icon-supplier"></span></th>
-                    <th class="sortable" onclick="sortTable('manufacturer')">제조사 <span class="sort-icon" id="sort-icon-manufacturer"></span></th>
-                    <th class="sortable" onclick="sortTable('category')">구분 <span class="sort-icon" id="sort-icon-category"></span></th>
-                    <th class="sortable" onclick="sortTable('item')">품명 <span class="sort-icon" id="sort-icon-item"></span></th>
-                    <th class="sortable" onclick="sortTable('spec')">규격 <span class="sort-icon" id="sort-icon-spec"></span></th>
-                    <th>전체수량</th> 
-                    <th class="sortable" onclick="sortTable('qty')">수량 <span class="sort-icon" id="sort-icon-qty"></span></th>
-                    <th class="sortable" onclick="sortTable('price')">단가(원) <span class="sort-icon" id="sort-icon-price"></span></th>
-                    <th class="sortable" onclick="sortTable('total')">총액(원) <span class="sort-icon" id="sort-icon-total"></span></th>
-                    <th style="width: 70px;">관리</th>
-                </tr>
-            </thead>
-            <tbody id="dataTableBody">
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    // 복사해둔 구글 앱스 스크립트 웹앱 URL
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrzbS2OeKtSmzxQv2OkHyXHoyQIp8AQ1GslxcnSg-y698DjzamyldYMwWGRmotZKo-Ww/exec';
-
-    let currentFilteredRecords = [];
-    let currentSortColumn = ''; 
-    let isAscending = true;     
-
-    document.addEventListener('DOMContentLoaded', () => {
-        addInputRow();
-        loadDataFromSheet();
-    });
-
-    async function loadDataFromSheet() {
-        try {
-            const response = await fetch(SCRIPT_URL);
-            const data = await response.json();
-            
-            const formattedData = data.map(record => {
-                if (record.date && record.date.includes('T')) {
-                    const d = new Date(record.date);
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    record.date = `${yyyy}-${mm}-${dd}`;
-                }
-                return record;
-            });
-
-            localStorage.setItem('supplyRecords', JSON.stringify(formattedData));
-            filterData();
-        } catch (error) {
-            console.error('데이터 연동 실패:', error);
-            filterData(); 
-        }
-    }
-
-    function getToday() {
-        return new Date().toISOString().split('T')[0];
-    }
-
-    function addInputRow(button = null) {
-        const tbody = document.getElementById('inputTbody');
-        const tr = document.createElement('tr');
-        tr.className = 'input-row';
-
-        let defaultDate = getToday();
-        let defaultSite = '';
-        let defaultSupplier = '';
-        let defaultManufacturer = '';
-        let defaultCategory = '';
-
-        if (button) {
-            const prevRow = button.closest('tr');
-            defaultDate = prevRow.querySelector('.in-date').value;
-            defaultSite = prevRow.querySelector('.in-site').value;
-            defaultSupplier = prevRow.querySelector('.in-supplier').value;
-            defaultManufacturer = prevRow.querySelector('.in-manufacturer').value;
-            defaultCategory = prevRow.querySelector('.in-category').value;
-        }
-
-        tr.innerHTML = `
-            <td><input type="date" class="in-date" value="${defaultDate}"></td>
-            <td><input type="text" class="in-site" placeholder="현장명" value="${defaultSite}"></td>
-            <td><input type="text" class="in-supplier" placeholder="공급사" value="${defaultSupplier}"></td>
-            <td><input type="text" class="in-manufacturer" placeholder="제조사" value="${defaultManufacturer}"></td>
-            <td><input type="text" class="in-category" placeholder="구분" value="${defaultCategory}"></td>
-            <td><input type="text" class="in-item" placeholder="품명"></td>
-            <td><input type="text" class="in-spec" placeholder="예: 200L"></td>
-            <td><input type="number" class="in-qty" placeholder="0" min="1"></td>
-            <td class="td-readonly"><input type="text" class="in-totalQty readonly-input" placeholder="-" readonly tabindex="-1"></td>
-            <td><input type="number" class="in-price" placeholder="0" min="0"></td>
-            <td style="text-align: center;">
-                <button class="btn-add" onclick="addInputRow(this)">+</button>
-                <button class="btn-remove" onclick="removeInputRow(this)">-</button>
-            </td>
-        `;
-        
-        const specInput = tr.querySelector('.in-spec');
-        const qtyInput = tr.querySelector('.in-qty');
-        const totalQtyInput = tr.querySelector('.in-totalQty');
-
-        const calculateTotalQty = () => {
-            const specVal = specInput.value.trim();
-            const qtyVal = Number(qtyInput.value) || 0;
-            const numMatch = specVal.match(/[\d\.]+/);
-            if (numMatch && qtyVal > 0) {
-                const specNum = Number(numMatch[0]);
-                const unit = specVal.replace(/[\d\.\s]/g, ''); 
-                totalQtyInput.value = (specNum * qtyVal).toLocaleString() + unit;
-            } else {
-                totalQtyInput.value = '';
-            }
-        };
-
-        specInput.addEventListener('input', calculateTotalQty);
-        qtyInput.addEventListener('input', calculateTotalQty);
-
-        if(button) {
-            tbody.insertBefore(tr, button.closest('tr').nextSibling);
-            tr.querySelector('.in-item').focus();
-        } else {
-            tbody.appendChild(tr);
-        }
-    }
-
-    function removeInputRow(button) {
-        const tbody = document.getElementById('inputTbody');
-        if (tbody.querySelectorAll('.input-row').length > 1) {
-            button.closest('tr').remove();
-        } else {
-            alert('최소 1줄의 입력 칸은 필요합니다.');
-        }
-    }
-
-    async function saveAllData() {
-        const rows = document.querySelectorAll('.input-row');
-        let recordsToAdd = [];
-        let hasError = false;
-
-        rows.forEach((row, index) => {
-            const site = row.querySelector('.in-site').value.trim();
-            const item = row.querySelector('.in-item').value.trim();
-            const qty = Number(row.querySelector('.in-qty').value);
-            
-            if (!site && !item && qty === 0) return; 
-
-            if (!site || !item) {
-                alert(`${index + 1}번째 줄의 현장명과 품명을 모두 입력해주세요.`);
-                hasError = true; return;
-            }
-
-            const record = {
-                id: Date.now() + Math.random(),
-                date: row.querySelector('.in-date').value,
-                site: site,
-                supplier: row.querySelector('.in-supplier').value.trim(),
-                manufacturer: row.querySelector('.in-manufacturer').value.trim(),
-                category: row.querySelector('.in-category').value.trim(),
-                item: item,
-                spec: row.querySelector('.in-spec').value.trim(),
-                totalQty: row.querySelector('.in-totalQty').value.trim(),
-                qty: qty,
-                price: Number(row.querySelector('.in-price').value),
-                total: qty * Number(row.querySelector('.in-price').value)
-            };
-
-            recordsToAdd.push(record);
-        });
-
-        if (hasError || recordsToAdd.length === 0) return;
-
-        const saveBtn = document.querySelector('.btn-save');
-        saveBtn.innerText = '저장 중...';
-        saveBtn.disabled = true;
-
-        try {
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'saveAll', data: recordsToAdd })
-            });
-
-            await loadDataFromSheet();
-            
-            document.getElementById('inputTbody').innerHTML = '';
-            addInputRow(); 
-            alert(`${recordsToAdd.length}건이 시트에 성공적으로 저장되었습니다.`);
-        } catch(e) {
-            alert('저장 중 네트워크 오류가 발생했습니다.');
-        } finally {
-            saveBtn.innerText = '데이터 일괄 저장';
-            saveBtn.disabled = false;
-        }
-    }
-
-    function filterData() {
-        // 입력된 키워드 가져오기
-        const periodKeyword = document.getElementById('filterMonth').value.trim(); // "2025" 혹은 "2025-02"
-        const siteKeyword = document.getElementById('filterSite').value.trim().toLowerCase();
-        const categoryKeyword = document.getElementById('filterCategory').value.trim().toLowerCase();
-        const supplierKeyword = document.getElementById('filterSupplier').value.trim().toLowerCase();
-        const itemKeyword = document.getElementById('filterItem').value.trim().toLowerCase();
-
-        let records = JSON.parse(localStorage.getItem('supplyRecords')) || [];
-
-        const filtered = records.filter(record => {
-            // 날짜 비교: 입력값이 "2025"라면 "2025-01-01"의 앞부분과 매칭됨
-            const matchPeriod = periodKeyword ? record.date.startsWith(periodKeyword) : true;
-            const matchSite = siteKeyword ? record.site.toLowerCase().includes(siteKeyword) : true;
-            const matchCategory = categoryKeyword ? (record.category || '').toLowerCase().includes(categoryKeyword) : true;
-            const matchSupplier = supplierKeyword ? (record.supplier || '').toLowerCase().includes(supplierKeyword) : true;
-            const matchItem = itemKeyword ? record.item.toLowerCase().includes(itemKeyword) : true;
-            
-            return matchPeriod && matchSite && matchCategory && matchSupplier && matchItem;
-        });
-
-        // 결과 렌더링 (최신순)
-        currentFilteredRecords = filtered.slice().reverse(); 
-
-        if (currentSortColumn) {
-            applySort();
-        }
-
-        renderTable(currentFilteredRecords);
-    }
-
-    // 필터 초기화 시 텍스트 필드도 비워줌
-    function clearFilters() {
-        document.getElementById('filterMonth').value = '';
-        document.getElementById('filterSite').value = '';
-        document.getElementById('filterCategory').value = '';
-        document.getElementById('filterSupplier').value = '';
-        document.getElementById('filterItem').value = '';
-        filterData();
-    }
-
-    function sortTable(column) {
-        if (currentSortColumn === column) {
-            isAscending = !isAscending;
-        } else {
-            currentSortColumn = column;
-            isAscending = true;
-        }
-        applySort();
-        updateSortIcons();
-        renderTable(currentFilteredRecords);
-    }
-
-    function applySort() {
-        currentFilteredRecords.sort((a, b) => {
-            let valA = a[currentSortColumn];
-            let valB = b[currentSortColumn];
-
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
-
-            if (valA === undefined || valA === null) valA = '';
-            if (valB === undefined || valB === null) valB = '';
-
-            if (valA < valB) return isAscending ? -1 : 1;
-            if (valA > valB) return isAscending ? 1 : -1;
-            return 0;
-        });
-    }
-
-    function updateSortIcons() {
-        document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '');
-        if (currentSortColumn) {
-            const iconSpan = document.getElementById(`sort-icon-${currentSortColumn}`);
-            if (iconSpan) {
-                iconSpan.textContent = isAscending ? '▲' : '▼';
-            }
-        }
-    }
-
-    function renderTable(recordsToRender) {
-        const tbody = document.getElementById('dataTableBody');
-        tbody.innerHTML = ''; 
-
-        let sumTotalQty = 0; 
-        let sumTotal = 0;    
-        let units = new Set(); 
-        let siteStats = {}; 
-        let categoryStats = {}; // 📌 구분별 통계 객체 추가
-        let globalMonths = new Set(); 
-
-        if(recordsToRender.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="12" style="padding: 30px; color: #94a3b8;">조건에 맞는 납품 내역이 없습니다.</td></tr>`;
-        }
-
-        recordsToRender.forEach(record => {
-            const monthStr = record.date ? record.date.substring(0, 7) : '미상';
-            if (monthStr !== '미상') globalMonths.add(monthStr);
-
-            const numMatch = (record.spec || '').match(/[\d\.]+/);
-            let calcSpecQty = 0;
-            let currentUnit = '';
-
-            if (numMatch && record.qty > 0) {
-                calcSpecQty = Number(numMatch[0]) * record.qty;
-                sumTotalQty += calcSpecQty;
-                currentUnit = (record.spec || '').replace(/[\d\.\s]/g, '');
-                if(currentUnit) units.add(currentUnit);
-            }
-            sumTotal += record.total;
-
-            // 현장별 통계 누적
-            const siteName = record.site || '미지정';
-            if (!siteStats[siteName]) {
-                siteStats[siteName] = { specQty: 0, unit: '', count: 0, months: new Set() };
-            }
-            siteStats[siteName].specQty += calcSpecQty;
-            if (currentUnit) siteStats[siteName].unit = currentUnit;
-            siteStats[siteName].count += 1; 
-            if (monthStr !== '미상') siteStats[siteName].months.add(monthStr);
-
-            // 📌 구분별 통계 누적
-            const categoryName = record.category || '미분류';
-            if (!categoryStats[categoryName]) {
-                categoryStats[categoryName] = { specQty: 0, unit: '', count: 0, months: new Set() };
-            }
-            categoryStats[categoryName].specQty += calcSpecQty;
-            if (currentUnit) categoryStats[categoryName].unit = currentUnit;
-            categoryStats[categoryName].count += 1;
-            if (monthStr !== '미상') categoryStats[categoryName].months.add(monthStr);
-
-            const tr = document.createElement('tr');
-            tr.id = `row-${record.id}`;
-            tr.innerHTML = `
-                <td>${record.date || '-'}</td>
-                <td style="font-weight:600; color:#1e293b;">${record.site}</td>
-                <td>${record.supplier || '-'}</td>
-                <td>${record.manufacturer || '-'}</td>
-                <td><span style="background:#e2e8f0; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; color:#475569;">${record.category || '-'}</span></td>
-                <td style="font-weight:500;">${record.item || '-'}</td>
-                <td>${record.spec || '-'}</td>
-                <td style="color:var(--primary); font-weight:600;">${record.totalQty || '-'}</td>
-                <td>${record.qty ? record.qty.toLocaleString() : '0'}</td>
-                <td>${record.price ? record.price.toLocaleString() : '0'}</td>
-                <td style="font-weight:700; color:#0f172a;">${record.total ? record.total.toLocaleString() : '0'}</td>
-                <td>
-                    <button class="action-btn edit-btn" onclick="editRecord(${record.id})">수정</button>
-                    <button class="action-btn delete-btn" onclick="deleteRecord(${record.id})">삭제</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        const unitDisplay = units.size === 1 ? Array.from(units)[0] : '';
-        const displayTotalQty = sumTotalQty > 0 ? `${sumTotalQty.toLocaleString()} ${unitDisplay}`.trim() : '0';
-        
-        const globalMonthCount = globalMonths.size || 1;
-        const globalMonthlyAvg = Math.round(sumTotalQty / globalMonthCount);
-        const displayGlobalMonthlyAvg = globalMonthlyAvg > 0 ? `${globalMonthlyAvg.toLocaleString()} ${unitDisplay}/월`.trim() : '0';
-        
-        const siteCount = Object.keys(siteStats).length;
-
-        const summaryBox = document.getElementById('summaryBox');
-        summaryBox.style.flexDirection = 'column';
-        summaryBox.style.alignItems = 'stretch';
-        summaryBox.style.gap = '15px';
-
-        let summaryHtml = `
-            <div style="display: flex; gap: 40px; flex-wrap: wrap;">
-                <div class="summary-item">
-                    <span class="summary-label">납품 현장 수</span>
-                    <span class="summary-value" style="color: #059669;">${siteCount} 곳</span>
+    <div class="app-container">
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="main-content" style="margin-left: 0; padding: 20px 40px; min-height: 100vh;">
+            <div class="content-header">
+                <div class="header-left">
+                    <h1 class="page-title">현장별 유류 자재 공급 현황</h1>
+                    <span class="total-count" id="totalCount">0건</span>
                 </div>
-                <div class="summary-item">
-                    <span class="summary-label">총 조회 건수</span>
-                    <span class="summary-value">${recordsToRender.length} 건</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">전체수량 합계</span>
-                    <span class="summary-value highlight">${displayTotalQty}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">전체 월 평균 소요량</span>
-                    <span class="summary-value" style="color: #f59e0b;">${displayGlobalMonthlyAvg}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">총 납품액 (공급가)</span>
-                    <span class="summary-value highlight">${sumTotal.toLocaleString()} 원</span>
+                <div class="header-right">
+                    <button class="btn btn-secondary" id="deleteBtn"><i class='bx bx-trash'></i> 선택 삭제</button>
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display: none;">
+                    <button class="btn btn-secondary" id="uploadBtn"><i class='bx bx-upload'></i> 엑셀 업로드</button>
+                    <button class="btn btn-secondary" id="exportBtn"><i class='bx bx-download'></i> 엑셀 다운로드</button>
+                    <button class="btn btn-primary" id="migrateBtn"><i class='bx bx-cloud-download'></i> 구글 시트 데이터 가져오기</button>
+                    <button class="btn btn-primary" id="addBtn"><i class='bx bx-plus'></i> 신규 등록</button>
                 </div>
             </div>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        `;
 
-        // 📌 현장별 소요량 박스
-        if (siteCount > 0) {
-            summaryHtml += `
-                <div style="flex: 1; min-width: 300px; background: rgba(255, 255, 255, 0.7); border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-top: 5px;">
-                    <div style="font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 12px;">🏢 현장별 소요량 상세</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;">
-            `;
-            for (const [site, stat] of Object.entries(siteStats)) {
-                const siteMonthCount = stat.months.size || 1;
-                const siteMonthlyAvg = Math.round(stat.specQty / siteMonthCount);
-                const displaySiteQty = stat.specQty > 0 ? `${stat.specQty.toLocaleString()} ${stat.unit}`.trim() : '0';
-                const displaySiteMonthlyAvg = siteMonthlyAvg > 0 ? `${siteMonthlyAvg.toLocaleString()} ${stat.unit}/월`.trim() : '0';
-
-                summaryHtml += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 12px 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                            <span style="font-weight: 600; color: #334155; font-size: 14px; word-break: keep-all; margin-right: 10px;">${site}</span>
-                            <div style="text-align: right; min-width: 100px;">
-                                <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">누적: <span style="color: #0f172a; font-weight: 600;">${displaySiteQty}</span></div>
-                                <div style="color: var(--primary); font-weight: 700; font-size: 15px;">평균 ${displaySiteMonthlyAvg}</div>
-                                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">총 ${stat.count}회 납품</div>
-                            </div>
+            <div class="card">
+                <div class="card-body">
+                    <!-- 검색 바 -->
+                    <div class="search-bar" style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                        <div class="search-input-group" style="flex: 1; min-width: 250px;">
+                            <i class='bx bx-calendar'></i>
+                            <input type="text" id="searchMonth" placeholder="조회 기간 (예: 2025 또는 2025-02)" style="border:none; outline:none; background:transparent; width:100%;">
                         </div>
-                `;
-            }
-            summaryHtml += `</div></div>`;
-        }
-
-        // 📌 구분별 소요량 박스 추가
-        if (Object.keys(categoryStats).length > 0) {
-            summaryHtml += `
-                <div style="flex: 1; min-width: 300px; background: rgba(255, 255, 255, 0.7); border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-top: 5px;">
-                    <div style="font-size: 13px; font-weight: 700; color: #475569; margin-bottom: 12px;">📑 구분별 소요량 상세</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px;">
-            `;
-            for (const [category, stat] of Object.entries(categoryStats)) {
-                const categoryMonthCount = stat.months.size || 1;
-                const categoryMonthlyAvg = Math.round(stat.specQty / categoryMonthCount);
-                const displayCategoryQty = stat.specQty > 0 ? `${stat.specQty.toLocaleString()} ${stat.unit}`.trim() : '0';
-                const displayCategoryMonthlyAvg = categoryMonthlyAvg > 0 ? `${categoryMonthlyAvg.toLocaleString()} ${stat.unit}/월`.trim() : '0';
-
-                summaryHtml += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; padding: 12px 14px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-                            <span style="font-weight: 600; color: #334155; font-size: 14px; word-break: keep-all; margin-right: 10px;">${category}</span>
-                            <div style="text-align: right; min-width: 100px;">
-                                <div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">누적: <span style="color: #0f172a; font-weight: 600;">${displayCategoryQty}</span></div>
-                                <div style="color: var(--primary); font-weight: 700; font-size: 15px;">평균 ${displayCategoryMonthlyAvg}</div>
-                                <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">총 ${stat.count}회 납품</div>
-                            </div>
+                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
+                            <i class='bx bx-building'></i>
+                            <input type="text" id="searchSite" placeholder="현장명">
                         </div>
-                `;
-            }
-            summaryHtml += `</div></div>`;
-        }
+                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
+                            <i class='bx bx-tag'></i>
+                            <input type="text" id="searchCategory" placeholder="구분 (예: 안전용품)">
+                        </div>
+                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
+                            <i class='bx bx-store'></i>
+                            <input type="text" id="searchSupplier" placeholder="공급사">
+                        </div>
+                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
+                            <i class='bx bx-package'></i>
+                            <input type="text" id="searchItem" placeholder="품명">
+                        </div>
+                        <button class="btn btn-secondary" id="resetBtn" style="padding: 10px; height: 42px;"><i class='bx bx-refresh'></i></button>
+                    </div>
 
-        summaryHtml += `</div>`; // 닫기 태그
-        summaryBox.innerHTML = summaryHtml;
-    }
+                    <!-- 일괄 변경 바 (숨김) -->
+                    <div id="actionBar" style="display: none; padding: 12px; background: rgba(109, 74, 255, 0.05); border: 1px solid rgba(109, 74, 255, 0.2); border-radius: 8px; margin-bottom: 15px; align-items: center; gap: 10px;">
+                        <span style="font-weight: 600; color: var(--primary);"><span id="selectedCount">0</span>개 선택됨</span>
+                        <span style="font-size: 13px; color: var(--gray-500);">수정 기능은 개별 편집을 이용해주세요.</span>
+                    </div>
 
-    function editRecord(id) {
-        let records = JSON.parse(localStorage.getItem('supplyRecords')) || [];
-        const record = records.find(r => r.id === id);
-        if (!record) return;
+                    <!-- 통계 요약표 -->
+                    <div id="summaryBox" style="display: flex; flex-direction: column; gap: 15px; background: linear-gradient(to right, #eff6ff, #f0fdf4); border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;">
+                        <!-- JS에서 동적 생성됨 -->
+                    </div>
 
-        const tr = document.getElementById(`row-${id}`);
-        tr.style.backgroundColor = '#f8fafc';
-        tr.innerHTML = `
-            <td><input type="date" id="edit-date-${id}" value="${record.date}"></td>
-            <td><input type="text" id="edit-site-${id}" value="${record.site}"></td>
-            <td><input type="text" id="edit-supplier-${id}" value="${record.supplier}"></td>
-            <td><input type="text" id="edit-manufacturer-${id}" value="${record.manufacturer}"></td>
-            <td><input type="text" id="edit-category-${id}" value="${record.category || ''}"></td>
-            <td><input type="text" id="edit-item-${id}" value="${record.item}"></td>
-            <td><input type="text" id="edit-spec-${id}" value="${record.spec}"></td>
-            <td style="color:var(--primary); font-size:12px; font-weight:bold;">자동계산</td>
-            <td><input type="number" id="edit-qty-${id}" value="${record.qty}" min="1"></td>
-            <td><input type="number" id="edit-price-${id}" value="${record.price}" min="0"></td>
-            <td style="font-size:12px;">자동계산</td>
-            <td>
-                <button class="action-btn save-edit-btn" onclick="saveEdit(${id})">완료</button>
-                <button class="action-btn btn-reset" onclick="filterData()">취소</button>
-            </td>
-        `;
-    }
+                    <div class="table-container">
+                        <table class="data-table" style="font-size: 13px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                                    <th class="sortable" data-sort="date">공급일자 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="supplier">공급사 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="manufacturer">제조사 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="category">구분 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="item">품명 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
+                                    <th>전체수량</th>
+                                    <th class="sortable text-right" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable text-right" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                    <th class="sortable text-right" data-sort="total">총액 <i class='bx bx-sort'></i></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <tr class="loading-row"><td colspan="12"><div class="skeleton"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
-    async function saveEdit(id) {
-        let records = JSON.parse(localStorage.getItem('supplyRecords')) || [];
-        const index = records.findIndex(r => r.id === id);
-        if(index === -1) return;
+    <!-- 등록/수정 모달 -->
+    <div class="modal" id="itemModal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 id="modalTitle">신규 납품 등록</h3>
+                <button class="close-btn" id="closeModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm">
+                    <input type="hidden" id="editId">
+                    <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <!-- 기본 정보 -->
+                        <div class="fg">
+                            <label for="inpDate">공급일자 <span style="color:var(--danger)">*</span></label>
+                            <input type="date" id="inpDate" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpSite">현장명 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="inpSite" placeholder="예: 당진공장" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpCategory">구분</label>
+                            <input type="text" id="inpCategory" placeholder="예: 안전용품">
+                        </div>
 
-        const specVal = document.getElementById(`edit-spec-${id}`).value.trim();
-        const qtyVal = Number(document.getElementById(`edit-qty-${id}`).value);
-        let totalQtyVal = '';
+                        <!-- 품목 정보 -->
+                        <div class="fg">
+                            <label for="inpSupplier">공급사</label>
+                            <input type="text" id="inpSupplier" placeholder="예: 양지유화">
+                        </div>
+                        <div class="fg">
+                            <label for="inpManufacturer">제조사</label>
+                            <input type="text" id="inpManufacturer" placeholder="예: 현대오일뱅크">
+                        </div>
+                        <div class="fg">
+                            <label for="inpItem">품명 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="inpItem" placeholder="예: Xteer IGO" required>
+                        </div>
 
-        // 전체 수량 자동 계산 로직
-        const numMatch = specVal.match(/[\d\.]+/);
-        if (numMatch && qtyVal > 0) {
-            const specNum = Number(numMatch[0]);
-            const unit = specVal.replace(/[\d\.\s]/g, '');
-            totalQtyVal = (specNum * qtyVal).toLocaleString() + unit;
-        }
+                        <!-- 수량 및 단가 -->
+                        <div class="fg">
+                            <label for="inpSpec">규격</label>
+                            <input type="text" id="inpSpec" placeholder="예: 200L" oninput="calculateTotal()">
+                        </div>
+                        <div class="fg">
+                            <label for="inpQty">수량 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="inpQty" class="text-right" placeholder="0" oninput="formatNumberInput(this); calculateTotal();" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpTotalQty">전체 수량 (자동계산)</label>
+                            <input type="text" id="inpTotalQty" class="text-right" placeholder="-" readonly style="background-color: var(--gray-100); color:var(--primary); font-weight:bold;">
+                        </div>
 
-        // 시트의 헤더 이름과 똑같은 키값으로 데이터를 구성해야 함
-        const updatedRecord = {
-            id: id,
-            date: document.getElementById(`edit-date-${id}`).value,
-            site: document.getElementById(`edit-site-${id}`).value.trim(),
-            supplier: document.getElementById(`edit-supplier-${id}`).value.trim(),
-            manufacturer: document.getElementById(`edit-manufacturer-${id}`).value.trim(),
-            category: document.getElementById(`edit-category-${id}`).value.trim(), // 구분 추가
-            item: document.getElementById(`edit-item-${id}`).value.trim(),
-            spec: specVal,
-            totalQty: totalQtyVal,
-            qty: qtyVal,
-            price: Number(document.getElementById(`edit-price-${id}`).value),
-            total: qtyVal * Number(document.getElementById(`edit-price-${id}`).value)
-        };
+                        <div class="fg">
+                            <label for="inpPrice">단가 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="inpPrice" class="text-right" placeholder="0" oninput="formatNumberInput(this); calculateTotal();" required>
+                        </div>
+                        <div class="fg" style="grid-column: span 2;">
+                            <label for="inpTotal">총액 (자동계산)</label>
+                            <input type="text" id="inpTotal" class="text-right" placeholder="0" readonly style="background-color: var(--gray-100); color:var(--primary); font-weight:bold; font-size:16px;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
+                <button type="submit" form="itemForm" class="btn btn-primary">저장하기</button>
+            </div>
+        </div>
+    </div>
 
-        try {
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'update', data: updatedRecord }) // action: 'update' 확인
-            });
-            
-            if (response.ok) {
-                await loadDataFromSheet(); // 성공 시 데이터 새로고침
-                alert('수정이 완료되었습니다!');
-            } else {
-                throw new Error('서버 응답 오류');
-            }
-        } catch(e) {
-            console.error(e);
-            alert('수정 반영 중 오류가 발생했습니다. URL 배포 상태를 확인해주세요.');
-        }
-    }
+    <!-- 토스트 알림 컨테이너 -->
+    <div id="toastContainer" class="toast-container"></div>
 
-    async function deleteRecord(id) {
-        if(confirm('이 납품 내역을 삭제하시겠습니까?')) {
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'delete', id: id })
-                });
-                await loadDataFromSheet();
-            } catch(e) {
-                alert('삭제 중 오류가 발생했습니다.');
-            }
-        }
-    }
-
-    function downloadExcel() {
-    if (currentFilteredRecords.length === 0) {
-        alert('다운로드할 데이터가 없습니다.');
-        return;
-    }
-
-    let csvContent = '\uFEFF'; 
-    // 헤더에 id와 구분 추가
-    csvContent += "id,공급일자,현장명,공급사,제조사,구분,품명,규격,전체수량,수량,단가(원),총액(원)\n";
-
-    currentFilteredRecords.forEach(record => {
-        const row = [
-            record.id,
-            record.date,
-            `"${record.site || ''}"`,
-            `"${record.supplier || ''}"`,
-            `"${record.manufacturer || ''}"`,
-            `"${record.category || ''}"`,
-            `"${record.item || ''}"`,
-            `"${record.spec || ''}"`,
-            `"${record.totalQty || ''}"`,
-            record.qty || 0,
-            record.price || 0,
-            record.total || 0
-        ].join(',');
-        csvContent += row + "\n";
-    });
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    const today = new Date().toISOString().split('T')[0];
-    link.setAttribute("download", `납품관리대장_${today}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-    async function handleExcelUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const uploadBtn = event.target.nextElementSibling;
-    const originalText = uploadBtn.innerText;
-    uploadBtn.innerText = '업로드 중...';
-    uploadBtn.disabled = true;
-
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-            
-            let recordsToAdd = [];
-            const formatExcelDate = (excelDate) => {
-                if (!excelDate) return getToday();
-                if (typeof excelDate === 'number') {
-                    const jsDate = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
-                    const yyyy = jsDate.getUTCFullYear();
-                    const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
-                    const dd = String(jsDate.getUTCDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                }
-                return String(excelDate).trim();
-            };
-            const parseNumber = (val) => Number(String(val).replace(/[^0-9.-]+/g, "")) || 0;
-            
-            for (let i = 1; i < jsonData.length; i++) {
-                const row = jsonData[i];
-                // B열(날짜)이나 G열(품명)이 비어있으면 패스 (인덱스 1, 6)
-                if (!row || row.length === 0 || (!row[1] && !row[6])) continue;
-
-                const qty = parseNumber(row[9]); // J열
-                const price = parseNumber(row[10]); // K열
-
-                const record = {
-                    id: row[0] || Date.now() + Math.random() + i, // A열에 id가 있으면 쓰고 없으면 생성
-                    date: formatExcelDate(row[1]),   // B열
-                    site: String(row[2]).trim(),     // C열
-                    supplier: String(row[3]).trim(), // D열
-                    manufacturer: String(row[4]).trim(), // E열
-                    category: String(row[5]).trim(), // F열 (새로 추가된 구분)
-                    item: String(row[6]).trim(),     // G열 (품명)
-                    spec: String(row[7]).trim(),     // H열
-                    totalQty: String(row[8]).trim(), // I열
-                    qty: qty,                        // J열
-                    price: price,                    // K열
-                    total: parseNumber(row[11]) || (qty * price) // L열
-                };
-                recordsToAdd.push(record);
-            }
-
-            if (recordsToAdd.length === 0) { alert('데이터가 없습니다.'); return; }
-
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: 'saveAll', data: recordsToAdd })
-            });
-
-            await loadDataFromSheet();
-            alert(`${recordsToAdd.length}건 업로드 완료!`);
-            event.target.value = ''; 
-        } catch (error) {
-            alert('오류가 발생했습니다. 열 순서를 확인해주세요.');
-        } finally {
-            uploadBtn.innerText = originalText;
-            uploadBtn.disabled = false;
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-</script>
-
+    <script src="oil-supply.js"></script>
 </body>
 </html>
