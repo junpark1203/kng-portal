@@ -32,7 +32,7 @@
 .sk-table .col-brand { width: 120px; text-align: center; }
 .sk-table td.col-name { width: auto; text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
 .sk-table .col-color { width: 72px; text-align: center; }
-.sk-table th.col-num, .sk-table td.col-num { width: 74px; text-align: center !important; }
+.sk-table th.col-num, .sk-table td.col-num { width: 68px; text-align: center !important; }
 
 /* ── Table Header Groups ── */
 .th-group-purchase {
