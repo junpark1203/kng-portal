@@ -19,14 +19,14 @@
 }
 
 /* ── Column widths ── */
-.sk-table th { text-align: center !important; }
+.sk-table th { text-align: center !important; position: relative; }
 .sk-table .col-check { width: 30px; text-align: center; }
 .sk-table .col-date { width: 64px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); text-align: center; }
 .sk-table .col-supplier { width: 84px; text-align: center; }
 .sk-table .col-brand { width: 120px; text-align: center; }
 .sk-table td.col-name { width: auto; text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
 .sk-table .col-color { width: 72px; text-align: center; }
-.sk-table td.col-num { width: 74px; text-align: right !important; }
+.sk-table th.col-num, .sk-table td.col-num { width: 74px; text-align: right !important; padding-right: 14px !important; }
 
 /* ── Table Header Groups ── */
 .th-group-purchase {
@@ -86,6 +86,27 @@ td.profit-col {
     border-radius: 3px;
     white-space: nowrap;
     cursor: default;
+}
+
+/* 정렬 아이콘 디자인 (기본 숨김, 텍스트 우측에 절대 배치) */
+.sk-table th.sortable {
+    padding-right: 16px !important; /* 아이콘 공간 확보 */
+}
+.sk-table th.sortable i {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    pointer-events: none;
+}
+.sk-table th.sortable:hover i {
+    opacity: 0.3; /* 마우스 올릴 때 옅게 표시 */
+}
+.sk-table th.sortable.sort-active i {
+    opacity: 1; /* 활성화 시 진하게 표시 */
+    color: var(--primary);
 }
 
 /* Sub-header row */
