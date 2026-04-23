@@ -220,8 +220,8 @@ body {
     transition: max-height 0.3s ease;
 }
 
-.menu-group.open .menu-group-items {
-    max-height: 200px;
+.menu-group.open > .menu-group-items {
+    max-height: 500px;
 }
 
 .menu-group-items a {
@@ -1823,7 +1823,7 @@ th.sortable.active.asc i {
 }
 
 /* Portal: accordion needs more height for 5 items */
-.menu-group.open .menu-group-items {
+.menu-group.open > .menu-group-items {
     max-height: 500px;
 }
 

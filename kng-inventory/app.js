@@ -1513,6 +1513,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.menu-group-toggle').forEach(function(toggle) {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             var group = toggle.closest('.menu-group');
             if (group) group.classList.toggle('open');
         });
