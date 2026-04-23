@@ -20,14 +20,11 @@
 
 /* ── Column widths ── */
 .sk-table .col-check { width: 34px; }
-.sk-table .col-date { width: 80px; white-space: nowrap; }
-.sk-table .col-supplier { width: 72px; }
-.sk-table .col-brand { width: 68px; }
-.sk-table .col-name { width: 160px; text-align: left !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sk-table .col-color { width: 52px; }
-.sk-table .col-size { width: 48px; word-break: break-all; font-size: 10.5px; }
-.sk-table .col-remarks { width: 90px; text-align: left !important; font-size: 10.5px; }
-.sk-table .col-updated { width: 78px; white-space: nowrap; font-size: 10.5px; }
+.sk-table .col-date { width: 64px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); }
+.sk-table .col-supplier { width: 74px; }
+.sk-table .col-brand { width: 74px; }
+.sk-table .col-name { width: auto; text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
+.sk-table .col-color { width: 60px; }
 
 /* ── Table Header Groups ── */
 .th-group-purchase {

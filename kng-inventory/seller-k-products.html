@@ -58,35 +58,31 @@
                                     <!-- Group header row -->
                                     <tr>
                                         <th rowspan="2" class="col-check"><input type="checkbox" id="selectAllSk"></th>
-                                        <th rowspan="2" class="col-date sortable" data-sort="uploadDate">업로드일 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="col-date sortable" data-sort="uploadDate">날짜 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-supplier sortable" data-sort="supplier">매입처 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-brand sortable" data-sort="brand">브랜드 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-name sortable" data-sort="name">상품명 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-color sortable" data-sort="color">컬러 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-size sortable" data-sort="size">사이즈 <i class='bx bx-sort'></i></th>
-                                        <th colspan="4" class="th-group-label th-group-purchase">매입</th>
+                                        <th colspan="3" class="th-group-label th-group-purchase">매입</th>
                                         <th colspan="3" class="th-group-label th-group-sales">매출</th>
                                         <th colspan="3" class="th-group-label th-group-settle">정산</th>
-                                        <th rowspan="2" class="col-remarks sortable" data-sort="remarks">비고 <i class='bx bx-sort'></i></th>
-                                        <th rowspan="2" class="col-updated sortable" data-sort="updatedAt">최종수정 <i class='bx bx-sort'></i></th>
                                     </tr>
                                     <!-- Sub-header row -->
                                     <tr id="skSortHeaders">
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyPrice">매입가 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyShipping">운임 <i class='bx bx-sort'></i></th>
-                                        <th class="th-group-purchase" style="font-size:10px">운임기준</th>
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyTotal">합계 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellPrice">판매가 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellShipping">운임 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellTotal">합계 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-settle sortable" data-sort="commission">수수료 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num-sm th-group-settle sortable" data-sort="profit">정산이익 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num-sm th-group-settle sortable" data-sort="profit">이익 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm th-group-settle sortable" data-sort="profitRate">수익률 <i class='bx bx-sort'></i></th>
                                     </tr>
                                 </thead>
                                 <tbody id="skTableBody">
-                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
-                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="15"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="15"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
