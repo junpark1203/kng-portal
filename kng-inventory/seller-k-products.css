@@ -33,8 +33,8 @@
 .sk-table .col-name { width: auto; }
 .sk-table td.col-name { text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
 .sk-table .col-color { width: 72px; text-align: center; }
-.sk-table .col-num { width: 70px; }
-.sk-table th.col-num, .sk-table td.col-num { text-align: center !important; }
+.sk-table .col-num { width: 80px; }
+.sk-table th.col-num, .sk-table td.col-num { text-align: center !important; padding-left: 2px !important; padding-right: 2px !important; }
 
 /* ── Table Header Groups ── */
 .th-group-purchase {
