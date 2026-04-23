@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+
+<html class="light" lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>캐피탈플로우 ERP | 글로벌 트레저리</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        h1, h2, h3, .brand-font {
+            font-family: 'Manrope', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f8f9fa",
+                      "outline": "#767683",
+                      "on-secondary-container": "#006f66",
+                      "on-tertiary-container": "#8090f6",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "surface": "#f8f9fa",
+                      "surface-container-highest": "#e1e3e4",
+                      "on-primary-fixed-variant": "#343d96",
+                      "on-secondary-fixed": "#00201d",
+                      "tertiary-fixed-dim": "#bbc3ff",
+                      "on-primary-fixed": "#000767",
+                      "secondary": "#006a62",
+                      "surface-container-high": "#e7e8e9",
+                      "secondary-fixed-dim": "#66d9cc",
+                      "surface-container-low": "#f3f4f5",
+                      "tertiary": "#000e5d",
+                      "tertiary-fixed": "#dee0ff",
+                      "primary-fixed": "#e0e0ff",
+                      "inverse-primary": "#bdc2ff",
+                      "on-error-container": "#93000a",
+                      "on-error": "#ffffff",
+                      "primary-container": "#1a237e",
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#84f5e8",
+                      "secondary-container": "#81f3e5",
+                      "inverse-on-surface": "#f0f1f2",
+                      "error": "#ba1a1a",
+                      "error-container": "#ffdad6",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#8690ee",
+                      "surface-tint": "#4c56af",
+                      "tertiary-container": "#0d2187",
+                      "primary-fixed-dim": "#bdc2ff",
+                      "surface-container": "#edeeef",
+                      "surface-dim": "#d9dadb",
+                      "on-secondary-fixed-variant": "#005049",
+                      "surface-bright": "#f8f9fa",
+                      "on-surface": "#191c1d",
+                      "on-tertiary-fixed": "#000e5e",
+                      "on-background": "#191c1d",
+                      "surface-variant": "#e1e3e4",
+                      "on-tertiary-fixed-variant": "#2c3c9e",
+                      "inverse-surface": "#2e3132",
+                      "outline-variant": "#c6c5d4",
+                      "primary": "#000666",
+                      "on-surface-variant": "#454652"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Manrope"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface antialiased">
+<!-- Sidebar Navigation (SideNavBar) -->
+<aside class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 z-50 bg-slate-50 border-r border-slate-200/50 p-4">
+<div class="flex items-center gap-3 px-2 mb-10">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h2 class="text-lg font-extrabold text-indigo-900 tracking-tight">글로벌 트레저리</h2>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">기관급 서비스</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 bg-white text-indigo-700 shadow-sm rounded-lg translate-x-1 duration-200 font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                대시보드
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-indigo-600 hover:bg-slate-200/50 transition-all rounded-lg font-medium" href="#">
+<span class="material-symbols-outlined">payments</span>
+                결제 관리
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-indigo-600 hover:bg-slate-200/50 transition-all rounded-lg font-medium" href="#">
+<span class="material-symbols-outlined">handshake</span>
+                파트너사
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-indigo-600 hover:bg-slate-200/50 transition-all rounded-lg font-medium" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+                정산 관리
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 hover:text-indigo-600 hover:bg-slate-200/50 transition-all rounded-lg font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+                설정
+            </a>
+</nav>
+<div class="pt-4 mt-4 border-t border-slate-200/50 space-y-1">
+<button class="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold shadow-md active:scale-[0.98] transition-transform mb-6">
+<span class="material-symbols-outlined text-sm">add</span>
+                새 정산 생성
+            </button>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-lg">help</span>
+                고객 지원
+            </a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-indigo-600 transition-colors text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-lg">description</span>
+                도움말 문서
+            </a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<main class="md:ml-64 min-h-screen flex flex-col">
+<!-- Top Navigation Bar (TopNavBar) -->
+<header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md shadow-[0_12px_40px_rgba(0,7,103,0.06)] flex justify-between items-center w-full px-8 py-4">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-indigo-950 brand-font">캐피탈플로우 ERP</span>
+<div class="relative group hidden lg:block">
+<span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+<span class="material-symbols-outlined text-xl">search</span>
+</span>
+<input class="pl-10 pr-4 py-2 w-80 bg-surface-container-low border-none rounded-full text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="파트너, 거래 내역 검색..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<!-- Multi-Language Switcher -->
+<div class="flex items-center bg-slate-100 rounded-full p-1 gap-1">
+<button class="px-3 py-1 text-[11px] font-bold text-slate-500 hover:text-primary transition-colors">EN</button>
+<button class="px-3 py-1 text-[11px] font-bold bg-white text-primary rounded-full shadow-sm">KR</button>
+<button class="px-3 py-1 text-[11px] font-bold text-slate-500 hover:text-primary transition-colors">JP</button>
+<button class="px-3 py-1 text-[11px] font-bold text-slate-500 hover:text-primary transition-colors">CN</button>
+</div>
+<div class="flex items-center gap-4 text-slate-500">
+<button class="p-2 hover:bg-slate-100 rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="p-2 hover:bg-slate-100 rounded-full transition-colors">
+<span class="material-symbols-outlined">language</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+<div class="text-right">
+<p class="text-xs font-bold text-indigo-950">Alexander Vance</p>
+<p class="text-[10px] text-slate-500 font-medium">Head of Treasury</p>
+</div>
+<img alt="Executive User Profile" class="w-10 h-10 rounded-full object-cover border-2 border-primary/10" data-alt="Professional headshot of a corporate executive with a friendly expression in a bright modern office setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgxOmmXMOFt7xLhikvs99chGGye85aWQ5EDrD-1z4s8S2lMymPCjS7vDkLHfVR87QcVlF3a0kSXCdSLiy6rxTbLSt-lhW6MtlzUjL5Q9Qc0QLBhBaI67ef4PyvjF4ihZZXnLRxZ3gZlS5iT4Wl8PVVcu26Psw-5GXuYScoQz2IGz-8aDoMsFaFBz6_4VDHOSZ22Rh2yRhGKzx6RL-Fj_nVDL8XDjK7c1W5L7wZtJY2ENNZmb3pJswtjAEJNzKCvUP3Y_aEHVeqhC4"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<section class="p-8 space-y-8 max-w-[1600px] mx-auto w-full">
+<!-- Page Heading -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="text-3xl font-extrabold text-primary tracking-tight mb-2">정산 대시보드</h1>
+<p class="text-slate-500 font-medium">글로벌 파트너 유동성 및 국가 간 자본 흐름을 관리합니다.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-high text-on-surface font-semibold rounded-xl hover:bg-slate-200 transition-colors">
+<span class="material-symbols-outlined text-lg">download</span>
+                        보고서 내보내기
+                    </button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white font-semibold rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all">
+<span class="material-symbols-outlined text-lg">ios_share</span>
+                        일괄 처리 시작
+                    </button>
+</div>
+</div>
+<!-- Summary Statistics (Bento Style) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Stat Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_12px_40_rgba(0,7,103,0.04)] relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-primary/5 text-primary rounded-xl">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+<span class="text-xs font-bold text-secondary flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> 12%
+                        </span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">미결제 잔액</p>
+<h3 class="text-2xl font-bold text-indigo-950">$4,820,450.00</h3>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_12px_40_rgba(0,7,103,0.04)] relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-secondary/5 text-secondary rounded-xl">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<span class="text-xs font-bold text-error flex items-center gap-1 bg-error/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 8 우선순위 높음
+                        </span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">승인 대기</p>
+<h3 class="text-2xl font-bold text-indigo-950">24 건</h3>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_12px_40_rgba(0,7,103,0.04)] relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-tertiary/5 text-tertiary rounded-xl">
+<span class="material-symbols-outlined">verified</span>
+</div>
+<span class="text-xs font-bold text-secondary flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px]">check</span> 검증됨
+                        </span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">총 정산액</p>
+<h3 class="text-2xl font-bold text-indigo-950">$12.4M <span class="text-sm font-medium text-slate-400">MTD</span></h3>
+</div>
+<!-- Stat Card 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-2xl shadow-[0_12px_40_rgba(0,7,103,0.04)] relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-on-primary-fixed-variant/5 text-on-primary-fixed-variant rounded-xl">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<span class="text-xs font-bold text-secondary flex items-center gap-1 bg-secondary/10 px-2 py-1 rounded-full">
+<span class="material-symbols-outlined text-[14px]">add</span> 3 신규
+                        </span>
+</div>
+<p class="text-slate-500 text-sm font-medium mb-1">활성 파트너사</p>
+<h3 class="text-2xl font-bold text-indigo-950">142 개소</h3>
+</div>
+</div>
+<!-- Global Partner Settlement Table Area -->
+<div class="space-y-6">
+<!-- Filters & Search Bar -->
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+<span class="material-symbols-outlined text-lg">filter_alt</span>
+</span>
+<select class="pl-10 pr-10 py-2.5 bg-surface-container-lowest border-none rounded-xl text-sm font-semibold text-slate-600 shadow-sm focus:ring-2 focus:ring-primary/10">
+<option>전체 상태</option>
+<option>대기 중</option>
+<option>승인됨</option>
+<option>분쟁 중</option>
+</select>
+</div>
+<div class="flex bg-surface-container-lowest p-1 rounded-xl shadow-sm">
+<button class="px-4 py-1.5 text-xs font-bold bg-primary text-white rounded-lg">USD</button>
+<button class="px-4 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg">JPY</button>
+<button class="px-4 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg">CNY</button>
+</div>
+</div>
+<button class="text-sm font-bold text-primary flex items-center gap-2 hover:underline">
+<span class="material-symbols-outlined text-lg">history</span>
+                        히스토리 보기
+                    </button>
+</div>
+<!-- Custom Data Table -->
+<div class="bg-surface-container-low rounded-[2rem] p-4 overflow-hidden">
+<!-- Table Header -->
+<div class="grid grid-cols-6 px-8 py-4 mb-2">
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">파트너 명</div>
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">지역</div>
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">미결제 금액</div>
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">통화</div>
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">만기일</div>
+<div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">상태</div>
+</div>
+<!-- Row 1: Active/Expanded Example -->
+<div class="space-y-3">
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="grid grid-cols-6 items-center px-8 py-6 cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-primary">SN</div>
+<span class="font-bold text-indigo-950">Saito Next-Gen</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">public</span>
+<span class="text-sm font-medium text-slate-600">East Asia (Tokyo)</span>
+</div>
+<div class="text-right font-bold text-indigo-950">14,200,500.00</div>
+<div class="flex justify-center">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-full">JPY</span>
+</div>
+<div class="text-sm font-medium text-slate-600">Oct 24, 2024</div>
+<div class="flex justify-end">
+<span class="flex items-center gap-1.5 px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold rounded-full">
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                                        대기 중
+                                    </span>
+</div>
+</div>
+<!-- Accordion Content -->
+<div class="bg-surface-container-high mx-4 mb-4 rounded-xl p-6 grid grid-cols-3 gap-8 border border-white/50">
+<div>
+<h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">정산 조건</h4>
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">방식</span>
+<span class="font-bold text-indigo-950">T/T 30 Days</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">유예 기간</span>
+<span class="font-bold text-indigo-950">5 Business Days</span>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">은행 상세 정보</h4>
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">SWIFT/BIC</span>
+<span class="font-mono font-bold text-indigo-950">MUITJPJTXXX</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-500">IBAN</span>
+<span class="font-mono font-bold text-indigo-950">JP22 0005 0001 ... 9002</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col justify-between">
+<h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">금액 수정</h4>
+<div class="flex gap-2 mb-4">
+<input class="flex-1 text-sm bg-white border-none rounded-lg focus:ring-primary/20" type="text" value="14,200,500.00"/>
+<button class="p-2 bg-white text-primary rounded-lg shadow-sm border border-slate-200">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow-md active:scale-95 transition-all">결제 승인</button>
+<button class="px-4 py-2 border border-slate-300 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition-colors">추가 정보 요청</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="grid grid-cols-6 items-center px-8 py-6 cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center font-bold text-indigo-400">GC</div>
+<span class="font-bold text-indigo-950">Global Connect Ltd.</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">public</span>
+<span class="text-sm font-medium text-slate-600">Europe (London)</span>
+</div>
+<div class="text-right font-bold text-indigo-950">250,000.00</div>
+<div class="flex justify-center">
+<span class="px-3 py-1 bg-slate-100 text-slate-600 text-[11px] font-bold rounded-full">USD</span>
+</div>
+<div class="text-sm font-medium text-slate-600">Oct 28, 2024</div>
+<div class="flex justify-end">
+<span class="flex items-center gap-1.5 px-3 py-1 bg-secondary/10 text-secondary text-[11px] font-bold rounded-full">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
+                                        승인됨
+                                    </span>
+</div>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+<div class="grid grid-cols-6 items-center px-8 py-6 cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-primary">HZ</div>
+<span class="font-bold text-indigo-950">Hangzhou Logistics</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400 text-lg">public</span>
+<span class="text-sm font-medium text-slate-600">East Asia (Shanghai)</span>
+</div>
+<div class="text-right font-bold text-indigo-950">840,000.00</div>
+<div class="flex justify-center">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[11px] font-bold rounded-full">CNY</span>
+</div>
+<div class="text-sm font-medium text-slate-600">Nov 02, 2024</div>
+<div class="flex justify-end">
+<span class="flex items-center gap-1.5 px-3 py-1 bg-primary-fixed text-on-primary-fixed-variant text-[11px] font-bold rounded-full">
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                                        대기 중
+                                    </span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-8 flex justify-between items-center px-4">
+<p class="text-xs text-slate-400 font-medium">142개 파트너사 중 1-10 표시</p>
+<div class="flex gap-2">
+<button class="p-2 rounded-lg hover:bg-slate-200 transition-colors text-slate-400"><span class="material-symbols-outlined">chevron_left</span></button>
+<button class="w-8 h-8 rounded-lg bg-primary text-white text-xs font-bold">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-slate-200 text-xs font-bold transition-colors">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-slate-200 text-xs font-bold transition-colors">3</button>
+<button class="p-2 rounded-lg hover:bg-slate-200 transition-colors text-slate-400"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Content (Secondary Insights) -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-3xl p-8 shadow-sm">
+<div class="flex justify-between items-center mb-8">
+<h3 class="font-bold text-indigo-950 text-lg">유동성 예측</h3>
+<div class="flex gap-2">
+<span class="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+<span class="w-2 h-2 rounded-full bg-primary"></span> 현금 유입
+                            </span>
+<span class="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> 예상 잔액
+                            </span>
+</div>
+</div>
+<!-- Visual representation placeholder -->
+<div class="h-48 w-full bg-slate-50 rounded-2xl flex items-end gap-4 p-4">
+<div class="flex-1 bg-primary/10 h-2/3 rounded-t-lg relative group">
+<div class="absolute inset-x-0 bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity flex justify-center">
+<span class="bg-primary text-white text-[10px] px-2 py-1 rounded">2.4M</span>
+</div>
+</div>
+<div class="flex-1 bg-primary/20 h-3/4 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/15 h-1/2 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/30 h-5/6 rounded-t-lg"></div>
+<div class="flex-1 bg-secondary/20 h-full rounded-t-lg"></div>
+<div class="flex-1 bg-primary/10 h-2/3 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/15 h-3/4 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/25 h-1/2 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/10 h-2/3 rounded-t-lg"></div>
+<div class="flex-1 bg-primary/40 h-3/4 rounded-t-lg"></div>
+</div>
+</div>
+<div class="bg-gradient-to-br from-indigo-900 to-primary-container rounded-3xl p-8 text-white relative overflow-hidden">
+<div class="relative z-10">
+<h3 class="font-bold text-xl mb-2">트레저리 인텔리전스</h3>
+<p class="text-indigo-200 text-sm mb-6 leading-relaxed">JPY 환율이 안정화될 것으로 예상됩니다. 최적의 ROI를 위해 향후 48시간 내에 동아시아 잔액 정산을 고려해 보세요.</p>
+<button class="px-6 py-2.5 bg-white text-primary font-bold text-sm rounded-xl shadow-lg hover:bg-slate-50 active:scale-95 transition-all">자동 정산 활성화</button>
+</div>
+<span class="material-symbols-outlined absolute -bottom-8 -right-8 text-[160px] opacity-10 rotate-12" style="font-variation-settings: 'FILL' 1;">insights</span>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-auto py-8 px-8 flex justify-between items-center text-slate-400">
+<p class="text-[11px] font-bold tracking-widest uppercase">© 2024 CapitalFlow ERP Systems • 글로벌 컴플라이언스 적용됨</p>
+<div class="flex gap-6 text-[11px] font-bold tracking-widest uppercase">
+<a class="hover:text-primary transition-colors" href="#">개인정보 처리방침</a>
+<a class="hover:text-primary transition-colors" href="#">서비스 수준 계약(SLA)</a>
+<a class="hover:text-primary transition-colors" href="#">감사 로그</a>
+</div>
+</footer>
+</main>
+<!-- Contextual FAB for Quick Actions (Dashboard Specific) -->
+<div class="fixed bottom-8 right-8 flex flex-col items-end gap-3 md:hidden">
+<button class="w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</div>
+</body></html>
