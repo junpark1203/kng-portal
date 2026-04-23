@@ -78,14 +78,16 @@
                                         <th class="sortable" data-sort="mfr">제조사 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="item">품목 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="price">매입 단가 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="sellPrice">매출 단가 <i class='bx bx-sort'></i></th>
+                                        <th>마진율</th>
                                         <th>이력</th>
                                         <th class="sortable" data-sort="note">비고 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="updatedAt">최종수정일 <i class='bx bx-sort'></i></th>
                                     </tr>
                                 </thead>
                                 <tbody id="tableBody">
-                                    <tr class="loading-row"><td colspan="9"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -128,8 +130,16 @@
                             <datalist id="listSpec"></datalist>
                         </div>
                         <div class="fg">
-                            <label for="inpPrice">단가</label>
-                            <input type="text" id="inpPrice" placeholder="예: 55,000" oninput="formatPrice(this)" required>
+                            <label for="inpPrice">매입 단가</label>
+                            <input type="text" id="inpPrice" placeholder="예: 55,000" oninput="formatPrice(this); calculateMargin();" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpSellPrice">매출 단가</label>
+                            <input type="text" id="inpSellPrice" placeholder="예: 65,000" oninput="formatPrice(this); calculateMargin();">
+                        </div>
+                        <div class="fg">
+                            <label for="inpMargin">마진율 (%)</label>
+                            <input type="text" id="inpMargin" placeholder="자동 계산" readonly style="background-color: var(--bg-secondary); cursor: not-allowed; font-weight:600; color:var(--primary);">
                         </div>
                         <div class="fg">
                             <label for="inpNote">비고</label>
@@ -171,6 +181,21 @@
                 return Number(match).toLocaleString();
             });
         }
+
+        window.calculateMargin = function() {
+            const buyStr = document.getElementById('inpPrice').value.replace(/,/g, '');
+            const sellStr = document.getElementById('inpSellPrice').value.replace(/,/g, '');
+            const buy = parseFloat(buyStr);
+            const sell = parseFloat(sellStr);
+            const marginInput = document.getElementById('inpMargin');
+
+            if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
+                const marginRate = ((sell - buy) / sell) * 100;
+                marginInput.value = marginRate.toFixed(2) + '%';
+            } else {
+                marginInput.value = '';
+            }
+        };
     </script>
 </body>
 </html>

@@ -158,7 +158,7 @@ function applyFiltersAndSort() {
         let valB = b[currentSort.column] || '';
 
         // 숫자로 비교할 필드 (가격)
-        if (currentSort.column === 'price') {
+        if (currentSort.column === 'price' || currentSort.column === 'sellPrice') {
             valA = parseInt(valA.replace(/,/g, '')) || 0;
             valB = parseInt(valB.replace(/,/g, '')) || 0;
         }
@@ -189,6 +189,17 @@ function renderTable() {
     let html = '';
     currentItems.forEach(item => {
         const dateStr = item.updatedAt ? item.updatedAt.split('T')[0] : '';
+        
+        // 마진율 계산
+        let marginText = '-';
+        if (item.price && item.sellPrice) {
+            const buy = parseFloat(item.price.replace(/,/g, ''));
+            const sell = parseFloat(item.sellPrice.replace(/,/g, ''));
+            if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
+                marginText = ((sell - buy) / sell * 100).toFixed(2) + '%';
+            }
+        }
+
         html += `
             <tr class="item-row" data-id="${item.id}">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${item.id}"></td>
@@ -197,6 +208,8 @@ function renderTable() {
                 <td onclick="openModal('${item.id}')">${item.item || '-'}</td>
                 <td onclick="openModal('${item.id}')">${item.spec || '-'}</td>
                 <td onclick="openModal('${item.id}')">${item.price || '-'}</td>
+                <td onclick="openModal('${item.id}')">${item.sellPrice || '-'}</td>
+                <td onclick="openModal('${item.id}')" style="font-weight:600; color:var(--primary);">${marginText}</td>
                 <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${item.id}')">보기</button></td>
                 <td onclick="openModal('${item.id}')">${item.note || ''}</td>
                 <td onclick="openModal('${item.id}')" style="font-size:12px; color:var(--gray-500);">${dateStr}</td>
@@ -283,8 +296,11 @@ window.openModal = function(id = null) {
         document.getElementById('inpItem').value = item.item || '';
         document.getElementById('inpSpec').value = item.spec || '';
         document.getElementById('inpPrice').value = item.price || '';
+        document.getElementById('inpSellPrice').value = item.sellPrice || '';
         document.getElementById('inpNote').value = item.note || '';
         document.getElementById('inpHistory').value = item.history || '';
+        
+        if (window.calculateMargin) window.calculateMargin();
         
         if (item.updatedAt) {
             const dt = new Date(item.updatedAt);
@@ -293,6 +309,8 @@ window.openModal = function(id = null) {
     } else {
         document.getElementById('modalTitle').textContent = '신규 단가 등록';
         document.getElementById('editId').value = '';
+        document.getElementById('inpSellPrice').value = '';
+        if (window.calculateMargin) window.calculateMargin();
     }
 
     itemModal.classList.add('active');
@@ -310,6 +328,7 @@ async function saveItem() {
         item: document.getElementById('inpItem').value.trim(),
         spec: document.getElementById('inpSpec').value.trim(),
         price: document.getElementById('inpPrice').value.trim(),
+        sellPrice: document.getElementById('inpSellPrice').value.trim(),
         note: document.getElementById('inpNote').value.trim()
     };
 

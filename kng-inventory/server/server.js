@@ -119,6 +119,7 @@ function initDb() {
             item TEXT,
             spec TEXT,
             price TEXT,
+            sellPrice TEXT,
             history TEXT,
             note TEXT,
             createdAt TEXT,
@@ -126,7 +127,11 @@ function initDb() {
         )
     `, (err) => {
         if (err) console.error('unit_prices 테이블 생성 오류:', err.message);
-        else console.log('unit_prices 테이블 확인 완료');
+        else {
+            console.log('unit_prices 테이블 확인 완료');
+            // 기존 테이블 스키마 업데이트 (에러 무시: 이미 컬럼이 존재할 수 있음)
+            db.run('ALTER TABLE unit_prices ADD COLUMN sellPrice TEXT', () => {});
+        }
     });
 }
 
@@ -220,9 +225,9 @@ app.post('/api/unit-prices', (req, res) => {
     const p = req.body;
     const id = p.id || ('UP-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO unit_prices (id, co, mfr, item, spec, price, history, note, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.history||'', p.note||'', now, now];
+    const sql = `INSERT INTO unit_prices (id, co, mfr, item, spec, price, sellPrice, history, note, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.sellPrice||'', p.history||'', p.note||'', now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -240,15 +245,20 @@ app.put('/api/unit-prices/:id', (req, res) => {
         if (!existing) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
 
         let history = p.history || existing.history || '';
+        const oldPrice = existing.price || '-';
+        const oldSellPrice = existing.sellPrice || '-';
+        const newPrice = p.price || '-';
+        const newSellPrice = p.sellPrice || '-';
+
         // 가격이 변경되었으면 이력에 자동 추가
-        if (existing.price !== p.price && p.price) {
+        if (oldPrice !== newPrice || oldSellPrice !== newSellPrice) {
             const dateStr = now.split('T')[0];
-            const newEntry = dateStr + ': ' + p.price;
+            const newEntry = dateStr + ': 매입 ' + newPrice + ' / 매출 ' + newSellPrice;
             history = newEntry + (history ? '\n' + history : '');
         }
 
-        const sql = `UPDATE unit_prices SET co=?, mfr=?, item=?, spec=?, price=?, history=?, note=?, updatedAt=? WHERE id=?`;
-        const params = [p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', history, p.note||'', now, id];
+        const sql = `UPDATE unit_prices SET co=?, mfr=?, item=?, spec=?, price=?, sellPrice=?, history=?, note=?, updatedAt=? WHERE id=?`;
+        const params = [p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.sellPrice||'', history, p.note||'', now, id];
         db.run(sql, params, function(err) {
             if (err) return res.status(500).json({ error: err.message });
             if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
@@ -271,13 +281,13 @@ app.post('/api/unit-prices/bulk', (req, res) => {
     const items = req.body;
     if (!Array.isArray(items)) return res.status(400).json({ error: '배열이 필요합니다.' });
     const now = new Date().toISOString();
-    const sql = `INSERT OR IGNORE INTO unit_prices (id, co, mfr, item, spec, price, history, note, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT OR IGNORE INTO unit_prices (id, co, mfr, item, spec, price, sellPrice, history, note, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
     const stmt = db.prepare(sql);
     items.forEach((p, i) => {
         const id = p.id || ('UP-MIG-' + String(i).padStart(3, '0'));
-        stmt.run([id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.history||'', p.note||'', now, now], function(err) {
+        stmt.run([id, p.co||'', p.mfr||'', p.item||'', p.spec||'', p.price||'', p.sellPrice||'', p.history||'', p.note||'', now, now], function(err) {
             if (!err && this.changes > 0) inserted++;
         });
     });
