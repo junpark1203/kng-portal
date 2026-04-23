@@ -1512,6 +1512,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 showInternalView(href, label);
             }
 
+            // 현재 접속 중인 페이지 상태 저장 (새로고침 시 유지용)
+            sessionStorage.setItem('lastNavHref', href);
+
             closeMobileMenu();
         });
     });
@@ -1541,6 +1544,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (group) group.classList.toggle('open');
         });
     });
+
+    // 새로고침(F5) 시 이전 접속 페이지 복원
+    var lastNavHref = sessionStorage.getItem('lastNavHref');
+    if (lastNavHref) {
+        var savedLink = document.querySelector('.menu a[href="' + lastNavHref + '"]');
+        if (savedLink) {
+            // 해당 메뉴가 속한 아코디언 그룹을 열어줌
+            var parentGroup = savedLink.closest('.menu-group');
+            if (parentGroup) parentGroup.classList.add('open');
+            // 이벤트 핸들러가 동작하도록 클릭 트리거
+            savedLink.click();
+        }
+    }
 });
 
 // ==========================================
