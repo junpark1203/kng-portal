@@ -32,19 +32,16 @@
 .th-group-purchase {
     background: rgba(79, 110, 247, 0.08) !important;
     color: var(--primary) !important;
-    border-bottom: 2px solid var(--primary) !important;
 }
 
 .th-group-sales {
     background: rgba(34, 197, 94, 0.08) !important;
     color: var(--success) !important;
-    border-bottom: 2px solid var(--success) !important;
 }
 
 .th-group-settle {
     background: rgba(245, 158, 11, 0.08) !important;
     color: var(--warning) !important;
-    border-bottom: 2px solid var(--warning) !important;
 }
 
 .th-group-label {
