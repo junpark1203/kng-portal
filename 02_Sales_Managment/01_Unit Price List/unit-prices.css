@@ -1,11 +1,10 @@
 /* ========================================
-   매입/매출 단가 관리 — 전용 스타일
-   seller-k-products.css 패턴 기반
+   매입/매출 단가 관리 V2 — 전용 스타일
    ======================================== */
 
 /* ── Compact Table ── */
 .up-table {
-    font-size: 11.5px !important;
+    font-size: 11px !important;
     table-layout: fixed;
     width: 100%;
     border-collapse: collapse !important;
@@ -19,156 +18,196 @@
 .up-table th,
 .up-table td {
     text-align: center !important;
-    padding: 6px 5px !important;
+    padding: 5px 4px !important;
     vertical-align: middle;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ── Column widths ── */
 .up-table th { text-align: center !important; position: relative; }
-.up-table .col-check { width: 28px; text-align: center; }
-.up-table .col-co { width: 80px; }
-.up-table .col-mfr { width: 72px; font-size: 10.5px; }
-.up-table .col-item { width: auto; min-width: 120px; }
-.up-table td.col-item { text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
-.up-table .col-spec { width: 72px; font-size: 10.5px; }
-.up-table .col-num { width: 64px; }
-.up-table th.col-num, .up-table td.col-num { text-align: right !important; padding-left: 2px !important; padding-right: 6px !important; font-variant-numeric: tabular-nums; }
-.up-table .col-history { width: 38px; }
-.up-table .col-note { width: 120px; }
-.up-table td.col-note { text-align: left !important; font-size: 10px; color: var(--gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.up-table .col-date { width: 72px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); }
+.up-table .col-check { width: 28px; }
+.up-table .col-item { width: auto; min-width: 130px; }
+.up-table td.col-item { text-align: left !important; font-weight: 500; }
+.up-table .col-spec { width: 72px; font-size: 10px; }
+.up-table .col-cat { width: 56px; font-size: 10px; }
+.up-table .col-mfr { width: 70px; font-size: 10px; }
+.up-table .col-sup { width: 76px; font-size: 10px; }
+.up-table .col-num { width: 66px; }
+.up-table .col-num-sm { width: 48px; }
+.up-table th.col-num, .up-table td.col-num,
+.up-table th.col-num-sm, .up-table td.col-num-sm {
+    text-align: right !important;
+    padding-right: 6px !important;
+    font-variant-numeric: tabular-nums;
+}
+.up-table .col-hist { width: 36px; }
+.up-table .col-date { width: 64px; font-size: 10px; color: var(--gray-500); }
 
-/* ── Table Header Groups ── */
-.th-group-price {
-    background: rgba(79, 110, 247, 0.08) !important;
+/* ── Table Group Headers ── */
+.th-group-ident {
+    background: rgba(99, 102, 241, 0.07) !important;
+    color: #6366f1 !important;
+}
+.th-group-cost {
+    background: rgba(79, 110, 247, 0.07) !important;
     color: var(--primary) !important;
 }
-
+.th-group-sell {
+    background: rgba(34, 197, 94, 0.07) !important;
+    color: #16a34a !important;
+}
 .th-group-margin {
-    background: rgba(245, 158, 11, 0.08) !important;
-    color: var(--warning) !important;
+    background: rgba(245, 158, 11, 0.07) !important;
+    color: #d97706 !important;
+}
+.th-group-mgmt {
+    background: rgba(107, 114, 128, 0.06) !important;
+    color: var(--gray-500) !important;
 }
 
 .th-group-label {
     text-align: center !important;
-    font-size: 11px !important;
+    font-size: 10.5px !important;
     font-weight: 700 !important;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid currentColor !important;
+}
+
+/* Sub-header row */
+.up-table thead tr:nth-child(2) th {
+    font-size: 10px;
+    padding: 4px 4px !important;
+    background: var(--gray-50);
+    font-weight: 600;
 }
 
 /* ── Data Cell Tints ── */
-td.price-col {
-    background: rgba(79, 110, 247, 0.035);
-}
-td.margin-col {
-    background: rgba(245, 158, 11, 0.035);
-}
+td.cost-col { background: rgba(79, 110, 247, 0.025); }
+td.sell-col { background: rgba(34, 197, 94, 0.025); }
+td.margin-col { background: rgba(245, 158, 11, 0.025); }
 
-/* hover */
-.up-table tbody tr:hover td.price-col { background: rgba(79, 110, 247, 0.07) !important; }
-.up-table tbody tr:hover td.margin-col { background: rgba(245, 158, 11, 0.07) !important; }
+.up-table tbody tr:hover td.cost-col { background: rgba(79, 110, 247, 0.06) !important; }
+.up-table tbody tr:hover td.sell-col { background: rgba(34, 197, 94, 0.06) !important; }
+.up-table tbody tr:hover td.margin-col { background: rgba(245, 158, 11, 0.06) !important; }
 
-/* ── Sub-header row ── */
-.up-table thead tr:nth-child(2) th {
-    font-size: 10px;
-    padding: 4px 5px !important;
-    background: var(--gray-50);
-}
-
-/* ── Sortable Headers ── */
+/* ── Sortable ── */
 .up-table th.sortable {
-    padding-right: 16px !important;
+    padding-right: 14px !important;
     cursor: pointer;
     user-select: none;
-    transition: background var(--transition-fast);
+    transition: background 0.15s;
 }
 .up-table th.sortable i {
     position: absolute;
-    right: 4px;
+    right: 2px;
     top: 50%;
     transform: translateY(-50%);
     opacity: 0;
-    transition: opacity 0.2s, color 0.2s;
+    transition: opacity 0.15s;
     pointer-events: none;
+    font-size: 11px;
 }
-.up-table th.sortable:hover {
-    background: rgba(79, 110, 247, 0.06) !important;
-}
-.up-table th.sortable:hover i {
-    opacity: 0.3;
-}
+.up-table th.sortable:hover { background: rgba(79, 110, 247, 0.06) !important; }
+.up-table th.sortable:hover i { opacity: 0.3; }
 .up-table th.sortable.sort-asc i,
-.up-table th.sortable.sort-desc i {
-    opacity: 1;
-    color: var(--primary);
-}
+.up-table th.sortable.sort-desc i { opacity: 1; color: var(--primary); }
 
-/* ── Margin Badge ── */
-.margin-badge {
+/* ── Row Cursor ── */
+.up-table tbody tr { cursor: pointer; transition: background 0.1s; }
+
+/* ── Category Chip Tags ── */
+.cat-tag {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
     white-space: nowrap;
-    letter-spacing: -0.2px;
 }
-.margin-badge.badge-success {
-    background: rgba(16, 185, 129, 0.12);
-    color: #059669;
-}
-.margin-badge.badge-neutral {
-    background: rgba(245, 158, 11, 0.12);
-    color: #d97706;
-}
-.margin-badge.badge-danger {
-    background: rgba(239, 68, 68, 0.12);
-    color: #dc2626;
-}
-.margin-badge.badge-none {
-    background: var(--gray-100);
-    color: var(--gray-400);
-}
+.cat-tag.cat-유압유 { background: #dbeafe; color: #2563eb; }
+.cat-tag.cat-기어유 { background: #fef3c7; color: #d97706; }
+.cat-tag.cat-그리스 { background: #dcfce7; color: #16a34a; }
+.cat-tag.cat-테일씰그리스 { background: #fce7f3; color: #db2777; }
+.cat-tag.cat-절삭유 { background: #e0e7ff; color: #4f46e5; }
+.cat-tag.cat-기타 { background: var(--gray-100); color: var(--gray-500); }
 
-/* ── Diff Positive / Negative ── */
-.diff-positive { color: #059669; font-weight: 600; }
-.diff-negative { color: #dc2626; font-weight: 600; }
-.diff-zero { color: var(--gray-400); }
-
-/* ── Mfr Tag ── */
-.mfr-tag {
-    color: #059669;
-    font-weight: 600;
+/* ── Category Filter Chips (Header) ── */
+.category-filter-wrap {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
 }
-
-/* ── History Button ── */
-.btn-history {
+.cat-chip {
     padding: 4px 10px;
-    background: #eff6ff;
-    color: var(--primary);
-    border: 1px solid #dbeafe;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--gray-500);
+    font-size: 10.5px;
     font-weight: 600;
+    cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
 }
-.btn-history:hover {
+.cat-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cat-chip.active {
     background: var(--primary);
     color: #fff;
     border-color: var(--primary);
 }
 
-/* ── Product Count Text ── */
+/* ── Margin Badge ── */
+.margin-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.margin-badge.badge-high { background: rgba(16, 185, 129, 0.12); color: #059669; }
+.margin-badge.badge-mid { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+.margin-badge.badge-low { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.margin-badge.badge-none { background: var(--gray-100); color: var(--gray-400); }
+
+/* ── Diff / Change Rate ── */
+.val-positive { color: #059669; font-weight: 600; }
+.val-negative { color: #dc2626; font-weight: 600; }
+.val-zero { color: var(--gray-400); }
+
+.change-up { color: #dc2626; font-size: 9px; font-weight: 600; }
+.change-down { color: #059669; font-size: 9px; font-weight: 600; }
+.change-flat { color: var(--gray-400); font-size: 9px; }
+
+/* ── Currency Symbol ── */
+.curr-sym {
+    font-size: 9px;
+    color: var(--gray-400);
+    margin-right: 1px;
+}
+
+/* ── History Button ── */
+.btn-history {
+    padding: 3px 8px;
+    background: #eff6ff;
+    color: var(--primary);
+    border: 1px solid #dbeafe;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+.btn-history:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── Count Text ── */
 .product-count-text {
     font-size: 14px;
     font-weight: 500;
     color: var(--gray-400);
     margin-left: 6px;
-    letter-spacing: -0.2px;
 }
 
 /* ── Modal Form Grid ── */
@@ -177,27 +216,20 @@ td.margin-col {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
 }
-
-.modal-form-grid .fg-full {
-    grid-column: 1 / -1;
-}
-
+.modal-form-grid .fg-full { grid-column: 1 / -1; }
 .modal-form-grid .fg {
     display: flex;
     flex-direction: column;
     gap: 3px;
     min-width: 0;
 }
-
 .modal-form-grid .fg > label:first-child {
     font-size: 10.5px;
     font-weight: 600;
     color: var(--gray-500);
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    line-height: 1.2;
 }
-
 .modal-form-grid .fg input,
 .modal-form-grid .fg select,
 .modal-form-grid .fg textarea {
@@ -213,13 +245,7 @@ td.margin-col {
     color: var(--gray-800);
     width: 100%;
 }
-
-.modal-form-grid .fg textarea {
-    height: auto;
-    padding: 8px 10px;
-    resize: vertical;
-}
-
+.modal-form-grid .fg textarea { height: auto; padding: 8px 10px; resize: vertical; }
 .modal-form-grid .fg input:focus,
 .modal-form-grid .fg select:focus,
 .modal-form-grid .fg textarea:focus {
@@ -227,7 +253,60 @@ td.margin-col {
     box-shadow: 0 0 0 2.5px var(--primary-muted);
 }
 
-/* ── Modal Section Dividers ── */
+/* ── Price Input Wrap (currency + number) ── */
+.price-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    transition: all var(--transition-fast);
+    background: var(--surface);
+}
+.price-input-wrap:focus-within {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2.5px var(--primary-muted);
+}
+.price-input-wrap .currency-select {
+    width: 48px;
+    height: 32px;
+    border: none;
+    background: var(--gray-50);
+    color: var(--gray-600);
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    padding: 0 2px;
+    cursor: pointer;
+    outline: none;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.price-input-wrap .currency-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--gray-50);
+    color: var(--gray-600);
+    font-size: 13px;
+    font-weight: 700;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.price-input-wrap input[type="number"] {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    flex: 1;
+    min-width: 0;
+}
+.price-input-wrap input[type="number"]:focus {
+    box-shadow: none !important;
+}
+
+/* ── Section Dividers ── */
 .modal-section-title {
     font-size: 11px;
     font-weight: 700;
@@ -238,24 +317,13 @@ td.margin-col {
     border-bottom: 1px solid var(--gray-100);
     grid-column: 1 / -1;
 }
+.modal-section-title.section-info { color: #6366f1; }
+.modal-section-title.section-cost { color: var(--primary); }
+.modal-section-title.section-sell { color: #16a34a; }
+.modal-section-title.section-margin { color: #d97706; }
+.modal-section-title.section-extra { color: var(--gray-500); }
 
-.modal-section-title.section-info {
-    color: var(--primary);
-}
-
-.modal-section-title.section-price {
-    color: #6366f1;
-}
-
-.modal-section-title.section-margin {
-    color: var(--warning);
-}
-
-.modal-section-title.section-extra {
-    color: var(--gray-500);
-}
-
-/* ── Preview / Auto-calc fields ── */
+/* ── Calc Preview ── */
 .calc-preview {
     background: var(--gray-50) !important;
     font-weight: 600 !important;
@@ -268,7 +336,7 @@ td.margin-col {
     font-size: 9px;
     color: var(--gray-400);
     font-style: italic;
-    margin-top: 2px;
+    margin-top: 1px;
     transition: color 0.2s;
 }
 .cascade-hint.active {
@@ -287,24 +355,10 @@ td.margin-col {
     border-top: 1px solid var(--gray-100);
 }
 
-/* ── Row click cursor ── */
-.up-table tbody tr {
-    cursor: pointer;
-    transition: background 0.12s;
-}
-
 /* ── Responsive ── */
 @media (max-width: 768px) {
-    .modal-form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .up-table {
-        font-size: 10px !important;
-    }
-
-    .up-table .col-note,
-    .up-table .col-date {
-        display: none;
-    }
+    .modal-form-grid { grid-template-columns: 1fr; }
+    .up-table { font-size: 9px !important; }
+    .up-table .col-note, .up-table .col-date,
+    .up-table .col-num-sm { display: none; }
 }

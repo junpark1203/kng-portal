@@ -1,35 +1,34 @@
 /* =========================================================================
-   유류소모품 단가 관리 시스템 (unit-prices.js)
-   - NAS API (/api/unit-prices) 연동
-   - CRUD 및 마이그레이션 기능 포함
-========================================================================= */
+   매입/매출 단가 관리 시스템 V2 (unit-prices.js)
+   - unit_prices_v2 테이블 연동
+   - Cascading Dropdown, 마진 자동계산, 카테고리 필터
+   ========================================================================= */
 
 const API_BASE = 'https://kng.junparks.com/api/unit-prices';
 let itemsData = [];
 let filteredData = [];
 let currentSort = { column: 'updatedAt', asc: false };
-
-// Pagination state
 let currentPage = 1;
 let pageSize = 50;
+let activeCategoryFilter = 'all';
 
 // Elements
-const elTableBody = document.getElementById('tableBody');
-const elTotalCount = document.getElementById('totalCount');
-const elSearchField = document.getElementById('searchField');
-const elSearchInput = document.getElementById('searchInput');
-const elPagination = document.getElementById('pagination');
-const elSelectAll = document.getElementById('selectAll');
-const elDeleteBtn = document.getElementById('deleteBtn');
-const elAddBtn = document.getElementById('addBtn');
-const elMigrateBtn = document.getElementById('migrateBtn');
-const toastContainer = document.getElementById('toastContainer');
+const $ = id => document.getElementById(id);
+const elTableBody = $('tableBody');
+const elTotalCount = $('totalCount');
+const elSearchField = $('searchField');
+const elSearchInput = $('searchInput');
+const elPagination = $('pagination');
+const elSelectAll = $('selectAll');
 
-// Modal Elements
-const itemModal = document.getElementById('itemModal');
-const itemForm = document.getElementById('itemForm');
-const historyModal = document.getElementById('historyModal');
+// Modal
+const itemModal = $('itemModal');
+const itemForm = $('itemForm');
+const historyModal = $('historyModal');
 
+// ==========================================
+// Init
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
     loadData();
@@ -37,363 +36,392 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initEvents() {
     // Search
-    elSearchInput.addEventListener('input', () => {
-        currentPage = 1;
-        applyFiltersAndSort();
-    });
-    elSearchField.addEventListener('change', () => {
-        currentPage = 1;
-        applyFiltersAndSort();
-    });
+    elSearchInput.addEventListener('input', () => { currentPage = 1; applyFiltersAndSort(); });
+    elSearchField.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
 
-    // Sorting
+    // Sort
     document.querySelectorAll('th.sortable').forEach(th => {
         th.addEventListener('click', () => {
-            const sortKey = th.getAttribute('data-sort');
-            if (currentSort.column === sortKey) {
-                currentSort.asc = !currentSort.asc;
-            } else {
-                currentSort.column = sortKey;
-                currentSort.asc = true;
-            }
-            updateSortIcons();
+            const key = th.getAttribute('data-sort');
+            currentSort.asc = currentSort.column === key ? !currentSort.asc : true;
+            currentSort.column = key;
+            updateSortUI(currentSort.column, currentSort.asc);
             applyFiltersAndSort();
         });
     });
 
     // Select All
-    elSelectAll.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        document.querySelectorAll('.row-check').forEach(cb => {
-            cb.checked = isChecked;
-        });
+    elSelectAll.addEventListener('change', e => {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
     });
 
-    // Add Button
-    elAddBtn.addEventListener('click', () => openModal());
+    // Add
+    $('addBtn').addEventListener('click', () => openModal());
 
-    // Delete Button
-    elDeleteBtn.addEventListener('click', async () => {
-        const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
-        if (checked.length === 0) return showToast('삭제할 항목을 선택해주세요.', 'warning');
-        if (!confirm(`선택한 ${checked.length}개의 항목을 삭제하시겠습니까?`)) return;
+    // Delete
+    $('deleteBtn').addEventListener('click', deleteSelected);
 
-        try {
-            const res = await fetch(`${API_BASE}/delete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids: checked })
-            });
-            if (res.ok) {
-                showToast('삭제되었습니다.', 'success');
-                loadData();
-            } else {
-                const err = await res.json();
-                showToast('삭제 실패: ' + err.error, 'error');
-            }
-        } catch (e) {
-            console.error(e);
-            showToast('서버 연결 오류', 'error');
-        }
-    });
+    // Migrate V1→V2
+    $('migrateBtn').addEventListener('click', runMigration);
 
-    // Migration Button
-    elMigrateBtn.addEventListener('click', runMigration);
-
-    // Modal Events
-    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
-    document.getElementById('cancelBtn').addEventListener('click', closeModal);
-    window.addEventListener('click', (e) => {
+    // Modal
+    $('closeModalBtn').addEventListener('click', closeModal);
+    $('cancelBtn').addEventListener('click', closeModal);
+    window.addEventListener('click', e => {
         if (e.target === itemModal) closeModal();
         if (e.target === historyModal) closeHistoryModal();
     });
+    $('closeHistoryModalBtn').addEventListener('click', closeHistoryModal);
+    itemForm.addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
 
-    document.getElementById('closeHistoryModalBtn').addEventListener('click', closeHistoryModal);
+    // Cascading dropdowns
+    initCascadingDropdowns();
 
-    itemForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await saveItem();
+    // Modal auto-calc
+    const calcInputs = ['inpBuyPrice', 'inpLogistics', 'inpSellPrice'];
+    calcInputs.forEach(id => {
+        $(id)?.addEventListener('input', updateModalCalc);
     });
 
-    // Cascading Dropdown Events
-    initCascadingDropdowns();
+    // Currency change → update labels
+    $('inpCurrency').addEventListener('change', () => {
+        const sym = getCurrencySymbol($('inpCurrency').value);
+        $('logisticsCurrLabel').textContent = sym;
+        $('sellCurrLabel').textContent = sym;
+    });
 }
 
-function updateSortIcons() {
-    updateSortUI(currentSort.column, currentSort.asc);
-}
-
+// ==========================================
+// Data Loading
+// ==========================================
 async function loadData() {
     try {
         const res = await fetch(API_BASE);
         if (!res.ok) throw new Error('API fetch failed');
         itemsData = await res.json();
+        buildCategoryChips();
         updateDatalists();
         applyFiltersAndSort();
     } catch (e) {
         console.error(e);
-        elTableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:red;">데이터를 불러오는 중 오류가 발생했습니다. NAS 서버 상태를 확인해주세요.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="15" style="text-align:center; color:red; padding:30px;">데이터를 불러오는 중 오류가 발생했습니다. NAS 서버 상태를 확인해주세요.</td></tr>';
     }
 }
 
+// ==========================================
+// Category Chips
+// ==========================================
+function buildCategoryChips() {
+    const cats = new Set();
+    itemsData.forEach(d => { if (d.category) cats.add(d.category); });
+    const wrap = document.querySelector('.category-filter-wrap');
+    wrap.innerHTML = '<button class="cat-chip active" data-cat="all">전체</button>';
+    [...cats].sort().forEach(cat => {
+        wrap.innerHTML += `<button class="cat-chip" data-cat="${cat}">${cat}</button>`;
+    });
+    wrap.querySelectorAll('.cat-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            wrap.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeCategoryFilter = btn.dataset.cat;
+            currentPage = 1;
+            applyFiltersAndSort();
+        });
+    });
+}
+
+// ==========================================
+// Filter & Sort
+// ==========================================
 function applyFiltersAndSort() {
     const query = elSearchInput.value.toLowerCase().trim();
     const field = elSearchField.value;
 
     filteredData = itemsData.filter(item => {
+        // Category filter
+        if (activeCategoryFilter !== 'all' && item.category !== activeCategoryFilter) return false;
+        // Search
         if (!query) return true;
         if (field === 'all') {
-            return (item.co || '').toLowerCase().includes(query) ||
-                   (item.mfr || '').toLowerCase().includes(query) ||
-                   (item.item || '').toLowerCase().includes(query) ||
-                   (item.spec || '').toLowerCase().includes(query);
+            return ['itemName', 'spec', 'category', 'manufacturer', 'supplier', 'note']
+                .some(f => (item[f] || '').toLowerCase().includes(query));
         }
         return (item[field] || '').toLowerCase().includes(query);
     });
 
-    applySorting(filteredData, currentSort.column, currentSort.asc, [], ['price', 'sellPrice']);
+    // Sort
+    const numericCols = ['buyPrice', 'logistics', 'landedCost', 'sellPrice'];
+    applySorting(filteredData, currentSort.column, currentSort.asc, [], numericCols);
 
     renderTable();
 }
 
+// ==========================================
+// Render Table
+// ==========================================
 function renderTable() {
     elTotalCount.textContent = `${filteredData.length}건`;
     elSelectAll.checked = false;
 
     if (filteredData.length === 0) {
-        elTableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--gray-500);">데이터가 없습니다.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
         elPagination.innerHTML = '';
         return;
     }
 
-    const totalFiltered = filteredData.length;
-    const pg = calcPagination(totalFiltered, currentPage, pageSize);
+    const pg = calcPagination(filteredData.length, currentPage, pageSize);
     currentPage = pg.page;
-    const currentItems = filteredData.slice(pg.startIdx, pg.endIdx);
+    const rows = filteredData.slice(pg.startIdx, pg.endIdx);
 
     let html = '';
-    currentItems.forEach(item => {
-        const dateStr = item.updatedAt ? item.updatedAt.split('T')[0] : '';
-
-        // Parse prices
-        const buy = item.price ? parseFloat(item.price.replace(/,/g, '')) : NaN;
-        const sell = item.sellPrice ? parseFloat(item.sellPrice.replace(/,/g, '')) : NaN;
-
-        // Diff calculation
-        let diffHtml = '<span class="diff-zero">-</span>';
-        if (!isNaN(buy) && !isNaN(sell)) {
-            const diff = sell - buy;
-            const cls = diff > 0 ? 'diff-positive' : diff < 0 ? 'diff-negative' : 'diff-zero';
-            const prefix = diff > 0 ? '+' : '';
-            diffHtml = `<span class="${cls}">${prefix}${diff.toLocaleString()}</span>`;
-        }
+    rows.forEach(d => {
+        const sym = getCurrencySymbol(d.currency);
+        const landed = d.landedCost || (d.buyPrice + (d.logistics || 0));
+        const margin = d.sellPrice - landed;
+        const marginRate = d.sellPrice > 0 ? ((margin / d.sellPrice) * 100) : 0;
+        const dateStr = d.updatedAt ? d.updatedAt.split('T')[0] : '';
 
         // Margin badge
-        let marginHtml = '<span class="margin-badge badge-none">-</span>';
-        if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
-            const rate = ((sell - buy) / sell * 100);
-            const badgeCls = rate > 20 ? 'badge-success' : rate > 10 ? 'badge-neutral' : 'badge-danger';
-            marginHtml = `<span class="margin-badge ${badgeCls}">${rate.toFixed(1)}%</span>`;
+        let marginBadge;
+        if (d.sellPrice <= 0) {
+            marginBadge = '<span class="margin-badge badge-none">-</span>';
+        } else {
+            const cls = marginRate > 20 ? 'badge-high' : marginRate > 10 ? 'badge-mid' : 'badge-low';
+            marginBadge = `<span class="margin-badge ${cls}">${marginRate.toFixed(1)}%</span>`;
         }
 
-        const priceDisplay = (item.price && item.price !== '-') ? item.price : '-';
-        const sellDisplay = (item.sellPrice && item.sellPrice !== '-') ? item.sellPrice : '-';
+        // Margin amount
+        const marginCls = margin > 0 ? 'val-positive' : margin < 0 ? 'val-negative' : 'val-zero';
+        const marginAmt = margin !== 0 ? `<span class="${marginCls}">${fmtNum(margin)}</span>` : '<span class="val-zero">-</span>';
+
+        // Buy change rate
+        let changeHtml = '<span class="change-flat">-</span>';
+        if (d.prevBuyPrice && d.prevBuyPrice > 0) {
+            const rate = ((d.buyPrice - d.prevBuyPrice) / d.prevBuyPrice * 100);
+            if (rate > 0) changeHtml = `<span class="change-up">▲${rate.toFixed(1)}%</span>`;
+            else if (rate < 0) changeHtml = `<span class="change-down">▼${Math.abs(rate).toFixed(1)}%</span>`;
+            else changeHtml = '<span class="change-flat">0%</span>';
+        }
+
+        // Category tag
+        const catTag = d.category ? `<span class="cat-tag cat-${d.category}">${d.category}</span>` : '-';
 
         html += `
-            <tr class="item-row" data-id="${item.id}">
-                <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${item.id}"></td>
-                <td onclick="openModal('${item.id}')"><strong>${item.co || '-'}</strong></td>
-                <td onclick="openModal('${item.id}')" class="mfr-tag">${item.mfr || '-'}</td>
-                <td onclick="openModal('${item.id}')" class="col-item">${item.item || '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.spec || '-'}</td>
-                <td onclick="openModal('${item.id}')" class="col-num price-col" style="font-weight:500;">${priceDisplay}</td>
-                <td onclick="openModal('${item.id}')" class="col-num price-col" style="font-weight:500;">${sellDisplay}</td>
-                <td onclick="openModal('${item.id}')" class="col-num margin-col">${diffHtml}</td>
-                <td onclick="openModal('${item.id}')" class="col-num margin-col">${marginHtml}</td>
-                <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${item.id}')">보기</button></td>
-                <td onclick="openModal('${item.id}')" class="col-note">${item.note || ''}</td>
-                <td onclick="openModal('${item.id}')" class="col-date">${dateStr}</td>
-            </tr>
-        `;
+            <tr data-id="${d.id}">
+                <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
+                <td class="col-item" onclick="openModal('${d.id}')">${d.itemName || '-'}</td>
+                <td onclick="openModal('${d.id}')">${d.spec || '-'}</td>
+                <td onclick="openModal('${d.id}')">${catTag}</td>
+                <td onclick="openModal('${d.id}')" style="color:#059669; font-weight:500;">${d.manufacturer || '-'}</td>
+                <td onclick="openModal('${d.id}')">${d.supplier || '-'}</td>
+                <td class="col-num cost-col" onclick="openModal('${d.id}')"><span class="curr-sym">${sym}</span>${fmtNum(d.buyPrice)}</td>
+                <td class="col-num-sm cost-col" onclick="openModal('${d.id}')" style="font-size:9px; color:var(--gray-500);">${d.logistics > 0 ? fmtNum(d.logistics) : '-'}</td>
+                <td class="col-num cost-col" onclick="openModal('${d.id}')" style="font-weight:600;">${fmtNum(landed)}</td>
+                <td class="col-num sell-col" onclick="openModal('${d.id}')" style="font-weight:600;"><span class="curr-sym">${sym}</span>${fmtNum(d.sellPrice)}</td>
+                <td class="col-num margin-col" onclick="openModal('${d.id}')">${marginAmt}</td>
+                <td class="col-num-sm margin-col" onclick="openModal('${d.id}')">${marginBadge}</td>
+                <td class="col-num-sm margin-col" onclick="openModal('${d.id}')">${changeHtml}</td>
+                <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${d.id}')">이력</button></td>
+                <td class="col-date" onclick="openModal('${d.id}')">${dateStr}</td>
+            </tr>`;
     });
 
     elTableBody.innerHTML = html;
     renderPagination({
         container: elPagination,
-        totalFiltered: totalFiltered,
+        totalFiltered: filteredData.length,
         totalAll: itemsData.length,
         totalPages: pg.totalPages,
-        currentPage: currentPage,
-        pageSize: pageSize,
+        currentPage, pageSize,
         startIdx: pg.startIdx,
         endIdx: pg.endIdx,
-        onPageChange: (page) => { currentPage = page; renderTable(); },
-        onPageSizeChange: (size) => { pageSize = size; currentPage = 1; renderTable(); }
+        onPageChange: p => { currentPage = p; renderTable(); },
+        onPageSizeChange: s => { pageSize = s; currentPage = 1; renderTable(); }
     });
+}
+
+// ==========================================
+// Helpers
+// ==========================================
+function fmtNum(n) {
+    if (n === 0 || n === undefined || n === null) return '0';
+    return Number(n).toLocaleString();
+}
+
+function getCurrencySymbol(code) {
+    const map = { KRW: '₩', USD: '$', JPY: '¥', EUR: '€', CNY: '¥' };
+    return map[code] || code || '₩';
 }
 
 // ==========================================
 // Datalist & Cascading Dropdown
 // ==========================================
-
-const fillDatalist = (id, values) => {
-    const dl = document.getElementById(id);
-    if (dl) dl.innerHTML = [...values].sort().map(val => `<option value="${val}">`).join('');
+const fillDL = (id, vals) => {
+    const dl = $(id);
+    if (dl) dl.innerHTML = [...vals].sort().map(v => `<option value="${v}">`).join('');
 };
 
 function updateDatalists() {
-    const coSet = new Set();
-    itemsData.forEach(d => {
-        if (d.co && d.co !== '-') coSet.add(d.co);
-    });
-    fillDatalist('listCo', coSet);
-    // Initially fill all for mfr/item/spec
+    const suppliers = new Set();
+    itemsData.forEach(d => { if (d.supplier) suppliers.add(d.supplier); });
+    fillDL('listSupplier', suppliers);
     refreshCascade();
 }
 
 function refreshCascade() {
-    const co = (document.getElementById('inpCo')?.value || '').trim();
-    const mfr = (document.getElementById('inpMfr')?.value || '').trim();
-    const item = (document.getElementById('inpItem')?.value || '').trim();
+    const supplier = ($('inpSupplier')?.value || '').trim();
+    const mfr = ($('inpMfr')?.value || '').trim();
 
-    // Filter manufacturers by selected company
-    let filtered = itemsData;
-    if (co) {
-        const coFiltered = itemsData.filter(d => d.co === co);
-        if (coFiltered.length > 0) filtered = coFiltered;
+    // Filter by supplier
+    let f1 = itemsData;
+    if (supplier) {
+        const sf = itemsData.filter(d => d.supplier === supplier);
+        if (sf.length) f1 = sf;
     }
     const mfrSet = new Set();
-    filtered.forEach(d => { if (d.mfr && d.mfr !== '-') mfrSet.add(d.mfr); });
-    fillDatalist('listMfr', mfrSet);
+    f1.forEach(d => { if (d.manufacturer) mfrSet.add(d.manufacturer); });
+    fillDL('listMfr', mfrSet);
 
-    // Filter items by selected company + manufacturer
-    let filtered2 = filtered;
+    // Filter by supplier + mfr
+    let f2 = f1;
     if (mfr) {
-        const mfrFiltered = filtered.filter(d => d.mfr === mfr);
-        if (mfrFiltered.length > 0) filtered2 = mfrFiltered;
+        const mf = f1.filter(d => d.manufacturer === mfr);
+        if (mf.length) f2 = mf;
     }
-    const itemSet = new Set();
-    filtered2.forEach(d => { if (d.item && d.item !== '-') itemSet.add(d.item); });
-    fillDatalist('listItem', itemSet);
+    const itemSet = new Set(), specSet = new Set();
+    f2.forEach(d => {
+        if (d.itemName) itemSet.add(d.itemName);
+        if (d.spec) specSet.add(d.spec);
+    });
+    fillDL('listItem', itemSet);
+    fillDL('listSpec', specSet);
 
-    // Filter specs by selected company + manufacturer + item
-    let filtered3 = filtered2;
-    if (item) {
-        const itemFiltered = filtered2.filter(d => d.item === item);
-        if (itemFiltered.length > 0) filtered3 = itemFiltered;
+    // Hints
+    const hintSupplier = $('hintSupplier');
+    const hintMfr = $('hintMfr');
+    const hintItem = $('hintItem');
+    if (hintSupplier) {
+        if (supplier && mfrSet.size > 0) {
+            hintSupplier.textContent = `${supplier}의 제조사 ${mfrSet.size}개 필터됨`;
+            hintSupplier.classList.add('active');
+        } else {
+            hintSupplier.textContent = '공급사를 선택하면 제조사/품목이 자동 필터됩니다';
+            hintSupplier.classList.remove('active');
+        }
     }
-    const specSet = new Set();
-    filtered3.forEach(d => { if (d.spec && d.spec !== '-') specSet.add(d.spec); });
-    fillDatalist('listSpec', specSet);
-
-    // Update cascade hints
-    const hintMfr = document.getElementById('hintMfr');
-    const hintItem = document.getElementById('hintItem');
     if (hintMfr) {
-        if (co && mfrSet.size > 0) {
-            hintMfr.textContent = `${co}의 제조사 ${mfrSet.size}개`;
-            hintMfr.classList.add('active');
-        } else {
-            hintMfr.textContent = '';
-            hintMfr.classList.remove('active');
-        }
-    }
-    if (hintItem) {
         if (mfr && itemSet.size > 0) {
-            hintItem.textContent = `${mfr}의 품목 ${itemSet.size}개`;
-            hintItem.classList.add('active');
-        } else {
-            hintItem.textContent = '';
-            hintItem.classList.remove('active');
-        }
+            hintMfr.textContent = `${mfr}의 품목 ${itemSet.size}개`;
+            hintMfr.classList.add('active');
+        } else { hintMfr.textContent = ''; hintMfr.classList.remove('active'); }
     }
+    if (hintItem) { hintItem.textContent = ''; hintItem.classList.remove('active'); }
 }
 
 function initCascadingDropdowns() {
-    const inpCo = document.getElementById('inpCo');
-    const inpMfr = document.getElementById('inpMfr');
-    const inpItem = document.getElementById('inpItem');
-    const inpSpec = document.getElementById('inpSpec');
-
-    if (inpCo) inpCo.addEventListener('input', () => {
-        refreshCascade();
-    });
-    if (inpMfr) inpMfr.addEventListener('input', () => {
-        refreshCascade();
-    });
-    if (inpItem) inpItem.addEventListener('input', () => {
-        refreshCascade();
-    });
-    if (inpSpec) inpSpec.addEventListener('input', () => {
-        refreshCascade();
+    ['inpSupplier', 'inpMfr', 'inpItem', 'inpSpec'].forEach(id => {
+        $(id)?.addEventListener('input', refreshCascade);
     });
 }
 
 // ==========================================
-// CRUD 로직
+// Modal Auto-Calc
 // ==========================================
+function updateModalCalc() {
+    const buy = parseInt($('inpBuyPrice')?.value) || 0;
+    const log = parseInt($('inpLogistics')?.value) || 0;
+    const sell = parseInt($('inpSellPrice')?.value) || 0;
+    const landed = buy + log;
+    const margin = sell - landed;
+    const rate = sell > 0 ? ((margin / sell) * 100) : 0;
+    const sym = getCurrencySymbol($('inpCurrency')?.value);
 
+    $('inpLandedCost').value = landed > 0 ? sym + fmtNum(landed) : '';
+    $('inpLandedCost').style.color = '';
+
+    const mAmt = $('inpMarginAmt');
+    if (sell > 0 || buy > 0) {
+        mAmt.value = (margin >= 0 ? '+' : '') + sym + fmtNum(margin);
+        mAmt.style.color = margin > 0 ? '#059669' : margin < 0 ? '#dc2626' : '';
+    } else { mAmt.value = ''; mAmt.style.color = ''; }
+
+    const mRate = $('inpMarginRate');
+    if (sell > 0) {
+        mRate.value = rate.toFixed(2) + '%';
+        mRate.style.color = rate > 20 ? '#059669' : rate > 10 ? '#d97706' : '#dc2626';
+    } else { mRate.value = ''; mRate.style.color = ''; }
+}
+
+// ==========================================
+// CRUD
+// ==========================================
 window.openModal = function(id = null) {
     itemForm.reset();
-    document.getElementById('timestampDisplay').textContent = '';
-    document.getElementById('inpHistory').value = '';
+    $('timestampDisplay').textContent = '';
+    $('inpHistory').value = '';
+    $('inpCurrency').value = 'KRW';
+    $('logisticsCurrLabel').textContent = '₩';
+    $('sellCurrLabel').textContent = '₩';
+    $('inpLandedCost').value = '';
+    $('inpMarginAmt').value = '';
+    $('inpMarginRate').value = '';
 
     if (id) {
-        const item = itemsData.find(d => d.id === id);
-        if (!item) return;
-        document.getElementById('modalTitle').textContent = '단가 수정';
-        document.getElementById('editId').value = item.id;
-        document.getElementById('inpCo').value = item.co || '';
-        document.getElementById('inpMfr').value = item.mfr || '';
-        document.getElementById('inpItem').value = item.item || '';
-        document.getElementById('inpSpec').value = item.spec || '';
-        document.getElementById('inpPrice').value = item.price || '';
-        document.getElementById('inpSellPrice').value = item.sellPrice || '';
-        document.getElementById('inpNote').value = item.note || '';
-        document.getElementById('inpHistory').value = item.history || '';
-        
-        if (window.calculateMargin) window.calculateMargin();
-        
-        if (item.updatedAt) {
-            const dt = new Date(item.updatedAt);
-            document.getElementById('timestampDisplay').textContent = `최종 수정: ${dt.toLocaleString()}`;
+        const d = itemsData.find(x => x.id === id);
+        if (!d) return;
+        $('modalTitle').textContent = '단가 수정';
+        $('editId').value = d.id;
+        $('inpItem').value = d.itemName || '';
+        $('inpSpec').value = d.spec || '';
+        $('inpCategory').value = d.category || '';
+        $('inpMfr').value = d.manufacturer || '';
+        $('inpSupplier').value = d.supplier || '';
+        $('inpCurrency').value = d.currency || 'KRW';
+        const sym = getCurrencySymbol(d.currency);
+        $('logisticsCurrLabel').textContent = sym;
+        $('sellCurrLabel').textContent = sym;
+        $('inpBuyPrice').value = d.buyPrice || 0;
+        $('inpLogistics').value = d.logistics || 0;
+        $('inpSellPrice').value = d.sellPrice || 0;
+        $('inpNote').value = d.note || '';
+        $('inpHistory').value = d.history || '';
+        updateModalCalc();
+        if (d.updatedAt) {
+            $('timestampDisplay').textContent = `최종 수정: ${new Date(d.updatedAt).toLocaleString()}`;
         }
     } else {
-        document.getElementById('modalTitle').textContent = '신규 단가 등록';
-        document.getElementById('editId').value = '';
-        document.getElementById('inpSellPrice').value = '';
-        if (window.calculateMargin) window.calculateMargin();
+        $('modalTitle').textContent = '신규 단가 등록';
+        $('editId').value = '';
     }
 
+    refreshCascade();
     itemModal.classList.add('active');
 };
 
-function closeModal() {
-    itemModal.classList.remove('active');
-}
+function closeModal() { itemModal.classList.remove('active'); }
 
 async function saveItem() {
-    const id = document.getElementById('editId').value;
+    const id = $('editId').value;
     const payload = {
-        co: document.getElementById('inpCo').value.trim(),
-        mfr: document.getElementById('inpMfr').value.trim(),
-        item: document.getElementById('inpItem').value.trim(),
-        spec: document.getElementById('inpSpec').value.trim(),
-        price: document.getElementById('inpPrice').value.trim(),
-        sellPrice: document.getElementById('inpSellPrice').value.trim(),
-        note: document.getElementById('inpNote').value.trim()
+        itemName: $('inpItem').value.trim(),
+        spec: $('inpSpec').value.trim(),
+        category: $('inpCategory').value.trim(),
+        manufacturer: $('inpMfr').value.trim(),
+        supplier: $('inpSupplier').value.trim(),
+        currency: $('inpCurrency').value,
+        buyPrice: parseInt($('inpBuyPrice').value) || 0,
+        logistics: parseInt($('inpLogistics').value) || 0,
+        sellPrice: parseInt($('inpSellPrice').value) || 0,
+        note: $('inpNote').value.trim()
     };
 
     try {
         const url = id ? `${API_BASE}/${id}` : API_BASE;
         const method = id ? 'PUT' : 'POST';
-        
         const res = await fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
+            method, headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
         if (res.ok) {
             showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
             closeModal();
@@ -408,81 +436,47 @@ async function saveItem() {
     }
 }
 
-// ==========================================
-// 이력 모달
-// ==========================================
-window.showHistory = function(id) {
-    const item = itemsData.find(d => d.id === id);
-    if (!item) return;
-    document.getElementById('historyModalTitle').innerText = `${item.mfr} - ${item.item} 이력`;
-    document.getElementById('historyModalBody').innerText = item.history || '이력 없음';
-    historyModal.classList.add('active');
-};
-
-function closeHistoryModal() {
-    historyModal.classList.remove('active');
+async function deleteSelected() {
+    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+    if (!ids.length) return showToast('삭제할 항목을 선택해주세요.', 'warning');
+    if (!confirm(`선택한 ${ids.length}개 항목을 삭제하시겠습니까?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/delete`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        if (res.ok) { showToast('삭제되었습니다.', 'success'); loadData(); }
+        else { const err = await res.json(); showToast('삭제 실패: ' + err.error, 'error'); }
+    } catch (e) { console.error(e); showToast('서버 연결 오류', 'error'); }
 }
 
 // ==========================================
-// Toast & Migration
+// History Modal
 // ==========================================
-// showToast() — provided by kng-table-utils.js
+window.showHistory = function(id) {
+    const d = itemsData.find(x => x.id === id);
+    if (!d) return;
+    $('historyModalTitle').textContent = `${d.itemName || '품목'} 변동 이력`;
+    $('historyModalBody').textContent = d.history || '이력 없음';
+    historyModal.classList.add('active');
+};
+function closeHistoryModal() { historyModal.classList.remove('active'); }
 
-// 초기 마이그레이션 함수
+// ==========================================
+// V1→V2 Migration
+// ==========================================
 async function runMigration() {
-    if (itemsData.length > 0) {
-        if (!confirm('이미 DB에 데이터가 존재합니다. 마이그레이션을 계속 진행하시겠습니까? (중복 데이터가 발생할 수 있습니다)')) return;
-    }
-    
-    // 기존 HTML 하드코딩 데이터
-    const oldData = [
-        { co: "양지유화", mfr: "SHELL", item: "Hydraulic 46", spec: "200L(D/M)", price: "437,000", history: "2026-00-00: 437,000\n2026-00-00: -", note: "유압유" },
-        { co: "양지유화", mfr: "SHELL", item: "Hydraulic 46", spec: "20L(P/L)", price: "46,000", history: "2026-00-00: 46,000\n2026-00-00: -", note: "유압유" },
-        { co: "양지유화", mfr: "SHELL", item: "Hydraulic 68", spec: "200L(D/M)", price: "437,000", history: "2026-00-00: 437,000\n2026-00-00: -", note: "유압유" },
-        { co: "양지유화", mfr: "SHELL", item: "Hydraulic 68", spec: "20L(P/L)", price: "46,000", history: "2026-00-00: 46,000\n2026-00-00: -", note: "유압유" },
-        { co: "양지유화", mfr: "SHELL", item: "Tellus S2 MX 68", spec: "200L(D/M)", price: "578,000", history: "2026-00-00: 578,000\n2026-00-00: -", note: "유압유" },
-        { co: "양지유화", mfr: "SHELL", item: "Tellus S2 MX 46", spec: "20L(P/L)", price: "98,000", history: "2026-04-08: 98,000\n2026-00-00: 78,000", note: "유압유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 46", spec: "20L(P/L)", price: "55,000", history: "2026-04-01: 55,000\n2026-03-24: 42,000\n2026-00-00: 36,000", note: "유압유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 46", spec: "200L(D/M)", price: "528,000", history: "2026-04-01: 528,000\n2026-03-24: 420,000\n2026-00-00: 360,000", note: "유압유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 68", spec: "20L(P/L)", price: "56,000", history: "2026-04-01: 56,000\n2026-03-24: 44,000\n2026-00-00: 38,000", note: "유압유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer AW 68", spec: "200L(D/M)", price: "538,000", history: "2026-04-01: 538,000\n2026-03-24: 430,000\n2026-00-00: 370,000", note: "유압유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 150", spec: "20L(P/L)", price: "64,000", history: "2026-04-01: 64,000\n2026-03-24: 53,000\n2026-00-00: 48,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 150", spec: "200L(D/M)", price: "605,000", history: "2026-04-01: 605,000\n2026-03-24: 500,000\n2026-00-00: 470,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 220", spec: "20L(P/L)", price: "64,000", history: "2026-04-01: 64,000\n2026-03-24: 53,000\n2026-00-00: 48,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 220", spec: "200L(D/M)", price: "605,000", history: "2026-04-01: 605,000\n2026-03-24: 500,000\n2026-00-00: 470,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 320", spec: "20L(P/L)", price: "65,000", history: "2026-04-01: 65,000\n2026-03-24: 54,000\n2026-00-00: 49,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer IGO 320", spec: "200L(D/M)", price: "615,000", history: "2026-04-01: 615,000\n2026-03-24: 510,000\n2026-00-00: 480,000", note: "기어유" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 0", spec: "15kg(P/L)", price: "73,000", history: "2026-04-01: 73,000\n2026-03-24: 62,000\n2026-00-00: 55,000", note: "그리스" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 1", spec: "15kg(P/L)", price: "75,000", history: "2026-04-01: 75,000\n2026-03-24: 65,000\n2026-00-00: 60,000", note: "그리스" },
-        { co: "양지유화", mfr: "현대오일뱅크", item: "Xteer Grease EP 2", spec: "15kg(P/L)", price: "76,000", history: "2026-04-01: 76,000\n2026-03-24: 67,000\n2026-00-00: 62,000", note: "그리스" },
-        { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #1", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-        { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #2", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-        { co: "양지유화", mfr: "대성석유화학", item: "COSMOA EP #3", spec: "15kg(P/L)", price: "84,000", history: "2026-04-13: 84,000\n2026-04-06: 79,000\n2026-03-25: 72,000\n이전: 65,000", note: "그리스" },
-        { co: "맥테크놀로지", mfr: "맥테크", item: "MAK SEAL 270", spec: "KG", price: "1,760", history: "2026-04-20: 1,760\n(기존 500원->변경 280원 인상, 2026-04-20~2026-05-31 공급분 적용)\n이전: 1,480", note: "테일씰그리스(일반굴진용)" },
-        { co: "맥테크놀로지", mfr: "맥테크", item: "MAK SEAL 230", spec: "KG", price: "1,810", history: "2026-04-20: 1,810\n(기존 500원->변경 280원 인상, 2026-04-20~2026-05-31 공급분 적용)\n이전: 1,530", note: "테일씰그리스(초기굴진용)" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 2 Grease", spec: "15kg(P/L)", price: "58,500", history: "2025-03-30: 58,500", note: "그리스" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 1 Grease", spec: "15kg(P/L)", price: "57,000", history: "2025-03-30: 57,000", note: "그리스" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X EP 0 Grease", spec: "15kg(P/L)", price: "52,500", history: "2025-03-30: 52,500", note: "그리스" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 46S", spec: "20L(P/L)", price: "44,000", history: "2026-04-06: 44,000\n2026-01-16: 34,000", note: "유압유" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 46S", spec: "200L(D/M)", price: "413,000", history: "2026-04-06: 413,000\n2026-01-16: 320,000", note: "유압유" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 68S", spec: "20L(P/L)", price: "46,000", history: "2026-04-06: 46,000\n2026-01-16: 36,000", note: "유압유" },
-        { co: "DRT(디알티)", mfr: "광우KCC", item: "2X LUBE HF 68S", spec: "200L(D/M)", price: "440,000", history: "2026-04-06: 440,000\n2026-01-16: 340,000", note: "유압유" },
-        { co: "DRT(디알티)", mfr: "RECORD", item: "TMT-100", spec: "KG", price: "1,450-운임별도", history: "2026-01-15: 1,450\n2026-01-02: 1,600", note: "테일씰그리스\n70KG 보유재고분" }
-    ];
-
+    if (!confirm('기존 V1 데이터를 V2 테이블로 마이그레이션합니다. 진행할까요?')) return;
+    const btn = $('migrateBtn');
     try {
-        elMigrateBtn.disabled = true;
-        elMigrateBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 처리중...";
-        
-        const res = await fetch(`${API_BASE}/bulk`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(oldData)
+        btn.disabled = true;
+        btn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 처리중...";
+        const res = await fetch(`${API_BASE}/migrate-v2`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }
         });
-
         if (res.ok) {
             const data = await res.json();
-            showToast(`${data.insertedCount}건 마이그레이션 완료`, 'success');
+            showToast(`${data.migrated}건 마이그레이션 완료 (총 ${data.total}건)`, 'success');
             loadData();
         } else {
             const err = await res.json();
@@ -490,9 +484,9 @@ async function runMigration() {
         }
     } catch (e) {
         console.error(e);
-        showToast('마이그레이션 중 오류 발생', 'error');
+        showToast('마이그레이션 중 오류', 'error');
     } finally {
-        elMigrateBtn.disabled = false;
-        elMigrateBtn.innerHTML = "<i class='bx bx-cloud-upload'></i> 데이터 마이그레이션";
+        btn.disabled = false;
+        btn.innerHTML = "<i class='bx bx-cloud-upload'></i> 마이그레이션";
     }
 }
