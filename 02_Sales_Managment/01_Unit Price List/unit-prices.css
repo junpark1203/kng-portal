@@ -299,11 +299,16 @@ td.margin-col { background: rgba(245, 158, 11, 0.025); }
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    width: auto !important;
     flex: 1;
     min-width: 0;
 }
 .price-input-wrap input[type="number"]:focus {
     box-shadow: none !important;
+}
+.price-input-wrap .currency-select {
+    width: 48px !important;
+    min-width: 48px;
 }
 
 /* ── Section Dividers ── */
