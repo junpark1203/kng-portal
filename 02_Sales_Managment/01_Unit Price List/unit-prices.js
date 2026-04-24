@@ -35,8 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initEvents() {
-    // Search
-    elSearchInput.addEventListener('input', () => { currentPage = 1; applyFiltersAndSort(); });
+    // Search (debounced)
+    const debouncedSearch = debounce(() => { currentPage = 1; applyFiltersAndSort(); }, 300);
+    elSearchInput.addEventListener('input', debouncedSearch);
     elSearchField.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
 
     // Sort
@@ -134,19 +135,19 @@ function buildCategoryChips() {
 // Filter & Sort
 // ==========================================
 function applyFiltersAndSort() {
-    const query = elSearchInput.value.toLowerCase().trim();
+    const query = elSearchInput.value.trim();
     const field = elSearchField.value;
 
     filteredData = itemsData.filter(item => {
         // Category filter
         if (activeCategoryFilter !== 'all' && item.category !== activeCategoryFilter) return false;
-        // Search
+        // Fuzzy search
         if (!query) return true;
         if (field === 'all') {
             return ['itemName', 'spec', 'category', 'manufacturer', 'supplier', 'note']
-                .some(f => (item[f] || '').toLowerCase().includes(query));
+                .some(f => fuzzyMatch(item[f], query));
         }
-        return (item[field] || '').toLowerCase().includes(query);
+        return fuzzyMatch(item[field], query);
     });
 
     // Sort

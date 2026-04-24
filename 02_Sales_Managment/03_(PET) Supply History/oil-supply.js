@@ -31,8 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
 });
 
+// Debounced search
+const debouncedSearch = debounce(() => { currentPage = 1; applyFiltersAndSort(); }, 300);
+
 function initEvents() {
-    elSearchInput.addEventListener('input', () => { currentPage = 1; applyFiltersAndSort(); });
+    elSearchInput.addEventListener('input', debouncedSearch);
     elSearchField.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
     elStartDate.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
     elEndDate.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
@@ -130,7 +133,7 @@ function fillDL(id, vals) {
 // Filter & Sort
 // ==========================================
 function applyFiltersAndSort() {
-    const query = elSearchInput.value.toLowerCase().trim();
+    const query = elSearchInput.value.trim();
     const field = elSearchField.value;
     const startDate = elStartDate.value;
     const endDate = elEndDate.value;
@@ -142,16 +145,52 @@ function applyFiltersAndSort() {
         if (!query) return true;
         if (field === 'all') {
             return ['site', 'supplier', 'manufacturer', 'item', 'category', 'spec']
-                .some(f => (item[f] || '').toLowerCase().includes(query));
+                .some(f => fuzzyMatch(item[f], query));
         }
-        return (item[field] || '').toLowerCase().includes(query);
+        return fuzzyMatch(item[field], query);
     });
 
     const numericCols = ['qty', 'price', 'total', 'totalQty'];
     applySorting(filteredData, currentSort.column, currentSort.asc, [], numericCols);
 
+    updateActiveFilters();
     updateKPI();
     renderTable();
+}
+
+function updateActiveFilters() {
+    const filters = [];
+    if (activeCategoryFilter !== 'all') filters.push({ key: 'category', label: '구분', value: activeCategoryFilter });
+    if (elSearchInput.value.trim()) filters.push({ key: 'search', label: '검색', value: elSearchInput.value.trim() });
+    if (elStartDate.value) filters.push({ key: 'startDate', label: '시작일', value: elStartDate.value });
+    if (elEndDate.value) filters.push({ key: 'endDate', label: '종료일', value: elEndDate.value });
+
+    renderActiveFilters({
+        container: 'activeFilters',
+        filters,
+        onRemove: key => {
+            if (key === 'category') {
+                activeCategoryFilter = 'all';
+                document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
+                document.querySelector('.cat-chip[data-cat="all"]')?.classList.add('active');
+            }
+            if (key === 'search') elSearchInput.value = '';
+            if (key === 'startDate') elStartDate.value = '';
+            if (key === 'endDate') elEndDate.value = '';
+            currentPage = 1;
+            applyFiltersAndSort();
+        },
+        onClearAll: () => {
+            activeCategoryFilter = 'all';
+            document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
+            document.querySelector('.cat-chip[data-cat="all"]')?.classList.add('active');
+            elSearchInput.value = '';
+            elStartDate.value = '';
+            elEndDate.value = '';
+            currentPage = 1;
+            applyFiltersAndSort();
+        }
+    });
 }
 
 // ==========================================

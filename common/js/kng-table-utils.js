@@ -195,3 +195,121 @@ function calcPagination(totalItems, currentPage, pageSize) {
     const endIdx = (pageSize === 0) ? totalItems : Math.min(startIdx + effectivePageSize, totalItems);
     return { effectivePageSize, totalPages, page, startIdx, endIdx };
 }
+
+// ==========================================
+// Fuzzy Search Utilities
+// ==========================================
+
+/**
+ * 한글 초성 매핑 테이블
+ */
+const CHOSUNG_LIST = [
+    'ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ',
+    'ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'
+];
+
+/**
+ * 한글 문자를 초성으로 변환합니다.
+ * @param {string} str - 입력 문자열
+ * @returns {string} 초성 문자열
+ */
+function getChosung(str) {
+    return [...str].map(ch => {
+        const code = ch.charCodeAt(0) - 0xAC00;
+        if (code < 0 || code > 11171) return ch;
+        return CHOSUNG_LIST[Math.floor(code / 588)];
+    }).join('');
+}
+
+/**
+ * 검색어가 모두 초성인지 판별합니다.
+ * @param {string} query - 검색어
+ * @returns {boolean}
+ */
+function isChosungOnly(query) {
+    return [...query].every(ch => CHOSUNG_LIST.includes(ch));
+}
+
+/**
+ * 퍼지 검색: 공백/대소문자/특수문자 정규화 + 초성 검색
+ * @param {string} target - 대상 문자열
+ * @param {string} query - 검색어 (정규화 전)
+ * @returns {boolean} 매칭 여부
+ */
+function fuzzyMatch(target, query) {
+    if (!target || !query) return false;
+
+    // 정규화: 소문자 + 공백/특수문자 제거
+    const normalize = s => s.toLowerCase().replace(/[\s\-_\/\\.,()]/g, '');
+    const nTarget = normalize(target);
+    const nQuery = normalize(query);
+
+    // 기본 포함 검색
+    if (nTarget.includes(nQuery)) return true;
+
+    // 초성 검색 (ㅇㅈㅇㅎ → 양지유화)
+    if (isChosungOnly(nQuery)) {
+        const targetChosung = getChosung(target);
+        if (targetChosung.includes(nQuery)) return true;
+    }
+
+    return false;
+}
+
+/**
+ * 디바운스 함수
+ * @param {Function} fn - 실행할 함수
+ * @param {number} delay - 지연시간 (ms)
+ * @returns {Function}
+ */
+function debounce(fn, delay = 300) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+/**
+ * 활성 필터 칩을 렌더링합니다.
+ * @param {Object} opts - 옵션
+ * @param {HTMLElement|string} opts.container - 칩을 렌더할 DOM 요소 또는 ID
+ * @param {Array<{key:string, label:string, value:string}>} opts.filters - 활성 필터 목록
+ * @param {Function} opts.onRemove - 개별 필터 제거 콜백: (key) => void
+ * @param {Function} opts.onClearAll - 전체 해제 콜백: () => void
+ */
+function renderActiveFilters(opts) {
+    const container = typeof opts.container === 'string'
+        ? document.getElementById(opts.container)
+        : opts.container;
+    if (!container) return;
+
+    const filters = opts.filters.filter(f => f.value);
+    if (filters.length === 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+    let html = '';
+    filters.forEach(f => {
+        html += `<span class="active-filter-chip">
+            <span class="afc-label">${f.label}:</span>
+            <span class="afc-value">${f.value}</span>
+            <button class="afc-remove" data-key="${f.key}" title="필터 해제">✕</button>
+        </span>`;
+    });
+    html += `<button class="afc-clear-all">전체 해제</button>`;
+    container.innerHTML = html;
+
+    container.querySelectorAll('.afc-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (opts.onRemove) opts.onRemove(btn.dataset.key);
+        });
+    });
+    container.querySelector('.afc-clear-all')?.addEventListener('click', () => {
+        if (opts.onClearAll) opts.onClearAll();
+    });
+}
+
