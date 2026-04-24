@@ -237,19 +237,25 @@ function isChosungOnly(query) {
  * @returns {boolean} 매칭 여부
  */
 function fuzzyMatch(target, query) {
-    if (!target || !query) return false;
+    if (target === null || target === undefined || query === null || query === undefined) return false;
+
+    // Convert to string safely
+    const strTarget = String(target);
+    const strQuery = String(query);
+
+    if (!strTarget || !strQuery) return false;
 
     // 정규화: 소문자 + 공백/특수문자 제거
     const normalize = s => s.toLowerCase().replace(/[\s\-_\/\\.,()]/g, '');
-    const nTarget = normalize(target);
-    const nQuery = normalize(query);
+    const nTarget = normalize(strTarget);
+    const nQuery = normalize(strQuery);
 
     // 기본 포함 검색
     if (nTarget.includes(nQuery)) return true;
 
     // 초성 검색 (ㅇㅈㅇㅎ → 양지유화)
     if (isChosungOnly(nQuery)) {
-        const targetChosung = getChosung(target);
+        const targetChosung = getChosung(strTarget);
         if (targetChosung.includes(nQuery)) return true;
     }
 
