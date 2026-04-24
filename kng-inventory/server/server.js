@@ -165,6 +165,8 @@ function initDb() {
             id TEXT PRIMARY KEY,
             supplyDate TEXT,
             site TEXT,
+            supplier TEXT,
+            manufacturer TEXT,
             item TEXT,
             qty INTEGER,
             price INTEGER,
@@ -175,7 +177,15 @@ function initDb() {
         )
     `, (err) => {
         if (err) console.error('supply_history 테이블 생성 오류:', err.message);
-        else console.log('supply_history 테이블 확인 완료');
+        else {
+            console.log('supply_history 테이블 확인 완료');
+            db.run("ALTER TABLE supply_history ADD COLUMN supplier TEXT", () => {
+                db.run("UPDATE supply_history SET supplier = '평생건산' WHERE supplier IS NULL OR supplier = ''");
+            });
+            db.run("ALTER TABLE supply_history ADD COLUMN manufacturer TEXT", () => {});
+            // In case columns already exist but data is empty
+            db.run("UPDATE supply_history SET supplier = '평생건산' WHERE supplier IS NULL OR supplier = ''");
+        }
     });
 
     // 유류 자재 공급 내역 테이블
@@ -480,9 +490,9 @@ app.post('/api/supply-history', (req, res) => {
     const p = req.body;
     const id = p.id || ('SH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO supply_history (id, supplyDate, site, item, qty, price, total, category, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now];
+    const sql = `INSERT INTO supply_history (id, supplyDate, site, supplier, manufacturer, item, qty, price, total, category, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.supplyDate||'', p.site||'', p.supplier||'', p.manufacturer||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -494,8 +504,8 @@ app.put('/api/supply-history/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE supply_history SET supplyDate=?, site=?, item=?, qty=?, price=?, total=?, category=?, updatedAt=? WHERE id=?`;
-    const params = [p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, id];
+    const sql = `UPDATE supply_history SET supplyDate=?, site=?, supplier=?, manufacturer=?, item=?, qty=?, price=?, total=?, category=?, updatedAt=? WHERE id=?`;
+    const params = [p.supplyDate||'', p.site||'', p.supplier||'', p.manufacturer||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
