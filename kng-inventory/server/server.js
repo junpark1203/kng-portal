@@ -180,11 +180,11 @@ function initDb() {
         else {
             console.log('supply_history 테이블 확인 완료');
             db.run("ALTER TABLE supply_history ADD COLUMN supplier TEXT", () => {
-                db.run("UPDATE supply_history SET supplier = '평생건산' WHERE supplier IS NULL OR supplier = ''");
+                db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'");
             });
             db.run("ALTER TABLE supply_history ADD COLUMN manufacturer TEXT", () => {});
-            // In case columns already exist but data is empty
-            db.run("UPDATE supply_history SET supplier = '평생건산' WHERE supplier IS NULL OR supplier = ''");
+            // In case columns already exist but data is empty or has the old default
+            db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'");
         }
     });
 
