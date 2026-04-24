@@ -1,0 +1,304 @@
+/* ========================================
+   자재 공급 내역 공통 스타일 (supply-common.css)
+   일반 + 유류 공급 내역 공유
+   ======================================== */
+
+/* ── Compact Table ── */
+.supply-table {
+    font-size: 11px !important;
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+}
+
+.supply-table tbody td {
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.supply-table th,
+.supply-table td {
+    text-align: center !important;
+    padding: 5px 4px !important;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Column widths ── */
+.supply-table th { text-align: center !important; position: relative; }
+.supply-table .col-check { width: 28px; }
+.supply-table .col-date { width: 78px; font-size: 10px; }
+.supply-table .col-site { width: auto; min-width: 80px; }
+.supply-table td.col-site { text-align: left !important; font-weight: 500; }
+.supply-table .col-cat { width: 62px; font-size: 10px; }
+.supply-table .col-item { width: auto; min-width: 100px; }
+.supply-table td.col-item { text-align: left !important; font-weight: 500; }
+.supply-table .col-spec { width: 72px; font-size: 10px; }
+.supply-table .col-sup { width: 82px; font-size: 10px; }
+.supply-table .col-mfr { width: 82px; font-size: 10px; }
+.supply-table .col-num { width: 72px; }
+.supply-table .col-num-sm { width: 52px; }
+.supply-table th.col-num, .supply-table td.col-num,
+.supply-table th.col-num-sm, .supply-table td.col-num-sm {
+    text-align: right !important;
+    padding-right: 6px !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Table Group Headers ── */
+.th-group-supply {
+    background: rgba(99, 102, 241, 0.07) !important;
+    color: #6366f1 !important;
+}
+.th-group-product {
+    background: rgba(16, 185, 129, 0.07) !important;
+    color: #059669 !important;
+}
+.th-group-amount {
+    background: rgba(245, 158, 11, 0.07) !important;
+    color: #d97706 !important;
+}
+
+.th-group-label {
+    text-align: center !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid currentColor !important;
+}
+
+/* Sub-header row */
+.supply-table thead tr:nth-child(2) th {
+    font-size: 10px;
+    padding: 4px 4px !important;
+    background: var(--gray-50);
+    font-weight: 600;
+}
+
+/* ── Data Cell Tints ── */
+td.supply-col { background: rgba(99, 102, 241, 0.02); }
+td.product-col { background: rgba(16, 185, 129, 0.02); }
+td.amount-col { background: rgba(245, 158, 11, 0.025); }
+
+.supply-table tbody tr:hover td.supply-col { background: rgba(99, 102, 241, 0.05) !important; }
+.supply-table tbody tr:hover td.product-col { background: rgba(16, 185, 129, 0.05) !important; }
+.supply-table tbody tr:hover td.amount-col { background: rgba(245, 158, 11, 0.06) !important; }
+
+/* ── Sortable ── */
+.supply-table th.sortable {
+    padding-right: 14px !important;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+.supply-table th.sortable i {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+    font-size: 11px;
+}
+.supply-table th.sortable:hover { background: rgba(79, 110, 247, 0.06) !important; }
+.supply-table th.sortable:hover i { opacity: 0.3; }
+
+/* ── Row Cursor ── */
+.supply-table tbody tr { cursor: pointer; transition: background 0.1s; }
+
+/* ── Category Chip Tags ── */
+.cat-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.cat-tag.cat-안전자재 { background: #fee2e2; color: #dc2626; }
+.cat-tag.cat-잡자재 { background: #fef3c7; color: #d97706; }
+.cat-tag.cat-미분류 { background: var(--gray-100); color: var(--gray-500); }
+.cat-tag.cat-유압유 { background: #dbeafe; color: #2563eb; }
+.cat-tag.cat-기어유 { background: #fef3c7; color: #d97706; }
+.cat-tag.cat-그리스 { background: #dcfce7; color: #16a34a; }
+.cat-tag.cat-테일씰그리스 { background: #fce7f3; color: #db2777; }
+.cat-tag.cat-절삭유 { background: #e0e7ff; color: #4f46e5; }
+.cat-tag.cat-안전용품 { background: #fee2e2; color: #dc2626; }
+
+/* ── Category Filter Chips (Header) ── */
+.category-filter-wrap {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+.cat-chip {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+    color: var(--gray-500);
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.cat-chip:hover { border-color: var(--primary); color: var(--primary); }
+.cat-chip.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* ── KPI Mini Cards ── */
+.kpi-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+.kpi-card {
+    flex: 1;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-100);
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+}
+.kpi-card .kpi-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.kpi-card .kpi-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-800);
+    margin-top: 2px;
+}
+.kpi-card .kpi-sub {
+    font-size: 10px;
+    color: var(--gray-400);
+    margin-top: 1px;
+}
+
+/* ── Total Amount (highlight) ── */
+.total-highlight {
+    font-weight: 700 !important;
+    color: var(--primary) !important;
+}
+
+/* ── Count Text ── */
+.product-count-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-400);
+    margin-left: 6px;
+}
+
+/* ── Date Range ── */
+.date-range-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0 8px;
+    background: var(--surface);
+    height: 34px;
+}
+.date-range-wrap input[type="date"] {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 11px;
+    color: var(--gray-700);
+    width: 110px;
+}
+.date-range-wrap span {
+    color: var(--gray-400);
+    font-size: 11px;
+}
+
+/* ── Modal Form Grid ── */
+.modal-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+.modal-form-grid .fg-full { grid-column: 1 / -1; }
+.modal-form-grid .fg-triple { grid-template-columns: repeat(3, 1fr); }
+.modal-form-grid .fg {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+.modal-form-grid .fg > label:first-child {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.modal-form-grid .fg input,
+.modal-form-grid .fg select,
+.modal-form-grid .fg textarea {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 12.5px;
+    font-weight: 500;
+    outline: none;
+    transition: all var(--transition-fast);
+    background: var(--surface);
+    color: var(--gray-800);
+    width: 100%;
+}
+.modal-form-grid .fg input:focus,
+.modal-form-grid .fg select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2.5px var(--primary-muted);
+}
+
+.calc-preview {
+    background: var(--gray-50) !important;
+    font-weight: 600 !important;
+    color: var(--primary) !important;
+    cursor: default;
+}
+
+.modal-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 8px 0 4px;
+    margin: 4px 0 0;
+    border-bottom: 1px solid var(--gray-100);
+    grid-column: 1 / -1;
+}
+.modal-section-title.section-supply { color: #6366f1; }
+.modal-section-title.section-product { color: #059669; }
+.modal-section-title.section-amount { color: #d97706; }
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .modal-form-grid { grid-template-columns: 1fr; }
+    .supply-table { font-size: 9px !important; }
+    .kpi-bar { flex-direction: column; }
+}

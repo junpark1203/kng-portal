@@ -1,172 +1,200 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>현장별 유류 자재 공급 현황</title>
+    <meta name="description" content="K&G 유류 자재 공급 내역 관리">
+    <title>유류 자재 공급 내역</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
-    <link rel="stylesheet" href="../../../kng-inventory/styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="../../kng-inventory/styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <style>.main-content { margin-left: 0; }</style>
 </head>
+
 <body>
-    <div class="app-container">
-        <!-- 메인 콘텐츠 영역 -->
-        <main class="main-content" style="margin-left: 0; padding: 20px 40px;">
-            <div class="content-header">
-                <div class="header-left">
-                    <h1 class="page-title">현장별 유류 자재 공급 현황</h1>
-                    <span class="total-count" id="totalCount">0건</span>
-                </div>
-                <div class="header-right">
-                    <button class="btn btn-secondary" id="deleteBtn"><i class='bx bx-trash'></i> 선택 삭제</button>
-                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display: none;">
-                    <button class="btn btn-secondary" id="uploadBtn"><i class='bx bx-upload'></i> 엑셀 업로드</button>
-                    <button class="btn btn-secondary" id="exportBtn"><i class='bx bx-download'></i> 엑셀 다운로드</button>
-                    <button class="btn btn-primary" id="migrateBtn"><i class='bx bx-cloud-download'></i> 구글 시트 데이터 가져오기</button>
-                    <button class="btn btn-primary" id="addBtn"><i class='bx bx-plus'></i> 신규 등록</button>
-                </div>
-            </div>
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="page-body">
+                <section class="section-block">
+                    <div class="panel">
+                        <!-- Panel Header -->
+                        <div class="panel-header">
+                            <h2><i class='bx bx-droplet'></i> 유류 자재 공급 내역 <span class="product-count-text" id="totalCount">0건</span></h2>
+                            <div class="header-actions">
+                                <div class="category-filter-wrap" id="categoryChips">
+                                    <button class="cat-chip active" data-cat="all">전체</button>
+                                </div>
+                                <div class="table-search-wrap">
+                                    <select id="searchField" class="search-field-select">
+                                        <option value="all">통합검색</option>
+                                        <option value="site">현장명</option>
+                                        <option value="supplier">공급사</option>
+                                        <option value="manufacturer">제조사</option>
+                                        <option value="item">품명</option>
+                                        <option value="category">구분</option>
+                                    </select>
+                                    <div class="table-search-input">
+                                        <i class='bx bx-search'></i>
+                                        <input type="text" id="searchInput" placeholder="검색어 입력...">
+                                    </div>
+                                </div>
+                                <div class="date-range-wrap">
+                                    <input type="date" id="searchStartDate">
+                                    <span>~</span>
+                                    <input type="date" id="searchEndDate">
+                                </div>
+                                <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
+                                <button id="addBtn" class="btn-primary"><i class='bx bx-plus-circle'></i> 신규 등록</button>
+                            </div>
+                        </div>
 
-            <div class="card">
-                <div class="card-body">
-                    <!-- 검색 바 -->
-                    <div class="search-bar" style="display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
-                        <div class="search-input-group" style="flex: 1; min-width: 250px;">
-                            <i class='bx bx-calendar'></i>
-                            <input type="text" id="searchMonth" placeholder="조회 기간 (예: 2025 또는 2025-02)" style="border:none; outline:none; background:transparent; width:100%;">
+                        <!-- KPI Bar -->
+                        <div class="kpi-bar" id="kpiBar">
+                            <div class="kpi-card">
+                                <div class="kpi-label">조회 건수</div>
+                                <div class="kpi-value" id="kpiCount">0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">총 수량</div>
+                                <div class="kpi-value" id="kpiQty">0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">총 금액</div>
+                                <div class="kpi-value" id="kpiTotal">₩0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">현장 수</div>
+                                <div class="kpi-value" id="kpiSites">0</div>
+                            </div>
                         </div>
-                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
-                            <i class='bx bx-building'></i>
-                            <input type="text" id="searchSite" placeholder="현장명">
-                        </div>
-                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
-                            <i class='bx bx-tag'></i>
-                            <input type="text" id="searchCategory" placeholder="구분 (예: 안전용품)">
-                        </div>
-                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
-                            <i class='bx bx-store'></i>
-                            <input type="text" id="searchSupplier" placeholder="공급사">
-                        </div>
-                        <div class="search-input-group" style="flex: 1; min-width: 120px;">
-                            <i class='bx bx-package'></i>
-                            <input type="text" id="searchItem" placeholder="품명">
-                        </div>
-                        <button class="btn btn-secondary" id="resetBtn" style="padding: 10px; height: 42px;"><i class='bx bx-refresh'></i></button>
-                    </div>
 
-                    <!-- 일괄 변경 바 (숨김) -->
-                    <div id="actionBar" style="display: none; padding: 12px; background: rgba(109, 74, 255, 0.05); border: 1px solid rgba(109, 74, 255, 0.2); border-radius: 8px; margin-bottom: 15px; align-items: center; gap: 10px;">
-                        <span style="font-weight: 600; color: var(--primary);"><span id="selectedCount">0</span>개 선택됨</span>
-                        <span style="font-size: 13px; color: var(--gray-500);">수정 기능은 개별 편집을 이용해주세요.</span>
+                        <!-- Data Table -->
+                        <div class="table-responsive">
+                            <table class="data-table supply-table" id="dataTable">
+                                <colgroup>
+                                    <col class="col-check">
+                                    <col class="col-date">
+                                    <col class="col-site">
+                                    <col class="col-sup">
+                                    <col class="col-mfr">
+                                    <col class="col-cat">
+                                    <col class="col-item">
+                                    <col class="col-spec">
+                                    <col class="col-num-sm">
+                                    <col class="col-num">
+                                    <col class="col-num">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th colspan="5" class="th-group-label th-group-supply">📋 공급 정보</th>
+                                        <th colspan="2" class="th-group-label th-group-product">📦 품목</th>
+                                        <th colspan="3" class="th-group-label th-group-amount">💰 금액</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="sortable" data-sort="date">일자 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="supplier">공급사 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="manufacturer">제조사 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="category">구분 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="item">품명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num-sm sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="total">총액 <i class='bx bx-sort'></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="pagination"></div>
                     </div>
-
-                    <!-- 통계 요약표 -->
-                    <div id="summaryBox" style="display: flex; flex-direction: column; gap: 15px; background: linear-gradient(to right, #eff6ff, #f0fdf4); border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;">
-                        <!-- JS에서 동적 생성됨 -->
-                    </div>
-
-                    <div class="table-container">
-                        <table class="data-table" style="font-size: 13px;">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
-                                    <th class="sortable" data-sort="date">공급일자 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="supplier">공급사 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="manufacturer">제조사 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="category">구분 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="item">품명 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
-                                    <th>전체수량</th>
-                                    <th class="sortable text-right" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable text-right" data-sort="price">단가 <i class='bx bx-sort'></i></th>
-                                    <th class="sortable text-right" data-sort="total">총액 <i class='bx bx-sort'></i></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody">
-                                <tr class="loading-row"><td colspan="12"><div class="skeleton"></div></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div id="pagination" class="pagination"></div>
-                </div>
+                </section>
             </div>
         </main>
     </div>
 
-    <!-- 등록/수정 모달 -->
-    <div class="modal" id="itemModal">
-        <div class="modal-content" style="max-width: 800px;">
+    <!-- Add/Edit Modal -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content" style="max-width:640px;">
             <div class="modal-header">
-                <h3 id="modalTitle">신규 납품 등록</h3>
-                <button class="close-btn" id="closeModalBtn"><i class='bx bx-x'></i></button>
+                <h2 id="modalTitle">신규 납품 등록</h2>
+                <button type="button" class="btn-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
             </div>
             <div class="modal-body">
-                <form id="itemForm">
+                <form id="itemForm" autocomplete="off">
                     <input type="hidden" id="editId">
-                    <div class="form-grid" style="grid-template-columns: repeat(3, 1fr);">
-                        <!-- 기본 정보 -->
+                    <div class="modal-form-grid">
+                        <div class="modal-section-title section-supply fg-full">📋 공급 정보</div>
                         <div class="fg">
-                            <label for="inpDate">공급일자 <span style="color:var(--danger)">*</span></label>
+                            <label for="inpDate">공급일자</label>
                             <input type="date" id="inpDate" required>
                         </div>
                         <div class="fg">
-                            <label for="inpSite">현장명 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="inpSite" placeholder="예: 당진공장" required>
+                            <label for="inpSite">현장명</label>
+                            <input type="text" id="inpSite" list="listSite" placeholder="선택 또는 직접 입력" required>
+                            <datalist id="listSite"></datalist>
                         </div>
-                        <div class="fg">
-                            <label for="inpCategory">구분</label>
-                            <input type="text" id="inpCategory" placeholder="예: 안전용품">
-                        </div>
-
-                        <!-- 품목 정보 -->
                         <div class="fg">
                             <label for="inpSupplier">공급사</label>
-                            <input type="text" id="inpSupplier" placeholder="예: 양지유화">
+                            <input type="text" id="inpSupplier" list="listSupplier" placeholder="선택 또는 직접 입력">
+                            <datalist id="listSupplier"></datalist>
                         </div>
                         <div class="fg">
                             <label for="inpManufacturer">제조사</label>
-                            <input type="text" id="inpManufacturer" placeholder="예: 현대오일뱅크">
+                            <input type="text" id="inpManufacturer" list="listMfr" placeholder="선택 또는 직접 입력">
+                            <datalist id="listMfr"></datalist>
                         </div>
-                        <div class="fg">
-                            <label for="inpItem">품명 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="inpItem" placeholder="예: Xteer IGO" required>
+                        <div class="fg fg-full">
+                            <label for="inpCategory">구분</label>
+                            <input type="text" id="inpCategory" list="listCategory" placeholder="선택 또는 직접 입력">
+                            <datalist id="listCategory">
+                                <option value="유압유"><option value="기어유"><option value="그리스">
+                                <option value="테일씰그리스"><option value="절삭유"><option value="안전용품"><option value="기타">
+                            </datalist>
                         </div>
 
-                        <!-- 수량 및 단가 -->
+                        <div class="modal-section-title section-product fg-full">📦 품목</div>
+                        <div class="fg">
+                            <label for="inpItem">품명</label>
+                            <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력" required>
+                            <datalist id="listItem"></datalist>
+                        </div>
                         <div class="fg">
                             <label for="inpSpec">규격</label>
-                            <input type="text" id="inpSpec" placeholder="예: 200L" oninput="calculateTotal()">
-                        </div>
-                        <div class="fg">
-                            <label for="inpQty">수량 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="inpQty" class="text-right" placeholder="0" oninput="formatNumberInput(this); calculateTotal();" required>
-                        </div>
-                        <div class="fg">
-                            <label for="inpTotalQty">전체 수량 (자동계산)</label>
-                            <input type="text" id="inpTotalQty" class="text-right" placeholder="-" readonly style="background-color: var(--gray-100); color:var(--primary); font-weight:bold;">
+                            <input type="text" id="inpSpec" list="listSpec" placeholder="예: 200L(D/M)">
+                            <datalist id="listSpec"></datalist>
                         </div>
 
+                        <div class="modal-section-title section-amount fg-full">💰 금액</div>
                         <div class="fg">
-                            <label for="inpPrice">단가 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="inpPrice" class="text-right" placeholder="0" oninput="formatNumberInput(this); calculateTotal();" required>
+                            <label for="inpQty">수량</label>
+                            <input type="number" id="inpQty" placeholder="0" min="0" required>
                         </div>
-                        <div class="fg" style="grid-column: span 2;">
-                            <label for="inpTotal">총액 (자동계산)</label>
-                            <input type="text" id="inpTotal" class="text-right" placeholder="0" readonly style="background-color: var(--gray-100); color:var(--primary); font-weight:bold; font-size:16px;">
+                        <div class="fg">
+                            <label for="inpPrice">단가</label>
+                            <input type="number" id="inpPrice" placeholder="0" min="0" required>
+                        </div>
+                        <div class="fg fg-full">
+                            <label>총액 (자동계산)</label>
+                            <input type="text" id="inpTotal" class="calc-preview" readonly placeholder="수량 × 단가">
                         </div>
                     </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-outline" id="cancelBtn">취소</button>
+                        <button type="submit" class="btn-primary"><i class='bx bx-save'></i> 저장</button>
+                    </div>
                 </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancelBtn">취소</button>
-                <button type="submit" form="itemForm" class="btn btn-primary">저장하기</button>
             </div>
         </div>
     </div>
 
-    <!-- 토스트 알림 컨테이너 -->
     <div id="toastContainer" class="toast-container"></div>
     <script src="../../common/js/kng-table-utils.js"></script>
     <script src="oil-supply.js"></script>
