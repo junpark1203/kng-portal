@@ -22,32 +22,38 @@
                 <section class="section-block">
                     <div class="panel">
                         <!-- Panel Header -->
-                        <div class="panel-header">
-                            <h2><i class='bx bx-package'></i> 일반 자재 공급 내역 <span class="product-count-text" id="totalCount">0건</span></h2>
-                            <div class="header-actions">
+                        <div class="panel-header complex-header">
+                            <div class="header-top">
+                                <h2><i class='bx bx-package'></i> 일반 자재 공급 내역 <span class="product-count-text" id="totalCount">0건</span></h2>
+                                <div class="header-controls">
+                                    <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
+                                    <button id="addBtn" class="btn-primary"><i class='bx bx-plus-circle'></i> 신규 등록</button>
+                                </div>
+                            </div>
+                            <div class="header-bottom">
                                 <!-- Category Quick Filter -->
                                 <div class="category-filter-wrap" id="categoryChips">
                                     <button class="cat-chip active" data-cat="all">전체</button>
                                 </div>
-                                <div class="table-search-wrap">
-                                    <select id="searchField" class="search-field-select">
-                                        <option value="all">통합검색</option>
-                                        <option value="site">현장명</option>
-                                        <option value="item">품목명</option>
-                                        <option value="category">구분</option>
-                                    </select>
-                                    <div class="table-search-input">
-                                        <i class='bx bx-search'></i>
-                                        <input type="text" id="searchInput" placeholder="검색어 입력...">
+                                <div class="header-controls">
+                                    <div class="table-search-wrap">
+                                        <select id="searchField" class="search-field-select">
+                                            <option value="all">통합검색</option>
+                                            <option value="site">현장명</option>
+                                            <option value="item">품목명</option>
+                                            <option value="category">구분</option>
+                                        </select>
+                                        <div class="table-search-input">
+                                            <i class='bx bx-search'></i>
+                                            <input type="text" id="searchInput" placeholder="검색어 입력...">
+                                        </div>
+                                    </div>
+                                    <div class="date-range-wrap">
+                                        <input type="date" id="searchStartDate">
+                                        <span>~</span>
+                                        <input type="date" id="searchEndDate">
                                     </div>
                                 </div>
-                                <div class="date-range-wrap">
-                                    <input type="date" id="searchStartDate">
-                                    <span>~</span>
-                                    <input type="date" id="searchEndDate">
-                                </div>
-                                <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
-                                <button id="addBtn" class="btn-primary"><i class='bx bx-plus-circle'></i> 신규 등록</button>
                             </div>
                         </div>
 
