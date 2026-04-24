@@ -28,14 +28,14 @@
 /* ── Column widths ── */
 .up-table th { text-align: center !important; position: relative; }
 .up-table .col-check { width: 28px; }
-.up-table .col-item { width: auto; min-width: 130px; }
+.up-table .col-item { width: 100px; }
 .up-table td.col-item { text-align: left !important; font-weight: 500; }
-.up-table .col-spec { width: 72px; font-size: 10px; }
-.up-table .col-cat { width: 56px; font-size: 10px; }
-.up-table .col-mfr { width: 70px; font-size: 10px; }
-.up-table .col-sup { width: 76px; font-size: 10px; }
-.up-table .col-num { width: 66px; }
-.up-table .col-num-sm { width: 48px; }
+.up-table .col-spec { width: 76px; font-size: 10px; }
+.up-table .col-cat { width: 62px; font-size: 10px; }
+.up-table .col-mfr { width: 82px; font-size: 10px; }
+.up-table .col-sup { width: 82px; font-size: 10px; }
+.up-table .col-num { width: 72px; }
+.up-table .col-num-sm { width: 52px; }
 .up-table th.col-num, .up-table td.col-num,
 .up-table th.col-num-sm, .up-table td.col-num-sm {
     text-align: right !important;
@@ -43,7 +43,7 @@
     font-variant-numeric: tabular-nums;
 }
 .up-table .col-hist { width: 36px; }
-.up-table .col-date { width: 64px; font-size: 10px; color: var(--gray-500); }
+.up-table .col-date { width: 72px; font-size: 10px; color: var(--gray-500); }
 
 /* ── Table Group Headers ── */
 .th-group-ident {
