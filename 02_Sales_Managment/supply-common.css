@@ -215,6 +215,7 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     border: none;
     outline: none;
     background: transparent;
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
     color: var(--gray-700);
     width: 110px;
