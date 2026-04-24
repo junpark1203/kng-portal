@@ -27,17 +27,17 @@
 
 /* ── Column widths ── */
 .up-table th { text-align: center !important; position: relative; }
-.up-table .col-check { width: 30px; text-align: center; }
-.up-table .col-co { width: 90px; }
-.up-table .col-mfr { width: 100px; }
-.up-table .col-item { width: auto; }
+.up-table .col-check { width: 28px; text-align: center; }
+.up-table .col-co { width: 80px; }
+.up-table .col-mfr { width: 72px; font-size: 10.5px; }
+.up-table .col-item { width: auto; min-width: 120px; }
 .up-table td.col-item { text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
-.up-table .col-spec { width: 90px; }
-.up-table .col-num { width: 80px; }
-.up-table th.col-num, .up-table td.col-num { text-align: center !important; padding-left: 2px !important; padding-right: 2px !important; }
-.up-table .col-history { width: 50px; }
-.up-table .col-note { width: 100px; }
-.up-table td.col-note { text-align: left !important; font-size: 10.5px; color: var(--gray-500); }
+.up-table .col-spec { width: 72px; font-size: 10.5px; }
+.up-table .col-num { width: 64px; }
+.up-table th.col-num, .up-table td.col-num { text-align: right !important; padding-left: 2px !important; padding-right: 6px !important; font-variant-numeric: tabular-nums; }
+.up-table .col-history { width: 38px; }
+.up-table .col-note { width: 120px; }
+.up-table td.col-note { text-align: left !important; font-size: 10px; color: var(--gray-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .up-table .col-date { width: 72px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); }
 
 /* ── Table Header Groups ── */
