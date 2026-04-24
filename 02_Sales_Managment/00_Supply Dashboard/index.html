@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="K&G 자재 공급 현황 대시보드">
+    <title>공급 현황 대시보드</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../kng-inventory/styles.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>.main-content { margin-left: 0; }</style>
+</head>
+
+<body>
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="page-body">
+                <!-- Dashboard Header -->
+                <div class="dash-header">
+                    <div class="dash-header-left">
+                        <h1><i class='bx bx-bar-chart-alt-2'></i> 공급 현황 대시보드</h1>
+                        <span class="dash-subtitle" id="periodLabel">전체 기간</span>
+                    </div>
+                    <div class="dash-header-right">
+                        <div class="date-range-wrap">
+                            <i class='bx bx-calendar' style="color:var(--gray-400); margin-right:4px;"></i>
+                            <input type="date" id="filterStart">
+                            <span>~</span>
+                            <input type="date" id="filterEnd">
+                        </div>
+                        <div class="dash-period-chips">
+                            <button class="period-chip active" data-period="all">전체</button>
+                            <button class="period-chip" data-period="year">올해</button>
+                            <button class="period-chip" data-period="quarter">이번 분기</button>
+                            <button class="period-chip" data-period="month">이번 달</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards Row -->
+                <div class="kpi-grid" id="kpiGrid">
+                    <div class="kpi-card-lg kpi-total">
+                        <div class="kpi-icon"><i class='bx bx-won'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">총 공급 금액</div>
+                            <div class="kpi-value" id="kpiTotalAmt">₩0</div>
+                            <div class="kpi-sub" id="kpiTotalSub">일반 ₩0 · 유류 ₩0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card-lg kpi-count">
+                        <div class="kpi-icon"><i class='bx bx-receipt'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">총 납품 건수</div>
+                            <div class="kpi-value" id="kpiTotalCount">0</div>
+                            <div class="kpi-sub" id="kpiCountSub">일반 0 · 유류 0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card-lg kpi-sites">
+                        <div class="kpi-icon"><i class='bx bx-building-house'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">납품 현장</div>
+                            <div class="kpi-value" id="kpiSiteCount">0</div>
+                            <div class="kpi-sub" id="kpiSiteSub">개소</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card-lg kpi-items">
+                        <div class="kpi-icon"><i class='bx bx-package'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">취급 품목</div>
+                            <div class="kpi-value" id="kpiItemCount">0</div>
+                            <div class="kpi-sub" id="kpiItemSub">종</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="chart-grid">
+                    <div class="chart-card chart-wide">
+                        <div class="chart-header">
+                            <h3><i class='bx bx-line-chart'></i> 월별 공급 추이</h3>
+                            <div class="chart-legend" id="trendLegend"></div>
+                        </div>
+                        <div class="chart-body">
+                            <canvas id="chartTrend"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class='bx bx-pie-chart-alt'></i> 구분별 비중</h3>
+                        </div>
+                        <div class="chart-body chart-body-sq">
+                            <canvas id="chartCategory"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 2 -->
+                <div class="chart-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class='bx bx-building'></i> 현장별 공급 금액 TOP 10</h3>
+                        </div>
+                        <div class="chart-body chart-body-tall">
+                            <canvas id="chartSite"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3><i class='bx bx-box'></i> 품목별 공급 금액 TOP 10</h3>
+                        </div>
+                        <div class="chart-body chart-body-tall">
+                            <canvas id="chartItem"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="dashboard.js"></script>
+</body>
+</html>
