@@ -485,6 +485,22 @@ app.get('/api/supply-history', (req, res) => {
     });
 });
 
+// 강제 데이터 마이그레이션 (공급사 업데이트)
+app.get('/api/supply-history/fix-supplier', (req, res) => {
+    db.run("ALTER TABLE supply_history ADD COLUMN supplier TEXT", () => {
+        db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'", (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.send("<h1>데이터 업데이트 완료!</h1><p>모든 빈 공급사가 '행복한안전'으로 변경되었습니다. 창을 닫으셔도 됩니다.</p>");
+        });
+    });
+    // In case column exists
+    db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'", function(err) {
+        if (!err && this.changes > 0) {
+            console.log("Forced update applied to " + this.changes + " rows.");
+        }
+    });
+});
+
 // 신규 등록
 app.post('/api/supply-history', (req, res) => {
     const p = req.body;
