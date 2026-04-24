@@ -40,6 +40,8 @@
                                         <select id="searchField" class="search-field-select">
                                             <option value="all">통합검색</option>
                                             <option value="site">현장명</option>
+                                            <option value="supplier">공급사</option>
+                                            <option value="manufacturer">제조사</option>
                                             <option value="item">품목명</option>
                                             <option value="category">구분</option>
                                         </select>
@@ -87,6 +89,8 @@
                                     <col class="col-check">
                                     <col class="col-date">
                                     <col class="col-site">
+                                    <col class="col-sup">
+                                    <col class="col-mfr">
                                     <col class="col-cat">
                                     <col class="col-item">
                                     <col class="col-num-sm">
@@ -96,13 +100,15 @@
                                 <thead>
                                     <tr>
                                         <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th colspan="3" class="th-group-label th-group-supply">📋 공급 정보</th>
+                                        <th colspan="5" class="th-group-label th-group-supply">📋 공급 정보</th>
                                         <th colspan="1" class="th-group-label th-group-product">📦 품목</th>
                                         <th colspan="3" class="th-group-label th-group-amount">💰 금액</th>
                                     </tr>
                                     <tr>
                                         <th class="sortable" data-sort="supplyDate">일자 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="supplier">공급사 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="manufacturer">제조사 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="category">구분 <i class='bx bx-sort'></i></th>
                                         <th class="sortable" data-sort="item">품목명 <i class='bx bx-sort'></i></th>
                                         <th class="col-num-sm sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>

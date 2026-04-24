@@ -139,7 +139,7 @@ function applyFiltersAndSort() {
         if (endDate && item.supplyDate > endDate) return false;
         if (!query) return true;
         if (field === 'all') {
-            return ['site', 'item', 'category'].some(f => fuzzyMatch(item[f], query));
+            return ['site', 'item', 'category', 'supplier', 'manufacturer'].some(f => fuzzyMatch(item[f], query));
         }
         return fuzzyMatch(item[field], query);
     });
@@ -212,7 +212,7 @@ function renderTable() {
     elSelectAll.checked = false;
 
     if (filteredData.length === 0) {
-        elTableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
         elPagination.innerHTML = '';
         return;
     }
@@ -230,6 +230,8 @@ function renderTable() {
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
                 <td class="supply-col" onclick="openModal('${d.id}')">${d.supplyDate || '-'}</td>
                 <td class="col-site supply-col" onclick="openModal('${d.id}')">${d.site || '-'}</td>
+                <td class="supply-col" onclick="openModal('${d.id}')" style="color:#059669; font-weight:500;">${d.supplier || '-'}</td>
+                <td class="supply-col" onclick="openModal('${d.id}')">${d.manufacturer || '-'}</td>
                 <td class="supply-col" onclick="openModal('${d.id}')">${catTag}</td>
                 <td class="col-item product-col" onclick="openModal('${d.id}')">${d.item || '-'}</td>
                 <td class="col-num-sm amount-col" onclick="openModal('${d.id}')">${fmtN(d.qty)}</td>
