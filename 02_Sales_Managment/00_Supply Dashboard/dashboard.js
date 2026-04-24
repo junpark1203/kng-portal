@@ -5,7 +5,7 @@
    ========================================================================= */
 
 const API_GENERAL = 'https://kng.junparks.com/api/supply-history';
-const API_OIL     = 'https://kng.junparks.com/api/oil-supply';
+const API_OIL     = 'https://kng.junparks.com/api/oil-supply-history';
 
 let rawGeneral = [];
 let rawOil = [];

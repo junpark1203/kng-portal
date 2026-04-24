@@ -3,7 +3,7 @@
    - 통합검색, 카테고리칩, date range picker, KPI, 그룹헤더 테이블
    ========================================================================= */
 
-const API_BASE = 'https://kng.junparks.com/api/oil-supply';
+const API_BASE = 'https://kng.junparks.com/api/oil-supply-history';
 let itemsData = [];
 let filteredData = [];
 let currentSort = { column: 'date', asc: false };
