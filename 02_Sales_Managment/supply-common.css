@@ -29,16 +29,16 @@
 /* ── Column widths ── */
 .supply-table th { text-align: center !important; position: relative; }
 .supply-table .col-check { width: 28px; }
-.supply-table .col-date { width: 78px; font-size: 10px; }
-.supply-table .col-site { width: auto; min-width: 80px; }
+.supply-table .col-date { width: 86px; font-size: 10px; }
+.supply-table .col-site { width: 120px; }
 .supply-table td.col-site { text-align: left !important; font-weight: 500; }
 .supply-table .col-cat { width: 62px; font-size: 10px; }
-.supply-table .col-item { width: auto; min-width: 100px; }
+.supply-table .col-item { width: auto; min-width: 120px; }
 .supply-table td.col-item { text-align: left !important; font-weight: 500; }
 .supply-table .col-spec { width: 72px; font-size: 10px; }
 .supply-table .col-sup { width: 82px; font-size: 10px; }
 .supply-table .col-mfr { width: 82px; font-size: 10px; }
-.supply-table .col-num { width: 72px; }
+.supply-table .col-num { width: 78px; }
 .supply-table .col-num-sm { width: 52px; }
 .supply-table th.col-num, .supply-table td.col-num,
 .supply-table th.col-num-sm, .supply-table td.col-num-sm {
