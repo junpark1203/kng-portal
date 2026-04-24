@@ -81,6 +81,10 @@
     box-sizing: border-box;
 }
 
+input, button, select, textarea {
+    font-family: inherit;
+}
+
 html {
     scroll-behavior: smooth;
 }
