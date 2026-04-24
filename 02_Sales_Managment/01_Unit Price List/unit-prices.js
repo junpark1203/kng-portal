@@ -114,6 +114,9 @@ function initEvents() {
         e.preventDefault();
         await saveItem();
     });
+
+    // Cascading Dropdown Events
+    initCascadingDropdowns();
 }
 
 function updateSortIcons() {
@@ -129,7 +132,7 @@ async function loadData() {
         applyFiltersAndSort();
     } catch (e) {
         console.error(e);
-        elTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:red;">데이터를 불러오는 중 오류가 발생했습니다. NAS 서버 상태를 확인해주세요.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:red;">데이터를 불러오는 중 오류가 발생했습니다. NAS 서버 상태를 확인해주세요.</td></tr>';
     }
 }
 
@@ -158,7 +161,7 @@ function renderTable() {
     elSelectAll.checked = false;
 
     if (filteredData.length === 0) {
-        elTableBody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--gray-500);">데이터가 없습니다.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:30px; color:var(--gray-500);">데이터가 없습니다.</td></tr>';
         elPagination.innerHTML = '';
         return;
     }
@@ -171,30 +174,45 @@ function renderTable() {
     let html = '';
     currentItems.forEach(item => {
         const dateStr = item.updatedAt ? item.updatedAt.split('T')[0] : '';
-        
-        // 마진율 계산
-        let marginText = '-';
-        if (item.price && item.sellPrice) {
-            const buy = parseFloat(item.price.replace(/,/g, ''));
-            const sell = parseFloat(item.sellPrice.replace(/,/g, ''));
-            if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
-                marginText = ((sell - buy) / sell * 100).toFixed(2) + '%';
-            }
+
+        // Parse prices
+        const buy = item.price ? parseFloat(item.price.replace(/,/g, '')) : NaN;
+        const sell = item.sellPrice ? parseFloat(item.sellPrice.replace(/,/g, '')) : NaN;
+
+        // Diff calculation
+        let diffHtml = '<span class="diff-zero">-</span>';
+        if (!isNaN(buy) && !isNaN(sell)) {
+            const diff = sell - buy;
+            const cls = diff > 0 ? 'diff-positive' : diff < 0 ? 'diff-negative' : 'diff-zero';
+            const prefix = diff > 0 ? '+' : '';
+            diffHtml = `<span class="${cls}">${prefix}${diff.toLocaleString()}</span>`;
         }
+
+        // Margin badge
+        let marginHtml = '<span class="margin-badge badge-none">-</span>';
+        if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
+            const rate = ((sell - buy) / sell * 100);
+            const badgeCls = rate > 20 ? 'badge-success' : rate > 10 ? 'badge-neutral' : 'badge-danger';
+            marginHtml = `<span class="margin-badge ${badgeCls}">${rate.toFixed(1)}%</span>`;
+        }
+
+        const priceDisplay = (item.price && item.price !== '-') ? item.price : '-';
+        const sellDisplay = (item.sellPrice && item.sellPrice !== '-') ? item.sellPrice : '-';
 
         html += `
             <tr class="item-row" data-id="${item.id}">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${item.id}"></td>
                 <td onclick="openModal('${item.id}')"><strong>${item.co || '-'}</strong></td>
                 <td onclick="openModal('${item.id}')" class="mfr-tag">${item.mfr || '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.item || '-'}</td>
+                <td onclick="openModal('${item.id}')" class="col-item">${item.item || '-'}</td>
                 <td onclick="openModal('${item.id}')">${item.spec || '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.price && item.price !== '-' ? '\\ ' + item.price : '-'}</td>
-                <td onclick="openModal('${item.id}')">${item.sellPrice && item.sellPrice !== '-' ? '\\ ' + item.sellPrice : '-'}</td>
-                <td onclick="openModal('${item.id}')" style="font-weight:600; color:var(--primary);">${marginText}</td>
+                <td onclick="openModal('${item.id}')" class="col-num price-col" style="font-weight:500;">${priceDisplay}</td>
+                <td onclick="openModal('${item.id}')" class="col-num price-col" style="font-weight:500;">${sellDisplay}</td>
+                <td onclick="openModal('${item.id}')" class="col-num margin-col">${diffHtml}</td>
+                <td onclick="openModal('${item.id}')" class="col-num margin-col">${marginHtml}</td>
                 <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${item.id}')">보기</button></td>
-                <td onclick="openModal('${item.id}')">${item.note || ''}</td>
-                <td onclick="openModal('${item.id}')" style="font-size:12px; color:var(--gray-500);">${dateStr}</td>
+                <td onclick="openModal('${item.id}')" class="col-note">${item.note || ''}</td>
+                <td onclick="openModal('${item.id}')" class="col-date">${dateStr}</td>
             </tr>
         `;
     });
@@ -214,24 +232,101 @@ function renderTable() {
     });
 }
 
+// ==========================================
+// Datalist & Cascading Dropdown
+// ==========================================
+
+const fillDatalist = (id, values) => {
+    const dl = document.getElementById(id);
+    if (dl) dl.innerHTML = [...values].sort().map(val => `<option value="${val}">`).join('');
+};
+
 function updateDatalists() {
-    const coSet = new Set(), mfrSet = new Set(), itemSet = new Set(), specSet = new Set();
+    const coSet = new Set();
     itemsData.forEach(d => {
-        if (d.co && d.co !== "-") coSet.add(d.co);
-        if (d.mfr && d.mfr !== "-") mfrSet.add(d.mfr);
-        if (d.item && d.item !== "-") itemSet.add(d.item);
-        if (d.spec && d.spec !== "-") specSet.add(d.spec);
+        if (d.co && d.co !== '-') coSet.add(d.co);
     });
-
-    const fillDatalist = (id, set) => {
-        const dl = document.getElementById(id);
-        if (dl) dl.innerHTML = [...set].sort().map(val => `<option value="${val}">`).join('');
-    };
-
     fillDatalist('listCo', coSet);
+    // Initially fill all for mfr/item/spec
+    refreshCascade();
+}
+
+function refreshCascade() {
+    const co = (document.getElementById('inpCo')?.value || '').trim();
+    const mfr = (document.getElementById('inpMfr')?.value || '').trim();
+    const item = (document.getElementById('inpItem')?.value || '').trim();
+
+    // Filter manufacturers by selected company
+    let filtered = itemsData;
+    if (co) {
+        const coFiltered = itemsData.filter(d => d.co === co);
+        if (coFiltered.length > 0) filtered = coFiltered;
+    }
+    const mfrSet = new Set();
+    filtered.forEach(d => { if (d.mfr && d.mfr !== '-') mfrSet.add(d.mfr); });
     fillDatalist('listMfr', mfrSet);
+
+    // Filter items by selected company + manufacturer
+    let filtered2 = filtered;
+    if (mfr) {
+        const mfrFiltered = filtered.filter(d => d.mfr === mfr);
+        if (mfrFiltered.length > 0) filtered2 = mfrFiltered;
+    }
+    const itemSet = new Set();
+    filtered2.forEach(d => { if (d.item && d.item !== '-') itemSet.add(d.item); });
     fillDatalist('listItem', itemSet);
+
+    // Filter specs by selected company + manufacturer + item
+    let filtered3 = filtered2;
+    if (item) {
+        const itemFiltered = filtered2.filter(d => d.item === item);
+        if (itemFiltered.length > 0) filtered3 = itemFiltered;
+    }
+    const specSet = new Set();
+    filtered3.forEach(d => { if (d.spec && d.spec !== '-') specSet.add(d.spec); });
     fillDatalist('listSpec', specSet);
+
+    // Update cascade hints
+    const hintMfr = document.getElementById('hintMfr');
+    const hintItem = document.getElementById('hintItem');
+    if (hintMfr) {
+        if (co && mfrSet.size > 0) {
+            hintMfr.textContent = `${co}의 제조사 ${mfrSet.size}개`;
+            hintMfr.classList.add('active');
+        } else {
+            hintMfr.textContent = '';
+            hintMfr.classList.remove('active');
+        }
+    }
+    if (hintItem) {
+        if (mfr && itemSet.size > 0) {
+            hintItem.textContent = `${mfr}의 품목 ${itemSet.size}개`;
+            hintItem.classList.add('active');
+        } else {
+            hintItem.textContent = '';
+            hintItem.classList.remove('active');
+        }
+    }
+}
+
+function initCascadingDropdowns() {
+    const inpCo = document.getElementById('inpCo');
+    const inpMfr = document.getElementById('inpMfr');
+    const inpItem = document.getElementById('inpItem');
+    const inpSpec = document.getElementById('inpSpec');
+
+    if (inpCo) inpCo.addEventListener('input', () => {
+        refreshCascade();
+    });
+    if (inpMfr) inpMfr.addEventListener('input', () => {
+        refreshCascade();
+    });
+    if (inpItem) inpItem.addEventListener('input', () => {
+        refreshCascade();
+    });
+    if (inpSpec) inpSpec.addEventListener('input', () => {
+        refreshCascade();
+    });
 }
 
 // ==========================================

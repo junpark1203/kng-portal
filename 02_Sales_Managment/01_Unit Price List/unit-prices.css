@@ -1,0 +1,310 @@
+/* ========================================
+   매입/매출 단가 관리 — 전용 스타일
+   seller-k-products.css 패턴 기반
+   ======================================== */
+
+/* ── Compact Table ── */
+.up-table {
+    font-size: 11.5px !important;
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+}
+
+.up-table tbody td {
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.up-table th,
+.up-table td {
+    text-align: center !important;
+    padding: 6px 5px !important;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Column widths ── */
+.up-table th { text-align: center !important; position: relative; }
+.up-table .col-check { width: 30px; text-align: center; }
+.up-table .col-co { width: 90px; }
+.up-table .col-mfr { width: 100px; }
+.up-table .col-item { width: auto; }
+.up-table td.col-item { text-align: left !important; font-size: 11px; line-height: 1.4; word-break: keep-all; }
+.up-table .col-spec { width: 90px; }
+.up-table .col-num { width: 80px; }
+.up-table th.col-num, .up-table td.col-num { text-align: center !important; padding-left: 2px !important; padding-right: 2px !important; }
+.up-table .col-history { width: 50px; }
+.up-table .col-note { width: 100px; }
+.up-table td.col-note { text-align: left !important; font-size: 10.5px; color: var(--gray-500); }
+.up-table .col-date { width: 72px; white-space: nowrap; font-size: 10.5px; color: var(--gray-500); }
+
+/* ── Table Header Groups ── */
+.th-group-price {
+    background: rgba(79, 110, 247, 0.08) !important;
+    color: var(--primary) !important;
+}
+
+.th-group-margin {
+    background: rgba(245, 158, 11, 0.08) !important;
+    color: var(--warning) !important;
+}
+
+.th-group-label {
+    text-align: center !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+}
+
+/* ── Data Cell Tints ── */
+td.price-col {
+    background: rgba(79, 110, 247, 0.035);
+}
+td.margin-col {
+    background: rgba(245, 158, 11, 0.035);
+}
+
+/* hover */
+.up-table tbody tr:hover td.price-col { background: rgba(79, 110, 247, 0.07) !important; }
+.up-table tbody tr:hover td.margin-col { background: rgba(245, 158, 11, 0.07) !important; }
+
+/* ── Sub-header row ── */
+.up-table thead tr:nth-child(2) th {
+    font-size: 10px;
+    padding: 4px 5px !important;
+    background: var(--gray-50);
+}
+
+/* ── Sortable Headers ── */
+.up-table th.sortable {
+    padding-right: 16px !important;
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast);
+}
+.up-table th.sortable i {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    pointer-events: none;
+}
+.up-table th.sortable:hover {
+    background: rgba(79, 110, 247, 0.06) !important;
+}
+.up-table th.sortable:hover i {
+    opacity: 0.3;
+}
+.up-table th.sortable.sort-asc i,
+.up-table th.sortable.sort-desc i {
+    opacity: 1;
+    color: var(--primary);
+}
+
+/* ── Margin Badge ── */
+.margin-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+}
+.margin-badge.badge-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+.margin-badge.badge-neutral {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+.margin-badge.badge-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+.margin-badge.badge-none {
+    background: var(--gray-100);
+    color: var(--gray-400);
+}
+
+/* ── Diff Positive / Negative ── */
+.diff-positive { color: #059669; font-weight: 600; }
+.diff-negative { color: #dc2626; font-weight: 600; }
+.diff-zero { color: var(--gray-400); }
+
+/* ── Mfr Tag ── */
+.mfr-tag {
+    color: #059669;
+    font-weight: 600;
+}
+
+/* ── History Button ── */
+.btn-history {
+    padding: 4px 10px;
+    background: #eff6ff;
+    color: var(--primary);
+    border: 1px solid #dbeafe;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.btn-history:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* ── Product Count Text ── */
+.product-count-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-400);
+    margin-left: 6px;
+    letter-spacing: -0.2px;
+}
+
+/* ── Modal Form Grid ── */
+.modal-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.modal-form-grid .fg-full {
+    grid-column: 1 / -1;
+}
+
+.modal-form-grid .fg {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.modal-form-grid .fg > label:first-child {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    line-height: 1.2;
+}
+
+.modal-form-grid .fg input,
+.modal-form-grid .fg select,
+.modal-form-grid .fg textarea {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 12.5px;
+    font-weight: 500;
+    outline: none;
+    transition: all var(--transition-fast);
+    background: var(--surface);
+    color: var(--gray-800);
+    width: 100%;
+}
+
+.modal-form-grid .fg textarea {
+    height: auto;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.modal-form-grid .fg input:focus,
+.modal-form-grid .fg select:focus,
+.modal-form-grid .fg textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2.5px var(--primary-muted);
+}
+
+/* ── Modal Section Dividers ── */
+.modal-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 8px 0 4px;
+    margin: 4px 0 0;
+    border-bottom: 1px solid var(--gray-100);
+    grid-column: 1 / -1;
+}
+
+.modal-section-title.section-info {
+    color: var(--primary);
+}
+
+.modal-section-title.section-price {
+    color: #6366f1;
+}
+
+.modal-section-title.section-margin {
+    color: var(--warning);
+}
+
+.modal-section-title.section-extra {
+    color: var(--gray-500);
+}
+
+/* ── Preview / Auto-calc fields ── */
+.calc-preview {
+    background: var(--gray-50) !important;
+    font-weight: 600 !important;
+    color: var(--gray-600) !important;
+    cursor: default;
+}
+
+/* ── Cascade Hint ── */
+.cascade-hint {
+    font-size: 9px;
+    color: var(--gray-400);
+    font-style: italic;
+    margin-top: 2px;
+    transition: color 0.2s;
+}
+.cascade-hint.active {
+    color: var(--primary);
+    font-style: normal;
+    font-weight: 500;
+}
+
+/* ── Modal Footer ── */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gray-100);
+}
+
+/* ── Row click cursor ── */
+.up-table tbody tr {
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .modal-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .up-table {
+        font-size: 10px !important;
+    }
+
+    .up-table .col-note,
+    .up-table .col-date {
+        display: none;
+    }
+}

@@ -10,33 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <!-- 포털과 동일한 디자인을 위해 kng-inventory의 스타일을 재사용하거나 가져옵니다 -->
     <link rel="stylesheet" href="../../kng-inventory/styles.css">
+    <link rel="stylesheet" href="unit-prices.css">
     <style>
         /* 포털 전용: 사이드바 없이 전체 너비 사용 */
         .main-content { margin-left: 0; }
-        
-        /* 모달 폼 그리드 조정 */
-        .modal-form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-        .fg-full { grid-column: 1 / -1; }
-        
-        .mfr-tag {
-            color: #059669;
-            font-weight: 600;
-        }
-        .btn-history {
-            padding: 6px 12px;
-            background: #eff6ff;
-            color: var(--primary);
-            border: 1px solid #dbeafe;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
     </style>
 </head>
 
@@ -45,11 +23,11 @@
     <div class="app-container" id="mainApp">
         <main class="main-content">
             <div class="page-body">
-                <!-- Products Table Section -->
+                <!-- Unit Price Table Section -->
                 <section class="section-block" id="unitPriceSection">
                     <div class="panel">
                         <div class="panel-header">
-                            <h2><i class='bx bx-data'></i> 유류소모품 단가 관리 <span class="product-count-text" id="totalCount">0건</span></h2>
+                            <h2><i class='bx bx-data'></i> 매입/매출 단가 관리 <span class="product-count-text" id="totalCount">0건</span></h2>
                             <div class="header-actions">
                                 <div class="table-search-wrap">
                                     <select id="searchField" class="search-field-select">
@@ -70,24 +48,48 @@
                             </div>
                         </div>
                         <div class="table-responsive">
-                            <table class="data-table" id="dataTable">
+                            <table class="data-table up-table" id="dataTable">
+                                <colgroup>
+                                    <col class="col-check">
+                                    <col class="col-co">
+                                    <col class="col-mfr">
+                                    <col class="col-item">
+                                    <col class="col-spec">
+                                    <!-- 단가 그룹 -->
+                                    <col class="col-num">
+                                    <col class="col-num">
+                                    <!-- 마진 그룹 -->
+                                    <col class="col-num">
+                                    <col class="col-num">
+                                    <!-- 기타 -->
+                                    <col class="col-history">
+                                    <col class="col-note">
+                                    <col class="col-date">
+                                </colgroup>
                                 <thead>
+                                    <!-- Group header row -->
                                     <tr>
-                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th class="sortable" data-sort="co">거래처 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="mfr">제조사 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="item">품목 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="price">매입 단가 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="sellPrice">매출 단가 <i class='bx bx-sort'></i></th>
-                                        <th>마진율</th>
-                                        <th>이력</th>
-                                        <th class="sortable" data-sort="note">비고 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="updatedAt">최종수정일 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th rowspan="2" class="sortable" data-sort="co">거래처 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="sortable" data-sort="mfr">제조사 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="sortable" data-sort="item">품목 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="sortable" data-sort="spec">규격 <i class='bx bx-sort'></i></th>
+                                        <th colspan="2" class="th-group-label th-group-price">💰 단가</th>
+                                        <th colspan="2" class="th-group-label th-group-margin">📊 마진</th>
+                                        <th rowspan="2">이력</th>
+                                        <th rowspan="2" class="sortable" data-sort="note">비고 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="col-date sortable" data-sort="updatedAt">수정일 <i class='bx bx-sort'></i></th>
+                                    </tr>
+                                    <!-- Sub-header row -->
+                                    <tr>
+                                        <th class="col-num th-group-price sortable" data-sort="price">매입 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num th-group-price sortable" data-sort="sellPrice">매출 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num th-group-margin">차액</th>
+                                        <th class="col-num th-group-margin">마진율</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tableBody">
-                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="12"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -109,26 +111,34 @@
                 <form id="itemForm" autocomplete="off">
                     <input type="hidden" id="editId">
                     <div class="modal-form-grid">
+                        <!-- 📦 기본 정보 -->
+                        <div class="modal-section-title section-info fg-full">📦 기본 정보</div>
                         <div class="fg">
                             <label for="inpCo">거래처</label>
                             <input type="text" id="inpCo" list="listCo" placeholder="선택 또는 직접 입력" required>
                             <datalist id="listCo"></datalist>
+                            <span class="cascade-hint" id="hintCo">기존 거래처를 선택하면 제조사가 자동 필터됩니다</span>
                         </div>
                         <div class="fg">
                             <label for="inpMfr">제조사</label>
                             <input type="text" id="inpMfr" list="listMfr" placeholder="선택 또는 직접 입력" required>
                             <datalist id="listMfr"></datalist>
+                            <span class="cascade-hint" id="hintMfr"></span>
                         </div>
                         <div class="fg">
                             <label for="inpItem">품목</label>
                             <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력" required>
                             <datalist id="listItem"></datalist>
+                            <span class="cascade-hint" id="hintItem"></span>
                         </div>
                         <div class="fg">
                             <label for="inpSpec">규격</label>
                             <input type="text" id="inpSpec" list="listSpec" placeholder="선택 또는 직접 입력">
                             <datalist id="listSpec"></datalist>
                         </div>
+
+                        <!-- 💰 단가 정보 -->
+                        <div class="modal-section-title section-price fg-full">💰 단가 정보</div>
                         <div class="fg">
                             <label for="inpPrice">매입 단가</label>
                             <input type="text" id="inpPrice" placeholder="예: 55,000" oninput="formatPrice(this); calculateMargin();" required>
@@ -137,17 +147,27 @@
                             <label for="inpSellPrice">매출 단가</label>
                             <input type="text" id="inpSellPrice" placeholder="예: 65,000" oninput="formatPrice(this); calculateMargin();">
                         </div>
+
+                        <!-- 📊 마진 미리보기 -->
+                        <div class="modal-section-title section-margin fg-full">📊 마진 미리보기 (자동계산)</div>
                         <div class="fg">
-                            <label for="inpMargin">마진율 (%)</label>
-                            <input type="text" id="inpMargin" placeholder="자동 계산" readonly style="background-color: var(--bg-secondary); cursor: not-allowed; font-weight:600; color:var(--primary);">
+                            <label>차액</label>
+                            <input type="text" id="inpDiff" class="calc-preview" readonly placeholder="자동계산">
                         </div>
                         <div class="fg">
+                            <label>마진율</label>
+                            <input type="text" id="inpMargin" class="calc-preview" readonly placeholder="자동계산">
+                        </div>
+
+                        <!-- 📝 추가 사항 -->
+                        <div class="modal-section-title section-extra fg-full">📝 추가 사항</div>
+                        <div class="fg fg-full">
                             <label for="inpNote">비고</label>
                             <input type="text" id="inpNote" placeholder="입력">
                         </div>
                         <div class="fg fg-full">
-                            <label>단가 이력 (수정 시 자동으로 이전 가격이 누적됩니다)</label>
-                            <textarea id="inpHistory" rows="4" readonly style="background-color: var(--bg-secondary); cursor: not-allowed;"></textarea>
+                            <label>단가 이력 (수정 시 자동 누적)</label>
+                            <textarea id="inpHistory" rows="3" class="calc-preview" readonly></textarea>
                         </div>
                     </div>
                     <div id="timestampDisplay" style="color:var(--text-secondary); font-size:12px; margin-top:10px; margin-bottom:5px; text-align:right;"></div>
@@ -189,12 +209,26 @@
             const buy = parseFloat(buyStr);
             const sell = parseFloat(sellStr);
             const marginInput = document.getElementById('inpMargin');
+            const diffInput = document.getElementById('inpDiff');
 
-            if (!isNaN(buy) && !isNaN(sell) && sell > 0) {
-                const marginRate = ((sell - buy) / sell) * 100;
-                marginInput.value = marginRate.toFixed(2) + '%';
+            if (!isNaN(buy) && !isNaN(sell)) {
+                const diff = sell - buy;
+                diffInput.value = (diff >= 0 ? '+' : '') + diff.toLocaleString() + '원';
+                diffInput.style.color = diff > 0 ? '#059669' : diff < 0 ? '#dc2626' : '';
+
+                if (sell > 0) {
+                    const marginRate = ((sell - buy) / sell) * 100;
+                    marginInput.value = marginRate.toFixed(2) + '%';
+                    marginInput.style.color = marginRate > 20 ? '#059669' : marginRate > 10 ? '#d97706' : '#dc2626';
+                } else {
+                    marginInput.value = '';
+                    marginInput.style.color = '';
+                }
             } else {
                 marginInput.value = '';
+                marginInput.style.color = '';
+                diffInput.value = '';
+                diffInput.style.color = '';
             }
         };
     </script>
