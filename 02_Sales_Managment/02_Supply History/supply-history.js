@@ -69,7 +69,7 @@ function initEvents() {
                 currentSort.column = sortKey;
                 currentSort.asc = true;
             }
-            updateSortUI();
+            updateSortIcons();
             applyFiltersAndSort();
         });
     });
@@ -131,13 +131,8 @@ function initEvents() {
     });
 }
 
-function updateSortUI() {
-    document.querySelectorAll('th.sortable').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc');
-        if (th.getAttribute('data-sort') === currentSort.column) {
-            th.classList.add(currentSort.asc ? 'sort-asc' : 'sort-desc');
-        }
-    });
+function updateSortIcons() {
+    updateSortUI(currentSort.column, currentSort.asc);
 }
 
 window.updateActionBar = function() {
@@ -196,19 +191,7 @@ function applyFiltersAndSort() {
         return true;
     });
 
-    filteredData.sort((a, b) => {
-        let valA = a[currentSort.column] || '';
-        let valB = b[currentSort.column] || '';
-
-        if (['qty', 'price', 'total'].includes(currentSort.column)) {
-            valA = Number(valA);
-            valB = Number(valB);
-        }
-
-        if (valA < valB) return currentSort.asc ? -1 : 1;
-        if (valA > valB) return currentSort.asc ? 1 : -1;
-        return 0;
-    });
+    applySorting(filteredData, currentSort.column, currentSort.asc, ['qty', 'price', 'total']);
 
     renderTable();
 }
@@ -229,13 +212,9 @@ function renderTable() {
 
     // Pagination calculation
     const totalFiltered = filteredData.length;
-    const effectivePageSize = (pageSize === 0) ? totalFiltered : pageSize;
-    const totalPages = effectivePageSize > 0 ? Math.max(1, Math.ceil(totalFiltered / effectivePageSize)) : 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
-    const startIdx = (currentPage - 1) * effectivePageSize;
-    const endIdx = (pageSize === 0) ? totalFiltered : Math.min(startIdx + effectivePageSize, totalFiltered);
-    const pageItems = filteredData.slice(startIdx, endIdx);
+    const pg = calcPagination(totalFiltered, currentPage, pageSize);
+    currentPage = pg.page;
+    const pageItems = filteredData.slice(pg.startIdx, pg.endIdx);
 
     let html = '';
     let sumQty = 0;
@@ -272,60 +251,19 @@ function renderTable() {
     document.getElementById('sumQty').textContent = sumQty.toLocaleString();
     document.getElementById('sumTotal').textContent = sumTotal.toLocaleString();
     elTableFoot.style.display = 'table-footer-group';
-    renderPagination(totalFiltered, totalPages, startIdx, endIdx);
-}
-
-function getPageNumbers(current, total) {
-    const pages = [];
-    const maxVisible = 5;
-    let start = Math.max(1, current - Math.floor(maxVisible / 2));
-    let end = start + maxVisible - 1;
-    if (end > total) { end = total; start = Math.max(1, end - maxVisible + 1); }
-    if (start > 1) { pages.push(1); if (start > 2) pages.push('...'); }
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < total) { if (end < total - 1) pages.push('...'); pages.push(total); }
-    return pages;
-}
-
-function renderPagination(totalFiltered, totalPages, startIdx, endIdx) {
-    const container = document.getElementById('pagination');
-    if (!container) return;
-    if (totalFiltered === 0) { container.innerHTML = ''; return; }
-
-    let html = '<div class="pagination-bar">';
-    html += '<div class="pagination-info">';
-    html += '<div class="page-size-wrap">';
-    html += '<label for="pageSizeSelect">페이지당</label>';
-    html += '<select id="pageSizeSelect" class="page-size-select">';
-    [{ value: 50, label: '50개' }, { value: 100, label: '100개' }, { value: 150, label: '150개' }, { value: 200, label: '200개' }, { value: 0, label: '전체' }].forEach(s => {
-        html += `<option value="${s.value}"${s.value === pageSize ? ' selected' : ''}>${s.label}</option>`;
+    renderPagination({
+        container: 'pagination',
+        totalFiltered: totalFiltered,
+        totalAll: itemsData.length,
+        totalPages: pg.totalPages,
+        currentPage: currentPage,
+        pageSize: pageSize,
+        startIdx: pg.startIdx,
+        endIdx: pg.endIdx,
+        onPageChange: (page) => { currentPage = page; renderTable(); },
+        onPageSizeChange: (size) => { pageSize = size; currentPage = 1; renderTable(); }
     });
-    html += '</select></div>';
-    html += `<span class="pagination-summary">총 <strong>${totalFiltered}</strong>건`;
-    if (totalFiltered !== itemsData.length) html += ` <span class="filtered-note">(검색결과, 전체 ${itemsData.length}건)</span>`;
-    if (pageSize !== 0 && totalFiltered > 0) html += `  |  <strong>${startIdx + 1}</strong> – <strong>${endIdx}</strong>번째`;
-    html += '</span></div>';
-
-    if (totalPages > 1) {
-        html += '<div class="pagination-controls">';
-        html += `<button class="page-btn" onclick="goToPage(1)"${currentPage === 1 ? ' disabled' : ''} title="처음"><i class='bx bx-chevrons-left'></i></button>`;
-        html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})"${currentPage === 1 ? ' disabled' : ''} title="이전"><i class='bx bx-chevron-left'></i></button>`;
-        getPageNumbers(currentPage, totalPages).forEach(pg => {
-            if (pg === '...') html += '<span class="page-ellipsis">…</span>';
-            else html += `<button class="page-btn${pg === currentPage ? ' active' : ''}" onclick="goToPage(${pg})">${pg}</button>`;
-        });
-        html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})"${currentPage === totalPages ? ' disabled' : ''} title="다음"><i class='bx bx-chevron-right'></i></button>`;
-        html += `<button class="page-btn" onclick="goToPage(${totalPages})"${currentPage === totalPages ? ' disabled' : ''} title="끝"><i class='bx bx-chevrons-right'></i></button>`;
-        html += '</div>';
-    }
-    html += '</div>';
-    container.innerHTML = html;
-
-    const sizeSelect = document.getElementById('pageSizeSelect');
-    if (sizeSelect) sizeSelect.addEventListener('change', function() { pageSize = parseInt(this.value, 10); currentPage = 1; renderTable(); });
 }
-
-window.goToPage = function(page) { currentPage = page; renderTable(); };
 
 // ==========================================
 // CRUD 로직
@@ -424,23 +362,7 @@ async function saveItem() {
 // Toast & Migration
 // ==========================================
 
-function showToast(msg, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    let icon = 'bx-info-circle';
-    if (type === 'success') icon = 'bx-check-circle';
-    if (type === 'error') icon = 'bx-error-circle';
-    if (type === 'warning') icon = 'bx-error';
-
-    toast.innerHTML = `<i class='bx ${icon}'></i> <span>${msg}</span>`;
-    toastContainer.appendChild(toast);
-
-    setTimeout(() => { toast.classList.add('show'); }, 10);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
+// showToast() — provided by kng-table-utils.js
 
 // 초기 마이그레이션 함수 (구글 시트 -> NAS SQLite)
 async function runMigration() {
