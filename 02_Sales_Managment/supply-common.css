@@ -109,6 +109,17 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
 /* ── Row Cursor ── */
 .supply-table tbody tr { cursor: pointer; transition: background 0.1s; }
 
+/* ── Table Alignment Overrides ── */
+.supply-table th,
+.supply-table td {
+    text-align: center !important;
+}
+/* 금액 관련 값만 오른쪽 정렬 (수량은 중앙 정렬 유지) */
+.supply-table th.col-num,
+.supply-table td.col-num {
+    text-align: right !important;
+}
+
 /* ── Category Chip Tags ── */
 .cat-tag {
     display: inline-block;
