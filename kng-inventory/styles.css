@@ -37,11 +37,14 @@
     --gray-800: #1e293b;
     --gray-900: #0f172a;
     
-    /* Sidebar dark theme */
-    --sidebar-bg: #111827;
-    --sidebar-hover: rgba(255, 255, 255, 0.06);
-    --sidebar-active: rgba(44, 62, 143, 0.18);
-    --sidebar-text: rgba(255, 255, 255, 0.55);
+    /* Sidebar dark theme — Financial Architect */
+    --sidebar-bg: linear-gradient(180deg, #0c1220 0%, #111827 40%, #0f1623 100%);
+    --sidebar-bg-solid: #111827;
+    --sidebar-hover: rgba(255, 255, 255, 0.07);
+    --sidebar-active: rgba(44, 62, 143, 0.22);
+    --sidebar-active-indicator: #6b7fff;
+    --sidebar-text: rgba(255, 255, 255, 0.5);
+    --sidebar-text-hover: rgba(255, 255, 255, 0.88);
     --sidebar-text-active: #fff;
     --sidebar-border: rgba(255, 255, 255, 0.06);
     
@@ -93,59 +96,104 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     min-height: 100vh;
 }
 
-/* ?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름
-   SIDEBAR
-   ?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름 */
+/* ════════════════════════════════════════════
+   SIDEBAR — Financial Architect Dark Theme
+   ════════════════════════════════════════════ */
 .sidebar {
     width: 230px;
     background: var(--sidebar-bg);
+    background-color: var(--sidebar-bg-solid);
     display: flex;
     flex-direction: column;
     z-index: 10;
     flex-shrink: 0;
     transition: transform 0.25s ease;
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
 
+/* ── Brand Area ── */
 .brand {
     height: 64px;
     padding: 0 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+}
+
+/* Signature gradient accent bar under logo */
+.brand::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--sidebar-active-indicator) 50%, transparent 100%);
+    opacity: 0.5;
+    border-radius: 1px;
 }
 
 .brand-logo {
     max-height: 40px;
     width: auto;
+    filter: brightness(1.1);
+    transition: filter 0.3s ease;
 }
 
+.brand:hover .brand-logo {
+    filter: brightness(1.25);
+}
+
+/* ── Menu Container ── */
 .menu {
-    padding: 8px 0;
+    padding: 12px 0 8px;
     flex: 1;
     overflow-y: auto;
 }
 
-.menu-label {
-    padding: 16px 20px 6px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--gray-500);
+/* Dark scrollbar for sidebar */
+.menu::-webkit-scrollbar {
+    width: 4px;
 }
 
+.menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.menu::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.menu::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Section Labels ── */
+.menu-label {
+    padding: 18px 20px 6px;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* ── Menu Links ── */
 .menu a {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 9px 20px;
+    padding: 9px 16px 9px 20px;
     margin: 1px 8px;
     color: var(--sidebar-text);
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
-    transition: all var(--transition-fast);
+    transition: all 0.18s ease;
+    position: relative;
 }
 
 .menu a i {
@@ -153,24 +201,32 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     width: 20px;
     text-align: center;
     flex-shrink: 0;
+    transition: color 0.18s ease, transform 0.18s ease;
 }
 
 .menu a:hover {
     background: var(--sidebar-hover);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--sidebar-text-hover);
 }
 
+.menu a:hover i {
+    transform: translateX(1px);
+}
+
+/* Active state with left indicator bar */
 .menu a.active {
     background: var(--sidebar-active);
     color: var(--sidebar-text-active);
+    border-left: 3px solid var(--sidebar-active-indicator);
+    padding-left: 17px;
 }
 
 .menu a.active i {
-    color: var(--primary);
+    color: var(--sidebar-active-indicator);
 }
 
 .menu a.disabled {
-    opacity: 0.35;
+    opacity: 0.3;
     pointer-events: none;
 }
 
@@ -180,7 +236,7 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     background: var(--sidebar-border);
 }
 
-/* ???? Accordion Menu Group ???? */
+/* ── Accordion Menu Group ── */
 .menu-group {
     margin: 1px 0;
 }
@@ -189,14 +245,14 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 9px 20px;
+    padding: 9px 16px 9px 20px;
     margin: 1px 8px;
     color: var(--sidebar-text);
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
     border-radius: 6px;
-    transition: all var(--transition-fast);
+    transition: all 0.18s ease;
     cursor: pointer;
     position: relative;
 }
@@ -206,6 +262,7 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     width: 20px;
     text-align: center;
     flex-shrink: 0;
+    transition: color 0.18s ease;
 }
 
 .menu-group-toggle span {
@@ -215,8 +272,8 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
 .menu-arrow {
     font-size: 16px !important;
     width: auto !important;
-    transition: transform 0.25s ease;
-    opacity: 0.5;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0.4;
 }
 
 .menu-group.open .menu-arrow {
@@ -226,18 +283,26 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
 
 .menu-group-toggle:hover {
     background: var(--sidebar-hover);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--sidebar-text-hover);
+}
+
+.menu-group-toggle:hover i:first-child {
+    color: var(--sidebar-active-indicator);
 }
 
 .menu-group.open > .menu-group-toggle {
-    background: var(--sidebar-hover);
-    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--sidebar-text-hover);
+}
+
+.menu-group.open > .menu-group-toggle i:first-child {
+    color: var(--sidebar-active-indicator);
 }
 
 .menu-group-items {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menu-group.open > .menu-group-items {
@@ -248,14 +313,15 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 20px 8px 48px;
+    padding: 7px 20px 7px 48px;
     margin: 1px 8px;
     color: var(--sidebar-text);
     text-decoration: none;
     font-size: 12px;
     font-weight: 500;
     border-radius: 6px;
-    transition: all var(--transition-fast);
+    transition: all 0.18s ease;
+    position: relative;
 }
 
 .menu-group-items a i {
@@ -263,25 +329,30 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     width: 18px;
     text-align: center;
     flex-shrink: 0;
+    transition: color 0.18s ease;
 }
 
 .menu-group-items a:hover {
     background: var(--sidebar-hover);
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--sidebar-text-hover);
 }
 
+/* Sub-menu active state with indicator */
 .menu-group-items a.active {
     background: var(--sidebar-active);
     color: var(--sidebar-text-active);
+    border-left: 3px solid var(--sidebar-active-indicator);
+    padding-left: 45px;
 }
 
 .menu-group-items a.active i {
-    color: var(--primary);
+    color: var(--sidebar-active-indicator);
 }
 
+/* ── Sidebar Footer ── */
 .sidebar-footer {
     padding: 14px 20px;
-    border-top: 1px solid var(--sidebar-border);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .connection-status {
@@ -461,11 +532,13 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     display: flex;
     align-items: center;
     gap: 12px;
-    transition: box-shadow var(--transition);
+    transition: all 0.25s ease;
 }
 
 .kpi-card:hover {
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--gray-300);
 }
 
 .kpi-icon {
@@ -1243,29 +1316,30 @@ input:focus, select:focus {
 
 .toast {
     padding: 10px 16px;
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     color: #fff;
     font-weight: 500;
     font-size: 12.5px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
     display: flex;
     align-items: center;
     gap: 8px;
     max-width: 380px;
     pointer-events: auto;
-    animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    animation: toastSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(8px);
 }
 
 .toast.fade-out {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateX(30px) scale(0.95);
 }
 
-.toast.success { background: #16a34a; }
-.toast.error { background: #dc2626; }
-.toast.warning { background: #d97706; color: #fff; }
-.toast.info { background: var(--primary); }
+.toast.success { background: rgba(22, 163, 74, 0.92); }
+.toast.error { background: rgba(220, 38, 38, 0.92); }
+.toast.warning { background: rgba(217, 119, 6, 0.92); color: #fff; }
+.toast.info { background: rgba(44, 62, 143, 0.92); }
 
 .toast i {
     font-size: 18px;
@@ -1385,24 +1459,17 @@ input:focus, select:focus {
     }
 }
 
-/* ???? Scrollbar ???? */
-.page-body::-webkit-scrollbar,
-.menu::-webkit-scrollbar {
+/* Scrollbar — page-body only (sidebar scrollbar in sidebar section) */
+.page-body::-webkit-scrollbar {
     width: 5px;
 }
 
-.page-body::-webkit-scrollbar-track,
-.menu::-webkit-scrollbar-track {
+.page-body::-webkit-scrollbar-track {
     background: transparent;
 }
 
 .page-body::-webkit-scrollbar-thumb {
     background: var(--gray-300);
-    border-radius: 10px;
-}
-
-.menu::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
 }
 
@@ -1495,32 +1562,35 @@ input:focus, select:focus {
     display: none;
 }
 
-/* Sidebar Logout */
+/* Sidebar Logout — micro-animation */
 .logout-btn {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--gray-400);
+    color: rgba(255, 255, 255, 0.4);
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
     padding: 10px 15px;
     margin-bottom: 10px;
-    border-radius: 6px;
-    transition: all var(--transition-fast);
+    border-radius: 8px;
+    transition: all 0.25s ease;
 }
 
 .logout-btn i {
     font-size: 18px;
-    color: var(--gray-500);
+    color: rgba(255, 255, 255, 0.35);
+    transition: all 0.3s ease;
 }
 
 .logout-btn:hover {
-    background: var(--gray-800);
-    color: #fff;
+    background: rgba(239, 68, 68, 0.08);
+    color: rgba(255, 255, 255, 0.9);
 }
+
 .logout-btn:hover i {
-    color: var(--danger);
+    color: #ef4444;
+    transform: translateX(-2px);
 }
 
 /* ????????????????????????????????????????

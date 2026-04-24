@@ -5,7 +5,8 @@
    ============================================================ */
 
 :root {
-  --primary: #000666;
+  /* Primary — synced with K&G Portal Navy palette */
+  --primary: #0d1b6e;
   --primary-container: #1a237e;
   --primary-fixed: #e0e0ff;
   --on-primary-fixed-variant: #343d96;
