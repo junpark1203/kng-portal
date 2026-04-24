@@ -164,7 +164,7 @@ function renderTable() {
     elSelectAll.checked = false;
 
     if (filteredData.length === 0) {
-        elTableBody.innerHTML = '<tr><td colspan="15" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
+        elTableBody.innerHTML = '<tr><td colspan="14" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
         elPagination.innerHTML = '';
         return;
     }
@@ -194,14 +194,7 @@ function renderTable() {
         const marginCls = margin > 0 ? 'val-positive' : margin < 0 ? 'val-negative' : 'val-zero';
         const marginAmt = margin !== 0 ? `<span class="${marginCls}">${fmtNum(margin)}</span>` : '<span class="val-zero">-</span>';
 
-        // Buy change rate
-        let changeHtml = '<span class="change-flat">-</span>';
-        if (d.prevBuyPrice && d.prevBuyPrice > 0) {
-            const rate = ((d.buyPrice - d.prevBuyPrice) / d.prevBuyPrice * 100);
-            if (rate > 0) changeHtml = `<span class="change-up">▲${rate.toFixed(1)}%</span>`;
-            else if (rate < 0) changeHtml = `<span class="change-down">▼${Math.abs(rate).toFixed(1)}%</span>`;
-            else changeHtml = '<span class="change-flat">0%</span>';
-        }
+        // Buy change rate (used only for history, removed from render)
 
         // Category tag
         const catTag = d.category ? `<span class="cat-tag cat-${d.category}">${d.category}</span>` : '-';
@@ -209,18 +202,17 @@ function renderTable() {
         html += `
             <tr data-id="${d.id}">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
+                <td onclick="openModal('${d.id}')">${d.supplier || '-'}</td>
+                <td onclick="openModal('${d.id}')" style="color:#059669; font-weight:500;">${d.manufacturer || '-'}</td>
+                <td onclick="openModal('${d.id}')">${catTag}</td>
                 <td class="col-item" onclick="openModal('${d.id}')">${d.itemName || '-'}</td>
                 <td onclick="openModal('${d.id}')">${d.spec || '-'}</td>
-                <td onclick="openModal('${d.id}')">${catTag}</td>
-                <td onclick="openModal('${d.id}')" style="color:#059669; font-weight:500;">${d.manufacturer || '-'}</td>
-                <td onclick="openModal('${d.id}')">${d.supplier || '-'}</td>
                 <td class="col-num cost-col" onclick="openModal('${d.id}')"><span class="curr-sym">${sym}</span>${fmtNum(d.buyPrice)}</td>
                 <td class="col-num-sm cost-col" onclick="openModal('${d.id}')" style="font-size:9px; color:var(--gray-500);">${d.logistics > 0 ? fmtNum(d.logistics) : '-'}</td>
                 <td class="col-num cost-col" onclick="openModal('${d.id}')" style="font-weight:600;">${fmtNum(landed)}</td>
                 <td class="col-num sell-col" onclick="openModal('${d.id}')" style="font-weight:600;"><span class="curr-sym">${sym}</span>${fmtNum(d.sellPrice)}</td>
                 <td class="col-num margin-col" onclick="openModal('${d.id}')">${marginAmt}</td>
                 <td class="col-num-sm margin-col" onclick="openModal('${d.id}')">${marginBadge}</td>
-                <td class="col-num-sm margin-col" onclick="openModal('${d.id}')">${changeHtml}</td>
                 <td onclick="event.stopPropagation()"><button class="btn-history" onclick="window.showHistory('${d.id}')">이력</button></td>
                 <td class="col-date" onclick="openModal('${d.id}')">${dateStr}</td>
             </tr>`;
@@ -456,8 +448,52 @@ async function deleteSelected() {
 window.showHistory = function(id) {
     const d = itemsData.find(x => x.id === id);
     if (!d) return;
+    const sym = getCurrencySymbol(d.currency);
     $('historyModalTitle').textContent = `${d.itemName || '품목'} 변동 이력`;
-    $('historyModalBody').textContent = d.history || '이력 없음';
+
+    // 현재 단가 + 변동률 요약
+    let html = '<div style="margin-bottom:14px; padding:10px 12px; background:var(--gray-50); border-radius:6px;">';
+    html += '<div style="font-size:11px; font-weight:600; color:var(--gray-500); margin-bottom:6px;">📌 현재 단가</div>';
+    html += `<div style="display:flex; gap:16px; font-size:12px;">` +
+        `<span>매입 <b>${sym}${fmtNum(d.buyPrice)}</b></span>` +
+        `<span>매출 <b>${sym}${fmtNum(d.sellPrice)}</b></span>` +
+        '</div>';
+
+    // prevBuyPrice 대비 변동률
+    if (d.prevBuyPrice && d.prevBuyPrice > 0) {
+        const buyRate = ((d.buyPrice - d.prevBuyPrice) / d.prevBuyPrice * 100);
+        const buyDiff = d.buyPrice - d.prevBuyPrice;
+        const cls = buyRate > 0 ? 'change-up' : buyRate < 0 ? 'change-down' : 'change-flat';
+        const arrow = buyRate > 0 ? '▲' : buyRate < 0 ? '▼' : '';
+        html += `<div style="margin-top:6px; font-size:11px;">` +
+            `매입 변동: <span class="${cls}">${arrow}${Math.abs(buyRate).toFixed(1)}% (${buyDiff > 0 ? '+' : ''}${sym}${fmtNum(buyDiff)})</span>` +
+            ` <span style="color:var(--gray-400); font-size:10px;">이전 ${sym}${fmtNum(d.prevBuyPrice)}</span></div>`;
+    }
+    if (d.prevSellPrice && d.prevSellPrice > 0) {
+        const sellRate = ((d.sellPrice - d.prevSellPrice) / d.prevSellPrice * 100);
+        const sellDiff = d.sellPrice - d.prevSellPrice;
+        const cls = sellRate > 0 ? 'change-up' : sellRate < 0 ? 'change-down' : 'change-flat';
+        const arrow = sellRate > 0 ? '▲' : sellRate < 0 ? '▼' : '';
+        html += `<div style="font-size:11px;">` +
+            `매출 변동: <span class="${cls}">${arrow}${Math.abs(sellRate).toFixed(1)}% (${sellDiff > 0 ? '+' : ''}${sym}${fmtNum(sellDiff)})</span>` +
+            ` <span style="color:var(--gray-400); font-size:10px;">이전 ${sym}${fmtNum(d.prevSellPrice)}</span></div>`;
+    }
+    html += '</div>';
+
+    // 이력 텍스트
+    if (d.history) {
+        html += '<div style="font-size:11px; font-weight:600; color:var(--gray-500); margin-bottom:6px;">📋 변동 기록</div>';
+        const lines = d.history.split('\n').filter(l => l.trim());
+        html += '<div style="font-size:12px; line-height:2;">';
+        lines.forEach(line => {
+            html += `<div style="padding:2px 0; border-bottom:1px solid var(--gray-100);">${line}</div>`;
+        });
+        html += '</div>';
+    } else {
+        html += '<div style="color:var(--gray-400); font-size:12px; text-align:center; padding:20px 0;">변동 이력이 없습니다.</div>';
+    }
+
+    $('historyModalBody').innerHTML = html;
     historyModal.classList.add('active');
 };
 function closeHistoryModal() { historyModal.classList.remove('active'); }
