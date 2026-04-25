@@ -73,7 +73,55 @@
 
 /* Source filter bar */
 .source-filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+/* Metric toggle */
+.metric-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.metric-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray-400, #94a3b8);
+}
+.metric-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--gray-50, #f8fafc);
+    border: 1px solid var(--gray-200, #e2e8f0);
+    border-radius: 8px;
+    padding: 3px;
+}
+.metric-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray-500, #64748b);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.metric-tab i { font-size: 0.9rem; }
+.metric-tab:hover { color: var(--gray-700, #334155); background: rgba(79,110,247,0.06); }
+.metric-tab.active {
+    background: #fff;
+    color: #4f6ef7;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    font-weight: 600;
 }
 .source-tabs {
     display: flex;

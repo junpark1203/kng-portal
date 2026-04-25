@@ -2,6 +2,7 @@
    공급 현황 대시보드 (dashboard.js) V2
    - 일반 자재 + 유류 자재 데이터 집계
    - 데이터 소스 필터 (전체/일반/유류)
+   - 기준 토글 (금액/수량)
    - Chart.js 기반 4개 차트
    - 품목별/현장별 집계 테이블
    ========================================================================= */
@@ -13,6 +14,7 @@ let rawGeneral = [];
 let rawOil = [];
 let filtered = { general: [], oil: [] };
 let activeSource = 'all'; // 'all' | 'general' | 'oil'
+let activeMetric = 'amount'; // 'amount' | 'qty'
 let activeAggTab = 'item'; // 'item' | 'site'
 let aggSearchQuery = '';
 
@@ -38,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initPeriodChips();
     initDateRange();
     initSourceTabs();
+    initMetricTabs();
     initAggTabs();
     initAggSearch();
     await loadAllData();
@@ -100,6 +103,20 @@ function initSourceTabs() {
             document.querySelectorAll('.source-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             activeSource = btn.dataset.source;
+            applyFilter();
+        });
+    });
+}
+
+// ==========================================
+// Metric Tabs (금액/수량)
+// ==========================================
+function initMetricTabs() {
+    document.querySelectorAll('.metric-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            activeMetric = btn.dataset.metric;
             applyFilter();
         });
     });
@@ -261,27 +278,29 @@ function updateKPI() {
 function renderTrendChart() {
     const months = {};
     const combined = getCombined();
+    const isQty = activeMetric === 'qty';
+    const valKey = isQty ? 'qty' : 'total';
 
     if (activeSource === 'all') {
         filtered.general.forEach(d => {
             const m = (d.supplyDate || '').substring(0, 7);
             if (!m) return;
             if (!months[m]) months[m] = { general: 0, oil: 0 };
-            months[m].general += d.total || 0;
+            months[m].general += d[valKey] || 0;
         });
         filtered.oil.forEach(d => {
             const m = (d.date || '').substring(0, 7);
             if (!m) return;
             if (!months[m]) months[m] = { general: 0, oil: 0 };
-            months[m].oil += d.total || 0;
+            months[m].oil += d[valKey] || 0;
         });
     } else {
         combined.forEach(d => {
             const m = d.date.substring(0, 7);
             if (!m) return;
             if (!months[m]) months[m] = { general: 0, oil: 0 };
-            if (d.type === 'general') months[m].general += d.total;
-            else months[m].oil += d.total;
+            if (d.type === 'general') months[m].general += d[valKey];
+            else months[m].oil += d[valKey];
         });
     }
 
@@ -303,6 +322,13 @@ function renderTrendChart() {
         });
     }
 
+    const tooltipFmt = isQty
+        ? (ctx => `${ctx.dataset.label}: ${fmtN(ctx.raw)}개`)
+        : (ctx => `${ctx.dataset.label}: ${fmtW(ctx.raw)}`);
+    const tickFmt = isQty
+        ? (v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v)
+        : (v => v >= 1000000 ? (v/1000000).toFixed(0)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v);
+
     if (chartTrend) chartTrend.destroy();
     chartTrend = new Chart($('chartTrend'), {
         type: 'bar',
@@ -311,13 +337,13 @@ function renderTrendChart() {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'top', labels: { font: { size: 11, family: 'Inter' }, usePointStyle: true, padding: 16 } },
-                tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtW(ctx.raw)}` } }
+                tooltip: { callbacks: { label: tooltipFmt } }
             },
             scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' } } },
                 y: {
                     beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' },
-                    ticks: { font: { size: 10, family: 'Inter' }, callback: v => v >= 1000000 ? (v/1000000).toFixed(0)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v }
+                    ticks: { font: { size: 10, family: 'Inter' }, callback: tickFmt }
                 }
             }
         }
@@ -367,8 +393,9 @@ function renderCategoryChart() {
 // Chart: Site Top 10
 // ==========================================
 function renderSiteChart() {
+    const isQty = activeMetric === 'qty';
     const sites = {};
-    getCombined().forEach(d => { sites[d.site || '미입력'] = (sites[d.site || '미입력'] || 0) + d.total; });
+    getCombined().forEach(d => { sites[d.site || '미입력'] = (sites[d.site || '미입력'] || 0) + (isQty ? d.qty : d.total); });
 
     const sorted = Object.entries(sites).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const labels = sorted.map(e => e[0]);
@@ -380,7 +407,7 @@ function renderSiteChart() {
         data: { labels, datasets: [{ data, backgroundColor: COLORS.slice(0, labels.length).map(c => c + 'cc'), borderRadius: 4, barPercentage: 0.65 }] },
         options: {
             responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtW(ctx.raw) } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => isQty ? fmtN(ctx.raw) + '개' : fmtW(ctx.raw) } } },
             scales: {
                 x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10, family: 'Inter' }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
                 y: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' } } }
@@ -393,8 +420,9 @@ function renderSiteChart() {
 // Chart: Item Top 10
 // ==========================================
 function renderItemChart() {
+    const isQty = activeMetric === 'qty';
     const items = {};
-    getCombined().forEach(d => { items[d.item || '미입력'] = (items[d.item || '미입력'] || 0) + d.total; });
+    getCombined().forEach(d => { items[d.item || '미입력'] = (items[d.item || '미입력'] || 0) + (isQty ? d.qty : d.total); });
 
     const sorted = Object.entries(items).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const labels = sorted.map(e => e[0]);
@@ -406,7 +434,7 @@ function renderItemChart() {
         data: { labels, datasets: [{ data, backgroundColor: COLORS.slice(0, labels.length).map(c => c + 'cc'), borderRadius: 4, barPercentage: 0.65 }] },
         options: {
             responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtW(ctx.raw) } } },
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => isQty ? fmtN(ctx.raw) + '개' : fmtW(ctx.raw) } } },
             scales: {
                 x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 10, family: 'Inter' }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v } },
                 y: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' } } }
@@ -448,8 +476,9 @@ function renderAggTable() {
         entries = entries.filter(e => e.name.toLowerCase().includes(aggSearchQuery));
     }
 
-    // Sort by total desc
-    entries.sort((a, b) => b.total - a.total);
+    // Sort by active metric
+    const isQty = activeMetric === 'qty';
+    entries.sort((a, b) => isQty ? b.qty - a.qty : b.total - a.total);
 
     const isItem = activeAggTab === 'item';
     const thead = $('aggThead');
