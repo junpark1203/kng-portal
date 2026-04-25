@@ -42,6 +42,21 @@
                     </div>
                 </div>
 
+                <!-- Source Filter Tabs -->
+                <div class="source-filter-bar">
+                    <div class="source-tabs">
+                        <button class="source-tab active" data-source="all">
+                            <i class='bx bx-grid-alt'></i> 전체
+                        </button>
+                        <button class="source-tab" data-source="general">
+                            <i class='bx bx-package'></i> 일반 자재
+                        </button>
+                        <button class="source-tab" data-source="oil">
+                            <i class='bx bx-gas-pump'></i> 유류 자재
+                        </button>
+                    </div>
+                </div>
+
                 <!-- KPI Cards Row -->
                 <div class="kpi-grid" id="kpiGrid">
                     <div class="kpi-card-lg kpi-total">
@@ -74,6 +89,22 @@
                             <div class="kpi-label">취급 품목</div>
                             <div class="kpi-value" id="kpiItemCount">0</div>
                             <div class="kpi-sub" id="kpiItemSub">종</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card-lg kpi-avg-amt">
+                        <div class="kpi-icon"><i class='bx bx-trending-up'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">월평균 공급 금액</div>
+                            <div class="kpi-value" id="kpiAvgAmt">₩0</div>
+                            <div class="kpi-sub" id="kpiAvgAmtSub">-</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card-lg kpi-avg-count">
+                        <div class="kpi-icon"><i class='bx bx-bar-chart'></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-label">월평균 납품 건수</div>
+                            <div class="kpi-value" id="kpiAvgCount">0</div>
+                            <div class="kpi-sub" id="kpiAvgCountSub">-</div>
                         </div>
                     </div>
                 </div>
@@ -117,6 +148,31 @@
                             <canvas id="chartItem"></canvas>
                         </div>
                     </div>
+                </div>
+
+                <!-- Aggregate Summary Tables -->
+                <div class="agg-section">
+                    <div class="agg-header">
+                        <div class="agg-tabs">
+                            <button class="agg-tab active" data-agg="item">
+                                <i class='bx bx-box'></i> 품목별 집계
+                            </button>
+                            <button class="agg-tab" data-agg="site">
+                                <i class='bx bx-building'></i> 현장별 집계
+                            </button>
+                        </div>
+                        <div class="agg-search-wrap">
+                            <i class='bx bx-search'></i>
+                            <input type="text" id="aggSearchInput" placeholder="검색...">
+                        </div>
+                    </div>
+                    <div class="agg-table-wrap">
+                        <table class="agg-table" id="aggTable">
+                            <thead id="aggThead"></thead>
+                            <tbody id="aggTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="agg-footer" id="aggFooter"></div>
                 </div>
 
             </div>
