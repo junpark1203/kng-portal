@@ -451,28 +451,32 @@ function calculateRecommendedPrice() {
     var taxDivider = isTaxable ? 1.1 : 1.0;
     
     function calcPrice(target, type) {
-        // 목표 마진을 얻기 위한 수식
-        // 수익 = (판매가+판매배송비)/taxDivider - (매입가+매입배송비)
-        // 원(KRW): (판매가+판매배송비) = (목표 + 총원가) * taxDivider
-        // 퍼센트(%): 수익 = ((판매가+판매배송비)/taxDivider) * (목표%/100)
-        // -> 목표금액(원) = ((판매가+판매배송비)/taxDivider) * (목표%/100)
-        // -> (판매가+판매배송비)/taxDivider - 총원가 = ((판매가+판매배송비)/taxDivider) * (목표%/100)
-        // -> ((판매가+판매배송비)/taxDivider) * (1 - 목표%/100) = 총원가
-        // -> (판매가+판매배송비) = (총원가 / (1 - 목표%/100)) * taxDivider
+        // 목표 마진을 얻기 위한 역산 수식 (플랫폼 수수료 반영: 주문매출연동 3.63%, 판매수수료 3%)
+        // 수익(Margin) = 순매출 - 총매입 - 수수료
+        // 순매출 = (판매가 + 배송비) / taxDivider
+        // 수수료 = (판매가 + 배송비)*0.0363 + 판매가*0.03
+        var S = 0; // 추천 판매가
         
-        var targetTotalSale = 0;
         if (type === '원') {
-            targetTotalSale = (totalCost + target) * taxDivider;
+            var num = target + totalCost - saleShip * (1/taxDivider - 0.0363);
+            var den = 1/taxDivider - 0.0663;
+            S = num / den;
         } else if (type === '%') {
-            if (target >= 100) target = 99; // 마진율 100% 이상은 불가능하므로 보정
-            targetTotalSale = (totalCost / (1 - (target/100))) * taxDivider;
+            var m = target / 100;
+            // 극단적으로 높은 마진율 입력 시 분모가 음수가 되는 것을 방지 (수수료 때문에 한계 존재)
+            var maxM = 1 - (taxDivider * 0.0663) - 0.01; 
+            if (m > maxM) m = maxM;
+            
+            var num = totalCost - saleShip * ((1 - m)/taxDivider - 0.0363);
+            var den = (1 - m)/taxDivider - 0.0663;
+            S = num / den;
         }
         
-        var recommendedSalePrice = targetTotalSale - saleShip;
+        if (S < 0) S = 0;
         
         // 100원 단위 올림(Math.ceil)
         // ex) 15312 -> 15400
-        return Math.ceil(recommendedSalePrice / 100) * 100;
+        return Math.ceil(S / 100) * 100;
     }
     
     var minSale = calcPrice(p.minTarget, p.type);
