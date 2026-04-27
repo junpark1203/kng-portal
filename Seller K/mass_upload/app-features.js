@@ -313,6 +313,7 @@ function refreshProductList() {
         var profitRate = netSale > 0 ? ((profit / netSale) * 100).toFixed(1) : '0.0';
 
         var profitColor = profit > 0 ? 'var(--primary)' : (profit < 0 ? 'var(--danger)' : 'var(--gray-600)');
+        var lowestPriceHtml = p.isLowestPrice ? '<span style="color:#e67e22;font-size:16px;"><i class="bx bxs-check-circle"></i></span>' : '<span style="color:var(--gray-300);font-size:16px;">-</span>';
 
         html += '<tr class="hoverable" onclick="editProduct(\'' + p.id + '\')" style="border-bottom:1px solid var(--surface-container-high); cursor:pointer;">' +
             '<td style="text-align:center;"><input type="checkbox" class="product-row-check" data-id="' + p.id + '" style="margin:0;" onclick="event.stopPropagation();"></td>' +
@@ -322,6 +323,7 @@ function refreshProductList() {
             '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);">' + formatCurrency(commission) + '</td>' +
             '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:700;color:' + profitColor + ';">' + formatCurrency(profit) + '</td>' +
             '<td style="text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:' + profitColor + ';">' + profitRate + '%</td>' +
+            '<td style="text-align:center;">' + lowestPriceHtml + '</td>' +
             '<td style="text-align:center;"><span class="badge ' + (p.isDraft ? 'badge-gray' : 'badge-primary') + '">' + (p.isDraft ? '임시' : '완료') + '</span></td>' +
             '<td style="text-align:center;font-size:11.5px;font-family:\'Inter\',sans-serif;color:var(--gray-500);">' + (p.createdAt ? p.createdAt.slice(0, 10).replace(/-/g, '.') : '-') + '</td>' +
             '<td style="text-align:center;"><i class="bx bx-edit" style="font-size:16px;color:var(--gray-400);"></i></td>' +
