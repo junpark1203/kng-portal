@@ -131,13 +131,16 @@ function calcSellTotal(sellPrice, sellShipping) {
 }
 
 function calcProfit(buyTotalVATExclusive, sellTotalVATInclusive, commission) {
-    var buyTotalVATInclusive = Math.round(buyTotalVATExclusive * 1.1);
-    return sellTotalVATInclusive - buyTotalVATInclusive - commission;
+    // 일괄등록(보수적) 방식: 순매출 - 공급가(부가세 제외 매입비) - 수수료
+    var netSale = Math.round(sellTotalVATInclusive / 1.1);
+    return netSale - buyTotalVATExclusive - commission;
 }
 
-function calcProfitRate(profit, sellTotal) {
-    if (!sellTotal || sellTotal === 0) return 0;
-    return (profit / sellTotal) * 100;
+function calcProfitRate(profit, sellTotalVATInclusive) {
+    if (!sellTotalVATInclusive || sellTotalVATInclusive === 0) return 0;
+    var netSale = Math.round(sellTotalVATInclusive / 1.1);
+    if (netSale === 0) return 0;
+    return (profit / netSale) * 100;
 }
 
 // ==========================================
