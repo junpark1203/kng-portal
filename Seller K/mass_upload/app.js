@@ -280,7 +280,7 @@ function startNewProduct() {
 
     populateForm();
 
-    selectOrigin('0000', '상세설명에 표시');
+    selectOrigin('03', '상세설명에 표시');
 
     // 신규 등록 시 위자드 스텝 클릭 비활성화
     document.querySelectorAll('.wizard-step').forEach(function(s) {
