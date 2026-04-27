@@ -516,8 +516,8 @@ function updateMarginDisplay() {
         var totalSale = salePrice + saleShip;
         var totalBuy = buyPrice + buyShip;
         var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        // 수수료: 주문매출연동 3.63% + 판매수수료 3%
-        var commission = Math.round(totalSale * 0.0363) + Math.round(salePrice * 0.03);
+        // 수수료: 주문매출연동 3.63% + 판매수수료 3% (VAT 제외)
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round(salePrice * 0.03)) / 1.1);
         var margin = netSale - totalBuy - commission;
         var marginRate = ((margin / netSale) * 100).toFixed(1);
         amountEl.textContent = formatCurrency(margin) + '원';
