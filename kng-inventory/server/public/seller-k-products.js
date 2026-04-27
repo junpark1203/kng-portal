@@ -102,10 +102,14 @@ function generateId() {
     return 'sk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 }
 
-function calcCommission(sellPrice, sellShipping) {
-    var baseExt = sellPrice + sellShipping;
+function calcCommission(sellPrice, sellShipping, shippingBasis) {
+    var effectiveShipping = sellShipping || 0;
+    if (shippingBasis === '무료') {
+        effectiveShipping = 0;
+    }
+    var baseExt = (sellPrice || 0) + effectiveShipping;
     var orderFee = Math.round(baseExt * 0.0363);
-    var salesFee = Math.round(sellPrice * 0.03);
+    var salesFee = Math.round((sellPrice || 0) * 0.03);
     // 수수료도 부가세 포함이므로, 정산이익 계산 기준 통일을 위해 VAT 제외
     return Math.round((orderFee + salesFee) / 1.1);
 }
@@ -114,10 +118,8 @@ function calcBuyTotal(buyPrice, buyShipping, shippingBasis, shippingQty) {
     if (!buyPrice) buyPrice = 0;
     if (!buyShipping) buyShipping = 0;
     var finalShipping = 0;
-    if (shippingBasis === '무료') {
-        finalShipping = 0;
-    } else if (shippingBasis === '조건부' || shippingBasis === '유료') {
-        finalShipping = buyShipping;
+    if (shippingBasis === '조건부' || shippingBasis === '유료' || shippingBasis === '무료') {
+        finalShipping = buyShipping; // 매입 운임은 무료여도 그대로 둠
     } else {
         // 수량별
         var sq = parseInt(shippingQty, 10);
@@ -127,8 +129,12 @@ function calcBuyTotal(buyPrice, buyShipping, shippingBasis, shippingQty) {
     return buyPrice + finalShipping;
 }
 
-function calcSellTotal(sellPrice, sellShipping) {
-    return (sellPrice || 0) + (sellShipping || 0);
+function calcSellTotal(sellPrice, sellShipping, shippingBasis) {
+    var effectiveShipping = sellShipping || 0;
+    if (shippingBasis === '무료') {
+        effectiveShipping = 0;
+    }
+    return (sellPrice || 0) + effectiveShipping;
 }
 
 function calcProfit(buyTotalVATExclusive, sellTotalVATInclusive, commission) {
@@ -161,8 +167,8 @@ function renderTable() {
     } else {
         products.forEach(function(p) {
             var buyTotal = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
-            var sellTotal = calcSellTotal(p.sellPrice, p.sellShipping);
-            var commission = calcCommission(p.sellPrice || 0, p.sellShipping || 0);
+            var sellTotal = calcSellTotal(p.sellPrice, p.sellShipping, p.shippingBasis);
+            var commission = calcCommission(p.sellPrice || 0, p.sellShipping || 0, p.shippingBasis);
             var profit = calcProfit(buyTotal, sellTotal, commission);
             var profitRate = calcProfitRate(profit, sellTotal);
             totalBuy += buyTotal;
@@ -282,8 +288,8 @@ function updateCalcPreview() {
     var ss = parseInt(document.getElementById('skSellShipping').value, 10) || 0;
 
     var buyTotal = calcBuyTotal(bp, bs, base, qty);
-    var sellTotal = calcSellTotal(sp, ss);
-    var commission = calcCommission(sp, ss);
+    var sellTotal = calcSellTotal(sp, ss, base);
+    var commission = calcCommission(sp, ss, base);
     var profit = calcProfit(buyTotal, sellTotal, commission);
     var profitRate = calcProfitRate(profit, sellTotal);
 
