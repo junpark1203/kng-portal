@@ -45,10 +45,18 @@ function showToast(message, type) {
     toast.className = 'toast ' + type;
     toast.innerHTML = "<i class='bx " + (icons[type] || icons.info) + "'></i> <span>" + escapeHtml(message) + "</span>";
     container.appendChild(toast);
+    
+    // 클릭하면 즉시 닫히도록 이벤트 추가
+    toast.addEventListener('click', function() {
+        toast.classList.add('fade-out');
+        setTimeout(function() { toast.remove(); }, 300);
+    });
+
+    // 지속 시간 3초 -> 6초(6000ms)로 연장
     setTimeout(function() {
         toast.classList.add('fade-out');
         setTimeout(function() { toast.remove(); }, 300);
-    }, 3000);
+    }, 6000);
 }
 
 function updateConnectionStatus(online) {
