@@ -327,7 +327,102 @@ function initProductList() {
     if (delBtn) delBtn.addEventListener('click', deleteSelectedProducts);
     var exportInvBtn = document.getElementById('btnExportToInventory');
     if (exportInvBtn) exportInvBtn.addEventListener('click', exportToInventory);
+
+    // 프로젝트 저장/불러오기
+    var btnSave = document.getElementById('btnSaveProject');
+    if (btnSave) btnSave.addEventListener('click', saveProject);
+    var btnLoad = document.getElementById('btnLoadProject');
+    var fileLoad = document.getElementById('fileLoadProject');
+    if (btnLoad && fileLoad) {
+        btnLoad.addEventListener('click', function() { fileLoad.click(); });
+        fileLoad.addEventListener('change', function(e) {
+            if (e.target.files[0]) loadProject(e.target.files[0]);
+            e.target.value = ''; // 같은 파일 재선택 가능하도록 초기화
+        });
+    }
+
     refreshProductList();
+}
+
+// ════════════════════════════════════════
+// PROJECT SAVE / LOAD (JSON)
+// ════════════════════════════════════════
+function saveProject() {
+    var products = Storage.getProducts();
+    if (products.length === 0) {
+        showToast('저장할 상품이 없습니다.', 'warning');
+        return;
+    }
+    var exportCart = Storage.getExportCart();
+    var projectData = {
+        _format: 'kng-mass-upload-project',
+        _version: 1,
+        savedAt: new Date().toISOString(),
+        products: products,
+        exportCart: exportCart
+    };
+
+    var defaultName = '상품데이터_' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    var fileName = prompt('저장할 파일 이름을 입력하세요:', defaultName);
+    if (!fileName) return; // 취소
+
+    // .json 확장자 자동 추가
+    if (!fileName.endsWith('.json')) fileName += '.json';
+
+    var blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('💾 ' + fileName + ' 저장 완료 (' + products.length + '건)', 'success');
+}
+
+function loadProject(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            var data = JSON.parse(e.target.result);
+
+            // 포맷 검증
+            if (!data._format || data._format !== 'kng-mass-upload-project' || !Array.isArray(data.products)) {
+                showToast('올바른 상품 데이터 파일이 아닙니다.', 'error');
+                return;
+            }
+
+            var currentProducts = Storage.getProducts();
+            var mode = 'replace';
+            if (currentProducts.length > 0) {
+                var choice = confirm(
+                    '현재 등록된 상품이 ' + currentProducts.length + '건 있습니다.\n\n' +
+                    '[확인] 기존 상품을 모두 지우고 불러온 파일로 교체\n' +
+                    '[취소] 불러오기 취소'
+                );
+                if (!choice) return;
+            }
+
+            // 기존 상품 전부 삭제 후 불러온 상품으로 교체
+            Storage.saveProducts(data.products);
+
+            // 엑셀 추출 대상(카트) 복원
+            if (Array.isArray(data.exportCart)) {
+                Storage.saveExportCart(data.exportCart);
+            }
+
+            refreshProductList();
+            if (typeof renderExportCart === 'function') renderExportCart();
+
+            var savedDate = data.savedAt ? new Date(data.savedAt).toLocaleString('ko-KR') : '';
+            showToast('📂 ' + file.name + ' 불러오기 완료 (' + data.products.length + '건)' + (savedDate ? '\n저장일: ' + savedDate : ''), 'success');
+        } catch (err) {
+            showToast('파일 읽기 오류: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
 }
 
 function refreshProductList() {

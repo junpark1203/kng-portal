@@ -564,7 +564,11 @@
                 <div class="page-view" id="pageProducts">
                     <div class="product-list-header">
                         <h2 style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;">등록 상품</h2>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-outline btn-sm" id="btnLoadProject" style="border-color:var(--gray-400);color:var(--gray-600);"><i class='bx bx-folder-open'></i> 불러오기</button>
+                            <input type="file" id="fileLoadProject" accept=".json" style="display:none;">
+                            <button class="btn-outline btn-sm" id="btnSaveProject" style="border-color:var(--gray-400);color:var(--gray-600);"><i class='bx bx-save'></i> 저장</button>
+                            <span style="border-left:1px solid var(--gray-200);margin:0 2px;"></span>
                             <button class="btn-outline btn-sm" id="btnDeleteSelected"><i class='bx bx-trash'></i> 선택 삭제</button>
                             <button class="btn-primary btn-sm" id="btnAddExportCart"><i class='bx bx-list-plus'></i> 엑셀 추출 대상으로 지정</button>
                             <button class="btn-outline btn-sm" id="btnExportToInventory" style="border-color:var(--success); color:var(--success);"><i class='bx bx-link-external'></i> 매입 상품 목록으로 내보내기</button>
