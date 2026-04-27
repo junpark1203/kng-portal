@@ -1723,6 +1723,8 @@ function exportToInventory() {
     
     allProducts.forEach(function(p) {
         if (idsToExport.indexOf(p.id) !== -1) {
+            var presets = Storage.getShippingPresets();
+            var sp = presets.find(function(pr) { return pr.id === p.shippingPresetId; }) || presets[0] || {};
             exportPayload.push({
                 supplier: supplier,
                 brand: p.brand || '',
@@ -1732,10 +1734,10 @@ function exportToInventory() {
                 uploadDate: todayStr,
                 buyPrice: p.buyPrice || 0,
                 buyShipping: p.buyShippingFee || 0,
-                shippingBasis: p.deliveryFeeType || '수량별',
-                shippingQty: p.shippingQty || 1,
+                shippingBasis: sp.feeType || '수량별',
+                shippingQty: sp.qty || 1,
                 sellPrice: p.salePrice || 0,
-                sellShipping: p.saleShippingFee || 0, // deliveryFee -> saleShippingFee 로 수정
+                sellShipping: p.saleShippingFee || 0,
                 isLowestPrice: p.isLowestPrice ? 1 : 0,
                 isSoldOut: 0,
                 remarks: ''
