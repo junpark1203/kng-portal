@@ -45,7 +45,8 @@
                                     </div>
                                 </div>
                                 <button id="deleteSkBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
-                                <button id="exportSkBtn" class="btn-outline btn-outline-success"><i class='bx bx-download'></i> 엑셀</button>
+                                <button id="bulkEditSkBtn" class="btn-outline btn-outline-warning" style="margin-left:8px;"><i class='bx bx-edit-alt'></i> 일괄 수정</button>
+                                <button id="exportSkBtn" class="btn-outline btn-outline-success" style="margin-left:8px;"><i class='bx bx-download'></i> 엑셀</button>
                                 <button id="downloadTemplateBtn" class="btn-outline" style="margin-left:8px;" title="엑셀 일괄 등록용 양식 다운로드"><i class='bx bx-layer'></i> 양식 다운로드</button>
                                 <button id="bulkUploadBtn" class="btn-outline" style="margin-left:4px;" title="작성하신 엑셀 파일을 업로드합니다"><i class='bx bx-upload'></i> 엑셀 업로드</button>
                                 <input type="file" id="bulkUploadFile" accept=".xlsx, .xls" style="display:none;">
@@ -241,6 +242,57 @@
                 </form>
             </div>
         </div>
+
+    <!-- Bulk Edit Modal -->
+    <div id="bulkEditSkModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <div class="modal-header">
+                <h2>선택 항목 일괄 수정</h2>
+                <button type="button" class="btn-close" id="closeBulkEditSkModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="bulkEditSkForm" autocomplete="off">
+                    <div style="background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 10px; border-radius: 6px; font-size: 11px; margin-bottom: 15px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                        <i class='bx bx-info-circle'></i> <b>입력하신 항목만</b> 수정됩니다.<br>빈칸으로 남겨둔 항목은 기존 값이 유지됩니다.
+                    </div>
+                    <div class="modal-form-grid" style="grid-template-columns: 1fr;">
+                        <div class="fg">
+                            <label for="bulkSkDate" style="color:var(--gray-800)">날짜</label>
+                            <input type="date" id="bulkSkDate">
+                        </div>
+                        <div class="fg" style="position:relative;">
+                            <label for="bulkSkSupplier" style="color:var(--gray-800)">매입처</label>
+                            <input type="text" id="bulkSkSupplier" placeholder="예) 최가유통">
+                            <div id="bulkSkSupplierList" class="autocomplete-list" style="display:none; z-index:1001;"></div>
+                        </div>
+                        <div class="fg" style="position:relative;">
+                            <label for="bulkSkBrand" style="color:var(--gray-800)">브랜드</label>
+                            <input type="text" id="bulkSkBrand" placeholder="예) K2 세이프티">
+                            <div id="bulkSkBrandList" class="autocomplete-list" style="display:none; z-index:1001;"></div>
+                        </div>
+                        <div class="fg">
+                            <label for="bulkSkShippingBasis" style="color:var(--gray-800)">운임기준</label>
+                            <select id="bulkSkShippingBasis">
+                                <option value="">(변경 안함)</option>
+                                <option value="무료">무료</option>
+                                <option value="수량별">수량별</option>
+                                <option value="개별">개별</option>
+                                <option value="고정값">고정값</option>
+                            </select>
+                            <div class="shipping-aux" id="bulkSkShippingQtyWrapper" style="display:none; margin-top:5px;">
+                                <input type="number" id="bulkSkShippingQty" min="1" value="1" placeholder="1">
+                                <span>개마다 부과</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="margin-top:20px;">
+                        <button type="button" class="btn-outline" id="cancelBulkEditSkBtn">취소</button>
+                        <button type="submit" class="btn-primary" id="saveBulkEditSkBtn"><i class='bx bx-save'></i> 일괄 적용</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     </div>
 
     <div id="toastContainer" class="toast-container"></div>

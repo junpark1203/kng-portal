@@ -898,5 +898,144 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('엑셀 파일로 내보냈습니다.', 'success');
     });
 
+    // ==========================================
+    // 일괄 수정 기능 (프론트엔드 단독 순차적 비동기 처리)
+    // ==========================================
+    var bulkEditModal = document.getElementById('bulkEditSkModal');
+    var bulkEditBtn = document.getElementById('bulkEditSkBtn');
+    var closeBulkBtn = document.getElementById('closeBulkEditSkModalBtn');
+    var cancelBulkBtn = document.getElementById('cancelBulkEditSkBtn');
+    var bulkForm = document.getElementById('bulkEditSkForm');
+    
+    if (bulkEditBtn) {
+        bulkEditBtn.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.sk-checkbox:checked');
+            if (checked.length === 0) {
+                showToast('일괄 수정할 상품을 체크해주세요.', 'warning');
+                return;
+            }
+            // 폼 초기화 및 Datalist 업데이트
+            bulkForm.reset();
+            document.getElementById('bulkSkShippingQtyWrapper').style.display = 'none';
+            setupBulkDatalists();
+            bulkEditModal.style.display = 'flex';
+        });
+    }
+
+    if (closeBulkBtn) closeBulkBtn.addEventListener('click', function() { bulkEditModal.style.display = 'none'; });
+    if (cancelBulkBtn) cancelBulkBtn.addEventListener('click', function() { bulkEditModal.style.display = 'none'; });
+
+    var bulkBasisEl = document.getElementById('bulkSkShippingBasis');
+    if (bulkBasisEl) {
+        bulkBasisEl.addEventListener('change', function() {
+            document.getElementById('bulkSkShippingQtyWrapper').style.display = (this.value === '수량별') ? 'flex' : 'none';
+        });
+    }
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var newDate = document.getElementById('bulkSkDate').value;
+            var newSupplier = document.getElementById('bulkSkSupplier').value.trim();
+            var newBrand = document.getElementById('bulkSkBrand').value.trim();
+            var newBasis = bulkBasisEl.value;
+            var newQty = parseInt(document.getElementById('bulkSkShippingQty').value, 10) || 1;
+
+            if (!newDate && !newSupplier && !newBrand && !newBasis) {
+                showToast('수정할 항목을 하나 이상 입력/선택해주세요.', 'warning');
+                return;
+            }
+
+            var checked = document.querySelectorAll('.sk-checkbox:checked');
+            var idsToUpdate = [];
+            checked.forEach(function(cb) { idsToUpdate.push(cb.value); });
+            
+            if (!confirm('선택한 ' + idsToUpdate.length + '개의 상품을 일괄 수정하시겠습니까?\n(빈칸으로 둔 항목은 기존 값이 유지됩니다)')) return;
+
+            showToast('일괄 수정을 진행 중입니다... 잠시 대기해주세요.', 'info');
+            bulkEditModal.style.display = 'none';
+
+            var successCount = 0;
+            var failCount = 0;
+
+            // 핵심: 순차적 비동기 처리 루프
+            for (var i = 0; i < idsToUpdate.length; i++) {
+                var id = idsToUpdate[i];
+                var existingItem = products.find(function(p) { return p.id === id; });
+                if (!existingItem) {
+                    failCount++;
+                    continue;
+                }
+
+                // 기존 데이터에 새 값(빈칸 아닐 시에만) 덮어쓰기
+                var updatedData = Object.assign({}, existingItem);
+                if (newDate) updatedData.uploadDate = newDate;
+                if (newSupplier) updatedData.supplier = newSupplier;
+                if (newBrand) updatedData.brand = newBrand;
+                if (newBasis) {
+                    updatedData.shippingBasis = newBasis;
+                    if (newBasis === '수량별') {
+                        updatedData.shippingQty = newQty;
+                    }
+                }
+
+                try {
+                    var res = await fetch(API_BASE + '/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedData)
+                    });
+                    if (!res.ok) throw new Error('API Update Error');
+                    successCount++;
+                } catch (err) {
+                    console.error("Bulk update failed for id " + id, err);
+                    failCount++;
+                }
+            }
+
+            // 모든 비동기 루프 완료 후 테이블 리프레시
+            loadProducts();
+            var selectAllCheck = document.getElementById('selectAllSk');
+            if (selectAllCheck) selectAllCheck.checked = false;
+            
+            if (failCount === 0) {
+                showToast(successCount + '개 상품이 성공적으로 일괄 수정되었습니다!', 'success');
+            } else {
+                showToast(successCount + '개 성공, ' + failCount + '개 실패했습니다.', 'warning');
+            }
+        });
+    }
+
+    // 간단하고 강력한 Datalist 기반 자동완성 구성
+    function setupBulkDatalists() {
+        var supplierSet = new Set(), brandSet = new Set();
+        products.forEach(function(p) {
+            if (p.supplier) supplierSet.add(p.supplier);
+            if (p.brand) brandSet.add(p.brand);
+        });
+        
+        var ds = document.getElementById('dlBulkSuppliers');
+        if (!ds) {
+            ds = document.createElement('datalist');
+            ds.id = 'dlBulkSuppliers';
+            if (bulkForm) bulkForm.appendChild(ds);
+            document.getElementById('bulkSkSupplier').setAttribute('list', 'dlBulkSuppliers');
+        }
+        var dsHtml = '';
+        supplierSet.forEach(function(s) { dsHtml += '<option value="' + escapeHtml(s) + '">'; });
+        ds.innerHTML = dsHtml;
+
+        var db = document.getElementById('dlBulkBrands');
+        if (!db) {
+            db = document.createElement('datalist');
+            db.id = 'dlBulkBrands';
+            if (bulkForm) bulkForm.appendChild(db);
+            document.getElementById('bulkSkBrand').setAttribute('list', 'dlBulkBrands');
+        }
+        var dbHtml = '';
+        brandSet.forEach(function(b) { dbHtml += '<option value="' + escapeHtml(b) + '">'; });
+        db.innerHTML = dbHtml;
+    }
+
     toggleShippingQty();
 });
