@@ -304,17 +304,24 @@ function refreshProductList() {
     products.sort(function(a, b) { return (b.code || '').localeCompare(a.code || ''); });
     var html = '';
     products.forEach(function (p) {
-        var stock = p.stock || 0;
-        if (p.combinations && p.combinations.length > 0) {
-            stock = p.combinations.reduce(function (s, c) { return s + (c.stock || 0); }, 0);
-        }
+        var totalSale = (p.salePrice || 0) + (p.saleShippingFee || 0);
+        var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
+        var vatType = p.vatType || '과세상품';
+        var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
+        var commission = Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03);
+        var profit = netSale - totalBuy - commission;
+        var profitRate = netSale > 0 ? ((profit / netSale) * 100).toFixed(1) : '0.0';
+
+        var profitColor = profit > 0 ? 'var(--primary)' : (profit < 0 ? 'var(--danger)' : 'var(--gray-600)');
+
         html += '<tr class="hoverable" onclick="editProduct(\'' + p.id + '\')" style="border-bottom:1px solid var(--surface-container-high); cursor:pointer;">' +
             '<td style="text-align:center;"><input type="checkbox" class="product-row-check" data-id="' + p.id + '" style="margin:0;" onclick="event.stopPropagation();"></td>' +
             '<td style="font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);font-weight:500;">' + p.code + '</td>' +
             '<td style="font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (p.productName || p.internalName || '-') + '</td>' +
-            '<td style="font-size:11.5px;color:var(--gray-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + (p.categoryName || '-') + '">' + (p.categoryName || '-') + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice) + '</td>' +
-            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;">' + stock + '</td>' +
+            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:600;">' + formatCurrency(p.salePrice || 0) + '</td>' +
+            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:12px;color:var(--gray-500);">' + formatCurrency(commission) + '</td>' +
+            '<td style="text-align:right;font-family:\'Inter\',sans-serif;font-size:13px;font-weight:700;color:' + profitColor + ';">' + formatCurrency(profit) + '</td>' +
+            '<td style="text-align:center;font-family:\'Inter\',sans-serif;font-size:12px;font-weight:600;color:' + profitColor + ';">' + profitRate + '%</td>' +
             '<td style="text-align:center;"><span class="badge ' + (p.isDraft ? 'badge-gray' : 'badge-primary') + '">' + (p.isDraft ? '임시' : '완료') + '</span></td>' +
             '<td style="text-align:center;font-size:11.5px;font-family:\'Inter\',sans-serif;color:var(--gray-500);">' + (p.createdAt ? p.createdAt.slice(0, 10).replace(/-/g, '.') : '-') + '</td>' +
             '<td style="text-align:center;"><i class="bx bx-edit" style="font-size:16px;color:var(--gray-400);"></i></td>' +
