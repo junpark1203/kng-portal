@@ -214,7 +214,8 @@ function calcCommission(sellPrice, sellShipping) {
     var baseExt = sellPrice + sellShipping;
     var orderFee = Math.round(baseExt * 0.0363);
     var salesFee = Math.round(sellPrice * 0.03);
-    return orderFee + salesFee;
+    // 수수료도 부가세 포함이므로, 정산이익 계산 기준 통일을 위해 VAT 제외
+    return Math.round((orderFee + salesFee) / 1.1);
 }
 
 function calcBuyTotal(buyPrice, buyShipping, shippingBasis, shippingQty) {

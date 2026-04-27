@@ -287,7 +287,7 @@ function getMassSortValue(p, field) {
         var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
         var vatType = p.vatType || '과세상품';
         var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        var commission = Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03);
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03)) / 1.1);
         
         if (field === 'commission') return commission;
         var profit = netSale - totalBuy - commission;
@@ -365,7 +365,7 @@ function refreshProductList() {
         var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
         var vatType = p.vatType || '과세상품';
         var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        var commission = Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03);
+        var commission = Math.round((Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03)) / 1.1);
         var profit = netSale - totalBuy - commission;
         var profitRate = netSale > 0 ? ((profit / netSale) * 100).toFixed(1) : '0.0';
 
