@@ -169,6 +169,7 @@ function createEmptyProduct() {
         totalVolume: '',
         noticeImageId: defaultNotice ? defaultNotice.id : '',
         consentImageId: defaultConsent ? defaultConsent.id : '',
+        isLowestPrice: false,
         remarks: ''
     };
 }

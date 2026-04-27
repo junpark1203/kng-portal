@@ -291,6 +291,10 @@ function startNewProduct() {
 // ════════════════════════════════════════
 // STEP 1 EXTRAS
 // ════════════════════════════════════════
+// 스토어 상품명 수동 편집 감지 플래그
+var _storeNameManuallyEdited = false;
+var _lastSyncedInternalName = '';
+
 function initStep1Extras() {
     // Character counter for store product name
     var nameInput = document.getElementById('fldProductName');
@@ -300,6 +304,35 @@ function initStep1Extras() {
             var len = nameInput.value.length;
             nameCounter.textContent = len + '/100';
             nameCounter.style.color = len >= 96 ? 'var(--danger)' : len >= 81 ? '#d97706' : 'var(--gray-400)';
+        });
+    }
+
+    // 실제 상품명 → 스토어 상품명 자동 동기화
+    var internalInput = document.getElementById('fldInternalName');
+    if (internalInput && nameInput) {
+        internalInput.addEventListener('input', function() {
+            var internalVal = internalInput.value;
+            // 스토어 상품명이 비어있거나, 이전 동기화 값과 동일하거나, 이전 동기화 값으로 시작하면 동기화
+            var storeVal = nameInput.value;
+            if (!_storeNameManuallyEdited || storeVal === '' || storeVal === _lastSyncedInternalName) {
+                nameInput.value = internalVal;
+                _lastSyncedInternalName = internalVal;
+                _storeNameManuallyEdited = false;
+                // 카운터 업데이트
+                if (nameCounter) {
+                    var len = internalVal.length;
+                    nameCounter.textContent = len + '/100';
+                    nameCounter.style.color = len >= 96 ? 'var(--danger)' : len >= 81 ? '#d97706' : 'var(--gray-400)';
+                }
+            }
+        });
+
+        // 사용자가 스토어 상품명을 직접 수정하면 수동 편집 플래그 ON
+        nameInput.addEventListener('input', function() {
+            // 현재 값이 동기화 값과 다르면 사용자가 수정한 것
+            if (nameInput.value !== _lastSyncedInternalName) {
+                _storeNameManuallyEdited = true;
+            }
         });
     }
 
@@ -479,6 +512,8 @@ function collectStepData(step) {
         currentProduct.returnAddressId = document.getElementById('fldReturnAddress').value;
         currentProduct.asPhone = document.getElementById('fldAsPhone').value.trim();
         currentProduct.asGuide = document.getElementById('fldAsGuide').value.trim();
+        var lowestPriceCb = document.getElementById('fldLowestPrice');
+        currentProduct.isLowestPrice = lowestPriceCb ? lowestPriceCb.checked : false;
     } else if (step === 3) {
         var optData = collectOptionData();
         currentProduct.optionType = optData.optionType;
@@ -599,6 +634,12 @@ function populateForm() {
     if (asPhoneEl) asPhoneEl.value = currentProduct.asPhone || '02-2038-0160';
     var asGuideEl = document.getElementById('fldAsGuide');
     if (asGuideEl) asGuideEl.value = currentProduct.asGuide || '상품상세 참조';
+    // 온라인 최저가
+    var lowestPriceCb = document.getElementById('fldLowestPrice');
+    if (lowestPriceCb) lowestPriceCb.checked = !!currentProduct.isLowestPrice;
+    // 동기화 플래그 초기화
+    _storeNameManuallyEdited = !!(currentProduct.productName && currentProduct.internalName && currentProduct.productName !== currentProduct.internalName);
+    _lastSyncedInternalName = currentProduct.internalName || '';
 }
 
 // ════════════════════════════════════════

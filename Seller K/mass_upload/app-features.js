@@ -1728,7 +1728,7 @@ function exportToInventory() {
                 shippingQty: p.shippingQty || 1,
                 sellPrice: p.salePrice || 0,
                 sellShipping: p.saleShippingFee || 0, // deliveryFee -> saleShippingFee 로 수정
-                isLowestPrice: 0,
+                isLowestPrice: p.isLowestPrice ? 1 : 0,
                 isSoldOut: 0,
                 remarks: ''
             });
