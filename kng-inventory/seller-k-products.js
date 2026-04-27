@@ -320,10 +320,10 @@ function renderTable() {
                 '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
-                '<td class="buy-col col-basis"' + (p.shippingBasis === '수량별' ? ' title="' + (p.shippingQty || 1) + '개당"' : '') + '><span class="shipping-basis-tag">' + escapeHtml(p.shippingBasis || '-') + '</span></td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
+                '<td class="sell-col col-basis"' + (p.shippingBasis === '수량별' ? ' title="' + (p.shippingQty || 1) + '개당"' : '') + '><span class="shipping-basis-tag">' + escapeHtml(p.shippingBasis || '-') + '</span></td>' +
                 '<td class="col-num sell-col" style="font-weight:600;">' + formatCurrency(sellTotal) + '</td>' +
                 '<td class="col-num profit-col" style="color:var(--danger)">' + formatCurrency(commission) + '</td>' +
                 '<td class="col-num profit-col ' + profitClass + '" style="font-weight:bold;">' + formatCurrency(profit) + '</td>' +

@@ -191,10 +191,10 @@ function renderTable() {
                 '<td>' + escapeHtml(p.uploadDate) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
-                '<td class="buy-col" style="text-align:center; font-size:12px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellPrice || 0) + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
+                '<td class="sell-col" style="text-align:center; font-size:12px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
                 '<td class="col-num sell-col" style="font-weight:600;">' + formatCurrency(sellTotal) + '</td>' +
                 '<td class="col-num profit-col" style="color:var(--danger)">' + formatCurrency(commission) + '</td>' +
                 '<td class="col-num profit-col ' + profitClass + '" style="font-weight:bold;">' + formatCurrency(profit) + '</td>' +

@@ -150,8 +150,8 @@
                                         <th rowspan="2" class="sortable" data-sort="color">컬러 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="sortable" data-sort="size">사이즈 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="sortable" data-sort="uploadDate">업로드일 <i class='bx bx-sort'></i></th>
-                                        <th colspan="4" class="th-group-label th-group-purchase">매입</th>
-                                        <th colspan="3" class="th-group-label th-group-sales">매출</th>
+                                        <th colspan="3" class="th-group-label th-group-purchase">매입</th>
+                                        <th colspan="4" class="th-group-label th-group-sales">매출</th>
                                         <th colspan="3" class="th-group-label th-group-settle">정산 <span style="font-size:10px; font-weight:normal; opacity:0.8;">(공급가 기준)</span></th>
                                         <th rowspan="2" class="col-action-sk">관리</th>
                                     </tr>
@@ -159,10 +159,10 @@
                                     <tr id="skSortHeaders">
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyPrice">매입가</th>
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyShipping">운임</th>
-                                        <th class="th-group-purchase" style="font-size:10px">운임기준</th>
                                         <th class="col-num-sm th-group-purchase sortable" data-sort="buyTotal">합계</th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellPrice">판매가</th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellShipping">운임</th>
+                                        <th class="th-group-sales" style="font-size:10px">운임기준</th>
                                         <th class="col-num-sm th-group-sales sortable" data-sort="sellTotal">합계</th>
                                         <th class="col-num-sm th-group-settle sortable" data-sort="commission">수수료</th>
                                         <th class="col-num-sm th-group-settle sortable" data-sort="profit">정산이익</th>
@@ -231,6 +231,13 @@
                             <input type="number" id="skBuyShipping" min="0" placeholder="0">
                         </div>
                         <div class="fg">
+                            <label>매입 합계 (자동계산)</label>
+                            <input type="text" id="skBuyTotal" class="calc-preview" readonly placeholder="자동계산">
+                        </div>
+
+                        <!-- 매출 정보 -->
+                        <div class="modal-section-title section-sales fg-full">🛒 매출 정보 <span class="vat-inline vat-included">VAT포함</span></div>
+                        <div class="fg">
                             <label for="skShippingBasis">운임기준</label>
                             <select id="skShippingBasis">
                                 <option value="수량별">수량별</option>
@@ -243,13 +250,6 @@
                             <label for="skShippingQty">수량별 기준 (몇 개당)</label>
                             <input type="number" id="skShippingQty" min="1" value="1" placeholder="1">
                         </div>
-                        <div class="fg">
-                            <label>매입 합계 (자동계산)</label>
-                            <input type="text" id="skBuyTotal" class="calc-preview" readonly placeholder="자동계산">
-                        </div>
-
-                        <!-- 매출 정보 -->
-                        <div class="modal-section-title section-sales fg-full">🛒 매출 정보 <span class="vat-inline vat-included">VAT포함</span></div>
                         <div class="fg">
                             <label for="skSellPrice">판매가 (소비자가)</label>
                             <input type="number" id="skSellPrice" min="0" required placeholder="0">
