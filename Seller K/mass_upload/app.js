@@ -504,6 +504,7 @@ function updateMarginDisplay() {
     var wrap = document.getElementById('marginDisplayWrap');
     var amountEl = document.getElementById('marginAmount');
     var rateEl = document.getElementById('marginRate');
+    var commEl = document.getElementById('commissionAmount');
     if (!wrap || !amountEl || !rateEl) return;
     if (salePrice > 0 && buyPrice > 0) {
         wrap.style.display = 'block';
@@ -511,12 +512,15 @@ function updateMarginDisplay() {
         var totalSale = salePrice + saleShip;
         var totalBuy = buyPrice + buyShip;
         var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
-        var margin = netSale - totalBuy;
+        // 수수료: 주문매출연동 3.63% + 판매수수료 3%
+        var commission = Math.round(totalSale * 0.0363) + Math.round(salePrice * 0.03);
+        var margin = netSale - totalBuy - commission;
         var marginRate = ((margin / netSale) * 100).toFixed(1);
         amountEl.textContent = formatCurrency(margin) + '원';
         amountEl.style.color = margin >= 0 ? 'var(--primary)' : 'var(--danger)';
         rateEl.textContent = marginRate + '%';
         rateEl.style.color = margin >= 0 ? 'var(--primary)' : 'var(--danger)';
+        if (commEl) commEl.textContent = formatCurrency(commission) + '원';
     } else {
         wrap.style.display = 'none';
     }
