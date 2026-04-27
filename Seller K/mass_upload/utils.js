@@ -128,7 +128,7 @@ function createEmptyProduct() {
     
     return {
         id: uuid(),
-        code: generateProductCode(),
+        code: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         categoryId: '',
