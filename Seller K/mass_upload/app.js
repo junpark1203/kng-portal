@@ -29,6 +29,24 @@ document.addEventListener('DOMContentLoaded', function() {
     migrationPromise.then(function() {
         return Storage.init();
     }).then(function() {
+        // ── 원산지 코드 마이그레이션 (0000 → 03) ──
+        var products = Storage.getProducts();
+        var toFix = products.filter(function(p) { return p.originCode === '0000' || !p.originCode; });
+        if (toFix.length > 0) {
+            console.log('[Migration] 원산지 코드 수정 대상:', toFix.length, '건');
+            var fixPromises = toFix.map(function(p) {
+                p.originCode = '03';
+                p.originName = '상세설명에 표시';
+                return Storage.saveProduct(p);
+            });
+            Promise.all(fixPromises).then(function() {
+                showToast('원산지 코드 ' + toFix.length + '건 자동 수정 완료 (03: 상세설명에 표시)', 'success');
+                console.log('[Migration] 원산지 코드 수정 완료');
+            }).catch(function(err) {
+                console.error('[Migration] 원산지 수정 실패:', err);
+            });
+        }
+
         initRouter();
         initSidebar();
         initWizard();
