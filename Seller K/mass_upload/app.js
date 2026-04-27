@@ -451,24 +451,29 @@ function calculateRecommendedPrice() {
     var taxDivider = isTaxable ? 1.1 : 1.0;
     
     function calcPrice(target, type) {
-        // 목표 마진을 얻기 위한 역산 수식 (플랫폼 수수료 반영: 주문매출연동 3.63%, 판매수수료 3%)
-        // 수익(Margin) = 순매출 - 총매입 - 수수료
+        // 목표 마진을 얻기 위한 역산 수식 (플랫폼 수수료 반영)
+        // 수익(Margin) = 순매출 - 총매입 - 수수료(VAT제외)
         // 순매출 = (판매가 + 배송비) / taxDivider
-        // 수수료 = (판매가 + 배송비)*0.0363 + 판매가*0.03
+        // 수수료(VAT제외) = ((판매가 + 배송비)*0.0363 + 판매가*0.03) / 1.1
+        //                ≈ (판매가 + 배송비)*0.033 + 판매가*0.02727
+        // 합산 수수료율(VAT제외) = 0.033 + 0.02727 = 0.06027
+        var commRate = 0.033;       // 주문매출연동 3.63% / 1.1
+        var salesRate = 0.02727;    // 판매수수료 3% / 1.1
+        var totalRate = commRate + salesRate; // 0.06027
         var S = 0; // 추천 판매가
         
         if (type === '원') {
-            var num = target + totalCost - saleShip * (1/taxDivider - 0.0363);
-            var den = 1/taxDivider - 0.0663;
+            var num = target + totalCost - saleShip * (1/taxDivider - commRate);
+            var den = 1/taxDivider - totalRate;
             S = num / den;
         } else if (type === '%') {
             var m = target / 100;
             // 극단적으로 높은 마진율 입력 시 분모가 음수가 되는 것을 방지 (수수료 때문에 한계 존재)
-            var maxM = 1 - (taxDivider * 0.0663) - 0.01; 
+            var maxM = 1 - (taxDivider * totalRate) - 0.01; 
             if (m > maxM) m = maxM;
             
-            var num = totalCost - saleShip * ((1 - m)/taxDivider - 0.0363);
-            var den = (1 - m)/taxDivider - 0.0663;
+            var num = totalCost - saleShip * ((1 - m)/taxDivider - commRate);
+            var den = (1 - m)/taxDivider - totalRate;
             S = num / den;
         }
         
