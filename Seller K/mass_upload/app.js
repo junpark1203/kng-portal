@@ -78,6 +78,7 @@ function updateConnectionStatus(online) {
 var _lastHash = location.hash.replace('#', '') || 'register';
 var _isDirty = false;
 var _isEditing = false;  // 편집 모드 플래그 (true면 startNewProduct 호출 안 함)
+var _editMode = false;   // 편집 모드 지속 플래그 (수정완료 버튼 표시용)
 var _ignoreHashChange = false;
 
 function initRouter() {
@@ -271,6 +272,7 @@ function ensureProductCode() {
 
 function startNewProduct() {
     _isDirty = false;
+    _editMode = false;  // 신규 등록 모드
     _codePromise = null;  // 코드 생성 캐시 리셋
     currentImages = { main: null, additional: [], detail: [] };
     currentProduct = createEmptyProduct();
@@ -285,7 +287,36 @@ function startNewProduct() {
         s.classList.remove('clickable');
     });
 
+    // 수정완료 버튼 숨김
+    document.querySelectorAll('.btn-edit-save').forEach(function(btn) {
+        btn.classList.add('hidden');
+    });
+
     goToStep(1);
+}
+
+// 편집 모드에서 수정완료 버튼 클릭 시 호출
+function saveFromEditMode() {
+    // 모든 스텝 데이터 수집 후 저장
+    [1, 2, 3, 4, 5].forEach(function(s) { collectStepData(s); });
+    if (!currentProduct.productName) { showToast('스토어 상품명을 입력하세요.', 'warning'); goToStep(1); return; }
+    if (!currentProduct.categoryId) { showToast('카테고리를 선택하세요.', 'warning'); goToStep(1); return; }
+    if (!currentProduct.salePrice) { showToast('판매가를 입력하세요.', 'warning'); goToStep(2); return; }
+
+    currentProduct.updatedAt = new Date().toISOString();
+    currentProduct._images = currentImages;
+
+    ensureProductCode().then(function() {
+        return Storage.saveProduct(currentProduct);
+    }).then(function() {
+        showToast('상품이 수정되었습니다!', 'success');
+        refreshProductList();
+        _isDirty = false;
+        _editMode = false;
+        location.hash = 'products';
+    }).catch(function(err) {
+        showToast('저장 실패: ' + err.message, 'error');
+    });
 }
 
 // ════════════════════════════════════════

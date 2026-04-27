@@ -1055,6 +1055,35 @@ h1, h2, h3, .font-headline {
     }
 }
 
+/* ── 수정완료 버튼 (편집 모드 전용) ── */
+.btn-edit-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, var(--success), #16a34a);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+    white-space: nowrap;
+}
+.btn-edit-save:hover {
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.35);
+    transform: translateY(-1px);
+}
+.btn-edit-save:active {
+    transform: scale(0.97);
+}
+.btn-edit-save i {
+    font-size: 16px;
+}
+
 /* ── URL 이미지 추가 버튼 ── */
 .btn-url-add {
     display: inline-flex;

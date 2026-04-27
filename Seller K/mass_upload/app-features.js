@@ -327,6 +327,7 @@ function editProduct(id) {
     
     _isDirty = false;
     _isEditing = true;  // handleRoute에서 startNewProduct 방지
+    _editMode = true;   // 편집 모드 플래그 (수정완료 버튼 표시용)
     currentProduct = p;
     currentImages = p._images || { main: null, additional: [], detail: [] };
     populateForm(); // Added the missing data restoration call
@@ -336,6 +337,11 @@ function editProduct(id) {
     // Enable click-to-nav for wizard steps when editing
     document.querySelectorAll('.wizard-step').forEach(function (s) {
         s.classList.add('clickable');
+    });
+
+    // 수정완료 버튼 표시
+    document.querySelectorAll('.btn-edit-save').forEach(function(btn) {
+        btn.classList.remove('hidden');
     });
 
     goToStep(1);
