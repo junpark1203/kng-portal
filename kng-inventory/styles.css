@@ -1947,8 +1947,6 @@ th.sortable.active.asc i {
     font-weight: 600;
     color: #fff;
     box-shadow: var(--shadow-lg);
-    opacity: 0;
-    transform: translateX(30px);
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: auto;
 }
