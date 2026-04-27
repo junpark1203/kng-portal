@@ -273,6 +273,49 @@ function saveDraft() {
 }
 
 // ════════════════════════════════════════
+// RENDER & SORT PRODUCT LIST
+// ════════════════════════════════════════
+var _sortField = 'code';
+var _sortDirection = 'desc';
+
+function getMassSortValue(p, field) {
+    if (field === 'code') return p.code || '';
+    if (field === 'productName') return p.productName || p.internalName || '';
+    if (field === 'salePrice') return p.salePrice || 0;
+    if (field === 'commission' || field === 'profit' || field === 'profitRate') {
+        var totalSale = (p.salePrice || 0) + (p.saleShippingFee || 0);
+        var totalBuy = (p.buyPrice || 0) + (p.buyShippingFee || 0);
+        var vatType = p.vatType || '과세상품';
+        var netSale = (vatType === '과세상품') ? Math.round(totalSale / 1.1) : totalSale;
+        var commission = Math.round(totalSale * 0.0363) + Math.round((p.salePrice || 0) * 0.03);
+        
+        if (field === 'commission') return commission;
+        var profit = netSale - totalBuy - commission;
+        if (field === 'profit') return profit;
+        if (field === 'profitRate') return netSale > 0 ? (profit / netSale) : 0;
+    }
+    if (field === 'isLowestPrice') return p.isLowestPrice ? 1 : 0;
+    if (field === 'isDraft') return p.isDraft ? 1 : 0;
+    if (field === 'createdAt') return p.createdAt || '';
+    return '';
+}
+
+function updateMassSortUI() {
+    document.querySelectorAll('#productTable th.sortable').forEach(function(th) {
+        var icon = th.querySelector('i.bx');
+        if (!icon) return;
+        var field = th.getAttribute('data-sort');
+        if (field === _sortField) {
+            icon.className = _sortDirection === 'asc' ? 'bx bx-sort-up' : 'bx bx-sort-down';
+            th.style.color = 'var(--primary)';
+        } else {
+            icon.className = 'bx bx-sort';
+            th.style.color = '';
+        }
+    });
+}
+
+// ════════════════════════════════════════
 // PRODUCT LIST
 // ════════════════════════════════════════
 function initProductList() {
@@ -300,8 +343,22 @@ function refreshProductList() {
         return;
     }
     if (empty) empty.style.display = 'none';
-    // 관리번호 역순 정렬 (최신 등록 상품이 상단)
-    products.sort(function(a, b) { return (b.code || '').localeCompare(a.code || ''); });
+
+    products.sort(function(a, b) {
+        var valA = getMassSortValue(a, _sortField);
+        var valB = getMassSortValue(b, _sortField);
+        
+        if (typeof valA === 'number' && typeof valB === 'number') {
+            return _sortDirection === 'asc' ? valA - valB : valB - valA;
+        } else {
+            var strA = String(valA || '').toLowerCase();
+            var strB = String(valB || '').toLowerCase();
+            if (strA < strB) return _sortDirection === 'asc' ? -1 : 1;
+            if (strA > strB) return _sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        }
+    });
+    
     var html = '';
     products.forEach(function (p) {
         var totalSale = (p.salePrice || 0) + (p.saleShippingFee || 0);
@@ -330,6 +387,7 @@ function refreshProductList() {
             '</tr>';
     });
     tbody.innerHTML = html;
+    updateMassSortUI();
 }
 
 function editProduct(id) {
@@ -1602,6 +1660,31 @@ function handleFooterImageUpload(files, type) {
         showToast('업로드 실패: ' + err.message, 'error');
     });
 }
+
+// ════════════════════════════════════════
+// INITIALIZATION
+// ════════════════════════════════════════
+function setupMassSort() {
+    document.querySelectorAll('#productTable th.sortable').forEach(function(th) {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            var field = this.getAttribute('data-sort');
+            if (!field) return;
+            if (_sortField === field) {
+                _sortDirection = (_sortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                _sortField = field;
+                _sortDirection = 'desc'; // 새로운 필드 클릭 시 기본적으로 내림차순(높은값/최신 우선) 정렬
+            }
+            refreshProductList();
+        });
+    });
+}
+
+window.addEventListener('load', function () {
+    // Other loads should ideally be orchestrated via index.html, but let's bind our init
+    setupMassSort();
+});
 
 function renderFooterGalleries() {
     _renderCategoryGallery('noticeLibGrid', Storage.getNoticeImages(), 'notice');
