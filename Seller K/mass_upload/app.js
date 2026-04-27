@@ -386,17 +386,17 @@ function initStep1Extras() {
     if (saleInput && buyInput) {
         saleInput.addEventListener('input', updateMarginDisplay);
         buyInput.addEventListener('input', function() {
-            updateMarginDisplay();
             calculateRecommendedPrice();
+            updateMarginDisplay();
         });
     }
     if (saleShipInput) saleShipInput.addEventListener('input', function() {
-        updateMarginDisplay();
         calculateRecommendedPrice();
+        updateMarginDisplay();
     });
     if (buyShipInput) buyShipInput.addEventListener('input', function() {
-        updateMarginDisplay();
         calculateRecommendedPrice();
+        updateMarginDisplay();
     });
 
     // Stock field color change
@@ -473,6 +473,8 @@ function calculateRecommendedPrice() {
     if (saleInput && (!saleInput.value || saleInput.value === '0' || parseInt(saleInput.value) === window._lastRecommendedSalePrice)) {
         saleInput.value = minSale;
         window._lastRecommendedSalePrice = minSale;
+        // 판매가 자동 갱신 후 마진 표시도 즉시 반영
+        updateMarginDisplay();
     }
 }
 
