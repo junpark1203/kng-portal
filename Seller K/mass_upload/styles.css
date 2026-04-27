@@ -774,7 +774,7 @@ h1, h2, h3, .font-headline {
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    opacity: 0.85;
+    opacity: 1;
     backdrop-filter: blur(20px);
 }
 
@@ -1079,7 +1079,7 @@ h1, h2, h3, .font-headline {
 .url-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0, 0, 0, 0.35);
     z-index: 9999;
     display: flex;
     align-items: center;
@@ -1087,12 +1087,13 @@ h1, h2, h3, .font-headline {
     animation: fadeIn 0.15s;
 }
 .url-modal {
-    background: var(--surface-1);
+    background: var(--surface-container-lowest);
     border-radius: 14px;
-    padding: 24px;
+    padding: 28px;
     width: 90%;
     max-width: 480px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    opacity: 1;
 }
 .url-modal-title {
     font-size: 15px;
@@ -1104,17 +1105,19 @@ h1, h2, h3, .font-headline {
     width: 100%;
     padding: 10px 12px;
     font-size: 13px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(--surface-2);
+    background: var(--surface-container-low);
     color: var(--on-surface);
     font-family: 'Inter', sans-serif;
     resize: vertical;
+    box-sizing: border-box;
 }
 .url-modal-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0,6,102,0.12);
+    box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.12);
+    background: var(--surface-container-lowest);
 }
 .url-modal-actions {
     display: flex;
