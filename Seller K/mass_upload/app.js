@@ -748,7 +748,15 @@ function initCategorySearch() {
     input.addEventListener('input', debounce(function() {
         _catHighlightIdx = -1;
         var q = input.value.trim().toLowerCase();
-        if (q.length < 1) { renderCategoryList(CATEGORY_DATA.slice(0, 50)); return; }
+        var recentWrap = document.getElementById('categoryRecent');
+        if (q.length < 1) {
+            // 빈칸이면 최근 선택 목록 보여주기
+            if (recentWrap) recentWrap.style.display = '';
+            renderCategoryList(CATEGORY_DATA.slice(0, 50));
+            return;
+        }
+        // 검색어가 있으면 최근 선택 목록 숨기기
+        if (recentWrap) recentWrap.style.display = 'none';
         var results = CATEGORY_DATA.filter(function(c) {
             var full = (c.l1 + ' ' + c.l2 + ' ' + c.l3 + ' ' + c.l4).toLowerCase();
             return full.indexOf(q) >= 0;
