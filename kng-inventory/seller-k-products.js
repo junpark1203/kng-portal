@@ -595,8 +595,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 단축키 설정 (Ctrl + S = 등록/저장)
     document.addEventListener('keydown', function(e) {
         var modal = document.getElementById('skModal');
-        // 모달창이 열려있을 때만 작동
-        if (modal && modal.style.display !== 'none' && modal.style.display !== '') {
+        // 모달창이 열려있을 때만 작동 ('active' 클래스 확인)
+        if (modal && modal.classList.contains('active')) {
             if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
                 e.preventDefault(); // 브라우저 기본 웹 페이지 저장 창 방지
                 document.getElementById('saveSkBtn').click(); // 강제 등록 버튼 클릭
