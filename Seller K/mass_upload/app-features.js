@@ -300,6 +300,8 @@ function refreshProductList() {
         return;
     }
     if (empty) empty.style.display = 'none';
+    // 관리번호 역순 정렬 (최신 등록 상품이 상단)
+    products.sort(function(a, b) { return (b.code || '').localeCompare(a.code || ''); });
     var html = '';
     products.forEach(function (p) {
         var stock = p.stock || 0;
