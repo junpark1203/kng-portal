@@ -752,8 +752,16 @@ function initCategorySearch() {
         var results = CATEGORY_DATA.filter(function(c) {
             var full = (c.l1 + ' ' + c.l2 + ' ' + c.l3 + ' ' + c.l4).toLowerCase();
             return full.indexOf(q) >= 0;
-        }).slice(0, 80);
-        renderCategoryList(results);
+        });
+        // 관련도순 정렬: 마지막 카테고리명이 검색어로 시작 > 포함 > 경로에만 포함
+        results.sort(function(a, b) {
+            var lastA = (a.l4 || a.l3 || a.l2 || a.l1 || '').toLowerCase();
+            var lastB = (b.l4 || b.l3 || b.l2 || b.l1 || '').toLowerCase();
+            var scoreA = lastA.indexOf(q) === 0 ? 0 : lastA.indexOf(q) >= 0 ? 1 : 2;
+            var scoreB = lastB.indexOf(q) === 0 ? 0 : lastB.indexOf(q) >= 0 ? 1 : 2;
+            return scoreA - scoreB;
+        });
+        renderCategoryList(results.slice(0, 80));
     }, 200));
     // Keyboard navigation (Arrow Down/Up, Enter, Escape)
     input.addEventListener('keydown', function(e) {
