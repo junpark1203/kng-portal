@@ -1,0 +1,17 @@
+{
+  "name": "sell-it-api",
+  "version": "1.0.0",
+  "description": "Sell_it Shopee Integration API Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "sqlite3": "^5.1.7"
+  }
+}

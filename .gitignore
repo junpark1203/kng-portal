@@ -31,3 +31,7 @@ google_vision_key.json
 
 # Wrangler cache
 .wrangler/
+
+# sell_it server data
+06_shopee/sell_it/server/data/
+06_shopee/sell_it/server/*.sqlite

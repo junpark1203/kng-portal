@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  sell-it-server:
+    image: ghcr.io/junpark1203/sell-it-server:latest
+    container_name: sell_it_server
+    restart: always
+    volumes:
+      - ./data:/usr/src/app/data
+    labels:
+      - "com.centurylinklabs.watchtower.scope=sell-it"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: sell_it_cloudflared
+    restart: always
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiZDk3YWNjYzU2MjdmODIwYmY5OTlkNzVkMTZlNGNkY2YiLCJ0IjoiZjc2NTNiM2ItMWM1NC00YTg4LThjNzgtMTA5Njg4OWUwMDZlIiwicyI6Ik56a3lORGxpTldFdE9ETmxNeTAwTnpJeExXSTJNR010TWpWbVlUQmpNbUppWWpjeCJ9
+    depends_on:
+      - sell-it-server
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: sell_it_watchtower
+    restart: always
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCOPE=sell-it
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - "com.centurylinklabs.watchtower.scope=sell-it"

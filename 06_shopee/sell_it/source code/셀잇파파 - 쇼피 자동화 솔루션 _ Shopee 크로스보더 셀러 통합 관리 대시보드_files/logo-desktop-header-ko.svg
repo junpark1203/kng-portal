@@ -1,0 +1,39 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="boxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1D4ED8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1F2937;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#374151;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 박스 아이콘 -->
+  <g transform="translate(8, 12)">
+    <rect x="2" y="8" width="28" height="20" rx="3" fill="url(#boxGradient)" stroke="#1E40AF" stroke-width="1"/>
+    <rect x="2" y="8" width="28" height="6" rx="3" fill="#60A5FA"/>
+    <rect x="14" y="4" width="4" height="28" fill="#FCD34D" opacity="0.9"/>
+    <rect x="2" y="18" width="28" height="3" fill="#FCD34D" opacity="0.9"/>
+    <circle cx="8" cy="2" r="3" fill="#10B981" opacity="0.8"/>
+    <rect x="20" y="0" width="6" height="4" rx="1" fill="#F59E0B" opacity="0.8"/>
+    <circle cx="26" cy="6" r="2" fill="#EF4444" opacity="0.8"/>
+  </g>
+  
+  <!-- 셀잇파파 텍스트 -->
+  <text x="50" y="32" font-family="'Segoe UI', -apple-system, sans-serif" font-size="22" font-weight="700" fill="url(#textGradient)">
+    셀잇<tspan fill="#3B82F6">파파</tspan>
+  </text>
+  
+  <!-- 태그라인 -->
+  <text x="50" y="48" font-family="'Segoe UI', -apple-system, sans-serif" font-size="10" fill="#6B7280" opacity="0.9">
+    크로스보더 Shopee 관리 솔루션
+  </text>
+  
+  <!-- 포인트 요소들 -->
+  <circle cx="175" cy="15" r="2" fill="#10B981" opacity="0.6"/>
+  <circle cx="185" cy="20" r="1.5" fill="#3B82F6" opacity="0.7"/>
+  <circle cx="180" cy="28" r="1" fill="#F59E0B" opacity="0.8"/>
+</svg>
+

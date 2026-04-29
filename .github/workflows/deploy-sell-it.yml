@@ -1,0 +1,29 @@
+name: Deploy sell_it Server
+on:
+  push:
+    paths:
+      - '06_shopee/sell_it/server/**'
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./06_shopee/sell_it/server
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/sell-it-server:latest
+            ghcr.io/${{ github.repository_owner }}/sell-it-server:${{ github.sha }}

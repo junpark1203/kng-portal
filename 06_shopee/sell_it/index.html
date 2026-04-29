@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell_it | K&G Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar surface-container-low">
+            <div class="sidebar-header">
+                <div class="logo-box"></div>
+                <div>
+                    <h1 class="headline-md">sell_it</h1>
+                    <p class="label-md">Shopee Integration</p>
+                </div>
+            </div>
+            
+            <ul class="nav-links">
+                <li class="nav-item active" data-view="dashboard">
+                    <a href="#"><i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span></a>
+                </li>
+                
+                <!-- Order Submenu -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Order</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="my-orders"><a href="#">My Orders</a></li>
+                        <li class="nav-item" data-view="mass-ship"><a href="#">Mass Ship</a></li>
+                        <li class="nav-item" data-view="return-refund"><a href="#">Return/Refund/Cancel</a></li>
+                        <li class="nav-item" data-view="shipping-setting"><a href="#">Shipping Setting</a></li>
+                    </ul>
+                </li>
+                
+                <!-- Product Submenu -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Product</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="product-list"><a href="#">Product List</a></li>
+                        <li class="nav-item" data-view="global-sku"><a href="#">Global SKU</a></li>
+                        <li class="nav-item" data-view="shop-sku"><a href="#">Shop SKU</a></li>
+                    </ul>
+                </li>
+
+                <!-- Singapore -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Singapore</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-sg"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-sg"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Malaysia -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Malaysia</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-my"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-my"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Taiwan -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Taiwan</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-tw"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-tw"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Thailand -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Thailand</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-th"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-th"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Philippines -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Philippines</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-ph"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-ph"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Vietnam -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Vietnam</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-vn"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-vn"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Brazil -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Brazil</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-br"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-br"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+                <!-- Mexico -->
+                <li class="nav-group expanded">
+                    <div class="nav-group-title label-md">Mexico</div>
+                    <ul class="nav-sublinks">
+                        <li class="nav-item" data-view="price-calc-mx"><a href="#">Price Calculation</a></li>
+                        <li class="nav-item" data-view="settings-mx"><a href="#">Settings</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content surface">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h2 id="page-title" class="display-lg">Dashboard</h2>
+                </div>
+                <div class="topbar-right">
+                    <div class="multi-currency-badge">
+                        <span class="currency-val">System Live</span>
+                    </div>
+                    <button class="btn-secondary"><i class="fa-solid fa-arrow-right-to-bracket"></i> to KNG</button>
+                    <div class="user-profile">
+                        <div class="avatar">K</div>
+                    </div>
+                </div>
+            </header>
+
+            <div id="view-container">
+                <!-- Dashboard View -->
+                <div class="view-section active" id="view-dashboard">
+                    <div class="panel surface-container-lowest">
+                        <h3 class="title-sm">Welcome to Sell_it</h3>
+                        <p class="body-sm text-secondary">The Financial Architect interface is ready. Select a menu on the left to begin.</p>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div class="view-section" id="view-settings">
+                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                        <h3 class="headline-md" style="margin-bottom: 1rem;">Settings</h3>
+                        <p class="body-sm text-secondary">마켓별 수수료 프리셋, 마케팅 전략, 배송비 요율을 관리합니다.</p>
+                        
+                        <!-- Settings Tabs -->
+                        <div class="market-tabs-wrapper surface-container-low" style="margin-top: 1.5rem; margin-bottom: 2rem; max-width: 500px;">
+                            <ul class="market-tabs" id="settings-tabs">
+                                <li class="tab active" data-settings-tab="fee">💰 Fee Presets</li>
+                                <li class="tab" data-settings-tab="promotion">📈 Promotion</li>
+                                <li class="tab" data-settings-tab="shipping">🚚 Shipping Rates</li>
+                            </ul>
+                        </div>
+
+                        <!-- 1. Fee Presets Tab Content -->
+                        <div id="settings-tab-fee" class="settings-tab-content active">
+                            <!-- List View -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 class="title-md">저장된 수수료 프리셋</h4>
+                                <button class="btn-secondary" id="btn-toggle-fee-form"><i class="fa-solid fa-plus"></i> 새 프리셋 추가</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="settings-preset-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Preset Name</th>
+                                            <th>Fees Structure</th>
+                                            <th style="text-align: center;">Default</th>
+                                            <th style="text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Form View (Hidden by default) -->
+                            <div id="form-container-fee" style="display: none; margin-top: 2rem;">
+                                <div class="panel surface-container-low" style="padding: 1.5rem; border-radius: var(--radius-md);">
+                                    <h4 class="title-md" id="settings-preset-form-title" style="margin-bottom: 1rem;">새 프리셋 만들기</h4>
+                                    <form id="settings-preset-form">
+                                        <input type="hidden" id="settings-preset-id">
+                                        
+                                        <div class="form-group">
+                                            <label class="label-md">프리셋 이름</label>
+                                            <input type="text" id="settings-preset-name" class="form-control" required placeholder="예: SG 기본 10%">
+                                        </div>
+                                        
+                                        <div class="form-group row">
+                                            <div class="col">
+                                                <label class="label-md">쇼피 지원금 (SGD)</label>
+                                                <input type="number" id="settings-shopee-discount" class="form-control" value="0" step="0.01">
+                                            </div>
+                                            <div class="col">
+                                                <label class="label-md">판매 수수료 (%)</label>
+                                                <input type="number" id="settings-commission-fee" class="form-control" value="10" step="0.1">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group row">
+                                            <div class="col">
+                                                <label class="label-md">해외 PG 수수료 (%)</label>
+                                                <input type="number" id="settings-pg-fee" class="form-control" value="2" step="0.1">
+                                            </div>
+                                            <div class="col">
+                                                <label class="label-md">서비스 수수료 (%)</label>
+                                                <input type="number" id="settings-service-fee" class="form-control" value="5" step="0.1">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="form-group row">
+                                            <div class="col">
+                                                <label class="label-md">Payoneer 수수료 (%)</label>
+                                                <input type="number" id="settings-payoneer-fee" class="form-control" value="1.2" step="0.1">
+                                            </div>
+                                            <div class="col">
+                                                <label class="label-md">특별 수수료 (%)</label>
+                                                <input type="number" id="settings-special-fee" class="form-control" value="9" step="0.1">
+                                            </div>
+                                        </div>
+                                        
+                                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;">
+                                            <button type="button" class="btn-secondary" id="btn-cancel-fee-form">취소</button>
+                                            <button type="button" class="btn-primary" id="btn-settings-preset-save">프리셋 저장</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Promotion Tab Content -->
+                        <div id="settings-tab-promotion" class="settings-tab-content">
+                            <!-- List View -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 class="title-md">저장된 프로모션 목록</h4>
+                                <button class="btn-secondary" id="btn-toggle-promotion-form"><i class="fa-solid fa-plus"></i> 새 프로모션 추가</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="settings-promotion-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Promotion Name</th>
+                                            <th>Details</th>
+                                            <th style="text-align: center;">Default</th>
+                                            <th style="text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Form View (Hidden by default) -->
+                            <div id="form-container-promotion" style="display: none; margin-top: 2rem;">
+                                <div class="panel surface-container-low" style="padding: 1.5rem; border-radius: var(--radius-md);">
+                                    <h4 class="title-md" id="settings-promotion-form-title" style="margin-bottom: 1rem;">새 프로모션 만들기</h4>
+                                    <form id="settings-promotion-form">
+                                        <input type="hidden" id="settings-promotion-id">
+                                        
+                                        <div class="form-group">
+                                            <label class="label-md">프로모션 이름</label>
+                                            <input type="text" id="settings-promotion-name" class="form-control" required placeholder="예: 연말 10% 바우처">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label class="label-md">Voucher (%)</label>
+                                            <input type="number" id="settings-promo-voucher" class="form-control" value="0" step="0.1">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label class="label-md">FSP+CCB (%)</label>
+                                            <input type="number" id="settings-promo-fsp" class="form-control" value="0" step="0.1">
+                                        </div>
+                                        
+                                        <div class="form-group">
+                                            <label class="label-md">구매자 무료배송비 기준 (SGD)</label>
+                                            <input type="number" id="settings-promo-free-shipping" class="form-control" value="0" step="0.01">
+                                        </div>
+                                        
+                                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;">
+                                            <button type="button" class="btn-secondary" id="btn-cancel-promotion-form">취소</button>
+                                            <button type="button" class="btn-primary" id="btn-settings-promotion-save">프로모션 저장</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Shipping Rates Tab Content -->
+                        <div id="settings-tab-shipping" class="settings-tab-content">
+                            <!-- List View -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h4 class="title-md">저장된 배송비 요율 목록</h4>
+                                <button class="btn-secondary" id="btn-toggle-shipping-form"><i class="fa-solid fa-plus"></i> 새 배송비 요율 추가</button>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="settings-shipping-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rate Name</th>
+                                            <th>Formula Summary</th>
+                                            <th style="text-align: center;">Default</th>
+                                            <th style="text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rendered by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Form View & Tester (Hidden by default) -->
+                            <div id="form-container-shipping" style="display: none; margin-top: 2rem;">
+                                <div style="display: flex; gap: 2rem;">
+                                    <!-- Preset Form -->
+                                    <div class="panel surface-container-low" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md);">
+                                        <h4 class="title-md" id="settings-shipping-form-title" style="margin-bottom: 1rem;">새 배송비 요율 만들기</h4>
+                                        <form id="settings-shipping-form">
+                                            <input type="hidden" id="settings-shipping-id">
+                                            
+                                            <div class="form-group">
+                                                <label class="label-md">프리셋 이름</label>
+                                                <input type="text" id="settings-shipping-name" class="form-control" required placeholder="예: SG 기본 배송비">
+                                            </div>
+
+                                            <div class="form-group row">
+                                                <div class="col">
+                                                    <label class="label-md">기본 (0~50g) 요금</label>
+                                                    <input type="number" id="settings-shipping-tier1-base" class="form-control" value="2.23" step="0.01">
+                                                </div>
+                                                <div class="col">
+                                                    <label class="label-md">추가 (50~1000g) 요금 / 10g</label>
+                                                    <input type="number" id="settings-shipping-tier2-add" class="form-control" value="0.08" step="0.01">
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group row">
+                                                <div class="col">
+                                                    <label class="label-md">기본 (>1000g) 누적 요금</label>
+                                                    <input type="number" id="settings-shipping-tier3-base" class="form-control" value="9.83" step="0.01">
+                                                </div>
+                                                <div class="col">
+                                                    <label class="label-md">추가 (>1000g) 요금 / 100g</label>
+                                                    <input type="number" id="settings-shipping-tier3-add" class="form-control" value="0.70" step="0.01">
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label class="label-md">배송비 감면액 (Rebate) (SGD)</label>
+                                                <input type="number" id="settings-shipping-rebate" class="form-control" value="1.99" step="0.01">
+                                            </div>
+                                            
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;">
+                                                <button type="button" class="btn-secondary" id="btn-cancel-shipping-form">취소</button>
+                                                <button type="button" class="btn-primary" id="btn-settings-shipping-save">요율 저장</button>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <!-- Tester -->
+                                    <div class="panel surface-container-lowest" style="flex: 1; padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--outline-variant);">
+                                        <h4 class="title-md" style="margin-bottom: 1rem;"><i class="fa-solid fa-calculator text-primary"></i> 실시간 요율 테스터</h4>
+                                        <div class="form-group">
+                                            <label class="label-md">중량 입력 (g)</label>
+                                            <input type="number" id="settings-shipping-test-weight" class="form-control" placeholder="예: 1140" style="font-weight: bold; color: var(--primary);">
+                                        </div>
+                                        <div style="background: var(--surface-container-low); padding: 1rem; border-radius: var(--radius-sm); margin-top: 1rem;">
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                                <span class="body-sm text-secondary">총 배송비 (Total Fee)</span>
+                                                <span class="body-md font-weight-bold" id="test-total-fee">SGD 0.00</span>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                                <span class="body-sm text-secondary">배송비 감면액 (Rebate)</span>
+                                                <span class="body-md text-danger" id="test-rebate">- SGD 0.00</span>
+                                            </div>
+                                            <hr style="border: none; border-top: 1px dashed var(--outline-variant); margin: 8px 0;">
+                                            <div style="display: flex; justify-content: space-between;">
+                                                <span class="label-md text-main">실제 판매자 부담금</span>
+                                                <span class="label-lg text-primary" id="test-seller-borne">SGD 0.00</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Shop SKU View -->
+                <div class="view-section" id="view-shop-sku">
+                    <!-- Market Tabs (Horizontal) -->
+                    <div class="market-tabs-wrapper surface-container-low">
+                        <ul class="market-tabs" id="market-tabs">
+                            <li class="tab active" data-market="Singapore">🇸🇬 Singapore</li>
+                            <li class="tab" data-market="Taiwan Xiapi">🇹🇼 Taiwan Xiapi</li>
+                            <li class="tab" data-market="Thailand">🇹🇭 Thailand</li>
+                            <li class="tab" data-market="Malaysia">🇲🇾 Malaysia</li>
+                            <li class="tab" data-market="Vietnam">🇻🇳 Vietnam</li>
+                            <li class="tab" data-market="Philippines">🇵🇭 Philippines</li>
+                            <li class="tab" data-market="Brazil">🇧🇷 Brazil</li>
+                            <li class="tab" data-market="Mexico">🇲🇽 Mexico</li>
+                        </ul>
+                    </div>
+
+                    <div class="market-content-area panel surface-container-lowest">
+                        <h3 class="title-sm"><span id="current-market-display">Singapore</span> Pricing Structure</h3>
+                        <p class="body-sm text-secondary">Advanced Margin Calculator and Structure Settings will be built here.</p>
+                        
+                        <!-- Placeholder for future calculator Accordion-Style Table -->
+                        <div class="placeholder-box">
+                            <p class="body-sm">Data table preparing...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product List View -->
+                <div class="view-section" id="view-product-list">
+                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 class="headline-md">Product List</h3>
+                            <button class="btn-secondary" id="btn-add-product"><i class="fa-solid fa-plus"></i> Add Product</button>
+                        </div>
+                        <p class="body-sm text-secondary">A comprehensive list of all uploaded products and their base information.</p>
+                        
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 48px; text-align: center;"><input type="checkbox" id="check-all"></th>
+                                        <th>작성정보</th>
+                                        <th style="width: 160px;">카테고리</th>
+                                        <th>상품명</th>
+                                        <th style="width: 170px;">진출 국가</th>
+                                        <th class="text-right">매입단가</th>
+                                        <th class="text-right">환율/무게</th>
+                                        <th>구매링크</th>
+                                        <th>비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rendered by JS (renderProductListTable) -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Calculation Shared View Container -->
+                <div class="view-section" id="view-price-calc-container">
+                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
+                        </div>
+                        <p class="body-sm text-secondary">Exported products to this market and their pricing details.</p>
+                        
+                        <div class="table-container" style="margin-top: 1rem;">
+                            <table class="data-table" id="price-calc-table">
+                                <thead>
+                                    <tr>
+                                        <th>작성정보</th>
+                                        <th>상품명</th>
+                                        <th class="text-right">매입단가(KRW)</th>
+                                        <th class="text-right">환율/무게</th>
+                                        <th>Export Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rendered dynamically by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generic Placeholder View for others -->
+                <div class="view-section" id="view-generic">
+                    <div class="panel surface-container-lowest">
+                        <h3 class="title-sm" id="generic-title">Loading...</h3>
+                        <p class="body-sm text-secondary">This module is under construction.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Product Drawer -->
+    <div class="drawer-overlay" id="add-product-overlay"></div>
+    <div class="drawer" id="add-product-drawer">
+        <div class="drawer-header">
+            <h3 class="headline-md">Add New Product</h3>
+            <button class="btn-close" id="btn-close-drawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+            <form id="add-product-form">
+                <div class="form-group row">
+                    <div class="col">
+                        <label class="label-md">작성일자</label>
+                        <input type="date" id="input-date" class="form-control" required>
+                    </div>
+                    <div class="col">
+                        <label class="label-md">관리코드 (자동생성)</label>
+                        <input type="text" id="input-mcode" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                    </div>
+                </div>
+                <div class="form-group autocomplete-container" style="position: relative;">
+                    <label class="label-md">카테고리 (한글/영문 검색)</label>
+                    <input type="text" id="input-category-search" class="form-control" placeholder="예: 의류, 가방, bag..." required autocomplete="off">
+                    <input type="hidden" id="input-category-en">
+                    <input type="hidden" id="input-category-ko">
+                    <ul class="autocomplete-list" id="category-autocomplete-list"></ul>
+                </div>
+                <div class="form-group">
+                    <label class="label-md">상품명(한글)</label>
+                    <input type="text" id="input-name-ko" class="form-control" placeholder="예: 프리미엄 무선 마우스" required>
+                </div>
+                <div class="form-group">
+                    <label class="label-md">상품명(영문)</label>
+                    <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
+                </div>
+                <div class="form-group row">
+                    <div class="col">
+                        <label class="label-md">상품매입비(KRW)</label>
+                        <input type="number" id="input-price-krw" class="form-control" placeholder="0" required>
+                    </div>
+                    <div class="col">
+                        <label class="label-md">적용환율</label>
+                        <input type="number" id="input-rate" class="form-control" placeholder="1400" step="0.01" required>
+                    </div>
+                    <div class="col">
+                        <label class="label-md">환율적용일자</label>
+                        <input type="date" id="input-rate-date" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="label-md">상품무게(g)</label>
+                    <input type="number" id="input-weight" class="form-control" placeholder="150" required>
+                </div>
+                <div class="form-group">
+                    <label class="label-md">상품구매링크</label>
+                    <input type="url" id="input-link" class="form-control" placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label class="label-md">비고</label>
+                    <textarea id="input-note" class="form-control" rows="3" placeholder="특이사항 입력..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="drawer-footer">
+            <button class="btn-secondary" id="btn-cancel-drawer">Cancel</button>
+            <button class="btn-primary" id="btn-save-product">Save Product</button>
+        </div>
+    </div>
+
+    <!-- Price Calculation Drawer -->
+    <div class="drawer" id="price-calc-drawer" style="width: 600px;">
+        <div class="drawer-header">
+            <h3 class="headline-md" id="price-calc-drawer-title">Margin Calculator</h3>
+            <button class="btn-close" id="btn-close-calc-drawer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+            <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-container-high);">
+                <div class="label-md text-secondary" id="calc-drawer-mcode">MCODE</div>
+                <div class="title-md" id="calc-drawer-name" style="margin-top: 4px; font-weight: 600;">Product Name</div>
+            </div>
+
+
+            <form id="price-calc-form">
+                <!-- Group 1: 매입비용 -->
+                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
+                    <h4 class="label-md" style="margin-bottom: 1rem; color: var(--primary);">1. 매입비용 (Purchase Costs)</h4>
+                    <div class="form-group row">
+                        <div class="col">
+                            <label class="label-md">매입가 (KRW)</label>
+                            <input type="number" id="calc-cost-krw" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                        </div>
+                        <div class="col">
+                            <label class="label-md">국내 배송비 (KRW)</label>
+                            <input type="number" id="calc-domestic-shipping" class="form-control" value="3000">
+                        </div>
+                        <div class="col">
+                            <label class="label-md">포장비 (KRW)</label>
+                            <input type="number" id="calc-packaging" class="form-control" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 2: CB 운임 -->
+                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 class="label-md" style="margin: 0; color: var(--secondary);">2. CB 운임 (Cross-Border Freight)</h4>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
+                            <select id="calc-shipping-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
+                                <option value="">-- 배송비 프리셋 --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col">
+                            <label class="label-md">상품 중량 (g)</label>
+                            <input type="number" id="calc-weight-g" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                        </div>
+                        <div class="col">
+                            <label class="label-md">셀러 실부담 배송비 (SGD)</label>
+                            <input type="number" id="calc-shipping-rate" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--primary); font-weight: bold;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 3: 수수료 -->
+                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 class="label-md" style="margin: 0; color: var(--error);">3. 수수료 (Fees)</h4>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
+                            <select id="calc-fee-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
+                                <option value="">-- 수수료 프리셋 --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col">
+                            <label class="label-md">쇼피 판매 수수료 (%)</label>
+                            <input type="number" id="calc-commission-fee" class="form-control" value="10" step="0.1">
+                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-commission">SGD 0.00</div>
+                        </div>
+                        <div class="col">
+                            <label class="label-md">해외 PG 수수료 (%)</label>
+                            <input type="number" id="calc-pg-fee" class="form-control" value="2" step="0.1">
+                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-pg">SGD 0.00</div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col">
+                            <label class="label-md">서비스 수수료 (%)</label>
+                            <input type="number" id="calc-service-fee" class="form-control" value="5" step="0.1">
+                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-service">SGD 0.00</div>
+                        </div>
+                        <div class="col">
+                            <label class="label-md">Payoneer 수수료 (%)</label>
+                            <input type="number" id="calc-payoneer-fee" class="form-control" value="1.2" step="0.1">
+                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-payoneer">SGD 0.00</div>
+                        </div>
+                        <div class="col">
+                            <label class="label-md">특별 수수료 (예: GST %)</label>
+                            <input type="number" id="calc-special-fee" class="form-control" value="9" step="0.1">
+                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-special">SGD 0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group 4: 프로모션 -->
+                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 class="label-md" style="margin: 0; color: #10b981;">4. 프로모션 (Promotions)</h4>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
+                            <select id="calc-promotion-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
+                                <option value="">-- 프로모션 프리셋 --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col">
+                            <label class="label-md">Voucher (%)</label>
+                            <input type="number" id="calc-promo-voucher" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                        </div>
+                        <div class="col">
+                            <label class="label-md">FSP+CCB (%)</label>
+                            <input type="number" id="calc-promo-fsp" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                        </div>
+                        <div class="col">
+                            <label class="label-md">무료배송 기준 (SGD)</label>
+                            <input type="number" id="calc-promo-freeship" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="drawer-footer" style="display: flex; justify-content: space-between; align-items: center; background-color: var(--surface-container-lowest); border-top: 2px solid var(--surface-container-high);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div>
+                    <label class="label-md" style="display: block; margin-bottom: 4px;">Target Margin (%)</label>
+                    <input type="number" id="calc-target-margin" class="form-control" value="30" style="width: 100px;">
+                </div>
+                <div>
+                    <div class="label-md text-secondary" style="margin-bottom: 4px;">Final Selling Price</div>
+                    <div class="headline-md" style="color: var(--primary);" id="calc-final-price">SGD 0.00</div>
+                </div>
+            </div>
+            <div>
+                <button class="btn-secondary" id="btn-cancel-calc-drawer">Close</button>
+                <button class="btn-primary" id="btn-save-calc">Apply & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Action Bar for Bulk Selection -->
+    <div class="bulk-action-bar" id="bulk-action-bar">
+        <div class="bulk-info">
+            <span class="bulk-count" id="bulk-count">0</span> items selected
+        </div>
+        <div class="bulk-actions">
+            <select id="export-market-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 0.875rem; border: none; background: rgba(255,255,255,0.1); color: white; border-radius: 4px; outline: none; margin-right: 8px;">
+                <option value="sg" style="color: black;">SG Market</option>
+                <option value="my" style="color: black;">MY Market</option>
+                <option value="tw" style="color: black;">TW Market</option>
+                <option value="th" style="color: black;">TH Market</option>
+                <option value="ph" style="color: black;">PH Market</option>
+                <option value="vn" style="color: black;">VN Market</option>
+                <option value="br" style="color: black;">BR Market</option>
+                <option value="mx" style="color: black;">MX Market</option>
+            </select>
+            <button class="btn-bulk btn-bulk-primary" id="btn-export-market">
+                <i class="fa-solid fa-share-from-square"></i> Send to Market
+            </button>
+            <div class="bulk-divider"></div>
+            <button class="btn-bulk btn-bulk-danger" id="btn-delete-bulk">
+                <i class="fa-solid fa-trash-can"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Preset Management Modal -->
+    <div class="drawer-overlay" id="preset-modal-overlay"></div>
+    <div class="modal" id="preset-manage-modal">
+        <div class="modal-header">
+            <h3 class="headline-md">Manage Presets</h3>
+            <button class="btn-close" id="btn-close-preset-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="table-container">
+                <table class="data-table" id="preset-table">
+                    <thead>
+                        <tr>
+                            <th>Preset Name</th>
+                            <th>Fees</th>
+                            <th>Default</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./categories.js"></script>
+    <script src="./api.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>
