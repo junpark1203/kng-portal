@@ -13,6 +13,7 @@
         const url = `${API_BASE}${path}`;
         const defaultHeaders = { 'Content-Type': 'application/json' };
         const config = {
+            cache: 'no-store',
             ...options,
             headers: { ...defaultHeaders, ...options.headers }
         };
