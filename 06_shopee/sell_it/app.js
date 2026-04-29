@@ -479,6 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!query) {
             categoryAutocompleteList.innerHTML = '';
             categoryAutocompleteList.classList.remove('active');
+            categoryAutocompleteList.style.display = 'none';
             return;
         }
 
@@ -515,6 +516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.autocomplete-container')) {
                 categoryAutocompleteList.classList.remove('active');
+                categoryAutocompleteList.style.display = 'none';
             }
         });
 
@@ -531,6 +533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputCategoryKo.value = ko;
             
             categoryAutocompleteList.classList.remove('active');
+            categoryAutocompleteList.style.display = 'none';
         });
     }
 
