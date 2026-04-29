@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Form Submission (Save Product)
     if (btnSaveProduct) {
-        btnSaveProduct.addEventListener('click', (e) => {
+        btnSaveProduct.addEventListener('click', async (e) => {
             e.preventDefault();
             if (!addProductForm.checkValidity()) {
                 addProductForm.reportValidity();
