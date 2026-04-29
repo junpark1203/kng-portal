@@ -36,7 +36,7 @@
         // Products
         // ==========================================
         async getProducts() {
-            return request('/products');
+            return request(`/products?_t=${Date.now()}`);
         },
 
         async getProduct(id) {
@@ -72,11 +72,11 @@
         // Market Exports
         // ==========================================
         async getMarketExports(marketCode) {
-            return request(`/market-exports?market=${marketCode}`);
+            return request(`/market-exports?market=${marketCode}&_t=${Date.now()}`);
         },
 
         async getAllMarketExports() {
-            return request('/market-exports/all');
+            return request(`/market-exports/all?_t=${Date.now()}`);
         },
 
         async exportToMarket(productIds, marketCode) {
@@ -94,7 +94,7 @@
         // Presets (수수료)
         // ==========================================
         async getPresets() {
-            return request('/presets');
+            return request(`/presets?_t=${Date.now()}`);
         },
 
         async createPreset(data) {
