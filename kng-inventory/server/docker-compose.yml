@@ -20,6 +20,6 @@ services:
     restart: always
     command: tunnel run
     environment:
-      - TUNNEL_TOKEN=eyJhIjoiZDk3YWNjYzU2MjdmODIwYmY5OTlkNzVkMTZlNGNkY2YiLCJ0IjoiMWIyMzRkNGMtM2RmMC00NDA4LWJkZDEtNTg2YTdiMDQ4YjIwIiwicyI6Ik56RXdZVFExTldFdFpHVmxZaTAwTmpRd0xXSTFaR010TWpSak5qVXdZakl4TjJNNCJ9
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     depends_on:
       - kng-server
