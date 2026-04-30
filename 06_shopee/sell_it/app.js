@@ -1673,7 +1673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const lowestLocal = exRate > 0 ? (lowestKrw / exRate).toFixed(2) : '-';
                 lowestStr = `
                     <div style="font-weight: 600;">KRW ${Number(lowestKrw).toLocaleString()}</div>
-                    <div class="body-sm text-secondary">${lowestLocal} ${currency}</div>
+                    <div class="body-sm text-secondary">${currency} ${lowestLocal}</div>
                 `;
             }
 
@@ -1684,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const actualKrwStr = actualKrw > 0 ? `KRW ${Number(actualKrw).toLocaleString()}` : '-';
                 actualStr = `
                     <div style="font-weight: 600;">${actualKrwStr}</div>
-                    <div class="body-sm text-secondary">${item.actualPrice} ${currency}</div>
+                    <div class="body-sm text-secondary">${currency} ${item.actualPrice}</div>
                 `;
             }
 
@@ -1697,7 +1697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marginRate = (marginLocal / item.actualPrice) * 100;
                 
                 const marginKrwStr = `KRW ${Math.round(marginKrw).toLocaleString()}`;
-                const marginLocalStr = `${marginLocal.toFixed(2)} ${currency}`;
+                const marginLocalStr = `${currency} ${marginLocal.toFixed(2)}`;
                 const marginRateStr = `(${marginRate.toFixed(1)}%)`;
 
                 const marginClass = marginLocal > 0 ? 'text-primary' : 'text-error';
@@ -1713,8 +1713,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (exRate > 0) {
                 const reverseRate = (1 / exRate).toFixed(5);
                 exRateStr = `
-                    <div style="font-weight: 600;">1 ${currency} = KRW ${Number(exRate).toLocaleString()}</div>
-                    <div class="body-sm text-secondary">1 KRW = ${reverseRate} ${currency}</div>
+                    <div style="font-weight: 600;">KRW ${Number(exRate).toLocaleString()}</div>
+                    <div class="body-sm text-secondary">${currency} ${reverseRate}</div>
                 `;
             }
 
@@ -1872,7 +1872,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const marginRate = (marginLocal / actualPrice) * 100;
             
             marginEl.innerText = `KRW ${Math.round(marginKrw).toLocaleString()}`;
-            if (marginSgdEl) marginSgdEl.innerText = `${marginLocal.toFixed(2)} ${currency}`;
+            if (marginSgdEl) marginSgdEl.innerText = `${currency} ${marginLocal.toFixed(2)}`;
             if (marginRateEl) marginRateEl.innerText = `(${marginRate.toFixed(1)}%)`;
             
             if (marginLocal > 0) {
