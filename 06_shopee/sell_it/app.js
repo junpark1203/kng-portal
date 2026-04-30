@@ -1671,7 +1671,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             let lowestStr = '-';
             if (lowestKrw > 0) {
                 const lowestLocal = exRate > 0 ? (lowestKrw / exRate).toFixed(2) : '-';
-                lowestStr = `KRW ${Number(lowestKrw).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">${lowestLocal} ${currency}</span>`;
+                lowestStr = `
+                    <div style="font-weight: 600;">KRW ${Number(lowestKrw).toLocaleString()}</div>
+                    <div class="body-sm text-secondary">${lowestLocal} ${currency}</div>
+                `;
             }
 
             // Actual Price Strings
@@ -1679,12 +1682,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (item.actualPrice > 0) {
                 const actualKrw = exRate > 0 ? Math.round(item.actualPrice * exRate) : 0;
                 const actualKrwStr = actualKrw > 0 ? `KRW ${Number(actualKrw).toLocaleString()}` : '-';
-                actualStr = `${actualKrwStr}<br><span class="text-secondary" style="font-size:0.8em;">${item.actualPrice} ${currency}</span>`;
+                actualStr = `
+                    <div style="font-weight: 600;">${actualKrwStr}</div>
+                    <div class="body-sm text-secondary">${item.actualPrice} ${currency}</div>
+                `;
             }
 
             // Margin Strings
             let marginStr = '-';
-            let marginClass = 'margin-neutral';
             if (item.actualPrice > 0 && lowestKrw > 0 && exRate > 0) {
                 const costLocal = lowestKrw / exRate;
                 const marginLocal = item.actualPrice - costLocal - (item.sellerShipping || 0);
@@ -1695,28 +1700,43 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marginLocalStr = `${marginLocal.toFixed(2)} ${currency}`;
                 const marginRateStr = `(${marginRate.toFixed(1)}%)`;
 
-                if (marginLocal > 0) marginClass = 'text-primary';
-                else marginClass = 'text-error';
+                const marginClass = marginLocal > 0 ? 'text-primary' : 'text-error';
 
-                marginStr = `<span class="${marginClass}" style="font-weight:600;">${marginKrwStr}</span><br><span class="${marginClass}" style="font-size:0.8em;">${marginLocalStr} ${marginRateStr}</span>`;
+                marginStr = `
+                    <div class="${marginClass}" style="font-weight:600;">${marginKrwStr}</div>
+                    <div class="${marginClass} body-sm">${marginLocalStr} ${marginRateStr}</div>
+                `;
             }
 
             // Exchange Rate Strings
             let exRateStr = '-';
             if (exRate > 0) {
                 const reverseRate = (1 / exRate).toFixed(5);
-                exRateStr = `1 ${currency} = KRW ${Number(exRate).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">1 KRW = ${reverseRate} ${currency}</span>`;
+                exRateStr = `
+                    <div style="font-weight: 600;">1 ${currency} = KRW ${Number(exRate).toLocaleString()}</div>
+                    <div class="body-sm text-secondary">1 KRW = ${reverseRate} ${currency}</div>
+                `;
             }
 
             // Category String
             const categoryStr = item.shopeeCategory || '-';
+            let cat1 = categoryStr;
+            let cat2 = '';
+            if(categoryStr.includes(' > ')) {
+                const parts = categoryStr.split(' > ');
+                cat1 = parts[0] + ' >';
+                cat2 = parts[1];
+            }
 
             return `<tr data-id="${item.id}">
-                <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">${categoryStr}</td>
+                <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">
+                    <div class="prod-cat-en-1">${cat1}</div>
+                    ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
+                </td>
                 <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.productName || ''}">${item.productName || '-'}</td>
                 <td><span class="ma-country-badge">${market.toUpperCase()}</span></td>
                 <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.storeName || ''}">${item.storeName || '-'}</td>
-                <td class="text-right" style="font-weight:600;">${actualStr}</td>
+                <td class="text-right">${actualStr}</td>
                 <td class="text-right">${lowestStr}</td>
                 <td class="text-right">${marginStr}</td>
                 <td class="text-right">${exRateStr}</td>
