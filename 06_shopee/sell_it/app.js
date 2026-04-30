@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+﻿document.addEventListener('DOMContentLoaded', async () => {
 
     let currentMAImages = [];
     let currentMAVideoUrl = '';
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (checkedBoxes.length === 0) return;
 
-            // 선택된 상품의 ID를 수집
+            // ?좏깮???곹뭹??ID瑜??섏쭛
             const productIds = [];
             checkedBoxes.forEach(cb => {
                 const row = cb.closest('tr');
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const result = await api.exportToMarket(productIds, selectedMarket);
                 
-                // UI 업데이트: 배지 활성화
+                // UI ?낅뜲?댄듃: 諛곗? ?쒖꽦??
                 checkedBoxes.forEach(cb => {
                     const row = cb.closest('tr');
                     const badge = row.querySelector(`.badge-market[data-market="${selectedMarket}"]`);
@@ -164,29 +164,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
 
                 if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
-                alert(`${productIds.length}개 상품이 ${selectedMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
+                alert(`${productIds.length}媛??곹뭹??${selectedMarket.toUpperCase()} 留덉폆?쇰줈 ?꾩넚?섏뿀?듬땲??`);
             } catch (err) {
-                alert('마켓 전송 실패: ' + err.message);
+                alert('留덉폆 ?꾩넚 ?ㅽ뙣: ' + err.message);
             }
         });
     }
 
     /* --- 1. Global State & Data Store --- */
 
-    // Render Price Calc Grid dynamically (API 기반)
-    // ※ nav 클릭 핸들러 및 savedViewId 복원보다 먼저 정의되어야 함
+    // Render Price Calc Grid dynamically (API 湲곕컲)
+    // ??nav ?대┃ ?몃뱾??諛?savedViewId 蹂듭썝蹂대떎 癒쇱? ?뺤쓽?섏뼱????
     window.renderPriceCalcGrid = async function(marketCode) {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 濡쒕뵫 以?..</td></tr>';
 
         try {
             const exports = await api.getMarketExports(marketCode);
             tbody.innerHTML = '';
 
             if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-disabled); padding: 2rem;">이 마켓으로 전송된 상품이 없습니다. Product List에서 먼저 내보내기를 진행해주세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-disabled); padding: 2rem;">??留덉폆?쇰줈 ?꾩넚???곹뭹???놁뒿?덈떎. Product List?먯꽌 癒쇱? ?대낫?닿린瑜?吏꾪뻾?댁＜?몄슂.</td></tr>`;
                 return;
             }
 
@@ -217,8 +217,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tbody.appendChild(tr);
             });
         } catch (err) {
-            console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+            console.error('[PriceCalcGrid] 濡쒕뱶 ?ㅽ뙣:', err.message);
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">?곗씠??濡쒕뱶 ?ㅽ뙣: ${err.message}</td></tr>`;
         }
     };
 
@@ -283,9 +283,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const targetViewElement = document.getElementById('view-settings');
                 const marketCode = viewId.split('-')[1];
                 currentMarketContext = marketCode;
-                document.getElementById('settings-preset-form-title').innerText = `${marketCode.toUpperCase()} 새 프리셋 만들기`;
-                document.getElementById('settings-promotion-form-title').innerText = `${marketCode.toUpperCase()} 새 프로모션 만들기`;
-                document.getElementById('settings-shipping-form-title').innerText = `${marketCode.toUpperCase()} 새 배송비 요율 만들기`;
+                document.getElementById('settings-preset-form-title').innerText = `${marketCode.toUpperCase()} ???꾨━??留뚮뱾湲?;
+                document.getElementById('settings-promotion-form-title').innerText = `${marketCode.toUpperCase()} ???꾨줈紐⑥뀡 留뚮뱾湲?;
+                document.getElementById('settings-shipping-form-title').innerText = `${marketCode.toUpperCase()} ??諛곗넚鍮??붿쑉 留뚮뱾湲?;
                 targetViewElement.classList.add('active');
                 if (typeof renderSettingsPresetTable === 'function') {
                     renderSettingsPresetTable();
@@ -403,13 +403,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     let productList = [];
     let marketExportsMap = {}; // { productId: [{marketCode, exportDate}] }
 
-    // API에서 데이터 로드
+    // API?먯꽌 ?곗씠??濡쒕뱶
     try {
         productList = await api.getProducts();
         marketExportsMap = await api.getAllMarketExports();
-        console.log(`[INIT] ${productList.length}개 상품 로드 완료`);
+        console.log(`[INIT] ${productList.length}媛??곹뭹 濡쒕뱶 ?꾨즺`);
     } catch (err) {
-        console.error('[INIT] API 데이터 로드 실패:', err.message);
+        console.error('[INIT] API ?곗씠??濡쒕뱶 ?ㅽ뙣:', err.message);
         productList = [];
         marketExportsMap = {};
     }
@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (productList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-disabled);">등록된 상품이 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-disabled);">?깅줉???곹뭹???놁뒿?덈떎.</td></tr>';
             return;
         }
 
@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const priceUsd = (p.priceKrw / (p.rate || 1)).toFixed(2);
 
-            // 마켓 전송 상태 확인 (API 데이터 기반)
+            // 留덉폆 ?꾩넚 ?곹깭 ?뺤씤 (API ?곗씠??湲곕컲)
             const exports = marketExportsMap[p.id] || [];
             const exportedMarkets = exports.map(e => e.marketCode);
             const marketCodes = ['sg','my','tw','th','ph','vn','br','mx'];
@@ -482,7 +482,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="body-sm text-secondary prod-weight">${p.weight}g</div>
                     </td>
                     <td>
-                        <div><a href="${p.link || '#'}" class="link-btn prod-link" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.link ? '링크' : '-'}</a></div>
+                        <div><a href="${p.link || '#'}" class="link-btn prod-link" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.link ? '留곹겕' : '-'}</a></div>
                     </td>
                     <td>
                         <div class="body-sm text-secondary prod-note">${p.note || '-'}</div>
@@ -611,7 +611,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         );
 
         if (filtered.length === 0) {
-            categoryAutocompleteList.innerHTML = '<li style="color:var(--text-disabled); cursor:default;">검색 결과가 없습니다.</li>';
+            categoryAutocompleteList.innerHTML = '<li style="color:var(--text-disabled); cursor:default;">寃??寃곌낵媛 ?놁뒿?덈떎.</li>';
         } else {
             categoryAutocompleteList.innerHTML = filtered.map(cat => `
                 <li data-en="${cat.en}" data-ko="${cat.ko}">
@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const note = inputNote.value;
 
             if (!catEn) {
-                alert("카테고리를 목록에서 올바르게 선택해주세요.");
+                alert("移댄뀒怨좊━瑜?紐⑸줉?먯꽌 ?щ컮瑜닿쾶 ?좏깮?댁＜?몄슂.");
                 return;
             }
 
@@ -693,7 +693,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (isDuplicate) {
-                alert(`오류: 관리코드(${mcodeStr})가 이미 존재합니다. 날짜를 변경하거나 새로고침해 주세요.`);
+                alert(`?ㅻ쪟: 愿由ъ퐫??${mcodeStr})媛 ?대? 議댁옱?⑸땲?? ?좎쭨瑜?蹂寃쏀븯嫄곕굹 ?덈줈怨좎묠??二쇱꽭??`);
                 return;
             }
 
@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderProductListTable();
                 closeDrawer();
             } catch (err) {
-                alert('저장 실패: ' + err.message);
+                alert('????ㅽ뙣: ' + err.message);
             }
         });
     }
@@ -791,7 +791,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function openPriceCalcDrawer() {
         drawerOverlay.classList.add('active');
         priceCalcDrawer.classList.add('active');
-        calculateMargin(); // 초기 계산 1회 실행
+        calculateMargin(); // 珥덇린 怨꾩궛 1???ㅽ뻾
     }
     
     function closePriceCalcDrawer() {
@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 openPriceCalcDrawer();
             } catch (err) {
                 console.error('Error opening price calc drawer:', err);
-                alert('폼을 여는 중 문제가 발생했습니다: ' + err.message);
+                alert('?쇱쓣 ?щ뒗 以?臾몄젣媛 諛쒖깮?덉뒿?덈떎: ' + err.message);
             }
         });
     }
@@ -930,14 +930,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     let promotionPresets = [];
     let shippingPresets = [];
 
-    // API에서 프리셋 로드
+    // API?먯꽌 ?꾨━??濡쒕뱶
     try {
         presets = await api.getPresets();
         promotionPresets = await api.getPromotionPresets();
         shippingPresets = await api.getShippingPresets();
-        console.log(`[INIT] 프리셋 로드: ${presets.length}개 수수료, ${promotionPresets.length}개 프로모션, ${shippingPresets.length}개 배송비`);
+        console.log(`[INIT] ?꾨━??濡쒕뱶: ${presets.length}媛??섏닔猷? ${promotionPresets.length}媛??꾨줈紐⑥뀡, ${shippingPresets.length}媛?諛곗넚鍮?);
     } catch (err) {
-        console.error('[INIT] 프리셋 로드 실패:', err.message);
+        console.error('[INIT] ?꾨━??濡쒕뱶 ?ㅽ뙣:', err.message);
     }
 
     const presetSelector = document.getElementById('preset-selector');
@@ -945,8 +945,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const presetModal = document.getElementById('preset-manage-modal');
 
     async function savePresetsToStorage() {
-        // 서버에서 재로드 (개별 저장은 각 CRUD 함수에서 처리)
         try { presets = await api.getPresets(); } catch(e) { console.error(e); }
+    }
     }
 
     async function savePromotionPresetsToStorage() {
@@ -961,7 +961,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Fee Selector
         const feeSel = document.getElementById('calc-fee-preset');
         if (feeSel) {
-            let html = '<option value="">-- 수수료 프리셋 --</option>';
+            let html = '<option value="">-- ?섏닔猷??꾨━??--</option>';
             presets.filter(p => p.market === currentMarketContext).forEach(p => {
                 html += `<option value="${p.id}">${p.name} ${p.isDefault ? '(Default)' : ''}</option>`;
             });
@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Promotion Selector
         const promoSel = document.getElementById('calc-promotion-preset');
         if (promoSel) {
-            let html = '<option value="">-- 프로모션 프리셋 --</option>';
+            let html = '<option value="">-- ?꾨줈紐⑥뀡 ?꾨━??--</option>';
             promotionPresets.filter(p => p.market === currentMarketContext).forEach(p => {
                 html += `<option value="${p.id}">${p.name} ${p.isDefault ? '(Default)' : ''}</option>`;
             });
@@ -981,7 +981,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Shipping Selector
         const shipSel = document.getElementById('calc-shipping-preset');
         if (shipSel) {
-            let html = '<option value="">-- 배송비 프리셋 --</option>';
+            let html = '<option value="">-- 諛곗넚鍮??꾨━??--</option>';
             shippingPresets.filter(p => p.market === currentMarketContext).forEach(p => {
                 html += `<option value="${p.id}">${p.name} ${p.isDefault ? '(Default)' : ''}</option>`;
             });
@@ -989,8 +989,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // renderPresetSelector → populateDrawerPresetSelectors 별칭 등록
-    // ※ 미정의 시 ReferenceError로 이후 코드 실행이 중단되는 버그 수정
+    // renderPresetSelector ??populateDrawerPresetSelectors 蹂꾩묶 ?깅줉
+    // ??誘몄젙????ReferenceError濡??댄썑 肄붾뱶 ?ㅽ뻾??以묐떒?섎뒗 踰꾧렇 ?섏젙
     const renderPresetSelector = populateDrawerPresetSelectors;
     window.renderPresetSelector = renderPresetSelector;
 
@@ -1071,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         
         if (presets.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">저장된 프리셋이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">??λ맂 ?꾨━?뗭씠 ?놁뒿?덈떎.</td></tr>`;
             return;
         }
 
@@ -1112,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 savePresetsToStorage();
                 renderPresetTable();
                 renderPresetSelector();
-                renderSettingsPresetTable(); // Settings 동기화
+                renderSettingsPresetTable(); // Settings ?숆린??
             });
         });
     }
@@ -1162,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marketPresets = presets.filter(p => p.market === currentMarketContext);
 
         if (marketPresets.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">저장된 프리셋이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">??λ맂 ?꾨━?뗭씠 ?놁뒿?덈떎.</td></tr>`;
             return;
         }
 
@@ -1188,13 +1188,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Attach events
         document.querySelectorAll('.settings-preset-default-radio').forEach(radio => {
-            radio.addEventListener('change', (e) => {
+            radio.addEventListener('change', async (e) => {
                 const id = e.target.value;
-                presets.forEach(p => {
+                for (let p of presets) {
                     if (p.market === currentMarketContext) {
                         p.isDefault = (p.id === id);
+                        await api.updatePreset(p.id, p);
                     }
-                });
+                }
+                await savePresetsToStorage();
+                renderSettingsPresetTable();
+            });
                 savePresetsToStorage();
                 renderPresetSelector();
                 renderSettingsPresetTable();
@@ -1214,25 +1218,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-service-fee').value = p.fees.service;
                     document.getElementById('settings-payoneer-fee').value = p.fees.payoneer;
                     document.getElementById('settings-special-fee').value = p.fees.special;
-                    document.getElementById('settings-preset-form-title').innerText = `${currentMarketContext.toUpperCase()} 프리셋 수정하기`;
+                    document.getElementById('settings-preset-form-title').innerText = `${currentMarketContext.toUpperCase()} ?꾨━???섏젙?섍린`;
                     toggleSettingsForm('fee', true);
                 }
             });
         });
 
         document.querySelectorAll('.settings-preset-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if(!confirm('정말로 이 프리셋을 삭제하시겠습니까?')) return;
+            btn.addEventListener('click', async (e) => {
+                if(!confirm('정말로 삭제하시겠습니까?')) return;
                 const id = e.currentTarget.getAttribute('data-id');
-                presets = presets.filter(p => p.id !== id);
+                await api.deletePreset(id);
                 
-                const currentMarketPresets = presets.filter(p => p.market === currentMarketContext);
+                const currentMarketPresets = presets.filter(p => p.market === currentMarketContext && p.id !== id);
                 if (currentMarketPresets.length > 0 && !currentMarketPresets.find(p => p.isDefault)) {
                     currentMarketPresets[0].isDefault = true;
+                    await api.updatePreset(currentMarketPresets[0].id, currentMarketPresets[0]);
                 }
-                savePresetsToStorage();
+                await savePresetsToStorage();
                 renderSettingsPresetTable();
-                renderPresetSelector();
             });
         });
     }
@@ -1243,7 +1247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const idField = document.getElementById('settings-preset-id');
         if (idField) idField.value = '';
         const titleEl = document.getElementById('settings-preset-form-title');
-        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} 새 프리셋 만들기`;
+        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} ???꾨━??留뚮뱾湲?;
     }
 
     document.getElementById('btn-settings-preset-clear')?.addEventListener('click', clearSettingsPresetForm);
@@ -1252,7 +1256,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = document.getElementById('settings-preset-id').value;
         const name = document.getElementById('settings-preset-name').value;
         if (!name) {
-            alert('프리셋 이름을 입력해주세요.');
+            alert('?꾨━???대쫫???낅젰?댁＜?몄슂.');
             return;
         }
         
@@ -1266,29 +1270,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (id) {
-            // Edit existing
             const p = presets.find(x => x.id === id);
             if (p) {
                 p.name = name;
                 p.fees = newFees;
+                api.updatePreset(id, p).then(() => savePresetsToStorage()).then(() => renderSettingsPresetTable());
             }
-            alert('프리셋이 수정되었습니다.');
+            alert('요율이 수정되었습니다.');
         } else {
-            // Create new
             const marketPresets = presets.filter(p => p.market === currentMarketContext);
-            presets.push({
-                id: 'preset_' + Date.now(),
+            const newPreset = {
                 name: name,
                 market: currentMarketContext,
                 isDefault: marketPresets.length === 0,
                 fees: newFees
-            });
-            alert(`${currentMarketContext.toUpperCase()} 새 프리셋이 저장되었습니다.`);
+            };
+            api.createPreset(newPreset).then(() => savePresetsToStorage()).then(() => renderSettingsPresetTable());
+            alert(${currentMarketContext.toUpperCase()} 의 요율이 추가되었습니다.);
         }
         
-        savePresetsToStorage();
-        renderSettingsPresetTable();
-        renderPresetSelector();
         clearSettingsPresetForm();
         toggleSettingsForm('fee', false);
     });
@@ -1305,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marketPresets = promotionPresets.filter(p => p.market === currentMarketContext);
 
         if (marketPresets.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">저장된 프로모션이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">??λ맂 ?꾨줈紐⑥뀡???놁뒿?덈떎.</td></tr>`;
             return;
         }
 
@@ -1331,14 +1331,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Attach events
         document.querySelectorAll('.settings-promotion-default-radio').forEach(radio => {
-            radio.addEventListener('change', (e) => {
+            radio.addEventListener('change', async (e) => {
                 const id = e.target.value;
-                promotionPresets.forEach(p => {
+                for (let p of promotionPresets) {
                     if (p.market === currentMarketContext) {
                         p.isDefault = (p.id === id);
+                        await api.updatePromotionPreset(p.id, p);
                     }
-                });
-                savePromotionPresetsToStorage();
+                }
+                await savePromotionPresetsToStorage();
                 renderSettingsPromotionTable();
             });
         });
@@ -1353,23 +1354,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-promo-voucher').value = p.settings.voucher;
                     document.getElementById('settings-promo-fsp').value = p.settings.fspCcb;
                     document.getElementById('settings-promo-free-shipping').value = p.settings.freeShipThreshold;
-                    document.getElementById('settings-promotion-form-title').innerText = `${currentMarketContext.toUpperCase()} 프로모션 수정하기`;
+                    document.getElementById('settings-promotion-form-title').innerText = `${currentMarketContext.toUpperCase()} ?꾨줈紐⑥뀡 ?섏젙?섍린`;
                     toggleSettingsForm('promotion', true);
                 }
             });
         });
 
         document.querySelectorAll('.settings-promotion-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if(!confirm('정말로 이 프로모션을 삭제하시겠습니까?')) return;
+            btn.addEventListener('click', async (e) => {
+                if(!confirm('정말로 삭제하시겠습니까?')) return;
                 const id = e.currentTarget.getAttribute('data-id');
-                promotionPresets = promotionPresets.filter(p => p.id !== id);
+                await api.deletePromotionPreset(id);
                 
-                const currentMarketPresets = promotionPresets.filter(p => p.market === currentMarketContext);
+                const currentMarketPresets = promotionPresets.filter(p => p.market === currentMarketContext && p.id !== id);
                 if (currentMarketPresets.length > 0 && !currentMarketPresets.find(p => p.isDefault)) {
                     currentMarketPresets[0].isDefault = true;
+                    await api.updatePromotionPreset(currentMarketPresets[0].id, currentMarketPresets[0]);
                 }
-                savePromotionPresetsToStorage();
+                await savePromotionPresetsToStorage();
                 renderSettingsPromotionTable();
             });
         });
@@ -1381,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const idField = document.getElementById('settings-promotion-id');
         if (idField) idField.value = '';
         const titleEl = document.getElementById('settings-promotion-form-title');
-        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} 새 프로모션 만들기`;
+        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} ???꾨줈紐⑥뀡 留뚮뱾湲?;
     }
 
     document.getElementById('btn-settings-promotion-clear')?.addEventListener('click', clearSettingsPromotionForm);
@@ -1390,7 +1392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = document.getElementById('settings-promotion-id').value;
         const name = document.getElementById('settings-promotion-name').value;
         if (!name) {
-            alert('프로모션 이름을 입력해주세요.');
+            alert('?꾨줈紐⑥뀡 ?대쫫???낅젰?댁＜?몄슂.');
             return;
         }
         
@@ -1401,28 +1403,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (id) {
-            // Edit existing
             const p = promotionPresets.find(x => x.id === id);
             if (p) {
                 p.name = name;
                 p.settings = newSettings;
+                api.updatePromotionPreset(id, p).then(() => savePromotionPresetsToStorage()).then(() => renderSettingsPromotionTable());
             }
-            alert('프로모션이 수정되었습니다.');
+            alert('요율이 수정되었습니다.');
         } else {
-            // Create new
             const marketPresets = promotionPresets.filter(p => p.market === currentMarketContext);
-            promotionPresets.push({
-                id: 'promo_' + Date.now(),
+            const newPreset = {
                 name: name,
                 market: currentMarketContext,
                 isDefault: marketPresets.length === 0,
                 settings: newSettings
-            });
-            alert(`${currentMarketContext.toUpperCase()} 새 프로모션이 저장되었습니다.`);
+            };
+            api.createPromotionPreset(newPreset).then(() => savePromotionPresetsToStorage()).then(() => renderSettingsPromotionTable());
+            alert(${currentMarketContext.toUpperCase()} 의 요율이 추가되었습니다.);
         }
         
-        savePromotionPresetsToStorage();
-        renderSettingsPromotionTable();
         clearSettingsPromotionForm();
         toggleSettingsForm('promotion', false);
     });
@@ -1435,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marketPresets = shippingPresets.filter(p => p.market === currentMarketContext);
 
         if (marketPresets.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">저장된 배송비 요율이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-disabled);">??λ맂 諛곗넚鍮??붿쑉???놁뒿?덈떎.</td></tr>`;
             return;
         }
 
@@ -1461,14 +1460,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Attach events
         document.querySelectorAll('.settings-shipping-default-radio').forEach(radio => {
-            radio.addEventListener('change', (e) => {
+            radio.addEventListener('change', async (e) => {
                 const id = e.target.value;
-                shippingPresets.forEach(p => {
+                for (let p of shippingPresets) {
                     if (p.market === currentMarketContext) {
                         p.isDefault = (p.id === id);
+                        await api.updateShippingPreset(p.id, p);
                     }
-                });
-                saveShippingPresetsToStorage();
+                }
+                await saveShippingPresetsToStorage();
                 renderSettingsShippingTable();
             });
         });
@@ -1485,7 +1485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-shipping-tier3-base').value = p.settings.tier3Base;
                     document.getElementById('settings-shipping-tier3-add').value = p.settings.tier3Add;
                     document.getElementById('settings-shipping-rebate').value = p.settings.rebate;
-                    document.getElementById('settings-shipping-form-title').innerText = `${currentMarketContext.toUpperCase()} 배송비 요율 수정하기`;
+                    document.getElementById('settings-shipping-form-title').innerText = `${currentMarketContext.toUpperCase()} 諛곗넚鍮??붿쑉 ?섏젙?섍린`;
                     calculateShippingTest();
                     toggleSettingsForm('shipping', true);
                 }
@@ -1493,16 +1493,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.querySelectorAll('.settings-shipping-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if(!confirm('정말로 이 배송비 요율을 삭제하시겠습니까?')) return;
+            btn.addEventListener('click', async (e) => {
+                if(!confirm('정말로 삭제하시겠습니까?')) return;
                 const id = e.currentTarget.getAttribute('data-id');
-                shippingPresets = shippingPresets.filter(p => p.id !== id);
+                await api.deleteShippingPreset(id);
                 
-                const currentMarketPresets = shippingPresets.filter(p => p.market === currentMarketContext);
+                const currentMarketPresets = shippingPresets.filter(p => p.market === currentMarketContext && p.id !== id);
                 if (currentMarketPresets.length > 0 && !currentMarketPresets.find(p => p.isDefault)) {
                     currentMarketPresets[0].isDefault = true;
+                    await api.updateShippingPreset(currentMarketPresets[0].id, currentMarketPresets[0]);
                 }
-                saveShippingPresetsToStorage();
+                await saveShippingPresetsToStorage();
                 renderSettingsShippingTable();
             });
         });
@@ -1514,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const idField = document.getElementById('settings-shipping-id');
         if (idField) idField.value = '';
         const titleEl = document.getElementById('settings-shipping-form-title');
-        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} 새 배송비 요율 만들기`;
+        if (titleEl) titleEl.innerText = `${currentMarketContext.toUpperCase()} ??諛곗넚鍮??붿쑉 留뚮뱾湲?;
         calculateShippingTest();
     }
 
@@ -1524,7 +1525,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = document.getElementById('settings-shipping-id').value;
         const name = document.getElementById('settings-shipping-name').value;
         if (!name) {
-            alert('배송비 요율 이름을 입력해주세요.');
+            alert('諛곗넚鍮??붿쑉 ?대쫫???낅젰?댁＜?몄슂.');
             return;
         }
         
@@ -1541,22 +1542,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (p) {
                 p.name = name;
                 p.settings = newSettings;
+                api.updateShippingPreset(id, p).then(() => saveShippingPresetsToStorage()).then(() => renderSettingsShippingTable());
             }
-            alert('배송비 요율이 수정되었습니다.');
+            alert('요율이 수정되었습니다.');
         } else {
             const marketPresets = shippingPresets.filter(p => p.market === currentMarketContext);
-            shippingPresets.push({
-                id: 'ship_' + Date.now(),
+            const newPreset = {
                 name: name,
                 market: currentMarketContext,
                 isDefault: marketPresets.length === 0,
                 settings: newSettings
-            });
-            alert(`${currentMarketContext.toUpperCase()} 새 배송비 요율이 저장되었습니다.`);
+            };
+            api.createShippingPreset(newPreset).then(() => saveShippingPresetsToStorage()).then(() => renderSettingsShippingTable());
+            alert(${currentMarketContext.toUpperCase()} 의 요율이 추가되었습니다.);
         }
         
-        saveShippingPresetsToStorage();
-        renderSettingsShippingTable();
         clearSettingsShippingForm();
         toggleSettingsForm('shipping', false);
     });
@@ -1616,8 +1616,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     let maData = []; // cached market analysis items
 
     const MARKET_FLAGS = {
-        sg: '🇸🇬', my: '🇲🇾', tw: '🇹🇼', th: '🇹🇭',
-        ph: '🇵🇭', vn: '🇻🇳', br: '🇧🇷', mx: '🇲🇽'
+        sg: '?눡?눐', my: '?눚?눧', tw: '?눢?눥', th: '?눢?눑',
+        ph: '?눝?눑', vn: '?눤?눛', br: '?눉?눟', mx: '?눚?눦'
     };
 
     // --- Shipping cost calculation using shipping_presets ---
@@ -1652,7 +1652,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (maData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
-                <div>분석 데이터가 없습니다.<br>\"Add New\" 버튼을 눌러 시작하세요.</div>
+                <div>遺꾩꽍 ?곗씠?곌? ?놁뒿?덈떎.<br>\"Add New\" 踰꾪듉???뚮윭 ?쒖옉?섏꽭??</div>
             </td></tr>`;
             return;
         }
@@ -1666,14 +1666,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (cTotal > 0 && nTotal > 0) lowestKrw = Math.min(cTotal, nTotal);
             else lowestKrw = cTotal || nTotal || 0;
 
-            const lowestStr = lowestKrw > 0 ? `₩${Number(lowestKrw).toLocaleString()}` : '-';
+            const lowestStr = lowestKrw > 0 ? `??{Number(lowestKrw).toLocaleString()}` : '-';
 
-            // Simple margin indication (placeholder — can be refined)
+            // Simple margin indication (placeholder ??can be refined)
             let marginStr = '-';
             let marginClass = 'margin-neutral';
             if (item.actualPrice > 0 && lowestKrw > 0) {
                 // Very rough: diff between sell price and source cost converted
-                marginStr = '분석 필요';
+                marginStr = '遺꾩꽍 ?꾩슂';
             }
 
             const imgHtml = item.imageUrl
@@ -1690,7 +1690,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="text-right"><span class="${marginClass}">${marginStr}</span></td>
                 <td class="text-right">${item.monthlySales || '-'}</td>
                 <td style="text-align:right;">
-                    <button class="btn-secondary ma-edit-btn" data-id="${item.id}" style="padding:4px 10px;font-size:0.75rem;">상세</button>
+                    <button class="btn-secondary ma-edit-btn" data-id="${item.id}" style="padding:4px 10px;font-size:0.75rem;">?곸꽭</button>
                 </td>
             </tr>`;
         }).join('');
@@ -1789,15 +1789,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         let source = '';
         if (cTotal > 0 && nTotal > 0) {
             lowest = Math.min(cTotal, nTotal);
-            source = cTotal <= nTotal ? '쿠팡' : '네이버';
-        } else if (cTotal > 0) { lowest = cTotal; source = '쿠팡'; }
-        else if (nTotal > 0) { lowest = nTotal; source = '네이버'; }
+            source = cTotal <= nTotal ? '荑좏뙜' : '?ㅼ씠踰?;
+        } else if (cTotal > 0) { lowest = cTotal; source = '荑좏뙜'; }
+        else if (nTotal > 0) { lowest = nTotal; source = '?ㅼ씠踰?; }
 
         const lowestEl = document.getElementById('ma-lowest-source');
         const marginEl = document.getElementById('ma-estimated-margin');
 
         if (lowest > 0) {
-            lowestEl.innerText = `₩${Number(lowest).toLocaleString()} (${source})`;
+            lowestEl.innerText = `??{Number(lowest).toLocaleString()} (${source})`;
         } else {
             lowestEl.innerText = '-';
         }
@@ -1808,9 +1808,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (actualPrice > 0 && lowest > 0) {
             // Very simplified margin estimation
             // Revenue: actualPrice (local currency)
-            // Cost: lowest KRW → needs exchange rate conversion
+            // Cost: lowest KRW ??needs exchange rate conversion
             // For now show just cost comparison indicator
-            marginEl.innerText = `소싱가 ₩${lowest.toLocaleString()} / 판매가 ${actualPrice}`;
+            marginEl.innerText = `?뚯떛媛 ??{lowest.toLocaleString()} / ?먮ℓ媛 ${actualPrice}`;
             marginEl.style.color = '';
         } else {
             marginEl.innerText = '-';
@@ -1853,7 +1853,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             closeMADrawer();
             loadMarketAnalysis();
         } catch (err) {
-            alert('저장 실패: ' + err.message);
+            alert('????ㅽ뙣: ' + err.message);
         }
     }
 
@@ -1861,13 +1861,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function deleteMAItem() {
         const editId = document.getElementById('ma-edit-id')?.value;
         if (!editId) return;
-        if (!confirm('이 분석 데이터를 삭제하시겠습니까?')) return;
+        if (!confirm('??遺꾩꽍 ?곗씠?곕? ??젣?섏떆寃좎뒿?덇퉴?')) return;
         try {
             await api.deleteMarketAnalysis(editId);
             closeMADrawer();
             loadMarketAnalysis();
         } catch (err) {
-            alert('삭제 실패: ' + err.message);
+            alert('??젣 ?ㅽ뙣: ' + err.message);
         }
     }
 
@@ -1882,14 +1882,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         for(let i = 0; i < files.length; i++) {
             if (currentMAImages.length >= 9) {
-                alert('이미지는 최대 9장까지만 업로드 가능합니다.');
+                alert('?대?吏??理쒕? 9?κ퉴吏留??낅줈??媛?ν빀?덈떎.');
                 break;
             }
             try {
                 const result = await api.uploadMarketAnalysisImage(files[i]);
                 currentMAImages.push(result.url);
             } catch (err) {
-                alert('이미지 업로드 실패: ' + err.message);
+                alert('?대?吏 ?낅줈???ㅽ뙣: ' + err.message);
             }
         }
         renderMAImageGrid();
@@ -1906,7 +1906,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Validation
         if (file.size > 30 * 1024 * 1024) {
-            alert('동영상 크기는 30MB를 초과할 수 없습니다.');
+            alert('?숈쁺???ш린??30MB瑜?珥덇낵?????놁뒿?덈떎.');
             e.target.value = '';
             return;
         }
@@ -1918,7 +1918,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.URL.revokeObjectURL(video.src);
             const duration = video.duration;
             if (duration < 10 || duration > 60) {
-                alert(`동영상 길이는 10초에서 60초 사이여야 합니다. (현재: ${Math.round(duration)}초)`);
+                alert(`?숈쁺??湲몄씠??10珥덉뿉??60珥??ъ씠?ъ빞 ?⑸땲?? (?꾩옱: ${Math.round(duration)}珥?`);
                 e.target.value = '';
                 return;
             }
@@ -1929,7 +1929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentMAVideoUrl = result.url;
                 renderMAVideo();
             } catch (err) {
-                alert('동영상 업로드 실패: ' + err.message);
+                alert('?숈쁺???낅줈???ㅽ뙣: ' + err.message);
             }
             e.target.value = '';
         };
@@ -1943,7 +1943,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const url = e.target.value.trim();
         if (!url) return;
         if (currentMAImages.length >= 9) {
-            alert('이미지는 최대 9장까지만 업로드 가능합니다.');
+            alert('?대?吏??理쒕? 9?κ퉴吏留??낅줈??媛?ν빀?덈떎.');
             return;
         }
         try {
@@ -1952,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderMAImageGrid();
             e.target.value = '';
         } catch (err) {
-            alert('이미지 URL 업로드 실패: ' + err.message);
+            alert('?대?吏 URL ?낅줈???ㅽ뙣: ' + err.message);
         }
     });
 
@@ -1967,7 +1967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderMAVideo();
             e.target.value = '';
         } catch (err) {
-            alert('동영상 URL 업로드 실패: ' + err.message);
+            alert('?숈쁺??URL ?낅줈???ㅽ뙣: ' + err.message);
         }
     });
 
@@ -2000,7 +2000,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if(!maCategoryAutocompleteList) return;
 
         if (filtered.length === 0) {
-            maCategoryAutocompleteList.innerHTML = '<li style="color:var(--text-disabled); cursor:default;">검색 결과가 없습니다.</li>';
+            maCategoryAutocompleteList.innerHTML = '<li style="color:var(--text-disabled); cursor:default;">寃??寃곌낵媛 ?놁뒿?덈떎.</li>';
         } else {
             maCategoryAutocompleteList.innerHTML = filtered.map(cat => `
                 <li data-en="${cat.en}" data-ko="${cat.ko}">
@@ -2056,7 +2056,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById(id)?.addEventListener('input', updateMAMarginDisplay);
     });
 
-    // Table row click → open drawer
+    // Table row click ??open drawer
     document.getElementById('ma-table-body')?.addEventListener('click', (e) => {
         const btn = e.target.closest('.ma-edit-btn');
         const tr = e.target.closest('tr[data-id]');
@@ -2129,5 +2129,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // renderPriceCalcGrid는 nav 핸들러 이전으로 이동됨 (line ~105)
+    // renderPriceCalcGrid??nav ?몃뱾???댁쟾?쇰줈 ?대룞??(line ~105)
 });
+
