@@ -6,6 +6,8 @@ const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cron = require('node-cron');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -243,6 +245,58 @@ function initDb() {
         });
     });
 }
+
+// ==========================================
+// Exchange Rate Scheduler
+// ==========================================
+let cachedExchangeRates = {};
+
+async function fetchExchangeRates() {
+    try {
+        console.log('[Cron] Fetching latest exchange rates (Base: KRW)...');
+        const response = await fetch('https://open.er-api.com/v6/latest/KRW');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        
+        if (data && data.rates) {
+            const marketCurrencyMap = {
+                'sg': 'SGD',
+                'my': 'MYR',
+                'tw': 'TWD',
+                'th': 'THB',
+                'ph': 'PHP',
+                'vn': 'VND',
+                'br': 'BRL',
+                'mx': 'MXN'
+            };
+
+            const newRates = {};
+            for (const [market, currency] of Object.entries(marketCurrencyMap)) {
+                if (data.rates[currency]) {
+                    newRates[market] = Number((1 / data.rates[currency]).toFixed(2));
+                }
+            }
+            cachedExchangeRates = newRates;
+            console.log('[Cron] Exchange rates updated successfully.');
+        }
+    } catch (err) {
+        console.error('[Cron] Failed to fetch exchange rates:', err.message);
+    }
+}
+
+// Fetch immediately on startup
+fetchExchangeRates();
+
+// Schedule to run every day at 08:00 AM KST
+cron.schedule('0 8 * * *', () => {
+    fetchExchangeRates();
+}, {
+    timezone: "Asia/Seoul"
+});
+
+app.get('/api/exchange-rates', (req, res) => {
+    res.json(cachedExchangeRates);
+});
 
 // ==========================================
 // Products API

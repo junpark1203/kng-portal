@@ -1754,8 +1754,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const isEdit = !!item;
         document.getElementById('ma-drawer-title').innerText = isEdit ? 'Edit Analysis' : 'Add New';
         document.getElementById('ma-edit-id').value = isEdit ? item.id : '';
-        document.getElementById('ma-market').value = isEdit ? (item.market || 'sg') : 'sg';
-        document.getElementById('ma-exchange-rate').value = isEdit ? (item.exchangeRate || '') : '';
+        const selectedMarket = isEdit ? (item.market || 'sg') : 'sg';
+        document.getElementById('ma-market').value = selectedMarket;
+        document.getElementById('ma-exchange-rate').value = isEdit ? (item.exchangeRate || '') : (window.latestExchangeRates[selectedMarket] || '');
         document.getElementById('ma-category').value = isEdit ? (item.shopeeCategory || '') : '';
         document.getElementById('ma-product-name').value = isEdit ? (item.productName || '') : '';
         document.getElementById('ma-store-name').value = isEdit ? (item.storeName || '') : '';
@@ -2129,8 +2130,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('ma-market-filter')?.addEventListener('change', loadMarketAnalysis);
 
     // Auto-calc shipping on market or weight change
-    document.getElementById('ma-market')?.addEventListener('change', autoCalcShipping);
-    document.getElementById('ma-market')?.addEventListener('change', updateMACurrencyLabels);
+    document.getElementById('ma-market')?.addEventListener('change', (e) => {
+        const isEdit = document.getElementById('ma-edit-id').value !== '';
+        if (!isEdit) {
+            document.getElementById('ma-exchange-rate').value = window.latestExchangeRates[e.target.value] || '';
+            updateMAMarginDisplay();
+        }
+        autoCalcShipping();
+        updateMACurrencyLabels();
+    });
     document.getElementById('ma-weight')?.addEventListener('input', autoCalcShipping);
 
     // Update margin display on domestic price changes
@@ -2198,6 +2206,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     attachAutocompleteKeyboardNav(inputCategorySearch, categoryAutocompleteList);
     attachAutocompleteKeyboardNav(maInputCategorySearch, maCategoryAutocompleteList);
+
+    // Load Exchange Rates on initialization
+    window.latestExchangeRates = {};
+    if (sellItApi && sellItApi.getExchangeRates) {
+        sellItApi.getExchangeRates()
+            .then(rates => {
+                if(rates) window.latestExchangeRates = rates;
+            })
+            .catch(err => console.error("Failed to load exchange rates:", err));
+    }
 
     // Hook into nav: when market-analysis view becomes active, load data
     const origNavHandler = navItems;

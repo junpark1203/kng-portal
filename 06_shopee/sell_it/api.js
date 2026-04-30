@@ -141,6 +141,13 @@
         },
 
         // ==========================================
+        // Exchange Rates
+        // ==========================================
+        getExchangeRates: async () => {
+            return request('/exchange-rates');
+        },
+
+        // ==========================================
         // Shipping Presets
         // ==========================================
         async getShippingPresets() {
