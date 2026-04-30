@@ -1680,7 +1680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `<tr data-id="${item.id}">
                 <td>${imgHtml}</td>
                 <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.productName || ''}">${item.productName || '-'}</td>
-                <td><span class="ma-country-badge">${flag} ${(item.market||'').toUpperCase()}</span></td>
+                <td><span class="ma-country-badge">${(item.market||'').toUpperCase()}</span></td>
                 <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.storeName || '-'}</td>
                 <td class="text-right" style="font-weight:600;">${item.actualPrice || '-'}</td>
                 <td class="text-right">${lowestStr}</td>
@@ -1703,6 +1703,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ma-drawer-title').innerText = isEdit ? 'Edit Analysis' : 'Add New';
         document.getElementById('ma-edit-id').value = isEdit ? item.id : '';
         document.getElementById('ma-market').value = isEdit ? (item.market || 'sg') : 'sg';
+        document.getElementById('ma-exchange-rate').value = isEdit ? (item.exchangeRate || '') : '';
         document.getElementById('ma-category').value = isEdit ? (item.shopeeCategory || '') : '';
         document.getElementById('ma-product-name').value = isEdit ? (item.productName || '') : '';
         document.getElementById('ma-store-name').value = isEdit ? (item.storeName || '') : '';
@@ -1792,6 +1793,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const lowestEl = document.getElementById('ma-lowest-source');
         const marginEl = document.getElementById('ma-estimated-margin');
+        const marginSgdEl = document.getElementById('ma-estimated-margin-sgd');
+        const marginRateEl = document.getElementById('ma-margin-rate');
 
         if (lowest > 0) {
             lowestEl.innerText = `₩${Number(lowest).toLocaleString()} (${source})`;
@@ -1801,18 +1804,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const actualPrice = parseFloat(document.getElementById('ma-actual-price')?.value) || 0;
         const sellerShip = parseFloat(document.getElementById('ma-seller-shipping')?.value) || 0;
+        const exchangeRate = parseFloat(document.getElementById('ma-exchange-rate')?.value) || 0;
 
-        if (actualPrice > 0 && lowest > 0) {
-            // Very simplified margin estimation
-            // Revenue: actualPrice (local currency)
-            // Cost: lowest KRW → needs exchange rate conversion
-            // For now show just cost comparison indicator
-            marginEl.innerText = `소싱가 ₩${lowest.toLocaleString()} / 판매가 ${actualPrice}`;
-            marginEl.style.color = '';
+        const market = document.getElementById('ma-market')?.value || 'sg';
+        const map = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+        const currency = map[market] || 'SGD';
+
+        if (actualPrice > 0 && lowest > 0 && exchangeRate > 0) {
+            const costLocal = lowest / exchangeRate;
+            const marginLocal = actualPrice - costLocal - sellerShip;
+            const marginKrw = marginLocal * exchangeRate;
+            const marginRate = (marginLocal / actualPrice) * 100;
+            
+            marginEl.innerText = `₩ ${Math.round(marginKrw).toLocaleString()}`;
+            if (marginSgdEl) marginSgdEl.innerText = `${marginLocal.toFixed(2)} ${currency}`;
+            if (marginRateEl) marginRateEl.innerText = `(${marginRate.toFixed(1)}%)`;
+            
+            if (marginLocal > 0) {
+                marginEl.style.color = 'var(--primary)';
+                if (marginRateEl) marginRateEl.style.color = 'var(--primary)';
+            } else {
+                marginEl.style.color = 'var(--error)';
+                if (marginRateEl) marginRateEl.style.color = 'var(--error)';
+            }
         } else {
             marginEl.innerText = '-';
+            if (marginSgdEl) marginSgdEl.innerText = '-';
+            if (marginRateEl) marginRateEl.innerText = '(0%)';
             marginEl.style.color = '';
+            if (marginRateEl) marginRateEl.style.color = 'var(--text-secondary)';
         }
+    }
+    
+    function updateMACurrencyLabels() {
+        const market = document.getElementById('ma-market')?.value || 'sg';
+        const map = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+        const currency = map[market] || 'SGD';
+        document.querySelectorAll('.ma-currency').forEach(el => {
+            el.innerText = currency;
+        });
+        updateMAMarginDisplay();
     }
 
     // --- Save / Update ---
@@ -1820,6 +1851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const editId = document.getElementById('ma-edit-id')?.value;
         const data = {
             market: document.getElementById('ma-market')?.value || 'sg',
+            exchangeRate: parseFloat(document.getElementById('ma-exchange-rate')?.value) || null,
             shopeeCategory: document.getElementById('ma-category')?.value || '',
             productName: document.getElementById('ma-product-name')?.value || '',
             storeName: document.getElementById('ma-store-name')?.value || '',
@@ -2046,10 +2078,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-calc shipping on market or weight change
     document.getElementById('ma-market')?.addEventListener('change', autoCalcShipping);
+    document.getElementById('ma-market')?.addEventListener('change', updateMACurrencyLabels);
     document.getElementById('ma-weight')?.addEventListener('input', autoCalcShipping);
 
     // Update margin display on domestic price changes
-    ['ma-coupang-price', 'ma-coupang-shipping', 'ma-naver-price', 'ma-naver-shipping', 'ma-actual-price', 'ma-seller-shipping'].forEach(id => {
+    ['ma-coupang-price', 'ma-coupang-shipping', 'ma-naver-price', 'ma-naver-shipping', 'ma-actual-price', 'ma-seller-shipping', 'ma-exchange-rate'].forEach(id => {
         document.getElementById(id)?.addEventListener('input', updateMAMarginDisplay);
     });
 

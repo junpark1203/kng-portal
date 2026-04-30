@@ -203,10 +203,11 @@ function initDb() {
         // Market Analysis (경쟁사 분석)
         db.run(`
             CREATE TABLE IF NOT EXISTS market_analysis (
-                id TEXT PRIMARY KEY,
-                market TEXT DEFAULT 'sg',
-                shopeeCategory TEXT,
-                productName TEXT,
+            id TEXT PRIMARY KEY,
+            market TEXT DEFAULT 'sg',
+            exchangeRate REAL,
+            shopeeCategory TEXT,
+            productName TEXT,
                 storeName TEXT,
                 listingPrice REAL DEFAULT 0,
                 actualPrice REAL DEFAULT 0,
@@ -232,7 +233,8 @@ function initDb() {
                 const cols = [
                     "ALTER TABLE market_analysis ADD COLUMN imageUrls TEXT",
                     "ALTER TABLE market_analysis ADD COLUMN videoUrl TEXT",
-                    "ALTER TABLE market_analysis ADD COLUMN coupangRocket INTEGER DEFAULT 0"
+                    "ALTER TABLE market_analysis ADD COLUMN coupangRocket INTEGER DEFAULT 0",
+                    "ALTER TABLE market_analysis ADD COLUMN exchangeRate REAL"
                 ];
                 cols.forEach(sql => {
                     db.run(sql, (e) => {});
