@@ -7,7 +7,7 @@ services:
     restart: always
     volumes:
       - ./data:/usr/src/app/data
-      - /volume1/docker/upload_images/shopee:/usr/src/app/uploads
+      - ./uploads:/usr/src/app/uploads
     labels:
       - "com.centurylinklabs.watchtower.scope=sell-it"
 
