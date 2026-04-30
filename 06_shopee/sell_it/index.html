@@ -821,17 +821,19 @@
                         <i class="fa-solid fa-plus text-secondary"></i>
                     </div>
                 </div>
+                <input type="text" id="ma-image-url" class="form-input" placeholder="이미지 URL 입력 후 Enter" style="margin-bottom: 0.5rem;">
                 <input type="file" id="ma-image-file" accept="image/*" multiple style="display:none;">
             </div>
 
             <!-- 상품 동영상 -->
             <div class="form-group" style="margin-bottom:1.5rem;">
                 <label class="label-md">상품 동영상 <span class="body-sm text-secondary">(Max 30MB, mp4, 10~60초)</span></label>
-                <div id="ma-video-preview" style="width:100%;height:120px;border:2px dashed var(--outline-variant);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--surface-container-low);cursor:pointer;" title="클릭하여 동영상 업로드">
+                <div id="ma-video-preview" style="width:100%;height:120px;border:2px dashed var(--outline-variant);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--surface-container-low);cursor:pointer;margin-bottom:0.5rem;" title="클릭하여 동영상 업로드">
                     <span class="body-sm text-secondary" id="ma-video-placeholder"><i class="fa-solid fa-video"></i> 클릭하여 업로드</span>
                     <video id="ma-video-tag" controls style="display:none;max-width:100%;max-height:100%;object-fit:contain;"></video>
                 </div>
-                <button type="button" id="ma-video-remove-btn" class="btn-outline" style="display:none;width:100%;margin-top:0.5rem;padding:0.25rem;"><i class="fa-solid fa-trash"></i> 동영상 삭제</button>
+                <input type="text" id="ma-video-url" class="form-input" placeholder="동영상 URL 입력 후 Enter" style="margin-bottom: 0.5rem;">
+                <button type="button" id="ma-video-remove-btn" class="btn-outline" style="display:none;width:100%;padding:0.25rem;"><i class="fa-solid fa-trash"></i> 동영상 삭제</button>
                 <input type="file" id="ma-video-file" accept="video/mp4" style="display:none;">
             </div>
 

@@ -1725,6 +1725,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ma-naver-url').value = isEdit ? (item.naverUrl || '') : '';
         document.getElementById('ma-note').value = isEdit ? (item.note || '') : '';
 
+        const imgUrlInput = document.getElementById('ma-image-url');
+        if (imgUrlInput) imgUrlInput.value = '';
+        const videoUrlInput = document.getElementById('ma-video-url');
+        if (videoUrlInput) videoUrlInput.value = '';
+
+
         // Media load
         if (isEdit) {
             if (item.imageUrls) {
@@ -1928,6 +1934,41 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.target.value = '';
         };
         video.src = URL.createObjectURL(file);
+    });
+
+    
+    document.getElementById('ma-image-url')?.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const url = e.target.value.trim();
+        if (!url) return;
+        if (currentMAImages.length >= 9) {
+            alert('이미지는 최대 9장까지만 업로드 가능합니다.');
+            return;
+        }
+        try {
+            const result = await api.uploadMarketAnalysisImageUrl(url);
+            currentMAImages.push(result.url);
+            renderMAImageGrid();
+            e.target.value = '';
+        } catch (err) {
+            alert('이미지 URL 업로드 실패: ' + err.message);
+        }
+    });
+
+    document.getElementById('ma-video-url')?.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const url = e.target.value.trim();
+        if (!url) return;
+        try {
+            const result = await api.uploadMarketAnalysisVideoUrl(url);
+            currentMAVideoUrl = result.url;
+            renderMAVideo();
+            e.target.value = '';
+        } catch (err) {
+            alert('동영상 URL 업로드 실패: ' + err.message);
+        }
     });
 
     document.getElementById('ma-video-remove-btn')?.addEventListener('click', () => {

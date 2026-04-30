@@ -760,6 +760,37 @@ app.post('/api/market-analysis/upload-image-url', async (req, res) => {
 });
 
 // 이미지 삭제
+
+app.post('/api/market-analysis/upload-video-url', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) return res.status(400).json({ error: 'URL is required.' });
+        const ext = '.mp4';
+        const filename = 'MA-' + Date.now() + ext;
+        const filePath = path.join(UPLOAD_DIR, filename);
+        const protocol = url.startsWith('https') ? require('https') : require('http');
+        await new Promise((resolve, reject) => {
+            const request = protocol.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (response) => {
+                if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                    const rProto = response.headers.location.startsWith('https') ? require('https') : require('http');
+                    rProto.get(response.headers.location, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (r2) => {
+                        const ws = require('fs').createWriteStream(filePath); r2.pipe(ws); ws.on('finish', () => { ws.close(); resolve(); }); ws.on('error', reject);
+                    }).on('error', reject);
+                    return;
+                }
+                if (response.statusCode !== 200) { reject(new Error('HTTP ' + response.statusCode)); return; }
+                const ws = require('fs').createWriteStream(filePath); response.pipe(ws); ws.on('finish', () => { ws.close(); resolve(); }); ws.on('error', reject);
+            });
+            request.on('error', reject);
+            request.setTimeout(15000, () => { request.destroy(); reject(new Error('Timeout')); });
+        });
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        res.json({ message: 'Success', filename, url: imgBase + '/api/images/' + filename, size: require('fs').statSync(filePath).size });
+    } catch (err) {
+        res.status(500).json({ error: 'Video URL download failed: ' + err.message });
+    }
+});
+
 app.delete('/api/images/:filename', (req, res) => {
     const filePath = path.join(UPLOAD_DIR, req.params.filename);
     if (fs.existsSync(filePath)) {

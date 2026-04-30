@@ -220,6 +220,13 @@
             return res.json();
         },
 
+        async uploadMarketAnalysisVideoUrl(videoUrl) {
+            return request('/market-analysis/upload-video-url', {
+                method: 'POST',
+                body: JSON.stringify({ url: videoUrl })
+            });
+        },
+
         // ==========================================
         // Health Check
         // ==========================================
