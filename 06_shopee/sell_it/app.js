@@ -308,10 +308,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Show target view if it exists, otherwise show generic view
             if (targetViewElement) {
                 targetViewElement.classList.add('active');
-                // Market Analysis 뷰 진입 시 데이터 로드
-                if (viewId === 'market-analysis' && typeof loadMarketAnalysis === 'function') {
-                    loadMarketAnalysis();
-                }
             } else {
                 const genericView = document.getElementById('view-generic');
                 genericTitle.innerText = menuText + " Module";
@@ -319,15 +315,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-
-    // Restore active view from localStorage on load
-    const savedViewId = localStorage.getItem('activeViewId');
-    if (savedViewId) {
-        const targetNav = document.querySelector(`.sidebar .nav-item[data-view="${savedViewId}"]`);
-        if (targetNav) {
-            targetNav.click();
-        }
-    }
 
 
     /* --- 1.5. Settings Tabs Switching --- */
@@ -2234,4 +2221,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // renderPriceCalcGrid는 nav 핸들러 이전으로 이동됨 (line ~105)
+
+    // Restore active view from localStorage on load
+    // ※ 모든 모듈 초기화가 완료된 후 실행해야 TDZ 에러를 방지합니다.
+    const savedViewId = localStorage.getItem('activeViewId');
+    if (savedViewId) {
+        const targetNav = document.querySelector(`.sidebar .nav-item[data-view="${savedViewId}"]`);
+        if (targetNav) {
+            targetNav.click();
+        }
+    }
 });
