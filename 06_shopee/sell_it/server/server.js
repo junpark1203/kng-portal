@@ -650,12 +650,12 @@ app.post('/api/market-analysis', (req, res) => {
     const coupangRocket = d.coupangRocket ? 1 : 0;
     
     const sql = `INSERT INTO market_analysis
-        (id, market, shopeeCategory, productName, storeName, listingPrice, actualPrice,
+        (id, market, exchangeRate, shopeeCategory, productName, storeName, listingPrice, actualPrice,
          weight, sellerShipping, monthlySales, coupangPrice, coupangShipping, coupangRocket,
          naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, imageUrls, videoUrl, note, createdAt, updatedAt)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const params = [
-        id, d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
+        id, d.market||'sg', d.exchangeRate||0, d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
         d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
         d.naverPrice||0, d.naverShipping||0,
@@ -677,12 +677,12 @@ app.put('/api/market-analysis/:id', (req, res) => {
     const coupangRocket = d.coupangRocket ? 1 : 0;
     
     const sql = `UPDATE market_analysis SET
-        market=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
+        market=?, exchangeRate=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
         weight=?, sellerShipping=?, monthlySales=?, coupangPrice=?, coupangShipping=?, coupangRocket=?,
         naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, imageUrls=?, videoUrl=?, note=?, updatedAt=?
         WHERE id=?`;
     const params = [
-        d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
+        d.market||'sg', d.exchangeRate||0, d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
         d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
         d.naverPrice||0, d.naverShipping||0,
