@@ -1648,43 +1648,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (maData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
-                <div>분석 데이터가 없습니다.<br>\"Add New\" 버튼을 눌러 시작하세요.</div>
+            tbody.innerHTML = `<tr><td colspan="10" class="ma-empty-state">
+                <div>분석 데이터가 없습니다.<br>"Add New" 버튼을 눌러 시작하세요.</div>
             </td></tr>`;
             return;
         }
 
         tbody.innerHTML = maData.map(item => {
-            const flag = MARKET_FLAGS[item.market] || item.market;
-            // Lowest domestic price (incl shipping)
+            const market = item.market || 'sg';
+            const currencyMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+            const currency = currencyMap[market] || 'SGD';
+            const exRate = item.exchangeRate || 0;
+
+            // Domestic Price (KRW)
             const cTotal = (item.coupangPrice || 0) + (item.coupangShipping || 0);
             const nTotal = (item.naverPrice || 0) + (item.naverShipping || 0);
             let lowestKrw = 0;
             if (cTotal > 0 && nTotal > 0) lowestKrw = Math.min(cTotal, nTotal);
             else lowestKrw = cTotal || nTotal || 0;
 
-            const lowestStr = lowestKrw > 0 ? `₩${Number(lowestKrw).toLocaleString()}` : '-';
-
-            // Simple margin indication (placeholder — can be refined)
-            let marginStr = '-';
-            let marginClass = 'margin-neutral';
-            if (item.actualPrice > 0 && lowestKrw > 0) {
-                // Very rough: diff between sell price and source cost converted
-                marginStr = '분석 필요';
+            // Lowest Price Strings
+            let lowestStr = '-';
+            if (lowestKrw > 0) {
+                const lowestLocal = exRate > 0 ? (lowestKrw / exRate).toFixed(2) : '-';
+                lowestStr = `₩ ${Number(lowestKrw).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">${lowestLocal} ${currency}</span>`;
             }
 
-            const imgHtml = item.imageUrl
-                ? `<img src="${item.imageUrl}" class="ma-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ma-thumb-placeholder" style="display:none"><i class="fa-solid fa-image"></i></div>`
-                : `<div class="ma-thumb-placeholder"><i class="fa-solid fa-image"></i></div>`;
+            // Actual Price Strings
+            let actualStr = '-';
+            if (item.actualPrice > 0) {
+                const actualKrw = exRate > 0 ? Math.round(item.actualPrice * exRate) : 0;
+                const actualKrwStr = actualKrw > 0 ? `₩ ${Number(actualKrw).toLocaleString()}` : '-';
+                actualStr = `${actualKrwStr}<br><span class="text-secondary" style="font-size:0.8em;">${item.actualPrice} ${currency}</span>`;
+            }
+
+            // Margin Strings
+            let marginStr = '-';
+            let marginClass = 'margin-neutral';
+            if (item.actualPrice > 0 && lowestKrw > 0 && exRate > 0) {
+                const costLocal = lowestKrw / exRate;
+                const marginLocal = item.actualPrice - costLocal - (item.sellerShipping || 0);
+                const marginKrw = marginLocal * exRate;
+                const marginRate = (marginLocal / item.actualPrice) * 100;
+                
+                const marginKrwStr = `₩ ${Math.round(marginKrw).toLocaleString()}`;
+                const marginLocalStr = `${marginLocal.toFixed(2)} ${currency}`;
+                const marginRateStr = `(${marginRate.toFixed(1)}%)`;
+
+                if (marginLocal > 0) marginClass = 'text-primary';
+                else marginClass = 'text-error';
+
+                marginStr = `<span class="${marginClass}" style="font-weight:600;">${marginKrwStr}</span><br><span class="${marginClass}" style="font-size:0.8em;">${marginLocalStr} ${marginRateStr}</span>`;
+            }
+
+            // Exchange Rate Strings
+            let exRateStr = '-';
+            if (exRate > 0) {
+                const reverseRate = (1 / exRate).toFixed(5);
+                exRateStr = `1 ${currency} = ₩ ${Number(exRate).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">1 ₩ = ${reverseRate} ${currency}</span>`;
+            }
+
+            // Category String
+            const categoryStr = item.shopeeCategory || '-';
 
             return `<tr data-id="${item.id}">
-                <td>${imgHtml}</td>
+                <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">${categoryStr}</td>
                 <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.productName || ''}">${item.productName || '-'}</td>
-                <td><span class="ma-country-badge">${(item.market||'').toUpperCase()}</span></td>
-                <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.storeName || '-'}</td>
-                <td class="text-right" style="font-weight:600;">${item.actualPrice || '-'}</td>
+                <td><span class="ma-country-badge">${market.toUpperCase()}</span></td>
+                <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.storeName || ''}">${item.storeName || '-'}</td>
+                <td class="text-right" style="font-weight:600;">${actualStr}</td>
                 <td class="text-right">${lowestStr}</td>
-                <td class="text-right"><span class="${marginClass}">${marginStr}</span></td>
+                <td class="text-right">${marginStr}</td>
+                <td class="text-right">${exRateStr}</td>
                 <td class="text-right">${item.monthlySales || '-'}</td>
                 <td style="text-align:right;">
                     <button class="btn-secondary ma-edit-btn" data-id="${item.id}" style="padding:4px 10px;font-size:0.75rem;">상세</button>
