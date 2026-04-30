@@ -554,9 +554,54 @@ app.get('/api/market-analysis/:id', (req, res) => {
     });
 });
 
+// 이미지 임시 파일명 규칙에 맞게 변경하는 헬퍼 함수
+function processMarketAnalysisImageSync(d) {
+    if (!d.imageUrl || !d.imageUrl.includes('/api/images/MA-')) return d.imageUrl;
+    
+    try {
+        const oldFilename = d.imageUrl.split('/api/images/').pop();
+        const oldPath = path.join(UPLOAD_DIR, oldFilename);
+        if (!fs.existsSync(oldPath)) return d.imageUrl;
+
+        const market = (d.market || 'XX').toUpperCase();
+        const storeName = (d.storeName || 'Unknown').replace(/[^a-zA-Z0-9가-힣_]/g, '');
+        
+        const now = new Date();
+        const yy = String(now.getFullYear()).slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const dateFormatted = `${yy}${mm}${dd}`;
+
+        let maxSeq = 0;
+        const files = fs.readdirSync(UPLOAD_DIR);
+        const regex = new RegExp(`-${dateFormatted}-(\\d{3})-(\\d{2})\\.[a-zA-Z0-9]+$`);
+        files.forEach(f => {
+            const match = f.match(regex);
+            if (match) {
+                const seq = parseInt(match[1], 10);
+                if (seq > maxSeq) maxSeq = seq;
+            }
+        });
+        
+        const dailySeq = String(maxSeq + 1).padStart(3, '0');
+        const imageSeq = '01';
+        
+        const ext = path.extname(oldFilename);
+        const newFilename = `${market}-${storeName}-${dateFormatted}-${dailySeq}-${imageSeq}${ext}`;
+        const newPath = path.join(UPLOAD_DIR, newFilename);
+        
+        fs.renameSync(oldPath, newPath);
+        return d.imageUrl.replace(oldFilename, newFilename);
+    } catch (e) {
+        console.error('이미지 파일명 변경 실패:', e);
+        return d.imageUrl;
+    }
+}
+
 // 등록
 app.post('/api/market-analysis', (req, res) => {
     const d = req.body;
+    d.imageUrl = processMarketAnalysisImageSync(d);
     const id = d.id || ('MA-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
     const sql = `INSERT INTO market_analysis
@@ -580,6 +625,7 @@ app.post('/api/market-analysis', (req, res) => {
 app.put('/api/market-analysis/:id', (req, res) => {
     const id = req.params.id;
     const d = req.body;
+    d.imageUrl = processMarketAnalysisImageSync(d);
     const now = new Date().toISOString();
     const sql = `UPDATE market_analysis SET
         market=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
