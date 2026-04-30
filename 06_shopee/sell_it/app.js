@@ -1671,14 +1671,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             let lowestStr = '-';
             if (lowestKrw > 0) {
                 const lowestLocal = exRate > 0 ? (lowestKrw / exRate).toFixed(2) : '-';
-                lowestStr = `₩ ${Number(lowestKrw).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">${lowestLocal} ${currency}</span>`;
+                lowestStr = `KRW ${Number(lowestKrw).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">${lowestLocal} ${currency}</span>`;
             }
 
             // Actual Price Strings
             let actualStr = '-';
             if (item.actualPrice > 0) {
                 const actualKrw = exRate > 0 ? Math.round(item.actualPrice * exRate) : 0;
-                const actualKrwStr = actualKrw > 0 ? `₩ ${Number(actualKrw).toLocaleString()}` : '-';
+                const actualKrwStr = actualKrw > 0 ? `KRW ${Number(actualKrw).toLocaleString()}` : '-';
                 actualStr = `${actualKrwStr}<br><span class="text-secondary" style="font-size:0.8em;">${item.actualPrice} ${currency}</span>`;
             }
 
@@ -1691,7 +1691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marginKrw = marginLocal * exRate;
                 const marginRate = (marginLocal / item.actualPrice) * 100;
                 
-                const marginKrwStr = `₩ ${Math.round(marginKrw).toLocaleString()}`;
+                const marginKrwStr = `KRW ${Math.round(marginKrw).toLocaleString()}`;
                 const marginLocalStr = `${marginLocal.toFixed(2)} ${currency}`;
                 const marginRateStr = `(${marginRate.toFixed(1)}%)`;
 
@@ -1705,7 +1705,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let exRateStr = '-';
             if (exRate > 0) {
                 const reverseRate = (1 / exRate).toFixed(5);
-                exRateStr = `1 ${currency} = ₩ ${Number(exRate).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">1 ₩ = ${reverseRate} ${currency}</span>`;
+                exRateStr = `1 ${currency} = KRW ${Number(exRate).toLocaleString()}<br><span class="text-secondary" style="font-size:0.8em;">1 KRW = ${reverseRate} ${currency}</span>`;
             }
 
             // Category String
@@ -1832,7 +1832,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marginRateEl = document.getElementById('ma-margin-rate');
 
         if (lowest > 0) {
-            lowestEl.innerText = `₩${Number(lowest).toLocaleString()} (${source})`;
+            lowestEl.innerText = `KRW ${Number(lowest).toLocaleString()} (${source})`;
         } else {
             lowestEl.innerText = '-';
         }
@@ -1851,7 +1851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const marginKrw = marginLocal * exchangeRate;
             const marginRate = (marginLocal / actualPrice) * 100;
             
-            marginEl.innerText = `₩ ${Math.round(marginKrw).toLocaleString()}`;
+            marginEl.innerText = `KRW ${Math.round(marginKrw).toLocaleString()}`;
             if (marginSgdEl) marginSgdEl.innerText = `${marginLocal.toFixed(2)} ${currency}`;
             if (marginRateEl) marginRateEl.innerText = `(${marginRate.toFixed(1)}%)`;
             
