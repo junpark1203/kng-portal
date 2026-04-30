@@ -242,9 +242,7 @@ router.post('/images/upload', upload.single('image'), (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
         const filename = req.file.filename;
-        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
-            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
-            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
+        const baseUrl = `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`;
         const url = baseUrl + '/' + filename;
         res.json({
             message: '업로드 성공',
@@ -264,9 +262,7 @@ router.post('/images/upload-multiple', upload.array('images', 20), (req, res) =>
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
         }
-        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
-            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
-            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
+        const baseUrl = `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`;
         const results = req.files.map(f => ({
             filename: f.filename,
             url: baseUrl + '/' + f.filename,
@@ -332,9 +328,7 @@ router.post('/images/upload-url', async (req, res) => {
         });
 
         const stats = fs.statSync(filePath);
-        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
-            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
-            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
+        const baseUrl = `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`;
         res.json({
             message: '다운로드 성공',
             filename: filename,

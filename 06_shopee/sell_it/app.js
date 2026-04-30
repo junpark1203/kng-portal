@@ -2067,6 +2067,56 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+
+    // --- Helper for Autocomplete Keyboard Navigation ---
+    function attachAutocompleteKeyboardNav(inputEl, listEl) {
+        if (!inputEl || !listEl) return;
+        let currentFocus = -1;
+
+        inputEl.addEventListener('input', () => {
+            currentFocus = -1;
+        });
+
+        inputEl.addEventListener('keydown', (e) => {
+            let x = listEl.getElementsByTagName('li');
+            if (!x || x.length === 0) return;
+            
+            if (e.key === 'ArrowDown') {
+                currentFocus++;
+                addActive(x);
+                if(x[currentFocus]) x[currentFocus].scrollIntoView({block: 'nearest'});
+            } else if (e.key === 'ArrowUp') {
+                currentFocus--;
+                addActive(x);
+                if(x[currentFocus]) x[currentFocus].scrollIntoView({block: 'nearest'});
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                } else if (x.length > 0) { // If no selection, select first item
+                    x[0].click();
+                }
+            }
+        });
+
+        function addActive(x) {
+            if (!x) return false;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add('autocomplete-active');
+        }
+
+        function removeActive(x) {
+            for (let i = 0; i < x.length; i++) {
+                x[i].classList.remove('autocomplete-active');
+            }
+        }
+    }
+
+    attachAutocompleteKeyboardNav(inputCategorySearch, categoryAutocompleteList);
+    attachAutocompleteKeyboardNav(maInputCategorySearch, maCategoryAutocompleteList);
+
     // Hook into nav: when market-analysis view becomes active, load data
     const origNavHandler = navItems;
     navItems.forEach(item => {

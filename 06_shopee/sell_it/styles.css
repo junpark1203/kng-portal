@@ -671,7 +671,7 @@ input[type="checkbox"] {
 .autocomplete-list li:last-child {
   border-bottom: none;
 }
-.autocomplete-list li:hover {
+.autocomplete-list li:hover, .autocomplete-list li.autocomplete-active {
   background: var(--surface-container-lowest);
 }
 .autocomplete-list li .cat-en {
