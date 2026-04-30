@@ -777,3 +777,153 @@ input[type="checkbox"] {
   max-height: 70vh;
   overflow-y: auto;
 }
+
+/* =========================================
+   Market Analysis
+========================================= */
+
+/* Drawer section titles */
+.drawer-section-title {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--surface-container-high);
+}
+
+/* Two-column form rows */
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Form inputs (Market Analysis drawer) */
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--surface-container-high);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-main);
+  background: var(--surface);
+  transition: var(--transition);
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.1);
+  background: var(--surface-container-lowest);
+}
+.form-input::placeholder {
+  color: var(--text-disabled);
+}
+textarea.form-input {
+  resize: vertical;
+}
+.form-select {
+  cursor: pointer;
+  appearance: auto;
+}
+
+/* btn-icon (drawer close, etc) */
+.btn-icon {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-icon:hover {
+  background: var(--surface-container-high);
+  color: var(--text-main);
+}
+
+/* Outline button (delete) */
+.btn-outline {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-outline:hover {
+  background: #dc2626;
+  color: white;
+}
+
+/* Title-md class */
+.title-md {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Table thumbnail image */
+.ma-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-container-low);
+}
+.ma-thumb-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--surface-container-low);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-disabled);
+  font-size: 1rem;
+}
+
+/* Margin indicator styles */
+.margin-positive { color: #059669; font-weight: 700; }
+.margin-negative { color: #dc2626; font-weight: 700; }
+.margin-neutral { color: var(--text-disabled); }
+
+/* MA table row clickable */
+#ma-table-body tr {
+  cursor: pointer;
+}
+
+/* Country flag badge */
+.ma-country-badge {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Empty state */
+.ma-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-disabled);
+}
+.ma-empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+}

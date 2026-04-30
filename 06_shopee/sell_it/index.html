@@ -41,6 +41,7 @@
                     <div class="nav-group-title label-md">Product</div>
                     <ul class="nav-sublinks">
                         <li class="nav-item" data-view="product-list"><a href="#">Product List</a></li>
+                        <li class="nav-item" data-view="market-analysis"><a href="#"><i class="fa-solid fa-magnifying-glass-chart"></i> Market Analysis</a></li>
                         <li class="nav-item" data-view="global-sku"><a href="#">Global SKU</a></li>
                         <li class="nav-item" data-view="shop-sku"><a href="#">Shop SKU</a></li>
                     </ul>
@@ -136,6 +137,52 @@
                     <div class="panel surface-container-lowest">
                         <h3 class="title-sm">Welcome to Sell_it</h3>
                         <p class="body-sm text-secondary">The Financial Architect interface is ready. Select a menu on the left to begin.</p>
+                    </div>
+                </div>
+
+                <!-- Market Analysis View -->
+                <div class="view-section" id="view-market-analysis">
+                    <div class="panel surface-container-lowest">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div>
+                                <h3 class="headline-md" id="ma-title">Market Analysis</h3>
+                                <p class="body-sm text-secondary">경쟁사 상품을 분석하고 마진을 시뮬레이션합니다.</p>
+                            </div>
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <select id="ma-market-filter" class="form-select" style="min-width:120px;">
+                                    <option value="">전체 국가</option>
+                                    <option value="sg">🇸🇬 Singapore</option>
+                                    <option value="my">🇲🇾 Malaysia</option>
+                                    <option value="tw">🇹🇼 Taiwan</option>
+                                    <option value="th">🇹🇭 Thailand</option>
+                                    <option value="ph">🇵🇭 Philippines</option>
+                                    <option value="vn">🇻🇳 Vietnam</option>
+                                    <option value="br">🇧🇷 Brazil</option>
+                                    <option value="mx">🇲🇽 Mexico</option>
+                                </select>
+                                <button class="btn-secondary" id="btn-add-ma"><i class="fa-solid fa-plus"></i> 새 분석 추가</button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="ma-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px;">이미지</th>
+                                        <th>상품명</th>
+                                        <th>국가</th>
+                                        <th>스토어</th>
+                                        <th class="text-right">실제 판매가</th>
+                                        <th class="text-right">국내 최저가</th>
+                                        <th class="text-right">예상 마진</th>
+                                        <th class="text-right">월 판매량</th>
+                                        <th style="text-align:right;">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ma-table-body">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
@@ -752,9 +799,102 @@
         </div>
     </div>
 
+    <!-- Market Analysis Drawer -->
+    <div class="drawer-overlay" id="ma-drawer-overlay"></div>
+    <div class="drawer" id="ma-drawer" style="width:520px;">
+        <div class="drawer-header">
+            <h3 class="title-md" id="ma-drawer-title">새 분석 추가</h3>
+            <button class="btn-icon" id="ma-drawer-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-body">
+            <input type="hidden" id="ma-edit-id">
+
+            <!-- 이미지 업로드 -->
+            <div class="form-group" style="margin-bottom:1.5rem;">
+                <label class="label-md">상품 이미지</label>
+                <div id="ma-image-preview" style="width:100%;height:160px;border:2px dashed var(--outline-variant);border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:0.5rem;background:var(--surface-container-low);cursor:pointer;" title="클릭하여 이미지 업로드">
+                    <span class="body-sm text-secondary" id="ma-image-placeholder"><i class="fa-solid fa-cloud-arrow-up"></i> 클릭 또는 URL 입력</span>
+                    <img id="ma-image-tag" src="" style="display:none;max-width:100%;max-height:100%;object-fit:contain;">
+                </div>
+                <input type="file" id="ma-image-file" accept="image/*" style="display:none;">
+                <input type="text" id="ma-image-url" class="form-input" placeholder="이미지 URL 직접 입력 (Enter로 등록)">
+            </div>
+
+            <!-- 쇼피 정보 -->
+            <div class="drawer-section-title"><i class="fa-solid fa-store"></i> 쇼피 상품 정보</div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">판매 국가</label>
+                    <select id="ma-market" class="form-select">
+                        <option value="sg">🇸🇬 Singapore</option>
+                        <option value="my">🇲🇾 Malaysia</option>
+                        <option value="tw">🇹🇼 Taiwan</option>
+                        <option value="th">🇹🇭 Thailand</option>
+                        <option value="ph">🇵🇭 Philippines</option>
+                        <option value="vn">🇻🇳 Vietnam</option>
+                        <option value="br">🇧🇷 Brazil</option>
+                        <option value="mx">🇲🇽 Mexico</option>
+                    </select>
+                </div>
+                <div class="form-group"><label class="label-md">쇼피 카테고리</label><input type="text" id="ma-category" class="form-input" placeholder="Men Shoes > Sneakers"></div>
+            </div>
+            <div class="form-group"><label class="label-md">상품명</label><input type="text" id="ma-product-name" class="form-input" placeholder="경쟁사 상품명"></div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">스토어명 (판매자)</label><input type="text" id="ma-store-name" class="form-input" placeholder="shopee_store_123"></div>
+                <div class="form-group"><label class="label-md">월 판매량</label><input type="number" id="ma-monthly-sales" class="form-input" placeholder="0" min="0"></div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">리스팅 가격 (현지통화)</label><input type="number" id="ma-listing-price" class="form-input" placeholder="0" min="0" step="0.01"></div>
+                <div class="form-group"><label class="label-md">실제 판매가 (할인 적용)</label><input type="number" id="ma-actual-price" class="form-input" placeholder="0" min="0" step="0.01"></div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">중량 (g)</label><input type="number" id="ma-weight" class="form-input" placeholder="0" min="0"></div>
+                <div class="form-group">
+                    <label class="label-md">셀러 부담 배송비 <span class="body-sm text-secondary">(자동계산)</span></label>
+                    <input type="number" id="ma-seller-shipping" class="form-input" placeholder="국가/중량 입력 시 자동" step="0.01">
+                </div>
+            </div>
+            <div class="form-group"><label class="label-md">쇼피 상품 링크</label><input type="url" id="ma-shopee-url" class="form-input" placeholder="https://shopee.sg/..."></div>
+
+            <!-- 국내 소싱가 -->
+            <div class="drawer-section-title" style="margin-top:1.5rem;"><i class="fa-solid fa-cart-shopping"></i> 국내 소싱가 비교</div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">쿠팡 판매가</label><input type="number" id="ma-coupang-price" class="form-input" placeholder="₩" min="0"></div>
+                <div class="form-group"><label class="label-md">쿠팡 배송비</label><input type="number" id="ma-coupang-shipping" class="form-input" placeholder="₩" min="0"></div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">네이버 판매가</label><input type="number" id="ma-naver-price" class="form-input" placeholder="₩" min="0"></div>
+                <div class="form-group"><label class="label-md">네이버 배송비</label><input type="number" id="ma-naver-shipping" class="form-input" placeholder="₩" min="0"></div>
+            </div>
+            <div class="form-row-2">
+                <div class="form-group"><label class="label-md">쿠팡 링크</label><input type="url" id="ma-coupang-url" class="form-input" placeholder="https://coupang.com/..."></div>
+                <div class="form-group"><label class="label-md">네이버 링크</label><input type="url" id="ma-naver-url" class="form-input" placeholder="https://smartstore.naver.com/..."></div>
+            </div>
+
+            <!-- 예상 마진 -->
+            <div class="drawer-section-title" style="margin-top:1.5rem;"><i class="fa-solid fa-chart-line"></i> 예상 마진 분석</div>
+            <div class="ma-margin-card surface-container-low" style="padding:1rem;border-radius:12px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="label-md">국내 최저 소싱가 (배송비 포함)</span>
+                    <span class="title-md" id="ma-lowest-source">-</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.5rem;">
+                    <span class="label-md">예상 마진</span>
+                    <span class="headline-md" id="ma-estimated-margin" style="font-weight:700;">-</span>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:1rem;"><label class="label-md">메모</label><textarea id="ma-note" class="form-input" rows="2" placeholder="분석 메모..."></textarea></div>
+
+            <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+                <button class="btn-primary" id="ma-save-btn" style="flex:1;"><i class="fa-solid fa-floppy-disk"></i> 저장</button>
+                <button class="btn-outline" id="ma-delete-btn" style="display:none;"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="./categories.js"></script>
-    <script src="./api.js?v=2"></script>
-    <script src="./app.js?v=2"></script>
+    <script src="./api.js?v=3"></script>
+    <script src="./app.js?v=3"></script>
 </body>
 </html>

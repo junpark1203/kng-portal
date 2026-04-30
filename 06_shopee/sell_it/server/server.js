@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const sqlite3 = require('sqlite3').verbose();
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
@@ -67,6 +68,34 @@ const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
+
+// 이미지 업로드 디렉터리 (NAS 볼륨 마운트 또는 로컬)
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+// Multer 설정
+const storage = multer.diskStorage({
+    destination: function(req, file, cb) { cb(null, UPLOAD_DIR); },
+    filename: function(req, file, cb) {
+        const ts = Date.now();
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'MA-' + ts + ext);
+    }
+});
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: function(req, file, cb) {
+        const allowed = /jpeg|jpg|png|gif|webp|bmp/;
+        if (allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype)) return cb(null, true);
+        cb(new Error('이미지 파일만 업로드 가능합니다.'));
+    }
+});
+
+// 이미지 정적 서빙
+app.use('/api/images', express.static(UPLOAD_DIR));
 
 // SQLite DB 연결
 const dbFile = path.join(dataDir, 'sell_it.db');
@@ -157,6 +186,36 @@ function initDb() {
         `, (err) => {
             if (err) console.error('shipping_presets 테이블 생성 오류:', err.message);
             else console.log('shipping_presets 테이블 확인 완료');
+        });
+
+        // Market Analysis (경쟁사 분석)
+        db.run(`
+            CREATE TABLE IF NOT EXISTS market_analysis (
+                id TEXT PRIMARY KEY,
+                market TEXT DEFAULT 'sg',
+                shopeeCategory TEXT,
+                productName TEXT,
+                storeName TEXT,
+                listingPrice REAL DEFAULT 0,
+                actualPrice REAL DEFAULT 0,
+                weight INTEGER DEFAULT 0,
+                sellerShipping REAL DEFAULT 0,
+                monthlySales INTEGER DEFAULT 0,
+                coupangPrice REAL DEFAULT 0,
+                coupangShipping REAL DEFAULT 0,
+                naverPrice REAL DEFAULT 0,
+                naverShipping REAL DEFAULT 0,
+                shopeeUrl TEXT,
+                coupangUrl TEXT,
+                naverUrl TEXT,
+                imageUrl TEXT,
+                note TEXT,
+                createdAt TEXT,
+                updatedAt TEXT
+            )
+        `, (err) => {
+            if (err) console.error('market_analysis 테이블 생성 오류:', err.message);
+            else console.log('market_analysis 테이블 확인 완료');
         });
     });
 }
@@ -464,6 +523,144 @@ app.delete('/api/shipping-presets/:id', (req, res) => {
         if (this.changes === 0) return res.status(404).json({ error: '프리셋을 찾을 수 없습니다.' });
         res.json({ message: '삭제 성공' });
     });
+});
+
+// ==========================================
+// Market Analysis API
+// ==========================================
+
+// 전체 조회 (필터: ?market=sg)
+app.get('/api/market-analysis', (req, res) => {
+    const market = req.query.market;
+    let sql = 'SELECT * FROM market_analysis';
+    let params = [];
+    if (market) {
+        sql += ' WHERE market = ?';
+        params.push(market);
+    }
+    sql += ' ORDER BY createdAt DESC';
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 단일 조회
+app.get('/api/market-analysis/:id', (req, res) => {
+    db.get('SELECT * FROM market_analysis WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '분석 데이터를 찾을 수 없습니다.' });
+        res.json(row);
+    });
+});
+
+// 등록
+app.post('/api/market-analysis', (req, res) => {
+    const d = req.body;
+    const id = d.id || ('MA-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO market_analysis
+        (id, market, shopeeCategory, productName, storeName, listingPrice, actualPrice,
+         weight, sellerShipping, monthlySales, coupangPrice, coupangShipping,
+         naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, note, createdAt, updatedAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+    const params = [
+        id, d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
+        d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
+        d.coupangPrice||0, d.coupangShipping||0, d.naverPrice||0, d.naverShipping||0,
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', d.note||'', now, now
+    ];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id: id });
+    });
+});
+
+// 수정
+app.put('/api/market-analysis/:id', (req, res) => {
+    const id = req.params.id;
+    const d = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE market_analysis SET
+        market=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
+        weight=?, sellerShipping=?, monthlySales=?, coupangPrice=?, coupangShipping=?,
+        naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, note=?, updatedAt=?
+        WHERE id=?`;
+    const params = [
+        d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
+        d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
+        d.coupangPrice||0, d.coupangShipping||0, d.naverPrice||0, d.naverShipping||0,
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', d.note||'', now, id
+    ];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '분석 데이터를 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 삭제
+app.delete('/api/market-analysis/:id', (req, res) => {
+    db.run('DELETE FROM market_analysis WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '분석 데이터를 찾을 수 없습니다.' });
+        res.json({ message: '삭제 성공' });
+    });
+});
+
+// 이미지 업로드 (파일)
+app.post('/api/market-analysis/upload-image', upload.single('image'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
+        const filename = req.file.filename;
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        const url = imgBase + '/api/images/' + filename;
+        res.json({ message: '업로드 성공', filename, url, size: req.file.size });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 이미지 업로드 (URL 다운로드)
+app.post('/api/market-analysis/upload-image-url', async (req, res) => {
+    try {
+        const { url } = req.body;
+        if (!url) return res.status(400).json({ error: 'URL이 필요합니다.' });
+        const ext = path.extname(new URL(url).pathname).toLowerCase() || '.jpg';
+        const filename = 'MA-' + Date.now() + ext;
+        const filePath = path.join(UPLOAD_DIR, filename);
+        const protocol = url.startsWith('https') ? require('https') : require('http');
+        await new Promise((resolve, reject) => {
+            const request = protocol.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (response) => {
+                if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                    const rProto = response.headers.location.startsWith('https') ? require('https') : require('http');
+                    rProto.get(response.headers.location, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (r2) => {
+                        const ws = fs.createWriteStream(filePath); r2.pipe(ws); ws.on('finish', () => { ws.close(); resolve(); }); ws.on('error', reject);
+                    }).on('error', reject);
+                    return;
+                }
+                if (response.statusCode !== 200) { reject(new Error('HTTP ' + response.statusCode)); return; }
+                const ws = fs.createWriteStream(filePath); response.pipe(ws); ws.on('finish', () => { ws.close(); resolve(); }); ws.on('error', reject);
+            });
+            request.on('error', reject);
+            request.setTimeout(15000, () => { request.destroy(); reject(new Error('타임아웃')); });
+        });
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        res.json({ message: '다운로드 성공', filename, url: imgBase + '/api/images/' + filename, size: fs.statSync(filePath).size });
+    } catch (err) {
+        res.status(500).json({ error: 'URL 다운로드 실패: ' + err.message });
+    }
+});
+
+// 이미지 삭제
+app.delete('/api/images/:filename', (req, res) => {
+    const filePath = path.join(UPLOAD_DIR, req.params.filename);
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        res.json({ message: '삭제 성공' });
+    } else {
+        res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
+    }
 });
 
 // ==========================================

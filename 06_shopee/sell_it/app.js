@@ -1540,5 +1540,333 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial Render
     if(typeof renderSettingsShippingTable === 'function') renderSettingsShippingTable();
 
+    // ==========================================
+    // MARKET ANALYSIS MODULE
+    // ==========================================
+    let maData = []; // cached market analysis items
+
+    const MARKET_FLAGS = {
+        sg: '🇸🇬', my: '🇲🇾', tw: '🇹🇼', th: '🇹🇭',
+        ph: '🇵🇭', vn: '🇻🇳', br: '🇧🇷', mx: '🇲🇽'
+    };
+
+    // --- Shipping cost calculation using shipping_presets ---
+    function calcSellerShipping(weight, market) {
+        if (!weight || weight <= 0) return 0;
+        // Find default shipping preset for the given market
+        const preset = shippingPresets.find(p => p.market === market && p.isDefault);
+        if (!preset || !preset.settings) return 0; // No preset yet for this country
+        const s = preset.settings;
+        let total = 0;
+        if (weight <= 50) total = s.tier1Base || 0;
+        else if (weight <= 1000) total = (s.tier1Base || 0) + (Math.ceil((weight - 50) / 10) * (s.tier2Add || 0));
+        else total = (s.tier3Base || 0) + (Math.ceil((weight - 1000) / 100) * (s.tier3Add || 0));
+        return Math.max(0, total - (s.rebate || 0));
+    }
+
+    // --- Load & Render Table ---
+    async function loadMarketAnalysis() {
+        const filter = document.getElementById('ma-market-filter')?.value || '';
+        try {
+            maData = await api.getMarketAnalysis(filter || undefined);
+        } catch (err) {
+            console.error('[MA] Load failed:', err);
+            maData = [];
+        }
+        renderMATable();
+    }
+
+    function renderMATable() {
+        const tbody = document.getElementById('ma-table-body');
+        if (!tbody) return;
+
+        if (maData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                <div>분석 데이터가 없습니다.<br>\"새 분석 추가\" 버튼을 눌러 시작하세요.</div>
+            </td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = maData.map(item => {
+            const flag = MARKET_FLAGS[item.market] || item.market;
+            // Lowest domestic price (incl shipping)
+            const cTotal = (item.coupangPrice || 0) + (item.coupangShipping || 0);
+            const nTotal = (item.naverPrice || 0) + (item.naverShipping || 0);
+            let lowestKrw = 0;
+            if (cTotal > 0 && nTotal > 0) lowestKrw = Math.min(cTotal, nTotal);
+            else lowestKrw = cTotal || nTotal || 0;
+
+            const lowestStr = lowestKrw > 0 ? `₩${Number(lowestKrw).toLocaleString()}` : '-';
+
+            // Simple margin indication (placeholder — can be refined)
+            let marginStr = '-';
+            let marginClass = 'margin-neutral';
+            if (item.actualPrice > 0 && lowestKrw > 0) {
+                // Very rough: diff between sell price and source cost converted
+                marginStr = '분석 필요';
+            }
+
+            const imgHtml = item.imageUrl
+                ? `<img src="${item.imageUrl}" class="ma-thumb" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="ma-thumb-placeholder" style="display:none"><i class="fa-solid fa-image"></i></div>`
+                : `<div class="ma-thumb-placeholder"><i class="fa-solid fa-image"></i></div>`;
+
+            return `<tr data-id="${item.id}">
+                <td>${imgHtml}</td>
+                <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.productName || ''}">${item.productName || '-'}</td>
+                <td><span class="ma-country-badge">${flag} ${(item.market||'').toUpperCase()}</span></td>
+                <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.storeName || '-'}</td>
+                <td class="text-right" style="font-weight:600;">${item.actualPrice || '-'}</td>
+                <td class="text-right">${lowestStr}</td>
+                <td class="text-right"><span class="${marginClass}">${marginStr}</span></td>
+                <td class="text-right">${item.monthlySales || '-'}</td>
+                <td style="text-align:right;">
+                    <button class="btn-secondary ma-edit-btn" data-id="${item.id}" style="padding:4px 10px;font-size:0.75rem;">상세</button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    // --- Drawer Management ---
+    const maDrawer = document.getElementById('ma-drawer');
+    const maOverlay = document.getElementById('ma-drawer-overlay');
+
+    function openMADrawer(item) {
+        if (!maDrawer) return;
+        const isEdit = !!item;
+        document.getElementById('ma-drawer-title').innerText = isEdit ? '분석 상세/수정' : '새 분석 추가';
+        document.getElementById('ma-edit-id').value = isEdit ? item.id : '';
+        document.getElementById('ma-market').value = isEdit ? (item.market || 'sg') : 'sg';
+        document.getElementById('ma-category').value = isEdit ? (item.shopeeCategory || '') : '';
+        document.getElementById('ma-product-name').value = isEdit ? (item.productName || '') : '';
+        document.getElementById('ma-store-name').value = isEdit ? (item.storeName || '') : '';
+        document.getElementById('ma-monthly-sales').value = isEdit ? (item.monthlySales || '') : '';
+        document.getElementById('ma-listing-price').value = isEdit ? (item.listingPrice || '') : '';
+        document.getElementById('ma-actual-price').value = isEdit ? (item.actualPrice || '') : '';
+        document.getElementById('ma-weight').value = isEdit ? (item.weight || '') : '';
+        document.getElementById('ma-seller-shipping').value = isEdit ? (item.sellerShipping || '') : '';
+        document.getElementById('ma-shopee-url').value = isEdit ? (item.shopeeUrl || '') : '';
+        document.getElementById('ma-coupang-price').value = isEdit ? (item.coupangPrice || '') : '';
+        document.getElementById('ma-coupang-shipping').value = isEdit ? (item.coupangShipping || '') : '';
+        document.getElementById('ma-naver-price').value = isEdit ? (item.naverPrice || '') : '';
+        document.getElementById('ma-naver-shipping').value = isEdit ? (item.naverShipping || '') : '';
+        document.getElementById('ma-coupang-url').value = isEdit ? (item.coupangUrl || '') : '';
+        document.getElementById('ma-naver-url').value = isEdit ? (item.naverUrl || '') : '';
+        document.getElementById('ma-note').value = isEdit ? (item.note || '') : '';
+        document.getElementById('ma-image-url').value = '';
+
+        // Image
+        const imgTag = document.getElementById('ma-image-tag');
+        const imgPlaceholder = document.getElementById('ma-image-placeholder');
+        if (isEdit && item.imageUrl) {
+            imgTag.src = item.imageUrl;
+            imgTag.style.display = 'block';
+            imgPlaceholder.style.display = 'none';
+        } else {
+            imgTag.src = '';
+            imgTag.style.display = 'none';
+            imgPlaceholder.style.display = 'flex';
+        }
+
+        // Delete button
+        document.getElementById('ma-delete-btn').style.display = isEdit ? 'block' : 'none';
+
+        maDrawer.classList.add('active');
+        maOverlay.classList.add('active');
+        updateMAMarginDisplay();
+    }
+
+    function closeMADrawer() {
+        maDrawer?.classList.remove('active');
+        maOverlay?.classList.remove('active');
+    }
+
+    // --- Auto-calc shipping when market or weight changes ---
+    function autoCalcShipping() {
+        const market = document.getElementById('ma-market')?.value || 'sg';
+        const weight = parseInt(document.getElementById('ma-weight')?.value) || 0;
+        const shipping = calcSellerShipping(weight, market);
+        const el = document.getElementById('ma-seller-shipping');
+        if (el) el.value = shipping > 0 ? shipping.toFixed(2) : '';
+        updateMAMarginDisplay();
+    }
+
+    // --- Margin display ---
+    function updateMAMarginDisplay() {
+        const coupangPrice = parseFloat(document.getElementById('ma-coupang-price')?.value) || 0;
+        const coupangShip = parseFloat(document.getElementById('ma-coupang-shipping')?.value) || 0;
+        const naverPrice = parseFloat(document.getElementById('ma-naver-price')?.value) || 0;
+        const naverShip = parseFloat(document.getElementById('ma-naver-shipping')?.value) || 0;
+
+        const cTotal = coupangPrice + coupangShip;
+        const nTotal = naverPrice + naverShip;
+        let lowest = 0;
+        let source = '';
+        if (cTotal > 0 && nTotal > 0) {
+            lowest = Math.min(cTotal, nTotal);
+            source = cTotal <= nTotal ? '쿠팡' : '네이버';
+        } else if (cTotal > 0) { lowest = cTotal; source = '쿠팡'; }
+        else if (nTotal > 0) { lowest = nTotal; source = '네이버'; }
+
+        const lowestEl = document.getElementById('ma-lowest-source');
+        const marginEl = document.getElementById('ma-estimated-margin');
+
+        if (lowest > 0) {
+            lowestEl.innerText = `₩${Number(lowest).toLocaleString()} (${source})`;
+        } else {
+            lowestEl.innerText = '-';
+        }
+
+        const actualPrice = parseFloat(document.getElementById('ma-actual-price')?.value) || 0;
+        const sellerShip = parseFloat(document.getElementById('ma-seller-shipping')?.value) || 0;
+
+        if (actualPrice > 0 && lowest > 0) {
+            // Very simplified margin estimation
+            // Revenue: actualPrice (local currency)
+            // Cost: lowest KRW → needs exchange rate conversion
+            // For now show just cost comparison indicator
+            marginEl.innerText = `소싱가 ₩${lowest.toLocaleString()} / 판매가 ${actualPrice}`;
+            marginEl.style.color = '';
+        } else {
+            marginEl.innerText = '-';
+            marginEl.style.color = '';
+        }
+    }
+
+    // --- Save / Update ---
+    async function saveMAItem() {
+        const editId = document.getElementById('ma-edit-id')?.value;
+        const data = {
+            market: document.getElementById('ma-market')?.value || 'sg',
+            shopeeCategory: document.getElementById('ma-category')?.value || '',
+            productName: document.getElementById('ma-product-name')?.value || '',
+            storeName: document.getElementById('ma-store-name')?.value || '',
+            monthlySales: parseInt(document.getElementById('ma-monthly-sales')?.value) || 0,
+            listingPrice: parseFloat(document.getElementById('ma-listing-price')?.value) || 0,
+            actualPrice: parseFloat(document.getElementById('ma-actual-price')?.value) || 0,
+            weight: parseInt(document.getElementById('ma-weight')?.value) || 0,
+            sellerShipping: parseFloat(document.getElementById('ma-seller-shipping')?.value) || 0,
+            shopeeUrl: document.getElementById('ma-shopee-url')?.value || '',
+            coupangPrice: parseFloat(document.getElementById('ma-coupang-price')?.value) || 0,
+            coupangShipping: parseFloat(document.getElementById('ma-coupang-shipping')?.value) || 0,
+            naverPrice: parseFloat(document.getElementById('ma-naver-price')?.value) || 0,
+            naverShipping: parseFloat(document.getElementById('ma-naver-shipping')?.value) || 0,
+            coupangUrl: document.getElementById('ma-coupang-url')?.value || '',
+            naverUrl: document.getElementById('ma-naver-url')?.value || '',
+            note: document.getElementById('ma-note')?.value || '',
+            imageUrl: document.getElementById('ma-image-tag')?.src || ''
+        };
+        // Don't save empty/blob image src
+        if (data.imageUrl === '' || data.imageUrl === window.location.href) data.imageUrl = '';
+
+        try {
+            if (editId) {
+                await api.updateMarketAnalysis(editId, data);
+            } else {
+                await api.createMarketAnalysis(data);
+            }
+            closeMADrawer();
+            loadMarketAnalysis();
+        } catch (err) {
+            alert('저장 실패: ' + err.message);
+        }
+    }
+
+    // --- Delete ---
+    async function deleteMAItem() {
+        const editId = document.getElementById('ma-edit-id')?.value;
+        if (!editId) return;
+        if (!confirm('이 분석 데이터를 삭제하시겠습니까?')) return;
+        try {
+            await api.deleteMarketAnalysis(editId);
+            closeMADrawer();
+            loadMarketAnalysis();
+        } catch (err) {
+            alert('삭제 실패: ' + err.message);
+        }
+    }
+
+    // --- Image upload handlers ---
+    document.getElementById('ma-image-preview')?.addEventListener('click', () => {
+        document.getElementById('ma-image-file')?.click();
+    });
+
+    document.getElementById('ma-image-file')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const result = await api.uploadMarketAnalysisImage(file);
+            const imgTag = document.getElementById('ma-image-tag');
+            imgTag.src = result.url;
+            imgTag.style.display = 'block';
+            document.getElementById('ma-image-placeholder').style.display = 'none';
+        } catch (err) {
+            alert('이미지 업로드 실패: ' + err.message);
+        }
+        e.target.value = ''; // reset
+    });
+
+    document.getElementById('ma-image-url')?.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const url = e.target.value.trim();
+        if (!url) return;
+        try {
+            const result = await api.uploadMarketAnalysisImageUrl(url);
+            const imgTag = document.getElementById('ma-image-tag');
+            imgTag.src = result.url;
+            imgTag.style.display = 'block';
+            document.getElementById('ma-image-placeholder').style.display = 'none';
+            e.target.value = '';
+        } catch (err) {
+            // Fallback: just use URL directly
+            const imgTag = document.getElementById('ma-image-tag');
+            imgTag.src = url;
+            imgTag.style.display = 'block';
+            document.getElementById('ma-image-placeholder').style.display = 'none';
+            e.target.value = '';
+        }
+    });
+
+    // --- Event Listeners ---
+    document.getElementById('btn-add-ma')?.addEventListener('click', () => openMADrawer(null));
+    document.getElementById('ma-drawer-close')?.addEventListener('click', closeMADrawer);
+    document.getElementById('ma-drawer-overlay')?.addEventListener('click', closeMADrawer);
+    document.getElementById('ma-save-btn')?.addEventListener('click', saveMAItem);
+    document.getElementById('ma-delete-btn')?.addEventListener('click', deleteMAItem);
+    document.getElementById('ma-market-filter')?.addEventListener('change', loadMarketAnalysis);
+
+    // Auto-calc shipping on market or weight change
+    document.getElementById('ma-market')?.addEventListener('change', autoCalcShipping);
+    document.getElementById('ma-weight')?.addEventListener('input', autoCalcShipping);
+
+    // Update margin display on domestic price changes
+    ['ma-coupang-price', 'ma-coupang-shipping', 'ma-naver-price', 'ma-naver-shipping', 'ma-actual-price', 'ma-seller-shipping'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateMAMarginDisplay);
+    });
+
+    // Table row click → open drawer
+    document.getElementById('ma-table-body')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ma-edit-btn');
+        const tr = e.target.closest('tr[data-id]');
+        if (btn || tr) {
+            const id = btn ? btn.getAttribute('data-id') : tr.getAttribute('data-id');
+            const item = maData.find(d => d.id === id);
+            if (item) openMADrawer(item);
+        }
+    });
+
+    // Hook into nav: when market-analysis view becomes active, load data
+    const origNavHandler = navItems;
+    navItems.forEach(item => {
+        const origHandler = item._maHandler;
+        item.addEventListener('click', () => {
+            const viewId = item.getAttribute('data-view');
+            if (viewId === 'market-analysis') {
+                loadMarketAnalysis();
+            }
+        });
+    });
+
     // renderPriceCalcGrid는 nav 핸들러 이전으로 이동됨 (line ~105)
 });

@@ -166,6 +166,52 @@
         },
 
         // ==========================================
+        // Market Analysis
+        // ==========================================
+        async getMarketAnalysis(market) {
+            const query = market ? `?market=${market}&_t=${Date.now()}` : `?_t=${Date.now()}`;
+            return request(`/market-analysis${query}`);
+        },
+
+        async getMarketAnalysisById(id) {
+            return request(`/market-analysis/${id}?_t=${Date.now()}`);
+        },
+
+        async createMarketAnalysis(data) {
+            return request('/market-analysis', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        },
+
+        async updateMarketAnalysis(id, data) {
+            return request(`/market-analysis/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        },
+
+        async deleteMarketAnalysis(id) {
+            return request(`/market-analysis/${id}`, { method: 'DELETE' });
+        },
+
+        async uploadMarketAnalysisImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            const url = `${API_BASE}/market-analysis/upload-image`;
+            const res = await fetch(url, { method: 'POST', body: formData });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
+            return res.json();
+        },
+
+        async uploadMarketAnalysisImageUrl(imageUrl) {
+            return request('/market-analysis/upload-image-url', {
+                method: 'POST',
+                body: JSON.stringify({ url: imageUrl })
+            });
+        },
+
+        // ==========================================
         // Health Check
         // ==========================================
         async health() {
