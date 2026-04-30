@@ -1648,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (maData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="ma-empty-state">
+            tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
                 <div>분석 데이터가 없습니다.<br>"Add New" 버튼을 눌러 시작하세요.</div>
             </td></tr>`;
             return;
@@ -1728,7 +1728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cat2 = parts[1];
             }
 
-            return `<tr data-id="${item.id}">
+            return `<tr data-id="${item.id}" class="ma-row" style="cursor: pointer;">
                 <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
@@ -1741,9 +1741,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="text-right">${marginStr}</td>
                 <td class="text-right">${exRateStr}</td>
                 <td class="text-right">${item.monthlySales || '-'}</td>
-                <td style="text-align:right;">
-                    <button class="btn-secondary ma-edit-btn" data-id="${item.id}" style="padding:4px 10px;font-size:0.75rem;">상세</button>
-                </td>
             </tr>`;
         }).join('');
     }
