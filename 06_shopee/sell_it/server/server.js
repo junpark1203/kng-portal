@@ -286,11 +286,9 @@ async function fetchExchangeRates() {
 // Fetch immediately on startup
 fetchExchangeRates();
 
-// Schedule to run every day at 08:00 AM KST
-cron.schedule('0 8 * * *', () => {
+// Schedule to run every day at 08:00 AM KST (23:00 UTC)
+cron.schedule('0 23 * * *', () => {
     fetchExchangeRates();
-}, {
-    timezone: "Asia/Seoul"
 });
 
 app.get('/api/exchange-rates', (req, res) => {
