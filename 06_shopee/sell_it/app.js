@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentMAImages = [];
     let currentMAVideoUrl = '';
+    let maData = []; // cached market analysis items (상단 선언으로 TDZ 방지)
 
     function renderMAImageGrid() {
         const grid = document.getElementById('ma-image-grid');
@@ -1601,7 +1602,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ==========================================
     // MARKET ANALYSIS MODULE
     // ==========================================
-    let maData = []; // cached market analysis items
+    // maData는 상단에서 선언됨 (TDZ 방지)
 
     const MARKET_FLAGS = {
         sg: '🇸🇬', my: '🇲🇾', tw: '🇹🇼', th: '🇹🇭',
