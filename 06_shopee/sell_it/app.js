@@ -1753,15 +1753,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             shopeeUrl: document.getElementById('ma-shopee-url')?.value || '',
             coupangPrice: parseFloat(document.getElementById('ma-coupang-price')?.value) || 0,
             coupangShipping: parseFloat(document.getElementById('ma-coupang-shipping')?.value) || 0,
+            coupangRocket: document.getElementById('ma-coupang-rocket')?.checked ? 1 : 0,
             naverPrice: parseFloat(document.getElementById('ma-naver-price')?.value) || 0,
             naverShipping: parseFloat(document.getElementById('ma-naver-shipping')?.value) || 0,
             coupangUrl: document.getElementById('ma-coupang-url')?.value || '',
             naverUrl: document.getElementById('ma-naver-url')?.value || '',
             note: document.getElementById('ma-note')?.value || '',
-            imageUrl: document.getElementById('ma-image-tag')?.src || ''
+            imageUrls: currentMAImages,
+            videoUrl: currentMAVideoUrl
         };
-        // Don't save empty/blob image src
-        if (data.imageUrl === '' || data.imageUrl === window.location.href) data.imageUrl = '';
 
         try {
             if (editId) {
@@ -1790,46 +1790,74 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // --- Image upload handlers ---
-    document.getElementById('ma-image-preview')?.addEventListener('click', () => {
+    // --- Image/Video upload handlers ---
+    document.getElementById('ma-image-add-btn')?.addEventListener('click', () => {
         document.getElementById('ma-image-file')?.click();
     });
 
     document.getElementById('ma-image-file')?.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-            const result = await api.uploadMarketAnalysisImage(file);
-            const imgTag = document.getElementById('ma-image-tag');
-            imgTag.src = result.url;
-            imgTag.style.display = 'block';
-            document.getElementById('ma-image-placeholder').style.display = 'none';
-        } catch (err) {
-            alert('이미지 업로드 실패: ' + err.message);
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        
+        for(let i = 0; i < files.length; i++) {
+            if (currentMAImages.length >= 9) {
+                alert('이미지는 최대 9장까지만 업로드 가능합니다.');
+                break;
+            }
+            try {
+                const result = await api.uploadMarketAnalysisImage(files[i]);
+                currentMAImages.push(result.url);
+            } catch (err) {
+                alert('이미지 업로드 실패: ' + err.message);
+            }
         }
+        renderMAImageGrid();
         e.target.value = ''; // reset
     });
 
-    document.getElementById('ma-image-url')?.addEventListener('keydown', async (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const url = e.target.value.trim();
-        if (!url) return;
-        try {
-            const result = await api.uploadMarketAnalysisImageUrl(url);
-            const imgTag = document.getElementById('ma-image-tag');
-            imgTag.src = result.url;
-            imgTag.style.display = 'block';
-            document.getElementById('ma-image-placeholder').style.display = 'none';
+    document.getElementById('ma-video-preview')?.addEventListener('click', () => {
+        document.getElementById('ma-video-file')?.click();
+    });
+
+    document.getElementById('ma-video-file')?.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Validation
+        if (file.size > 30 * 1024 * 1024) {
+            alert('동영상 크기는 30MB를 초과할 수 없습니다.');
             e.target.value = '';
-        } catch (err) {
-            // Fallback: just use URL directly
-            const imgTag = document.getElementById('ma-image-tag');
-            imgTag.src = url;
-            imgTag.style.display = 'block';
-            document.getElementById('ma-image-placeholder').style.display = 'none';
-            e.target.value = '';
+            return;
         }
+        
+        // Check duration using temp video element
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.onloadedmetadata = async function() {
+            window.URL.revokeObjectURL(video.src);
+            const duration = video.duration;
+            if (duration < 10 || duration > 60) {
+                alert(`동영상 길이는 10초에서 60초 사이여야 합니다. (현재: ${Math.round(duration)}초)`);
+                e.target.value = '';
+                return;
+            }
+            
+            // Validation passed, upload
+            try {
+                const result = await api.uploadMarketAnalysisVideo(file);
+                currentMAVideoUrl = result.url;
+                renderMAVideo();
+            } catch (err) {
+                alert('동영상 업로드 실패: ' + err.message);
+            }
+            e.target.value = '';
+        };
+        video.src = URL.createObjectURL(file);
+    });
+
+    document.getElementById('ma-video-remove-btn')?.addEventListener('click', () => {
+        currentMAVideoUrl = '';
+        renderMAVideo();
     });
 
     // --- MA Category Autocomplete ---

@@ -94,6 +94,18 @@ const upload = multer({
     }
 });
 
+const videoUpload = multer({
+    storage: storage,
+    limits: { fileSize: 30 * 1024 * 1024 },
+    fileFilter: function(req, file, cb) {
+        if (path.extname(file.originalname).toLowerCase() === '.mp4' && file.mimetype === 'video/mp4') {
+            return cb(null, true);
+        }
+        cb(new Error('MP4 동영상 파일만 업로드 가능합니다. (최대 30MB)'));
+    }
+});
+
+
 // 이미지 정적 서빙
 app.use('/api/images', express.static(UPLOAD_DIR));
 
@@ -215,7 +227,17 @@ function initDb() {
             )
         `, (err) => {
             if (err) console.error('market_analysis 테이블 생성 오류:', err.message);
-            else console.log('market_analysis 테이블 확인 완료');
+            else {
+                console.log('market_analysis 테이블 확인 완료');
+                const cols = [
+                    "ALTER TABLE market_analysis ADD COLUMN imageUrls TEXT",
+                    "ALTER TABLE market_analysis ADD COLUMN videoUrl TEXT",
+                    "ALTER TABLE market_analysis ADD COLUMN coupangRocket INTEGER DEFAULT 0"
+                ];
+                cols.forEach(sql => {
+                    db.run(sql, (e) => {});
+                });
+            }
         });
     });
 }
@@ -555,26 +577,20 @@ app.get('/api/market-analysis/:id', (req, res) => {
 });
 
 // 이미지 임시 파일명 규칙에 맞게 변경하는 헬퍼 함수
-function processMarketAnalysisImageSync(d) {
-    if (!d.imageUrl || !d.imageUrl.includes('/api/images/MA-')) return d.imageUrl;
+function processMarketAnalysisMediaSync(d) {
+    const market = (d.market || 'XX').toUpperCase();
+    const storeName = (d.storeName || 'Unknown').replace(/[^a-zA-Z0-9가-힣_]/g, '');
     
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const dateFormatted = `${yy}${mm}${dd}`;
+
+    let maxSeq = 0;
     try {
-        const oldFilename = d.imageUrl.split('/api/images/').pop();
-        const oldPath = path.join(UPLOAD_DIR, oldFilename);
-        if (!fs.existsSync(oldPath)) return d.imageUrl;
-
-        const market = (d.market || 'XX').toUpperCase();
-        const storeName = (d.storeName || 'Unknown').replace(/[^a-zA-Z0-9가-힣_]/g, '');
-        
-        const now = new Date();
-        const yy = String(now.getFullYear()).slice(-2);
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const dateFormatted = `${yy}${mm}${dd}`;
-
-        let maxSeq = 0;
         const files = fs.readdirSync(UPLOAD_DIR);
-        const regex = new RegExp(`-${dateFormatted}-(\\d{3})-(\\d{2})\\.[a-zA-Z0-9]+$`);
+        const regex = new RegExp(`-${dateFormatted}-(\\d{3})-[0-9V]+\\.[a-zA-Z0-9]+$`);
         files.forEach(f => {
             const match = f.match(regex);
             if (match) {
@@ -582,38 +598,66 @@ function processMarketAnalysisImageSync(d) {
                 if (seq > maxSeq) maxSeq = seq;
             }
         });
-        
-        const dailySeq = String(maxSeq + 1).padStart(3, '0');
-        const imageSeq = '01';
-        
-        const ext = path.extname(oldFilename);
-        const newFilename = `${market}-${storeName}-${dateFormatted}-${dailySeq}-${imageSeq}${ext}`;
-        const newPath = path.join(UPLOAD_DIR, newFilename);
-        
-        fs.renameSync(oldPath, newPath);
-        return d.imageUrl.replace(oldFilename, newFilename);
-    } catch (e) {
-        console.error('이미지 파일명 변경 실패:', e);
-        return d.imageUrl;
+    } catch (e) {}
+
+    let needsRename = false;
+    if (d.imageUrl && d.imageUrl.includes('/api/images/MA-')) needsRename = true;
+    if (d.imageUrls && Array.isArray(d.imageUrls)) {
+        d.imageUrls.forEach(url => { if (url && url.includes('/api/images/MA-')) needsRename = true; });
     }
+    if (d.videoUrl && d.videoUrl.includes('/api/images/MA-')) needsRename = true;
+
+    if (!needsRename) return;
+
+    const dailySeq = String(maxSeq + 1).padStart(3, '0');
+    
+    const renameFile = (url, suffix) => {
+        if (!url || !url.includes('/api/images/MA-')) return url;
+        try {
+            const oldFilename = url.split('/api/images/').pop();
+            const oldPath = path.join(UPLOAD_DIR, oldFilename);
+            if (!fs.existsSync(oldPath)) return url;
+            
+            const ext = path.extname(oldFilename);
+            const newFilename = `${market}-${storeName}-${dateFormatted}-${dailySeq}-${suffix}${ext}`;
+            const newPath = path.join(UPLOAD_DIR, newFilename);
+            
+            fs.renameSync(oldPath, newPath);
+            return url.replace(oldFilename, newFilename);
+        } catch (e) {
+            return url;
+        }
+    };
+
+    if (d.imageUrl) d.imageUrl = renameFile(d.imageUrl, '01');
+    if (d.imageUrls && Array.isArray(d.imageUrls)) {
+        d.imageUrls = d.imageUrls.map((url, idx) => renameFile(url, String(idx + 1).padStart(2, '0')));
+    }
+    if (d.videoUrl) d.videoUrl = renameFile(d.videoUrl, 'V01');
 }
+
+
 
 // 등록
 app.post('/api/market-analysis', (req, res) => {
     const d = req.body;
-    d.imageUrl = processMarketAnalysisImageSync(d);
+    processMarketAnalysisMediaSync(d);
     const id = d.id || ('MA-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
+    const imageUrlsStr = Array.isArray(d.imageUrls) ? JSON.stringify(d.imageUrls) : '[]';
+    const coupangRocket = d.coupangRocket ? 1 : 0;
+    
     const sql = `INSERT INTO market_analysis
         (id, market, shopeeCategory, productName, storeName, listingPrice, actualPrice,
-         weight, sellerShipping, monthlySales, coupangPrice, coupangShipping,
-         naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, note, createdAt, updatedAt)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+         weight, sellerShipping, monthlySales, coupangPrice, coupangShipping, coupangRocket,
+         naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, imageUrls, videoUrl, note, createdAt, updatedAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const params = [
         id, d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
-        d.coupangPrice||0, d.coupangShipping||0, d.naverPrice||0, d.naverShipping||0,
-        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', d.note||'', now, now
+        d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
+        d.naverPrice||0, d.naverShipping||0,
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', now, now
     ];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -625,18 +669,22 @@ app.post('/api/market-analysis', (req, res) => {
 app.put('/api/market-analysis/:id', (req, res) => {
     const id = req.params.id;
     const d = req.body;
-    d.imageUrl = processMarketAnalysisImageSync(d);
+    processMarketAnalysisMediaSync(d);
     const now = new Date().toISOString();
+    const imageUrlsStr = Array.isArray(d.imageUrls) ? JSON.stringify(d.imageUrls) : '[]';
+    const coupangRocket = d.coupangRocket ? 1 : 0;
+    
     const sql = `UPDATE market_analysis SET
         market=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
-        weight=?, sellerShipping=?, monthlySales=?, coupangPrice=?, coupangShipping=?,
-        naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, note=?, updatedAt=?
+        weight=?, sellerShipping=?, monthlySales=?, coupangPrice=?, coupangShipping=?, coupangRocket=?,
+        naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, imageUrls=?, videoUrl=?, note=?, updatedAt=?
         WHERE id=?`;
     const params = [
         d.market||'sg', d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
-        d.coupangPrice||0, d.coupangShipping||0, d.naverPrice||0, d.naverShipping||0,
-        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', d.note||'', now, id
+        d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
+        d.naverPrice||0, d.naverShipping||0,
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', now, id
     ];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -658,6 +706,19 @@ app.delete('/api/market-analysis/:id', (req, res) => {
 app.post('/api/market-analysis/upload-image', upload.single('image'), (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
+        const filename = req.file.filename;
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        const url = imgBase + '/api/images/' + filename;
+        res.json({ message: '업로드 성공', filename, url, size: req.file.size });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 동영상 업로드
+app.post('/api/market-analysis/upload-video', videoUpload.single('video'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: '동영상 파일이 없습니다.' });
         const filename = req.file.filename;
         const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
         const url = imgBase + '/api/images/' + filename;

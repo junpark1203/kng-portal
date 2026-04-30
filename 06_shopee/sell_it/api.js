@@ -211,6 +211,15 @@
             });
         },
 
+        async uploadMarketAnalysisVideo(file) {
+            const formData = new FormData();
+            formData.append('video', file);
+            const url = `${API_BASE}/market-analysis/upload-video`;
+            const res = await fetch(url, { method: 'POST', body: formData });
+            if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
+            return res.json();
+        },
+
         // ==========================================
         // Health Check
         // ==========================================
