@@ -1719,7 +1719,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // Category String
-            const categoryStr = item.shopeeCategory || '-';
+            const categoryStr = (item.shopeeCategory || '-').split(' / ')[0]; // Strip Korean part if exists
             let cat1 = categoryStr;
             let cat2 = '';
             if(categoryStr.includes(' > ')) {
@@ -2116,7 +2116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const li = e.target.closest('li');
                 if (!li || !li.dataset.en) return;
                 
-                maInputCategorySearch.value = `${li.dataset.en} / ${li.dataset.ko}`; // Store English & Korean 
+                maInputCategorySearch.value = li.dataset.en; // Store English only
                 maCategoryAutocompleteList.classList.remove('active');
                 maCategoryAutocompleteList.style.display = 'none';
             });
