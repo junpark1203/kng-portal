@@ -49,6 +49,9 @@ const upload = multer({
 // DB 인스턴스는 server.js에서 주입
 let db;
 
+// 정적 파일 라우팅 추가
+router.use('/uploads', express.static(UPLOAD_DIR));
+
 function setDb(database) {
     db = database;
 }
@@ -239,7 +242,10 @@ router.post('/images/upload', upload.single('image'), (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
         const filename = req.file.filename;
-        const url = (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com') + '/' + filename;
+        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
+            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
+            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
+        const url = baseUrl + '/' + filename;
         res.json({
             message: '업로드 성공',
             filename: filename,
@@ -258,7 +264,9 @@ router.post('/images/upload-multiple', upload.array('images', 20), (req, res) =>
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
         }
-        const baseUrl = process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com';
+        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
+            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
+            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
         const results = req.files.map(f => ({
             filename: f.filename,
             url: baseUrl + '/' + f.filename,
@@ -324,7 +332,9 @@ router.post('/images/upload-url', async (req, res) => {
         });
 
         const stats = fs.statSync(filePath);
-        const baseUrl = process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com';
+        const baseUrl = (req.hostname === 'localhost' || req.hostname === '127.0.0.1') 
+            ? `${req.protocol}://${req.get('host')}/api/mass-upload/uploads`
+            : (process.env.IMG_BASE_URL || 'https://ss-upload-img.junparks.com');
         res.json({
             message: '다운로드 성공',
             filename: filename,
