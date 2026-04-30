@@ -2201,12 +2201,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Load Exchange Rates on initialization
     window.latestExchangeRates = {};
-    if (sellItApi && sellItApi.getExchangeRates) {
-        sellItApi.getExchangeRates()
+    try {
+        api.getExchangeRates()
             .then(rates => {
                 if(rates) window.latestExchangeRates = rates;
+                console.log('[INIT] Exchange rates loaded:', rates);
             })
-            .catch(err => console.error("Failed to load exchange rates:", err));
+            .catch(err => console.error("[INIT] Failed to load exchange rates:", err));
+    } catch (err) {
+        console.error("[INIT] Exchange rate init error:", err);
     }
 
     // Hook into nav: when market-analysis view becomes active, load data
