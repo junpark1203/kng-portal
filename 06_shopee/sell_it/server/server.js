@@ -250,37 +250,42 @@ function initDb() {
 // ==========================================
 let cachedExchangeRates = {};
 
-async function fetchExchangeRates() {
-    try {
-        console.log('[Cron] Fetching latest exchange rates (Base: KRW)...');
-        const response = await fetch('https://open.er-api.com/v6/latest/KRW');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        
-        if (data && data.rates) {
-            const marketCurrencyMap = {
-                'sg': 'SGD',
-                'my': 'MYR',
-                'tw': 'TWD',
-                'th': 'THB',
-                'ph': 'PHP',
-                'vn': 'VND',
-                'br': 'BRL',
-                'mx': 'MXN'
-            };
-
-            const newRates = {};
-            for (const [market, currency] of Object.entries(marketCurrencyMap)) {
-                if (data.rates[currency]) {
-                    newRates[market] = Number((1 / data.rates[currency]).toFixed(2));
+function fetchExchangeRates() {
+    console.log('[Cron] Fetching latest exchange rates (Base: KRW)...');
+    const https = require('https');
+    https.get('https://open.er-api.com/v6/latest/KRW', (res) => {
+        let body = '';
+        res.on('data', chunk => { body += chunk; });
+        res.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                if (data && data.rates) {
+                    const marketCurrencyMap = {
+                        'sg': 'SGD',
+                        'my': 'MYR',
+                        'tw': 'TWD',
+                        'th': 'THB',
+                        'ph': 'PHP',
+                        'vn': 'VND',
+                        'br': 'BRL',
+                        'mx': 'MXN'
+                    };
+                    const newRates = {};
+                    for (const [market, currency] of Object.entries(marketCurrencyMap)) {
+                        if (data.rates[currency]) {
+                            newRates[market] = Number((1 / data.rates[currency]).toFixed(2));
+                        }
+                    }
+                    cachedExchangeRates = newRates;
+                    console.log('[Cron] Exchange rates updated successfully.');
                 }
+            } catch (err) {
+                console.error('[Cron] Failed to parse exchange rate data:', err.message);
             }
-            cachedExchangeRates = newRates;
-            console.log('[Cron] Exchange rates updated successfully.');
-        }
-    } catch (err) {
+        });
+    }).on('error', (err) => {
         console.error('[Cron] Failed to fetch exchange rates:', err.message);
-    }
+    });
 }
 
 // Fetch immediately on startup
