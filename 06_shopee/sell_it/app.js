@@ -1,5 +1,75 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    let currentMAImages = [];
+    let currentMAVideoUrl = '';
+
+    function renderMAImageGrid() {
+        const grid = document.getElementById('ma-image-grid');
+        const addBtn = document.getElementById('ma-image-add-btn');
+        if(!grid || !addBtn) return;
+        
+        grid.innerHTML = '';
+        currentMAImages.forEach((url, index) => {
+            const div = document.createElement('div');
+            div.style.aspectRatio = '1';
+            div.style.position = 'relative';
+            div.style.borderRadius = '8px';
+            div.style.overflow = 'hidden';
+            div.style.border = '1px solid var(--outline-variant)';
+            
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            removeBtn.style.position = 'absolute';
+            removeBtn.style.top = '4px';
+            removeBtn.style.right = '4px';
+            removeBtn.style.background = 'rgba(0,0,0,0.5)';
+            removeBtn.style.color = '#fff';
+            removeBtn.style.border = 'none';
+            removeBtn.style.borderRadius = '50%';
+            removeBtn.style.width = '24px';
+            removeBtn.style.height = '24px';
+            removeBtn.style.cursor = 'pointer';
+            removeBtn.onclick = (e) => {
+                e.stopPropagation();
+                currentMAImages.splice(index, 1);
+                renderMAImageGrid();
+            };
+            
+            div.appendChild(img);
+            div.appendChild(removeBtn);
+            grid.appendChild(div);
+        });
+        
+        if (currentMAImages.length < 9) {
+            grid.appendChild(addBtn);
+        }
+    }
+
+    function renderMAVideo() {
+        const placeholder = document.getElementById('ma-video-placeholder');
+        const videoTag = document.getElementById('ma-video-tag');
+        const removeBtn = document.getElementById('ma-video-remove-btn');
+        if(!placeholder) return;
+        
+        if (currentMAVideoUrl) {
+            videoTag.src = currentMAVideoUrl;
+            videoTag.style.display = 'block';
+            placeholder.style.display = 'none';
+            removeBtn.style.display = 'block';
+        } else {
+            videoTag.src = '';
+            videoTag.style.display = 'none';
+            placeholder.style.display = 'flex';
+            removeBtn.style.display = 'none';
+        }
+    }
+
     /* --- 0. Bulk Actions Event Delegation (At Top for Safety) --- */
     document.addEventListener('change', (e) => {
         if (e.target && e.target.classList.contains('row-checkbox')) {
@@ -1647,25 +1717,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ma-shopee-url').value = isEdit ? (item.shopeeUrl || '') : '';
         document.getElementById('ma-coupang-price').value = isEdit ? (item.coupangPrice || '') : '';
         document.getElementById('ma-coupang-shipping').value = isEdit ? (item.coupangShipping || '') : '';
+        const rocketCheck = document.getElementById('ma-coupang-rocket');
+        if(rocketCheck) rocketCheck.checked = isEdit && item.coupangRocket === 1;
         document.getElementById('ma-naver-price').value = isEdit ? (item.naverPrice || '') : '';
         document.getElementById('ma-naver-shipping').value = isEdit ? (item.naverShipping || '') : '';
         document.getElementById('ma-coupang-url').value = isEdit ? (item.coupangUrl || '') : '';
         document.getElementById('ma-naver-url').value = isEdit ? (item.naverUrl || '') : '';
         document.getElementById('ma-note').value = isEdit ? (item.note || '') : '';
-        document.getElementById('ma-image-url').value = '';
 
-        // Image
-        const imgTag = document.getElementById('ma-image-tag');
-        const imgPlaceholder = document.getElementById('ma-image-placeholder');
-        if (isEdit && item.imageUrl) {
-            imgTag.src = item.imageUrl;
-            imgTag.style.display = 'block';
-            imgPlaceholder.style.display = 'none';
+        // Media load
+        if (isEdit) {
+            if (item.imageUrls) {
+                try { currentMAImages = JSON.parse(item.imageUrls); } catch(e) { currentMAImages = []; }
+            } else if (item.imageUrl) {
+                currentMAImages = [item.imageUrl];
+            } else {
+                currentMAImages = [];
+            }
+            currentMAVideoUrl = item.videoUrl || '';
         } else {
-            imgTag.src = '';
-            imgTag.style.display = 'none';
-            imgPlaceholder.style.display = 'flex';
+            currentMAImages = [];
+            currentMAVideoUrl = '';
         }
+        renderMAImageGrid();
+        renderMAVideo();
 
         // Delete button
         document.getElementById('ma-delete-btn').style.display = isEdit ? 'block' : 'none';
