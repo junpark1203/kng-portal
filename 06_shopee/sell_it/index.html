@@ -41,7 +41,7 @@
                     <div class="nav-group-title label-md">Product</div>
                     <ul class="nav-sublinks">
                         <li class="nav-item" data-view="product-list"><a href="#">Product List</a></li>
-                        <li class="nav-item" data-view="market-analysis"><a href="#"><i class="fa-solid fa-magnifying-glass-chart"></i> Market Analysis</a></li>
+                        <li class="nav-item" data-view="market-analysis"><a href="#">Market Analysis</a></li>
                         <li class="nav-item" data-view="global-sku"><a href="#">Global SKU</a></li>
                         <li class="nav-item" data-view="shop-sku"><a href="#">Shop SKU</a></li>
                     </ul>
@@ -160,7 +160,7 @@
                                     <option value="br">🇧🇷 Brazil</option>
                                     <option value="mx">🇲🇽 Mexico</option>
                                 </select>
-                                <button class="btn-secondary" id="btn-add-ma"><i class="fa-solid fa-plus"></i> 새 분석 추가</button>
+                                <button class="btn-secondary" id="btn-add-ma"><i class="fa-solid fa-plus"></i> Add New</button>
                             </div>
                         </div>
                         <div class="table-container">
@@ -803,7 +803,7 @@
     <div class="drawer-overlay" id="ma-drawer-overlay"></div>
     <div class="drawer" id="ma-drawer" style="width:520px;">
         <div class="drawer-header">
-            <h3 class="title-md" id="ma-drawer-title">새 분석 추가</h3>
+            <h3 class="title-md" id="ma-drawer-title">Add New</h3>
             <button class="btn-icon" id="ma-drawer-close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="drawer-body">
@@ -825,17 +825,21 @@
             <div class="form-row-2">
                 <div class="form-group"><label class="label-md">판매 국가</label>
                     <select id="ma-market" class="form-select">
-                        <option value="sg">🇸🇬 Singapore</option>
-                        <option value="my">🇲🇾 Malaysia</option>
-                        <option value="tw">🇹🇼 Taiwan</option>
-                        <option value="th">🇹🇭 Thailand</option>
-                        <option value="ph">🇵🇭 Philippines</option>
-                        <option value="vn">🇻🇳 Vietnam</option>
-                        <option value="br">🇧🇷 Brazil</option>
-                        <option value="mx">🇲🇽 Mexico</option>
+                        <option value="sg">Singapore</option>
+                        <option value="my">Malaysia</option>
+                        <option value="tw">Taiwan</option>
+                        <option value="th">Thailand</option>
+                        <option value="ph">Philippines</option>
+                        <option value="vn">Vietnam</option>
+                        <option value="br">Brazil</option>
+                        <option value="mx">Mexico</option>
                     </select>
                 </div>
-                <div class="form-group"><label class="label-md">쇼피 카테고리</label><input type="text" id="ma-category" class="form-input" placeholder="Men Shoes > Sneakers"></div>
+                <div class="form-group autocomplete-container" style="position: relative;">
+                    <label class="label-md">쇼피 카테고리</label>
+                    <input type="text" id="ma-category" class="form-input" placeholder="Men Shoes > Sneakers" autocomplete="off">
+                    <ul class="autocomplete-list" id="ma-category-autocomplete-list"></ul>
+                </div>
             </div>
             <div class="form-group"><label class="label-md">상품명</label><input type="text" id="ma-product-name" class="form-input" placeholder="경쟁사 상품명"></div>
             <div class="form-row-2">

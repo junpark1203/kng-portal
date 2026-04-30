@@ -1582,8 +1582,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (maData.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
-                <i class="fa-solid fa-magnifying-glass-chart"></i>
-                <div>분석 데이터가 없습니다.<br>\"새 분석 추가\" 버튼을 눌러 시작하세요.</div>
+                <div>분석 데이터가 없습니다.<br>\"Add New\" 버튼을 눌러 시작하세요.</div>
             </td></tr>`;
             return;
         }
@@ -1634,7 +1633,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function openMADrawer(item) {
         if (!maDrawer) return;
         const isEdit = !!item;
-        document.getElementById('ma-drawer-title').innerText = isEdit ? '분석 상세/수정' : '새 분석 추가';
+        document.getElementById('ma-drawer-title').innerText = isEdit ? 'Edit Analysis' : 'Add New';
         document.getElementById('ma-edit-id').value = isEdit ? item.id : '';
         document.getElementById('ma-market').value = isEdit ? (item.market || 'sg') : 'sg';
         document.getElementById('ma-category').value = isEdit ? (item.shopeeCategory || '') : '';
@@ -1679,6 +1678,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeMADrawer() {
         maDrawer?.classList.remove('active');
         maOverlay?.classList.remove('active');
+        const list = document.getElementById('ma-category-autocomplete-list');
+        if (list) {
+            list.classList.remove('active');
+            list.style.display = 'none';
+        }
     }
 
     // --- Auto-calc shipping when market or weight changes ---
@@ -1827,6 +1831,69 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.target.value = '';
         }
     });
+
+    // --- MA Category Autocomplete ---
+    const maInputCategorySearch = document.getElementById('ma-category');
+    const maCategoryAutocompleteList = document.getElementById('ma-category-autocomplete-list');
+
+    function renderMACategoryAutocomplete(query) {
+        if (!query) {
+            if(maCategoryAutocompleteList) {
+                maCategoryAutocompleteList.innerHTML = '';
+                maCategoryAutocompleteList.classList.remove('active');
+                maCategoryAutocompleteList.style.display = 'none';
+            }
+            return;
+        }
+
+        const lowerQuery = query.toLowerCase();
+        const categories = window.SHOPEE_CATEGORIES || [];
+        const filtered = categories.filter(cat => 
+            cat.en.toLowerCase().includes(lowerQuery) || 
+            cat.ko.includes(lowerQuery)
+        );
+
+        if(!maCategoryAutocompleteList) return;
+
+        if (filtered.length === 0) {
+            maCategoryAutocompleteList.innerHTML = '<li style="color:var(--text-disabled); cursor:default;">검색 결과가 없습니다.</li>';
+        } else {
+            maCategoryAutocompleteList.innerHTML = filtered.map(cat => `
+                <li data-en="${cat.en}" data-ko="${cat.ko}">
+                    <span class="cat-en">${cat.en}</span>
+                    <span class="cat-ko">${cat.ko}</span>
+                </li>
+            `).join('');
+        }
+        maCategoryAutocompleteList.classList.add('active');
+        maCategoryAutocompleteList.style.display = 'block';
+    }
+
+    if (maInputCategorySearch) {
+        maInputCategorySearch.addEventListener('input', (e) => {
+            renderMACategoryAutocomplete(e.target.value);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#ma-category-autocomplete-list') && e.target !== maInputCategorySearch) {
+                if(maCategoryAutocompleteList) {
+                    maCategoryAutocompleteList.classList.remove('active');
+                    maCategoryAutocompleteList.style.display = 'none';
+                }
+            }
+        });
+
+        if(maCategoryAutocompleteList) {
+            maCategoryAutocompleteList.addEventListener('click', (e) => {
+                const li = e.target.closest('li');
+                if (!li || !li.dataset.en) return;
+                
+                maInputCategorySearch.value = `${li.dataset.en} / ${li.dataset.ko}`; // Store English & Korean 
+                maCategoryAutocompleteList.classList.remove('active');
+                maCategoryAutocompleteList.style.display = 'none';
+            });
+        }
+    }
 
     // --- Event Listeners ---
     document.getElementById('btn-add-ma')?.addEventListener('click', () => openMADrawer(null));
