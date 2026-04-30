@@ -308,6 +308,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Show target view if it exists, otherwise show generic view
             if (targetViewElement) {
                 targetViewElement.classList.add('active');
+                // Market Analysis 뷰 진입 시 데이터 로드
+                if (viewId === 'market-analysis' && typeof loadMarketAnalysis === 'function') {
+                    loadMarketAnalysis();
+                }
             } else {
                 const genericView = document.getElementById('view-generic');
                 genericTitle.innerText = menuText + " Module";
