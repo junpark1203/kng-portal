@@ -103,6 +103,55 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /* --- 1. Global State & Data Store --- */
 
+    // Render Price Calc Grid dynamically (API 기반)
+    // ※ nav 클릭 핸들러 및 savedViewId 복원보다 먼저 정의되어야 함
+    window.renderPriceCalcGrid = async function(marketCode) {
+        const tbody = document.querySelector('#price-calc-table tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+
+        try {
+            const exports = await api.getMarketExports(marketCode);
+            tbody.innerHTML = '';
+
+            if (exports.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-disabled); padding: 2rem;">이 마켓으로 전송된 상품이 없습니다. Product List에서 먼저 내보내기를 진행해주세요.</td></tr>`;
+                return;
+            }
+
+            exports.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'calc-row';
+                tr.style.cursor = 'pointer';
+                tr.innerHTML = `
+                    <td>
+                        <div style="font-weight: 600;" class="prod-date">${item.date}</div>
+                        <div class="body-sm text-secondary prod-mcode">${item.mcode}</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
+                        <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
+                    </td>
+                    <td class="text-right">
+                        <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(item.priceKrw).toLocaleString()}</div>
+                    </td>
+                    <td class="text-right">
+                        <div>${item.rate}</div>
+                        <div class="body-sm text-secondary prod-weight">${item.weight}g</div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 600; color: var(--secondary);">${item.exportDate}</div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error('[PriceCalcGrid] 로드 실패:', err.message);
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+        }
+    };
+
     /* --- 1. Sidebar Navigation (SPA Routing) --- */
     let currentMarketContext = 'sg'; // Default market context
     const navItems = document.querySelectorAll('.sidebar .nav-item');
@@ -870,6 +919,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // renderPresetSelector → populateDrawerPresetSelectors 별칭 등록
+    // ※ 미정의 시 ReferenceError로 이후 코드 실행이 중단되는 버그 수정
+    const renderPresetSelector = populateDrawerPresetSelectors;
+    window.renderPresetSelector = renderPresetSelector;
+
     function applyFeePreset(presetId) {
         const p = presets.find(x => x.id === presetId);
         if (!p) return;
@@ -1486,54 +1540,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial Render
     if(typeof renderSettingsShippingTable === 'function') renderSettingsShippingTable();
 
-    // Export logic moved to top for safety
-
-    // Render Price Calc Grid dynamically (API 기반)
-    window.renderPriceCalcGrid = async function(marketCode) {
-        const tbody = document.querySelector('#price-calc-table tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
-
-        try {
-            const exports = await api.getMarketExports(marketCode);
-            tbody.innerHTML = '';
-
-            if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-disabled); padding: 2rem;">이 마켓으로 전송된 상품이 없습니다. Product List에서 먼저 내보내기를 진행해주세요.</td></tr>`;
-                return;
-            }
-
-            exports.forEach(item => {
-                const priceUsd = (item.priceKrw / (item.rate || 1)).toFixed(2);
-                const tr = document.createElement('tr');
-                tr.className = 'calc-row';
-                tr.style.cursor = 'pointer';
-                tr.innerHTML = `
-                    <td>
-                        <div style="font-weight: 600;" class="prod-date">${item.date}</div>
-                        <div class="body-sm text-secondary prod-mcode">${item.mcode}</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
-                        <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
-                    </td>
-                    <td class="text-right">
-                        <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(item.priceKrw).toLocaleString()}</div>
-                    </td>
-                    <td class="text-right">
-                        <div>${item.rate}</div>
-                        <div class="body-sm text-secondary">${item.weight}g</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600; color: var(--secondary);">${item.exportDate}</div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } catch (err) {
-            console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
-        }
-    };
+    // renderPriceCalcGrid는 nav 핸들러 이전으로 이동됨 (line ~105)
 });
