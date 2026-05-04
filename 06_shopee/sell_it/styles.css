@@ -1115,3 +1115,162 @@ textarea.form-input {
 .pc-price-row + .pc-price-row {
   border-top: 1px dashed var(--surface-container-high);
 }
+
+/* ==========================================
+   Price Calc Table — Stabilization & Polish
+   ========================================== */
+
+#price-calc-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+#price-calc-table th,
+#price-calc-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  padding: 0.625rem 0.5rem;
+  white-space: normal;
+}
+
+/* 3-Way Input Style */
+.pc-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 6px;
+  background: var(--surface-container-lowest);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--text-main);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  -moz-appearance: textfield;
+}
+.pc-input::-webkit-outer-spin-button,
+.pc-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.pc-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(103, 80, 164, 0.15);
+}
+.pc-input.negative {
+  color: var(--error);
+}
+
+/* Row Coloring by Margin Rate */
+.pc-product-row[data-margin="high"] {
+  background: rgba(76, 175, 80, 0.07) !important;
+}
+.pc-product-row[data-margin="mid"] {
+  background: rgba(255, 193, 7, 0.06) !important;
+}
+.pc-product-row[data-margin="low"] {
+  background: transparent;
+}
+.pc-product-row[data-margin="neg"] {
+  background: rgba(244, 67, 54, 0.07) !important;
+}
+.pc-product-row:hover[data-margin="high"] { background: rgba(76, 175, 80, 0.12) !important; }
+.pc-product-row:hover[data-margin="mid"]  { background: rgba(255, 193, 7, 0.10) !important; }
+.pc-product-row:hover[data-margin="neg"]  { background: rgba(244, 67, 54, 0.12) !important; }
+
+.pc-product-row {
+  cursor: pointer;
+}
+
+/* Cockpit Panel */
+.pc-cockpit {
+  padding: 1.25rem;
+  background: var(--surface-container-lowest);
+  border-bottom: 2px solid var(--outline-variant);
+}
+.pc-cockpit-grid {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 1.5rem;
+}
+.pc-cost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.pc-cost-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--surface-container-high);
+}
+.pc-cost-item:last-child {
+  border-bottom: none;
+}
+.pc-cost-item .label {
+  color: var(--text-secondary);
+}
+.pc-cost-item .value {
+  font-weight: 600;
+  text-align: right;
+}
+.pc-cost-item.subtotal {
+  border-top: 2px solid var(--outline-variant);
+  border-bottom: none;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+.pc-cost-item.total {
+  border-top: 2px solid var(--primary);
+  border-bottom: none;
+  padding-top: 10px;
+  margin-top: 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+.pc-cost-item.negative .value {
+  color: var(--error);
+}
+
+/* Cockpit Right Panel */
+.pc-cockpit-settings {
+  padding: 1rem;
+  background: var(--surface-container-low);
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.pc-cockpit-settings .form-control-sm {
+  width: 100%;
+}
+.pc-cockpit-settings label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* Market Info Bar */
+.pc-market-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.pc-market-info .pc-tag {
+  background: var(--surface-container-high);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}

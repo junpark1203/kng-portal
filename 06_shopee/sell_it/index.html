@@ -523,56 +523,25 @@
 
                 <!-- Price Calculation Shared View Container -->
                 <div class="view-section" id="view-price-calc-container">
-                    <!-- Control Bar -->
-                    <div class="pc-control-bar panel surface-container-lowest">
-                        <div class="pc-control-row">
-                            <div class="pc-preset-group">
-                                <div style="font-weight: 600; color: var(--primary); margin-right: 1rem; padding-bottom: 6px;"><i class="fa-solid fa-layer-group"></i> 일괄 적용</div>
-                                <div class="pc-preset-item">
-                                    <label class="label-sm text-secondary">수수료 프리셋</label>
-                                    <select id="pc-fee-preset" class="form-control form-control-sm"></select>
-                                </div>
-                                <div class="pc-preset-item">
-                                    <label class="label-sm text-secondary">프로모션</label>
-                                    <select id="pc-promo-preset" class="form-control form-control-sm"></select>
-                                </div>
-                                <div class="pc-preset-item">
-                                    <label class="label-sm text-secondary">배송비</label>
-                                    <select id="pc-ship-preset" class="form-control form-control-sm"></select>
-                                </div>
-                                <div class="pc-preset-item">
-                                    <label class="label-sm text-secondary">환율 (KRW→SGD)</label>
-                                    <input type="number" id="pc-exchange-rate" class="form-control form-control-sm" value="0.00086" step="0.00001" style="width: 110px;">
-                                </div>
-                                <button class="btn-primary btn-sm" id="btn-apply-bulk-presets" style="margin-left: 0.5rem; margin-bottom: 2px;">전체 덮어쓰기</button>
-                                <button class="btn-icon" id="btn-open-smart-pricing-modal" title="스마트 추천 마진율 설정" style="margin-left: auto; margin-bottom: 2px;"><i class="fa-solid fa-gear"></i></button>
+                    <!-- Products Table -->
+                    <div class="panel surface-container-lowest">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                            <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
+                            <div class="pc-market-info" id="pc-market-info">
+                                <!-- Filled dynamically: exchange rate, fee summary tags -->
                             </div>
                         </div>
-                        <div class="pc-summary-bar" id="pc-summary-bar">
-                            <!-- Filled dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Products Table -->
-                    <div class="panel surface-container-lowest" style="margin-top: 0.75rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
-                        </div>
-                        <div class="table-container">
+                        <div class="table-container" style="margin-top: 0;">
                             <table class="data-table" id="price-calc-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px;"></th>
-                                        <th class="text-center" style="width: 100px;">관리코드</th>
-                                        <th style="width: 120px;">카테고리</th>
-                                        <th>상품명(한/영)</th>
-                                        <th class="text-right" style="width: 90px;">매입원가</th>
-                                        <th class="text-right" style="width: 90px;">배송비</th>
-                                        <th class="text-right" style="width: 90px;">수수료</th>
-                                        <th class="text-right" style="width: 90px;">프로모션</th>
-                                        <th class="text-right" style="width: 110px;">판매가</th>
-                                        <th class="text-right" style="width: 110px;">수익</th>
-                                        <th class="text-right" style="width: 90px;">수익률</th>
+                                        <th style="width: 36px;"></th>
+                                        <th class="text-center" style="width: 90px;">관리코드</th>
+                                        <th>상품명</th>
+                                        <th class="text-right" style="width: 100px;">총원가</th>
+                                        <th class="text-right" style="width: 110px;">판매가 (SGD)</th>
+                                        <th class="text-right" style="width: 110px;">수익 (KRW)</th>
+                                        <th class="text-right" style="width: 80px;">수익률</th>
                                     </tr>
                                 </thead>
                                 <tbody>
