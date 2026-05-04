@@ -943,7 +943,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nameKo: nameKo,
                 nameEn: nameEn,
                 priceKrw: parseInt(priceKrw, 10) || 0,
-                domesticShipping: parseInt(domesticShipping, 10) || 3000,
+                domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
                 rate: parseFloat(rate) || 1,
                 rateDate: rateDate,
                 weight: parseInt(weight, 10) || 0,
@@ -956,6 +956,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Update existing via API
                     const existing = productList.find(p => p.mcode === originalEditMcode);
                     if (existing && existing.id) {
+                        const exportsForProduct = marketExportsMap[existing.id] || [];
+                        if (exportsForProduct.length > 0) {
+                            const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
+                            const confirmMsg = `⚠️ 이 상품은 현재 [${marketNames}] 마켓의 Price Calculation에 연동되어 있습니다.\n\n여기서 정보를 수정하시면 해당 마켓의 마진 계산에도 즉시 변경 사항이 반영됩니다.\n수정본을 저장하시겠습니까?`;
+                            if (!confirm(confirmMsg)) return;
+                        }
                         await api.updateProduct(existing.id, productData);
                     }
                 } else {
