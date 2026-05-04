@@ -116,6 +116,27 @@
         },
 
         // ==========================================
+        // System Settings & Market Export Settings
+        // ==========================================
+        async getSystemSettings() {
+            return request('/system-settings');
+        },
+
+        async updateSystemSettings(data) {
+            return request('/system-settings', {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        },
+
+        async updateMarketExportSettings(id, data) {
+            return request(`/market-exports/${id}/settings`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        },
+
+        // ==========================================
         // Promotion Presets
         // ==========================================
         async getPromotionPresets() {

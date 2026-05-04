@@ -527,6 +527,7 @@
                     <div class="pc-control-bar panel surface-container-lowest">
                         <div class="pc-control-row">
                             <div class="pc-preset-group">
+                                <div style="font-weight: 600; color: var(--primary); margin-right: 1rem;"><i class="fa-solid fa-layer-group"></i> 일괄 적용</div>
                                 <div class="pc-preset-item">
                                     <label class="label-sm text-secondary">수수료 프리셋</label>
                                     <select id="pc-fee-preset" class="form-control form-control-sm"></select>
@@ -543,6 +544,8 @@
                                     <label class="label-sm text-secondary">환율 (KRW→SGD)</label>
                                     <input type="number" id="pc-exchange-rate" class="form-control form-control-sm" value="0.00086" step="0.00001" style="width: 110px;">
                                 </div>
+                                <button class="btn-primary btn-sm" id="btn-apply-bulk-presets" style="margin-left: 0.5rem;">전체 덮어쓰기</button>
+                                <button class="btn-icon" id="btn-open-smart-pricing-modal" title="스마트 추천 마진율 설정" style="margin-left: auto;"><i class="fa-solid fa-gear"></i></button>
                             </div>
                         </div>
                         <div class="pc-summary-bar" id="pc-summary-bar">
@@ -561,13 +564,11 @@
                                     <tr>
                                         <th style="width: 40px;"></th>
                                         <th>상품명</th>
-                                        <th class="text-right">원가(KRW)</th>
-                                        <th class="text-right">원가(SGD)</th>
-                                        <th class="text-right">배송비</th>
+                                        <th class="text-right">매입원가(KRW)</th>
+                                        <th class="text-center">프리셋 상태</th>
                                         <th class="text-right">판매가(P)</th>
-                                        <th class="text-right">노출가</th>
                                         <th class="text-right">마진(SGD)</th>
-                                        <th class="text-right">마진(KRW)</th>
+                                        <th class="text-right">최종 순수익(KRW)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -844,6 +845,44 @@
     <!-- Scripts -->
     <script src="./categories.js"></script>
     <script src="./api.js?v=8"></script>
-    <script src="./app.js?v=8"></script>
+    <!-- Smart Pricing Settings Modal -->
+    <div class="modal-overlay" id="smart-pricing-modal" style="display: none; align-items: center; justify-content: center;">
+        <div class="modal-content surface-container-low" style="width: 400px; padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="title-lg"><i class="fa-solid fa-robot"></i> 스마트 추천 마진율 설정</h3>
+                <button class="btn-icon" id="btn-close-smart-pricing-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="body-sm text-secondary" style="margin-bottom: 1.5rem;">프라이싱 콕핏에서 원클릭으로 세팅될 목표 마진율(%) 기준을 내 비즈니스에 맞게 설정하세요.</p>
+            
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="label-md">🛡️ 안정형 (최대 이익 확보)</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="smart-margin-safe" class="form-control" value="40" min="0" max="100" style="width: 100px;">
+                    <span class="body-md">%</span>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label class="label-md">⚖️ 권장형 (표준 시장가)</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="smart-margin-standard" class="form-control" value="30" min="0" max="100" style="width: 100px;">
+                    <span class="body-md">%</span>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="label-md">🚀 공격형 (시장 침투 / 박리다매)</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="number" id="smart-margin-aggressive" class="form-control" value="10" min="0" max="100" style="width: 100px;">
+                    <span class="body-md">%</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn-secondary" id="btn-cancel-smart-pricing">취소</button>
+                <button class="btn-primary" id="btn-save-smart-pricing">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=8"></script>
 </body>
 </html>

@@ -171,7 +171,40 @@ function initDb() {
             )
         `, (err) => {
             if (err) console.error('market_exports 테이블 생성 오류:', err.message);
-            else console.log('market_exports 테이블 확인 완료');
+            else {
+                console.log('market_exports 테이블 확인 완료');
+                const alters = [
+                    "ALTER TABLE market_exports ADD COLUMN feePresetId TEXT",
+                    "ALTER TABLE market_exports ADD COLUMN promoPresetId TEXT",
+                    "ALTER TABLE market_exports ADD COLUMN shipPresetId TEXT",
+                    "ALTER TABLE market_exports ADD COLUMN targetMarginKrw INTEGER",
+                    "ALTER TABLE market_exports ADD COLUMN packagingKrw INTEGER"
+                ];
+                alters.forEach(alt => {
+                    db.run(alt, (alterErr) => {
+                        if (alterErr && !alterErr.message.includes('duplicate column')) {
+                            console.error('market_exports ALTER TABLE 오류:', alterErr.message);
+                        }
+                    });
+                });
+            }
+        });
+
+        // 시스템 설정 (스마트 프라이싱 마진율 등)
+        db.run(`
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        `, (err) => {
+            if (err) console.error('system_settings 테이블 생성 오류:', err.message);
+            else {
+                console.log('system_settings 테이블 확인 완료');
+                // Insert default smart margins if not exists
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_safe', '40')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_standard', '30')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_aggressive', '10')");
+            }
         });
 
         // 수수료 프리셋 (JSON blob)
@@ -466,8 +499,52 @@ app.post('/api/market-exports', (req, res) => {
 app.delete('/api/market-exports/:id', (req, res) => {
     db.run('DELETE FROM market_exports WHERE id = ?', [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
-        if (this.changes === 0) return res.status(404).json({ error: '전송 기록을 찾을 수 없습니다.' });
+        if (this.changes === 0) return res.status(404).json({ error: '데이터를 찾을 수 없습니다.' });
         res.json({ message: '전송 취소 성공' });
+    });
+});
+
+// 마켓 개별 상품 설정 업데이트 (Pricing Cockpit)
+app.put('/api/market-exports/:id/settings', (req, res) => {
+    const { feePresetId, promoPresetId, shipPresetId, targetMarginKrw, packagingKrw } = req.body;
+    const sql = `UPDATE market_exports 
+                 SET feePresetId=?, promoPresetId=?, shipPresetId=?, targetMarginKrw=?, packagingKrw=? 
+                 WHERE id=?`;
+    db.run(sql, [feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginKrw || null, packagingKrw || 0, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '설정 저장 성공' });
+    });
+});
+
+// 시스템 설정 조회
+app.get('/api/system-settings', (req, res) => {
+    db.all('SELECT * FROM system_settings', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const settings = {};
+        rows.forEach(r => settings[r.key] = r.value);
+        res.json(settings);
+    });
+});
+
+// 시스템 설정 일괄 저장
+app.put('/api/system-settings', (req, res) => {
+    const settings = req.body;
+    let completed = 0;
+    let hasError = false;
+    const keys = Object.keys(settings);
+    if (keys.length === 0) return res.json({ message: '저장할 내용 없음' });
+    
+    const stmt = db.prepare('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)');
+    keys.forEach(key => {
+        stmt.run([key, settings[key]], (err) => {
+            if (err) hasError = true;
+            completed++;
+            if (completed === keys.length) {
+                stmt.finalize();
+                if (hasError) return res.status(500).json({ error: '일부 설정 저장 실패' });
+                res.json({ message: '시스템 설정 저장 완료' });
+            }
+        });
     });
 });
 

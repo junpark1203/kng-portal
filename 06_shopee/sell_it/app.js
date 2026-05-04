@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentMAImages = [];
     let currentMAVideoUrl = '';
     let maData = []; // cached market analysis items (상단 선언으로 TDZ 방지)
+    
+    // Global System Settings for Smart Pricing
+    let systemSettings = { margin_safe: 40, margin_standard: 30, margin_aggressive: 10 };
 
     function renderMAImageGrid() {
         const grid = document.getElementById('ma-image-grid');
@@ -199,6 +202,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const tr = document.createElement('tr');
                 tr.className = 'pc-product-row';
                 tr.dataset.productId = item.id || item.productId || '';
+                // Preset custom badge logic
+                const hasCustomPreset = item.feePresetId || item.promoPresetId || item.shipPresetId;
+                const presetBadge = hasCustomPreset ? `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-thumbtack"></i> 개별설정</span>` : `<span class="body-sm text-secondary">일괄 설정</span>`;
+
                 tr.innerHTML = `
                     <td style="text-align: center; color: var(--text-secondary);"><i class="fa-solid fa-chevron-right pc-expand-icon"></i></td>
                     <td>
@@ -209,26 +216,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="font-weight: 600;">₩${Number(item.priceKrw).toLocaleString()}</div>
                         <div class="body-sm text-secondary">+₩${Number(item.domesticShipping ?? 3000).toLocaleString()}</div>
                     </td>
-                    <td class="text-right"><span class="body-sm">${result.costSgd.toFixed(2)}</span></td>
-                    <td class="text-right"><span class="body-sm">${result.sellerShipping.toFixed(2)}</span></td>
+                    <td class="text-center">${presetBadge}</td>
                     <td class="text-right"><span style="font-weight: 600; color: var(--primary);">${result.sellingPrice.toFixed(2)}</span></td>
-                    <td class="text-right"><span class="body-sm">${result.buyerDisplayPrice.toFixed(2)}</span></td>
                     <td class="text-right">
                         <span style="font-weight: 600; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${result.marginSgd.toFixed(2)}</span>
-                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ${result.marginWithVatSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginKrw.toLocaleString()}</span>
-                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ₩${result.marginWithVatKrw.toLocaleString()}</div>
+                        <span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginWithVatKrw.toLocaleString()}</span>
+                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">(기본 ₩${result.marginKrw.toLocaleString()})</div>
                     </td>
                 `;
                 tbody.appendChild(tr);
 
-                // Inline breakdown panel (hidden by default)
+                // Inline Pricing Cockpit panel (hidden by default)
                 const expandTr = document.createElement('tr');
                 expandTr.className = 'pc-breakdown-row';
                 expandTr.style.display = 'none';
-                expandTr.innerHTML = `<td colspan="9">${renderBreakdownPanel(item, result)}</td>`;
+                expandTr.innerHTML = renderPricingCockpit(item, result);
                 tbody.appendChild(expandTr);
 
                 // Toggle expand
@@ -243,56 +247,105 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 });
 
-                // --- Inline margin / packaging input handlers ---
+                // --- Inline Cockpit Handlers ---
                 const marginInput = expandTr.querySelector('.pc-margin-input');
                 const packagingInput = expandTr.querySelector('.pc-packaging-input');
+                const feeSel = expandTr.querySelector('.pc-fee-override');
+                const promoSel = expandTr.querySelector('.pc-promo-override');
+                const shipSel = expandTr.querySelector('.pc-ship-override');
+                const btnToggleBreakdown = expandTr.querySelector('.btn-toggle-breakdown');
+                const breakdownContainer = expandTr.querySelector('.cockpit-breakdown-container');
+                const btnSave = expandTr.querySelector('.btn-save-settings');
+
                 let _pcDebounce = null;
 
-                function recalcRow() {
+                function recalcCockpit() {
                     const newMargin = parseFloat(marginInput?.value) || 0;
                     const newPkg = parseFloat(packagingInput?.value) || 0;
-                    const updatedItem = { ...item, targetMarginKrw: newMargin };
-                    const settings = getPCSettings();
-                    const newResult = calcPricingFromMargin({
-                        costKrw: updatedItem.priceKrw || 0,
-                        domesticShipping: updatedItem.domesticShipping ?? 3000,
-                        packagingKrw: newPkg,
-                        targetMarginKrw: newMargin,
-                        weight: updatedItem.weight || 0,
-                        ...settings
-                    });
+                    
+                    item.feePresetId = feeSel.value || null;
+                    item.promoPresetId = promoSel.value || null;
+                    item.shipPresetId = shipSel.value || null;
+                    item.targetMarginKrw = newMargin;
+                    item.packagingKrw = newPkg;
+
+                    const newResult = calcProductRow(item);
 
                     // Update summary row cells
                     const cells = tr.querySelectorAll('td');
-                    if (cells[3]) cells[3].innerHTML = `<span class="body-sm">${newResult.costSgd.toFixed(2)}</span>`;
-                    if (cells[4]) cells[4].innerHTML = `<span class="body-sm">${newResult.sellerShipping.toFixed(2)}</span>`;
-                    if (cells[5]) cells[5].innerHTML = `<span style="font-weight: 600; color: var(--primary);">${newResult.sellingPrice.toFixed(2)}</span>`;
-                    if (cells[6]) cells[6].innerHTML = `<span class="body-sm">${newResult.buyerDisplayPrice.toFixed(2)}</span>`;
-                    if (cells[7]) cells[7].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ${newResult.marginWithVatSgd.toFixed(2)}</div>`;
-                    if (cells[8]) cells[8].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginKrw.toLocaleString()}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ₩${newResult.marginWithVatKrw.toLocaleString()}</div>`;
+                    if (cells[4]) cells[4].innerHTML = `<span style="font-weight: 600; color: var(--primary);">${newResult.sellingPrice.toFixed(2)}</span>`;
+                    if (cells[5]) cells[5].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span>`;
+                    if (cells[6]) cells[6].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginWithVatKrw.toLocaleString()}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">(기본 ₩${newResult.marginKrw.toLocaleString()})</div>`;
 
-                    // Update breakdown panel
-                    expandTr.querySelector('td').innerHTML = renderBreakdownPanel(updatedItem, newResult);
-                    // Re-bind inputs in the new panel
-                    const newMarginInput = expandTr.querySelector('.pc-margin-input');
-                    const newPkgInput = expandTr.querySelector('.pc-packaging-input');
-                    if (newMarginInput) {
-                        newMarginInput.value = newMargin;
-                        newMarginInput.addEventListener('input', debouncedRecalc);
-                    }
-                    if (newPkgInput) {
-                        newPkgInput.value = newPkg;
-                        newPkgInput.addEventListener('input', debouncedRecalc);
-                    }
+                    // Update Cockpit Results
+                    const cockpitP = expandTr.querySelector('.cockpit-P');
+                    const cockpitMarginKrw = expandTr.querySelector('.cockpit-margin-krw');
+                    const cockpitBase = expandTr.querySelector('.cockpit-base-margin');
+                    const cockpitVat = expandTr.querySelector('.cockpit-vat-refund');
+                    
+                    if (cockpitP) cockpitP.innerText = newResult.sellingPrice.toFixed(2);
+                    if (cockpitMarginKrw) cockpitMarginKrw.innerText = newResult.marginWithVatKrw.toLocaleString();
+                    if (cockpitBase) cockpitBase.innerText = newResult.marginKrw.toLocaleString();
+                    if (cockpitVat) cockpitVat.innerText = newResult.vatRefundKrw.toLocaleString();
+
+                    // Update Breakdown
+                    if (breakdownContainer) breakdownContainer.innerHTML = renderBreakdownPanel(item, newResult);
                 }
 
                 function debouncedRecalc() {
                     clearTimeout(_pcDebounce);
-                    _pcDebounce = setTimeout(recalcRow, 300);
+                    _pcDebounce = setTimeout(recalcCockpit, 300);
                 }
 
                 if (marginInput) marginInput.addEventListener('input', debouncedRecalc);
                 if (packagingInput) packagingInput.addEventListener('input', debouncedRecalc);
+                if (feeSel) feeSel.addEventListener('change', debouncedRecalc);
+                if (promoSel) promoSel.addEventListener('change', debouncedRecalc);
+                if (shipSel) shipSel.addEventListener('change', debouncedRecalc);
+
+                // Smart Pricing Buttons
+                expandTr.querySelectorAll('.btn-smart-calc').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const rate = parseFloat(btn.dataset.rate) / 100;
+                        const cost = (item.priceKrw || 0) + (item.domesticShipping ?? 3000) + (parseFloat(packagingInput?.value) || 0);
+                        const target = Math.round(cost * rate);
+                        if (marginInput) marginInput.value = target;
+                        recalcCockpit();
+                    });
+                });
+
+                // Toggle Breakdown
+                if (btnToggleBreakdown) {
+                    btnToggleBreakdown.addEventListener('click', () => {
+                        const isHidden = breakdownContainer.style.display === 'none';
+                        breakdownContainer.style.display = isHidden ? 'block' : 'none';
+                    });
+                }
+
+                // Save Settings
+                if (btnSave) {
+                    btnSave.addEventListener('click', async () => {
+                        try {
+                            btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 저장 중...';
+                            await api.updateMarketExportSettings(item.id, {
+                                feePresetId: item.feePresetId,
+                                promoPresetId: item.promoPresetId,
+                                shipPresetId: item.shipPresetId,
+                                targetMarginKrw: item.targetMarginKrw,
+                                packagingKrw: item.packagingKrw
+                            });
+                            showToast('개별 설정이 저장되었습니다.', 'success');
+                            btnSave.innerHTML = '<i class="fa-solid fa-check"></i> 저장 완료';
+                            setTimeout(() => {
+                                btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 설정 저장';
+                                window.renderPriceCalcGrid(marketCode); // Re-render to update badges
+                            }, 1000);
+                        } catch (err) {
+                            showToast('저장 실패: ' + err.message, 'error');
+                            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 설정 저장';
+                        }
+                    });
+                }
             });
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
@@ -332,17 +385,114 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper: Calculate one product row
     function calcProductRow(item) {
-        const settings = getPCSettings();
-        // Use margin reverse calc with stored target margin, or forward calc with default
+        let settings = getPCSettings();
+        
+        // Override with individual presets if they exist
+        if (item.feePresetId && presets.find(p => p.id === item.feePresetId)) {
+            const feePre = presets.find(p => p.id === item.feePresetId);
+            settings.fees = {
+                commission: feePre.fees.commission || 0,
+                pg: feePre.fees.pg || 0,
+                service: feePre.fees.service || 0,
+                payoneer: feePre.fees.payoneer || 0,
+                gst: feePre.fees.gst || feePre.fees.special || 0
+            };
+        }
+        if (item.promoPresetId && promotionPresets.find(p => p.id === item.promoPresetId)) {
+            const promoPre = promotionPresets.find(p => p.id === item.promoPresetId);
+            settings.promo = {
+                discountRate: promoPre.settings.discountRate || 0,
+                adjustmentRate: promoPre.settings.adjustmentRate || 100,
+                voucher: promoPre.settings.voucher || 0,
+                fspCcb: promoPre.settings.fspCcb || 0,
+            };
+        }
+        if (item.shipPresetId && shippingPresets.find(p => p.id === item.shipPresetId)) {
+            const shipPre = shippingPresets.find(p => p.id === item.shipPresetId);
+            settings.shippingSettings = shipPre.settings;
+        }
+
         const targetMarginKrw = item.targetMarginKrw || 12000;
         return calcPricingFromMargin({
             costKrw: item.priceKrw || 0,
             domesticShipping: item.domesticShipping ?? 3000,
-            packagingKrw: 0,
+            packagingKrw: item.packagingKrw || 0,
             targetMarginKrw,
             weight: item.weight || 0,
             ...settings
         });
+    }
+
+    // Helper: Render Pricing Cockpit UI
+    function renderPricingCockpit(item, result) {
+        const feeOptions = \`<option value="">상단 일괄 설정 따름</option>\` + presets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.feePresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
+        const promoOptions = \`<option value="">상단 일괄 설정 따름</option>\` + promotionPresets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.promoPresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
+        const shipOptions = \`<option value="">상단 일괄 설정 따름</option>\` + shippingPresets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.shipPresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
+
+        return \`
+        <td colspan="7" style="padding: 1.5rem; background: var(--surface-container-lowest); border-bottom: 2px solid var(--outline-variant);">
+            <div style="display: flex; gap: 2rem;">
+                <!-- Left: Setup -->
+                <div style="flex: 1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                        <div class="label-md" style="color: var(--secondary);"><i class="fa-solid fa-wand-magic-sparkles"></i> 스마트 추천 마진</div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_safe}">🛡️ 안정형 (\${systemSettings.margin_safe}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_standard}">⚖️ 권장형 (\${systemSettings.margin_standard}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_aggressive}">🚀 공격형 (\${systemSettings.margin_aggressive}%)</button>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label class="label-sm text-secondary">개별 수수료 프리셋</label>
+                            <select class="form-control form-control-sm pc-fee-override">\${feeOptions}</select>
+                        </div>
+                        <div>
+                            <label class="label-sm text-secondary">개별 프로모션</label>
+                            <select class="form-control form-control-sm pc-promo-override">\${promoOptions}</select>
+                        </div>
+                        <div>
+                            <label class="label-sm text-secondary">개별 배송비 요율</label>
+                            <select class="form-control form-control-sm pc-ship-override">\${shipOptions}</select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <label class="label-sm text-secondary">목표 순수익 (KRW)</label>
+                            <input type="number" class="form-control pc-margin-input" value="\${item.targetMarginKrw || 12000}">
+                        </div>
+                        <div style="flex: 1;">
+                            <label class="label-sm text-secondary">추가 포장비 (KRW)</label>
+                            <input type="number" class="form-control pc-packaging-input" value="\${item.packagingKrw || 0}">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                        <button class="btn-primary btn-save-settings"><i class="fa-solid fa-floppy-disk"></i> 설정 저장</button>
+                        <button class="btn-secondary btn-toggle-breakdown"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 계산 내역 보기</button>
+                    </div>
+                </div>
+                
+                <!-- Right: Results Dashboard -->
+                <div style="width: 280px; padding: 1.5rem; background: var(--surface-container-low); border-radius: 12px; border: 1px solid var(--outline-variant); display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="label-md text-secondary" style="margin-bottom: 0.25rem;">판매자 지정가 (P)</div>
+                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">SGD <span class="cockpit-P">\${result.sellingPrice.toFixed(2)}</span></div>
+                    </div>
+                    <div>
+                        <div class="label-md text-secondary" style="margin-bottom: 0.25rem;">최종 순수익 (VAT 환급 포함)</div>
+                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">₩<span class="cockpit-margin-krw">\${result.marginWithVatKrw.toLocaleString()}</span></div>
+                        <div class="body-sm text-secondary" style="margin-top: 0.25rem;">기본 ₩<span class="cockpit-base-margin">\${result.marginKrw.toLocaleString()}</span> + 환급 ₩<span class="cockpit-vat-refund">\${result.vatRefundKrw.toLocaleString()}</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="cockpit-breakdown-container" style="display: none; margin-top: 1.5rem; border-top: 1px dashed var(--outline-variant); padding-top: 1.5rem;">
+                \${renderBreakdownPanel(item, result)}
+            </div>
+        </td>
+        \`;
     }
 
     // Helper: Render fee breakdown HTML
@@ -1284,14 +1434,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     let promotionPresets = [];
     let shippingPresets = [];
 
-    // API에서 프리셋 로드
+    // API에서 프리셋 및 시스템 설정 로드
     try {
         presets = await api.getPresets();
         promotionPresets = await api.getPromotionPresets();
         shippingPresets = await api.getShippingPresets();
-        console.log(`[INIT] 프리셋 로드: ${presets.length}개 수수료, ${promotionPresets.length}개 프로모션, ${shippingPresets.length}개 배송비`);
+        
+        const settingsRaw = await api.getSystemSettings();
+        if (settingsRaw) {
+            if (settingsRaw.margin_safe !== undefined) systemSettings.margin_safe = Number(settingsRaw.margin_safe);
+            if (settingsRaw.margin_standard !== undefined) systemSettings.margin_standard = Number(settingsRaw.margin_standard);
+            if (settingsRaw.margin_aggressive !== undefined) systemSettings.margin_aggressive = Number(settingsRaw.margin_aggressive);
+        }
+        
+        console.log(`[INIT] 프리셋 로드: ${presets.length}개 수수료, ${promotionPresets.length}개 프로모션, ${shippingPresets.length}개 배송비, 시스템 설정 로드됨`);
     } catch (err) {
-        console.error('[INIT] 프리셋 로드 실패:', err.message);
+        console.error('[INIT] 초기 설정 로드 실패:', err.message);
     }
 
     const presetSelector = document.getElementById('preset-selector');
@@ -2942,4 +3100,117 @@ document.addEventListener('DOMContentLoaded', async () => {
             targetNav.click();
         }
     }
+    // --- Smart Pricing Settings Modal Logic ---
+    const smartModal = document.getElementById('smart-pricing-modal');
+    const btnOpenSmart = document.getElementById('btn-open-smart-pricing-modal');
+    const btnCloseSmart = document.getElementById('btn-close-smart-pricing-modal');
+    const btnCancelSmart = document.getElementById('btn-cancel-smart-pricing');
+    const btnSaveSmart = document.getElementById('btn-save-smart-pricing');
+
+    if (btnOpenSmart) {
+        btnOpenSmart.addEventListener('click', () => {
+            document.getElementById('smart-margin-safe').value = systemSettings.margin_safe;
+            document.getElementById('smart-margin-standard').value = systemSettings.margin_standard;
+            document.getElementById('smart-margin-aggressive').value = systemSettings.margin_aggressive;
+            smartModal.style.display = 'flex';
+        });
+    }
+
+    function closeSmartModal() {
+        if (smartModal) smartModal.style.display = 'none';
+    }
+
+    if (btnCloseSmart) btnCloseSmart.addEventListener('click', closeSmartModal);
+    if (btnCancelSmart) btnCancelSmart.addEventListener('click', closeSmartModal);
+
+    if (btnSaveSmart) {
+        btnSaveSmart.addEventListener('click', async () => {
+            const safe = document.getElementById('smart-margin-safe').value;
+            const standard = document.getElementById('smart-margin-standard').value;
+            const aggressive = document.getElementById('smart-margin-aggressive').value;
+            
+            const newSettings = {
+                margin_safe: safe,
+                margin_standard: standard,
+                margin_aggressive: aggressive
+            };
+            
+            try {
+                await api.updateSystemSettings(newSettings);
+                systemSettings.margin_safe = Number(safe);
+                systemSettings.margin_standard = Number(standard);
+                systemSettings.margin_aggressive = Number(aggressive);
+                
+                showToast('스마트 마진율이 저장되었습니다.', 'success');
+                closeSmartModal();
+                
+                // If in Price Calc, re-render
+                if (document.getElementById('view-price-calc-container').classList.contains('active')) {
+                    if (typeof currentMarketContext !== 'undefined') {
+                        window.renderPriceCalcGrid(currentMarketContext);
+                    }
+                }
+            } catch (err) {
+                showToast('저장 실패: ' + err.message, 'error');
+            }
+        });
+    }
+
+    // --- Bulk Apply Presets Logic ---
+    const btnApplyBulk = document.getElementById('btn-apply-bulk-presets');
+    if (btnApplyBulk) {
+        btnApplyBulk.addEventListener('click', async () => {
+            const feeId = document.getElementById('pc-fee-preset')?.value;
+            const promoId = document.getElementById('pc-promo-preset')?.value;
+            const shipId = document.getElementById('pc-ship-preset')?.value;
+            
+            if (!feeId || !promoId || !shipId) {
+                showToast('적용할 프리셋을 모두 선택해주세요.', 'error');
+                return;
+            }
+
+            const rows = document.querySelectorAll('.pc-product-row');
+            if (rows.length === 0) {
+                showToast('적용할 상품이 없습니다.', 'error');
+                return;
+            }
+
+            if (!confirm(`현재 화면에 있는 ${rows.length}개 상품의 프리셋을 모두 덮어쓰시겠습니까? (이 작업은 되돌릴 수 없습니다)`)) {
+                return;
+            }
+
+            btnApplyBulk.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 적용 중...';
+            btnApplyBulk.disabled = true;
+
+            let successCount = 0;
+            const promises = Array.from(rows).map(async (row) => {
+                const id = row.dataset.productId;
+                if (!id) return;
+                
+                try {
+                    await api.updateMarketExportSettings(id, {
+                        feePresetId: feeId,
+                        promoPresetId: promoId,
+                        shipPresetId: shipId
+                    });
+                    successCount++;
+                } catch (e) {
+                    console.error(`Error updating product ${id}:`, e);
+                }
+            });
+
+            await Promise.all(promises);
+
+            btnApplyBulk.innerHTML = '전체 덮어쓰기';
+            btnApplyBulk.disabled = false;
+            
+            showToast(`${successCount}개 상품에 프리셋이 일괄 적용되었습니다.`, 'success');
+            
+            // Re-render grid to apply the new calculation and UI
+            if (typeof currentMarketContext !== 'undefined') {
+                window.renderPriceCalcGrid(currentMarketContext);
+            }
+        });
+    }
+
 });
