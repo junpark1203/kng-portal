@@ -1314,3 +1314,79 @@ textarea.form-input {
   background: var(--error-container);
   color: var(--on-error-container);
 }
+
+/* Management Code (compact monospace) */
+.pc-mcode {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+/* Product Name Cell */
+.pc-name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: help;
+}
+.pc-cat {
+  font-size: 0.62rem;
+  color: var(--text-disabled);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Preset Indicator Dots */
+.pc-preset-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.pc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  cursor: help;
+  transition: transform 0.15s ease;
+}
+.pc-dot:hover {
+  transform: scale(1.4);
+}
+.pc-dot.active.fee { background: var(--primary); border-color: var(--primary); }
+.pc-dot.active.promo { background: var(--secondary); border-color: var(--secondary); }
+.pc-dot.active.ship { background: #f59e0b; border-color: #f59e0b; }
+
+/* VAT Refund Highlight */
+.pc-vat-refund {
+  color: var(--secondary) !important;
+  font-weight: 500;
+}
+
+/* Margin Progress Bar */
+.pc-margin-bar {
+  width: 100%;
+  height: 3px;
+  background: var(--surface-container-high);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.pc-margin-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  min-width: 0;
+}

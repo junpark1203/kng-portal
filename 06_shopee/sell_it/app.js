@@ -380,14 +380,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
 
         try {
             const exports = await api.getMarketExports(marketCode);
             tbody.innerHTML = '';
 
             if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
                     <div style="margin-bottom: 0.5rem;"><i class="fa-solid fa-box-open" style="font-size: 2rem; opacity: 0.3;"></i></div>
                     <div>이 마켓으로 전송된 상품이 없습니다.</div>
                     <div class="body-sm" style="margin-top: 0.25rem;">Product List에서 상품을 선택하고 내보내기를 진행해주세요.</div>
@@ -401,39 +401,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tr.className = 'pc-product-row';
                 tr.dataset.productId = item.id || item.productId || '';
 
-                // 7-column layout
+                // 10-column layout
                 const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
                 const isEmpty = result._empty;
                 const salesPriceSgd = result.sellingPrice;
                 const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
+                const marginWithVatRate = salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0;
 
                 // Margin tier for row coloring
                 const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
                 tr.dataset.margin = marginTier;
 
-                // Prepare Preset Badges
-                let feeBadge = '<span class="pc-preset-badge">수수료: 미지정</span>';
-                if (item.feePresetId) {
-                    const fp = presets.find(p => p.id === item.feePresetId);
-                    if (fp) feeBadge = `<span class="pc-preset-badge active">수수료: ${fp.name}</span>`;
-                }
-
-                let promoBadge = '<span class="pc-preset-badge">프로모션: 미지정</span>';
-                if (item.promoPresetId) {
-                    const pp = promotionPresets.find(p => p.id === item.promoPresetId);
-                    if (pp) promoBadge = `<span class="pc-preset-badge active">프로모션: ${pp.name}</span>`;
-                }
-
-                let shipBadge = '<span class="pc-preset-badge warn">배송비: 미지정</span>';
-                if (item.shipPresetId) {
-                    const sp = shippingPresets.find(p => p.id === item.shipPresetId);
-                    if (sp) shipBadge = `<span class="pc-preset-badge active">배송비: ${sp.name}</span>`;
-                }
+                // Preset indicator dots (compact)
+                const feeP = item.feePresetId ? presets.find(p => p.id === item.feePresetId) : null;
+                const promoP = item.promoPresetId ? promotionPresets.find(p => p.id === item.promoPresetId) : null;
+                const shipP = item.shipPresetId ? shippingPresets.find(p => p.id === item.shipPresetId) : null;
+                const presetDots = `<span class="pc-preset-dots">` +
+                    `<span class="pc-dot ${feeP ? 'active fee' : ''}" title="수수료: ${feeP ? feeP.name : '미지정'}"></span>` +
+                    `<span class="pc-dot ${promoP ? 'active promo' : ''}" title="프로모션: ${promoP ? promoP.name : '미지정'}"></span>` +
+                    `<span class="pc-dot ${shipP ? 'active ship' : ''}" title="배송비: ${shipP ? shipP.name : '미지정'}"></span></span>`;
 
                 const salesKrw = result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate) : 0;
                 const origSalesSgd = result.discountRate < 100 ? salesPriceSgd / (1 - (result.discountRate/100)) : 0;
                 const discountAmountSgd = origSalesSgd - salesPriceSgd;
                 const discountAmountKrw = result.exchangeRate > 0 ? Math.round(discountAmountSgd / result.exchangeRate) : 0;
+                const exRate = result.exchangeRate || 0;
+                const exRateInv = exRate > 0 ? (1 / exRate) : 0;
+                const barWidth = Math.min(100, Math.max(0, (marginRate / 50) * 100));
+                const barColor = marginRate >= 20 ? 'var(--secondary)' : marginRate >= 10 ? '#f59e0b' : marginRate < 0 ? 'var(--error)' : 'var(--text-disabled)';
 
                 const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
                 tr.innerHTML = `
@@ -441,35 +436,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <input type="checkbox" class="pc-row-checkbox" data-id="${item.id}">
                     </td>
                     <td class="text-center">
-                        <span class="body-sm text-secondary">${item.mcode}</span>
+                        <span class="pc-mcode">${item.mcode}</span>
                     </td>
                     <td>
-                        <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.nameKo}">${item.nameKo}</div>
-                        <div class="body-sm text-secondary" style="font-size: 0.65rem; color: var(--text-disabled); margin-top: 2px;">${item.catKo || ''}</div>
-                        <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 2px;">${feeBadge}${promoBadge}${shipBadge}</div>
+                        <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
+                        <div class="pc-cat"><span>${item.catEn || ''}</span>${presetDots}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: var(--text-main);">KRW ${sourcingCostKrw.toLocaleString()}</div>
-                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;">${curr} ${result.costSgd.toFixed(2)}</div>
+                        <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
+                        <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: var(--text-main);">KRW ${Math.round(result.totalFees / result.exchangeRate).toLocaleString()}</div>
-                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;">${curr} ${result.totalFees.toFixed(2)}</div>
+                        <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
+                        <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
-                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
+                        <div class="pc-data-top">KRW ${(exRate > 0 ? Math.round(result.totalFees / exRate) : 0).toLocaleString()}</div>
+                        <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
-                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
+                        <div class="pc-data-top" style="color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
+                        <div class="pc-data-bottom" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
-                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-profit-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + result.marginSgd.toFixed(2)}</div>
+                        <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
+                        <div class="pc-data-bottom" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-size: 1rem; font-weight: 600; color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
+                        <div class="pc-data-top" style="color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
+                        <div class="pc-data-bottom pc-vat-refund" id="cell-profit-vat-${item.id}">${isEmpty ? '—' : '+환급 KRW ' + result.marginWithVatKrw.toLocaleString()}</div>
+                    </td>
+                    <td class="text-right">
+                        <div class="pc-data-top" style="color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
+                        <div class="pc-data-bottom pc-vat-refund" id="cell-margin-vat-${item.id}">${isEmpty ? '—' : '+환급 ' + marginWithVatRate.toFixed(1) + '%'}</div>
+                        ${isEmpty ? '' : `<div class="pc-margin-bar"><div class="pc-margin-bar-fill" style="width: ${barWidth}%; background: ${barColor};"></div></div>`}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
         }
     };
 
@@ -837,11 +837,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         cellProfitKrw.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString();
                         cellProfitKrw.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)';
                     }
-                    if (cellProfitSgd) cellProfitSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.marginSgd.toFixed(2);
+                    // Update VAT refund cells
+                    const cellProfitVat = activeRow.querySelector(`#cell-profit-vat-${item.id}`);
+                    const cellMarginVat = activeRow.querySelector(`#cell-margin-vat-${item.id}`);
+                    const mwvr = newResult.sellingPrice > 0 ? (newResult.marginWithVatSgd / newResult.sellingPrice) * 100 : 0;
+                    if (cellProfitVat) cellProfitVat.textContent = isEmpty ? '—' : '+환급 KRW ' + newResult.marginWithVatKrw.toLocaleString();
                     if (cellMargin) {
                         cellMargin.textContent = isEmpty ? '—' : mr.toFixed(1) + '%';
                         cellMargin.style.color = mr < 0 ? 'var(--error)' : 'var(--primary)';
                     }
+                    if (cellMarginVat) cellMarginVat.textContent = isEmpty ? '—' : '+환급 ' + mwvr.toFixed(1) + '%';
                     
                     // Also refresh the breakdown section inside the side panel
                     const breakdownContainer = content.querySelector('.pc-side-section:last-child');
@@ -897,6 +902,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (cSgd) cSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.sellingPrice.toFixed(2);
             if (cPK) { cPK.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString(); cPK.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'; }
             if (cMR) { cMR.textContent = isEmpty ? '—' : mr2.toFixed(1) + '%'; cMR.style.color = mr2 < 0 ? 'var(--error)' : 'var(--primary)'; }
+            const cPV = activeRow.querySelector(`#cell-profit-vat-${item.id}`);
+            const cMV = activeRow.querySelector(`#cell-margin-vat-${item.id}`);
+            const mwvr2 = newResult.sellingPrice > 0 ? (newResult.marginWithVatSgd / newResult.sellingPrice) * 100 : 0;
+            if (cPV) cPV.textContent = isEmpty ? '—' : '+환급 KRW ' + newResult.marginWithVatKrw.toLocaleString();
+            if (cMV) cMV.textContent = isEmpty ? '—' : '+환급 ' + mwvr2.toFixed(1) + '%';
 
             // Save to API silently
             api.updateMarketExportSettings(item.id || item.exportId, {
