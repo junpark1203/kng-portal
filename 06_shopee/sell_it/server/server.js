@@ -489,21 +489,21 @@ app.get('/api/market-exports/all', (req, res) => {
 
 // 마켓 전송 등록 (bulk - 여러 상품을 한 마켓으로)
 app.post('/api/market-exports', (req, res) => {
-    const { productIds, marketCode, exchangeRate } = req.body;
+    const { productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId } = req.body;
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0 || !marketCode) {
         return res.status(400).json({ error: 'productIds 배열과 marketCode가 필요합니다.' });
     }
 
     const now = new Date().toISOString();
     const exportDate = now.split('T')[0];
-    const sql = `INSERT OR REPLACE INTO market_exports (id, productId, marketCode, exportDate, createdAt, exchangeRate)
-                 VALUES (?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT OR REPLACE INTO market_exports (id, productId, marketCode, exportDate, createdAt, exchangeRate, feePresetId, promoPresetId, shipPresetId)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
     const stmt = db.prepare(sql);
 
     productIds.forEach(pid => {
         const id = `ME-${pid}-${marketCode}`;
-        stmt.run([id, pid, marketCode, exportDate, now, exchangeRate || null], function(err) {
+        stmt.run([id, pid, marketCode, exportDate, now, exchangeRate || null, feePresetId || null, promoPresetId || null, shipPresetId || null], function(err) {
             if (!err) inserted++;
         });
     });

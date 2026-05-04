@@ -140,6 +140,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    let currentExportProductIds = [];
+    let currentExportMarket = '';
+
     if (btnExportMarket && exportMarketSelect) {
         btnExportMarket.addEventListener('click', async () => {
             const selectedMarket = exportMarketSelect.value;
@@ -156,42 +159,125 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
-            let appliedRate = 0;
+            currentExportProductIds = productIds;
+            currentExportMarket = selectedMarket;
+
+            // Setup Modal
+            document.getElementById('export-modal-title').innerText = `${selectedMarket.toUpperCase()} 마켓으로 상품 내보내기`;
+            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품을 ${selectedMarket.toUpperCase()} 마켓으로 전송합니다.`;
+            
+            // Exchange Rate
+            const autoRateText = document.getElementById('export-modal-auto-rate-text');
+            const manualRateInput = document.getElementById('export-modal-manual-rate');
+            const radioAuto = document.querySelector('input[name="export_exrate_type"][value="auto"]');
+            const radioManual = document.querySelector('input[name="export_exrate_type"][value="manual"]');
+
             if (window.latestExchangeRates && window.latestExchangeRates[selectedMarket]) {
                 const autoRate = window.latestExchangeRates[selectedMarket];
-                const confirmMsg = `선택하신 ${selectedMarket.toUpperCase()} 국가의 최신 환율 (1 단위당 KRW ${autoRate}) 로 적용하시겠습니까?\n\n'취소'를 누르면 수동으로 환율을 입력할 수 있습니다.`;
-                if (confirm(confirmMsg)) {
-                    appliedRate = autoRate;
-                }
-            }
-            if (!appliedRate) {
-                const manualRate = prompt(`수동으로 적용할 환율(1 단위당 KRW)을 입력해 주세요.\n(예: 싱가포르의 경우 SGD 1 = KRW 1050 일때 1050 입력)`, "1000");
-                if (manualRate === null) return; // User cancelled the export
-                appliedRate = parseFloat(manualRate);
-                if (isNaN(appliedRate) || appliedRate <= 0) {
-                    alert("올바른 환율 값을 입력해주세요.");
-                    return;
-                }
+                autoRateText.innerText = `최신 자동 환율 적용 (1 단위당 ${autoRate} KRW)`;
+                radioAuto.checked = true;
+                radioAuto.disabled = false;
+                manualRateInput.disabled = true;
+                manualRateInput.value = '';
+            } else {
+                autoRateText.innerText = `최신 자동 환율 적용 (정보 없음)`;
+                radioAuto.checked = false;
+                radioAuto.disabled = true;
+                radioManual.checked = true;
+                manualRateInput.disabled = false;
+                manualRateInput.value = '1000';
             }
 
-            try {
-                const result = await api.exportToMarket(productIds, selectedMarket, appliedRate);
-                
-                // UI 업데이트: 배지 활성화
-                checkedBoxes.forEach(cb => {
-                    const row = cb.closest('tr');
-                    const badge = row.querySelector(`.badge-market[data-market="${selectedMarket}"]`);
-                    if (badge) badge.classList.add('active');
-                    cb.checked = false;
-                });
-
-                if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
-                alert(`${productIds.length}개 상품이 ${selectedMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
-            } catch (err) {
-                alert('마켓 전송 실패: ' + err.message);
+            // Load Presets for dropdowns
+            function populateSelect(selectId, dataArr, defaultObj) {
+                const sel = document.getElementById(selectId);
+                sel.innerHTML = '<option value="">미지정</option>' + dataArr.map(p => 
+                    `<option value="${p.id}" ${defaultObj && defaultObj.id === p.id ? 'selected' : ''}>${p.name}</option>`
+                ).join('');
             }
+
+            const mcode = selectedMarket;
+            const marketFeePresets = presets.filter(p => p.market === mcode);
+            const feeDef = marketFeePresets.find(p => p.isDefault) || marketFeePresets[0];
+            populateSelect('export-modal-fee-preset', marketFeePresets, feeDef);
+
+            const marketPromoPresets = promotionPresets.filter(p => p.market === mcode);
+            const promoDef = marketPromoPresets.find(p => p.isDefault) || marketPromoPresets[0];
+            populateSelect('export-modal-promo-preset', marketPromoPresets, promoDef);
+
+            const marketShipPresets = shippingPresets.filter(p => p.market === mcode);
+            const shipDef = marketShipPresets.find(p => p.isDefault) || marketShipPresets[0];
+            populateSelect('export-modal-ship-preset', marketShipPresets, shipDef);
+
+            // Open Modal
+            document.getElementById('export-settings-modal').style.display = 'flex';
         });
     }
+
+    // Modal Events
+    document.querySelectorAll('input[name="export_exrate_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const manualInput = document.getElementById('export-modal-manual-rate');
+            manualInput.disabled = (e.target.value !== 'manual');
+            if (!manualInput.disabled) manualInput.focus();
+        });
+    });
+
+    document.getElementById('btn-close-export-modal')?.addEventListener('click', () => {
+        document.getElementById('export-settings-modal').style.display = 'none';
+    });
+    document.getElementById('btn-cancel-export')?.addEventListener('click', () => {
+        document.getElementById('export-settings-modal').style.display = 'none';
+    });
+
+    document.getElementById('btn-confirm-export')?.addEventListener('click', async () => {
+        const type = document.querySelector('input[name="export_exrate_type"]:checked').value;
+        let appliedRate = 0;
+        if (type === 'auto') {
+            appliedRate = window.latestExchangeRates[currentExportMarket];
+        } else {
+            appliedRate = parseFloat(document.getElementById('export-modal-manual-rate').value);
+        }
+
+        if (!appliedRate || isNaN(appliedRate) || appliedRate <= 0) {
+            alert('올바른 환율을 설정해주세요.');
+            return;
+        }
+
+        const feeId = document.getElementById('export-modal-fee-preset').value || null;
+        const promoId = document.getElementById('export-modal-promo-preset').value || null;
+        const shipId = document.getElementById('export-modal-ship-preset').value || null;
+
+        const btn = document.getElementById('btn-confirm-export');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 전송 중...';
+        btn.disabled = true;
+
+        try {
+            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId);
+            
+            // UI 업데이트: 배지 활성화
+            currentExportProductIds.forEach(pid => {
+                const tr = document.querySelector(`tr[data-product-id="${pid}"]`);
+                if (tr) {
+                    const badge = tr.querySelector(`.badge-market[data-market="${currentExportMarket}"]`);
+                    if (badge) badge.classList.add('active');
+                }
+            });
+
+            // 체크박스 해제
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
+            
+            document.getElementById('export-settings-modal').style.display = 'none';
+            alert(`${result.insertedCount}개 상품이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
+        } catch (err) {
+            alert("내보내기 실패: " + err.message);
+        } finally {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+        }
+    });
 
     /* --- 1. Global State & Data Store --- */
 
@@ -240,6 +326,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ? `<span style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; margin-left: 4px;" title="커스텀 프리셋 적용됨"><i class="fa-solid fa-thumbtack"></i></span>`
                     : '';
 
+                // Prepare Preset Badges
+                let feeBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: 미지정</span>';
+                if (item.feePresetId) {
+                    const fp = presets.find(p => p.id === item.feePresetId);
+                    if (fp) feeBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: ${fp.name}</span>`;
+                }
+
+                let promoBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: 미지정</span>';
+                if (item.promoPresetId) {
+                    const pp = promotionPresets.find(p => p.id === item.promoPresetId);
+                    if (pp) promoBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: ${pp.name}</span>`;
+                }
+
+                let shipBadge = '<span class="badge" style="background: var(--error-container); color: var(--on-error-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: 미지정</span>';
+                if (item.shipPresetId) {
+                    const sp = shippingPresets.find(p => p.id === item.shipPresetId);
+                    if (sp) shipBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: ${sp.name}</span>`;
+                }
+
                 tr.innerHTML = `
                     <td class="text-center">
                         <span class="body-sm text-secondary">${item.mcode}${presetBadge}</span>
@@ -247,6 +352,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td>
                         <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.nameKo}">${item.nameKo}</div>
                         <div class="body-sm text-secondary" style="font-size: 0.65rem; color: var(--text-disabled); margin-top: 2px;">${item.catKo || ''}</div>
+                        <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 2px;">${feeBadge}${promoBadge}${shipBadge}</div>
                     </td>
                     <td class="text-right">
                         <div class="pc-data-top">₩${sourcingCostKrw.toLocaleString()}</div>

@@ -870,6 +870,60 @@
     <script src="./categories.js"></script>
     <script src="./api.js?v=8"></script>
     <!-- Smart Pricing Settings Modal -->
+    <!-- Export Settings Modal -->
+    <div class="modal-overlay" id="export-settings-modal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000;">
+        <div class="modal-content surface-container-lowest" style="width: 480px; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="headline-md" id="export-modal-title">마켓으로 상품 내보내기</h3>
+                <button class="btn-icon" id="btn-close-export-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <p class="body-md text-secondary" id="export-modal-desc" style="margin-bottom: 1.5rem;">선택된 X개의 상품을 SG 마켓으로 전송합니다.</p>
+            
+            <!-- Exchange Rate -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="label-md" style="margin-bottom: 0.75rem; display: block;"><i class="fa-solid fa-money-bill-transfer"></i> 환율 설정</label>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="export_exrate_type" value="auto" checked>
+                        <span id="export-modal-auto-rate-text">최신 자동 환율 적용 (1 단위당 - KRW)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="export_exrate_type" value="manual">
+                        <span>수동 환율 입력</span>
+                        <input type="number" id="export-modal-manual-rate" class="form-control" style="width: 120px; padding: 4px 8px;" disabled>
+                        <span>KRW</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label class="label-md" style="margin-bottom: 0.75rem; display: block;"><i class="fa-solid fa-layer-group"></i> 일괄 적용 프리셋 (선택)</label>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; background: var(--surface-container-low); padding: 1rem; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="body-sm text-secondary" style="width: 80px;">수수료</span>
+                        <select id="export-modal-fee-preset" class="form-control" style="flex: 1;"></select>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="body-sm text-secondary" style="width: 80px;">프로모션</span>
+                        <select id="export-modal-promo-preset" class="form-control" style="flex: 1;"></select>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="body-sm text-secondary" style="width: 80px;">배송비</span>
+                        <select id="export-modal-ship-preset" class="form-control" style="flex: 1;"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn-secondary" id="btn-cancel-export">취소</button>
+                <button class="btn-primary" id="btn-confirm-export"><i class="fa-solid fa-paper-plane"></i> 적용 및 내보내기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Pricing Modal -->
     <div class="modal-overlay" id="smart-pricing-modal" style="display: none; align-items: center; justify-content: center;">
         <div class="modal-content surface-container-low" style="width: 400px; padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
