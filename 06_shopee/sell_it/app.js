@@ -445,31 +445,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="text-center">
                         <div class="pc-dot-cell">${presetDots}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
                         <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
                         <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top">KRW ${(exRate > 0 ? Math.round(result.totalFees / exRate) : 0).toLocaleString()}</div>
                         <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top" style="color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
                         <div class="pc-data-bottom" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
                         <div class="pc-data-bottom" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top" style="color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
                         <div class="pc-data-bottom pc-vat-refund" id="cell-profit-vat-${item.id}">${isEmpty ? '—' : '+환급 KRW ' + result.marginWithVatKrw.toLocaleString()}</div>
                     </td>
-                    <td class="text-right">
+                    <td class="text-center">
                         <div class="pc-data-top" style="color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
                         <div class="pc-data-bottom pc-vat-refund" id="cell-margin-vat-${item.id}">${isEmpty ? '—' : '+환급 ' + marginWithVatRate.toFixed(1) + '%'}</div>
                     </td>
