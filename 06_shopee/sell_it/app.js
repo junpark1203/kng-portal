@@ -156,8 +156,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             });
 
+            let appliedRate = 0;
+            if (window.latestExchangeRates && window.latestExchangeRates[selectedMarket]) {
+                const autoRate = window.latestExchangeRates[selectedMarket];
+                const confirmMsg = `선택하신 ${selectedMarket.toUpperCase()} 국가의 최신 환율 (1 단위당 KRW ${autoRate}) 로 적용하시겠습니까?\n\n'취소'를 누르면 수동으로 환율을 입력할 수 있습니다.`;
+                if (confirm(confirmMsg)) {
+                    appliedRate = autoRate;
+                }
+            }
+            if (!appliedRate) {
+                const manualRate = prompt(`수동으로 적용할 환율(1 단위당 KRW)을 입력해 주세요.\n(예: 싱가포르의 경우 SGD 1 = KRW 1050 일때 1050 입력)`, "1000");
+                if (manualRate === null) return; // User cancelled the export
+                appliedRate = parseFloat(manualRate);
+                if (isNaN(appliedRate) || appliedRate <= 0) {
+                    alert("올바른 환율 값을 입력해주세요.");
+                    return;
+                }
+            }
+
             try {
-                const result = await api.exportToMarket(productIds, selectedMarket);
+                const result = await api.exportToMarket(productIds, selectedMarket, appliedRate);
                 
                 // UI 업데이트: 배지 활성화
                 checkedBoxes.forEach(cb => {
@@ -206,24 +224,63 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const hasCustomPreset = item.feePresetId || item.promoPresetId || item.shipPresetId;
                 const presetBadge = hasCustomPreset ? `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-thumbtack"></i> 개별설정</span>` : `<span class="body-sm text-secondary">일괄 설정</span>`;
 
+                // New layout: 10 columns
+                const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
+                const sourcingCostSgd = result.costSgd;
+                
+                const shipSgd = result.sellerShipping;
+                const shipKrw = result.exchangeRate > 0 ? shipSgd / result.exchangeRate : 0;
+                
+                const commissionTotalSgd = result.breakdown.commission.amount + result.breakdown.pgFee.amount + result.breakdown.serviceFee.amount + result.breakdown.productGst.amount + result.breakdown.shippingGst.amount + result.breakdown.payoneer.amount;
+                const commissionTotalKrw = result.exchangeRate > 0 ? commissionTotalSgd / result.exchangeRate : 0;
+                
+                // Promotion
+                const promoVoucherR = (result.promo?.voucher || 0) / 100;
+                const promoFspCcbR = (result.promo?.fspCcb || 0) / 100;
+                const promoTotalSgd = (result.sellingPrice * (result.discountRate/100)) + (result.transactionPrice * promoVoucherR) + (result.transactionPrice * promoFspCcbR);
+                const promoTotalKrw = result.exchangeRate > 0 ? promoTotalSgd / result.exchangeRate : 0;
+
+                const salesPriceSgd = result.sellingPrice;
+                const salesPriceKrw = result.exchangeRate > 0 ? salesPriceSgd / result.exchangeRate : 0;
+
+                const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
+                const marginRateWithVat = salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0;
+
                 tr.innerHTML = `
-                    <td style="text-align: center; color: var(--text-secondary);"><i class="fa-solid fa-chevron-right pc-expand-icon"></i></td>
+                    <td class="text-center" style="color: var(--text-secondary);"><span class="body-sm text-secondary">${item.mcode}</span></td>
+                    <td><span class="body-sm text-secondary">${item.catKo}</span></td>
                     <td>
-                        <div style="font-weight: 600;">${item.nameKo || item.nameEn}</div>
-                        <div class="body-sm text-secondary">${item.mcode} · ${item.weight}g</div>
+                        <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" title="${item.nameKo}">${item.nameKo}</div>
+                        <div class="body-sm text-secondary" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" title="${item.nameEn}">${item.nameEn}</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-weight: 600;">₩${Number(item.priceKrw).toLocaleString()}</div>
-                        <div class="body-sm text-secondary">+₩${Number(item.domesticShipping ?? 3000).toLocaleString()}</div>
-                    </td>
-                    <td class="text-center">${presetBadge}</td>
-                    <td class="text-right"><span style="font-weight: 600; color: var(--primary);">${result.sellingPrice.toFixed(2)}</span></td>
-                    <td class="text-right">
-                        <span style="font-weight: 600; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${result.marginSgd.toFixed(2)}</span>
+                        <div style="font-weight: 600;">₩${sourcingCostKrw.toLocaleString()}</div>
+                        <div class="body-sm text-secondary">SGD ${sourcingCostSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginWithVatKrw.toLocaleString()}</span>
-                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">(기본 ₩${result.marginKrw.toLocaleString()})</div>
+                        <div style="font-weight: 600;">₩${Math.round(shipKrw).toLocaleString()}</div>
+                        <div class="body-sm text-secondary">SGD ${shipSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <div style="font-weight: 600;">₩${Math.round(commissionTotalKrw).toLocaleString()}</div>
+                        <div class="body-sm text-secondary">SGD ${commissionTotalSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <div style="font-weight: 600;">₩${Math.round(promoTotalKrw).toLocaleString()}</div>
+                        <div class="body-sm text-secondary">SGD ${promoTotalSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="form-control input-sales-price" style="text-align: right; width: 100%;" value="${salesPriceSgd.toFixed(2)}" step="0.01">
+                        <div class="body-sm text-secondary" style="margin-top: 4px;">₩${Math.round(salesPriceKrw).toLocaleString()}</div>
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="form-control input-profit" style="text-align: right; width: 100%; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};" value="${result.marginKrw}">
+                        <div class="body-sm text-secondary" style="margin-top: 4px;">SGD ${result.marginSgd.toFixed(2)}</div>
+                        <div style="color: green; font-size: 0.75rem; margin-top: 2px;">+ 환급 ₩${result.vatRefundKrw.toLocaleString()} ➔ 최종 ₩${result.marginWithVatKrw.toLocaleString()}</div>
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="form-control input-margin-rate" style="text-align: right; width: 100%;" value="${marginRate.toFixed(2)}" step="0.1">
+                        <div style="color: green; font-size: 0.75rem; margin-top: 4px;">최종 ${marginRateWithVat.toFixed(2)}%</div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -236,7 +293,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tbody.appendChild(expandTr);
 
                 // Toggle expand
-                tr.addEventListener('click', () => {
+                tr.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return; // Do not expand if clicking on inputs
                     const isOpen = expandTr.style.display !== 'none';
                     // Close all others
                     document.querySelectorAll('.pc-breakdown-row').forEach(r => r.style.display = 'none');
@@ -246,6 +304,71 @@ document.addEventListener('DOMContentLoaded', async () => {
                         tr.querySelector('.pc-expand-icon').className = 'fa-solid fa-chevron-down pc-expand-icon';
                     }
                 });
+
+                // --- 3-Way Binding Listeners ---
+                const inpSales = tr.querySelector('.input-sales-price');
+                const inpProfit = tr.querySelector('.input-profit');
+                const inpMargin = tr.querySelector('.input-margin-rate');
+
+                let threeWayTimer;
+                function updateThreeWay(source) {
+                    clearTimeout(threeWayTimer);
+                    threeWayTimer = setTimeout(async () => {
+                        let newMarginKrw = result.marginKrw;
+                        let newSalesSgd = result.sellingPrice;
+                        
+                        if (source === 'profit') {
+                            newMarginKrw = parseFloat(inpProfit.value) || 0;
+                            item.targetMarginKrw = newMarginKrw;
+                        } else if (source === 'sales') {
+                            newSalesSgd = parseFloat(inpSales.value) || 0;
+                            let settings = getPCSettings();
+                            if (item.feePresetId && presets.find(p => p.id === item.feePresetId)) {
+                                const feePre = presets.find(p => p.id === item.feePresetId);
+                                settings.fees = { commission: feePre.fees.commission || 0, pg: feePre.fees.pg || 0, service: feePre.fees.service || 0, payoneer: feePre.fees.payoneer || 0, gst: feePre.fees.gst || feePre.fees.special || 0 };
+                            }
+                            if (item.promoPresetId && promotionPresets.find(p => p.id === item.promoPresetId)) {
+                                const promoPre = promotionPresets.find(p => p.id === item.promoPresetId);
+                                settings.promo = { discountRate: promoPre.settings.discountRate || 0, adjustmentRate: promoPre.settings.adjustmentRate || 100, voucher: promoPre.settings.voucher || 0, fspCcb: promoPre.settings.fspCcb || 0 };
+                            }
+                            if (item.shipPresetId && shippingPresets.find(p => p.id === item.shipPresetId)) {
+                                const shipPre = shippingPresets.find(p => p.id === item.shipPresetId);
+                                settings.shippingSettings = shipPre.settings;
+                            }
+                            const resSales = calcPricingFromPrice({
+                                costKrw: item.priceKrw || 0,
+                                domesticShipping: item.domesticShipping ?? 3000,
+                                packagingKrw: item.packagingKrw || 0,
+                                sellingPriceSgd: newSalesSgd,
+                                weight: item.weight || 0,
+                                exchangeRate: item.exchangeRate || 0.00086,
+                                ...settings
+                            });
+                            item.targetMarginKrw = resSales.marginKrw;
+                        } else if (source === 'margin') {
+                            const newMarginRate = parseFloat(inpMargin.value) || 0;
+                            let K = newMarginRate / 100;
+                            let approxRevenueKrw = result.sellingPrice / (item.exchangeRate || 0.00086);
+                            item.targetMarginKrw = Math.round(approxRevenueKrw * K);
+                        }
+
+                        // Sync API and refresh UI
+                        try {
+                            await api.updateMarketExportSettings(item.id || item.exportId, {
+                                feePresetId: item.feePresetId,
+                                promoPresetId: item.promoPresetId,
+                                shipPresetId: item.shipPresetId,
+                                targetMarginKrw: item.targetMarginKrw,
+                                packagingKrw: item.packagingKrw
+                            });
+                            window.renderPriceCalcGrid(marketCode);
+                        } catch (e) { console.error(e); }
+                    }, 800);
+                }
+
+                inpSales.addEventListener('input', () => updateThreeWay('sales'));
+                inpProfit.addEventListener('input', () => updateThreeWay('profit'));
+                inpMargin.addEventListener('input', () => updateThreeWay('margin'));
 
                 // --- Inline Cockpit Handlers ---
                 const marginInput = expandTr.querySelector('.pc-margin-input');
@@ -271,11 +394,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     const newResult = calcProductRow(item);
 
-                    // Update summary row cells
+                    // Update summary row cells (not fully redrawing to avoid focus loss, but 3-way will redraw everything anyway)
                     const cells = tr.querySelectorAll('td');
-                    if (cells[4]) cells[4].innerHTML = `<span style="font-weight: 600; color: var(--primary);">${newResult.sellingPrice.toFixed(2)}</span>`;
-                    if (cells[5]) cells[5].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span>`;
-                    if (cells[6]) cells[6].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginWithVatKrw.toLocaleString()}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">(기본 ₩${newResult.marginKrw.toLocaleString()})</div>`;
+                    // Cells: 0:Icon, 1:Cat, 2:Name, 3:Cost, 4:Ship, 5:Comm, 6:Promo, 7:Sales(Input), 8:Profit(Input), 9:Margin(Input)
+                    if (cells[7]) {
+                        const i = cells[7].querySelector('input');
+                        if(i) i.value = newResult.sellingPrice.toFixed(2);
+                    }
+                    if (cells[8]) {
+                        const i = cells[8].querySelector('input');
+                        if(i) i.value = newResult.marginKrw;
+                    }
+                    if (cells[9]) {
+                        const i = cells[9].querySelector('input');
+                        const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                        if(i) i.value = mr.toFixed(2);
+                    }
 
                     // Update Cockpit Results
                     const cockpitP = expandTr.querySelector('.cockpit-P');
@@ -413,12 +547,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const targetMarginKrw = item.targetMarginKrw || 12000;
+        const exportRate = item.exchangeRate || 0.00086; // Fallback if missing
         return calcPricingFromMargin({
             costKrw: item.priceKrw || 0,
             domesticShipping: item.domesticShipping ?? 3000,
             packagingKrw: item.packagingKrw || 0,
             targetMarginKrw,
             weight: item.weight || 0,
+            exchangeRate: exportRate,
             ...settings
         });
     }
@@ -915,6 +1051,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputNameEn = document.getElementById('input-name-en');
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
+    const inputPackagingKrw = document.getElementById('input-packaging-krw');
     const inputRate = document.getElementById('input-rate');
     const inputRateDate = document.getElementById('input-rate-date');
     const inputWeight = document.getElementById('input-weight');
@@ -1080,6 +1217,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nameEn = inputNameEn.value;
             const priceKrw = inputPriceKrw.value;
             const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
+            const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
             const rate = inputRate.value;
             const rateDate = inputRateDate.value;
             const weight = inputWeight.value;
@@ -1113,6 +1251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nameEn: nameEn,
                 priceKrw: parseInt(priceKrw, 10) || 0,
                 domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
+                packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
                 rate: parseFloat(rate) || 1,
                 rateDate: rateDate,
                 weight: parseInt(weight, 10) || 0,
@@ -1134,6 +1273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             (existing.nameEn || '') !== productData.nameEn ||
                             Number(existing.priceKrw || 0) !== productData.priceKrw ||
                             Number(existing.domesticShipping ?? 3000) !== productData.domesticShipping ||
+                            Number(existing.packagingKrw || 0) !== productData.packagingKrw ||
                             Number(existing.rate || 1) !== productData.rate ||
                             (existing.rateDate || '') !== productData.rateDate ||
                             Number(existing.weight || 0) !== productData.weight ||
@@ -1201,9 +1341,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputNameKo.value = nameKo;
             inputNameEn.value = nameEn;
             inputPriceKrw.value = priceKrwText.replace(/[^0-9]/g, '');
-            // Load domesticShipping from product data
+            // Load domesticShipping and packagingKrw from product data
             const productObj = productList.find(pp => pp.mcode === mcodeStr);
             if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping ?? 3000) : 3000;
+            if (inputPackagingKrw) inputPackagingKrw.value = productObj ? (productObj.packagingKrw || 0) : 0;
             inputRate.value = rate.replace(/,/g, '');
             inputRateDate.value = rateDateStr;
             inputWeight.value = weightText.replace(/[^0-9]/g, '');
@@ -1270,6 +1411,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const payR = (fees.payoneer || 0) / 100;
         const G = (fees.gst || 0) / 100;
         const D = (promo.discountRate || 0) / 100;
+        const voucherR = (promo.voucher || 0) / 100;
+        const fspCcbR = (promo.fspCcb || 0) / 100;
 
         // Cost
         const totalCostKrw = costKrw + domesticShipping + packagingKrw;
@@ -1293,10 +1436,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const productGst = TP * G;
         const shippingGst = G > 0 ? (rebate / (1 + G)) * G : 0;
         const totalGst = productGst + shippingGst;
+        const voucherFee = TP * voucherR;
+        const fspCcbFee = TP * fspCcbR;
 
         // Revenue & Settlement
         const revenue = TP * (1 + G);
-        const settlement = revenue - commission - pgFee - totalGst - sellerShipping;
+        const settlement = revenue - commission - pgFee - totalGst - sellerShipping - voucherFee - fspCcbFee;
         const payoneerFee = settlement * payR;
 
         // Margin
@@ -1367,6 +1512,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const payR = (fees.payoneer || 0) / 100;
         const G = (fees.gst || 0) / 100;
         const D = (promo.discountRate || 0) / 100;
+        const voucherR = (promo.voucher || 0) / 100;
+        const fspCcbR = (promo.fspCcb || 0) / 100;
 
         const totalCostKrw = costKrw + domesticShipping + packagingKrw;
         const costSgd = totalCostKrw * exchangeRate;
@@ -1376,43 +1523,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const sellerShipping = shipResult.sellerShipping;
         const rebate = shipResult.rebate;
 
-        // Solve for TP:
-        // marginSgd = TP*(1+G) - costSgd - sellerShipping - TP*commR
-        //           - (TP*(1+G)+rebate)*pgR - TP*svcR
-        //           - payR*(TP*(1+G) - TP*commR - (TP*(1+G)+rebate)*pgR - TP*G - rebate/(1+G)*G - sellerShipping)
-        //           - TP*G - rebate/(1+G)*G
-        //
-        // Let's expand step by step:
-        // Let A = (1+G), R = rebate
-        // Revenue = TP*A
-        // Comm = TP*commR
-        // PG = TP*A*pgR + R*pgR
-        // Svc = TP*svcR
-        // ProdGST = TP*G
-        // ShipGST = R/(1+G)*G = R*G/A
-        // Settlement = TP*A - TP*commR - (TP*A*pgR + R*pgR) - TP*G - R*G/A - sellerShipping
-        //            = TP*(A - commR - A*pgR - G) - R*pgR - R*G/A - sellerShipping
-        // Payoneer = payR * Settlement
-        //
-        // margin = TP*A - costSgd - sellerShipping - TP*commR - (TP*A*pgR + R*pgR)
-        //        - TP*svcR - payR*Settlement - TP*G - R*G/A
-        //
-        // margin = TP*(A - commR - A*pgR - svcR - G) - costSgd - sellerShipping - R*pgR - R*G/A
-        //        - payR * [TP*(A - commR - A*pgR - G) - R*pgR - R*G/A - sellerShipping]
-        //
-        // Let K1 = A - commR - A*pgR - svcR - G
-        // Let K2 = A - commR - A*pgR - G
-        // Let C = costSgd + sellerShipping + R*pgR + R*G/A
-        //
-        // margin = TP*K1 - C - payR*(TP*K2 - R*pgR - R*G/A - sellerShipping)
-        // margin = TP*K1 - C - payR*TP*K2 + payR*(R*pgR + R*G/A + sellerShipping)
-        // margin = TP*(K1 - payR*K2) - C + payR*(R*pgR + R*G/A + sellerShipping)
-        //
-        // TP = (margin + C - payR*(R*pgR + R*G/A + sellerShipping)) / (K1 - payR*K2)
-
         const A = 1 + G;
-        const K1 = A - commR - A * pgR - svcR - G;
-        const K2 = A - commR - A * pgR - G;
+        const K1 = A - commR - A * pgR - svcR - G - voucherR - fspCcbR;
+        const K2 = A - commR - A * pgR - G - voucherR - fspCcbR;
         const C = costSgd + sellerShipping + rebate * pgR + (G > 0 ? rebate * G / A : 0);
         const payAdj = payR * (rebate * pgR + (G > 0 ? rebate * G / A : 0) + sellerShipping);
 

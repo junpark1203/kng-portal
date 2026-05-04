@@ -79,10 +79,10 @@
             return request(`/market-exports/all?_t=${Date.now()}`);
         },
 
-        async exportToMarket(productIds, marketCode) {
+        async exportToMarket(productIds, marketCode, exchangeRate) {
             return request('/market-exports', {
                 method: 'POST',
-                body: JSON.stringify({ productIds, marketCode })
+                body: JSON.stringify({ productIds, marketCode, exchangeRate })
             });
         },
 

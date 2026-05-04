@@ -562,13 +562,16 @@
                             <table class="data-table" id="price-calc-table">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px;"></th>
-                                        <th>상품명</th>
-                                        <th class="text-right">매입원가(KRW)</th>
-                                        <th class="text-center">프리셋 상태</th>
-                                        <th class="text-right">판매가(P)</th>
-                                        <th class="text-right">마진(SGD)</th>
-                                        <th class="text-right">최종 순수익(KRW)</th>
+                                        <th style="width: 80px;">관리코드</th>
+                                        <th>카테고리</th>
+                                        <th>상품명(한/영)</th>
+                                        <th class="text-right" style="width: 100px;">매입원가</th>
+                                        <th class="text-right" style="width: 100px;">배송비</th>
+                                        <th class="text-right" style="width: 100px;">수수료</th>
+                                        <th class="text-right" style="width: 100px;">프로모션</th>
+                                        <th class="text-right" style="width: 120px;">판매가</th>
+                                        <th class="text-right" style="width: 120px;">수익</th>
+                                        <th class="text-right" style="width: 100px;">수익률</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -624,14 +627,18 @@
                     <label class="label-md">상품명(영문)</label>
                     <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
                 </div>
-                <div class="form-group row">
-                    <div class="col">
+                <div class="form-group row" style="display: flex; gap: 1rem;">
+                    <div class="col" style="flex: 1;">
                         <label class="label-md">상품매입비(KRW)</label>
                         <input type="number" id="input-price-krw" class="form-control" placeholder="0" required>
                     </div>
-                    <div class="col">
+                    <div class="col" style="flex: 1;">
                         <label class="label-md">국내배송비(KRW)</label>
                         <input type="number" id="input-domestic-shipping" class="form-control" placeholder="3000" value="3000">
+                    </div>
+                    <div class="col" style="flex: 1;">
+                        <label class="label-md">기본포장비(KRW)</label>
+                        <input type="number" id="input-packaging-krw" class="form-control" placeholder="0" value="0">
                     </div>
                 </div>
                 <div class="form-group row">
