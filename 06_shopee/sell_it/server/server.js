@@ -196,7 +196,9 @@ function initDb() {
                     "ALTER TABLE market_exports ADD COLUMN targetMarginKrw INTEGER",
                     "ALTER TABLE market_exports ADD COLUMN packagingKrw INTEGER",
                     "ALTER TABLE market_exports ADD COLUMN exchangeRate REAL",
-                    "ALTER TABLE market_exports ADD COLUMN discountRate REAL"
+                    "ALTER TABLE market_exports ADD COLUMN discountRate REAL",
+                    "ALTER TABLE market_exports ADD COLUMN targetMarginType TEXT",
+                    "ALTER TABLE market_exports ADD COLUMN targetMarginValue REAL"
                 ];
                 alters.forEach(alt => {
                     db.run(alt, (alterErr) => {
@@ -222,6 +224,12 @@ function initDb() {
                 db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_safe', '40')");
                 db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_standard', '30')");
                 db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_aggressive', '10')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_rate_preset_1', '10')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_rate_preset_2', '30')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_rate_preset_3', '40')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_amount_preset_1', '1000')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_amount_preset_2', '3000')");
+                db.run("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('margin_amount_preset_3', '5000')");
             }
         });
 
@@ -455,6 +463,7 @@ app.get('/api/market-exports', (req, res) => {
         SELECT me.id as exportId, me.marketCode, me.exportDate, me.createdAt as exportCreatedAt,
                me.exchangeRate, me.feePresetId, me.promoPresetId, me.shipPresetId, 
                me.targetMarginKrw, me.packagingKrw, me.discountRate,
+               me.targetMarginType, me.targetMarginValue,
                p.*
         FROM market_exports me
         JOIN products p ON me.productId = p.id
@@ -491,21 +500,21 @@ app.get('/api/market-exports/all', (req, res) => {
 
 // 마켓 전송 등록 (bulk - 여러 상품을 한 마켓으로)
 app.post('/api/market-exports', (req, res) => {
-    const { productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId } = req.body;
+    const { productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue } = req.body;
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0 || !marketCode) {
         return res.status(400).json({ error: 'productIds 배열과 marketCode가 필요합니다.' });
     }
 
     const now = new Date().toISOString();
     const exportDate = now.split('T')[0];
-    const sql = `INSERT OR REPLACE INTO market_exports (id, productId, marketCode, exportDate, createdAt, exchangeRate, feePresetId, promoPresetId, shipPresetId)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT OR REPLACE INTO market_exports (id, productId, marketCode, exportDate, createdAt, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
     const stmt = db.prepare(sql);
 
     productIds.forEach(pid => {
         const id = `ME-${pid}-${marketCode}`;
-        stmt.run([id, pid, marketCode, exportDate, now, exchangeRate || null, feePresetId || null, promoPresetId || null, shipPresetId || null], function(err) {
+        stmt.run([id, pid, marketCode, exportDate, now, exchangeRate || null, feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginType || null, targetMarginValue || null], function(err) {
             if (!err) inserted++;
         });
     });
@@ -527,11 +536,11 @@ app.delete('/api/market-exports/:id', (req, res) => {
 
 // 마켓 개별 상품 설정 업데이트 (Pricing Cockpit)
 app.put('/api/market-exports/:id/settings', (req, res) => {
-    const { feePresetId, promoPresetId, shipPresetId, targetMarginKrw, packagingKrw, discountRate } = req.body;
+    const { feePresetId, promoPresetId, shipPresetId, targetMarginKrw, packagingKrw, discountRate, targetMarginType, targetMarginValue } = req.body;
     const sql = `UPDATE market_exports 
-                 SET feePresetId=?, promoPresetId=?, shipPresetId=?, targetMarginKrw=?, packagingKrw=?, discountRate=? 
+                 SET feePresetId=?, promoPresetId=?, shipPresetId=?, targetMarginKrw=?, packagingKrw=?, discountRate=?, targetMarginType=?, targetMarginValue=?
                  WHERE id=?`;
-    db.run(sql, [feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginKrw !== undefined ? targetMarginKrw : null, packagingKrw || 0, discountRate !== undefined ? discountRate : null, req.params.id], function(err) {
+    db.run(sql, [feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginKrw !== undefined ? targetMarginKrw : null, packagingKrw || 0, discountRate !== undefined ? discountRate : null, targetMarginType || null, targetMarginValue || null, req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: '설정 저장 성공' });
     });

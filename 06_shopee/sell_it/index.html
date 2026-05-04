@@ -897,6 +897,50 @@
                 </div>
             </div>
 
+            <!-- Target Margin -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <label class="label-md"><i class="fa-solid fa-bullseye"></i> 목표 마진 설정</label>
+                    <button class="btn-icon" id="btn-export-margin-settings" title="퀵 프리셋 설정"><i class="fa-solid fa-gear"></i></button>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="export_margin_type" value="rate" checked>
+                        <span>비율 (%)</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="export_margin_type" value="amount">
+                        <span>고정 금액 (₩)</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <button class="btn-secondary btn-margin-preset" data-preset="1" id="export-preset-btn-1">10%</button>
+                    <button class="btn-secondary btn-margin-preset" data-preset="2" id="export-preset-btn-2">30%</button>
+                    <button class="btn-secondary btn-margin-preset" data-preset="3" id="export-preset-btn-3">40%</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span>직접 입력:</span>
+                    <input type="number" id="export-margin-value" class="form-control" style="width: 120px; padding: 4px 8px;" placeholder="30">
+                    <span id="export-margin-unit">%</span>
+                </div>
+
+                <!-- Settings Form (Hidden) -->
+                <div id="export-margin-settings-form" style="display: none; background: var(--surface-container-low); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                    <h4 class="label-md" style="margin-bottom: 0.5rem;">퀵 프리셋 커스텀 설정</h4>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="number" id="export-setting-preset-1" class="form-control" style="width: 80px;" placeholder="1번">
+                        <input type="number" id="export-setting-preset-2" class="form-control" style="width: 80px;" placeholder="2번">
+                        <input type="number" id="export-setting-preset-3" class="form-control" style="width: 80px;" placeholder="3번">
+                    </div>
+                    <div style="text-align: right;">
+                        <button class="btn-primary" id="btn-save-margin-presets" style="padding: 4px 12px; font-size: 0.8rem;">저장</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Presets -->
             <div class="form-group" style="margin-bottom: 2rem;">
                 <label class="label-md" style="margin-bottom: 0.75rem; display: block;"><i class="fa-solid fa-layer-group"></i> 일괄 적용 프리셋 (선택)</label>

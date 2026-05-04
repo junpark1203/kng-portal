@@ -209,6 +209,96 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shipDef = marketShipPresets.find(p => p.isDefault) || marketShipPresets[0];
             populateSelect('export-modal-ship-preset', marketShipPresets, shipDef);
 
+            // Margin Setup
+            try {
+                const sysSettings = await api.getSystemSettings();
+                
+                const loadMarginPresets = (type) => {
+                    if (type === 'rate') {
+                        document.getElementById('export-preset-btn-1').innerText = (sysSettings.margin_rate_preset_1 || 10) + '%';
+                        document.getElementById('export-preset-btn-2').innerText = (sysSettings.margin_rate_preset_2 || 30) + '%';
+                        document.getElementById('export-preset-btn-3').innerText = (sysSettings.margin_rate_preset_3 || 40) + '%';
+                        document.getElementById('export-margin-unit').innerText = '%';
+                        document.getElementById('export-margin-value').value = sysSettings.margin_rate_preset_2 || 30;
+                    } else {
+                        document.getElementById('export-preset-btn-1').innerText = '₩' + Number(sysSettings.margin_amount_preset_1 || 1000).toLocaleString();
+                        document.getElementById('export-preset-btn-2').innerText = '₩' + Number(sysSettings.margin_amount_preset_2 || 3000).toLocaleString();
+                        document.getElementById('export-preset-btn-3').innerText = '₩' + Number(sysSettings.margin_amount_preset_3 || 5000).toLocaleString();
+                        document.getElementById('export-margin-unit').innerText = '₩';
+                        document.getElementById('export-margin-value').value = sysSettings.margin_amount_preset_2 || 3000;
+                    }
+                };
+
+                // Default to rate
+                document.querySelector('input[name="export_margin_type"][value="rate"]').checked = true;
+                loadMarginPresets('rate');
+
+                document.querySelectorAll('input[name="export_margin_type"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => loadMarginPresets(e.target.value));
+                });
+
+                document.querySelectorAll('.btn-margin-preset').forEach(btn => {
+                    // Remove old listeners to prevent duplicates
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.addEventListener('click', () => {
+                        const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                        const idx = newBtn.dataset.preset;
+                        const val = type === 'rate' ? sysSettings[`margin_rate_preset_${idx}`] : sysSettings[`margin_amount_preset_${idx}`];
+                        document.getElementById('export-margin-value').value = val;
+                    });
+                });
+
+                // Margin Settings Form Toggle
+                const btnSettings = document.getElementById('btn-export-margin-settings');
+                const formSettings = document.getElementById('export-margin-settings-form');
+                const newBtnSettings = btnSettings.cloneNode(true);
+                btnSettings.parentNode.replaceChild(newBtnSettings, btnSettings);
+                
+                newBtnSettings.addEventListener('click', () => {
+                    const isHidden = formSettings.style.display === 'none';
+                    formSettings.style.display = isHidden ? 'block' : 'none';
+                    if (isHidden) {
+                        const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                        document.getElementById('export-setting-preset-1').value = sysSettings[`margin_${type}_preset_1`] || '';
+                        document.getElementById('export-setting-preset-2').value = sysSettings[`margin_${type}_preset_2`] || '';
+                        document.getElementById('export-setting-preset-3').value = sysSettings[`margin_${type}_preset_3`] || '';
+                    }
+                });
+
+                // Save Margin Settings
+                const btnSaveSettings = document.getElementById('btn-save-margin-presets');
+                const newBtnSaveSettings = btnSaveSettings.cloneNode(true);
+                btnSaveSettings.parentNode.replaceChild(newBtnSaveSettings, btnSaveSettings);
+                
+                newBtnSaveSettings.addEventListener('click', async () => {
+                    const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                    const v1 = document.getElementById('export-setting-preset-1').value;
+                    const v2 = document.getElementById('export-setting-preset-2').value;
+                    const v3 = document.getElementById('export-setting-preset-3').value;
+                    
+                    const payload = {};
+                    if (v1) payload[`margin_${type}_preset_1`] = v1;
+                    if (v2) payload[`margin_${type}_preset_2`] = v2;
+                    if (v3) payload[`margin_${type}_preset_3`] = v3;
+
+                    try {
+                        newBtnSaveSettings.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        await api.updateSystemSettings(payload);
+                        Object.assign(sysSettings, payload);
+                        loadMarginPresets(type);
+                        formSettings.style.display = 'none';
+                    } catch (e) {
+                        alert('설정 저장 실패: ' + e.message);
+                    } finally {
+                        newBtnSaveSettings.innerHTML = '저장';
+                    }
+                });
+
+            } catch (err) {
+                console.error("Failed to load margin settings", err);
+            }
+
             // Open Modal
             document.getElementById('export-settings-modal').style.display = 'flex';
         });
@@ -248,13 +338,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const promoId = document.getElementById('export-modal-promo-preset').value || null;
         const shipId = document.getElementById('export-modal-ship-preset').value || null;
 
+        const targetMarginType = document.querySelector('input[name="export_margin_type"]:checked').value;
+        const targetMarginValue = parseFloat(document.getElementById('export-margin-value').value) || null;
+
         const btn = document.getElementById('btn-confirm-export');
         const origHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 전송 중...';
         btn.disabled = true;
 
         try {
-            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId);
+            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue);
             
             // UI 업데이트: 배지 활성화
             currentExportProductIds.forEach(pid => {
@@ -421,19 +514,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                             const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
                             inpMargin.value = mr.toFixed(1);
                             item.targetMarginKrw = newResult.marginKrw;
+                            item.targetMarginType = 'amount';
+                            item.targetMarginValue = newResult.marginKrw;
                         } else if (source === 'profit') {
                             const newMarginKrw = parseFloat(inpProfit.value) || 0;
                             item.targetMarginKrw = newMarginKrw;
+                            item.targetMarginType = 'amount';
+                            item.targetMarginValue = newMarginKrw;
                             newResult = calcProductRow(item);
                             inpSales.value = newResult.sellingPrice.toFixed(2);
                             const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
                             inpMargin.value = mr.toFixed(1);
                         } else if (source === 'margin') {
                             const newRate = parseFloat(inpMargin.value) || 0;
-                            const K = newRate / 100;
-                            const approxRevKrw = (parseFloat(inpSales.value) || 0) / (item.exchangeRate || 0.00086);
-                            item.targetMarginKrw = Math.round(approxRevKrw * K);
+                            item.targetMarginType = 'rate';
+                            item.targetMarginValue = newRate;
                             newResult = calcProductRow(item);
+                            item.targetMarginKrw = newResult.marginKrw;
                             inpSales.value = newResult.sellingPrice.toFixed(2);
                             inpProfit.value = newResult.marginKrw;
                         }
@@ -464,7 +561,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     api.updateMarketExportSettings(item.id || item.exportId, {
                         feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
                         shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
-                        packagingKrw: item.packagingKrw, discountRate: item.discountRate
+                        packagingKrw: item.packagingKrw, discountRate: item.discountRate,
+                        targetMarginType: item.targetMarginType, targetMarginValue: item.targetMarginValue
                     }).catch(e => console.error('Auto-save failed:', e));
                 }
 
@@ -587,7 +685,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const targetMarginKrw = item.targetMarginKrw ?? null;
-        if (targetMarginKrw === null || targetMarginKrw === undefined) {
+        const targetMarginType = item.targetMarginType ?? null;
+        const targetMarginValue = item.targetMarginValue ?? null;
+
+        if (targetMarginKrw === null && targetMarginType === null) {
             // No target set yet — return empty result shell
             const totalCostKrw = (item.priceKrw || 0) + (item.domesticShipping ?? 3000) + (item.packagingKrw || 0);
             const rate = item.exchangeRate || 0.00086;
@@ -601,16 +702,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 _empty: true
             };
         }
+
         const exportRate = item.exchangeRate || 0.00086; // Fallback if missing
-        return calcPricingFromMargin({
+        
+        const calcInput = {
             costKrw: item.priceKrw || 0,
             domesticShipping: item.domesticShipping ?? 3000,
             packagingKrw: item.packagingKrw || 0,
-            targetMarginKrw,
             weight: item.weight || 0,
             exchangeRate: exportRate,
             ...settings
-        });
+        };
+
+        if (targetMarginType === 'rate') {
+            return calcPricingFromMarginRate(calcInput, targetMarginValue || 0);
+        } else if (targetMarginType === 'amount') {
+            return calcPricingFromMargin({ ...calcInput, targetMarginKrw: targetMarginValue || 0 });
+        } else {
+            // Fallback for old data
+            return calcPricingFromMargin({ ...calcInput, targetMarginKrw: targetMarginKrw || 0 });
+        }
     }
 
     // Helper: Open and Render Sliding Side Panel
@@ -708,7 +819,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         shipPresetId: item.shipPresetId, 
                         targetMarginKrw: item.targetMarginKrw, 
                         packagingKrw: item.packagingKrw,
-                        discountRate: item.discountRate 
+                        discountRate: item.discountRate,
+                        targetMarginType: item.targetMarginType,
+                        targetMarginValue: item.targetMarginValue
                     });
                     alert('설정 저장 완료');
                     btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
@@ -1742,9 +1855,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         return calcPricingFromPrice({ ...input, sellingPriceSgd: P });
     }
 
+    /**
+     * Search calculation: Given a target margin rate (%), solve for selling price P using binary search.
+     */
+    function calcPricingFromMarginRate(input, targetMarginRate) {
+        let lowP = 0.01;
+        let highP = 100000;
+        let bestResult = null;
+        for (let i = 0; i < 50; i++) {
+            let midP = (lowP + highP) / 2;
+            let result = calcPricingFromPrice({ ...input, sellingPriceSgd: midP });
+            let currentMarginRate = result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : -100;
+            bestResult = result;
+            if (Math.abs(currentMarginRate - targetMarginRate) < 0.001) break;
+            if (currentMarginRate < targetMarginRate) {
+                lowP = midP;
+            } else {
+                highP = midP;
+            }
+        }
+        return bestResult;
+    }
+
     // Make engines available globally for price calc UI
     window.calcPricingFromPrice = calcPricingFromPrice;
     window.calcPricingFromMargin = calcPricingFromMargin;
+    window.calcPricingFromMarginRate = calcPricingFromMarginRate;
     window.calcShippingCost = calcShippingCost;
 
     /* --- Preset Logic --- */

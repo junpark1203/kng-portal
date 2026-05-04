@@ -79,10 +79,10 @@
             return request(`/market-exports/all?_t=${Date.now()}`);
         },
 
-        async exportToMarket(productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId) {
+        async exportToMarket(productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue) {
             return request('/market-exports', {
                 method: 'POST',
-                body: JSON.stringify({ productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId })
+                body: JSON.stringify({ productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue })
             });
         },
 
@@ -259,6 +259,20 @@
             return request('/market-analysis/upload-video-url', {
                 method: 'POST',
                 body: JSON.stringify({ url: videoUrl })
+            });
+        },
+
+        // ==========================================
+        // System Settings
+        // ==========================================
+        async getSystemSettings() {
+            return request(`/system-settings?_t=${Date.now()}`);
+        },
+
+        async updateSystemSettings(settingsData) {
+            return request('/system-settings', {
+                method: 'PUT',
+                body: JSON.stringify(settingsData)
             });
         },
 
