@@ -462,9 +462,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="pc-data-value ${result.marginKrw < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500; font-size: 1rem;" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : '₩' + result.marginKrw.toLocaleString()}</div>
                         <div class="pc-data-bottom" style="margin-top: 4px;" id="cell-profit-sgd-${item.id}">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
                     </td>
-                    <td class="text-right" style="position: relative; padding-right: 28px;">
+                    <td class="text-right">
                         <div class="pc-data-value ${marginRate < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500;" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
-                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 0.8rem;"><i class="fa-solid fa-pen"></i></div>
                     </td>
                 `;
                 tbody.appendChild(tr);
