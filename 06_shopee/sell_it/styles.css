@@ -406,6 +406,12 @@ body {
 .text-right {
   text-align: right !important;
 }
+.text-center {
+  text-align: center !important;
+}
+.text-left {
+  text-align: left !important;
+}
 
 .link-btn {
   color: var(--primary);
