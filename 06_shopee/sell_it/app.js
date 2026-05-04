@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (hasPartialSelection) {
-                if (!confirm('⚠️ 주의: 그룹 상품 중 일부 옵션만 선택된 항목이 있습니다.\n\n선택되지 않은 옵션은 제외하고 전송됩니다. 계속하시겠습니까?')) {
+                if (!confirm('⚠️ 주의: 그룹 상품 중 일부 옵션만 선택된 항목이 있습니다.nn선택되지 않은 옵션은 제외하고 전송됩니다. 계속하시겠습니까?')) {
                     return;
                 }
             }
@@ -1385,7 +1385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const badgesHtml = marketCodes.map(code => {
             const isActive = exportedMarkets.includes(code) ? ' active' : '';
             return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
-        }).join('\n                            ');
+        }).join('n                            ');
 
         const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
         const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
@@ -1454,7 +1454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Render Parent Row
                 let minPrice = Math.min(...item.children.map(c => c.priceKrw));
                 let maxPrice = Math.max(...item.children.map(c => c.priceKrw));
-                let priceRangeStr = minPrice === maxPrice ? \`KRW \${minPrice.toLocaleString()}\` : \`KRW \${minPrice.toLocaleString()} ~ \${maxPrice.toLocaleString()}\`;
+                let priceRangeStr = minPrice === maxPrice ? `KRW ${minPrice.toLocaleString()}` : `KRW ${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}`;
                 
                 let catEn1 = item.catEn;
                 let catEn2 = '';
@@ -1464,23 +1464,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                     catEn2 = parts[1];
                 }
 
-                html += \`
-                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest);" data-parent-mcode="\${item.mcode}">
+                html += `
+                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest);" data-parent-mcode="${item.mcode}">
                         <td style="text-align: center;" class="td-checkbox">
-                            <input type="checkbox" class="parent-checkbox" data-parent-mcode="\${item.mcode}">
+                            <input type="checkbox" class="parent-checkbox" data-parent-mcode="${item.mcode}">
                         </td>
                         <td>
-                            <div style="font-weight: 600;" class="prod-date">\${item.date}</div>
-                            <div class="body-sm text-secondary prod-mcode">\${item.mcode} <span style="font-size:0.75rem; background:var(--primary); color:white; padding:2px 4px; border-radius:4px; margin-left:4px;">Group</span></div>
+                            <div style="font-weight: 600;" class="prod-date">${item.date}</div>
+                            <div class="body-sm text-secondary prod-mcode">${item.mcode} <span style="font-size:0.75rem; background:var(--primary); color:white; padding:2px 4px; border-radius:4px; margin-left:4px;">Group</span></div>
                         </td>
-                        <td data-cat-en="\${escapeHtmlAttr(item.catEn)}" data-cat-ko="\${escapeHtmlAttr(item.catKo)}">
-                            <div class="prod-cat-en-1">\${catEn1}</div>
-                            <div class="prod-cat-en-2">\${catEn2}</div>
-                            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">\${item.catKo}</div>
+                        <td data-cat-en="${escapeHtmlAttr(item.catEn)}" data-cat-ko="${escapeHtmlAttr(item.catKo)}">
+                            <div class="prod-cat-en-1">${catEn1}</div>
+                            <div class="prod-cat-en-2">${catEn2}</div>
+                            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${item.catKo}</div>
                         </td>
                         <td>
-                            <div style="font-weight: 600;" class="prod-name-en">\${item.nameEn}</div>
-                            <div class="body-sm text-secondary prod-name-ko">\${item.nameKo}</div>
+                            <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
+                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
                         </td>
                         <td>
                             <div class="market-badges">
@@ -1488,15 +1488,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                         </td>
                         <td class="text-right">
-                            <div style="font-weight: 600;" class="prod-price-krw">\${priceRangeStr}</div>
+                            <div style="font-weight: 600;" class="prod-price-krw">${priceRangeStr}</div>
                         </td>
                         <td class="text-right">
-                            <div class="body-sm text-secondary prod-weight">(\${item.children.length} Options)</div>
+                            <div class="body-sm text-secondary prod-weight">(${item.children.length} Options)</div>
                         </td>
                         <td></td>
                         <td></td>
                     </tr>
-                \`;
+                `;
 
                 // Render Child Rows
                 item.children.forEach((c, idx) => {
@@ -1517,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             pcb.addEventListener('change', (e) => {
                 const isChecked = e.target.checked;
                 const mcode = e.target.dataset.parentMcode;
-                const children = document.querySelectorAll(\`.child-checkbox[data-parent-mcode="\${mcode}"]\`);
+                const children = document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]`);
                 children.forEach(cb => cb.checked = isChecked);
                 if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
             });
@@ -1528,9 +1528,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             ccb.addEventListener('change', (e) => {
                 const mcode = e.target.dataset.parentMcode;
                 if (!mcode) return; // standalone product
-                const siblings = Array.from(document.querySelectorAll(\`.child-checkbox[data-parent-mcode="\${mcode}"]\`));
+                const siblings = Array.from(document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]`));
                 const checkedCount = siblings.filter(cb => cb.checked).length;
-                const parentCb = document.querySelector(\`.parent-checkbox[data-parent-mcode="\${mcode}"]\`);
+                const parentCb = document.querySelector(`.parent-checkbox[data-parent-mcode="${mcode}"]`);
                 if (parentCb) {
                     if (checkedCount === 0) {
                         parentCb.checked = false;
@@ -1988,7 +1988,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const exportsForProduct = marketExportsMap[existing.id] || [];
                         if (exportsForProduct.length > 0) {
                             const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
-                            const confirmMsg = `⚠️ 이 상품은 현재 [${marketNames}] 마켓의 Price Calculation에 연동되어 있습니다.\n\n여기서 정보를 수정하시면 해당 마켓의 마진 계산에도 즉시 변경 사항이 반영됩니다.\n수정본을 저장하시겠습니까?`;
+                            const confirmMsg = `⚠️ 이 상품은 현재 [${marketNames}] 마켓의 Price Calculation에 연동되어 있습니다.nn여기서 정보를 수정하시면 해당 마켓의 마진 계산에도 즉시 변경 사항이 반영됩니다.n수정본을 저장하시겠습니까?`;
                             if (!confirm(confirmMsg)) return;
                         }
                         await api.updateProduct(existing.id, productData);
