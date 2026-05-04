@@ -162,6 +162,16 @@ function initDb() {
                         console.error('products ALTER TABLE (packagingKrw) 오류:', alterErr.message);
                     }
                 });
+                db.run(`ALTER TABLE products ADD COLUMN images TEXT DEFAULT '[]'`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE (images) 오류:', alterErr.message);
+                    }
+                });
+                db.run(`ALTER TABLE products ADD COLUMN video TEXT DEFAULT ''`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE (video) 오류:', alterErr.message);
+                    }
+                });
             }
         });
 
@@ -378,10 +388,10 @@ app.post('/api/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, createdAt, updatedAt, images, video)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [id, p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now, p.images||'[]', p.video||''];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -393,10 +403,10 @@ app.put('/api/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?
+    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?, images=?, video=?
                  WHERE id=?`;
     const params = [p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, id];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, p.images||'[]', p.video||'', id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
@@ -872,6 +882,48 @@ app.post('/api/market-analysis/delete', (req, res) => {
 });
 
 // 이미지 업로드 (파일)
+app.post('/api/products/upload-image', upload.single('image'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
+        const mcode = req.body.mcode || 'Unknown';
+        const index = req.body.index || '0';
+        
+        // mcode-index 로 파일명 변경
+        const ext = require('path').extname(req.file.originalname).toLowerCase();
+        const newFilename = `${mcode}-${index}${ext}`;
+        const newPath = require('path').join(req.file.destination, newFilename);
+        
+        require('fs').renameSync(req.file.path, newPath);
+        
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        const url = imgBase + '/api/images/' + newFilename;
+        res.json({ message: '업로드 성공', filename: newFilename, url, size: req.file.size });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/products/upload-video', videoUpload.single('video'), (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: '동영상 파일이 없습니다.' });
+        const mcode = req.body.mcode || 'Unknown';
+        
+        // mcode-video 로 파일명 변경
+        const ext = require('path').extname(req.file.originalname).toLowerCase();
+        const newFilename = `${mcode}-video${ext}`;
+        const newPath = require('path').join(req.file.destination, newFilename);
+        
+        require('fs').renameSync(req.file.path, newPath);
+        
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        const url = imgBase + '/api/images/' + newFilename;
+        res.json({ message: '업로드 성공', filename: newFilename, url, size: req.file.size });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Market Analysis 이미지 업로드 (파일)
 app.post('/api/market-analysis/upload-image', upload.single('image'), (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });

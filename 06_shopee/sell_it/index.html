@@ -664,6 +664,40 @@
                     <label class="label-md">비고</label>
                     <textarea id="input-note" class="form-control" rows="3" placeholder="특이사항 입력..."></textarea>
                 </div>
+                
+                <hr style="border: 0; border-top: 1px solid var(--outline-variant); margin: 1.5rem 0;">
+                
+                <h4 class="title-md" style="margin-bottom: 0.5rem;">미디어 업로드</h4>
+                
+                <!-- Images Section -->
+                <div class="form-group">
+                    <label class="label-md">상품 이미지 (최대 9장)</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="file" id="input-images-file" class="form-control" accept="image/*" multiple style="flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="url" id="input-image-url" class="form-control" placeholder="이미지 URL 직접 입력" style="flex: 1;">
+                        <button type="button" id="btn-add-image-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                    </div>
+                    <div id="image-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
+                        <!-- JS injected image thumbnails -->
+                    </div>
+                </div>
+
+                <!-- Video Section -->
+                <div class="form-group">
+                    <label class="label-md">상품 영상 (최대 1개, MP4, 30MB 이하)</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="file" id="input-video-file" class="form-control" accept="video/mp4" style="flex: 1;">
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="url" id="input-video-url" class="form-control" placeholder="영상 URL 직접 입력" style="flex: 1;">
+                        <button type="button" id="btn-add-video-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                    </div>
+                    <div id="video-preview-container" style="margin-top: 0.5rem;">
+                        <!-- JS injected video preview -->
+                    </div>
+                </div>
             </form>
         </div>
         <div class="drawer-footer">

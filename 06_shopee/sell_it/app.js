@@ -1062,6 +1062,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentEditingRow = null;
     let originalEditDate = null;
     let originalEditMcode = null;
+    let currentImages = [];
+    let currentVideo = '';
+
+    // Media UI Elements
+    const inputImagesFile = document.getElementById('input-images-file');
+    const inputImageUrl = document.getElementById('input-image-url');
+    const btnAddImageUrl = document.getElementById('btn-add-image-url');
+    const imagePreviewGrid = document.getElementById('image-preview-grid');
+    
+    const inputVideoFile = document.getElementById('input-video-file');
+    const inputVideoUrl = document.getElementById('input-video-url');
+    const btnAddVideoUrl = document.getElementById('btn-add-video-url');
+    const videoPreviewContainer = document.getElementById('video-preview-container');
 
     function updateMcodePreview() {
         const selectedDate = inputDate.value;
@@ -1098,6 +1111,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentEditingRow = null;
             originalEditDate = null;
             originalEditMcode = null;
+            currentImages = [];
+            currentVideo = '';
+            renderMediaPreviews();
             
             const today = new Date().toISOString().split('T')[0];
             inputDate.value = today;
@@ -1126,6 +1142,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentEditingRow = null;
             drawer.querySelector('.headline-md').innerText = 'Add New Product';
             categoryAutocompleteList.style.display = 'none';
+            currentImages = [];
+            currentVideo = '';
+            renderMediaPreviews();
         }
     }
 
@@ -1136,6 +1155,162 @@ document.addEventListener('DOMContentLoaded', async () => {
         closeDrawer();
         if (typeof closePriceCalcDrawer === 'function') closePriceCalcDrawer();
     });
+
+    // --- Media Logic ---
+    function renderMediaPreviews() {
+        if (!imagePreviewGrid) return;
+        imagePreviewGrid.innerHTML = currentImages.map((url, idx) => `
+            <div style="position: relative; border: 1px solid var(--outline-variant); border-radius: 4px; overflow: hidden; aspect-ratio: 1; background: var(--surface-container-highest); display: flex; align-items: center; justify-content: center;">
+                <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <button type="button" class="btn-remove-image" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.btn-remove-image').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.currentTarget.dataset.index);
+                currentImages.splice(idx, 1);
+                renderMediaPreviews();
+            });
+        });
+
+        if (!videoPreviewContainer) return;
+        if (currentVideo) {
+            videoPreviewContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; border: 1px solid var(--outline-variant); border-radius: 4px; background: var(--surface-container-highest);">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden;">
+                        <i class="fa-solid fa-video" style="color: var(--primary);"></i>
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem;">${currentVideo}</span>
+                    </div>
+                    <button type="button" id="btn-remove-video" style="background: transparent; color: var(--error); border: none; cursor: pointer;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('btn-remove-video').addEventListener('click', () => {
+                currentVideo = '';
+                renderMediaPreviews();
+            });
+        } else {
+            videoPreviewContainer.innerHTML = '';
+        }
+    }
+
+    if (btnAddImageUrl) {
+        btnAddImageUrl.addEventListener('click', () => {
+            const url = inputImageUrl.value.trim();
+            if (url) {
+                if (currentImages.length >= 9) {
+                    alert('이미지는 최대 9장까지 추가할 수 있습니다.');
+                    return;
+                }
+                currentImages.push(url);
+                inputImageUrl.value = '';
+                renderMediaPreviews();
+            }
+        });
+    }
+
+    if (inputImagesFile) {
+        inputImagesFile.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+            
+            if (currentImages.length + files.length > 9) {
+                alert('이미지는 최대 9장까지만 업로드할 수 있습니다.');
+                inputImagesFile.value = '';
+                return;
+            }
+
+            const mcodeStr = inputMcode.value;
+            if (!mcodeStr) {
+                alert('관리코드가 생성되지 않았습니다.');
+                return;
+            }
+
+            try {
+                // Determine starting index
+                let startIndex = currentImages.length + 1;
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    formData.append('mcode', mcodeStr);
+                    formData.append('index', startIndex + i);
+
+                    const res = await fetch('/api/products/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        currentImages.push(data.url);
+                    } else {
+                        throw new Error(data.error || '업로드 실패');
+                    }
+                }
+                renderMediaPreviews();
+            } catch (err) {
+                alert('이미지 업로드 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                inputImagesFile.value = '';
+            }
+        });
+    }
+
+    if (btnAddVideoUrl) {
+        btnAddVideoUrl.addEventListener('click', () => {
+            const url = inputVideoUrl.value.trim();
+            if (url) {
+                currentVideo = url;
+                inputVideoUrl.value = '';
+                renderMediaPreviews();
+            }
+        });
+    }
+
+    if (inputVideoFile) {
+        inputVideoFile.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 30 * 1024 * 1024) {
+                alert('동영상은 30MB 이하만 업로드 가능합니다.');
+                inputVideoFile.value = '';
+                return;
+            }
+
+            const mcodeStr = inputMcode.value;
+            if (!mcodeStr) {
+                alert('관리코드가 생성되지 않았습니다.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('video', file);
+                formData.append('mcode', mcodeStr);
+
+                const res = await fetch('/api/products/upload-video', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentVideo = data.url;
+                    renderMediaPreviews();
+                } else {
+                    throw new Error(data.error || '업로드 실패');
+                }
+            } catch (err) {
+                alert('동영상 업로드 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                inputVideoFile.value = '';
+            }
+        });
+    }
 
     /* --- Autocomplete Logic --- */
     function renderAutocomplete(query) {
@@ -1257,7 +1432,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rateDate: rateDate,
                 weight: parseInt(weight, 10) || 0,
                 link: link,
-                note: note
+                note: note,
+                images: JSON.stringify(currentImages),
+                video: currentVideo
             };
 
             try {
@@ -1346,6 +1523,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             const productObj = productList.find(pp => pp.mcode === mcodeStr);
             if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping ?? 3000) : 3000;
             if (inputPackagingKrw) inputPackagingKrw.value = productObj ? (productObj.packagingKrw || 0) : 0;
+            
+            // Load Media
+            if (productObj && productObj.images) {
+                try {
+                    currentImages = typeof productObj.images === 'string' ? JSON.parse(productObj.images) : productObj.images;
+                } catch(e) {
+                    currentImages = [];
+                }
+            } else {
+                currentImages = [];
+            }
+            if (!Array.isArray(currentImages)) currentImages = [];
+            currentVideo = productObj ? (productObj.video || '') : '';
+            renderMediaPreviews();
+
             inputRate.value = rate.replace(/,/g, '');
             inputRateDate.value = rateDateStr;
             inputWeight.value = weightText.replace(/[^0-9]/g, '');
