@@ -439,8 +439,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="pc-mcode">${item.mcode}</span>
                     </td>
                     <td>
-                        <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
-                        <div class="pc-cat"><span>${item.catEn || ''}</span>${presetDots}</div>
+                        <div class="pc-name-row"><div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>${presetDots}</div>
+                        <div class="pc-cat">${item.catEn || ''}</div>
                     </td>
                     <td class="text-right">
                         <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>

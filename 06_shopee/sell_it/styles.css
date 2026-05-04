@@ -1168,12 +1168,14 @@ textarea.form-input {
 }
 .pc-data-top {
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   margin-bottom: 2px;
+  white-space: nowrap;
 }
 .pc-data-bottom {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 .pc-input::-webkit-outer-spin-button,
 .pc-input::-webkit-inner-spin-button {
@@ -1315,17 +1317,20 @@ textarea.form-input {
   color: var(--on-error-container);
 }
 
-/* Management Code (compact monospace) */
+/* Management Code */
 .pc-mcode {
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-secondary);
-  letter-spacing: -0.03em;
   white-space: nowrap;
 }
 
 /* Product Name Cell */
+.pc-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .pc-name {
   font-weight: 600;
   font-size: 0.82rem;
@@ -1333,14 +1338,13 @@ textarea.form-input {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: help;
+  flex: 1;
+  min-width: 0;
 }
 .pc-cat {
   font-size: 0.62rem;
   color: var(--text-disabled);
   margin-top: 2px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1349,29 +1353,41 @@ textarea.form-input {
 /* Preset Indicator Dots */
 .pc-preset-dots {
   display: inline-flex;
-  gap: 3px;
-  margin-left: auto;
+  gap: 4px;
   flex-shrink: 0;
 }
 .pc-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--surface-container-high);
-  border: 1px solid var(--outline-variant);
+  border: 1.5px solid var(--outline-variant);
   cursor: help;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .pc-dot:hover {
-  transform: scale(1.4);
+  transform: scale(1.5);
 }
-.pc-dot.active.fee { background: var(--primary); border-color: var(--primary); }
-.pc-dot.active.promo { background: var(--secondary); border-color: var(--secondary); }
-.pc-dot.active.ship { background: #f59e0b; border-color: #f59e0b; }
+.pc-dot.active.fee {
+  background: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 4px rgba(0, 6, 102, 0.4);
+}
+.pc-dot.active.promo {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  box-shadow: 0 0 4px rgba(0, 106, 98, 0.4);
+}
+.pc-dot.active.ship {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
 
 /* VAT Refund Highlight */
 .pc-vat-refund {
   color: var(--secondary) !important;
+  font-size: 0.62rem !important;
   font-weight: 500;
 }
 
