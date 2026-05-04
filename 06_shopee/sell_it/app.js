@@ -956,6 +956,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Update existing via API
                     const existing = productList.find(p => p.mcode === originalEditMcode);
                     if (existing && existing.id) {
+                        const isChanged = (
+                            (existing.date || '') !== productData.date ||
+                            (existing.mcode || '') !== productData.mcode ||
+                            (existing.catEn || '') !== productData.catEn ||
+                            (existing.catKo || '') !== productData.catKo ||
+                            (existing.nameKo || '') !== productData.nameKo ||
+                            (existing.nameEn || '') !== productData.nameEn ||
+                            Number(existing.priceKrw || 0) !== productData.priceKrw ||
+                            Number(existing.domesticShipping ?? 3000) !== productData.domesticShipping ||
+                            Number(existing.rate || 1) !== productData.rate ||
+                            (existing.rateDate || '') !== productData.rateDate ||
+                            Number(existing.weight || 0) !== productData.weight ||
+                            (existing.link || '') !== productData.link ||
+                            (existing.note || '') !== productData.note
+                        );
+
+                        if (!isChanged) {
+                            closeDrawer();
+                            return;
+                        }
+
                         const exportsForProduct = marketExportsMap[existing.id] || [];
                         if (exportsForProduct.length > 0) {
                             const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
