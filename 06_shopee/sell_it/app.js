@@ -965,6 +965,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputDate.value = today;
             updateMcodePreview();
 
+            if (window.latestExchangeRates && window.latestExchangeRates.usd) {
+                inputRate.value = window.latestExchangeRates.usd.toFixed(2);
+                inputRateDate.value = today;
+            }
+
             drawer.querySelector('.headline-md').innerText = 'Add New Product';
         } else {
             drawer.querySelector('.headline-md').innerText = 'Edit Product';

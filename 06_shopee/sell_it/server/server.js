@@ -312,7 +312,8 @@ function fetchExchangeRates() {
                         'ph': 'PHP',
                         'vn': 'VND',
                         'br': 'BRL',
-                        'mx': 'MXN'
+                        'mx': 'MXN',
+                        'usd': 'USD'
                     };
                     const newRates = {};
                     for (const [market, currency] of Object.entries(marketCurrencyMap)) {
