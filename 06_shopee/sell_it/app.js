@@ -1385,7 +1385,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const badgesHtml = marketCodes.map(code => {
             const isActive = exportedMarkets.includes(code) ? ' active' : '';
             return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
-        }).join('n                            ');
+        }).join('\n                            ');
 
         const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
         const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
