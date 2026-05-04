@@ -2044,11 +2044,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td style="text-align: center;" class="td-checkbox">
                     <input type="checkbox" class="ma-row-checkbox">
                 </td>
-                <td style="max-width:240px;white-space:normal;word-break:break-word;font-size:0.9em;" title="${categoryStr}">
+                <td style="max-width:180px;white-space:normal;word-break:break-word;font-size:0.82em;line-height:1.3;" title="${categoryStr}">
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
                 </td>
-                <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.productName || ''}">${item.productName || '-'}</td>
+                <td style="max-width:280px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; line-height:1.3;" title="${item.productName || ''}">${item.productName || '-'}</td>
                 <td><span class="ma-country-badge">${market.toUpperCase()}</span></td>
                 <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.storeName || ''}">${item.storeName || '-'}</td>
                 <td class="text-right">${actualStr}</td>
