@@ -206,8 +206,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="body-sm text-secondary">${item.mcode} · ${item.weight}g</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-weight: 500;">₩${Number(item.priceKrw).toLocaleString()}</div>
-                        <div class="body-sm text-secondary">+₩${Number(item.domesticShipping || 3000).toLocaleString()}</div>
+                        <div style="font-weight: 600;">₩${Number(item.priceKrw).toLocaleString()}</div>
+                        <div class="body-sm text-secondary">+₩${Number(item.domesticShipping ?? 3000).toLocaleString()}</div>
                     </td>
                     <td class="text-right"><span class="body-sm">${result.costSgd.toFixed(2)}</span></td>
                     <td class="text-right"><span class="body-sm">${result.sellerShipping.toFixed(2)}</span></td>
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const settings = getPCSettings();
                     const newResult = calcPricingFromMargin({
                         costKrw: updatedItem.priceKrw || 0,
-                        domesticShipping: updatedItem.domesticShipping || 3000,
+                        domesticShipping: updatedItem.domesticShipping ?? 3000,
                         packagingKrw: newPkg,
                         targetMarginKrw: newMargin,
                         weight: updatedItem.weight || 0,
@@ -331,7 +331,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const targetMarginKrw = item.targetMarginKrw || 12000;
         return calcPricingFromMargin({
             costKrw: item.priceKrw || 0,
-            domesticShipping: item.domesticShipping || 3000,
+            domesticShipping: item.domesticShipping ?? 3000,
             packagingKrw: 0,
             targetMarginKrw,
             weight: item.weight || 0,
@@ -1013,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputPriceKrw.value = priceKrwText.replace(/[^0-9]/g, '');
             // Load domesticShipping from product data
             const productObj = productList.find(pp => pp.mcode === mcodeStr);
-            if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping || 3000) : 3000;
+            if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping ?? 3000) : 3000;
             inputRate.value = rate.replace(/,/g, '');
             inputRateDate.value = rateDateStr;
             inputWeight.value = weightText.replace(/[^0-9]/g, '');
