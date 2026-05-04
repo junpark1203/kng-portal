@@ -431,6 +431,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (sp) shipBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: ${sp.name}</span>`;
                 }
 
+                const salesKrw = result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate) : 0;
+                const origSalesSgd = result.discountRate < 100 ? salesPriceSgd / (1 - (result.discountRate/100)) : 0;
+                const discountAmountSgd = origSalesSgd - salesPriceSgd;
+                const discountAmountKrw = result.exchangeRate > 0 ? Math.round(discountAmountSgd / result.exchangeRate) : 0;
+
                 const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
                 tr.innerHTML = `
                     <td class="text-center">
@@ -445,26 +450,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 2px;">${feeBadge}${promoBadge}${shipBadge}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-top">₩${sourcingCostKrw.toLocaleString()}</div>
-                        <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: var(--text-main);">KRW ${sourcingCostKrw.toLocaleString()}</div>
+                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;">${curr} ${result.costSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-top">₩${Math.round(result.totalFees / result.exchangeRate).toLocaleString()}</div>
-                        <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: var(--text-main);">KRW ${Math.round(result.totalFees / result.exchangeRate).toLocaleString()}</div>
+                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;">${curr} ${result.totalFees.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-value text-primary" style="font-weight: 500;" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
+                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-top text-secondary" style="font-weight: 500;" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—')}</div>
-                        <div class="pc-data-value text-primary" style="font-weight: 500; font-size: 1rem;" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
+                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-value ${result.marginKrw < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500; font-size: 1rem;" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : '₩' + result.marginKrw.toLocaleString()}</div>
-                        <div class="pc-data-bottom" style="margin-top: 4px;" id="cell-profit-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + result.marginSgd.toFixed(2)}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
+                        <div style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-top: 2px;" id="cell-profit-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + result.marginSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-value ${marginRate < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500;" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
+                        <div style="font-size: 1rem; font-weight: 600; color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -676,17 +682,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="pc-side-section">
                     <div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 구조</div>
                     <div class="pc-cost-list">
-                        <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">₩${costKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">₩${shipKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item"><span class="label">포장비</span><span class="value">₩${pkgKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">₩${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
+                        <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
                         <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
                         <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
                         <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
                         <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
-                        <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">₩<span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
-                        <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">₩<span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
-                        <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">₩<span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
+                        <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
+                        <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
+                        <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
                     </div>
                 </div>
 
@@ -702,7 +708,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <input type="number" class="form-control form-control-sm side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
                         </div>
                         <div>
-                            <label>순수익 (₩)</label>
+                            <label>순수익 (KRW)</label>
                             <input type="number" class="form-control form-control-sm side-input-profit" value="${result._empty ? '' : result.marginKrw}">
                         </div>
                         <div>
@@ -809,6 +815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // Update background table row directly to preserve focus in side panel
                     const cellDisc = activeRow.querySelector(`#cell-discount-${item.id}`);
+                    const cellDiscAmt = activeRow.querySelector(`#cell-discount-amt-${item.id}`);
                     const cellSalesKrw = activeRow.querySelector(`#cell-sales-krw-${item.id}`);
                     const cellSalesSgd = activeRow.querySelector(`#cell-sales-sgd-${item.id}`);
                     const cellProfitKrw = activeRow.querySelector(`#cell-profit-krw-${item.id}`);
@@ -816,16 +823,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const cellMargin = activeRow.querySelector(`#cell-margin-rate-${item.id}`);
 
                     if (cellDisc) cellDisc.textContent = isEmpty ? '—' : newResult.discountRate.toFixed(1) + '%';
-                    if (cellSalesKrw) cellSalesKrw.textContent = isEmpty ? '—' : '₩' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—');
+                    if (cellDiscAmt) {
+                        const newOrigSalesSgd = newResult.discountRate < 100 ? newResult.sellingPrice / (1 - (newResult.discountRate/100)) : 0;
+                        const newDiscountAmountSgd = newOrigSalesSgd - newResult.sellingPrice;
+                        const newDiscountAmountKrw = newResult.exchangeRate > 0 ? Math.round(newDiscountAmountSgd / newResult.exchangeRate) : 0;
+                        cellDiscAmt.textContent = isEmpty ? '—' : 'KRW ' + newDiscountAmountKrw.toLocaleString();
+                    }
+                    if (cellSalesKrw) cellSalesKrw.textContent = isEmpty ? '—' : 'KRW ' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—');
                     if (cellSalesSgd) cellSalesSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.sellingPrice.toFixed(2);
                     if (cellProfitKrw) {
-                        cellProfitKrw.textContent = isEmpty ? '—' : '₩' + newResult.marginKrw.toLocaleString();
-                        cellProfitKrw.className = `pc-data-value ${newResult.marginKrw < 0 ? 'text-error' : 'text-primary'}`;
+                        cellProfitKrw.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString();
+                        cellProfitKrw.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)';
                     }
                     if (cellProfitSgd) cellProfitSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.marginSgd.toFixed(2);
                     if (cellMargin) {
                         cellMargin.textContent = isEmpty ? '—' : mr.toFixed(1) + '%';
-                        cellMargin.className = `pc-data-value ${mr < 0 ? 'text-error' : 'text-primary'}`;
+                        cellMargin.style.color = mr < 0 ? 'var(--error)' : 'var(--primary)';
                     }
                     
                     // Also refresh the breakdown section inside the side panel
@@ -937,7 +950,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span class="value" style="font-weight: 600;">${curr} ${result.costSgd.toFixed(2)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
-                    <span>₩${result.costKrw.toLocaleString()} × ${result.exchangeRate}</span>
+                    <span>KRW ${result.costKrw.toLocaleString()} × ${result.exchangeRate}</span>
                 </div>
             </div>
             <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
@@ -951,9 +964,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
             ${rows}
             <div class="pc-cost-item subtotal" style="margin-top: 1rem; border-top: 2px solid var(--outline-variant); padding-top: 0.5rem;"><span class="label">총 비용 (원가+배송+수수료)</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
-            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--primary);">정산 마진</span><span class="value" style="color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'}; font-weight: 700;">${curr} ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</span></div>
-            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액</span><span class="value" style="color: var(--secondary);">+ ${curr} ${result.vatRefundSgd.toFixed(2)} (₩${result.vatRefundKrw.toLocaleString()})</span></div>
-            <div class="pc-cost-item total" style="margin-top: 0.5rem;"><span class="label" style="color: var(--primary);">환급 포함 최종 마진</span><span class="value" style="color: var(--primary); font-weight: 800;">${curr} ${result.marginWithVatSgd.toFixed(2)} (₩${result.marginWithVatKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--primary);">정산 마진</span><span class="value" style="color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'}; font-weight: 700;">${curr} ${result.marginSgd.toFixed(2)} (KRW ${result.marginKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액</span><span class="value" style="color: var(--secondary);">+ ${curr} ${result.vatRefundSgd.toFixed(2)} (KRW ${result.vatRefundKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item total" style="margin-top: 0.5rem;"><span class="label" style="color: var(--primary);">환급 포함 최종 마진</span><span class="value" style="color: var(--primary); font-weight: 800;">${curr} ${result.marginWithVatSgd.toFixed(2)} (KRW ${result.marginWithVatKrw.toLocaleString()})</span></div>
         </div>`;
     }
 
