@@ -247,6 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marginRateWithVat = salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0;
 
                 tr.innerHTML = `
+                    <td style="text-align: center; color: var(--text-secondary); cursor: pointer;"><i class="fa-solid fa-chevron-right pc-expand-icon"></i></td>
                     <td class="text-center" style="color: var(--text-secondary);"><span class="body-sm text-secondary">${item.mcode}</span></td>
                     <td><span class="body-sm text-secondary">${item.catKo}</span></td>
                     <td>
@@ -270,17 +271,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="body-sm text-secondary">SGD ${promoTotalSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="form-control input-sales-price" style="text-align: right; width: 100%;" value="${salesPriceSgd.toFixed(2)}" step="0.01">
+                        <input type="number" class="form-control input-sales-price" style="text-align: right; width: 100%; min-width: 80px; max-width: 100px; display: inline-block;" value="${salesPriceSgd.toFixed(2)}" step="0.01">
                         <div class="body-sm text-secondary" style="margin-top: 4px;">₩${Math.round(salesPriceKrw).toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="form-control input-profit" style="text-align: right; width: 100%; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};" value="${result.marginKrw}">
+                        <input type="number" class="form-control input-profit" style="text-align: right; width: 100%; min-width: 80px; max-width: 100px; display: inline-block; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};" value="${result.marginKrw}">
                         <div class="body-sm text-secondary" style="margin-top: 4px;">SGD ${result.marginSgd.toFixed(2)}</div>
-                        <div style="color: green; font-size: 0.75rem; margin-top: 2px;">+ 환급 ₩${result.vatRefundKrw.toLocaleString()} ➔ 최종 ₩${result.marginWithVatKrw.toLocaleString()}</div>
+                        <div style="color: green; font-size: 0.75rem; margin-top: 2px; white-space: nowrap;">+ 환급 ₩${result.vatRefundKrw.toLocaleString()} ➔ 최종 ₩${result.marginWithVatKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="form-control input-margin-rate" style="text-align: right; width: 100%;" value="${marginRate.toFixed(2)}" step="0.1">
-                        <div style="color: green; font-size: 0.75rem; margin-top: 4px;">최종 ${marginRateWithVat.toFixed(2)}%</div>
+                        <input type="number" class="form-control input-margin-rate" style="text-align: right; width: 100%; min-width: 60px; max-width: 80px; display: inline-block;" value="${marginRate.toFixed(2)}" step="0.1">
+                        <div style="color: green; font-size: 0.75rem; margin-top: 4px; white-space: nowrap;">최종 ${marginRateWithVat.toFixed(2)}%</div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -396,17 +397,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     // Update summary row cells (not fully redrawing to avoid focus loss, but 3-way will redraw everything anyway)
                     const cells = tr.querySelectorAll('td');
-                    // Cells: 0:Icon, 1:Cat, 2:Name, 3:Cost, 4:Ship, 5:Comm, 6:Promo, 7:Sales(Input), 8:Profit(Input), 9:Margin(Input)
-                    if (cells[7]) {
-                        const i = cells[7].querySelector('input');
-                        if(i) i.value = newResult.sellingPrice.toFixed(2);
-                    }
+                    // Cells: 0:Icon, 1:MCode, 2:Cat, 3:Name, 4:Cost, 5:Ship, 6:Comm, 7:Promo, 8:Sales(Input), 9:Profit(Input), 10:Margin(Input)
                     if (cells[8]) {
                         const i = cells[8].querySelector('input');
-                        if(i) i.value = newResult.marginKrw;
+                        if(i) i.value = newResult.sellingPrice.toFixed(2);
                     }
                     if (cells[9]) {
                         const i = cells[9].querySelector('input');
+                        if(i) i.value = newResult.marginKrw;
+                    }
+                    if (cells[10]) {
+                        const i = cells[10].querySelector('input');
                         const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
                         if(i) i.value = mr.toFixed(2);
                     }
