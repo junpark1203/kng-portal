@@ -1157,6 +1157,9 @@ textarea.form-input {
   padding: 0.625rem 0.25rem;
   white-space: normal;
 }
+#price-calc-table th {
+  text-align: center !important;
+}
 
 /* 3-Way & 4-Way Input Style */
 .pc-input {
