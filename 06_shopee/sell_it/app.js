@@ -219,118 +219,202 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            window.pcCurrentExports = exports; // Store for access
-            let selectedItemIndex = -1;
-            let selectedItems = new Set(); // For bulk actions
-            
-            function selectItem(index) {
-                if (index < 0 || index >= exports.length) return;
-                selectedItemIndex = index;
-                document.querySelectorAll('.pc-product-row').forEach((r, i) => {
-                    r.classList.toggle('selected', i === index);
-                });
-                renderPricingDetailPanel(exports[index]);
-            }
-
-            // Keyboard navigation
-            document.addEventListener('keydown', function pcKeyNav(e) {
-                if (!document.getElementById('view-price-calc-container').classList.contains('active')) return;
-                // Ignore if editing an input
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-                
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    selectItem(Math.min(selectedItemIndex + 1, exports.length - 1));
-                } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    selectItem(Math.max(selectedItemIndex - 1, 0));
-                }
-            });
-
-            exports.forEach((item, index) => {
+            exports.forEach(item => {
                 const result = calcProductRow(item);
                 const tr = document.createElement('tr');
                 tr.className = 'pc-product-row';
                 tr.dataset.productId = item.id || item.productId || '';
-                tr.dataset.index = index;
 
+                // 7-column layout
                 const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
                 const isEmpty = result._empty;
                 const salesPriceSgd = result.sellingPrice;
                 const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
 
+                // Margin tier for row coloring
                 const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
-                
+                tr.dataset.margin = marginTier;
+
+                const hasCustomPreset = item.feePresetId || item.promoPresetId || item.shipPresetId;
+                const presetBadge = hasCustomPreset
+                    ? `<span style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; margin-left: 4px;" title="커스텀 프리셋 적용됨"><i class="fa-solid fa-thumbtack"></i></span>`
+                    : '';
+
                 tr.innerHTML = `
-                    <td class="text-center" style="width: 40px;" onclick="event.stopPropagation()">
-                        <input type="checkbox" class="pc-row-check" data-id="${item.id}" style="cursor: pointer;">
+                    <td class="text-center">
+                        <span class="body-sm text-secondary">${item.mcode}${presetBadge}</span>
                     </td>
-                    <td style="width: 80px;">
-                        <span class="pc-status-led ${marginTier}"></span>
-                        <span class="body-sm text-secondary">${item.mcode}</span>
-                    </td>
-                    <td style="width: 140px;">
+                    <td>
                         <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.nameKo}">${item.nameKo}</div>
+                        <div class="body-sm text-secondary" style="font-size: 0.65rem; color: var(--text-disabled); margin-top: 2px;">${item.catKo || ''}</div>
                     </td>
-                    <td class="text-right" style="width: 90px; font-weight: 600;">₩${sourcingCostKrw.toLocaleString()}</td>
-                    <td class="text-right" style="width: 90px; font-weight: 700; color: var(--primary);">
-                        ${isEmpty ? '<span style="color:var(--text-disabled)">—</span>' : 'SGD ' + salesPriceSgd.toFixed(2)}
+                    <td class="text-right">
+                        <div class="pc-data-top">₩${sourcingCostKrw.toLocaleString()}</div>
+                        <div class="pc-data-bottom">SGD ${result.costSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <div class="pc-data-top">₩${Math.round(result.totalFees / result.exchangeRate).toLocaleString()}</div>
+                        <div class="pc-data-bottom">SGD ${result.totalFees.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="pc-input input-discount-rate" value="${isEmpty ? '' : result.discountRate.toFixed(1)}" step="0.1" placeholder="%">
+                    </td>
+                    <td class="text-right">
+                        <div class="pc-data-top text-secondary" style="font-weight: 500;">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—')}</div>
+                        <input type="number" class="pc-input input-sales-price" value="${isEmpty ? '' : salesPriceSgd.toFixed(2)}" step="0.01" placeholder="SGD" style="color: var(--primary);">
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="pc-input input-profit" value="${isEmpty ? '' : result.marginKrw}" placeholder="₩" style="color: var(--primary);">
+                        <div class="pc-data-bottom" style="margin-top: 4px;">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <input type="number" class="pc-input input-margin-rate" value="${isEmpty ? '' : marginRate.toFixed(1)}" step="0.1" placeholder="%">
                     </td>
                 `;
-                
-                tr.addEventListener('click', () => {
-                    selectItem(index);
-                });
-                
-                // Bulk selection logic
-                const cb = tr.querySelector('.pc-row-check');
-                cb.addEventListener('change', (e) => {
-                    if (e.target.checked) selectedItems.add(item);
-                    else selectedItems.delete(item);
-                    
-                    if (selectedItems.size > 1) {
-                        renderBulkDetailPanel(Array.from(selectedItems));
-                    } else if (selectedItems.size === 1) {
-                        const singleItem = Array.from(selectedItems)[0];
-                        const idx = exports.findIndex(i => i.id === singleItem.id);
-                        if (idx !== -1) selectItem(idx);
-                    } else {
-                        if (selectedItemIndex !== -1) selectItem(selectedItemIndex);
-                    }
-                });
-
                 tbody.appendChild(tr);
-            });
 
-            // Summary Footer
-            const summaryDiv = document.getElementById('pc-list-summary');
-            if (summaryDiv) {
-                const total = exports.length;
-                const set = exports.filter(e => e.targetMarginKrw !== null && e.targetMarginKrw !== undefined).length;
-                summaryDiv.innerHTML = `<strong>${total}</strong>개 상품 | 설정완료: ${set} | 미설정: ${total - set}`;
-            }
-
-            // Select first by default
-            if (exports.length > 0) {
-                selectItem(0);
-            }
-
-            // Bulk check all
-            const bulkCheckAll = document.getElementById('pc-bulk-check-all');
-            if (bulkCheckAll) {
-                bulkCheckAll.addEventListener('change', (e) => {
-                    const checks = document.querySelectorAll('.pc-row-check');
-                    if (e.target.checked) {
-                        checks.forEach(c => c.checked = true);
-                        selectedItems = new Set(exports);
-                        renderBulkDetailPanel(exports);
-                    } else {
-                        checks.forEach(c => c.checked = false);
-                        selectedItems.clear();
-                        if (selectedItemIndex !== -1) selectItem(selectedItemIndex);
-                    }
+                // Open Side Panel on row click
+                tr.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return; // Don't trigger if clicking an input
+                    // Highlight selected row
+                    document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
+                    tr.style.outline = '2px solid var(--primary)';
+                    tr.style.outlineOffset = '-2px';
+                    openSidePanel(item, result, tr);
                 });
-            }
+
+                // --- 4-Way Binding (Local, No Full Re-render) ---
+                const inpDiscount = tr.querySelector('.input-discount-rate');
+                const inpSales = tr.querySelector('.input-sales-price');
+                const inpProfit = tr.querySelector('.input-profit');
+                const inpMargin = tr.querySelector('.input-margin-rate');
+
+                let fourWayTimer;
+                function localFourWay(source) {
+                    clearTimeout(fourWayTimer);
+                    fourWayTimer = setTimeout(() => {
+                        let settings = getItemSettings(item);
+                        let newResult;
+
+                        if (source === 'discount') {
+                            const newDiscount = parseFloat(inpDiscount.value) || 0;
+                            item.discountRate = newDiscount;
+                            // Margin Protection: We keep targetMarginKrw the same and recalculate.
+                            newResult = calcProductRow(item);
+                            inpSales.value = newResult.sellingPrice.toFixed(2);
+                            inpProfit.value = newResult.marginKrw;
+                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                            inpMargin.value = mr.toFixed(1);
+                        } else if (source === 'sales') {
+                            const newSalesSgd = parseFloat(inpSales.value) || 0;
+                            newResult = calcPricingFromPrice({
+                                costKrw: item.priceKrw || 0,
+                                domesticShipping: item.domesticShipping ?? 3000,
+                                packagingKrw: item.packagingKrw || 0,
+                                sellingPriceSgd: newSalesSgd,
+                                weight: item.weight || 0,
+                                exchangeRate: item.exchangeRate || 0.00086,
+                                ...settings
+                            });
+                            inpProfit.value = newResult.marginKrw;
+                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                            inpMargin.value = mr.toFixed(1);
+                            item.targetMarginKrw = newResult.marginKrw;
+                        } else if (source === 'profit') {
+                            const newMarginKrw = parseFloat(inpProfit.value) || 0;
+                            item.targetMarginKrw = newMarginKrw;
+                            newResult = calcProductRow(item);
+                            inpSales.value = newResult.sellingPrice.toFixed(2);
+                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                            inpMargin.value = mr.toFixed(1);
+                        } else if (source === 'margin') {
+                            const newRate = parseFloat(inpMargin.value) || 0;
+                            const K = newRate / 100;
+                            const approxRevKrw = (parseFloat(inpSales.value) || 0) / (item.exchangeRate || 0.00086);
+                            item.targetMarginKrw = Math.round(approxRevKrw * K);
+                            newResult = calcProductRow(item);
+                            inpSales.value = newResult.sellingPrice.toFixed(2);
+                            inpProfit.value = newResult.marginKrw;
+                        }
+
+                        if (newResult) {
+                            const isEmpty = newResult._empty;
+                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                            tr.dataset.margin = isEmpty ? 'low' : (mr >= 20 ? 'high' : mr >= 10 ? 'mid' : mr < 0 ? 'neg' : 'low');
+
+                            const salesTd = inpSales.closest('td');
+                            const profitTd = inpProfit.closest('td');
+                            if (salesTd) { const sub = salesTd.querySelector('.pc-data-top'); if (sub) sub.textContent = isEmpty ? '—' : '₩' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—'); }
+                            if (profitTd) { const sub = profitTd.querySelector('.pc-data-bottom'); if (sub) sub.textContent = isEmpty ? '—' : 'SGD ' + newResult.marginSgd.toFixed(2); }
+
+                            inpSales.classList.toggle('negative', false);
+                            inpProfit.classList.toggle('negative', newResult.marginKrw < 0);
+                            inpMargin.classList.toggle('negative', mr < 0);
+                            
+                            // If side panel is open for this item, refresh it
+                            if (window.currentOpenSidePanelId === item.id) {
+                                openSidePanel(item, newResult, tr);
+                            }
+                        }
+                    }, 300);
+                }
+
+                function saveOnBlur() {
+                    api.updateMarketExportSettings(item.id || item.exportId, {
+                        feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
+                        shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
+                        packagingKrw: item.packagingKrw, discountRate: item.discountRate
+                    }).catch(e => console.error('Auto-save failed:', e));
+                }
+
+                inpDiscount.addEventListener('input', () => localFourWay('discount'));
+                inpSales.addEventListener('input', () => localFourWay('sales'));
+                inpProfit.addEventListener('input', () => localFourWay('profit'));
+                inpMargin.addEventListener('input', () => localFourWay('margin'));
+                
+                inpDiscount.addEventListener('blur', saveOnBlur);
+                inpSales.addEventListener('blur', saveOnBlur);
+                inpProfit.addEventListener('blur', saveOnBlur);
+                inpMargin.addEventListener('blur', saveOnBlur);
+
+                // Cockpit preset handlers
+                const feeSel = expandTr.querySelector('.pc-fee-override');
+                const promoSel = expandTr.querySelector('.pc-promo-override');
+                const shipSel = expandTr.querySelector('.pc-ship-override');
+                const btnToggleBreakdown = expandTr.querySelector('.btn-toggle-breakdown');
+                const breakdownContainer = expandTr.querySelector('.cockpit-breakdown-container');
+                const btnSave = expandTr.querySelector('.btn-save-settings');
+
+                function recalcFromCockpit() {
+                    item.feePresetId = feeSel?.value || null;
+                    item.promoPresetId = promoSel?.value || null;
+                    item.shipPresetId = shipSel?.value || null;
+                    const newResult = calcProductRow(item);
+                    inpSales.value = newResult.sellingPrice.toFixed(2);
+                    inpProfit.value = newResult.marginKrw;
+                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                    inpMargin.value = mr.toFixed(1);
+                    tr.dataset.margin = mr >= 20 ? 'high' : mr >= 10 ? 'mid' : mr < 0 ? 'neg' : 'low';
+                    updateCockpitValues(expandTr, item, newResult);
+                    if (breakdownContainer) breakdownContainer.innerHTML = renderBreakdownPanel(item, newResult);
+                }
+
+                if (feeSel) feeSel.addEventListener('change', recalcFromCockpit);
+                if (promoSel) promoSel.addEventListener('change', recalcFromCockpit);
+                if (shipSel) shipSel.addEventListener('change', recalcFromCockpit);
+                if (btnToggleBreakdown) btnToggleBreakdown.addEventListener('click', () => { breakdownContainer.style.display = breakdownContainer.style.display === 'none' ? 'block' : 'none'; });
+                if (btnSave) {
+                    btnSave.addEventListener('click', async () => {
+                        try {
+                            btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                            await api.updateMarketExportSettings(item.id, { feePresetId: item.feePresetId, promoPresetId: item.promoPresetId, shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw, packagingKrw: item.packagingKrw });
+                            showToast('설정 저장 완료', 'success');
+                            btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
+                            setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }, 1000);
+                        } catch (err) { showToast('저장 실패: ' + err.message, 'error'); btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }
+                    });
+                }
+            });
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
             tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
@@ -446,6 +530,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             settings.shippingSettings = shipPre.settings;
         }
 
+        // Apply item-level discount override if set
+        if (item.discountRate !== undefined && item.discountRate !== null) {
+            settings.promo.discountRate = item.discountRate;
+        }
+
         const targetMarginKrw = item.targetMarginKrw ?? null;
         if (targetMarginKrw === null || targetMarginKrw === undefined) {
             // No target set yet — return empty result shell
@@ -473,18 +562,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Helper: Render Detail Panel for single item
-    function renderPricingDetailPanel(item) {
-        const container = document.getElementById('pc-detail-container');
-        if (!container) return;
-        if (!item) {
-            container.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-disabled);">상품을 선택해주세요.</div>`;
-            return;
-        }
-
-        const result = calcProductRow(item);
-        const isEmpty = result._empty;
+    // Helper: Open and Render Sliding Side Panel
+    window.currentOpenSidePanelId = null;
+    function openSidePanel(item, result, activeRow) {
+        const panel = document.getElementById('pc-side-panel');
+        const overlay = document.getElementById('pc-side-panel-overlay');
+        const content = document.getElementById('pc-side-panel-content');
         
+        window.currentOpenSidePanelId = item.id;
+
         const feeOptions = `<option value="">마켓 기본값</option>` + presets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.feePresetId===p.id?'selected':''}>${p.name}</option>`).join('');
         const promoOptions = `<option value="">마켓 기본값</option>` + promotionPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.promoPresetId===p.id?'selected':''}>${p.name}</option>`).join('');
         const shipOptions = `<option value="">마켓 기본값</option>` + shippingPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.shipPresetId===p.id?'selected':''}>${p.name}</option>`).join('');
@@ -494,293 +580,165 @@ document.addEventListener('DOMContentLoaded', async () => {
         const pkgKrw = Number(item.packagingKrw || 0);
         const totalCostKrw = costKrw + shipKrw + pkgKrw;
         const commTotal = result.breakdown ? Object.values(result.breakdown).reduce((s,f) => s + f.amount, 0) : 0;
-        
-        const marginRate = result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0;
-        const marginWithVatRate = result.sellingPrice > 0 ? (result.marginWithVatSgd / result.sellingPrice) * 100 : 0;
 
-        container.innerHTML = `
-            <div class="pc-detail-header">
-                <h4 class="title-sm" style="margin-bottom: 4px;">${item.nameKo}</h4>
-                <div class="body-sm text-secondary">${item.mcode} | 환율: ${result.exchangeRate}</div>
-            </div>
-            <div class="pc-detail-body">
-                <!-- Dual Currency Costs -->
-                <div class="pc-dual-currency">
-                    <div class="pc-dc-col">
-                        <div class="pc-dc-header">KRW</div>
-                        <div class="pc-dc-row"><span class="label">매입비</span><span class="val">₩${costKrw.toLocaleString()}</span></div>
-                        <div class="pc-dc-row"><span class="label">국내배송</span><span class="val">₩${shipKrw.toLocaleString()}</span></div>
-                        <div class="pc-dc-row"><span class="label">포장비</span><span class="val">₩${pkgKrw.toLocaleString()}</span></div>
-                        <div class="pc-dc-row subtotal"><span class="label">원가소계</span><span class="val">₩${totalCostKrw.toLocaleString()}</span></div>
-                        <div class="pc-dc-row"><span class="label">VAT 환급</span><span class="val" style="color: var(--secondary);">+ ₩${isEmpty ? 0 : result.vatRefundKrw.toLocaleString()}</span></div>
-                    </div>
-                    <div class="pc-dc-col">
-                        <div class="pc-dc-header">SGD</div>
-                        <div class="pc-dc-row"><span class="label">원가환산</span><span class="val">${isEmpty ? '—' : result.costSgd.toFixed(2)}</span></div>
-                        <div class="pc-dc-row"><span class="label">해외배송</span><span class="val">${isEmpty ? '—' : result.sellerShipping.toFixed(2)}</span></div>
-                        <div class="pc-dc-row"><span class="label">제반수수료</span><span class="val">${isEmpty ? '—' : commTotal.toFixed(2)}</span></div>
-                        <div class="pc-dc-row subtotal"><span class="label">비용합계</span><span class="val">${isEmpty ? '—' : (result.costSgd + result.sellerShipping + commTotal).toFixed(2)}</span></div>
+        content.innerHTML = `
+            <div class="pc-side-panel-content">
+                <div class="pc-side-section">
+                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 구조</div>
+                    <div class="pc-cost-list">
+                        <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">₩${costKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">₩${shipKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item"><span class="label">포장비</span><span class="value">₩${pkgKrw.toLocaleString()}</span></div>
+                        <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">₩${totalCostKrw.toLocaleString()} → SGD ${result.costSgd.toFixed(2)}</span></div>
+                        <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">SGD ${result.sellerShipping.toFixed(2)}</span></div>
+                        <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">SGD ${commTotal.toFixed(2)}</span></div>
+                        <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">SGD ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
+                        <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">SGD <span>${result.sellingPrice.toFixed(2)}</span></span></div>
+                        <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">₩<span>${result.marginKrw.toLocaleString()}</span> / SGD ${result.marginSgd.toFixed(2)}</span></div>
+                        <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">₩<span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
+                        <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">₩<span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
                     </div>
                 </div>
 
-                <!-- Interactive Pricing Cards -->
-                <div class="pc-pricing-cards">
-                    <div class="pc-pricing-card full-width">
-                        <label>판매가 (SGD)</label>
-                        <input type="number" id="detail-input-sales" value="${isEmpty ? '' : result.sellingPrice.toFixed(2)}" step="0.01" placeholder="SGD">
-                        <div class="assistive-text" id="detail-sub-sales">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(result.sellingPrice / result.exchangeRate).toLocaleString() : '—')}</div>
+                <div class="pc-side-section pc-cockpit-settings">
+                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.25rem;"><i class="fa-solid fa-sliders"></i> 개별 프리셋 재정의</div>
+                    <div>
+                        <label>수수료 프리셋</label>
+                        <select class="form-control form-control-sm pc-fee-override">${feeOptions}</select>
                     </div>
-                    <div class="pc-pricing-card">
-                        <label>수익 (KRW)</label>
-                        <input type="number" id="detail-input-profit" value="${isEmpty ? '' : result.marginKrw}" placeholder="₩">
-                        <div class="assistive-text" id="detail-sub-profit">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
+                    <div>
+                        <label>프로모션 프리셋</label>
+                        <select class="form-control form-control-sm pc-promo-override">${promoOptions}</select>
                     </div>
-                    <div class="pc-pricing-card">
-                        <label>수익률 (%)</label>
-                        <input type="number" id="detail-input-margin" value="${isEmpty ? '' : marginRate.toFixed(1)}" step="0.1" placeholder="%">
-                        <div class="assistive-text" id="detail-sub-margin">${isEmpty ? '—' : '최종 ' + marginWithVatRate.toFixed(1) + '%'}</div>
+                    <div>
+                        <label>배송비 요율표</label>
+                        <select class="form-control form-control-sm pc-ship-override">${shipOptions}</select>
                     </div>
+                    <button class="btn-primary btn-sm btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 저장</button>
                 </div>
 
-                <!-- Presets & Quick Actions -->
-                <div>
-                    <div class="pc-preset-group">
-                        <div><label>수수료</label><select class="form-control form-control-sm" id="detail-fee-preset">${feeOptions}</select></div>
-                        <div><label>프로모션</label><select class="form-control form-control-sm" id="detail-promo-preset">${promoOptions}</select></div>
-                        <div><label>배송비</label><select class="form-control form-control-sm" id="detail-ship-preset">${shipOptions}</select></div>
-                    </div>
-                    <div class="pc-quick-margins">
-                        <button class="btn-secondary btn-outline detail-quick" data-rate="15">15%</button>
-                        <button class="btn-secondary btn-outline detail-quick" data-rate="20">20%</button>
-                        <button class="btn-secondary btn-outline detail-quick" data-rate="25">25%</button>
-                        <button class="btn-secondary btn-outline detail-quick" data-rate="30">30%</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        bindDetailEvents(item);
-    }
-
-    function bindDetailEvents(item) {
-        const inpSales = document.getElementById('detail-input-sales');
-        const inpProfit = document.getElementById('detail-input-profit');
-        const inpMargin = document.getElementById('detail-input-margin');
-        
-        const feeSel = document.getElementById('detail-fee-preset');
-        const promoSel = document.getElementById('detail-promo-preset');
-        const shipSel = document.getElementById('detail-ship-preset');
-
-        let threeWayTimer;
-        
-        function updateItemAndReRenderList(newItemState) {
-            Object.assign(item, newItemState);
-            // Re-render only the affected row in the list to avoid losing scroll or focus
-            const tr = document.querySelector(`.pc-product-row[data-product-id="${item.id}"]`);
-            if (tr) {
-                const result = calcProductRow(item);
-                const salesPriceSgd = result.sellingPrice;
-                const isEmpty = result._empty;
-                const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
-                const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
-                
-                const statusLed = tr.querySelector('.pc-status-led');
-                if (statusLed) statusLed.className = 'pc-status-led ' + marginTier;
-                
-                const salesCol = tr.querySelector('td:last-child');
-                if (salesCol) salesCol.innerHTML = isEmpty ? '<span style="color:var(--text-disabled)">—</span>' : 'SGD ' + salesPriceSgd.toFixed(2);
-            }
-            // Auto save
-            api.updateMarketExportSettings(item.id, {
-                feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
-                shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
-                packagingKrw: item.packagingKrw
-            }).catch(e => console.error('Auto-save failed:', e));
-        }
-
-        function triggerCalculation(source, valueStr) {
-            clearTimeout(threeWayTimer);
-            threeWayTimer = setTimeout(() => {
-                let settings = getItemSettings(item);
-                let newTargetMargin = item.targetMarginKrw;
-                let val = parseFloat(valueStr) || 0;
-
-                if (source === 'sales') {
-                    const newResult = calcPricingFromPrice({
-                        costKrw: item.priceKrw || 0,
-                        domesticShipping: item.domesticShipping ?? 3000,
-                        packagingKrw: item.packagingKrw || 0,
-                        sellingPriceSgd: val,
-                        weight: item.weight || 0,
-                        exchangeRate: item.exchangeRate || 0.00086,
-                        ...settings
-                    });
-                    newTargetMargin = newResult.marginKrw;
-                } else if (source === 'profit') {
-                    newTargetMargin = val;
-                } else if (source === 'margin') {
-                    const approxRevKrw = (parseFloat(inpSales.value) || 0) / (item.exchangeRate || 0.00086);
-                    newTargetMargin = Math.round(approxRevKrw * (val / 100));
-                }
-
-                updateItemAndReRenderList({ targetMarginKrw: newTargetMargin });
-                renderPricingDetailPanel(item); // Re-render detail panel to update all labels
-                
-                // Restore focus based on source
-                setTimeout(() => {
-                    if (source === 'sales') document.getElementById('detail-input-sales')?.focus();
-                    if (source === 'profit') document.getElementById('detail-input-profit')?.focus();
-                    if (source === 'margin') document.getElementById('detail-input-margin')?.focus();
-                }, 10);
-            }, 400);
-        }
-
-        if (inpSales) inpSales.addEventListener('input', (e) => triggerCalculation('sales', e.target.value));
-        if (inpProfit) inpProfit.addEventListener('input', (e) => triggerCalculation('profit', e.target.value));
-        if (inpMargin) inpMargin.addEventListener('input', (e) => triggerCalculation('margin', e.target.value));
-
-        function onPresetChange() {
-            updateItemAndReRenderList({
-                feePresetId: feeSel.value || null,
-                promoPresetId: promoSel.value || null,
-                shipPresetId: shipSel.value || null
-            });
-            renderPricingDetailPanel(item);
-        }
-
-        if (feeSel) feeSel.addEventListener('change', onPresetChange);
-        if (promoSel) promoSel.addEventListener('change', onPresetChange);
-        if (shipSel) shipSel.addEventListener('change', onPresetChange);
-
-        document.querySelectorAll('.detail-quick').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const rate = e.target.dataset.rate;
-                triggerCalculation('margin', rate);
-            });
-        });
-    }
-
-    function renderBulkDetailPanel(items) {
-        const container = document.getElementById('pc-detail-container');
-        if (!container) return;
-
-        const feeOptions = `<option value="">변경 안함 (기존 유지)</option><option value="DEFAULT">마켓 기본값으로 초기화</option>` + presets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-        const promoOptions = `<option value="">변경 안함 (기존 유지)</option><option value="DEFAULT">마켓 기본값으로 초기화</option>` + promotionPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-        const shipOptions = `<option value="">변경 안함 (기존 유지)</option><option value="DEFAULT">마켓 기본값으로 초기화</option>` + shippingPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-
-        container.innerHTML = `
-            <div class="pc-detail-header">
-                <h4 class="title-sm" style="margin-bottom: 4px; color: var(--primary);">일괄 설정 모드</h4>
-                <div class="body-sm text-secondary">${items.length}개 상품 선택됨</div>
-            </div>
-            <div class="pc-detail-body">
-                <div class="pc-pricing-card full-width" style="border-color: var(--primary); background: var(--primary-container);">
-                    <label style="color: var(--on-primary-container);">목표 수익률 일괄 적용 (%)</label>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-                        <input type="number" id="bulk-input-margin" step="0.1" placeholder="예: 25.0" style="background: var(--surface-container-lowest); border-radius: 4px; padding: 0.5rem; flex: 1; font-size: 1.2rem;">
-                        <button class="btn-primary" id="btn-bulk-apply-margin">적용</button>
-                    </div>
-                    <div class="pc-quick-margins" style="margin-top: 0.5rem;">
-                        <button class="btn-secondary btn-outline bulk-quick" data-rate="15">15%</button>
-                        <button class="btn-secondary btn-outline bulk-quick" data-rate="20">20%</button>
-                        <button class="btn-secondary btn-outline bulk-quick" data-rate="25">25%</button>
-                        <button class="btn-secondary btn-outline bulk-quick" data-rate="30">30%</button>
-                    </div>
-                </div>
-
-                <div class="pc-pricing-card full-width">
-                    <label>프리셋 일괄 적용</label>
-                    <div class="pc-preset-group" style="margin-top: 0.5rem;">
-                        <div><label>수수료</label><select class="form-control form-control-sm" id="bulk-fee-preset">${feeOptions}</select></div>
-                        <div><label>프로모션</label><select class="form-control form-control-sm" id="bulk-promo-preset">${promoOptions}</select></div>
-                        <div><label>배송비</label><select class="form-control form-control-sm" id="bulk-ship-preset">${shipOptions}</select></div>
-                    </div>
-                    <button class="btn-secondary" id="btn-bulk-apply-preset" style="margin-top: 0.75rem;">프리셋 적용</button>
+                <div class="pc-side-section">
+                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>
+                    ${renderBreakdownPanel(item, result)}
                 </div>
             </div>
         `;
 
-        bindBulkEvents(items);
-    }
+        panel.style.transform = 'translateX(0)';
+        overlay.classList.add('show');
 
-    function bindBulkEvents(items) {
-        const btnApplyMargin = document.getElementById('btn-bulk-apply-margin');
-        const inpMargin = document.getElementById('bulk-input-margin');
-        const btnApplyPreset = document.getElementById('btn-bulk-apply-preset');
+        // Bind Events
+        const feeSel = content.querySelector('.pc-fee-override');
+        const promoSel = content.querySelector('.pc-promo-override');
+        const shipSel = content.querySelector('.pc-ship-override');
+        const btnSave = content.querySelector('.btn-save-settings');
 
-        async function applyMarginToAll(rate) {
-            const K = rate / 100;
-            const promises = items.map(item => {
-                // Approximate calculation to find targetMarginKrw
-                let settings = getItemSettings(item);
-                // We need the selling price first to apply the rate... this is recursive in nature.
-                // A simpler way: we simulate a margin, calculate, and adjust.
-                // Or better yet, we calculate cost and fees without margin, and find selling price = cost / (1 - rate - fee_rate).
-                // But for simplicity, we'll use our calc engine by trying to set targetMargin = (cost * K).
-                // Actually, an easier way is to just set a dummy margin, calculate sellingPrice, then set margin = sellingPrice * K * exchangeRate
-                // Let's do a basic reverse.
-                const totalCostKrw = (item.priceKrw || 0) + (item.domesticShipping ?? 3000) + (item.packagingKrw || 0);
-                const rateEx = item.exchangeRate || 0.00086;
-                const costSgd = totalCostKrw * rateEx;
-                // Roughly: SellingPrice = CostSgd + FeesSgd + MarginSgd
-                // SellingPrice = (CostSgd + FixedShipping) / (1 - FeeRate - K)
-                const feeRate = (settings.fees.commission + settings.fees.pg + settings.fees.service + settings.fees.payoneer) / 100;
-                const denom = 1 - feeRate - K - (settings.promo.discountRate/100); 
-                // This is a rough estimation, but we can do it iteratively.
-                // Instead, just do what localThreeWay did: approx Rev = ...
-                item.targetMarginKrw = Math.round(totalCostKrw * K * 1.5); // Initial guess
-                let res = calcProductRow(item);
-                const approxRevKrw = res.sellingPrice / rateEx;
-                item.targetMarginKrw = Math.round(approxRevKrw * K);
-                
-                return api.updateMarketExportSettings(item.id, { targetMarginKrw: item.targetMarginKrw });
-            });
+        function recalcFromPanel() {
+            item.feePresetId = feeSel?.value || null;
+            item.promoPresetId = promoSel?.value || null;
+            item.shipPresetId = shipSel?.value || null;
             
-            btnApplyMargin.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            await Promise.all(promises);
-            window.renderPriceCalcGrid(currentMarketContext);
-            showToast(`${items.length}개 상품에 마진율 ${rate}% 적용 완료`);
+            // Re-render the row (this updates 4-way inputs naturally)
+            renderPriceCalcGrid(); 
+            // openSidePanel will be called again by the grid refresh or user click
         }
 
-        if (btnApplyMargin) {
-            btnApplyMargin.addEventListener('click', () => {
-                const val = parseFloat(inpMargin.value);
-                if (!isNaN(val)) applyMarginToAll(val);
+        if (feeSel) feeSel.addEventListener('change', recalcFromPanel);
+        if (promoSel) promoSel.addEventListener('change', recalcFromPanel);
+        if (shipSel) shipSel.addEventListener('change', recalcFromPanel);
+
+        if (btnSave) {
+            btnSave.addEventListener('click', async () => {
+                try {
+                    btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                    await api.updateMarketExportSettings(item.id, { 
+                        feePresetId: item.feePresetId, 
+                        promoPresetId: item.promoPresetId, 
+                        shipPresetId: item.shipPresetId, 
+                        targetMarginKrw: item.targetMarginKrw, 
+                        packagingKrw: item.packagingKrw,
+                        discountRate: item.discountRate 
+                    });
+                    showToast('설정 저장 완료', 'success');
+                    btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }, 1000);
+                } catch (err) { 
+                    showToast('저장 실패: ' + err.message, 'error'); 
+                    btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; 
+                }
             });
         }
+    }
 
-        document.querySelectorAll('.bulk-quick').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const rate = parseFloat(e.target.dataset.rate);
-                applyMarginToAll(rate);
-            });
-        });
+    // Close Side Panel Logic
+    function closeSidePanel() {
+        document.getElementById('pc-side-panel').style.transform = 'translateX(100%)';
+        document.getElementById('pc-side-panel-overlay').classList.remove('show');
+        window.currentOpenSidePanelId = null;
+        document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
+    }
+    document.getElementById('btn-close-pc-panel')?.addEventListener('click', closeSidePanel);
+    document.getElementById('pc-side-panel-overlay')?.addEventListener('click', closeSidePanel);
 
-        if (btnApplyPreset) {
-            btnApplyPreset.addEventListener('click', async () => {
-                const fVal = document.getElementById('bulk-fee-preset').value;
-                const pVal = document.getElementById('bulk-promo-preset').value;
-                const sVal = document.getElementById('bulk-ship-preset').value;
+    // Helper: Render fee breakdown HTML
+    function renderBreakdownPanel(item, result) {
+        const bd = result.breakdown;
+        const rows = Object.values(bd).map(f => `
+            <tr>
+                <td>${f.label}</td>
+                <td class="text-right body-sm text-secondary">${f.rate}%</td>
+                <td class="body-sm text-secondary">${f.baseLabel}</td>
+                <td class="text-right body-sm">${f.baseValue.toFixed(2)}</td>
+                <td class="text-right" style="font-weight: 600;">SGD ${f.amount.toFixed(2)}</td>
+            </tr>
+        `).join('');
 
-                const promises = items.map(item => {
-                    let changed = false;
-                    if (fVal) { item.feePresetId = fVal === 'DEFAULT' ? null : fVal; changed = true; }
-                    if (pVal) { item.promoPresetId = pVal === 'DEFAULT' ? null : pVal; changed = true; }
-                    if (sVal) { item.shipPresetId = sVal === 'DEFAULT' ? null : sVal; changed = true; }
-                    if (changed) {
-                        return api.updateMarketExportSettings(item.id, {
-                            feePresetId: item.feePresetId, promoPresetId: item.promoPresetId, shipPresetId: item.shipPresetId
-                        });
-                    }
-                    return Promise.resolve();
-                });
-
-                btnApplyPreset.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-                await Promise.all(promises);
-                window.renderPriceCalcGrid(currentMarketContext);
-                showToast(`프리셋 일괄 적용 완료`);
-            });
-        }
+        return `
+        <div class="pc-breakdown-panel">
+            <div class="pc-breakdown-grid">
+                <div class="pc-breakdown-section">
+                    <h4 class="label-md" style="color: var(--primary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 분해</h4>
+                    <table class="pc-breakdown-table">
+                        <thead><tr><th>항목</th><th class="text-right">비율</th><th>산식 Base</th><th class="text-right">Base값</th><th class="text-right">금액</th></tr></thead>
+                        <tbody>
+                            <tr style="background: var(--surface-container-low);">
+                                <td>원가 (SGD)</td>
+                                <td class="text-right body-sm text-secondary">—</td>
+                                <td class="body-sm text-secondary">₩${result.costKrw.toLocaleString()} × ${result.exchangeRate}</td>
+                                <td class="text-right body-sm">—</td>
+                                <td class="text-right" style="font-weight: 600;">SGD ${result.costSgd.toFixed(2)}</td>
+                            </tr>
+                            <tr style="background: var(--surface-container-low);">
+                                <td>셀러 배송비</td>
+                                <td class="text-right body-sm text-secondary">—</td>
+                                <td class="body-sm text-secondary">${item.weight}g → 원래운임 ${result.grossShipping.toFixed(2)} − 감면 ${result.rebate.toFixed(2)}</td>
+                                <td class="text-right body-sm">—</td>
+                                <td class="text-right" style="font-weight: 600;">SGD ${result.sellerShipping.toFixed(2)}</td>
+                            </tr>
+                            ${rows}
+                        </tbody>
+                        <tfoot>
+                            <tr style="border-top: 2px solid var(--outline-variant);">
+                                <td colspan="4" style="font-weight: 600;">총 비용 (원가+배송+수수료)</td>
+                                <td class="text-right" style="font-weight: 700;">SGD ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="font-weight: 600; color: var(--primary);">정산 마진</td>
+                                <td class="text-right" style="font-weight: 700; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">SGD ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</td>
+                            </tr>
+                            <tr style="background: var(--surface-container-low); border-top: 1px dashed var(--outline-variant);">
+                                <td colspan="4"><span style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액 (수출 면세)</span></td>
+                                <td class="text-right" style="font-weight: 600; color: var(--secondary);">+ SGD ${result.vatRefundSgd.toFixed(2)} (₩${result.vatRefundKrw.toLocaleString()})</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="font-weight: 700; color: var(--primary); font-size: 1.05rem;">환급 포함 최종 마진</td>
+                                <td class="text-right" style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">SGD ${result.marginWithVatSgd.toFixed(2)} (₩${result.marginWithVatKrw.toLocaleString()})</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>`;
     }
 
 

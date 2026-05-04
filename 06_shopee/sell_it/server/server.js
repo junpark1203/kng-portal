@@ -195,7 +195,8 @@ function initDb() {
                     "ALTER TABLE market_exports ADD COLUMN shipPresetId TEXT",
                     "ALTER TABLE market_exports ADD COLUMN targetMarginKrw INTEGER",
                     "ALTER TABLE market_exports ADD COLUMN packagingKrw INTEGER",
-                    "ALTER TABLE market_exports ADD COLUMN exchangeRate REAL"
+                    "ALTER TABLE market_exports ADD COLUMN exchangeRate REAL",
+                    "ALTER TABLE market_exports ADD COLUMN discountRate REAL"
                 ];
                 alters.forEach(alt => {
                     db.run(alt, (alterErr) => {
@@ -524,11 +525,11 @@ app.delete('/api/market-exports/:id', (req, res) => {
 
 // 마켓 개별 상품 설정 업데이트 (Pricing Cockpit)
 app.put('/api/market-exports/:id/settings', (req, res) => {
-    const { feePresetId, promoPresetId, shipPresetId, targetMarginKrw, packagingKrw } = req.body;
+    const { feePresetId, promoPresetId, shipPresetId, targetMarginKrw, packagingKrw, discountRate } = req.body;
     const sql = `UPDATE market_exports 
-                 SET feePresetId=?, promoPresetId=?, shipPresetId=?, targetMarginKrw=?, packagingKrw=? 
+                 SET feePresetId=?, promoPresetId=?, shipPresetId=?, targetMarginKrw=?, packagingKrw=?, discountRate=? 
                  WHERE id=?`;
-    db.run(sql, [feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginKrw || null, packagingKrw || 0, req.params.id], function(err) {
+    db.run(sql, [feePresetId || null, promoPresetId || null, shipPresetId || null, targetMarginKrw !== undefined ? targetMarginKrw : null, packagingKrw || 0, discountRate !== undefined ? discountRate : null, req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: '설정 저장 성공' });
     });
