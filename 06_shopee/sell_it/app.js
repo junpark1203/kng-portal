@@ -377,43 +377,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 inpProfit.addEventListener('blur', saveOnBlur);
                 inpMargin.addEventListener('blur', saveOnBlur);
 
-                // Cockpit preset handlers
-                const feeSel = expandTr.querySelector('.pc-fee-override');
-                const promoSel = expandTr.querySelector('.pc-promo-override');
-                const shipSel = expandTr.querySelector('.pc-ship-override');
-                const btnToggleBreakdown = expandTr.querySelector('.btn-toggle-breakdown');
-                const breakdownContainer = expandTr.querySelector('.cockpit-breakdown-container');
-                const btnSave = expandTr.querySelector('.btn-save-settings');
-
-                function recalcFromCockpit() {
-                    item.feePresetId = feeSel?.value || null;
-                    item.promoPresetId = promoSel?.value || null;
-                    item.shipPresetId = shipSel?.value || null;
-                    const newResult = calcProductRow(item);
-                    inpSales.value = newResult.sellingPrice.toFixed(2);
-                    inpProfit.value = newResult.marginKrw;
-                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
-                    inpMargin.value = mr.toFixed(1);
-                    tr.dataset.margin = mr >= 20 ? 'high' : mr >= 10 ? 'mid' : mr < 0 ? 'neg' : 'low';
-                    updateCockpitValues(expandTr, item, newResult);
-                    if (breakdownContainer) breakdownContainer.innerHTML = renderBreakdownPanel(item, newResult);
-                }
-
-                if (feeSel) feeSel.addEventListener('change', recalcFromCockpit);
-                if (promoSel) promoSel.addEventListener('change', recalcFromCockpit);
-                if (shipSel) shipSel.addEventListener('change', recalcFromCockpit);
-                if (btnToggleBreakdown) btnToggleBreakdown.addEventListener('click', () => { breakdownContainer.style.display = breakdownContainer.style.display === 'none' ? 'block' : 'none'; });
-                if (btnSave) {
-                    btnSave.addEventListener('click', async () => {
-                        try {
-                            btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-                            await api.updateMarketExportSettings(item.id, { feePresetId: item.feePresetId, promoPresetId: item.promoPresetId, shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw, packagingKrw: item.packagingKrw });
-                            showToast('설정 저장 완료', 'success');
-                            btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
-                            setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }, 1000);
-                        } catch (err) { showToast('저장 실패: ' + err.message, 'error'); btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }
-                    });
-                }
             });
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
@@ -471,19 +434,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             settings.shippingSettings = shipPre.settings;
         }
         return settings;
-    }
-
-    // Helper: Update cockpit panel values without re-rendering
-    function updateCockpitValues(expandTr, item, result) {
-        if (!expandTr || expandTr.style.display === 'none') return;
-        const cockpitP = expandTr.querySelector('.cockpit-P');
-        const cockpitMarginKrw = expandTr.querySelector('.cockpit-margin-krw');
-        const cockpitBase = expandTr.querySelector('.cockpit-base-margin');
-        const cockpitVat = expandTr.querySelector('.cockpit-vat-refund');
-        if (cockpitP) cockpitP.innerText = result.sellingPrice.toFixed(2);
-        if (cockpitMarginKrw) cockpitMarginKrw.innerText = result.marginWithVatKrw.toLocaleString();
-        if (cockpitBase) cockpitBase.innerText = result.marginKrw.toLocaleString();
-        if (cockpitVat) cockpitVat.innerText = result.vatRefundKrw.toLocaleString();
     }
 
     // Helper: Update market info bar
