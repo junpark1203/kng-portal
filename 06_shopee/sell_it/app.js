@@ -381,9 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
         
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
-
-        // Update market info bar
-        updateMarketInfoBar(marketCode);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
 
         try {
             const exports = await api.getMarketExports(marketCode);
@@ -510,6 +508,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    function updatePcBulkActionBar() {
+        const checked = document.querySelectorAll('.pc-row-checkbox:checked');
+        const count = checked.length;
+        const actionBar = document.getElementById('pc-bulk-action-bar');
+        const countSpan = document.getElementById('pc-bulk-count');
+        
+        if (count > 0) {
+            countSpan.innerText = count;
+            if (actionBar) actionBar.classList.add('active');
+        } else {
+            if (actionBar) actionBar.classList.remove('active');
+            const masterCb = document.getElementById('pc-check-all');
+            if (masterCb) masterCb.checked = false;
+        }
+    }
 
     // Helper: Get default preset settings for current market
     function getPCSettings() {
@@ -562,20 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return settings;
     }
 
-    // Helper: Update market info bar
-    function updateMarketInfoBar(marketCode) {
-        const infoBar = document.getElementById('pc-market-info');
-        if (!infoBar) return;
-        const s = getPCSettings();
-        const currencyMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
-        const currency = currencyMap[marketCode] || 'SGD';
-        infoBar.innerHTML = `
-            <span class="pc-tag">환율 ${s.exchangeRate}</span>
-            <span class="pc-tag">Commission ${s.fees.commission}%</span>
-            <span class="pc-tag">할인 ${s.promo.discountRate}%</span>
-            <span class="pc-tag">${currency}</span>
-        `;
-    }
+
 
     // Helper: Calculate one product row
     function calcProductRow(item) {
