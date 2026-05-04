@@ -137,6 +137,7 @@ function initDb() {
                 nameEn TEXT,
                 nameKo TEXT,
                 priceKrw INTEGER DEFAULT 0,
+                domesticShipping INTEGER DEFAULT 3000,
                 rate REAL DEFAULT 0,
                 rateDate TEXT,
                 weight INTEGER DEFAULT 0,
@@ -147,7 +148,15 @@ function initDb() {
             )
         `, (err) => {
             if (err) console.error('products 테이블 생성 오류:', err.message);
-            else console.log('products 테이블 확인 완료');
+            else {
+                console.log('products 테이블 확인 완료');
+                // 기존 DB에 domesticShipping 컬럼이 없을 수 있으므로 ALTER TABLE
+                db.run(`ALTER TABLE products ADD COLUMN domesticShipping INTEGER DEFAULT 3000`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE 오류:', alterErr.message);
+                    }
+                });
+            }
         });
 
         // 마켓 전송 기록
@@ -326,10 +335,10 @@ app.post('/api/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, rate, rateDate, weight, link, note, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, rate, rateDate, weight, link, note, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [id, p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -341,10 +350,10 @@ app.put('/api/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?
+    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?
                  WHERE id=?`;
     const params = [p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, id];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });

@@ -180,48 +180,293 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+
+        // Populate control bar presets
+        populatePCPresets(marketCode);
 
         try {
             const exports = await api.getMarketExports(marketCode);
             tbody.innerHTML = '';
 
             if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-disabled); padding: 2rem;">이 마켓으로 전송된 상품이 없습니다. Product List에서 먼저 내보내기를 진행해주세요.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-disabled); padding: 2rem;">이 마켓으로 전송된 상품이 없습니다. Product List에서 먼저 내보내기를 진행해주세요.</td></tr>`;
                 return;
             }
 
             exports.forEach(item => {
+                const result = calcProductRow(item);
                 const tr = document.createElement('tr');
-                tr.className = 'calc-row';
-                tr.style.cursor = 'pointer';
+                tr.className = 'pc-product-row';
+                tr.dataset.productId = item.id || item.productId || '';
                 tr.innerHTML = `
+                    <td style="text-align: center; color: var(--text-secondary);"><i class="fa-solid fa-chevron-right pc-expand-icon"></i></td>
                     <td>
-                        <div style="font-weight: 600;" class="prod-date">${item.date}</div>
-                        <div class="body-sm text-secondary prod-mcode">${item.mcode}</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
-                        <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
+                        <div style="font-weight: 600;">${item.nameKo || item.nameEn}</div>
+                        <div class="body-sm text-secondary">${item.mcode} · ${item.weight}g</div>
                     </td>
                     <td class="text-right">
-                        <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(item.priceKrw).toLocaleString()}</div>
+                        <div style="font-weight: 500;">₩${Number(item.priceKrw).toLocaleString()}</div>
+                        <div class="body-sm text-secondary">+₩${Number(item.domesticShipping || 3000).toLocaleString()}</div>
                     </td>
-                    <td class="text-right">
-                        <div>${item.rate}</div>
-                        <div class="body-sm text-secondary prod-weight">${item.weight}g</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600; color: var(--secondary);">${item.exportDate}</div>
-                    </td>
+                    <td class="text-right"><span class="body-sm">${result.costSgd.toFixed(2)}</span></td>
+                    <td class="text-right"><span class="body-sm">${result.sellerShipping.toFixed(2)}</span></td>
+                    <td class="text-right"><span style="font-weight: 600; color: var(--primary);">${result.sellingPrice.toFixed(2)}</span></td>
+                    <td class="text-right"><span class="body-sm">${result.buyerDisplayPrice.toFixed(2)}</span></td>
+                    <td class="text-right"><span style="font-weight: 600; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${result.marginSgd.toFixed(2)}</span></td>
+                    <td class="text-right"><span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginKrw.toLocaleString()}</span></td>
                 `;
                 tbody.appendChild(tr);
+
+                // Inline breakdown panel (hidden by default)
+                const expandTr = document.createElement('tr');
+                expandTr.className = 'pc-breakdown-row';
+                expandTr.style.display = 'none';
+                expandTr.innerHTML = `<td colspan="9">${renderBreakdownPanel(item, result)}</td>`;
+                tbody.appendChild(expandTr);
+
+                // Toggle expand
+                tr.addEventListener('click', () => {
+                    const isOpen = expandTr.style.display !== 'none';
+                    // Close all others
+                    document.querySelectorAll('.pc-breakdown-row').forEach(r => r.style.display = 'none');
+                    document.querySelectorAll('.pc-expand-icon').forEach(i => { i.className = 'fa-solid fa-chevron-right pc-expand-icon'; });
+                    if (!isOpen) {
+                        expandTr.style.display = '';
+                        tr.querySelector('.pc-expand-icon').className = 'fa-solid fa-chevron-down pc-expand-icon';
+                    }
+                });
+
+                // --- Inline margin / packaging input handlers ---
+                const marginInput = expandTr.querySelector('.pc-margin-input');
+                const packagingInput = expandTr.querySelector('.pc-packaging-input');
+                let _pcDebounce = null;
+
+                function recalcRow() {
+                    const newMargin = parseFloat(marginInput?.value) || 0;
+                    const newPkg = parseFloat(packagingInput?.value) || 0;
+                    const updatedItem = { ...item, targetMarginKrw: newMargin };
+                    const settings = getPCSettings();
+                    const newResult = calcPricingFromMargin({
+                        costKrw: updatedItem.priceKrw || 0,
+                        domesticShipping: updatedItem.domesticShipping || 3000,
+                        packagingKrw: newPkg,
+                        targetMarginKrw: newMargin,
+                        weight: updatedItem.weight || 0,
+                        ...settings
+                    });
+
+                    // Update summary row cells
+                    const cells = tr.querySelectorAll('td');
+                    if (cells[3]) cells[3].innerHTML = `<span class="body-sm">${newResult.costSgd.toFixed(2)}</span>`;
+                    if (cells[4]) cells[4].innerHTML = `<span class="body-sm">${newResult.sellerShipping.toFixed(2)}</span>`;
+                    if (cells[5]) cells[5].innerHTML = `<span style="font-weight: 600; color: var(--primary);">${newResult.sellingPrice.toFixed(2)}</span>`;
+                    if (cells[6]) cells[6].innerHTML = `<span class="body-sm">${newResult.buyerDisplayPrice.toFixed(2)}</span>`;
+                    if (cells[7]) cells[7].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span>`;
+                    if (cells[8]) cells[8].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginKrw.toLocaleString()}</span>`;
+
+                    // Update breakdown panel
+                    expandTr.querySelector('td').innerHTML = renderBreakdownPanel(updatedItem, newResult);
+                    // Re-bind inputs in the new panel
+                    const newMarginInput = expandTr.querySelector('.pc-margin-input');
+                    const newPkgInput = expandTr.querySelector('.pc-packaging-input');
+                    if (newMarginInput) {
+                        newMarginInput.value = newMargin;
+                        newMarginInput.addEventListener('input', debouncedRecalc);
+                    }
+                    if (newPkgInput) {
+                        newPkgInput.value = newPkg;
+                        newPkgInput.addEventListener('input', debouncedRecalc);
+                    }
+                }
+
+                function debouncedRecalc() {
+                    clearTimeout(_pcDebounce);
+                    _pcDebounce = setTimeout(recalcRow, 300);
+                }
+
+                if (marginInput) marginInput.addEventListener('input', debouncedRecalc);
+                if (packagingInput) packagingInput.addEventListener('input', debouncedRecalc);
             });
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
         }
     };
+
+    // Helper: Get current preset settings from control bar
+    function getPCSettings() {
+        const feePresetId = document.getElementById('pc-fee-preset')?.value;
+        const promoPresetId = document.getElementById('pc-promo-preset')?.value;
+        const shipPresetId = document.getElementById('pc-ship-preset')?.value;
+        const exchangeRate = parseFloat(document.getElementById('pc-exchange-rate')?.value) || 0.00086;
+
+        const feePre = presets.find(p => p.id === feePresetId);
+        const promoPre = promotionPresets.find(p => p.id === promoPresetId);
+        const shipPre = shippingPresets.find(p => p.id === shipPresetId);
+
+        return {
+            exchangeRate,
+            fees: feePre ? {
+                commission: feePre.fees.commission || 0,
+                pg: feePre.fees.pg || 0,
+                service: feePre.fees.service || 0,
+                payoneer: feePre.fees.payoneer || 0,
+                gst: feePre.fees.gst || feePre.fees.special || 0
+            } : { commission: 15.35, pg: 3, service: 0.8, payoneer: 1.2, gst: 9 },
+            promo: promoPre ? {
+                discountRate: promoPre.settings.discountRate || 0,
+                adjustmentRate: promoPre.settings.adjustmentRate || 100,
+                voucher: promoPre.settings.voucher || 0,
+                fspCcb: promoPre.settings.fspCcb || 0,
+            } : { discountRate: 30, adjustmentRate: 130 },
+            shippingSettings: shipPre ? shipPre.settings : { tier1Base: 2.23, tier2Add: 0.08, tier3Base: 9.83, tier3Add: 0.70, rebate: 1.83 }
+        };
+    }
+
+    // Helper: Calculate one product row
+    function calcProductRow(item) {
+        const settings = getPCSettings();
+        // Use margin reverse calc with stored target margin, or forward calc with default
+        const targetMarginKrw = item.targetMarginKrw || 12000;
+        return calcPricingFromMargin({
+            costKrw: item.priceKrw || 0,
+            domesticShipping: item.domesticShipping || 3000,
+            packagingKrw: 0,
+            targetMarginKrw,
+            weight: item.weight || 0,
+            ...settings
+        });
+    }
+
+    // Helper: Render fee breakdown HTML
+    function renderBreakdownPanel(item, result) {
+        const bd = result.breakdown;
+        const rows = Object.values(bd).map(f => `
+            <tr>
+                <td>${f.label}</td>
+                <td class="text-right body-sm text-secondary">${f.rate}%</td>
+                <td class="body-sm text-secondary">${f.baseLabel}</td>
+                <td class="text-right body-sm">${f.baseValue.toFixed(2)}</td>
+                <td class="text-right" style="font-weight: 600;">SGD ${f.amount.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        return `
+        <div class="pc-breakdown-panel">
+            <div class="pc-breakdown-grid">
+                <div class="pc-breakdown-section">
+                    <h4 class="label-md" style="color: var(--primary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 분해</h4>
+                    <table class="pc-breakdown-table">
+                        <thead><tr><th>항목</th><th class="text-right">비율</th><th>산식 Base</th><th class="text-right">Base값</th><th class="text-right">금액</th></tr></thead>
+                        <tbody>
+                            <tr style="background: var(--surface-container-low);">
+                                <td>원가 (SGD)</td>
+                                <td class="text-right body-sm text-secondary">—</td>
+                                <td class="body-sm text-secondary">₩${result.costKrw.toLocaleString()} × ${result.exchangeRate}</td>
+                                <td class="text-right body-sm">—</td>
+                                <td class="text-right" style="font-weight: 600;">SGD ${result.costSgd.toFixed(2)}</td>
+                            </tr>
+                            <tr style="background: var(--surface-container-low);">
+                                <td>셀러 배송비</td>
+                                <td class="text-right body-sm text-secondary">—</td>
+                                <td class="body-sm text-secondary">${item.weight}g → 원래운임 ${result.grossShipping.toFixed(2)} − 감면 ${result.rebate.toFixed(2)}</td>
+                                <td class="text-right body-sm">—</td>
+                                <td class="text-right" style="font-weight: 600;">SGD ${result.sellerShipping.toFixed(2)}</td>
+                            </tr>
+                            ${rows}
+                        </tbody>
+                        <tfoot>
+                            <tr style="border-top: 2px solid var(--outline-variant);">
+                                <td colspan="4" style="font-weight: 600;">총 비용 (원가+배송+수수료)</td>
+                                <td class="text-right" style="font-weight: 700;">SGD ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="font-weight: 600; color: var(--primary);">정산 마진</td>
+                                <td class="text-right" style="font-weight: 700; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">SGD ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="pc-breakdown-section">
+                    <h4 class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-sliders"></i> 가격 조정</h4>
+                    <div class="pc-input-group">
+                        <label class="label-sm text-secondary">목표 마진 (KRW)</label>
+                        <input type="number" class="form-control form-control-sm pc-margin-input" value="${item.targetMarginKrw || 12000}" data-product-id="${item.id || item.productId || ''}" style="font-weight: 600;">
+                    </div>
+                    <div class="pc-input-group" style="margin-top: 0.5rem;">
+                        <label class="label-sm text-secondary">포장비 (KRW)</label>
+                        <input type="number" class="form-control form-control-sm pc-packaging-input" value="0" data-product-id="${item.id || item.productId || ''}" style="font-weight: 600;">
+                    </div>
+                    <div class="pc-price-summary">
+                        <div class="pc-price-row"><span class="text-secondary">판매자 지정가</span><span style="font-weight: 700; font-size: 1.1rem;">SGD ${result.sellingPrice.toFixed(2)}</span></div>
+                        <div class="pc-price-row"><span class="text-secondary">구매자 노출가</span><span>SGD ${result.buyerDisplayPrice.toFixed(2)}</span></div>
+                        <div class="pc-price-row"><span class="text-secondary">할인 거래가 (TP)</span><span>SGD ${result.transactionPrice.toFixed(2)}</span></div>
+                        <div class="pc-price-row"><span class="text-secondary">수익 (Revenue)</span><span>SGD ${result.revenue.toFixed(2)}</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Populate control bar preset selectors
+    function populatePCPresets(marketCode) {
+        const code = marketCode || currentMarketContext;
+        const feeSel = document.getElementById('pc-fee-preset');
+        const promoSel = document.getElementById('pc-promo-preset');
+        const shipSel = document.getElementById('pc-ship-preset');
+        const summaryBar = document.getElementById('pc-summary-bar');
+        const exchangeRateEl = document.getElementById('pc-exchange-rate');
+
+        if (feeSel) {
+            feeSel.innerHTML = presets.filter(p => p.market === code).map(p =>
+                `<option value="${p.id}" ${p.isDefault ? 'selected' : ''}>${p.name}</option>`
+            ).join('') || '<option value="">프리셋 없음</option>';
+        }
+        if (promoSel) {
+            promoSel.innerHTML = promotionPresets.filter(p => p.market === code).map(p =>
+                `<option value="${p.id}" ${p.isDefault ? 'selected' : ''}>${p.name}</option>`
+            ).join('') || '<option value="">프리셋 없음</option>';
+        }
+        if (shipSel) {
+            shipSel.innerHTML = shippingPresets.filter(p => p.market === code).map(p =>
+                `<option value="${p.id}" ${p.isDefault ? 'selected' : ''}>${p.name}</option>`
+            ).join('') || '<option value="">프리셋 없음</option>';
+        }
+
+        // Auto-fill exchange rate from latestExchangeRates
+        if (exchangeRateEl && window.latestExchangeRates) {
+            const currencyMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+            const currency = currencyMap[code];
+            if (currency && window.latestExchangeRates[currency]) {
+                exchangeRateEl.value = window.latestExchangeRates[currency];
+            }
+        }
+
+        // Update summary bar
+        const s = getPCSettings();
+        if (summaryBar) {
+            const rateDisplay = exchangeRateEl ? exchangeRateEl.value : '—';
+            summaryBar.innerHTML = `
+                <span class="pc-tag">Commission ${s.fees.commission}%</span>
+                <span class="pc-tag">PG ${s.fees.pg}%</span>
+                <span class="pc-tag">Service ${s.fees.service}%</span>
+                <span class="pc-tag">Payoneer ${s.fees.payoneer}%</span>
+                <span class="pc-tag">GST ${s.fees.gst}%</span>
+                <span class="pc-tag">할인 ${s.promo.discountRate}%</span>
+                <span class="pc-tag">조정율 ${s.promo.adjustmentRate}%</span>
+                <span class="pc-tag">환율 ${rateDisplay}</span>
+            `;
+        }
+
+        // Re-render on change
+        [feeSel, promoSel, shipSel, exchangeRateEl].forEach(el => {
+            if (el && !el.dataset.pcBound) {
+                el.addEventListener('change', () => window.renderPriceCalcGrid(currentMarketContext));
+                el.dataset.pcBound = 'true';
+            }
+        });
+    }
 
     /* --- 1. Sidebar Navigation (SPA Routing) --- */
     let currentMarketContext = 'sg'; // Default market context
@@ -275,7 +520,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (typeof window.renderPriceCalcGrid === 'function') {
                     window.renderPriceCalcGrid(marketCode);
                 }
-                if (typeof window.renderPresetSelector === 'function') window.renderPresetSelector();
                 return;
             }
 
@@ -506,6 +750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputNameKo = document.getElementById('input-name-ko');
     const inputNameEn = document.getElementById('input-name-en');
     const inputPriceKrw = document.getElementById('input-price-krw');
+    const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputRate = document.getElementById('input-rate');
     const inputRateDate = document.getElementById('input-rate-date');
     const inputWeight = document.getElementById('input-weight');
@@ -665,6 +910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const nameKo = inputNameKo.value;
             const nameEn = inputNameEn.value;
             const priceKrw = inputPriceKrw.value;
+            const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
             const rate = inputRate.value;
             const rateDate = inputRateDate.value;
             const weight = inputWeight.value;
@@ -697,6 +943,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 nameKo: nameKo,
                 nameEn: nameEn,
                 priceKrw: parseInt(priceKrw, 10) || 0,
+                domesticShipping: parseInt(domesticShipping, 10) || 3000,
                 rate: parseFloat(rate) || 1,
                 rateDate: rateDate,
                 weight: parseInt(weight, 10) || 0,
@@ -758,6 +1005,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputNameKo.value = nameKo;
             inputNameEn.value = nameEn;
             inputPriceKrw.value = priceKrwText.replace(/[^0-9]/g, '');
+            // Load domesticShipping from product data
+            const productObj = productList.find(pp => pp.mcode === mcodeStr);
+            if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping || 3000) : 3000;
             inputRate.value = rate.replace(/,/g, '');
             inputRateDate.value = rateDateStr;
             inputWeight.value = weightText.replace(/[^0-9]/g, '');
@@ -774,148 +1024,209 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Attach to existing rows (Initial Render)
     renderProductListTable();
 
-    /* --- 5. Price Calc Drawer Logic --- */
-    const priceCalcDrawer = document.getElementById('price-calc-drawer');
-    const btnCloseCalcDrawer = document.getElementById('btn-close-calc-drawer');
-    const btnCancelCalcDrawer = document.getElementById('btn-cancel-calc-drawer');
-    const btnSaveCalc = document.getElementById('btn-save-calc');
 
-    function openPriceCalcDrawer() {
-        drawerOverlay.classList.add('active');
-        priceCalcDrawer.classList.add('active');
-        calculateMargin(); // 초기 계산 1회 실행
-    }
-    
-    function closePriceCalcDrawer() {
-        drawerOverlay.classList.remove('active');
-        priceCalcDrawer.classList.remove('active');
-    }
+    /* --- 5. Price Calc — Row click is now handled inline by renderPriceCalcGrid --- */
 
-    if(btnCloseCalcDrawer) btnCloseCalcDrawer.addEventListener('click', closePriceCalcDrawer);
-    if(btnCancelCalcDrawer) btnCancelCalcDrawer.addEventListener('click', closePriceCalcDrawer);
-    if(btnSaveCalc) btnSaveCalc.addEventListener('click', closePriceCalcDrawer);
+    // ==============================
+    // Shopee Pricing Calculation Engine (Pure Functions)
+    // ==============================
 
-    // Event Delegation for price-calc-table rows
-    const priceCalcTableBody = document.querySelector('#price-calc-table tbody');
-    if (priceCalcTableBody) {
-        priceCalcTableBody.addEventListener('click', (e) => {
-            try {
-                const row = e.target.closest('tr');
-                if (!row || row.querySelectorAll('td').length === 1 || row.querySelector('th')) return; // Ignore "No data" and header rows
-
-                // Extract data safely
-                const mcodeEl = row.querySelector('.prod-mcode');
-                const nameEnEl = row.querySelector('.prod-name-en');
-                const nameKoEl = row.querySelector('.prod-name-ko');
-                const priceKrwEl = row.querySelector('.prod-price-krw') || row.querySelector('td:nth-child(3) div');
-
-                const mcodeStr = mcodeEl ? mcodeEl.innerText : 'N/A';
-                const nameEn = nameEnEl ? nameEnEl.innerText : '';
-                const nameKo = nameKoEl ? nameKoEl.innerText : 'Unknown Product';
-                const priceKrwText = priceKrwEl ? priceKrwEl.innerText : '0';
-
-                const drawerMcode = document.getElementById('calc-drawer-mcode');
-                if (drawerMcode) drawerMcode.innerText = mcodeStr;
-                
-                const drawerName = document.getElementById('calc-drawer-name');
-                if (drawerName) drawerName.innerText = `${nameKo} / ${nameEn}`;
-                
-                const costKrw = priceKrwText.replace(/[^0-9]/g, '');
-                const costInput = document.getElementById('calc-cost-krw');
-                if (costInput) costInput.value = costKrw;
-
-                // Extract Weight
-                const weightEl = row.querySelector('.prod-weight');
-                const weightG = document.getElementById('calc-weight-g');
-                if (weightEl && weightG) {
-                    const weightNum = weightEl.innerText.replace(/[^0-9]/g, '');
-                    weightG.value = weightNum;
-                }
-
-                loadDefaultPresets();
-                openPriceCalcDrawer();
-            } catch (err) {
-                console.error('Error opening price calc drawer:', err);
-                alert('폼을 여는 중 문제가 발생했습니다: ' + err.message);
-            }
-        });
-    }
-
-    // Auto-calculate Margin logic (Dummy logic for now)
-    function calculateMargin() {
-        try {
-            const costInput = document.getElementById('calc-cost-krw');
-            const domShipInput = document.getElementById('calc-domestic-shipping');
-            const packInput = document.getElementById('calc-packaging');
-            
-            const costKrw = costInput ? (parseFloat(costInput.value) || 0) : 0;
-            const domShip = domShipInput ? (parseFloat(domShipInput.value) || 0) : 0;
-            const pack = packInput ? (parseFloat(packInput.value) || 0) : 0;
-            
-            const commFee = parseFloat(document.getElementById('calc-commission-fee').value) || 0;
-            const pgFee = parseFloat(document.getElementById('calc-pg-fee').value) || 0;
-            const servFee = parseFloat(document.getElementById('calc-service-fee').value) || 0;
-            const payoFee = parseFloat(document.getElementById('calc-payoneer-fee').value) || 0;
-            const specFee = parseFloat(document.getElementById('calc-special-fee').value) || 0;
-            
-            const promoVoucher = parseFloat(document.getElementById('calc-promo-voucher').value) || 0;
-            const promoFsp = parseFloat(document.getElementById('calc-promo-fsp').value) || 0;
-
-            const totalFeePercent = commFee + pgFee + servFee + payoFee + specFee + promoVoucher + promoFsp;
-
-            // Compute Shipping
-            let shippingFee = 0;
-            const shipSelector = document.getElementById('calc-shipping-preset');
-            if (shipSelector && shipSelector.value) {
-                const sp = shippingPresets.find(p => p.id === shipSelector.value);
-                const weight = parseFloat(document.getElementById('calc-weight-g').value) || 0;
-                if (sp && weight > 0) {
-                    let totalShip = 0;
-                    if (weight <= 50) totalShip = sp.settings.tier1Base;
-                    else if (weight <= 1000) totalShip = sp.settings.tier1Base + (Math.ceil((weight-50)/10) * sp.settings.tier2Add);
-                    else totalShip = sp.settings.tier3Base + (Math.ceil((weight-1000)/100) * sp.settings.tier3Add);
-                    shippingFee = totalShip - sp.settings.rebate;
-                    if(shippingFee < 0) shippingFee = 0;
-                }
-                const shipRateEl = document.getElementById('calc-shipping-rate');
-                if (shipRateEl) shipRateEl.value = shippingFee.toFixed(2);
-            } else {
-                shippingFee = parseFloat(document.getElementById('calc-shipping-rate').value) || 0;
-            }
-
-            const totalKrw = costKrw + domShip + pack;
-            const costSgd = (totalKrw / 1000) * 1.5; // Dummy exchange rate logic
-            
-            // Equation: FinalSellingPrice * (1 - TotalFeePercent/100) = costSgd + shippingFee
-            // Wait, we have Target Margin!
-            const targetMargin = parseFloat(document.getElementById('calc-target-margin').value) || 0;
-            
-            // Formula: FinalSellingPrice = (costSgd + shippingFee) / (1 - TotalFeePercent/100 - targetMargin/100)
-            const denominator = 1 - (totalFeePercent / 100) - (targetMargin / 100);
-            let estimatedSgd = 0;
-            if (denominator > 0) {
-                estimatedSgd = (costSgd + shippingFee) / denominator;
-            }
-
-            const finalPriceEl = document.getElementById('calc-final-price');
-            if (finalPriceEl) {
-                finalPriceEl.innerText = `SGD ${estimatedSgd.toFixed(2)}`;
-            }
-
-            // Update Absolute Fee amounts
-            if(document.getElementById('amt-commission')) document.getElementById('amt-commission').innerText = `SGD ${(estimatedSgd * commFee / 100).toFixed(2)}`;
-            if(document.getElementById('amt-pg')) document.getElementById('amt-pg').innerText = `SGD ${(estimatedSgd * pgFee / 100).toFixed(2)}`;
-            if(document.getElementById('amt-service')) document.getElementById('amt-service').innerText = `SGD ${(estimatedSgd * servFee / 100).toFixed(2)}`;
-            if(document.getElementById('amt-payoneer')) document.getElementById('amt-payoneer').innerText = `SGD ${(estimatedSgd * payoFee / 100).toFixed(2)}`;
-            if(document.getElementById('amt-special')) document.getElementById('amt-special').innerText = `SGD ${(estimatedSgd * specFee / 100).toFixed(2)}`;
-        } catch(e) {
-            console.error('Margin calc error', e);
+    /**
+     * Calculate shipping cost based on weight and shipping preset settings.
+     * @param {number} weightG - Product weight in grams
+     * @param {object} ship - Shipping preset settings {tier1Base, tier2Add, tier3Base, tier3Add, rebate}
+     * @returns {{grossShipping: number, sellerShipping: number, rebate: number}}
+     */
+    function calcShippingCost(weightG, ship) {
+        if (!ship || weightG <= 0) return { grossShipping: 0, sellerShipping: 0, rebate: 0 };
+        let gross = 0;
+        if (weightG <= 50) {
+            gross = ship.tier1Base;
+        } else if (weightG <= 1000) {
+            gross = ship.tier1Base + Math.ceil((weightG - 50) / 10) * ship.tier2Add;
+        } else {
+            gross = ship.tier3Base + Math.ceil((weightG - 1000) / 100) * ship.tier3Add;
         }
+        const rebate = ship.rebate || 0;
+        const sellerShipping = Math.max(0, gross - rebate);
+        return { grossShipping: gross, sellerShipping, rebate };
     }
 
-    // Listen to form changes to auto-recalculate
-    document.getElementById('price-calc-form')?.addEventListener('input', calculateMargin);
-    document.getElementById('calc-target-margin')?.addEventListener('input', calculateMargin);
+    /**
+     * Forward calculation: Given a selling price (P), calculate all fees and margin.
+     * @param {object} input
+     * @returns {object} Full pricing breakdown
+     */
+    function calcPricingFromPrice(input) {
+        const {
+            costKrw = 0, domesticShipping = 0, packagingKrw = 0,
+            sellingPriceSgd, // P (판매자 지정 판매가)
+            weight = 0,
+            exchangeRate = 0.00086,
+            fees = {}, // { commission, pg, service, payoneer, gst }
+            promo = {}, // { discountRate, adjustmentRate }
+            shippingSettings = {} // { tier1Base, tier2Add, ... rebate }
+        } = input;
+
+        const commR = (fees.commission || 0) / 100;
+        const pgR = (fees.pg || 0) / 100;
+        const svcR = (fees.service || 0) / 100;
+        const payR = (fees.payoneer || 0) / 100;
+        const G = (fees.gst || 0) / 100;
+        const D = (promo.discountRate || 0) / 100;
+
+        // Cost
+        const totalCostKrw = costKrw + domesticShipping + packagingKrw;
+        const costSgd = totalCostKrw * exchangeRate;
+
+        // Shipping
+        const shipResult = calcShippingCost(weight, shippingSettings);
+        const sellerShipping = shipResult.sellerShipping;
+        const rebate = shipResult.rebate;
+        const grossShipping = shipResult.grossShipping;
+
+        // Price structure
+        const P = sellingPriceSgd;
+        const TP = P * (1 - D); // 할인 적용 거래가
+        const buyerDisplay = P * (1 + G); // 구매자 노출가
+
+        // Fees
+        const commission = TP * commR;
+        const pgFee = (TP * (1 + G) + rebate) * pgR;
+        const serviceFee = TP * svcR;
+        const productGst = TP * G;
+        const shippingGst = G > 0 ? (rebate / (1 + G)) * G : 0;
+        const totalGst = productGst + shippingGst;
+
+        // Revenue & Settlement
+        const revenue = TP * (1 + G);
+        const settlement = revenue - commission - pgFee - totalGst - sellerShipping;
+        const payoneerFee = settlement * payR;
+
+        // Margin
+        const marginSgd = revenue - costSgd - sellerShipping - commission - pgFee - serviceFee - payoneerFee - totalGst;
+        const marginKrw = exchangeRate > 0 ? Math.round(marginSgd / exchangeRate) : 0;
+
+        // Total fees
+        const totalFees = commission + pgFee + serviceFee + payoneerFee + totalGst;
+
+        return {
+            // Inputs echoed
+            costKrw: totalCostKrw, costSgd,
+            weight, exchangeRate,
+            sellerShipping, rebate, grossShipping,
+
+            // Prices
+            sellingPrice: P,
+            transactionPrice: TP,
+            buyerDisplayPrice: buyerDisplay,
+            discountRate: D * 100,
+            adjustmentRate: promo.adjustmentRate || 100,
+
+            // Fee breakdown
+            breakdown: {
+                commission: { label: '쇼피 판매 수수료', rate: fees.commission, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: commission },
+                pgFee:      { label: '해외 PG 수수료', rate: fees.pg, base: 'TP×(1+G)+Rebate', baseLabel: '부가세포함 주문금액+배송비감면액', baseValue: TP * (1 + G) + rebate, amount: pgFee },
+                serviceFee: { label: '기본 서비스 수수료', rate: fees.service, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: serviceFee },
+                productGst: { label: 'Product GST', rate: fees.gst, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: productGst },
+                shippingGst: { label: 'Shipping GST', rate: fees.gst, base: 'Rebate/(1+G)', baseLabel: '배송비감면액/(1+GST)', baseValue: rebate / (1 + G), amount: shippingGst },
+                payoneer:   { label: '페이오니아 인출', rate: fees.payoneer, base: 'Settlement', baseLabel: '쇼피정산금', baseValue: settlement, amount: payoneerFee },
+            },
+            totalFees,
+            revenue,
+            settlement,
+            marginSgd,
+            marginKrw
+        };
+    }
+
+    /**
+     * Reverse calculation: Given a target margin (KRW), solve for selling price P.
+     * Uses the same formulas, solved algebraically for TP.
+     */
+    function calcPricingFromMargin(input) {
+        const {
+            costKrw = 0, domesticShipping = 0, packagingKrw = 0,
+            targetMarginKrw = 0,
+            weight = 0,
+            exchangeRate = 0.00086,
+            fees = {},
+            promo = {},
+            shippingSettings = {}
+        } = input;
+
+        const commR = (fees.commission || 0) / 100;
+        const pgR = (fees.pg || 0) / 100;
+        const svcR = (fees.service || 0) / 100;
+        const payR = (fees.payoneer || 0) / 100;
+        const G = (fees.gst || 0) / 100;
+        const D = (promo.discountRate || 0) / 100;
+
+        const totalCostKrw = costKrw + domesticShipping + packagingKrw;
+        const costSgd = totalCostKrw * exchangeRate;
+        const targetMarginSgd = targetMarginKrw * exchangeRate;
+
+        const shipResult = calcShippingCost(weight, shippingSettings);
+        const sellerShipping = shipResult.sellerShipping;
+        const rebate = shipResult.rebate;
+
+        // Solve for TP:
+        // marginSgd = TP*(1+G) - costSgd - sellerShipping - TP*commR
+        //           - (TP*(1+G)+rebate)*pgR - TP*svcR
+        //           - payR*(TP*(1+G) - TP*commR - (TP*(1+G)+rebate)*pgR - TP*G - rebate/(1+G)*G - sellerShipping)
+        //           - TP*G - rebate/(1+G)*G
+        //
+        // Let's expand step by step:
+        // Let A = (1+G), R = rebate
+        // Revenue = TP*A
+        // Comm = TP*commR
+        // PG = TP*A*pgR + R*pgR
+        // Svc = TP*svcR
+        // ProdGST = TP*G
+        // ShipGST = R/(1+G)*G = R*G/A
+        // Settlement = TP*A - TP*commR - (TP*A*pgR + R*pgR) - TP*G - R*G/A - sellerShipping
+        //            = TP*(A - commR - A*pgR - G) - R*pgR - R*G/A - sellerShipping
+        // Payoneer = payR * Settlement
+        //
+        // margin = TP*A - costSgd - sellerShipping - TP*commR - (TP*A*pgR + R*pgR)
+        //        - TP*svcR - payR*Settlement - TP*G - R*G/A
+        //
+        // margin = TP*(A - commR - A*pgR - svcR - G) - costSgd - sellerShipping - R*pgR - R*G/A
+        //        - payR * [TP*(A - commR - A*pgR - G) - R*pgR - R*G/A - sellerShipping]
+        //
+        // Let K1 = A - commR - A*pgR - svcR - G
+        // Let K2 = A - commR - A*pgR - G
+        // Let C = costSgd + sellerShipping + R*pgR + R*G/A
+        //
+        // margin = TP*K1 - C - payR*(TP*K2 - R*pgR - R*G/A - sellerShipping)
+        // margin = TP*K1 - C - payR*TP*K2 + payR*(R*pgR + R*G/A + sellerShipping)
+        // margin = TP*(K1 - payR*K2) - C + payR*(R*pgR + R*G/A + sellerShipping)
+        //
+        // TP = (margin + C - payR*(R*pgR + R*G/A + sellerShipping)) / (K1 - payR*K2)
+
+        const A = 1 + G;
+        const K1 = A - commR - A * pgR - svcR - G;
+        const K2 = A - commR - A * pgR - G;
+        const C = costSgd + sellerShipping + rebate * pgR + (G > 0 ? rebate * G / A : 0);
+        const payAdj = payR * (rebate * pgR + (G > 0 ? rebate * G / A : 0) + sellerShipping);
+
+        const denominator = K1 - payR * K2;
+        if (denominator <= 0) {
+            // Fees exceed 100% — cannot solve
+            return calcPricingFromPrice({ ...input, sellingPriceSgd: 0 });
+        }
+
+        const TP = (targetMarginSgd + C - payAdj) / denominator;
+        const P = D < 1 ? TP / (1 - D) : TP;
+
+        // Now do forward calc with this P
+        return calcPricingFromPrice({ ...input, sellingPriceSgd: P });
+    }
+
+    // Make engines available globally for price calc UI
+    window.calcPricingFromPrice = calcPricingFromPrice;
+    window.calcPricingFromMargin = calcPricingFromMargin;
+    window.calcShippingCost = calcShippingCost;
 
     /* --- Preset Logic --- */
     let presets = [];
@@ -1206,7 +1517,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-pg-fee').value = p.fees.pg;
                     document.getElementById('settings-service-fee').value = p.fees.service;
                     document.getElementById('settings-payoneer-fee').value = p.fees.payoneer;
-                    document.getElementById('settings-special-fee').value = p.fees.special;
+                    document.getElementById('settings-special-fee') && (document.getElementById('settings-special-fee').value = p.fees.special || 0);
+                    const gstEl = document.getElementById('settings-gst-fee');
+                    if (gstEl) gstEl.value = p.fees.gst || p.fees.special || 0;
                     document.getElementById('settings-preset-form-title').innerText = `${currentMarketContext.toUpperCase()} 프리셋 수정하기`;
                     toggleSettingsForm('fee', true);
                 }
@@ -1255,7 +1568,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             pg: parseFloat(document.getElementById('settings-pg-fee').value) || 0,
             service: parseFloat(document.getElementById('settings-service-fee').value) || 0,
             payoneer: parseFloat(document.getElementById('settings-payoneer-fee').value) || 0,
-            special: parseFloat(document.getElementById('settings-special-fee').value) || 0
+            special: parseFloat(document.getElementById('settings-special-fee')?.value) || 0,
+            gst: parseFloat(document.getElementById('settings-gst-fee')?.value) || 0
         };
 
         if (id) {
@@ -1303,7 +1617,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><div style="font-weight: 600;">${p.name}</div></td>
                 <td>
                     <div class="body-sm text-secondary">
-                        Voucher: ${p.settings.voucher}% | FSP+CCB: ${p.settings.fspCcb}% | FreeShip: SGD ${p.settings.freeShipThreshold}
+                        할인 ${p.settings.discountRate || 0}% · 조정 ${p.settings.adjustmentRate || 100}% | Voucher: ${p.settings.voucher}% | FSP+CCB: ${p.settings.fspCcb}% | FreeShip: SGD ${p.settings.freeShipThreshold}
                     </div>
                 </td>
                 <td style="text-align: center;">
@@ -1343,6 +1657,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-promo-voucher').value = p.settings.voucher;
                     document.getElementById('settings-promo-fsp').value = p.settings.fspCcb;
                     document.getElementById('settings-promo-free-shipping').value = p.settings.freeShipThreshold;
+                    const drEl = document.getElementById('settings-promo-discount-rate');
+                    if (drEl) drEl.value = p.settings.discountRate || 30;
+                    const arEl = document.getElementById('settings-promo-adjustment-rate');
+                    if (arEl) arEl.value = p.settings.adjustmentRate || 130;
                     document.getElementById('settings-promotion-form-title').innerText = `${currentMarketContext.toUpperCase()} 프로모션 수정하기`;
                     toggleSettingsForm('promotion', true);
                 }
@@ -1386,6 +1704,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         
         const newSettings = {
+            discountRate: parseFloat(document.getElementById('settings-promo-discount-rate')?.value) || 30,
+            adjustmentRate: parseFloat(document.getElementById('settings-promo-adjustment-rate')?.value) || 130,
             voucher: parseFloat(document.getElementById('settings-promo-voucher').value) || 0,
             fspCcb: parseFloat(document.getElementById('settings-promo-fsp').value) || 0,
             freeShipThreshold: parseFloat(document.getElementById('settings-promo-free-shipping').value) || 0

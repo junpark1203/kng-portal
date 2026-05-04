@@ -927,3 +927,156 @@ textarea.form-input {
   margin-bottom: 1rem;
   display: block;
 }
+
+/* =========================================
+   Price Calculation Module
+========================================= */
+
+/* Control Bar */
+.pc-control-bar {
+  padding: 1.25rem 2rem !important;
+  margin-bottom: 0 !important;
+}
+.pc-control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+.pc-preset-group {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.pc-preset-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pc-preset-item label {
+  margin: 0;
+  font-size: 0.65rem;
+}
+.form-control-sm {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  min-width: 140px;
+}
+.pc-summary-bar {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pc-tag {
+  background: var(--surface-container-low);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Product Rows */
+.pc-product-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.pc-product-row:hover {
+  background-color: var(--surface-container-low) !important;
+}
+.pc-expand-icon {
+  transition: transform 0.2s ease;
+  font-size: 0.7rem;
+}
+
+/* Breakdown Panel (Inline Expansion) */
+.pc-breakdown-row {
+  background: var(--surface) !important;
+}
+.pc-breakdown-row:hover {
+  background: var(--surface) !important;
+}
+.pc-breakdown-row td {
+  padding: 0 !important;
+  border-bottom: 2px solid var(--primary) !important;
+}
+.pc-breakdown-panel {
+  padding: 1.5rem 2rem;
+  animation: pcSlideDown 0.25s ease;
+}
+@keyframes pcSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pc-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 2rem;
+}
+
+.pc-breakdown-section {
+  min-width: 0;
+}
+
+/* Breakdown Table */
+.pc-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.pc-breakdown-table th {
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--surface-container-high);
+  white-space: nowrap;
+}
+.pc-breakdown-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--surface-container-low);
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+.pc-breakdown-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.pc-breakdown-table tfoot td {
+  padding: 10px;
+  border-bottom: none;
+}
+
+/* Price Adjustment Section (right side) */
+.pc-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pc-input-group label {
+  margin: 0;
+  font-size: 0.65rem;
+}
+.pc-price-summary {
+  margin-top: 1rem;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container-high);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+.pc-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+.pc-price-row + .pc-price-row {
+  border-top: 1px dashed var(--surface-container-high);
+}

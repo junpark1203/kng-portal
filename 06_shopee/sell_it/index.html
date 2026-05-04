@@ -264,8 +264,8 @@
                                                 <input type="number" id="settings-payoneer-fee" class="form-control" value="1.2" step="0.1">
                                             </div>
                                             <div class="col">
-                                                <label class="label-md">특별 수수료 (%)</label>
-                                                <input type="number" id="settings-special-fee" class="form-control" value="9" step="0.1">
+                                                <label class="label-md">GST / VAT (%)</label>
+                                                <input type="number" id="settings-gst-fee" class="form-control" value="9" step="0.1">
                                             </div>
                                         </div>
                                         
@@ -313,6 +313,17 @@
                                             <input type="text" id="settings-promotion-name" class="form-control" required placeholder="예: 연말 10% 바우처">
                                         </div>
                                         
+                                        <div class="form-group row">
+                                            <div class="col">
+                                                <label class="label-md">상시 할인율 (%)</label>
+                                                <input type="number" id="settings-promo-discount-rate" class="form-control" value="30" step="1">
+                                            </div>
+                                            <div class="col">
+                                                <label class="label-md">마켓 가격 조정율 (%)</label>
+                                                <input type="number" id="settings-promo-adjustment-rate" class="form-control" value="130" step="1">
+                                            </div>
+                                        </div>
+
                                         <div class="form-group">
                                             <label class="label-md">Voucher (%)</label>
                                             <input type="number" id="settings-promo-voucher" class="form-control" value="0" step="0.1">
@@ -499,21 +510,51 @@
 
                 <!-- Price Calculation Shared View Container -->
                 <div class="view-section" id="view-price-calc-container">
-                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                    <!-- Control Bar -->
+                    <div class="pc-control-bar panel surface-container-lowest">
+                        <div class="pc-control-row">
+                            <div class="pc-preset-group">
+                                <div class="pc-preset-item">
+                                    <label class="label-sm text-secondary">수수료 프리셋</label>
+                                    <select id="pc-fee-preset" class="form-control form-control-sm"></select>
+                                </div>
+                                <div class="pc-preset-item">
+                                    <label class="label-sm text-secondary">프로모션</label>
+                                    <select id="pc-promo-preset" class="form-control form-control-sm"></select>
+                                </div>
+                                <div class="pc-preset-item">
+                                    <label class="label-sm text-secondary">배송비</label>
+                                    <select id="pc-ship-preset" class="form-control form-control-sm"></select>
+                                </div>
+                                <div class="pc-preset-item">
+                                    <label class="label-sm text-secondary">환율 (KRW→SGD)</label>
+                                    <input type="number" id="pc-exchange-rate" class="form-control form-control-sm" value="0.00086" step="0.00001" style="width: 110px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pc-summary-bar" id="pc-summary-bar">
+                            <!-- Filled dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div class="panel surface-container-lowest" style="margin-top: 0.75rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                             <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
                         </div>
-                        <p class="body-sm text-secondary">Exported products to this market and their pricing details.</p>
-                        
-                        <div class="table-container" style="margin-top: 1rem;">
+                        <div class="table-container">
                             <table class="data-table" id="price-calc-table">
                                 <thead>
                                     <tr>
-                                        <th>작성정보</th>
+                                        <th style="width: 40px;"></th>
                                         <th>상품명</th>
-                                        <th class="text-right">매입단가(KRW)</th>
-                                        <th class="text-right">환율/무게</th>
-                                        <th>Export Date</th>
+                                        <th class="text-right">원가(KRW)</th>
+                                        <th class="text-right">원가(SGD)</th>
+                                        <th class="text-right">배송비</th>
+                                        <th class="text-right">판매가(P)</th>
+                                        <th class="text-right">노출가</th>
+                                        <th class="text-right">마진(SGD)</th>
+                                        <th class="text-right">마진(KRW)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -575,6 +616,12 @@
                         <input type="number" id="input-price-krw" class="form-control" placeholder="0" required>
                     </div>
                     <div class="col">
+                        <label class="label-md">국내배송비(KRW)</label>
+                        <input type="number" id="input-domestic-shipping" class="form-control" placeholder="3000" value="3000">
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col">
                         <label class="label-md">적용환율</label>
                         <input type="number" id="input-rate" class="form-control" placeholder="1400" step="0.01" required>
                     </div>
@@ -603,149 +650,7 @@
         </div>
     </div>
 
-    <!-- Price Calculation Drawer -->
-    <div class="drawer" id="price-calc-drawer" style="width: 600px;">
-        <div class="drawer-header">
-            <h3 class="headline-md" id="price-calc-drawer-title">Margin Calculator</h3>
-            <button class="btn-close" id="btn-close-calc-drawer"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="drawer-body">
-            <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--surface-container-high);">
-                <div class="label-md text-secondary" id="calc-drawer-mcode">MCODE</div>
-                <div class="title-md" id="calc-drawer-name" style="margin-top: 4px; font-weight: 600;">Product Name</div>
-            </div>
-
-
-            <form id="price-calc-form">
-                <!-- Group 1: 매입비용 -->
-                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
-                    <h4 class="label-md" style="margin-bottom: 1rem; color: var(--primary);">1. 매입비용 (Purchase Costs)</h4>
-                    <div class="form-group row">
-                        <div class="col">
-                            <label class="label-md">매입가 (KRW)</label>
-                            <input type="number" id="calc-cost-krw" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                        </div>
-                        <div class="col">
-                            <label class="label-md">국내 배송비 (KRW)</label>
-                            <input type="number" id="calc-domestic-shipping" class="form-control" value="3000">
-                        </div>
-                        <div class="col">
-                            <label class="label-md">포장비 (KRW)</label>
-                            <input type="number" id="calc-packaging" class="form-control" value="0">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 2: CB 운임 -->
-                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 class="label-md" style="margin: 0; color: var(--secondary);">2. CB 운임 (Cross-Border Freight)</h4>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
-                            <select id="calc-shipping-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
-                                <option value="">-- 배송비 프리셋 --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col">
-                            <label class="label-md">상품 중량 (g)</label>
-                            <input type="number" id="calc-weight-g" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                        </div>
-                        <div class="col">
-                            <label class="label-md">셀러 실부담 배송비 (SGD)</label>
-                            <input type="number" id="calc-shipping-rate" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--primary); font-weight: bold;">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 3: 수수료 -->
-                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 class="label-md" style="margin: 0; color: var(--error);">3. 수수료 (Fees)</h4>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
-                            <select id="calc-fee-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
-                                <option value="">-- 수수료 프리셋 --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col">
-                            <label class="label-md">쇼피 판매 수수료 (%)</label>
-                            <input type="number" id="calc-commission-fee" class="form-control" value="10" step="0.1">
-                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-commission">SGD 0.00</div>
-                        </div>
-                        <div class="col">
-                            <label class="label-md">해외 PG 수수료 (%)</label>
-                            <input type="number" id="calc-pg-fee" class="form-control" value="2" step="0.1">
-                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-pg">SGD 0.00</div>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col">
-                            <label class="label-md">서비스 수수료 (%)</label>
-                            <input type="number" id="calc-service-fee" class="form-control" value="5" step="0.1">
-                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-service">SGD 0.00</div>
-                        </div>
-                        <div class="col">
-                            <label class="label-md">Payoneer 수수료 (%)</label>
-                            <input type="number" id="calc-payoneer-fee" class="form-control" value="1.2" step="0.1">
-                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-payoneer">SGD 0.00</div>
-                        </div>
-                        <div class="col">
-                            <label class="label-md">특별 수수료 (예: GST %)</label>
-                            <input type="number" id="calc-special-fee" class="form-control" value="9" step="0.1">
-                            <div class="body-sm text-secondary" style="margin-top: 4px; text-align: right;" id="amt-special">SGD 0.00</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 4: 프로모션 -->
-                <div class="panel surface-container-lowest" style="margin-bottom: 1.5rem; border: 1px solid var(--surface-container-high);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 class="label-md" style="margin: 0; color: #10b981;">4. 프로모션 (Promotions)</h4>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="body-sm text-secondary" style="margin: 0;">Preset:</label>
-                            <select id="calc-promotion-preset" class="form-control" style="padding: 4px 8px; font-size: 0.875rem; width: 150px;">
-                                <option value="">-- 프로모션 프리셋 --</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group row">
-                        <div class="col">
-                            <label class="label-md">Voucher (%)</label>
-                            <input type="number" id="calc-promo-voucher" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                        </div>
-                        <div class="col">
-                            <label class="label-md">FSP+CCB (%)</label>
-                            <input type="number" id="calc-promo-fsp" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                        </div>
-                        <div class="col">
-                            <label class="label-md">무료배송 기준 (SGD)</label>
-                            <input type="number" id="calc-promo-freeship" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="drawer-footer" style="display: flex; justify-content: space-between; align-items: center; background-color: var(--surface-container-lowest); border-top: 2px solid var(--surface-container-high);">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <div>
-                    <label class="label-md" style="display: block; margin-bottom: 4px;">Target Margin (%)</label>
-                    <input type="number" id="calc-target-margin" class="form-control" value="30" style="width: 100px;">
-                </div>
-                <div>
-                    <div class="label-md text-secondary" style="margin-bottom: 4px;">Final Selling Price</div>
-                    <div class="headline-md" style="color: var(--primary);" id="calc-final-price">SGD 0.00</div>
-                </div>
-            </div>
-            <div>
-                <button class="btn-secondary" id="btn-cancel-calc-drawer">Close</button>
-                <button class="btn-primary" id="btn-save-calc">Apply & Save</button>
-            </div>
-        </div>
-    </div>
+    <!-- Old Price Calculation Drawer removed — replaced by inline expansion panels -->
 
     <!-- Floating Action Bar for Bulk Selection -->
     <div class="bulk-action-bar" id="bulk-action-bar">
@@ -936,7 +841,7 @@
 
     <!-- Scripts -->
     <script src="./categories.js"></script>
-    <script src="./api.js?v=3"></script>
-    <script src="./app.js?v=3"></script>
+    <script src="./api.js?v=5"></script>
+    <script src="./app.js?v=5"></script>
 </body>
 </html>
