@@ -634,60 +634,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderBreakdownPanel(item, result) {
         const bd = result.breakdown;
         const rows = Object.values(bd).map(f => `
-            <tr>
-                <td>${f.label}</td>
-                <td class="text-right body-sm text-secondary">${f.rate}%</td>
-                <td class="body-sm text-secondary">${f.baseLabel}</td>
-                <td class="text-right body-sm">${f.baseValue.toFixed(2)}</td>
-                <td class="text-right" style="font-weight: 600;">SGD ${f.amount.toFixed(2)}</td>
-            </tr>
+            <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span class="label" style="font-weight: 600; color: var(--text-main);">${f.label} <span style="color: var(--primary); font-size: 0.75rem; margin-left: 4px;">${f.rate}%</span></span>
+                    <span class="value" style="font-weight: 600;">SGD ${f.amount.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>${f.baseLabel}</span>
+                    <span>SGD ${f.baseValue.toFixed(2)}</span>
+                </div>
+            </div>
         `).join('');
 
         return `
-        <div class="pc-breakdown-panel">
-            <div class="pc-breakdown-grid">
-                <div class="pc-breakdown-section">
-                    <h4 class="label-md" style="color: var(--primary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 분해</h4>
-                    <table class="pc-breakdown-table">
-                        <thead><tr><th>항목</th><th class="text-right">비율</th><th>산식 Base</th><th class="text-right">Base값</th><th class="text-right">금액</th></tr></thead>
-                        <tbody>
-                            <tr style="background: var(--surface-container-low);">
-                                <td>원가 (SGD)</td>
-                                <td class="text-right body-sm text-secondary">—</td>
-                                <td class="body-sm text-secondary">₩${result.costKrw.toLocaleString()} × ${result.exchangeRate}</td>
-                                <td class="text-right body-sm">—</td>
-                                <td class="text-right" style="font-weight: 600;">SGD ${result.costSgd.toFixed(2)}</td>
-                            </tr>
-                            <tr style="background: var(--surface-container-low);">
-                                <td>셀러 배송비</td>
-                                <td class="text-right body-sm text-secondary">—</td>
-                                <td class="body-sm text-secondary">${item.weight}g → 원래운임 ${result.grossShipping.toFixed(2)} − 감면 ${result.rebate.toFixed(2)}</td>
-                                <td class="text-right body-sm">—</td>
-                                <td class="text-right" style="font-weight: 600;">SGD ${result.sellerShipping.toFixed(2)}</td>
-                            </tr>
-                            ${rows}
-                        </tbody>
-                        <tfoot>
-                            <tr style="border-top: 2px solid var(--outline-variant);">
-                                <td colspan="4" style="font-weight: 600;">총 비용 (원가+배송+수수료)</td>
-                                <td class="text-right" style="font-weight: 700;">SGD ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" style="font-weight: 600; color: var(--primary);">정산 마진</td>
-                                <td class="text-right" style="font-weight: 700; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">SGD ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</td>
-                            </tr>
-                            <tr style="background: var(--surface-container-low); border-top: 1px dashed var(--outline-variant);">
-                                <td colspan="4"><span style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액 (수출 면세)</span></td>
-                                <td class="text-right" style="font-weight: 600; color: var(--secondary);">+ SGD ${result.vatRefundSgd.toFixed(2)} (₩${result.vatRefundKrw.toLocaleString()})</td>
-                            </tr>
-                            <tr>
-                                <td colspan="4" style="font-weight: 700; color: var(--primary); font-size: 1.05rem;">환급 포함 최종 마진</td>
-                                <td class="text-right" style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">SGD ${result.marginWithVatSgd.toFixed(2)} (₩${result.marginWithVatKrw.toLocaleString()})</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+        <div class="pc-breakdown-list">
+            <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span class="label" style="font-weight: 600; color: var(--text-main);">원가 (SGD)</span>
+                    <span class="value" style="font-weight: 600;">SGD ${result.costSgd.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>₩${result.costKrw.toLocaleString()} × ${result.exchangeRate}</span>
                 </div>
             </div>
+            <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span class="label" style="font-weight: 600; color: var(--text-main);">셀러 배송비</span>
+                    <span class="value" style="font-weight: 600;">SGD ${result.sellerShipping.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>${item.weight}g → 원래운임 ${result.grossShipping.toFixed(2)} − 감면 ${result.rebate.toFixed(2)}</span>
+                </div>
+            </div>
+            ${rows}
+            <div class="pc-cost-item subtotal" style="margin-top: 1rem; border-top: 2px solid var(--outline-variant); padding-top: 0.5rem;"><span class="label">총 비용 (원가+배송+수수료)</span><span class="value">SGD ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--primary);">정산 마진</span><span class="value" style="color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'}; font-weight: 700;">SGD ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액</span><span class="value" style="color: var(--secondary);">+ SGD ${result.vatRefundSgd.toFixed(2)} (₩${result.vatRefundKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item total" style="margin-top: 0.5rem;"><span class="label" style="color: var(--primary);">환급 포함 최종 마진</span><span class="value" style="color: var(--primary); font-weight: 800;">SGD ${result.marginWithVatSgd.toFixed(2)} (₩${result.marginWithVatKrw.toLocaleString()})</span></div>
         </div>`;
     }
 
