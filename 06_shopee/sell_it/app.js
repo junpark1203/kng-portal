@@ -146,9 +146,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnExportMarket && exportMarketSelect) {
         btnExportMarket.addEventListener('click', async () => {
             const selectedMarket = exportMarketSelect.value;
-            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+            // Now we should query both .row-checkbox:checked and .child-checkbox:checked just in case, but child-checkbox IS a row-checkbox.
+            // Wait, in my renderSingleProductRow I added class="row-checkbox child-checkbox"
+            const checkedBoxes = document.querySelectorAll('.child-checkbox:checked, .row-checkbox:checked:not(.child-checkbox)');
             
             if (checkedBoxes.length === 0) return;
+
+            // Check for partial selection warning
+            let hasPartialSelection = false;
+            const parentMcodeSet = new Set();
+            checkedBoxes.forEach(cb => {
+                const parentMcode = cb.dataset.parentMcode;
+                if (parentMcode) parentMcodeSet.add(parentMcode);
+            });
+
+            for (const mcode of parentMcodeSet) {
+                const totalChildren = document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]`).length;
+                const checkedChildren = document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]:checked`).length;
+                if (checkedChildren > 0 && checkedChildren < totalChildren) {
+                    hasPartialSelection = true;
+                    break;
+                }
+            }
+
+            if (hasPartialSelection) {
+                if (!confirm('⚠️ 주의: 그룹 상품 중 일부 옵션만 선택된 항목이 있습니다.\n\n선택되지 않은 옵션은 제외하고 전송됩니다. 계속하시겠습니까?')) {
+                    return;
+                }
+            }
 
             // 선택된 상품의 ID를 수집
             const productIds = [];
@@ -376,6 +401,84 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Render Price Calc Grid dynamically (API 기반)
     // ※ nav 클릭 핸들러 및 savedViewId 복원보다 먼저 정의되어야 함
+    function renderSinglePriceCalcRow(item, marketCode, extraStyle, parentMcode) {
+        const result = calcProductRow(item);
+        const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
+        const isEmpty = result._empty;
+        const salesPriceSgd = result.sellingPrice;
+        const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
+        const marginWithVatRate = salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0;
+
+        const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
+        
+        const feeP = item.feePresetId ? presets.find(p => p.id === item.feePresetId) : null;
+        const promoP = item.promoPresetId ? promotionPresets.find(p => p.id === item.promoPresetId) : null;
+        const shipP = item.shipPresetId ? shippingPresets.find(p => p.id === item.shipPresetId) : null;
+        const presetDots = `<span class="pc-preset-dots">` +
+            `<span class="pc-dot ${feeP ? 'active fee' : ''}" title="수수료: ${feeP ? feeP.name : '미지정'}"></span>` +
+            `<span class="pc-dot ${promoP ? 'active promo' : ''}" title="프로모션: ${promoP ? promoP.name : '미지정'}"></span>` +
+            `<span class="pc-dot ${shipP ? 'active ship' : ''}" title="배송비: ${shipP ? shipP.name : '미지정'}"></span></span>`;
+
+        const salesKrw = result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate) : 0;
+        const origSalesSgd = result.discountRate < 100 ? salesPriceSgd / (1 - (result.discountRate/100)) : 0;
+        const discountAmountSgd = origSalesSgd - salesPriceSgd;
+        const discountAmountKrw = result.exchangeRate > 0 ? Math.round(discountAmountSgd / result.exchangeRate) : 0;
+        const exRate = result.exchangeRate || 0;
+        const exRateInv = exRate > 0 ? (1 / exRate) : 0;
+        
+        const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
+
+        const optionBadge = item.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${item.optionName}</div>` : '';
+        const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="pc-name-en">${item.nameEn || item.nameKo}</div>` : `<div style="font-weight: 600;" class="pc-name-en">${item.nameEn || item.nameKo}</div>`;
+
+        return `
+            <tr class="pc-product-row" data-product-id="${item.id || item.productId || ''}" data-margin="${marginTier}" style="${extraStyle}" data-parent-mcode="${parentMcode || ''}">
+                <td class="text-center">
+                    <div class="pc-checkbox-wrapper"><input type="checkbox" class="pc-row-checkbox pc-child-checkbox" data-id="${item.id}" data-parent-mcode="${parentMcode || ''}"></div>
+                </td>
+                <td class="text-center">
+                    <span class="pc-mcode">${item.mcode}</span>
+                </td>
+                <td>
+                    <div class="pc-cat" style="${parentMcode ? 'opacity:0.3;' : ''}">${parentMcode ? '(Same as parent)' : (item.catEn || '')}</div>
+                    ${nameEnHtml}
+                    ${optionBadge}
+                </td>
+                <td class="text-center">
+                    <div class="pc-dot-cell">${presetDots}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
+                    <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
+                    <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top">KRW ${(exRate > 0 ? Math.round(result.totalFees / exRate) : 0).toLocaleString()}</div>
+                    <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top" style="color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
+                    <div class="pc-data-bottom" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
+                    <div class="pc-data-bottom" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top" style="color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
+                    <div class="pc-data-bottom pc-vat-refund" id="cell-profit-vat-${item.id}">${isEmpty ? '—' : '+환급 KRW ' + result.marginWithVatKrw.toLocaleString()}</div>
+                </td>
+                <td class="text-center">
+                    <div class="pc-data-top" style="color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
+                    <div class="pc-data-bottom pc-vat-refund" id="cell-margin-vat-${item.id}">${isEmpty ? '—' : '+환급 ' + marginWithVatRate.toFixed(1) + '%'}</div>
+                </td>
+            </tr>
+        `;
+    }
+
     window.renderPriceCalcGrid = async function(marketCode) {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
@@ -395,92 +498,119 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            exports.forEach(item => {
-                const result = calcProductRow(item);
-                const tr = document.createElement('tr');
-                tr.className = 'pc-product-row';
-                tr.dataset.productId = item.id || item.productId || '';
+            const groupedExports = groupProductsByParent(exports);
+            const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
+            
+            let html = '';
+            groupedExports.forEach(item => {
+                if (item.isVirtualParent) {
+                    const childResults = item.children.map(c => calcProductRow(c));
+                    const validMargins = childResults.filter(r => !r._empty).map(r => r.marginKrw);
+                    const validSales = childResults.filter(r => !r._empty).map(r => r.sellingPrice);
+                    
+                    let marginKrwRangeStr = '—';
+                    let salesSgdRangeStr = '—';
 
-                // 10-column layout
-                const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
-                const isEmpty = result._empty;
-                const salesPriceSgd = result.sellingPrice;
-                const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
-                const marginWithVatRate = salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0;
+                    if (validMargins.length > 0) {
+                        const minMarginKrw = Math.min(...validMargins);
+                        const maxMarginKrw = Math.max(...validMargins);
+                        marginKrwRangeStr = minMarginKrw === maxMarginKrw ? `KRW ${minMarginKrw.toLocaleString()}` : `KRW ${minMarginKrw.toLocaleString()} ~ ${maxMarginKrw.toLocaleString()}`;
+                        
+                        const minSales = Math.min(...validSales);
+                        const maxSales = Math.max(...validSales);
+                        salesSgdRangeStr = minSales === maxSales ? minSales.toFixed(2) : `${minSales.toFixed(2)} ~ ${maxSales.toFixed(2)}`;
+                    }
 
-                // Margin tier for row coloring
-                const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
-                tr.dataset.margin = marginTier;
+                    html += `
+                        <tr class="pc-parent-row" style="background-color: var(--surface-container-highest);" data-parent-mcode="${item.mcode}">
+                            <td class="text-center">
+                                <div class="pc-checkbox-wrapper"><input type="checkbox" class="pc-row-checkbox pc-parent-checkbox" data-parent-mcode="${item.mcode}"></div>
+                            </td>
+                            <td class="text-center">
+                                <span class="pc-mcode">${item.mcode}</span> <span style="font-size:0.7rem; background:var(--primary); color:white; padding:2px; border-radius:3px;">Group</span>
+                            </td>
+                            <td>
+                                <div class="pc-cat">${item.catEn || ''}</div>
+                                <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
+                            </td>
+                            <td class="text-center"><div class="pc-dot-cell">-</div></td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">-</td>
+                            <td class="text-center">
+                                <div class="pc-data-top" style="color: var(--primary);">${curr} ${salesSgdRangeStr}</div>
+                            </td>
+                            <td class="text-center">
+                                <div class="pc-data-top" style="color: var(--text-main);">${marginKrwRangeStr}</div>
+                            </td>
+                            <td class="text-center">
+                                <div class="pc-data-top" style="color: var(--primary);">(${item.children.length} Opts)</div>
+                            </td>
+                        </tr>
+                    `;
 
-                // Preset indicator dots (compact)
-                const feeP = item.feePresetId ? presets.find(p => p.id === item.feePresetId) : null;
-                const promoP = item.promoPresetId ? promotionPresets.find(p => p.id === item.promoPresetId) : null;
-                const shipP = item.shipPresetId ? shippingPresets.find(p => p.id === item.shipPresetId) : null;
-                const presetDots = `<span class="pc-preset-dots">` +
-                    `<span class="pc-dot ${feeP ? 'active fee' : ''}" title="수수료: ${feeP ? feeP.name : '미지정'}"></span>` +
-                    `<span class="pc-dot ${promoP ? 'active promo' : ''}" title="프로모션: ${promoP ? promoP.name : '미지정'}"></span>` +
-                    `<span class="pc-dot ${shipP ? 'active ship' : ''}" title="배송비: ${shipP ? shipP.name : '미지정'}"></span></span>`;
+                    item.children.forEach((c, idx) => {
+                        const isLast = idx === item.children.length - 1;
+                        const borderStyle = isLast ? 'border-left: 3px solid var(--primary); border-bottom-left-radius: 4px; background-color: var(--surface);' : 'border-left: 3px solid var(--primary); background-color: var(--surface);';
+                        html += renderSinglePriceCalcRow(c, marketCode, borderStyle, item.mcode);
+                    });
+                } else {
+                    html += renderSinglePriceCalcRow(item, marketCode, '', '');
+                }
+            });
 
-                const salesKrw = result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate) : 0;
-                const origSalesSgd = result.discountRate < 100 ? salesPriceSgd / (1 - (result.discountRate/100)) : 0;
-                const discountAmountSgd = origSalesSgd - salesPriceSgd;
-                const discountAmountKrw = result.exchangeRate > 0 ? Math.round(discountAmountSgd / result.exchangeRate) : 0;
-                const exRate = result.exchangeRate || 0;
-                const exRateInv = exRate > 0 ? (1 / exRate) : 0;
-                const barWidth = Math.min(100, Math.max(0, (marginRate / 50) * 100));
-                const barColor = marginRate >= 20 ? 'var(--secondary)' : marginRate >= 10 ? '#f59e0b' : marginRate < 0 ? 'var(--error)' : 'var(--text-disabled)';
+            tbody.innerHTML = html;
 
-                const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
-                tr.innerHTML = `
-                    <td class="text-center">
-                        <div class="pc-checkbox-wrapper"><input type="checkbox" class="pc-row-checkbox" data-id="${item.id}"></div>
-                    </td>
-                    <td class="text-center">
-                        <span class="pc-mcode">${item.mcode}</span>
-                    </td>
-                    <td>
-                        <div class="pc-cat">${item.catEn || ''}</div>
-                        <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-dot-cell">${presetDots}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
-                        <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
-                        <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top">KRW ${(exRate > 0 ? Math.round(result.totalFees / exRate) : 0).toLocaleString()}</div>
-                        <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top" style="color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
-                        <div class="pc-data-bottom" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
-                        <div class="pc-data-bottom" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top" style="color: ${result.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'};" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + result.marginKrw.toLocaleString()}</div>
-                        <div class="pc-data-bottom pc-vat-refund" id="cell-profit-vat-${item.id}">${isEmpty ? '—' : '+환급 KRW ' + result.marginWithVatKrw.toLocaleString()}</div>
-                    </td>
-                    <td class="text-center">
-                        <div class="pc-data-top" style="color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
-                        <div class="pc-data-bottom pc-vat-refund" id="cell-margin-vat-${item.id}">${isEmpty ? '—' : '+환급 ' + marginWithVatRate.toFixed(1) + '%'}</div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            // Attach PC hierarchical checkbox events
+            const parentCheckboxes = document.querySelectorAll('.pc-parent-checkbox');
+            parentCheckboxes.forEach(pcb => {
+                pcb.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    const mcode = e.target.dataset.parentMcode;
+                    const children = document.querySelectorAll(`.pc-child-checkbox[data-parent-mcode="${mcode}"]`);
+                    children.forEach(cb => cb.checked = isChecked);
+                });
+            });
 
-                // Open Side Panel on row click
+            const childCheckboxes = document.querySelectorAll('.pc-child-checkbox');
+            childCheckboxes.forEach(ccb => {
+                ccb.addEventListener('change', (e) => {
+                    const mcode = e.target.dataset.parentMcode;
+                    if (!mcode) return; // standalone product
+                    const siblings = Array.from(document.querySelectorAll(`.pc-child-checkbox[data-parent-mcode="${mcode}"]`));
+                    const checkedCount = siblings.filter(cb => cb.checked).length;
+                    const parentCb = document.querySelector(`.pc-parent-checkbox[data-parent-mcode="${mcode}"]`);
+                    if (parentCb) {
+                        if (checkedCount === 0) {
+                            parentCb.checked = false;
+                            parentCb.indeterminate = false;
+                        } else if (checkedCount === siblings.length) {
+                            parentCb.checked = true;
+                            parentCb.indeterminate = false;
+                        } else {
+                            parentCb.checked = false;
+                            parentCb.indeterminate = true;
+                        }
+                    }
+                });
+            });
+
+            // Open Side Panel on row click
+            document.querySelectorAll('.pc-product-row').forEach(tr => {
                 tr.addEventListener('click', (e) => {
                     if (e.target.tagName === 'INPUT') return; // Don't trigger if clicking an input
+                    
+                    const productId = tr.dataset.productId;
+                    if (!productId) return; // Virtual parent rows do not open side panel
+                    
+                    let item = exports.find(x => String(x.id || x.productId) === String(productId));
+                    if (!item) return;
+                    
+                    const result = calcProductRow(item);
+
                     // Highlight selected row
-                    document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
+                    document.querySelectorAll('.pc-product-row, .pc-parent-row').forEach(r => r.style.outline = 'none');
                     tr.style.outline = '2px solid var(--primary)';
                     tr.style.outlineOffset = '-2px';
                     openSidePanel(item, result, tr);
@@ -1190,6 +1320,123 @@ document.addEventListener('DOMContentLoaded', async () => {
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function getBaseMcode(mcode) {
+        if (!mcode) return '';
+        const parts = String(mcode).split('-');
+        if (parts.length >= 3) {
+            return parts.slice(0, 3).join('-');
+        }
+        return mcode;
+    }
+
+    function groupProductsByParent(list) {
+        const map = new Map();
+        list.forEach(p => {
+            const base = getBaseMcode(p.mcode);
+            if (!map.has(base)) {
+                map.set(base, []);
+            }
+            map.get(base).push(p);
+        });
+
+        const grouped = [];
+        map.forEach((items, baseMcode) => {
+            if (items.length > 1 || (items.length === 1 && items[0].optionName)) {
+                // Virtual Parent
+                const parent = {
+                    isVirtualParent: true,
+                    mcode: baseMcode,
+                    date: items[0].date,
+                    catEn: items[0].catEn,
+                    catKo: items[0].catKo,
+                    nameEn: items[0].nameEn,
+                    nameKo: items[0].nameKo,
+                    children: items.sort((a, b) => a.mcode.localeCompare(b.mcode))
+                };
+                grouped.push(parent);
+            } else {
+                grouped.push(items[0]);
+            }
+        });
+
+        // Sort descending by date, then base mcode
+        grouped.sort((a, b) => {
+            const dateDiff = new Date(b.date) - new Date(a.date);
+            if (dateDiff !== 0) return dateDiff;
+            return b.mcode.localeCompare(a.mcode);
+        });
+        return grouped;
+    }
+
+    function renderSingleProductRow(p, extraStyle, parentMcode) {
+        let catEn1 = p.catEn;
+        let catEn2 = '';
+        if(p.catEn.includes(' > ')) {
+            const parts = p.catEn.split(' > ');
+            catEn1 = parts[0] + ' >';
+            catEn2 = parts[1];
+        }
+        const priceUsd = (p.priceKrw / (p.rate || 1)).toFixed(2);
+
+        // 마켓 전송 상태 확인
+        const exports = marketExportsMap[p.id] || [];
+        const exportedMarkets = exports.map(e => e.marketCode);
+        const marketCodes = ['sg','my','tw','th','ph','vn','br','mx'];
+        const badgesHtml = marketCodes.map(code => {
+            const isActive = exportedMarkets.includes(code) ? ' active' : '';
+            return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
+        }).join('\n                            ');
+
+        const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
+        const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
+        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}</div>`;
+        const catHtml = parentMcode ? `<div style="opacity: 0.3; font-size: 0.8rem;">(Same as parent)</div>` : `
+            <div class="prod-cat-en-1">${catEn1}</div>
+            <div class="prod-cat-en-2">${catEn2}</div>
+            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${p.catKo}</div>
+        `;
+
+        return `
+            <tr class="product-row" style="cursor: pointer; ${extraStyle}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}" data-parent-mcode="${parentMcode || ''}">
+                <td style="text-align: center;" class="td-checkbox">
+                    <input type="checkbox" class="row-checkbox child-checkbox" data-parent-mcode="${parentMcode || ''}" data-id="${p.id}">
+                </td>
+                <td>
+                    <div style="font-weight: 600; ${parentMcode ? 'opacity:0.5;' : ''}" class="prod-date">${p.date}</div>
+                    <div class="body-sm text-secondary prod-mcode">${p.mcode}</div>
+                </td>
+                <td data-cat-en="${escapeHtmlAttr(p.catEn)}" data-cat-ko="${escapeHtmlAttr(p.catKo)}">
+                    ${catHtml}
+                </td>
+                <td>
+                    ${nameEnHtml}
+                    ${nameKoHtml}
+                    ${optionBadge}
+                </td>
+                <td>
+                    <div class="market-badges">
+                        <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
+                        ${badgesHtml}
+                    </div>
+                </td>
+                <td class="text-right">
+                    <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(p.priceKrw).toLocaleString()}</div>
+                    <div class="body-sm text-secondary prod-price-usd">USD ${priceUsd}</div>
+                </td>
+                <td class="text-right">
+                    <div class="prod-rate">${p.rate}</div>
+                    <div class="body-sm text-secondary prod-weight">${p.weight}g</div>
+                </td>
+                <td>
+                    <div><a href="${p.link || '#'}" class="link-btn prod-link" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.link ? '링크' : '-'}</a></div>
+                </td>
+                <td>
+                    <div class="body-sm text-secondary prod-note">${p.note || '-'}</div>
+                </td>
+            </tr>
+        `;
+    }
+
     function renderProductListTable() {
         const tbody = document.querySelector('#pl-table tbody');
         if (!tbody) return;
@@ -1199,69 +1446,106 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // Sort by date descending (optional)
-        // productList.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const groupedData = groupProductsByParent(productList);
 
-        tbody.innerHTML = productList.map(p => {
-            let catEn1 = p.catEn;
-            let catEn2 = '';
-            if(p.catEn.includes(' > ')) {
-                const parts = p.catEn.split(' > ');
-                catEn1 = parts[0] + ' >';
-                catEn2 = parts[1];
+        let html = '';
+        groupedData.forEach(item => {
+            if (item.isVirtualParent) {
+                // Render Parent Row
+                let minPrice = Math.min(...item.children.map(c => c.priceKrw));
+                let maxPrice = Math.max(...item.children.map(c => c.priceKrw));
+                let priceRangeStr = minPrice === maxPrice ? \`KRW \${minPrice.toLocaleString()}\` : \`KRW \${minPrice.toLocaleString()} ~ \${maxPrice.toLocaleString()}\`;
+                
+                let catEn1 = item.catEn;
+                let catEn2 = '';
+                if(item.catEn.includes(' > ')) {
+                    const parts = item.catEn.split(' > ');
+                    catEn1 = parts[0] + ' >';
+                    catEn2 = parts[1];
+                }
+
+                html += \`
+                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest);" data-parent-mcode="\${item.mcode}">
+                        <td style="text-align: center;" class="td-checkbox">
+                            <input type="checkbox" class="parent-checkbox" data-parent-mcode="\${item.mcode}">
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;" class="prod-date">\${item.date}</div>
+                            <div class="body-sm text-secondary prod-mcode">\${item.mcode} <span style="font-size:0.75rem; background:var(--primary); color:white; padding:2px 4px; border-radius:4px; margin-left:4px;">Group</span></div>
+                        </td>
+                        <td data-cat-en="\${escapeHtmlAttr(item.catEn)}" data-cat-ko="\${escapeHtmlAttr(item.catKo)}">
+                            <div class="prod-cat-en-1">\${catEn1}</div>
+                            <div class="prod-cat-en-2">\${catEn2}</div>
+                            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">\${item.catKo}</div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;" class="prod-name-en">\${item.nameEn}</div>
+                            <div class="body-sm text-secondary prod-name-ko">\${item.nameKo}</div>
+                        </td>
+                        <td>
+                            <div class="market-badges">
+                                <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <div style="font-weight: 600;" class="prod-price-krw">\${priceRangeStr}</div>
+                        </td>
+                        <td class="text-right">
+                            <div class="body-sm text-secondary prod-weight">(\${item.children.length} Options)</div>
+                        </td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                \`;
+
+                // Render Child Rows
+                item.children.forEach((c, idx) => {
+                    const isLast = idx === item.children.length - 1;
+                    const borderStyle = isLast ? 'border-left: 3px solid var(--primary); border-bottom-left-radius: 4px; background-color: var(--surface);' : 'border-left: 3px solid var(--primary); background-color: var(--surface);';
+                    html += renderSingleProductRow(c, borderStyle, item.mcode);
+                });
+            } else {
+                html += renderSingleProductRow(item, '', '');
             }
-            const priceUsd = (p.priceKrw / (p.rate || 1)).toFixed(2);
+        });
 
-            // 마켓 전송 상태 확인 (API 데이터 기반)
-            const exports = marketExportsMap[p.id] || [];
-            const exportedMarkets = exports.map(e => e.marketCode);
-            const marketCodes = ['sg','my','tw','th','ph','vn','br','mx'];
-            const badgesHtml = marketCodes.map(code => {
-                const isActive = exportedMarkets.includes(code) ? ' active' : '';
-                return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
-            }).join('\n                            ');
+        tbody.innerHTML = html;
 
-            return `
-                <tr class="product-row" style="cursor: pointer;" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}">
-                    <td style="text-align: center;" class="td-checkbox">
-                        <input type="checkbox" class="row-checkbox">
-                    </td>
-                    <td>
-                        <div style="font-weight: 600;" class="prod-date">${p.date}</div>
-                        <div class="body-sm text-secondary prod-mcode">${p.mcode}</div>
-                    </td>
-                    <td data-cat-en="${escapeHtmlAttr(p.catEn)}" data-cat-ko="${escapeHtmlAttr(p.catKo)}">
-                        <div class="prod-cat-en-1">${catEn1}</div>
-                        <div class="prod-cat-en-2">${catEn2}</div>
-                        <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${p.catKo}</div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>
-                        <div class="body-sm text-secondary prod-name-ko">${p.nameKo}</div>
-                    </td>
-                    <td>
-                        <div class="market-badges">
-                            <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
-                            ${badgesHtml}
-                        </div>
-                    </td>
-                    <td class="text-right">
-                        <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(p.priceKrw).toLocaleString()}</div>
-                        <div class="body-sm text-secondary prod-price-usd">USD ${priceUsd}</div>
-                    </td>
-                    <td class="text-right">
-                        <div class="prod-rate">${p.rate}</div>
-                        <div class="body-sm text-secondary prod-weight">${p.weight}g</div>
-                    </td>
-                    <td>
-                        <div><a href="${p.link || '#'}" class="link-btn prod-link" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.link ? '링크' : '-'}</a></div>
-                    </td>
-                    <td>
-                        <div class="body-sm text-secondary prod-note">${p.note || '-'}</div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        // Attach hierarchical checkbox events
+        const parentCheckboxes = document.querySelectorAll('.parent-checkbox');
+        parentCheckboxes.forEach(pcb => {
+            pcb.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                const mcode = e.target.dataset.parentMcode;
+                const children = document.querySelectorAll(\`.child-checkbox[data-parent-mcode="\${mcode}"]\`);
+                children.forEach(cb => cb.checked = isChecked);
+                if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
+            });
+        });
+
+        const childCheckboxes = document.querySelectorAll('.child-checkbox');
+        childCheckboxes.forEach(ccb => {
+            ccb.addEventListener('change', (e) => {
+                const mcode = e.target.dataset.parentMcode;
+                if (!mcode) return; // standalone product
+                const siblings = Array.from(document.querySelectorAll(\`.child-checkbox[data-parent-mcode="\${mcode}"]\`));
+                const checkedCount = siblings.filter(cb => cb.checked).length;
+                const parentCb = document.querySelector(\`.parent-checkbox[data-parent-mcode="\${mcode}"]\`);
+                if (parentCb) {
+                    if (checkedCount === 0) {
+                        parentCb.checked = false;
+                        parentCb.indeterminate = false;
+                    } else if (checkedCount === siblings.length) {
+                        parentCb.checked = true;
+                        parentCb.indeterminate = false;
+                    } else {
+                        parentCb.checked = false;
+                        parentCb.indeterminate = true;
+                    }
+                }
+                if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
+            });
+        });
 
         // Attach row click events
         document.querySelectorAll('#view-product-list .product-row').forEach(row => {
@@ -1285,6 +1569,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categoryAutocompleteList = document.getElementById('category-autocomplete-list');
     const inputNameKo = document.getElementById('input-name-ko');
     const inputNameEn = document.getElementById('input-name-en');
+    const inputOptionName = document.getElementById('input-option-name');
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -1625,6 +1910,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const catSearch = inputCategorySearch.value;
             const nameKo = inputNameKo.value;
             const nameEn = inputNameEn.value;
+            const optionName = inputOptionName ? inputOptionName.value : '';
             const priceKrw = inputPriceKrw.value;
             const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
             const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
@@ -1659,6 +1945,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 catKo: catKo,
                 nameKo: nameKo,
                 nameEn: nameEn,
+                optionName: optionName,
                 priceKrw: parseInt(priceKrw, 10) || 0,
                 domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
                 packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
@@ -1755,6 +2042,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputPriceKrw.value = priceKrwText.replace(/[^0-9]/g, '');
             // Load domesticShipping and packagingKrw from product data
             const productObj = productList.find(pp => pp.mcode === mcodeStr);
+            if (inputOptionName) inputOptionName.value = productObj ? (productObj.optionName || '') : '';
             if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping ?? 3000) : 3000;
             if (inputPackagingKrw) inputPackagingKrw.value = productObj ? (productObj.packagingKrw || 0) : 0;
             

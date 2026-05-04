@@ -172,6 +172,11 @@ function initDb() {
                         console.error('products ALTER TABLE (video) 오류:', alterErr.message);
                     }
                 });
+                db.run(`ALTER TABLE products ADD COLUMN optionName TEXT DEFAULT ''`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE (optionName) 오류:', alterErr.message);
+                    }
+                });
             }
         });
 
@@ -397,10 +402,10 @@ app.post('/api/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, createdAt, updatedAt, images, video)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, createdAt, updatedAt, images, video, optionName)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [id, p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now, p.images||'[]', p.video||''];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, now, p.images||'[]', p.video||'', p.optionName||''];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -412,10 +417,10 @@ app.put('/api/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?, images=?, video=?
+    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, updatedAt=?, images=?, video=?, optionName=?
                  WHERE id=?`;
     const params = [p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, p.images||'[]', p.video||'', id];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', now, p.images||'[]', p.video||'', p.optionName||'', id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
