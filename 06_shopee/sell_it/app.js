@@ -321,11 +321,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
                 tr.dataset.margin = marginTier;
 
-                const hasCustomPreset = item.feePresetId || item.promoPresetId || item.shipPresetId;
-                const presetBadge = hasCustomPreset
-                    ? `<span style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; margin-left: 4px;" title="커스텀 프리셋 적용됨"><i class="fa-solid fa-thumbtack"></i></span>`
-                    : '';
-
                 // Prepare Preset Badges
                 let feeBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: 미지정</span>';
                 if (item.feePresetId) {
@@ -347,7 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 tr.innerHTML = `
                     <td class="text-center">
-                        <span class="body-sm text-secondary">${item.mcode}${presetBadge}</span>
+                        <span class="body-sm text-secondary">${item.mcode}</span>
                     </td>
                     <td>
                         <div style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.nameKo}">${item.nameKo}</div>
