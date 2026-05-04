@@ -380,15 +380,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
 
         try {
             const exports = await api.getMarketExports(marketCode);
             tbody.innerHTML = '';
 
             if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
                     <div style="margin-bottom: 0.5rem;"><i class="fa-solid fa-box-open" style="font-size: 2rem; opacity: 0.3;"></i></div>
                     <div>이 마켓으로 전송된 상품이 없습니다.</div>
                     <div class="body-sm" style="margin-top: 0.25rem;">Product List에서 상품을 선택하고 내보내기를 진행해주세요.</div>
@@ -413,22 +412,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tr.dataset.margin = marginTier;
 
                 // Prepare Preset Badges
-                let feeBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: 미지정</span>';
+                let feeBadge = '<span class="pc-preset-badge">수수료: 미지정</span>';
                 if (item.feePresetId) {
                     const fp = presets.find(p => p.id === item.feePresetId);
-                    if (fp) feeBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: ${fp.name}</span>`;
+                    if (fp) feeBadge = `<span class="pc-preset-badge active">수수료: ${fp.name}</span>`;
                 }
 
-                let promoBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: 미지정</span>';
+                let promoBadge = '<span class="pc-preset-badge">프로모션: 미지정</span>';
                 if (item.promoPresetId) {
                     const pp = promotionPresets.find(p => p.id === item.promoPresetId);
-                    if (pp) promoBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: ${pp.name}</span>`;
+                    if (pp) promoBadge = `<span class="pc-preset-badge active">프로모션: ${pp.name}</span>`;
                 }
 
-                let shipBadge = '<span class="badge" style="background: var(--error-container); color: var(--on-error-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: 미지정</span>';
+                let shipBadge = '<span class="pc-preset-badge warn">배송비: 미지정</span>';
                 if (item.shipPresetId) {
                     const sp = shippingPresets.find(p => p.id === item.shipPresetId);
-                    if (sp) shipBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: ${sp.name}</span>`;
+                    if (sp) shipBadge = `<span class="pc-preset-badge active">배송비: ${sp.name}</span>`;
                 }
 
                 const salesKrw = result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate) : 0;
@@ -510,7 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
         }
     };
 
@@ -768,6 +767,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const newDiscount = parseFloat(inpDiscount.value) || 0;
                     item.discountRate = newDiscount;
                     newResult = calcProductRow(item);
+                    item.targetMarginKrw = newResult.marginKrw;
+                    item.targetMarginType = 'amount';
+                    item.targetMarginValue = newResult.marginKrw;
                     inpSales.value = newResult.sellingPrice.toFixed(2);
                     inpProfit.value = newResult.marginKrw;
                     const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
@@ -880,10 +882,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.feePresetId = feeSel?.value || null;
             item.promoPresetId = promoSel?.value || null;
             item.shipPresetId = shipSel?.value || null;
-            
-            // Re-render the row (this updates 4-way inputs naturally)
-            renderPriceCalcGrid(currentMarketContext); 
-            // openSidePanel will be called again by the grid refresh or user click
+
+            // Recalculate locally and reopen panel (no full reload)
+            const newResult = calcProductRow(item);
+            openSidePanel(item, newResult, activeRow);
+
+            // Update main table row cells
+            const isEmpty = newResult._empty;
+            const mr2 = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+            activeRow.dataset.margin = isEmpty ? 'low' : (mr2 >= 20 ? 'high' : mr2 >= 10 ? 'mid' : mr2 < 0 ? 'neg' : 'low');
+            const cSgd = activeRow.querySelector(`#cell-sales-sgd-${item.id}`);
+            const cPK = activeRow.querySelector(`#cell-profit-krw-${item.id}`);
+            const cMR = activeRow.querySelector(`#cell-margin-rate-${item.id}`);
+            if (cSgd) cSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.sellingPrice.toFixed(2);
+            if (cPK) { cPK.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString(); cPK.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'; }
+            if (cMR) { cMR.textContent = isEmpty ? '—' : mr2.toFixed(1) + '%'; cMR.style.color = mr2 < 0 ? 'var(--error)' : 'var(--primary)'; }
+
+            // Save to API silently
+            api.updateMarketExportSettings(item.id || item.exportId, {
+                feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
+                shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
+                targetMarginType: item.targetMarginType, targetMarginValue: item.targetMarginValue,
+                packagingKrw: item.packagingKrw, discountRate: item.discountRate
+            }).catch(e => console.error('Preset auto-save failed:', e));
         }
 
         if (feeSel) feeSel.addEventListener('change', recalcFromPanel);
@@ -1018,7 +1039,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const targetViewElement = document.getElementById('view-price-calc-container');
                 const marketCode = viewId.split('-')[2];
                 currentMarketContext = marketCode;
-                document.getElementById('price-calc-title').innerText = `${marketCode.toUpperCase()} Market Details`;
+                document.getElementById('price-calc-title').innerText = `${marketCode.toUpperCase()} Price Calculation`;
                 targetViewElement.classList.add('active');
                 if (typeof window.renderPriceCalcGrid === 'function') {
                     window.renderPriceCalcGrid(marketCode);
@@ -1355,7 +1376,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnCancelDrawer) btnCancelDrawer.addEventListener('click', closeDrawer);
     if (drawerOverlay) drawerOverlay.addEventListener('click', () => {
         closeDrawer();
-        if (typeof closePriceCalcDrawer === 'function') closePriceCalcDrawer();
     });
 
     // --- Media Logic ---

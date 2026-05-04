@@ -28,10 +28,21 @@
   --font-display: 'Manrope', sans-serif;
   --font-body: 'Inter', sans-serif;
 
+  /* Error & Feedback */
+  --error: #dc2626;
+  --error-container: #fef2f2;
+  --on-error-container: #991b1b;
+
+  /* Borders */
+  --outline-variant: #d1d5db;
+
   /* Spacing & Utilities */
   --radius-full: 9999px;
   --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-sm: 4px;
   --shadow-ambient: 0 12px 40px rgba(0, 7, 103, 0.06);
+  --shadow-lg: 0 10px 30px rgba(0, 7, 103, 0.15);
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -624,6 +635,13 @@ textarea.form-control {
 }
 .btn-bulk-danger:hover {
   background: rgba(239, 68, 68, 0.15);
+}
+.btn-bulk-primary {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.btn-bulk-primary:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* Checkbox Column */
@@ -1275,4 +1293,24 @@ textarea.form-input {
   border-radius: 4px;
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+/* Preset Badges (Price Calc Table) */
+.pc-preset-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  background: var(--surface-container-high);
+  color: var(--text-secondary);
+}
+.pc-preset-badge.active {
+  background: var(--primary-container);
+  color: var(--on-primary);
+}
+.pc-preset-badge.warn {
+  background: var(--error-container);
+  color: var(--on-error-container);
 }
