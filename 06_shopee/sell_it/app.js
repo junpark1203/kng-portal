@@ -1960,7 +1960,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (maData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" class="ma-empty-state">
+            tbody.innerHTML = `<tr><td colspan="10" class="ma-empty-state">
                 <div>분석 데이터가 없습니다.<br>"Add New" 버튼을 눌러 시작하세요.</div>
             </td></tr>`;
             return;
@@ -2044,7 +2044,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td style="text-align: center;" class="td-checkbox">
                     <input type="checkbox" class="ma-row-checkbox">
                 </td>
-                <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">
+                <td style="max-width:240px;white-space:normal;word-break:break-word;font-size:0.9em;" title="${categoryStr}">
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
                 </td>
@@ -2055,7 +2055,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td class="text-right">${lowestStr}</td>
                 <td class="text-right">${marginStr}</td>
                 <td class="text-right">${exRateStr}</td>
-                <td class="text-right">${item.monthlySales || '-'}</td>
             </tr>`;
         }).join('');
     }
