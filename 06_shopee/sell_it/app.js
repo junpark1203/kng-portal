@@ -3739,7 +3739,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert('일괄 설정창 열기 오류: ' + err.message);
             }
         });
-    }
 
     // Toggle margin value input disabled state
     document.querySelectorAll('input[name="pc_bulk_margin_type"]').forEach(radio => {
