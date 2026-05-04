@@ -3686,29 +3686,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnCancelPcBulk = document.getElementById('btn-cancel-pc-bulk');
     const btnConfirmPcBulk = document.getElementById('btn-confirm-pc-bulk');
 
-    if (btnPcBulkSettings) {
-        btnPcBulkSettings.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#pc-btn-bulk-settings');
+        if (!btn) return;
+        
+        e.preventDefault();
+        try {
             const checked = document.querySelectorAll('.pc-row-checkbox:checked');
-            if (checked.length === 0) return;
-            document.getElementById('pc-bulk-modal-desc').textContent = `선택된 ${checked.length}개 상품에 대해 설정을 일괄 적용합니다.`;
+            if (checked.length === 0) {
+                alert('적용할 상품을 선택해주세요.');
+                return;
+            }
+            
+            const desc = document.getElementById('pc-bulk-modal-desc');
+            if (desc) desc.textContent = `선택된 ${checked.length}개 상품에 대해 설정을 일괄 적용합니다.`;
             
             // Populate preset selects
             const code = currentMarketContext;
             const feeSel = document.getElementById('pc-bulk-fee-preset');
             const promoSel = document.getElementById('pc-bulk-promo-preset');
             const shipSel = document.getElementById('pc-bulk-ship-preset');
-            
-            feeSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + presets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            promoSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + promotionPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            shipSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + shippingPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            
-            // Reset inputs
-            document.getElementById('pc-bulk-discount').value = '';
-            document.querySelector('input[name="pc_bulk_margin_type"][value="keep"]').checked = true;
-            document.getElementById('pc-bulk-margin-value').value = '';
-            document.getElementById('pc-bulk-margin-value').disabled = true;
+                
+                if (feeSel && presets) {
+                    feeSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + presets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                }
+                if (promoSel && promotionPresets) {
+                    promoSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + promotionPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                }
+                if (shipSel && shippingPresets) {
+                    shipSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + shippingPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                }
+                
+                // Reset inputs
+                const discInput = document.getElementById('pc-bulk-discount');
+                if (discInput) discInput.value = '';
+                
+                const keepRadio = document.querySelector('input[name="pc_bulk_margin_type"][value="keep"]');
+                if (keepRadio) keepRadio.checked = true;
+                
+                const valInput = document.getElementById('pc-bulk-margin-value');
+                if (valInput) {
+                    valInput.value = '';
+                    valInput.disabled = true;
+                }
 
-            pcBulkSettingsModal.style.display = 'flex';
+                if (pcBulkSettingsModal) {
+                    pcBulkSettingsModal.style.display = 'flex';
+                } else {
+                    alert('모달 요소를 찾을 수 없습니다.');
+                }
+            } catch (err) {
+                alert('일괄 설정창 열기 오류: ' + err.message);
+            }
         });
     }
 
