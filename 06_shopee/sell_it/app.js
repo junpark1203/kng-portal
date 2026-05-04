@@ -437,35 +437,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                         <div class="label-md" style="color: var(--secondary);"><i class="fa-solid fa-wand-magic-sparkles"></i> 스마트 추천 마진</div>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_safe}">🛡️ 안정형 (${systemSettings.margin_safe}%)</button>
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_standard}">⚖️ 권장형 (${systemSettings.margin_standard}%)</button>
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_aggressive}">🚀 공격형 (${systemSettings.margin_aggressive}%)</button>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_safe}" style="white-space: nowrap;">🛡️ 안정형 (${systemSettings.margin_safe}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_standard}" style="white-space: nowrap;">⚖️ 권장형 (${systemSettings.margin_standard}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_aggressive}" style="white-space: nowrap;">🚀 공격형 (${systemSettings.margin_aggressive}%)</button>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                         <div>
-                            <label class="label-sm text-secondary">개별 수수료 프리셋</label>
-                            <select class="form-control form-control-sm pc-fee-override">${feeOptions}</select>
+                            <label class="label-sm text-secondary" style="display: block; margin-bottom: 6px;">개별 수수료 프리셋</label>
+                            <select class="form-control form-control-sm pc-fee-override" style="width: 100%;">${feeOptions}</select>
                         </div>
                         <div>
-                            <label class="label-sm text-secondary">개별 프로모션</label>
-                            <select class="form-control form-control-sm pc-promo-override">${promoOptions}</select>
+                            <label class="label-sm text-secondary" style="display: block; margin-bottom: 6px;">개별 프로모션</label>
+                            <select class="form-control form-control-sm pc-promo-override" style="width: 100%;">${promoOptions}</select>
                         </div>
                         <div>
-                            <label class="label-sm text-secondary">개별 배송비 요율</label>
-                            <select class="form-control form-control-sm pc-ship-override">${shipOptions}</select>
+                            <label class="label-sm text-secondary" style="display: block; margin-bottom: 6px;">개별 배송비 요율</label>
+                            <select class="form-control form-control-sm pc-ship-override" style="width: 100%;">${shipOptions}</select>
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 1rem;">
-                        <div style="flex: 1;">
-                            <label class="label-sm text-secondary">목표 순수익 (KRW)</label>
-                            <input type="number" class="form-control pc-margin-input" value="${item.targetMarginKrw || 12000}">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 180px;">
+                            <label class="label-sm text-secondary" style="display: block; margin-bottom: 6px;">목표 순수익 (KRW)</label>
+                            <input type="number" class="form-control pc-margin-input" value="${item.targetMarginKrw || 12000}" style="width: 100%;">
                         </div>
-                        <div style="flex: 1;">
-                            <label class="label-sm text-secondary">추가 포장비 (KRW)</label>
-                            <input type="number" class="form-control pc-packaging-input" value="${item.packagingKrw || 0}">
+                        <div style="flex: 1; min-width: 180px;">
+                            <label class="label-sm text-secondary" style="display: block; margin-bottom: 6px;">추가 포장비 (KRW)</label>
+                            <input type="number" class="form-control pc-packaging-input" value="${item.packagingKrw || 0}" style="width: 100%;">
                         </div>
                     </div>
                     
