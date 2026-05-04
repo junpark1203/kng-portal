@@ -244,7 +244,9 @@ function initDb() {
                     "ALTER TABLE market_analysis ADD COLUMN imageUrls TEXT",
                     "ALTER TABLE market_analysis ADD COLUMN videoUrl TEXT",
                     "ALTER TABLE market_analysis ADD COLUMN coupangRocket INTEGER DEFAULT 0",
-                    "ALTER TABLE market_analysis ADD COLUMN exchangeRate REAL"
+                    "ALTER TABLE market_analysis ADD COLUMN exchangeRate REAL",
+                    "ALTER TABLE market_analysis ADD COLUMN shopeeQty INTEGER DEFAULT 1",
+                    "ALTER TABLE market_analysis ADD COLUMN sourcingOptions TEXT"
                 ];
                 cols.forEach(sql => {
                     db.run(sql, (e) => {});
@@ -713,18 +715,19 @@ app.post('/api/market-analysis', (req, res) => {
     const now = new Date().toISOString();
     const imageUrlsStr = Array.isArray(d.imageUrls) ? JSON.stringify(d.imageUrls) : '[]';
     const coupangRocket = d.coupangRocket ? 1 : 0;
+    const sourcingOptionsStr = d.sourcingOptions ? (typeof d.sourcingOptions === 'string' ? d.sourcingOptions : JSON.stringify(d.sourcingOptions)) : '[]';
     
     const sql = `INSERT INTO market_analysis
         (id, market, exchangeRate, shopeeCategory, productName, storeName, listingPrice, actualPrice,
          weight, sellerShipping, monthlySales, coupangPrice, coupangShipping, coupangRocket,
-         naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, imageUrls, videoUrl, note, createdAt, updatedAt)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+         naverPrice, naverShipping, shopeeUrl, coupangUrl, naverUrl, imageUrl, imageUrls, videoUrl, note, shopeeQty, sourcingOptions, createdAt, updatedAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
     const params = [
         id, d.market||'sg', d.exchangeRate||0, d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
         d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
         d.naverPrice||0, d.naverShipping||0,
-        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', now, now
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', d.shopeeQty||1, sourcingOptionsStr, now, now
     ];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -740,18 +743,19 @@ app.put('/api/market-analysis/:id', (req, res) => {
     const now = new Date().toISOString();
     const imageUrlsStr = Array.isArray(d.imageUrls) ? JSON.stringify(d.imageUrls) : '[]';
     const coupangRocket = d.coupangRocket ? 1 : 0;
+    const sourcingOptionsStr = d.sourcingOptions ? (typeof d.sourcingOptions === 'string' ? d.sourcingOptions : JSON.stringify(d.sourcingOptions)) : '[]';
     
     const sql = `UPDATE market_analysis SET
         market=?, exchangeRate=?, shopeeCategory=?, productName=?, storeName=?, listingPrice=?, actualPrice=?,
         weight=?, sellerShipping=?, monthlySales=?, coupangPrice=?, coupangShipping=?, coupangRocket=?,
-        naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, imageUrls=?, videoUrl=?, note=?, updatedAt=?
+        naverPrice=?, naverShipping=?, shopeeUrl=?, coupangUrl=?, naverUrl=?, imageUrl=?, imageUrls=?, videoUrl=?, note=?, shopeeQty=?, sourcingOptions=?, updatedAt=?
         WHERE id=?`;
     const params = [
         d.market||'sg', d.exchangeRate||0, d.shopeeCategory||'', d.productName||'', d.storeName||'',
         d.listingPrice||0, d.actualPrice||0, d.weight||0, d.sellerShipping||0, d.monthlySales||0,
         d.coupangPrice||0, d.coupangShipping||0, coupangRocket,
         d.naverPrice||0, d.naverShipping||0,
-        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', now, id
+        d.shopeeUrl||'', d.coupangUrl||'', d.naverUrl||'', d.imageUrl||'', imageUrlsStr, d.videoUrl||'', d.note||'', d.shopeeQty||1, sourcingOptionsStr, now, id
     ];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });

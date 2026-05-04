@@ -1972,53 +1972,80 @@ document.addEventListener('DOMContentLoaded', async () => {
             const currency = currencyMap[market] || 'SGD';
             const exRate = item.exchangeRate || 0;
 
-            // Domestic Price (KRW)
-            const cTotal = (item.coupangPrice || 0) + (item.coupangShipping || 0);
-            const nTotal = (item.naverPrice || 0) + (item.naverShipping || 0);
-            let lowestKrw = 0;
-            if (cTotal > 0 && nTotal > 0) lowestKrw = Math.min(cTotal, nTotal);
-            else lowestKrw = cTotal || nTotal || 0;
-            item._lowestKrw = lowestKrw; // cache for sorting
+            const shopeeQty = item.shopeeQty || 1;
+
+            // Domestic Price (KRW) parsing
+            let lowestUnitCost = 0;
+            let lowestPlatformStr = '';
+            
+            let sOpts = [];
+            try { sOpts = JSON.parse(item.sourcingOptions || '[]'); } catch(e) {}
+            
+            if (sOpts.length > 0) {
+                let minUnitCost = Infinity;
+                let minOpt = null;
+                sOpts.forEach(opt => {
+                    const cost = ((opt.price || 0) + (opt.shipping || 0)) / (opt.qty || 1);
+                    if (cost < minUnitCost) {
+                        minUnitCost = cost;
+                        minOpt = opt;
+                    }
+                });
+                if (minOpt) {
+                    lowestUnitCost = minUnitCost;
+                    lowestPlatformStr = `[${minOpt.platform} ${minOpt.qty}개 묶음]`;
+                }
+            } else {
+                // Fallback for legacy
+                const cTotal = (item.coupangPrice || 0) + (item.coupangShipping || 0);
+                const nTotal = (item.naverPrice || 0) + (item.naverShipping || 0);
+                if (cTotal > 0 && nTotal > 0) {
+                    lowestUnitCost = Math.min(cTotal, nTotal);
+                    lowestPlatformStr = cTotal <= nTotal ? '[쿠팡 (구형)]' : '[네이버 (구형)]';
+                }
+                else if (cTotal > 0) { lowestUnitCost = cTotal; lowestPlatformStr = '[쿠팡 (구형)]'; }
+                else if (nTotal > 0) { lowestUnitCost = nTotal; lowestPlatformStr = '[네이버 (구형)]'; }
+            }
+
+            const totalSourcingKrw = lowestUnitCost * shopeeQty;
+            item._lowestKrw = totalSourcingKrw; // cache for sorting
 
             // Lowest Price Strings
             let lowestStr = '-';
-            if (lowestKrw > 0) {
-                const lowestLocal = exRate > 0 ? (lowestKrw / exRate).toFixed(2) : '-';
+            if (totalSourcingKrw > 0) {
                 lowestStr = `
-                    <div style="font-weight: 600;">KRW ${Number(lowestKrw).toLocaleString()}</div>
-                    <div class="body-sm text-secondary">${currency} ${lowestLocal}</div>
+                    <div style="font-weight: 600;">KRW ${Number(Math.round(totalSourcingKrw)).toLocaleString()}</div>
+                    <div class="body-sm text-secondary">(낱개 KRW ${Number(Math.round(lowestUnitCost)).toLocaleString()})<br>${lowestPlatformStr}</div>
                 `;
             }
 
             // Actual Price Strings
             let actualStr = '-';
             if (item.actualPrice > 0) {
-                const actualKrw = exRate > 0 ? Math.round(item.actualPrice * exRate) : 0;
-                const actualKrwStr = actualKrw > 0 ? `KRW ${Number(actualKrw).toLocaleString()}` : '-';
+                const totalActualKrw = exRate > 0 ? Math.round(item.actualPrice * exRate) : 0;
+                const unitActualSgd = (item.actualPrice / shopeeQty).toFixed(2);
                 actualStr = `
-                    <div style="font-weight: 600;">${actualKrwStr}</div>
-                    <div class="body-sm text-secondary">${currency} ${item.actualPrice}</div>
+                    <div style="font-weight: 600;">${totalActualKrw > 0 ? `KRW ${Number(totalActualKrw).toLocaleString()}` : '-'}</div>
+                    <div class="body-sm text-secondary">${currency} ${item.actualPrice}<br>(낱개 ${currency} ${unitActualSgd})</div>
                 `;
             }
 
             // Margin Strings
             let marginStr = '-';
             let marginKrwVal = 0;
-            if (item.actualPrice > 0 && lowestKrw > 0 && exRate > 0) {
-                const costLocal = lowestKrw / exRate;
-                const marginLocal = item.actualPrice - costLocal - (item.sellerShipping || 0);
-                marginKrwVal = marginLocal * exRate;
-                const marginRate = (marginLocal / item.actualPrice) * 100;
-                const marginKrwStr = `KRW ${Math.round(marginKrwVal).toLocaleString()}`;
-                const marginLocalStr = `${currency} ${marginLocal.toFixed(2)}`;
-                const marginRateStr = `(${marginRate.toFixed(1)}%)`;
-                const marginClass = marginLocal > 0 ? 'text-primary' : 'text-error';
+            if (item.actualPrice > 0 && lowestUnitCost > 0 && exRate > 0) {
+                const totalCostLocal = totalSourcingKrw / exRate;
+                const totalMarginLocal = item.actualPrice - totalCostLocal - (item.sellerShipping || 0);
+                marginKrwVal = totalMarginLocal * exRate;
+                const marginRate = (totalMarginLocal / item.actualPrice) * 100;
+                
+                const marginClass = totalMarginLocal > 0 ? 'text-primary' : 'text-error';
                 marginStr = `
-                    <div class="${marginClass}" style="font-weight:600;">${marginKrwStr}</div>
-                    <div class="${marginClass} body-sm">${marginLocalStr} ${marginRateStr}</div>
+                    <div class="${marginClass}" style="font-weight:600;">KRW ${Math.round(marginKrwVal).toLocaleString()}</div>
+                    <div class="${marginClass} body-sm">총 ${currency} ${totalMarginLocal.toFixed(2)} (${marginRate.toFixed(1)}%)</div>
                 `;
             }
-            item._marginKrw = marginKrwVal; // cache for sorting
+            item._marginKrw = marginKrwVal;
 
             // Exchange Rate Strings
             let exRateStr = '-';
@@ -2040,6 +2067,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cat2 = parts[1];
             }
 
+            const qtyBadge = shopeeQty > 1 ? `<span style="background:var(--surface-container-high); padding:2px 4px; border-radius:4px; font-size:0.8em; margin-left:4px; color:var(--primary); font-weight:600; white-space:nowrap;">📦 ${shopeeQty}개 묶음</span>` : '';
+            const prodNameHTML = `<span title="${item.productName || ''}">${item.productName || '-'}</span> ${qtyBadge}`;
+
             return `<tr data-id="${item.id}" class="ma-row" style="cursor: pointer;">
                 <td style="text-align: center;" class="td-checkbox">
                     <input type="checkbox" class="ma-row-checkbox">
@@ -2048,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
                 </td>
-                <td style="max-width:280px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; line-height:1.3;" title="${item.productName || ''}">${item.productName || '-'}</td>
+                <td style="max-width:280px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; line-height:1.3;">${prodNameHTML}</td>
                 <td><span class="ma-country-badge">${market.toUpperCase()}</span></td>
                 <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.storeName || ''}">${item.storeName || '-'}</td>
                 <td class="text-right">${actualStr}</td>
@@ -2075,20 +2105,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('ma-product-name').value = isEdit ? (item.productName || '') : '';
         document.getElementById('ma-store-name').value = isEdit ? (item.storeName || '') : '';
         document.getElementById('ma-monthly-sales').value = isEdit ? (item.monthlySales || '') : '';
-        document.getElementById('ma-listing-price').value = isEdit ? (item.listingPrice || '') : '';
-        document.getElementById('ma-actual-price').value = isEdit ? (item.actualPrice || '') : '';
         document.getElementById('ma-weight').value = isEdit ? (item.weight || '') : '';
         document.getElementById('ma-seller-shipping').value = isEdit ? (item.sellerShipping || '') : '';
         document.getElementById('ma-shopee-url').value = isEdit ? (item.shopeeUrl || '') : '';
-        document.getElementById('ma-coupang-price').value = isEdit ? (item.coupangPrice || '') : '';
-        document.getElementById('ma-coupang-shipping').value = isEdit ? (item.coupangShipping || '') : '';
-        const rocketCheck = document.getElementById('ma-coupang-rocket');
-        if(rocketCheck) rocketCheck.checked = isEdit && item.coupangRocket === 1;
-        document.getElementById('ma-naver-price').value = isEdit ? (item.naverPrice || '') : '';
-        document.getElementById('ma-naver-shipping').value = isEdit ? (item.naverShipping || '') : '';
-        document.getElementById('ma-coupang-url').value = isEdit ? (item.coupangUrl || '') : '';
-        document.getElementById('ma-naver-url').value = isEdit ? (item.naverUrl || '') : '';
         document.getElementById('ma-note').value = isEdit ? (item.note || '') : '';
+
+        // Initialize Dynamic Options
+        document.getElementById('ma-shopee-options-container').innerHTML = '';
+        document.getElementById('ma-sourcing-options-container').innerHTML = '';
+
+        if (isEdit) {
+            document.getElementById('btn-add-shopee-option').style.display = 'none';
+            document.getElementById('btn-add-sourcing-option').style.display = 'inline-block';
+            
+            renderShopeeOptionRow(item.shopeeQty || 1, item.listingPrice || '', item.actualPrice || '');
+            
+            let sOpts = [];
+            try { sOpts = JSON.parse(item.sourcingOptions || '[]'); } catch(e) {}
+            if (!Array.isArray(sOpts) || sOpts.length === 0) {
+                // Fallback
+                if (item.coupangPrice || item.naverPrice) {
+                    if (item.coupangPrice) renderSourcingOptionRow('Coupang', 1, item.coupangPrice, item.coupangShipping || '', item.coupangUrl || '');
+                    if (item.naverPrice) renderSourcingOptionRow('Naver', 1, item.naverPrice, item.naverShipping || '', item.naverUrl || '');
+                } else {
+                    renderSourcingOptionRow();
+                }
+            } else {
+                sOpts.forEach(opt => renderSourcingOptionRow(opt.platform, opt.qty, opt.price, opt.shipping, opt.url));
+            }
+        } else {
+            document.getElementById('btn-add-shopee-option').style.display = 'inline-block';
+            document.getElementById('btn-add-sourcing-option').style.display = 'inline-block';
+            renderShopeeOptionRow();
+            renderSourcingOptionRow();
+        }
 
         const imgUrlInput = document.getElementById('ma-image-url');
         if (imgUrlInput) imgUrlInput.value = '';
@@ -2141,35 +2191,102 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateMAMarginDisplay();
     }
 
+    // --- Dynamic Options Logic ---
+    function renderShopeeOptionRow(qty = 1, listing = '', actual = '') {
+        const div = document.createElement('div');
+        div.className = 'shopee-option-row surface-container-lowest';
+        div.style.padding = '0.75rem';
+        div.style.borderRadius = '8px';
+        div.style.border = '1px solid var(--outline-variant)';
+        div.style.display = 'flex';
+        div.style.gap = '0.5rem';
+        div.style.alignItems = 'flex-end';
+        div.innerHTML = `
+            <div style="flex: 1;"><label class="label-md">옵션 수량</label><input type="number" class="form-input shopee-opt-qty" value="${qty}" min="1"></div>
+            <div style="flex: 2;"><label class="label-md">리스팅 가격 (<span class="ma-currency"></span>)</label><input type="number" class="form-input shopee-opt-listing" value="${listing}" min="0" step="0.01"></div>
+            <div style="flex: 2;"><label class="label-md">실제 판매가 (<span class="ma-currency"></span>)</label><input type="number" class="form-input shopee-opt-actual" value="${actual}" min="0" step="0.01"></div>
+            <button type="button" class="btn-icon btn-remove-shopee-opt" style="margin-bottom: 0.25rem;"><i class="fa-solid fa-trash text-error"></i></button>
+        `;
+        div.querySelector('.btn-remove-shopee-opt').addEventListener('click', () => {
+            if(document.querySelectorAll('.shopee-option-row').length > 1) div.remove();
+            else alert('최소 1개의 옵션이 필요합니다.');
+            updateMAMarginDisplay();
+        });
+        div.querySelectorAll('input').forEach(el => el.addEventListener('input', updateMAMarginDisplay));
+        document.getElementById('ma-shopee-options-container').appendChild(div);
+        updateMACurrencyLabels();
+    }
+
+    function renderSourcingOptionRow(platform = 'Coupang', qty = 1, price = '', shipping = '', url = '') {
+        const div = document.createElement('div');
+        div.className = 'sourcing-option-row surface-container-lowest';
+        div.style.padding = '0.75rem';
+        div.style.borderRadius = '8px';
+        div.style.border = '1px solid var(--outline-variant)';
+        
+        const platformOptions = ['Coupang', 'Naver', '1688', 'Taobao', 'Other'].map(p => `<option value="${p}" ${platform===p?'selected':''}>${p}</option>`).join('');
+        
+        div.innerHTML = `
+            <div style="display:flex; gap:0.5rem; align-items:flex-end; width:100%;">
+                <div style="flex: 1.5;"><label class="label-md">플랫폼</label><select class="form-select sourcing-opt-platform">${platformOptions}</select></div>
+                <div style="flex: 1;"><label class="label-md">묶음수량</label><input type="number" class="form-input sourcing-opt-qty" value="${qty}" min="1"></div>
+                <div style="flex: 2;"><label class="label-md">묶음 총액(KRW)</label><input type="number" class="form-input sourcing-opt-price" value="${price}" min="0"></div>
+                <div style="flex: 2;"><label class="label-md">배송비(KRW)</label><input type="number" class="form-input sourcing-opt-shipping" value="${shipping}" min="0"></div>
+                <button type="button" class="btn-icon btn-remove-sourcing-opt" style="margin-bottom: 0.25rem;"><i class="fa-solid fa-trash text-error"></i></button>
+            </div>
+            <div style="margin-top:0.5rem;">
+                <input type="url" class="form-input sourcing-opt-url" value="${url}" placeholder="상품 URL (선택)" autocomplete="off">
+            </div>
+        `;
+        div.querySelector('.btn-remove-sourcing-opt').addEventListener('click', () => {
+            if(document.querySelectorAll('.sourcing-option-row').length > 1) div.remove();
+            else alert('최소 1개의 소싱 옵션이 필요합니다.');
+            updateMAMarginDisplay();
+        });
+        div.querySelectorAll('input').forEach(el => el.addEventListener('input', updateMAMarginDisplay));
+        document.getElementById('ma-sourcing-options-container').appendChild(div);
+    }
+
+    // Hook buttons
+    document.getElementById('btn-add-shopee-option')?.addEventListener('click', () => renderShopeeOptionRow());
+    document.getElementById('btn-add-sourcing-option')?.addEventListener('click', () => renderSourcingOptionRow());
+
     // --- Margin display ---
     function updateMAMarginDisplay() {
-        const coupangPrice = parseFloat(document.getElementById('ma-coupang-price')?.value) || 0;
-        const coupangShip = parseFloat(document.getElementById('ma-coupang-shipping')?.value) || 0;
-        const naverPrice = parseFloat(document.getElementById('ma-naver-price')?.value) || 0;
-        const naverShip = parseFloat(document.getElementById('ma-naver-shipping')?.value) || 0;
+        let lowestUnitCost = Infinity;
+        let sourcePlatform = '';
+        
+        document.querySelectorAll('.sourcing-option-row').forEach(row => {
+            const platform = row.querySelector('.sourcing-opt-platform')?.value || 'Other';
+            const qty = parseInt(row.querySelector('.sourcing-opt-qty')?.value) || 1;
+            const price = parseFloat(row.querySelector('.sourcing-opt-price')?.value) || 0;
+            const ship = parseFloat(row.querySelector('.sourcing-opt-shipping')?.value) || 0;
+            if (price > 0) {
+                const cost = (price + ship) / qty;
+                if (cost < lowestUnitCost) {
+                    lowestUnitCost = cost;
+                    sourcePlatform = platform;
+                }
+            }
+        });
 
-        const cTotal = coupangPrice + coupangShip;
-        const nTotal = naverPrice + naverShip;
-        let lowest = 0;
-        let source = '';
-        if (cTotal > 0 && nTotal > 0) {
-            lowest = Math.min(cTotal, nTotal);
-            source = cTotal <= nTotal ? '쿠팡' : '네이버';
-        } else if (cTotal > 0) { lowest = cTotal; source = '쿠팡'; }
-        else if (nTotal > 0) { lowest = nTotal; source = '네이버'; }
+        if (lowestUnitCost === Infinity) {
+            lowestUnitCost = 0;
+            sourcePlatform = '';
+        }
 
         const lowestEl = document.getElementById('ma-lowest-source');
-        const marginEl = document.getElementById('ma-estimated-margin');
-        const marginSgdEl = document.getElementById('ma-estimated-margin-sgd');
-        const marginRateEl = document.getElementById('ma-margin-rate');
-
-        if (lowest > 0) {
-            lowestEl.innerText = `KRW ${Number(lowest).toLocaleString()} (${source})`;
+        if (lowestUnitCost > 0) {
+            lowestEl.innerText = `KRW ${Number(Math.round(lowestUnitCost)).toLocaleString()} (${sourcePlatform})`;
         } else {
             lowestEl.innerText = '-';
         }
 
-        const actualPrice = parseFloat(document.getElementById('ma-actual-price')?.value) || 0;
+        // Preview margin for the FIRST Shopee option
+        const firstShopeeRow = document.querySelector('.shopee-option-row');
+        const actualPrice = firstShopeeRow ? parseFloat(firstShopeeRow.querySelector('.shopee-opt-actual')?.value) || 0 : 0;
+        const shopeeQty = firstShopeeRow ? parseInt(firstShopeeRow.querySelector('.shopee-opt-qty')?.value) || 1 : 1;
+
         const sellerShip = parseFloat(document.getElementById('ma-seller-shipping')?.value) || 0;
         const exchangeRate = parseFloat(document.getElementById('ma-exchange-rate')?.value) || 0;
 
@@ -2177,17 +2294,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         const map = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
         const currency = map[market] || 'SGD';
 
-        if (actualPrice > 0 && lowest > 0 && exchangeRate > 0) {
-            const costLocal = lowest / exchangeRate;
-            const marginLocal = actualPrice - costLocal - sellerShip;
-            const marginKrw = marginLocal * exchangeRate;
-            const marginRate = (marginLocal / actualPrice) * 100;
+        const marginEl = document.getElementById('ma-estimated-margin');
+        const marginSgdEl = document.getElementById('ma-estimated-margin-sgd');
+        const marginRateEl = document.getElementById('ma-margin-rate');
+
+        if (actualPrice > 0 && lowestUnitCost > 0 && exchangeRate > 0) {
+            const totalSourcingKrw = lowestUnitCost * shopeeQty;
+            const totalCostLocal = totalSourcingKrw / exchangeRate;
+            const totalMarginLocal = actualPrice - totalCostLocal - sellerShip;
+            const marginKrw = totalMarginLocal * exchangeRate;
+            const marginRate = (totalMarginLocal / actualPrice) * 100;
             
             marginEl.innerText = `KRW ${Math.round(marginKrw).toLocaleString()}`;
-            if (marginSgdEl) marginSgdEl.innerText = `${currency} ${marginLocal.toFixed(2)}`;
+            if (marginSgdEl) marginSgdEl.innerText = `${currency} ${totalMarginLocal.toFixed(2)}`;
             if (marginRateEl) marginRateEl.innerText = `(${marginRate.toFixed(1)}%)`;
             
-            if (marginLocal > 0) {
+            if (totalMarginLocal > 0) {
                 marginEl.style.color = 'var(--primary)';
                 if (marginRateEl) marginRateEl.style.color = 'var(--primary)';
             } else {
@@ -2216,35 +2338,62 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Save / Update ---
     async function saveMAItem() {
         const editId = document.getElementById('ma-edit-id')?.value;
-        const data = {
+
+        // Collect Sourcing Options
+        const sourcingOptions = [];
+        document.querySelectorAll('.sourcing-option-row').forEach(row => {
+            const platform = row.querySelector('.sourcing-opt-platform').value;
+            const qty = parseInt(row.querySelector('.sourcing-opt-qty').value) || 1;
+            const price = parseFloat(row.querySelector('.sourcing-opt-price').value) || 0;
+            const shipping = parseFloat(row.querySelector('.sourcing-opt-shipping').value) || 0;
+            const url = row.querySelector('.sourcing-opt-url').value || '';
+            if (price > 0) {
+                sourcingOptions.push({ platform, qty, price, shipping, url });
+            }
+        });
+        
+        const commonData = {
             market: document.getElementById('ma-market')?.value || 'sg',
             exchangeRate: parseFloat(document.getElementById('ma-exchange-rate')?.value) || null,
             shopeeCategory: document.getElementById('ma-category')?.value || '',
             productName: document.getElementById('ma-product-name')?.value || '',
             storeName: document.getElementById('ma-store-name')?.value || '',
             monthlySales: parseInt(document.getElementById('ma-monthly-sales')?.value) || 0,
-            listingPrice: parseFloat(document.getElementById('ma-listing-price')?.value) || 0,
-            actualPrice: parseFloat(document.getElementById('ma-actual-price')?.value) || 0,
             weight: parseInt(document.getElementById('ma-weight')?.value) || 0,
             sellerShipping: parseFloat(document.getElementById('ma-seller-shipping')?.value) || 0,
             shopeeUrl: document.getElementById('ma-shopee-url')?.value || '',
-            coupangPrice: parseFloat(document.getElementById('ma-coupang-price')?.value) || 0,
-            coupangShipping: parseFloat(document.getElementById('ma-coupang-shipping')?.value) || 0,
-            coupangRocket: document.getElementById('ma-coupang-rocket')?.checked ? 1 : 0,
-            naverPrice: parseFloat(document.getElementById('ma-naver-price')?.value) || 0,
-            naverShipping: parseFloat(document.getElementById('ma-naver-shipping')?.value) || 0,
-            coupangUrl: document.getElementById('ma-coupang-url')?.value || '',
-            naverUrl: document.getElementById('ma-naver-url')?.value || '',
             note: document.getElementById('ma-note')?.value || '',
             imageUrls: currentMAImages,
-            videoUrl: currentMAVideoUrl
+            videoUrl: currentMAVideoUrl,
+            sourcingOptions: JSON.stringify(sourcingOptions),
+            // Legacy fallbacks
+            coupangPrice: 0, coupangShipping: 0, coupangRocket: 0,
+            naverPrice: 0, naverShipping: 0, coupangUrl: '', naverUrl: ''
         };
 
         try {
             if (editId) {
-                await api.updateMarketAnalysis(editId, data);
+                // Edit Mode
+                const row = document.querySelector('.shopee-option-row');
+                const shopeeQty = parseInt(row.querySelector('.shopee-opt-qty')?.value) || 1;
+                const listingPrice = parseFloat(row.querySelector('.shopee-opt-listing')?.value) || 0;
+                const actualPrice = parseFloat(row.querySelector('.shopee-opt-actual')?.value) || 0;
+                
+                await api.updateMarketAnalysis(editId, { ...commonData, shopeeQty, listingPrice, actualPrice });
             } else {
-                await api.createMarketAnalysis(data);
+                // Create Mode
+                const promises = [];
+                document.querySelectorAll('.shopee-option-row').forEach(row => {
+                    const shopeeQty = parseInt(row.querySelector('.shopee-opt-qty').value) || 1;
+                    const listingPrice = parseFloat(row.querySelector('.shopee-opt-listing').value) || 0;
+                    const actualPrice = parseFloat(row.querySelector('.shopee-opt-actual').value) || 0;
+                    if (actualPrice > 0) {
+                        promises.push(api.createMarketAnalysis({ ...commonData, shopeeQty, listingPrice, actualPrice }));
+                    }
+                });
+                
+                if (promises.length === 0) throw new Error('유효한 쇼피 옵션을 1개 이상 입력하세요.');
+                await Promise.all(promises);
             }
             closeMADrawer();
             loadMarketAnalysis();
