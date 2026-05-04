@@ -433,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
                 tr.innerHTML = `
                     <td class="text-center">
-                        <input type="checkbox" class="pc-row-checkbox" data-id="${item.id}">
+                        <div class="pc-checkbox-wrapper"><input type="checkbox" class="pc-row-checkbox" data-id="${item.id}"></div>
                     </td>
                     <td class="text-center">
                         <span class="pc-mcode">${item.mcode}</span>

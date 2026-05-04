@@ -1151,9 +1151,6 @@ textarea.form-input {
   padding: 0.625rem 0.5rem;
   white-space: normal;
 }
-#price-calc-table th {
-  text-align: center;
-}
 
 /* 3-Way & 4-Way Input Style */
 .pc-input {
@@ -1176,7 +1173,7 @@ textarea.form-input {
   white-space: nowrap;
 }
 .pc-data-bottom {
-  font-size: 0.88rem;
+  font-size: 0.70rem;
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -1390,17 +1387,29 @@ textarea.form-input {
 /* VAT Refund Highlight */
 .pc-vat-refund {
   color: var(--secondary) !important;
-  font-size: 0.8rem !important;
+  font-size: 0.70rem !important;
   font-weight: 500;
 }
 
 /* Preset Dot Column */
 .pc-dot-cell {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
+  vertical-align: middle;
+}
+
+/* Checkbox Alignment */
+.pc-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 100%;
+}
+.pc-checkbox-wrapper input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
 }
 
 /* Margin Progress Bar */
