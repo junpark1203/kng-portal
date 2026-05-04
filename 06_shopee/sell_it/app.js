@@ -213,8 +213,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="text-right"><span class="body-sm">${result.sellerShipping.toFixed(2)}</span></td>
                     <td class="text-right"><span style="font-weight: 600; color: var(--primary);">${result.sellingPrice.toFixed(2)}</span></td>
                     <td class="text-right"><span class="body-sm">${result.buyerDisplayPrice.toFixed(2)}</span></td>
-                    <td class="text-right"><span style="font-weight: 600; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${result.marginSgd.toFixed(2)}</span></td>
-                    <td class="text-right"><span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginKrw.toLocaleString()}</span></td>
+                    <td class="text-right">
+                        <span style="font-weight: 600; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${result.marginSgd.toFixed(2)}</span>
+                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ${result.marginWithVatSgd.toFixed(2)}</div>
+                    </td>
+                    <td class="text-right">
+                        <span style="font-weight: 600; color: ${result.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${result.marginKrw.toLocaleString()}</span>
+                        <div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ₩${result.marginWithVatKrw.toLocaleString()}</div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
 
@@ -262,8 +268,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (cells[4]) cells[4].innerHTML = `<span class="body-sm">${newResult.sellerShipping.toFixed(2)}</span>`;
                     if (cells[5]) cells[5].innerHTML = `<span style="font-weight: 600; color: var(--primary);">${newResult.sellingPrice.toFixed(2)}</span>`;
                     if (cells[6]) cells[6].innerHTML = `<span class="body-sm">${newResult.buyerDisplayPrice.toFixed(2)}</span>`;
-                    if (cells[7]) cells[7].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span>`;
-                    if (cells[8]) cells[8].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginKrw.toLocaleString()}</span>`;
+                    if (cells[7]) cells[7].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">${newResult.marginSgd.toFixed(2)}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ${newResult.marginWithVatSgd.toFixed(2)}</div>`;
+                    if (cells[8]) cells[8].innerHTML = `<span style="font-weight: 600; color: ${newResult.marginKrw >= 0 ? 'var(--primary)' : 'var(--error)'};">₩${newResult.marginKrw.toLocaleString()}</span><div class="body-sm text-secondary" style="font-size: 0.75rem;">환급시 ₩${newResult.marginWithVatKrw.toLocaleString()}</div>`;
 
                     // Update breakdown panel
                     expandTr.querySelector('td').innerHTML = renderBreakdownPanel(updatedItem, newResult);
@@ -384,6 +390,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <tr>
                                 <td colspan="4" style="font-weight: 600; color: var(--primary);">정산 마진</td>
                                 <td class="text-right" style="font-weight: 700; color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'};">SGD ${result.marginSgd.toFixed(2)} (₩${result.marginKrw.toLocaleString()})</td>
+                            </tr>
+                            <tr style="background: var(--surface-container-low); border-top: 1px dashed var(--outline-variant);">
+                                <td colspan="4"><span style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액 (수출 면세)</span></td>
+                                <td class="text-right" style="font-weight: 600; color: var(--secondary);">+ SGD ${result.vatRefundSgd.toFixed(2)} (₩${result.vatRefundKrw.toLocaleString()})</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" style="font-weight: 700; color: var(--primary); font-size: 1.05rem;">환급 포함 최종 마진</td>
+                                <td class="text-right" style="font-weight: 800; color: var(--primary); font-size: 1.05rem;">SGD ${result.marginWithVatSgd.toFixed(2)} (₩${result.marginWithVatKrw.toLocaleString()})</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1134,6 +1148,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marginSgd = revenue - costSgd - sellerShipping - commission - pgFee - serviceFee - payoneerFee - totalGst;
         const marginKrw = exchangeRate > 0 ? Math.round(marginSgd / exchangeRate) : 0;
 
+        // VAT Refund (10% on total cost)
+        const vatRefundKrw = totalCostKrw - Math.round(totalCostKrw / 1.1);
+        const vatRefundSgd = vatRefundKrw * exchangeRate;
+        const marginWithVatKrw = marginKrw + vatRefundKrw;
+        const marginWithVatSgd = marginSgd + vatRefundSgd;
+
         // Total fees
         const totalFees = commission + pgFee + serviceFee + payoneerFee + totalGst;
 
@@ -1163,7 +1183,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             revenue,
             settlement,
             marginSgd,
-            marginKrw
+            marginKrw,
+            vatRefundKrw,
+            vatRefundSgd,
+            marginWithVatKrw,
+            marginWithVatSgd
         };
     }
 
