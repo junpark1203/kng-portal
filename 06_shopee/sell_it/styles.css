@@ -1183,78 +1183,180 @@ textarea.form-input {
   cursor: pointer;
 }
 
-/* Cockpit Panel */
-.pc-cockpit {
-  padding: 1.25rem;
-  background: var(--surface-container-lowest);
-  border-bottom: 2px solid var(--outline-variant);
-}
-.pc-cockpit-grid {
+/* Split View Layout */
+.pc-split-layout {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: 60% 40%;
   gap: 1.5rem;
-}
-.pc-cost-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-.pc-cost-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 0;
-  font-size: 0.8rem;
-  border-bottom: 1px solid var(--surface-container-high);
-}
-.pc-cost-item:last-child {
-  border-bottom: none;
-}
-.pc-cost-item .label {
-  color: var(--text-secondary);
-}
-.pc-cost-item .value {
-  font-weight: 600;
-  text-align: right;
-}
-.pc-cost-item.subtotal {
-  border-top: 2px solid var(--outline-variant);
-  border-bottom: none;
-  padding-top: 8px;
-  margin-top: 4px;
-  font-weight: 700;
-}
-.pc-cost-item.total {
-  border-top: 2px solid var(--primary);
-  border-bottom: none;
-  padding-top: 10px;
-  margin-top: 8px;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--primary);
-}
-.pc-cost-item.negative .value {
-  color: var(--error);
+  height: calc(100vh - 180px); /* Adjust based on your header height */
+  overflow: hidden;
 }
 
-/* Cockpit Right Panel */
-.pc-cockpit-settings {
-  padding: 1rem;
-  background: var(--surface-container-low);
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
+.pc-list-panel {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.pc-detail-panel {
+  background: var(--surface-container-lowest);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 6, 102, 0.03);
+}
+
+/* Compact Row overrides */
+.pc-product-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.pc-product-row.selected {
+  background: var(--surface-container-low) !important;
+  border-left: 3px solid var(--primary);
+}
+.pc-product-row td {
+  padding: 0.5rem 1rem;
+}
+.pc-status-led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.pc-status-led.high { background: #4CAF50; }
+.pc-status-led.mid { background: #FFC107; }
+.pc-status-led.low { background: #9E9E9E; }
+.pc-status-led.neg { background: #F44336; }
+
+/* Detail Panel Interior */
+.pc-detail-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--surface-container-high);
+  background: var(--surface-container-lowest);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.pc-detail-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Dual Currency Table */
+.pc-dual-currency {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.pc-dc-col {
+  background: var(--surface-container-lowest);
+}
+.pc-dc-header {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--surface-container-high);
+  text-align: right;
+}
+.pc-dc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  font-size: 0.8rem;
+}
+.pc-dc-row .label { color: var(--text-secondary); }
+.pc-dc-row .val { font-weight: 600; font-family: 'Inter', sans-serif; }
+.pc-dc-row.subtotal {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--surface-container-high);
+  font-weight: 700;
+}
+.pc-dc-row.total {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--primary);
+  color: var(--primary);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+/* Pricing Input Cards */
+.pc-pricing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.pc-pricing-card {
+  background: var(--surface-container-low);
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.pc-pricing-card.full-width {
+  grid-column: 1 / -1;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container-high);
+}
+.pc-pricing-card label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.pc-pricing-card input {
+  font-family: 'Manrope', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.25rem 0;
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.pc-pricing-card input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--primary);
+}
+.pc-pricing-card .assistive-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* Presets & Quick Actions */
+.pc-preset-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
 }
-.pc-cockpit-settings .form-control-sm {
-  width: 100%;
-}
-.pc-cockpit-settings label {
-  display: block;
-  margin-bottom: 4px;
+.pc-preset-group label {
   font-size: 0.7rem;
   color: var(--text-secondary);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.pc-quick-margins {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.pc-quick-margins button {
+  flex: 1;
+  padding: 0.4rem;
+  font-size: 0.75rem;
 }
 
 /* Market Info Bar */

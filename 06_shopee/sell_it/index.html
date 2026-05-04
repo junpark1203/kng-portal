@@ -523,31 +523,42 @@
 
                 <!-- Price Calculation Shared View Container -->
                 <div class="view-section" id="view-price-calc-container">
-                    <!-- Products Table -->
-                    <div class="panel surface-container-lowest">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                            <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
-                            <div class="pc-market-info" id="pc-market-info">
-                                <!-- Filled dynamically: exchange rate, fee summary tags -->
+                    <div class="pc-split-layout">
+                        <!-- Left: Compact List Panel -->
+                        <div class="panel surface-container-lowest pc-list-panel" style="display: flex; flex-direction: column; height: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
+                            </div>
+                            <div class="table-container" style="margin-top: 0; flex: 1; overflow-y: auto;">
+                                <table class="data-table" id="price-calc-table" style="table-layout: fixed;">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px;" class="text-center">
+                                                <input type="checkbox" id="pc-bulk-check-all" style="cursor: pointer;">
+                                            </th>
+                                            <th style="width: 80px;">상태</th>
+                                            <th style="width: 140px;">상품명</th>
+                                            <th class="text-right" style="width: 90px;">총원가</th>
+                                            <th class="text-right" style="width: 90px;">판매가</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Rendered dynamically by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Left panel footer summary -->
+                            <div id="pc-list-summary" style="padding-top: 0.75rem; border-top: 1px solid var(--surface-container-high); margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.75rem;">
+                                <!-- Filled by JS -->
                             </div>
                         </div>
-                        <div class="table-container" style="margin-top: 0;">
-                            <table class="data-table" id="price-calc-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 36px;"></th>
-                                        <th class="text-center" style="width: 90px;">관리코드</th>
-                                        <th>상품명</th>
-                                        <th class="text-right" style="width: 100px;">총원가</th>
-                                        <th class="text-right" style="width: 110px;">판매가 (SGD)</th>
-                                        <th class="text-right" style="width: 110px;">수익 (KRW)</th>
-                                        <th class="text-right" style="width: 80px;">수익률</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Rendered dynamically by JS -->
-                                </tbody>
-                            </table>
+
+                        <!-- Right: Detail/Master Panel -->
+                        <div class="pc-detail-panel" id="pc-detail-container">
+                            <!-- Filled dynamically by JS -->
+                            <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-disabled);">
+                                상품을 선택해주세요.
+                            </div>
                         </div>
                     </div>
                 </div>
