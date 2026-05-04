@@ -435,6 +435,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 tr.innerHTML = `
                     <td class="text-center">
+                        <input type="checkbox" class="pc-row-checkbox" data-id="${item.id}">
+                    </td>
+                    <td class="text-center">
                         <span class="body-sm text-secondary">${item.mcode}</span>
                     </td>
                     <td>
@@ -451,18 +454,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="pc-data-bottom">SGD ${result.totalFees.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="pc-input input-discount-rate" value="${isEmpty ? '' : result.discountRate.toFixed(1)}" step="0.1" placeholder="%">
+                        <div class="pc-data-value text-primary" style="font-weight: 500;" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
                     </td>
                     <td class="text-right">
-                        <div class="pc-data-top text-secondary" style="font-weight: 500;">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—')}</div>
-                        <input type="number" class="pc-input input-sales-price" value="${isEmpty ? '' : salesPriceSgd.toFixed(2)}" step="0.01" placeholder="SGD" style="color: var(--primary);">
+                        <div class="pc-data-top text-secondary" style="font-weight: 500;" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—')}</div>
+                        <div class="pc-data-value text-primary" style="font-weight: 500; font-size: 1rem;" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : 'SGD ' + salesPriceSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="pc-input input-profit" value="${isEmpty ? '' : result.marginKrw}" placeholder="₩" style="color: var(--primary);">
-                        <div class="pc-data-bottom" style="margin-top: 4px;">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
+                        <div class="pc-data-value ${result.marginKrw < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500; font-size: 1rem;" id="cell-profit-krw-${item.id}">${isEmpty ? '—' : '₩' + result.marginKrw.toLocaleString()}</div>
+                        <div class="pc-data-bottom" style="margin-top: 4px;" id="cell-profit-sgd-${item.id}">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
                     </td>
-                    <td class="text-right">
-                        <input type="number" class="pc-input input-margin-rate" value="${isEmpty ? '' : marginRate.toFixed(1)}" step="0.1" placeholder="%">
+                    <td class="text-right" style="position: relative;">
+                        <div class="pc-data-value ${marginRate < 0 ? 'text-error' : 'text-primary'}" style="font-weight: 500;" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
+                        <div style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 0.8rem;"><i class="fa-solid fa-pen"></i></div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -477,106 +481,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     openSidePanel(item, result, tr);
                 });
 
-                // --- 4-Way Binding (Local, No Full Re-render) ---
-                const inpDiscount = tr.querySelector('.input-discount-rate');
-                const inpSales = tr.querySelector('.input-sales-price');
-                const inpProfit = tr.querySelector('.input-profit');
-                const inpMargin = tr.querySelector('.input-margin-rate');
-
-                let fourWayTimer;
-                function localFourWay(source) {
-                    clearTimeout(fourWayTimer);
-                    fourWayTimer = setTimeout(() => {
-                        let settings = getItemSettings(item);
-                        let newResult;
-
-                        if (source === 'discount') {
-                            const newDiscount = parseFloat(inpDiscount.value) || 0;
-                            item.discountRate = newDiscount;
-                            // Margin Protection: We keep targetMarginKrw the same and recalculate.
-                            newResult = calcProductRow(item);
-                            inpSales.value = newResult.sellingPrice.toFixed(2);
-                            inpProfit.value = newResult.marginKrw;
-                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
-                            inpMargin.value = mr.toFixed(1);
-                        } else if (source === 'sales') {
-                            const newSalesSgd = parseFloat(inpSales.value) || 0;
-                            newResult = calcPricingFromPrice({
-                                costKrw: item.priceKrw || 0,
-                                domesticShipping: item.domesticShipping ?? 3000,
-                                packagingKrw: item.packagingKrw || 0,
-                                sellingPriceSgd: newSalesSgd,
-                                weight: item.weight || 0,
-                                exchangeRate: item.exchangeRate || 0.00086,
-                                ...settings
-                            });
-                            inpProfit.value = newResult.marginKrw;
-                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
-                            inpMargin.value = mr.toFixed(1);
-                            item.targetMarginKrw = newResult.marginKrw;
-                            item.targetMarginType = 'amount';
-                            item.targetMarginValue = newResult.marginKrw;
-                        } else if (source === 'profit') {
-                            const newMarginKrw = parseFloat(inpProfit.value) || 0;
-                            item.targetMarginKrw = newMarginKrw;
-                            item.targetMarginType = 'amount';
-                            item.targetMarginValue = newMarginKrw;
-                            newResult = calcProductRow(item);
-                            inpSales.value = newResult.sellingPrice.toFixed(2);
-                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
-                            inpMargin.value = mr.toFixed(1);
-                        } else if (source === 'margin') {
-                            const newRate = parseFloat(inpMargin.value) || 0;
-                            item.targetMarginType = 'rate';
-                            item.targetMarginValue = newRate;
-                            newResult = calcProductRow(item);
-                            item.targetMarginKrw = newResult.marginKrw;
-                            inpSales.value = newResult.sellingPrice.toFixed(2);
-                            inpProfit.value = newResult.marginKrw;
-                        }
-
-                        if (newResult) {
-                            const isEmpty = newResult._empty;
-                            const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
-                            tr.dataset.margin = isEmpty ? 'low' : (mr >= 20 ? 'high' : mr >= 10 ? 'mid' : mr < 0 ? 'neg' : 'low');
-
-                            const salesTd = inpSales.closest('td');
-                            const profitTd = inpProfit.closest('td');
-                            if (salesTd) { const sub = salesTd.querySelector('.pc-data-top'); if (sub) sub.textContent = isEmpty ? '—' : '₩' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—'); }
-                            if (profitTd) { const sub = profitTd.querySelector('.pc-data-bottom'); if (sub) sub.textContent = isEmpty ? '—' : 'SGD ' + newResult.marginSgd.toFixed(2); }
-
-                            inpSales.classList.toggle('negative', false);
-                            inpProfit.classList.toggle('negative', newResult.marginKrw < 0);
-                            inpMargin.classList.toggle('negative', mr < 0);
-                            
-                            // If side panel is open for this item, refresh it
-                            if (window.currentOpenSidePanelId === item.id) {
-                                openSidePanel(item, newResult, tr);
-                            }
-                        }
-                    }, 300);
+                // Checkbox Event logic for Bulk Actions
+                const cb = tr.querySelector('.pc-row-checkbox');
+                if (cb) {
+                    cb.addEventListener('change', (e) => {
+                        updatePcBulkActionBar();
+                    });
                 }
-
-                function saveOnBlur() {
-                    api.updateMarketExportSettings(item.id || item.exportId, {
-                        feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
-                        shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
-                        packagingKrw: item.packagingKrw, discountRate: item.discountRate,
-                        targetMarginType: item.targetMarginType, targetMarginValue: item.targetMarginValue
-                    }).catch(e => console.error('Auto-save failed:', e));
-                }
-
-                inpDiscount.addEventListener('input', () => localFourWay('discount'));
-                inpSales.addEventListener('input', () => localFourWay('sales'));
-                inpProfit.addEventListener('input', () => localFourWay('profit'));
-                inpMargin.addEventListener('input', () => localFourWay('margin'));
-                
-                inpDiscount.addEventListener('blur', saveOnBlur);
-                inpSales.addEventListener('blur', saveOnBlur);
-                inpProfit.addEventListener('blur', saveOnBlur);
-                inpMargin.addEventListener('blur', saveOnBlur);
-
             });
+
+            // Master Checkbox logic
+            const masterCb = document.getElementById('pc-check-all');
+            if (masterCb) {
+                // clone to remove old listeners
+                const newMasterCb = masterCb.cloneNode(true);
+                masterCb.parentNode.replaceChild(newMasterCb, masterCb);
+                newMasterCb.addEventListener('change', (e) => {
+                    document.querySelectorAll('.pc-row-checkbox').forEach(cb => {
+                        cb.checked = e.target.checked;
+                    });
+                    updatePcBulkActionBar();
+                });
+            }
+
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
             tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
@@ -763,6 +690,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
 
                 <div class="pc-side-section pc-cockpit-settings">
+                    <div class="label-md" style="color: var(--primary); margin-bottom: 0.25rem;"><i class="fa-solid fa-calculator"></i> 수동 가격 조정</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+                        <div>
+                            <label>할인율 (%)</label>
+                            <input type="number" class="form-control form-control-sm side-input-discount" value="${result._empty ? '' : result.discountRate.toFixed(1)}" step="0.1">
+                        </div>
+                        <div>
+                            <label>판매가 (SGD)</label>
+                            <input type="number" class="form-control form-control-sm side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
+                        </div>
+                        <div>
+                            <label>순수익 (₩)</label>
+                            <input type="number" class="form-control form-control-sm side-input-profit" value="${result._empty ? '' : result.marginKrw}">
+                        </div>
+                        <div>
+                            <label>마진율 (%)</label>
+                            <input type="number" class="form-control form-control-sm side-input-margin" value="${result._empty ? '' : (result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0).toFixed(1)}" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pc-side-section pc-cockpit-settings">
                     <div class="label-md" style="color: var(--secondary); margin-bottom: 0.25rem;"><i class="fa-solid fa-sliders"></i> 개별 프리셋 재정의</div>
                     <div>
                         <label>수수료 프리셋</label>
@@ -776,7 +725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <label>배송비 요율표</label>
                         <select class="form-control form-control-sm pc-ship-override">${shipOptions}</select>
                     </div>
-                    <button class="btn-primary btn-sm btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 저장</button>
+                    <button class="btn-primary btn-sm btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장</button>
                 </div>
 
                 <div class="pc-side-section">
@@ -794,6 +743,124 @@ document.addEventListener('DOMContentLoaded', async () => {
         const promoSel = content.querySelector('.pc-promo-override');
         const shipSel = content.querySelector('.pc-ship-override');
         const btnSave = content.querySelector('.btn-save-settings');
+
+        const inpDiscount = content.querySelector('.side-input-discount');
+        const inpSales = content.querySelector('.side-input-sales');
+        const inpProfit = content.querySelector('.side-input-profit');
+        const inpMargin = content.querySelector('.side-input-margin');
+
+        // --- 4-Way Binding for Drawer ---
+        let fourWayTimer;
+        function localFourWay(source) {
+            clearTimeout(fourWayTimer);
+            fourWayTimer = setTimeout(() => {
+                let settings = getItemSettings(item);
+                let newResult;
+
+                if (source === 'discount') {
+                    const newDiscount = parseFloat(inpDiscount.value) || 0;
+                    item.discountRate = newDiscount;
+                    newResult = calcProductRow(item);
+                    inpSales.value = newResult.sellingPrice.toFixed(2);
+                    inpProfit.value = newResult.marginKrw;
+                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                    inpMargin.value = mr.toFixed(1);
+                } else if (source === 'sales') {
+                    const newSalesSgd = parseFloat(inpSales.value) || 0;
+                    newResult = calcPricingFromPrice({
+                        costKrw: item.priceKrw || 0,
+                        domesticShipping: item.domesticShipping ?? 3000,
+                        packagingKrw: item.packagingKrw || 0,
+                        sellingPriceSgd: newSalesSgd,
+                        weight: item.weight || 0,
+                        exchangeRate: item.exchangeRate || 0.00086,
+                        ...settings
+                    });
+                    inpProfit.value = newResult.marginKrw;
+                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                    inpMargin.value = mr.toFixed(1);
+                    item.targetMarginKrw = newResult.marginKrw;
+                    item.targetMarginType = 'amount';
+                    item.targetMarginValue = newResult.marginKrw;
+                } else if (source === 'profit') {
+                    const newMarginKrw = parseFloat(inpProfit.value) || 0;
+                    item.targetMarginKrw = newMarginKrw;
+                    item.targetMarginType = 'amount';
+                    item.targetMarginValue = newMarginKrw;
+                    newResult = calcProductRow(item);
+                    inpSales.value = newResult.sellingPrice.toFixed(2);
+                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                    inpMargin.value = mr.toFixed(1);
+                } else if (source === 'margin') {
+                    const newRate = parseFloat(inpMargin.value) || 0;
+                    item.targetMarginType = 'rate';
+                    item.targetMarginValue = newRate;
+                    newResult = calcProductRow(item);
+                    item.targetMarginKrw = newResult.marginKrw;
+                    inpSales.value = newResult.sellingPrice.toFixed(2);
+                    inpProfit.value = newResult.marginKrw;
+                }
+
+                if (newResult) {
+                    const isEmpty = newResult._empty;
+                    const mr = newResult.sellingPrice > 0 ? (newResult.marginSgd / newResult.sellingPrice) * 100 : 0;
+                    activeRow.dataset.margin = isEmpty ? 'low' : (mr >= 20 ? 'high' : mr >= 10 ? 'mid' : mr < 0 ? 'neg' : 'low');
+
+                    // Update background table row directly to preserve focus in side panel
+                    const cellDisc = activeRow.querySelector(`#cell-discount-${item.id}`);
+                    const cellSalesKrw = activeRow.querySelector(`#cell-sales-krw-${item.id}`);
+                    const cellSalesSgd = activeRow.querySelector(`#cell-sales-sgd-${item.id}`);
+                    const cellProfitKrw = activeRow.querySelector(`#cell-profit-krw-${item.id}`);
+                    const cellProfitSgd = activeRow.querySelector(`#cell-profit-sgd-${item.id}`);
+                    const cellMargin = activeRow.querySelector(`#cell-margin-rate-${item.id}`);
+
+                    if (cellDisc) cellDisc.textContent = isEmpty ? '—' : newResult.discountRate.toFixed(1) + '%';
+                    if (cellSalesKrw) cellSalesKrw.textContent = isEmpty ? '—' : '₩' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—');
+                    if (cellSalesSgd) cellSalesSgd.textContent = isEmpty ? '—' : 'SGD ' + newResult.sellingPrice.toFixed(2);
+                    if (cellProfitKrw) {
+                        cellProfitKrw.textContent = isEmpty ? '—' : '₩' + newResult.marginKrw.toLocaleString();
+                        cellProfitKrw.className = `pc-data-value ${newResult.marginKrw < 0 ? 'text-error' : 'text-primary'}`;
+                    }
+                    if (cellProfitSgd) cellProfitSgd.textContent = isEmpty ? '—' : 'SGD ' + newResult.marginSgd.toFixed(2);
+                    if (cellMargin) {
+                        cellMargin.textContent = isEmpty ? '—' : mr.toFixed(1) + '%';
+                        cellMargin.className = `pc-data-value ${mr < 0 ? 'text-error' : 'text-primary'}`;
+                    }
+                    
+                    // Also refresh the breakdown section inside the side panel
+                    const breakdownContainer = content.querySelector('.pc-side-section:last-child');
+                    if(breakdownContainer) {
+                        breakdownContainer.innerHTML = `<div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>` + renderBreakdownPanel(item, newResult);
+                    }
+                }
+            }, 300);
+        }
+
+        function saveOnBlur() {
+            api.updateMarketExportSettings(item.id || item.exportId, {
+                feePresetId: item.feePresetId, promoPresetId: item.promoPresetId,
+                shipPresetId: item.shipPresetId, targetMarginKrw: item.targetMarginKrw,
+                packagingKrw: item.packagingKrw, discountRate: item.discountRate,
+                targetMarginType: item.targetMarginType, targetMarginValue: item.targetMarginValue
+            }).catch(e => console.error('Auto-save failed:', e));
+        }
+
+        if (inpDiscount) {
+            inpDiscount.addEventListener('input', () => localFourWay('discount'));
+            inpDiscount.addEventListener('blur', saveOnBlur);
+        }
+        if (inpSales) {
+            inpSales.addEventListener('input', () => localFourWay('sales'));
+            inpSales.addEventListener('blur', saveOnBlur);
+        }
+        if (inpProfit) {
+            inpProfit.addEventListener('input', () => localFourWay('profit'));
+            inpProfit.addEventListener('blur', saveOnBlur);
+        }
+        if (inpMargin) {
+            inpMargin.addEventListener('input', () => localFourWay('margin'));
+            inpMargin.addEventListener('blur', saveOnBlur);
+        }
 
         function recalcFromPanel() {
             item.feePresetId = feeSel?.value || null;
@@ -3608,6 +3675,121 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             } catch (err) {
                 alert('저장 실패: ' + err.message);
+            }
+        });
+    }
+
+    // --- Price Calc Bulk Action Logic ---
+    const btnPcBulkSettings = document.getElementById('pc-btn-bulk-settings');
+    const pcBulkSettingsModal = document.getElementById('pc-bulk-settings-modal');
+    const btnClosePcBulkModal = document.getElementById('btn-close-pc-bulk-modal');
+    const btnCancelPcBulk = document.getElementById('btn-cancel-pc-bulk');
+    const btnConfirmPcBulk = document.getElementById('btn-confirm-pc-bulk');
+
+    if (btnPcBulkSettings) {
+        btnPcBulkSettings.addEventListener('click', () => {
+            const checked = document.querySelectorAll('.pc-row-checkbox:checked');
+            if (checked.length === 0) return;
+            document.getElementById('pc-bulk-modal-desc').textContent = `선택된 ${checked.length}개 상품에 대해 설정을 일괄 적용합니다.`;
+            
+            // Populate preset selects
+            const code = currentMarketContext;
+            const feeSel = document.getElementById('pc-bulk-fee-preset');
+            const promoSel = document.getElementById('pc-bulk-promo-preset');
+            const shipSel = document.getElementById('pc-bulk-ship-preset');
+            
+            feeSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + presets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            promoSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + promotionPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            shipSel.innerHTML = `<option value="keep">유지</option><option value="">마켓 기본값</option>` + shippingPresets.filter(p => p.market === code).map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            
+            // Reset inputs
+            document.getElementById('pc-bulk-discount').value = '';
+            document.querySelector('input[name="pc_bulk_margin_type"][value="keep"]').checked = true;
+            document.getElementById('pc-bulk-margin-value').value = '';
+            document.getElementById('pc-bulk-margin-value').disabled = true;
+
+            pcBulkSettingsModal.style.display = 'flex';
+        });
+    }
+
+    // Toggle margin value input disabled state
+    document.querySelectorAll('input[name="pc_bulk_margin_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const valInput = document.getElementById('pc-bulk-margin-value');
+            if (e.target.value === 'keep') {
+                valInput.disabled = true;
+                valInput.value = '';
+            } else {
+                valInput.disabled = false;
+                valInput.placeholder = e.target.value === 'rate' ? '% 입력' : '₩ 입력';
+            }
+        });
+    });
+
+    function closePcBulkModal() {
+        if (pcBulkSettingsModal) pcBulkSettingsModal.style.display = 'none';
+    }
+
+    if (btnClosePcBulkModal) btnClosePcBulkModal.addEventListener('click', closePcBulkModal);
+    if (btnCancelPcBulk) btnCancelPcBulk.addEventListener('click', closePcBulkModal);
+
+    if (btnConfirmPcBulk) {
+        btnConfirmPcBulk.addEventListener('click', async () => {
+            const checked = document.querySelectorAll('.pc-row-checkbox:checked');
+            if (checked.length === 0) return;
+
+            const newDiscount = document.getElementById('pc-bulk-discount').value;
+            const marginType = document.querySelector('input[name="pc_bulk_margin_type"]:checked').value;
+            const marginValue = document.getElementById('pc-bulk-margin-value').value;
+            
+            const feePreset = document.getElementById('pc-bulk-fee-preset').value;
+            const promoPreset = document.getElementById('pc-bulk-promo-preset').value;
+            const shipPreset = document.getElementById('pc-bulk-ship-preset').value;
+
+            const updates = {};
+            if (newDiscount !== '') updates.discountRate = parseFloat(newDiscount) || 0;
+            if (marginType !== 'keep' && marginValue !== '') {
+                updates.targetMarginType = marginType;
+                updates.targetMarginValue = parseFloat(marginValue) || 0;
+                // We clear targetMarginKrw explicitly since it will be recalculated based on Type/Value
+                if (marginType === 'amount') updates.targetMarginKrw = updates.targetMarginValue;
+            }
+            if (feePreset !== 'keep') updates.feePresetId = feePreset === '' ? null : feePreset;
+            if (promoPreset !== 'keep') updates.promoPresetId = promoPreset === '' ? null : promoPreset;
+            if (shipPreset !== 'keep') updates.shipPresetId = shipPreset === '' ? null : shipPreset;
+
+            if (Object.keys(updates).length === 0) {
+                alert('변경할 설정이 없습니다.');
+                return;
+            }
+
+            btnConfirmPcBulk.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 일괄 적용 중...';
+            btnConfirmPcBulk.disabled = true;
+
+            let successCount = 0;
+            const promises = Array.from(checked).map(async (cb) => {
+                const id = cb.dataset.id;
+                if (!id) return;
+                try {
+                    await api.updateMarketExportSettings(id, updates);
+                    successCount++;
+                } catch (e) {
+                    console.error(`Error updating product ${id}:`, e);
+                }
+            });
+
+            await Promise.all(promises);
+
+            btnConfirmPcBulk.innerHTML = '<i class="fa-solid fa-check"></i> 일괄 적용';
+            btnConfirmPcBulk.disabled = false;
+            
+            alert(`${successCount}개 상품에 일괄 적용되었습니다.`);
+            closePcBulkModal();
+            document.getElementById('pc-check-all').checked = false;
+            document.getElementById('pc-bulk-action-bar').classList.remove('active');
+            
+            if (typeof currentMarketContext !== 'undefined') {
+                window.renderPriceCalcGrid(currentMarketContext);
             }
         });
     }

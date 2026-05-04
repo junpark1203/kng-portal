@@ -535,6 +535,7 @@
                             <table class="data-table" id="price-calc-table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 48px; text-align: center;"><input type="checkbox" id="pc-check-all"></th>
                                         <th class="text-center" style="width: 80px;">관리코드</th>
                                         <th>상품명</th>
                                         <th class="text-right" style="width: 100px;">매입원가</th>
@@ -549,6 +550,18 @@
                                     <!-- Rendered dynamically by JS -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Price Calc Floating Bulk Action Bar -->
+                    <div class="bulk-action-bar" id="pc-bulk-action-bar">
+                        <div class="bulk-info">
+                            <span class="bulk-count" id="pc-bulk-count">0</span> items selected
+                        </div>
+                        <div class="bulk-actions">
+                            <button class="btn-bulk btn-bulk-primary" id="pc-btn-bulk-settings">
+                                <i class="fa-solid fa-layer-group"></i> 일괄 설정
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -963,6 +976,49 @@
             <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn-secondary" id="btn-cancel-export">취소</button>
                 <button class="btn-primary" id="btn-confirm-export"><i class="fa-solid fa-paper-plane"></i> 적용 및 내보내기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Calc Bulk Settings Modal -->
+    <div class="modal-overlay" id="pc-bulk-settings-modal" style="display: none; align-items: center; justify-content: center;">
+        <div class="modal-content surface-container-low" style="width: 450px; padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="title-lg"><i class="fa-solid fa-layer-group"></i> 가격 및 프리셋 일괄 설정</h3>
+                <button class="btn-icon" id="btn-close-pc-bulk-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="body-sm text-secondary" style="margin-bottom: 1.5rem;" id="pc-bulk-modal-desc">선택된 X개 상품에 대해 설정을 일괄 적용합니다.</p>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="label-md">할인율 일괄 변경</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="number" id="pc-bulk-discount" class="form-control" placeholder="빈칸 시 유지" step="0.1">
+                    <span style="align-self: center;">%</span>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="label-md">목표 마진 일괄 변경</label>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                    <label style="cursor: pointer;"><input type="radio" name="pc_bulk_margin_type" value="keep" checked> 유지</label>
+                    <label style="cursor: pointer;"><input type="radio" name="pc_bulk_margin_type" value="rate"> 비율 (%)</label>
+                    <label style="cursor: pointer;"><input type="radio" name="pc_bulk_margin_type" value="amount"> 금액 (₩)</label>
+                </div>
+                <input type="number" id="pc-bulk-margin-value" class="form-control" placeholder="마진 값 입력" disabled>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label class="label-md">프리셋 재정의 (옵션)</label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <select id="pc-bulk-fee-preset" class="form-control"><option value="keep">유지</option><option value="">마켓 기본값</option></select>
+                    <select id="pc-bulk-promo-preset" class="form-control"><option value="keep">유지</option><option value="">마켓 기본값</option></select>
+                    <select id="pc-bulk-ship-preset" class="form-control"><option value="keep">유지</option><option value="">마켓 기본값</option></select>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn-secondary" id="btn-cancel-pc-bulk">취소</button>
+                <button class="btn-primary" id="btn-confirm-pc-bulk"><i class="fa-solid fa-check"></i> 일괄 적용</button>
             </div>
         </div>
     </div>
