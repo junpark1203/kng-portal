@@ -439,8 +439,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="pc-mcode">${item.mcode}</span>
                     </td>
                     <td>
-                        <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
-                        <div class="pc-cat">${item.catEn || ''}</div>
+                        <div class="pc-name-row">
+                            <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
+                            <div class="pc-cat">${item.catEn || ''}</div>
+                        </div>
                     </td>
                     <td class="text-center">
                         <div class="pc-dot-cell">${presetDots}</div>

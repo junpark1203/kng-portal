@@ -1328,7 +1328,7 @@ textarea.form-input {
 /* Product Name Cell */
 .pc-name-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
 }
 .pc-name {
@@ -1338,16 +1338,15 @@ textarea.form-input {
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: help;
-  flex: 1;
-  min-width: 0;
+  flex: 0 1 auto;
 }
 .pc-cat {
   font-size: 0.62rem;
   color: var(--text-disabled);
-  margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 /* Preset Indicator Dots */
