@@ -453,6 +453,8 @@ app.get('/api/market-exports', (req, res) => {
     }
     const sql = `
         SELECT me.id as exportId, me.marketCode, me.exportDate, me.createdAt as exportCreatedAt,
+               me.exchangeRate, me.feePresetId, me.promoPresetId, me.shipPresetId, 
+               me.targetMarginKrw, me.packagingKrw, me.discountRate,
                p.*
         FROM market_exports me
         JOIN products p ON me.productId = p.id
