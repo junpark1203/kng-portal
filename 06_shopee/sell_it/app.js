@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.shipPresetId = shipSel?.value || null;
             
             // Re-render the row (this updates 4-way inputs naturally)
-            renderPriceCalcGrid(); 
+            renderPriceCalcGrid(currentMarketContext); 
             // openSidePanel will be called again by the grid refresh or user click
         }
 
