@@ -2287,7 +2287,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
                 </td>
-                <td style="max-width:280px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; line-height:1.3;">${prodNameHTML}</td>
+                <td>
+                    <div style="max-width:280px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; line-height:1.3;">${prodNameHTML}</div>
+                </td>
                 <td><span class="ma-country-badge">${market.toUpperCase()}</span></td>
                 <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${item.storeName || ''}">${item.storeName || '-'}</td>
                 <td class="text-right">${actualStr}</td>
