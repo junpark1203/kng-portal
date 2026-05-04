@@ -574,8 +574,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        panel.style.transform = 'translateX(0)';
-        overlay.classList.add('show');
+        panel.classList.add('active');
+        overlay.classList.add('active');
 
         // Bind Events
         const feeSel = content.querySelector('.pc-fee-override');
@@ -622,8 +622,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Close Side Panel Logic
     function closeSidePanel() {
-        document.getElementById('pc-side-panel').style.transform = 'translateX(100%)';
-        document.getElementById('pc-side-panel-overlay').classList.remove('show');
+        document.getElementById('pc-side-panel').classList.remove('active');
+        document.getElementById('pc-side-panel-overlay').classList.remove('active');
         window.currentOpenSidePanelId = null;
         document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
     }
