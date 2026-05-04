@@ -330,19 +330,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let feeBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: 미지정</span>';
                 if (item.feePresetId) {
                     const fp = presets.find(p => p.id === item.feePresetId);
-                    if (fp) feeBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: ${fp.name}</span>`;
+                    if (fp) feeBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">수수료: ${fp.name}</span>`;
                 }
 
                 let promoBadge = '<span class="badge" style="background: var(--surface-container-high); color: var(--text-secondary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: 미지정</span>';
                 if (item.promoPresetId) {
                     const pp = promotionPresets.find(p => p.id === item.promoPresetId);
-                    if (pp) promoBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: ${pp.name}</span>`;
+                    if (pp) promoBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">프로모션: ${pp.name}</span>`;
                 }
 
                 let shipBadge = '<span class="badge" style="background: var(--error-container); color: var(--on-error-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: 미지정</span>';
                 if (item.shipPresetId) {
                     const sp = shippingPresets.find(p => p.id === item.shipPresetId);
-                    if (sp) shipBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary-container); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: ${sp.name}</span>`;
+                    if (sp) shipBadge = `<span class="badge" style="background: var(--primary-container); color: var(--on-primary); font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">배송비: ${sp.name}</span>`;
                 }
 
                 tr.innerHTML = `
