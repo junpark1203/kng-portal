@@ -609,11 +609,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         packagingKrw: item.packagingKrw,
                         discountRate: item.discountRate 
                     });
-                    showToast('설정 저장 완료', 'success');
+                    alert('설정 저장 완료');
                     btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
                     setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }, 1000);
                 } catch (err) { 
-                    showToast('저장 실패: ' + err.message, 'error'); 
+                    alert('저장 실패: ' + err.message); 
                     btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; 
                 }
             });
@@ -3360,7 +3360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 systemSettings.margin_standard = Number(standard);
                 systemSettings.margin_aggressive = Number(aggressive);
                 
-                showToast('스마트 마진율이 저장되었습니다.', 'success');
+                alert('스마트 마진율이 저장되었습니다.');
                 closeSmartModal();
                 
                 // If in Price Calc, re-render
@@ -3370,7 +3370,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             } catch (err) {
-                showToast('저장 실패: ' + err.message, 'error');
+                alert('저장 실패: ' + err.message);
             }
         });
     }
@@ -3384,13 +3384,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shipId = document.getElementById('pc-ship-preset')?.value;
             
             if (!feeId || !promoId || !shipId) {
-                showToast('적용할 프리셋을 모두 선택해주세요.', 'error');
+                alert('적용할 프리셋을 모두 선택해주세요.');
                 return;
             }
 
             const rows = document.querySelectorAll('.pc-product-row');
             if (rows.length === 0) {
-                showToast('적용할 상품이 없습니다.', 'error');
+                alert('적용할 상품이 없습니다.');
                 return;
             }
 
@@ -3423,7 +3423,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnApplyBulk.innerHTML = '전체 덮어쓰기';
             btnApplyBulk.disabled = false;
             
-            showToast(`${successCount}개 상품에 프리셋이 일괄 적용되었습니다.`, 'success');
+            alert(`${successCount}개 상품에 프리셋이 일괄 적용되었습니다.`);
             
             // Re-render grid to apply the new calculation and UI
             if (typeof currentMarketContext !== 'undefined') {
