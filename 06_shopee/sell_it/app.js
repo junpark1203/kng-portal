@@ -425,11 +425,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper: Render Pricing Cockpit UI
     function renderPricingCockpit(item, result) {
-        const feeOptions = \`<option value="">상단 일괄 설정 따름</option>\` + presets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.feePresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
-        const promoOptions = \`<option value="">상단 일괄 설정 따름</option>\` + promotionPresets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.promoPresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
-        const shipOptions = \`<option value="">상단 일괄 설정 따름</option>\` + shippingPresets.filter(p => p.market === currentMarketContext).map(p => \`<option value="\${p.id}" \${item.shipPresetId===p.id?'selected':''}>\${p.name}</option>\`).join('');
+        const feeOptions = `<option value="">상단 일괄 설정 따름</option>` + presets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.feePresetId===p.id?'selected':''}>${p.name}</option>`).join('');
+        const promoOptions = `<option value="">상단 일괄 설정 따름</option>` + promotionPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.promoPresetId===p.id?'selected':''}>${p.name}</option>`).join('');
+        const shipOptions = `<option value="">상단 일괄 설정 따름</option>` + shippingPresets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.shipPresetId===p.id?'selected':''}>${p.name}</option>`).join('');
 
-        return \`
+        return `
         <td colspan="7" style="padding: 1.5rem; background: var(--surface-container-lowest); border-bottom: 2px solid var(--outline-variant);">
             <div style="display: flex; gap: 2rem;">
                 <!-- Left: Setup -->
@@ -438,34 +438,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div class="label-md" style="color: var(--secondary);"><i class="fa-solid fa-wand-magic-sparkles"></i> 스마트 추천 마진</div>
                     </div>
                     <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_safe}">🛡️ 안정형 (\${systemSettings.margin_safe}%)</button>
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_standard}">⚖️ 권장형 (\${systemSettings.margin_standard}%)</button>
-                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="\${systemSettings.margin_aggressive}">🚀 공격형 (\${systemSettings.margin_aggressive}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_safe}">🛡️ 안정형 (${systemSettings.margin_safe}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_standard}">⚖️ 권장형 (${systemSettings.margin_standard}%)</button>
+                        <button class="btn-outline btn-sm btn-smart-calc" data-rate="${systemSettings.margin_aggressive}">🚀 공격형 (${systemSettings.margin_aggressive}%)</button>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
                         <div>
                             <label class="label-sm text-secondary">개별 수수료 프리셋</label>
-                            <select class="form-control form-control-sm pc-fee-override">\${feeOptions}</select>
+                            <select class="form-control form-control-sm pc-fee-override">${feeOptions}</select>
                         </div>
                         <div>
                             <label class="label-sm text-secondary">개별 프로모션</label>
-                            <select class="form-control form-control-sm pc-promo-override">\${promoOptions}</select>
+                            <select class="form-control form-control-sm pc-promo-override">${promoOptions}</select>
                         </div>
                         <div>
                             <label class="label-sm text-secondary">개별 배송비 요율</label>
-                            <select class="form-control form-control-sm pc-ship-override">\${shipOptions}</select>
+                            <select class="form-control form-control-sm pc-ship-override">${shipOptions}</select>
                         </div>
                     </div>
                     
                     <div style="display: flex; gap: 1rem;">
                         <div style="flex: 1;">
                             <label class="label-sm text-secondary">목표 순수익 (KRW)</label>
-                            <input type="number" class="form-control pc-margin-input" value="\${item.targetMarginKrw || 12000}">
+                            <input type="number" class="form-control pc-margin-input" value="${item.targetMarginKrw || 12000}">
                         </div>
                         <div style="flex: 1;">
                             <label class="label-sm text-secondary">추가 포장비 (KRW)</label>
-                            <input type="number" class="form-control pc-packaging-input" value="\${item.packagingKrw || 0}">
+                            <input type="number" class="form-control pc-packaging-input" value="${item.packagingKrw || 0}">
                         </div>
                     </div>
                     
@@ -479,20 +479,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="width: 280px; padding: 1.5rem; background: var(--surface-container-low); border-radius: 12px; border: 1px solid var(--outline-variant); display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
                         <div class="label-md text-secondary" style="margin-bottom: 0.25rem;">판매자 지정가 (P)</div>
-                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">SGD <span class="cockpit-P">\${result.sellingPrice.toFixed(2)}</span></div>
+                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">SGD <span class="cockpit-P">${result.sellingPrice.toFixed(2)}</span></div>
                     </div>
                     <div>
                         <div class="label-md text-secondary" style="margin-bottom: 0.25rem;">최종 순수익 (VAT 환급 포함)</div>
-                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">₩<span class="cockpit-margin-krw">\${result.marginWithVatKrw.toLocaleString()}</span></div>
-                        <div class="body-sm text-secondary" style="margin-top: 0.25rem;">기본 ₩<span class="cockpit-base-margin">\${result.marginKrw.toLocaleString()}</span> + 환급 ₩<span class="cockpit-vat-refund">\${result.vatRefundKrw.toLocaleString()}</span></div>
+                        <div class="display-sm" style="color: var(--primary); font-weight: 700;">₩<span class="cockpit-margin-krw">${result.marginWithVatKrw.toLocaleString()}</span></div>
+                        <div class="body-sm text-secondary" style="margin-top: 0.25rem;">기본 ₩<span class="cockpit-base-margin">${result.marginKrw.toLocaleString()}</span> + 환급 ₩<span class="cockpit-vat-refund">${result.vatRefundKrw.toLocaleString()}</span></div>
                     </div>
                 </div>
             </div>
             <div class="cockpit-breakdown-container" style="display: none; margin-top: 1.5rem; border-top: 1px dashed var(--outline-variant); padding-top: 1.5rem;">
-                \${renderBreakdownPanel(item, result)}
+                ${renderBreakdownPanel(item, result)}
             </div>
         </td>
-        \`;
+        `;
     }
 
     // Helper: Render fee breakdown HTML
