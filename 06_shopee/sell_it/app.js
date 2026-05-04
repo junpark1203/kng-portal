@@ -380,14 +380,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tbody = document.querySelector('#price-calc-table tbody');
         if (!tbody) return;
         
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 2rem;"><i class="fa-solid fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
 
         try {
             const exports = await api.getMarketExports(marketCode);
             tbody.innerHTML = '';
 
             if (exports.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-disabled); padding: 3rem;">
                     <div style="margin-bottom: 0.5rem;"><i class="fa-solid fa-box-open" style="font-size: 2rem; opacity: 0.3;"></i></div>
                     <div>이 마켓으로 전송된 상품이 없습니다.</div>
                     <div class="body-sm" style="margin-top: 0.25rem;">Product List에서 상품을 선택하고 내보내기를 진행해주세요.</div>
@@ -439,8 +439,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="pc-mcode">${item.mcode}</span>
                     </td>
                     <td>
-                        <div class="pc-name-row"><div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>${presetDots}</div>
+                        <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
                         <div class="pc-cat">${item.catEn || ''}</div>
+                    </td>
+                    <td class="text-center">
+                        <div class="pc-dot-cell">${presetDots}</div>
                     </td>
                     <td class="text-right">
                         <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
@@ -469,7 +472,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <td class="text-right">
                         <div class="pc-data-top" style="color: ${marginRate < 0 ? 'var(--error)' : 'var(--primary)'};" id="cell-margin-rate-${item.id}">${isEmpty ? '—' : marginRate.toFixed(1) + '%'}</div>
                         <div class="pc-data-bottom pc-vat-refund" id="cell-margin-vat-${item.id}">${isEmpty ? '—' : '+환급 ' + marginWithVatRate.toFixed(1) + '%'}</div>
-                        ${isEmpty ? '' : `<div class="pc-margin-bar"><div class="pc-margin-bar-fill" style="width: ${barWidth}%; background: ${barColor};"></div></div>`}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -509,7 +511,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (err) {
             console.error('[PriceCalcGrid] 로드 실패:', err.message);
-            tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
         }
     };
 
