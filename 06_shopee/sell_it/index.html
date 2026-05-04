@@ -167,21 +167,35 @@
                             <table class="data-table" id="ma-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:140px;">카테고리</th>
-                                        <th>상품명</th>
-                                        <th>국가</th>
-                                        <th style="width:120px;">스토어</th>
-                                        <th class="text-right">실제 판매가</th>
-                                        <th class="text-right">국내 최저가</th>
-                                        <th class="text-right">예상 마진</th>
-                                        <th class="text-right">적용환율</th>
-                                        <th class="text-right">월 판매량</th>
+                                        <th style="width: 48px; text-align: center;"><input type="checkbox" id="ma-check-all"></th>
+                                        <th style="width:140px;" class="sortable-th" data-sort-key="shopeeCategory">카테고리 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="sortable-th" data-sort-key="productName">상품명 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="sortable-th" data-sort-key="market">국가 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th style="width:120px;" class="sortable-th" data-sort-key="storeName">스토어 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="actualPrice">실제 판매가 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="lowestKrw">국내 최저가 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="marginKrw">예상 마진 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="exchangeRate">적용환율 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="monthlySales">월 판매량 <i class="fa-solid fa-sort sort-icon"></i></th>
                                     </tr>
                                 </thead>
                                 <tbody id="ma-table-body">
                                     <!-- Rendered by JS -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- MA Floating Bulk Action Bar -->
+                    <div class="bulk-action-bar" id="ma-bulk-action-bar">
+                        <div class="bulk-info">
+                            <span class="bulk-count" id="ma-bulk-count">0</span> items selected
+                            <span class="body-sm" style="opacity:0.6; margin-left:4px;">(↑↓ 이동 · Space 선택)</span>
+                        </div>
+                        <div class="bulk-actions">
+                            <button class="btn-bulk btn-bulk-danger" id="ma-btn-delete-bulk">
+                                <i class="fa-solid fa-trash-can"></i> Delete
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -486,16 +500,16 @@
                         <p class="body-sm text-secondary">A comprehensive list of all uploaded products and their base information.</p>
                         
                         <div class="table-container">
-                            <table class="data-table">
+                            <table class="data-table" id="pl-table">
                                 <thead>
                                     <tr>
                                         <th style="width: 48px; text-align: center;"><input type="checkbox" id="check-all"></th>
-                                        <th>작성정보</th>
-                                        <th style="width: 160px;">카테고리</th>
-                                        <th>상품명</th>
+                                        <th class="sortable-th" data-sort-key="date">작성정보 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th style="width: 160px;" class="sortable-th" data-sort-key="catEn">카테고리 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="sortable-th" data-sort-key="nameEn">상품명 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th style="width: 170px;">진출 국가</th>
-                                        <th class="text-right">매입단가</th>
-                                        <th class="text-right">환율/무게</th>
+                                        <th class="text-right sortable-th" data-sort-key="priceKrw">매입단가 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="weight">환율/무게 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th>구매링크</th>
                                         <th>비고</th>
                                     </tr>
@@ -841,7 +855,7 @@
 
     <!-- Scripts -->
     <script src="./categories.js"></script>
-    <script src="./api.js?v=5"></script>
-    <script src="./app.js?v=5"></script>
+    <script src="./api.js?v=6"></script>
+    <script src="./app.js?v=6"></script>
 </body>
 </html>

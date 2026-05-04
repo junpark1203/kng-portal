@@ -202,6 +202,13 @@
             return request(`/market-analysis/${id}`, { method: 'DELETE' });
         },
 
+        async deleteMarketAnalysisMulti(ids) {
+            return request('/market-analysis/delete', {
+                method: 'POST',
+                body: JSON.stringify({ ids })
+            });
+        },
+
         async uploadMarketAnalysisImage(file) {
             const formData = new FormData();
             formData.append('image', file);

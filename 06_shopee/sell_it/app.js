@@ -655,7 +655,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderProductListTable() {
-        const tbody = document.querySelector('#view-product-list .data-table tbody');
+        const tbody = document.querySelector('#pl-table tbody');
         if (!tbody) return;
 
         if (productList.length === 0) {
@@ -1960,7 +1960,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!tbody) return;
 
         if (maData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="ma-empty-state">
+            tbody.innerHTML = `<tr><td colspan="11" class="ma-empty-state">
                 <div>분석 데이터가 없습니다.<br>"Add New" 버튼을 눌러 시작하세요.</div>
             </td></tr>`;
             return;
@@ -1978,6 +1978,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let lowestKrw = 0;
             if (cTotal > 0 && nTotal > 0) lowestKrw = Math.min(cTotal, nTotal);
             else lowestKrw = cTotal || nTotal || 0;
+            item._lowestKrw = lowestKrw; // cache for sorting
 
             // Lowest Price Strings
             let lowestStr = '-';
@@ -2002,23 +2003,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Margin Strings
             let marginStr = '-';
+            let marginKrwVal = 0;
             if (item.actualPrice > 0 && lowestKrw > 0 && exRate > 0) {
                 const costLocal = lowestKrw / exRate;
                 const marginLocal = item.actualPrice - costLocal - (item.sellerShipping || 0);
-                const marginKrw = marginLocal * exRate;
+                marginKrwVal = marginLocal * exRate;
                 const marginRate = (marginLocal / item.actualPrice) * 100;
-                
-                const marginKrwStr = `KRW ${Math.round(marginKrw).toLocaleString()}`;
+                const marginKrwStr = `KRW ${Math.round(marginKrwVal).toLocaleString()}`;
                 const marginLocalStr = `${currency} ${marginLocal.toFixed(2)}`;
                 const marginRateStr = `(${marginRate.toFixed(1)}%)`;
-
                 const marginClass = marginLocal > 0 ? 'text-primary' : 'text-error';
-
                 marginStr = `
                     <div class="${marginClass}" style="font-weight:600;">${marginKrwStr}</div>
                     <div class="${marginClass} body-sm">${marginLocalStr} ${marginRateStr}</div>
                 `;
             }
+            item._marginKrw = marginKrwVal; // cache for sorting
 
             // Exchange Rate Strings
             let exRateStr = '-';
@@ -2031,7 +2031,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             // Category String
-            const categoryStr = (item.shopeeCategory || '-').split(' / ')[0]; // Strip Korean part if exists
+            const categoryStr = (item.shopeeCategory || '-').split(' / ')[0];
             let cat1 = categoryStr;
             let cat2 = '';
             if(categoryStr.includes(' > ')) {
@@ -2041,6 +2041,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             return `<tr data-id="${item.id}" class="ma-row" style="cursor: pointer;">
+                <td style="text-align: center;" class="td-checkbox">
+                    <input type="checkbox" class="ma-row-checkbox">
+                </td>
                 <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${categoryStr}">
                     <div class="prod-cat-en-1">${cat1}</div>
                     ${cat2 ? `<div class="prod-cat-en-2">${cat2}</div>` : ''}
@@ -2458,8 +2461,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById(id)?.addEventListener('input', updateMAMarginDisplay);
     });
 
-    // Table row click → open drawer
+    // Table row click → open drawer (skip if checkbox area)
     document.getElementById('ma-table-body')?.addEventListener('click', (e) => {
+        if (e.target.closest('.td-checkbox') || e.target.tagName === 'INPUT') return;
         const btn = e.target.closest('.ma-edit-btn');
         const tr = e.target.closest('tr[data-id]');
         if (btn || tr) {
@@ -2467,6 +2471,190 @@ document.addEventListener('DOMContentLoaded', async () => {
             const item = maData.find(d => d.id === id);
             if (item) openMADrawer(item);
         }
+    });
+
+    // --- MA Bulk Action Logic ---
+    const maCheckAll = document.getElementById('ma-check-all');
+    const maBulkBar = document.getElementById('ma-bulk-action-bar');
+    const maBulkCount = document.getElementById('ma-bulk-count');
+    const maBtnDeleteBulk = document.getElementById('ma-btn-delete-bulk');
+
+    function updateMABulkBar() {
+        const checkboxes = document.querySelectorAll('.ma-row-checkbox');
+        const checked = document.querySelectorAll('.ma-row-checkbox:checked');
+        const count = checked.length;
+        if (maBulkCount) maBulkCount.innerText = count;
+        if (maBulkBar) {
+            if (count > 0) maBulkBar.classList.add('active');
+            else maBulkBar.classList.remove('active');
+        }
+        if (maCheckAll) {
+            maCheckAll.checked = count > 0 && count === checkboxes.length;
+            maCheckAll.indeterminate = count > 0 && count < checkboxes.length;
+        }
+        // Update selected row styling
+        document.querySelectorAll('#ma-table-body .ma-row').forEach(r => {
+            const cb = r.querySelector('.ma-row-checkbox');
+            if (cb && cb.checked) r.classList.add('row-selected');
+            else r.classList.remove('row-selected');
+        });
+    }
+
+    // Delegate checkbox change
+    document.getElementById('ma-table-body')?.addEventListener('change', (e) => {
+        if (e.target.classList.contains('ma-row-checkbox')) updateMABulkBar();
+    });
+
+    if (maCheckAll) {
+        maCheckAll.addEventListener('change', (e) => {
+            document.querySelectorAll('.ma-row-checkbox').forEach(cb => cb.checked = e.target.checked);
+            updateMABulkBar();
+        });
+    }
+
+    if (maBtnDeleteBulk) {
+        maBtnDeleteBulk.addEventListener('click', async () => {
+            const checked = document.querySelectorAll('.ma-row-checkbox:checked');
+            if (checked.length === 0) return;
+            if (!confirm(`${checked.length}개 항목을 삭제하시겠습니까?`)) return;
+            const ids = [];
+            checked.forEach(cb => {
+                const row = cb.closest('tr[data-id]');
+                if (row) ids.push(row.dataset.id);
+            });
+            try {
+                await api.deleteMarketAnalysisMulti(ids);
+                await loadMarketAnalysis();
+                updateMABulkBar();
+            } catch (err) {
+                alert('삭제 실패: ' + err.message);
+            }
+        });
+    }
+
+    // --- Product List Bulk Delete ---
+    document.getElementById('btn-delete-bulk')?.addEventListener('click', async () => {
+        const checked = document.querySelectorAll('.row-checkbox:checked');
+        if (checked.length === 0) return;
+        if (!confirm(`${checked.length}개 상품을 삭제하시겠습니까?`)) return;
+        const ids = [];
+        checked.forEach(cb => {
+            const row = cb.closest('tr[data-product-id]');
+            if (row) ids.push(row.dataset.productId);
+        });
+        try {
+            await api.deleteProducts(ids);
+            productList = await api.getProducts();
+            renderProductListTable();
+            if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
+        } catch (err) {
+            alert('삭제 실패: ' + err.message);
+        }
+    });
+
+    // --- Keyboard Navigation for MA Table ---
+    let maKbIndex = -1;
+    document.addEventListener('keydown', (e) => {
+        // Only active when MA view is visible
+        const maView = document.getElementById('view-market-analysis');
+        if (!maView || !maView.classList.contains('active')) return;
+        // Don't interfere with inputs/drawers
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (document.querySelector('.drawer.active')) return;
+
+        const rows = Array.from(document.querySelectorAll('#ma-table-body .ma-row'));
+        if (rows.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            maKbIndex = Math.min(maKbIndex + 1, rows.length - 1);
+            updateMAKbFocus(rows);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            maKbIndex = Math.max(maKbIndex - 1, 0);
+            updateMAKbFocus(rows);
+        } else if (e.key === ' ' && maKbIndex >= 0) {
+            e.preventDefault();
+            const cb = rows[maKbIndex].querySelector('.ma-row-checkbox');
+            if (cb) { cb.checked = !cb.checked; updateMABulkBar(); }
+        } else if (e.key === 'Enter' && maKbIndex >= 0) {
+            e.preventDefault();
+            const id = rows[maKbIndex].dataset.id;
+            const item = maData.find(d => d.id === id);
+            if (item) openMADrawer(item);
+        }
+    });
+
+    function updateMAKbFocus(rows) {
+        rows.forEach(r => r.classList.remove('kb-focused'));
+        if (maKbIndex >= 0 && rows[maKbIndex]) {
+            rows[maKbIndex].classList.add('kb-focused');
+            rows[maKbIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    // Reset kb index when MA data reloads
+    const origLoadMA = loadMarketAnalysis;
+    // (No reassignment needed — maKbIndex resets naturally on interaction)
+
+    // --- Universal Sortable Table Headers ---
+    let sortState = {}; // { tableId: { key, dir } }
+
+    function applySortToTable(tableId, dataArray, key, renderFn) {
+        if (!sortState[tableId] || sortState[tableId].key !== key) {
+            sortState[tableId] = { key, dir: 'asc' };
+        } else {
+            sortState[tableId].dir = sortState[tableId].dir === 'asc' ? 'desc' : 'asc';
+        }
+        const dir = sortState[tableId].dir;
+        const mult = dir === 'asc' ? 1 : -1;
+
+        dataArray.sort((a, b) => {
+            let va = a[key], vb = b[key];
+            // Handle computed sort keys
+            if (key === 'lowestKrw') { va = a._lowestKrw || 0; vb = b._lowestKrw || 0; }
+            if (key === 'marginKrw') { va = a._marginKrw || 0; vb = b._marginKrw || 0; }
+            if (va == null) va = '';
+            if (vb == null) vb = '';
+            if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * mult;
+            return String(va).localeCompare(String(vb), 'ko') * mult;
+        });
+
+        renderFn();
+
+        // Update header icons
+        const table = document.getElementById(tableId);
+        if (table) {
+            table.querySelectorAll('.sortable-th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.className = 'fa-solid fa-sort sort-icon';
+            });
+            const activeTh = table.querySelector(`.sortable-th[data-sort-key="${key}"]`);
+            if (activeTh) {
+                activeTh.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+                const icon = activeTh.querySelector('.sort-icon');
+                if (icon) icon.className = `fa-solid fa-sort-${dir === 'asc' ? 'up' : 'down'} sort-icon`;
+            }
+        }
+    }
+
+    // MA table sort
+    document.querySelectorAll('#ma-table .sortable-th').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sortKey;
+            if (!key) return;
+            applySortToTable('ma-table', maData, key, renderMATable);
+        });
+    });
+
+    // Product List table sort
+    document.querySelectorAll('#view-product-list .sortable-th').forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sortKey;
+            if (!key) return;
+            applySortToTable(th.closest('table')?.id || 'pl-table', productList, key, renderProductListTable);
+        });
     });
 
 

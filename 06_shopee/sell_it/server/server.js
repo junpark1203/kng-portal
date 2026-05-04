@@ -769,6 +769,19 @@ app.delete('/api/market-analysis/:id', (req, res) => {
     });
 });
 
+// 다중 삭제
+app.post('/api/market-analysis/delete', (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`DELETE FROM market_analysis WHERE id IN (${placeholders})`, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
 // 이미지 업로드 (파일)
 app.post('/api/market-analysis/upload-image', upload.single('image'), (req, res) => {
     try {

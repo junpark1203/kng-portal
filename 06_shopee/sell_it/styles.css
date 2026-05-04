@@ -928,6 +928,41 @@ textarea.form-input {
   display: block;
 }
 
+/* Sortable Table Headers */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: color 0.15s ease;
+}
+.sortable-th:hover {
+  color: var(--primary);
+}
+.sortable-th .sort-icon {
+  font-size: 0.6rem;
+  margin-left: 4px;
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+}
+.sortable-th:hover .sort-icon {
+  opacity: 0.6;
+}
+.sortable-th.sort-asc .sort-icon,
+.sortable-th.sort-desc .sort-icon {
+  opacity: 1;
+  color: var(--primary);
+}
+
+/* Keyboard navigation focus row */
+.data-table tbody tr.kb-focused {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  background-color: rgba(0, 6, 102, 0.04);
+}
+.data-table tbody tr.row-selected {
+  background-color: rgba(0, 6, 102, 0.06) !important;
+}
+
 /* =========================================
    Price Calculation Module
 ========================================= */
