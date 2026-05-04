@@ -227,11 +227,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 // 7-column layout
                 const sourcingCostKrw = Number(item.priceKrw) + Number(item.domesticShipping ?? 3000) + Number(item.packagingKrw || 0);
+                const isEmpty = result._empty;
                 const salesPriceSgd = result.sellingPrice;
                 const marginRate = salesPriceSgd > 0 ? (result.marginSgd / salesPriceSgd) * 100 : 0;
 
                 // Margin tier for row coloring
-                const marginTier = marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low';
+                const marginTier = isEmpty ? 'low' : (marginRate >= 20 ? 'high' : marginRate >= 10 ? 'mid' : marginRate < 0 ? 'neg' : 'low');
                 tr.dataset.margin = marginTier;
 
                 const hasCustomPreset = item.feePresetId || item.promoPresetId || item.shipPresetId;
@@ -251,16 +252,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div style="font-weight: 600;">₩${sourcingCostKrw.toLocaleString()}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="pc-input input-sales-price" value="${salesPriceSgd.toFixed(2)}" step="0.01">
-                        <div class="body-sm text-secondary" style="margin-top: 3px; font-size: 0.7rem;">₩${result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—'}</div>
+                        <input type="number" class="pc-input input-sales-price" value="${isEmpty ? '' : salesPriceSgd.toFixed(2)}" step="0.01" placeholder="SGD">
+                        <div class="body-sm text-secondary" style="margin-top: 3px; font-size: 0.7rem;">${isEmpty ? '—' : '₩' + (result.exchangeRate > 0 ? Math.round(salesPriceSgd / result.exchangeRate).toLocaleString() : '—')}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="pc-input input-profit ${result.marginKrw < 0 ? 'negative' : ''}" value="${result.marginKrw}">
-                        <div class="body-sm text-secondary" style="margin-top: 3px; font-size: 0.7rem;">SGD ${result.marginSgd.toFixed(2)}</div>
+                        <input type="number" class="pc-input input-profit" value="${isEmpty ? '' : result.marginKrw}" placeholder="₩">
+                        <div class="body-sm text-secondary" style="margin-top: 3px; font-size: 0.7rem;">${isEmpty ? '—' : 'SGD ' + result.marginSgd.toFixed(2)}</div>
                     </td>
                     <td class="text-right">
-                        <input type="number" class="pc-input input-margin-rate ${marginRate < 0 ? 'negative' : ''}" value="${marginRate.toFixed(1)}" step="0.1">
-                        <div style="font-size: 0.65rem; color: var(--secondary); margin-top: 3px; white-space: nowrap;">최종 ${(salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0).toFixed(1)}%</div>
+                        <input type="number" class="pc-input input-margin-rate" value="${isEmpty ? '' : marginRate.toFixed(1)}" step="0.1" placeholder="%">
+                        <div style="font-size: 0.65rem; color: var(--secondary); margin-top: 3px; white-space: nowrap;">${isEmpty ? '—' : '최종 ' + (salesPriceSgd > 0 ? (result.marginWithVatSgd / salesPriceSgd) * 100 : 0).toFixed(1) + '%'}</div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -515,7 +516,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             settings.shippingSettings = shipPre.settings;
         }
 
-        const targetMarginKrw = item.targetMarginKrw || 12000;
+        const targetMarginKrw = item.targetMarginKrw ?? null;
+        if (targetMarginKrw === null || targetMarginKrw === undefined) {
+            // No target set yet — return empty result shell
+            const totalCostKrw = (item.priceKrw || 0) + (item.domesticShipping ?? 3000) + (item.packagingKrw || 0);
+            const rate = item.exchangeRate || 0.00086;
+            return {
+                sellingPrice: 0, costSgd: totalCostKrw * rate, costKrw: totalCostKrw,
+                sellerShipping: 0, grossShipping: 0, rebate: 0, totalFees: 0,
+                marginSgd: 0, marginKrw: 0, vatRefundSgd: 0, vatRefundKrw: 0,
+                marginWithVatSgd: 0, marginWithVatKrw: 0, exchangeRate: rate,
+                breakdown: {}, discountRate: 0, transactionPrice: 0,
+                buyerDisplayPrice: 0, revenue: 0, promo: settings.promo,
+                _empty: true
+            };
+        }
         const exportRate = item.exchangeRate || 0.00086; // Fallback if missing
         return calcPricingFromMargin({
             costKrw: item.priceKrw || 0,
