@@ -995,50 +995,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
 
-                    <!-- Description: Side-by-Side -->
+                    <!-- Description & Notice: Side-by-Side -->
                     <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-align-left"></i> 상세설명 (Description)</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
-                                    <span style="font-size: 1.1rem;">🇬🇧</span>
-                                    <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--secondary);">원문 (English) — 읽기 전용</span>
-                                </div>
-                                <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 220px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
-                            </div>
-                            <div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="font-size: 1.1rem;">${marketFlag}</span>
-                                        <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
-                                    </div>
-                                    <span class="body-sm text-secondary pc-locale-desc-count">0 / 5000</span>
-                                </div>
-                                <textarea class="form-control pc-locale-desc" placeholder="${marketLangName}(으)로 번역된 상세설명을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 220px; max-height: 400px; resize: vertical;"></textarea>
-                            </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <div class="form-card-title" style="margin-bottom: 0;"><i class="fa-solid fa-align-left"></i> 상품 상세 설명 및 공지사항</div>
+                            <span class="label-sm text-secondary pc-locale-total-count">0 / 5000</span>
                         </div>
-                    </div>
-
-                    <!-- Notice: Side-by-Side -->
-                    <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-bullhorn"></i> 공지사항 (Notice)</div>
+                        
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                            <!-- Left: Original (English) -->
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
                                     <span style="font-size: 1.1rem;">🇬🇧</span>
                                     <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--secondary);">원문 (English) — 읽기 전용</span>
                                 </div>
-                                <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 180px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
-                            </div>
-                            <div>
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span style="font-size: 1.1rem;">${marketFlag}</span>
-                                        <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
-                                    </div>
-                                    <span class="body-sm text-secondary pc-locale-notice-count">0 / 5000</span>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="label-md" style="margin-bottom: 8px;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
+                                    <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 220px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
                                 </div>
-                                <textarea class="form-control pc-locale-notice" placeholder="${marketLangName}(으)로 번역된 공지사항을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 180px; max-height: 400px; resize: vertical;"></textarea>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="label-md" style="margin-bottom: 8px;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                    <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 180px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right: Translation -->
+                            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 1.1rem;">${marketFlag}</span>
+                                    <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="label-md" style="margin-bottom: 8px;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
+                                    <textarea class="form-control pc-locale-desc" placeholder="${marketLangName}(으)로 번역된 상세설명을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 220px; max-height: 400px; resize: vertical;"></textarea>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="label-md" style="margin-bottom: 8px;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                    <textarea class="form-control pc-locale-notice" placeholder="${marketLangName}(으)로 번역된 공지사항을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 180px; max-height: 400px; resize: vertical;"></textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1286,29 +1284,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Locale Loading & Saving Logic
         // =====================================
         const txtDesc = content.querySelector('.pc-locale-desc');
-        const countDesc = content.querySelector('.pc-locale-desc-count');
         const txtNotice = content.querySelector('.pc-locale-notice');
-        const countNotice = content.querySelector('.pc-locale-notice-count');
+        const countTotal = content.querySelector('.pc-locale-total-count');
         const btnSaveLocale = content.querySelector('.btn-save-locale');
         const spanUpdated = content.querySelector('.pc-locale-updated');
 
-        const updateCount = (textarea, span) => {
-            if (!textarea || !span) return;
-            const len = textarea.value.length;
-            span.textContent = `${len} / 5000`;
-            span.style.color = len > 5000 ? 'var(--error)' : 'var(--secondary)';
+        const updateCount = () => {
+            if (!countTotal) return;
+            const lenDesc = txtDesc ? txtDesc.value.length : 0;
+            const lenNotice = txtNotice ? txtNotice.value.length : 0;
+            const total = lenDesc + lenNotice;
+            countTotal.textContent = `${total} / 5000`;
+            countTotal.style.color = total > 5000 ? 'var(--error)' : 'var(--secondary)';
         };
 
-        if (txtDesc) txtDesc.addEventListener('input', () => updateCount(txtDesc, countDesc));
-        if (txtNotice) txtNotice.addEventListener('input', () => updateCount(txtNotice, countNotice));
+        if (txtDesc) txtDesc.addEventListener('input', updateCount);
+        if (txtNotice) txtNotice.addEventListener('input', updateCount);
 
         // Fetch existing locale data
         fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}`)
             .then(res => res.json())
             .then(data => {
                 if (data && !data.error) {
-                    if (txtDesc) { txtDesc.value = data.description || ''; updateCount(txtDesc, countDesc); }
-                    if (txtNotice) { txtNotice.value = data.notice || ''; updateCount(txtNotice, countNotice); }
+                    if (txtDesc) txtDesc.value = data.description || '';
+                    if (txtNotice) txtNotice.value = data.notice || '';
+                    updateCount();
                     if (spanUpdated && data.updatedAt) {
                         spanUpdated.textContent = '최종 저장: ' + new Date(data.updatedAt).toLocaleString();
                     }
