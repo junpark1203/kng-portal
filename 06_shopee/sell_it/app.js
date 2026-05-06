@@ -940,6 +940,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     <div class="body-sm text-secondary" style="margin-top: 0.25rem;">
                         <span class="badge" style="background: var(--surface-container-high); color: var(--on-surface); padding: 4px 8px; border-radius: 4px; font-weight: 500;">SKU: ${item.mcode}</span>
+                        <span style="margin-left: 1rem;">중량: ${item.weight || 0}g</span>
                         <span style="margin-left: 1rem;">매입원가: KRW ${costKrw.toLocaleString()}</span>
                         <span style="margin-left: 1rem;">적용 환율: ${result.exchangeRate}</span>
                     </div>
