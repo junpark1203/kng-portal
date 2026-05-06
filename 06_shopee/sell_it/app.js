@@ -624,7 +624,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.querySelectorAll('.pc-product-row, .pc-parent-row').forEach(r => r.style.outline = 'none');
                     tr.style.outline = '2px solid var(--primary)';
                     tr.style.outlineOffset = '-2px';
-                    openPriceCalcDetail(item, result, tr);
+                    
+                    const pMcode = tr.dataset.parentMcode;
+                    let parentItem = null;
+                    if (pMcode) {
+                        parentItem = groupedExports.find(g => g.mcode === pMcode && g.isVirtualParent);
+                    }
+                    
+                    openPriceCalcDetail(item, result, tr, parentItem);
                 });
             });
 
@@ -852,7 +859,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper: Open and Render Full Page Detail View
     window.currentOpenSidePanelId = null;
-    function openPriceCalcDetail(item, result, activeRow) {
+    function openPriceCalcDetail(item, result, activeRow, parentItem) {
         const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[currentMarketContext] || 'SGD';
         const content = document.getElementById('pc-detail-content-area');
         
@@ -890,12 +897,39 @@ document.addEventListener('DOMContentLoaded', async () => {
         itemImages = (itemImages || []).filter(img => img && typeof img === 'string' && img.trim() !== '');
         const thumbImage = itemImages.length > 0 ? itemImages[0] : 'https://via.placeholder.com/100';
 
+        let baseName = '';
+        
+        // 1. Use the full productList to find the exact parent product name
+        const baseMcode = item.mcode ? item.mcode.split('-').slice(0, 3).join('-') : '';
+        if (baseMcode && typeof productList !== 'undefined' && productList.length > 0) {
+            const actualParent = productList.find(p => p.mcode === baseMcode);
+            if (actualParent) {
+                baseName = actualParent.nameEn || actualParent.nameKo || actualParent.name || '';
+            }
+        }
+        
+        // 2. Fallback to virtual parent item
+        if (!baseName && parentItem) {
+            baseName = parentItem.nameEn || parentItem.nameKo || parentItem.name || '';
+        }
+        
+        // 3. Fallback to the item itself
+        if (!baseName || baseName === 'No Name') {
+            baseName = item.nameEn || item.nameKo || item.name || '';
+        }
+        
+        baseName = baseName || 'No Name';
+
         content.innerHTML = `
             <!-- Product Summary Card -->
             <div class="panel surface-container-lowest" style="display: flex; gap: 1.5rem; align-items: center; padding: 1.5rem; margin-bottom: 0;">
                 <img src="${thumbImage}" onerror="this.src='https://via.placeholder.com/100'" alt="Thumb" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high);">
                 <div style="flex: 1;">
-                    <h3 class="title-md">${item.name || 'No Name'}</h3>
+                    ${item.optionName 
+                        ? `<h3 class="title-md">${baseName}</h3>
+                           <div class="body-md" style="color: var(--primary); margin-top: 4px; font-weight: 500;">↳ Opt: ${item.optionName}</div>`
+                        : `<h3 class="title-md">${baseName}</h3>`
+                    }
                     <div class="body-sm text-secondary" style="margin-top: 0.25rem;">
                         <span class="badge" style="background: var(--surface-container-high); color: var(--on-surface); padding: 4px 8px; border-radius: 4px; font-weight: 500;">SKU: ${item.mcode}</span>
                         <span style="margin-left: 1rem;">매입원가: KRW ${costKrw.toLocaleString()}</span>
@@ -999,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="form-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                             <div class="form-card-title" style="margin-bottom: 0;"><i class="fa-solid fa-align-left"></i> 상품 상세 설명 및 공지사항</div>
-                            <span class="label-sm text-secondary pc-locale-total-count">0 / 5000</span>
+                            <span class="label-sm text-secondary pc-locale-total-count">0 / ${currentMarketContext === 'sg' ? 3000 : 5000}</span>
                         </div>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1010,13 +1044,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <label class="label-md" style="margin-bottom: 8px;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
+                                        <button type="button" class="btn-copy-orig-desc" title="본문 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.85rem;"><i class="fa-regular fa-copy"></i> 복사</button>
+                                    </div>
                                     <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 220px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.description || ''}</textarea>
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; align-items: flex-end; margin-bottom: 8px; height: 28px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; height: 28px;">
                                         <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                        <button type="button" class="btn-copy-orig-notice" title="공지사항 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.85rem; padding-bottom: 2px;"><i class="fa-regular fa-copy"></i> 복사</button>
                                     </div>
                                     <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 180px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.notice || ''}</textarea>
                                 </div>
@@ -1066,6 +1104,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.getElementById('view-price-calc-detail').classList.add('active');
 
+        // Add history state for Back button support
+        try {
+            history.pushState({ view: 'pcDetail', id: item.id }, '', '#pcDetail');
+        } catch (e) {
+            window.location.hash = 'pcDetail'; // Fallback for file:// protocol
+        }
+
         // Bind Tab Switching Events
         const tabBtns = content.querySelectorAll('.pc-tab-btn');
         const tabPanes = content.querySelectorAll('.pc-tab-pane');
@@ -1090,6 +1135,32 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         // Bind Events
+        const btnCopyOrigDesc = content.querySelector('.btn-copy-orig-desc');
+        if (btnCopyOrigDesc) {
+            btnCopyOrigDesc.addEventListener('click', async () => {
+                if (!item.description) return;
+                try {
+                    await navigator.clipboard.writeText(item.description);
+                    const origHtml = btnCopyOrigDesc.innerHTML;
+                    btnCopyOrigDesc.innerHTML = '<i class="fa-solid fa-check"></i> 완료';
+                    setTimeout(() => btnCopyOrigDesc.innerHTML = origHtml, 1500);
+                } catch (e) { alert('복사 실패'); }
+            });
+        }
+        
+        const btnCopyOrigNotice = content.querySelector('.btn-copy-orig-notice');
+        if (btnCopyOrigNotice) {
+            btnCopyOrigNotice.addEventListener('click', async () => {
+                if (!item.notice) return;
+                try {
+                    await navigator.clipboard.writeText(item.notice);
+                    const origHtml = btnCopyOrigNotice.innerHTML;
+                    btnCopyOrigNotice.innerHTML = '<i class="fa-solid fa-check"></i> 완료';
+                    setTimeout(() => btnCopyOrigNotice.innerHTML = origHtml, 1500);
+                } catch (e) { alert('복사 실패'); }
+            });
+        }
+
         const feeSel = content.querySelector('.pc-fee-override');
         const promoSel = content.querySelector('.pc-promo-override');
         const shipSel = content.querySelector('.pc-ship-override');
@@ -1306,8 +1377,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const lenDesc = txtDesc ? txtDesc.value.length : 0;
             const lenNotice = txtNotice ? txtNotice.value.length : 0;
             const total = lenDesc + lenNotice;
-            countTotal.textContent = `${total} / 5000`;
-            countTotal.style.color = total > 5000 ? 'var(--error)' : 'var(--secondary)';
+            const maxChars = currentMarketContext === 'sg' ? 3000 : 5000;
+            countTotal.textContent = `${total} / ${maxChars}`;
+            countTotal.style.color = total > maxChars ? 'var(--error)' : 'var(--secondary)';
         };
 
         if (txtDesc) txtDesc.addEventListener('input', updateCount);
@@ -1358,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Fetch existing locale data
-        fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}`)
+        fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}?_t=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
                 if (data && !data.error) {
@@ -1399,13 +1471,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Close Detail View Logic (Back to List)
-    function closePriceCalcDetail() {
+    function closePriceCalcDetail(isPopState = false) {
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.getElementById('view-price-calc-container').classList.add('active');
         window.currentOpenSidePanelId = null;
         document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
+        
+        if (!isPopState && ((history.state && history.state.view === 'pcDetail') || window.location.hash === '#pcDetail')) {
+            history.back(); // If closed manually via X button, go back to clear history
+        }
     }
-    document.getElementById('btn-back-to-pc-list')?.addEventListener('click', closePriceCalcDetail);
+    document.getElementById('btn-back-to-pc-list')?.addEventListener('click', () => closePriceCalcDetail(false));
 
     // Helper: Render fee breakdown HTML
     function renderBreakdownPanel(item, result) {
@@ -1929,6 +2005,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     window.addEventListener('popstate', (e) => {
+        // 1. Handle Price Calc Detail Panel
+        if (document.getElementById('view-price-calc-detail')?.classList.contains('active')) {
+            if (!e.state || e.state.view !== 'pcDetail') {
+                closePriceCalcDetail(true);
+                return; // Stop here, already handled
+            }
+        }
+
+        // 2. Handle Add Product Form
         if (addProductView && addProductView.classList.contains('active')) {
             if (isFormDirty) {
                 const confirmLeave = confirm('작성 중인 내용이 있습니다. 정말 나가시겠습니까?');
