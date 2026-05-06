@@ -2904,21 +2904,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 if (hasOptions) {
                     // === Multi-option save ===
-                    // Delete old group products if editing
+                    let oldProducts = [];
                     if (editingGroupMcodes.length > 0) {
-                        const oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode));
-                        for (const op of oldProducts) {
-                            if (op.id) await api.deleteProduct(op.id);
-                        }
-                    }
-                    
-                    // Also delete the base product if it exists (e.g. converting a single product to options)
-                    const existingBase = productList.find(p => p.mcode === mcodeStr);
-                    if (existingBase && existingBase.id) {
-                        await api.deleteProduct(existingBase.id);
+                        oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode));
+                        oldProducts.sort((a, b) => a.mcode.localeCompare(b.mcode));
+                    } else if (originalEditMcode) {
+                        const existingBase = productList.find(p => p.mcode === originalEditMcode);
+                        if (existingBase) oldProducts = [existingBase];
                     }
 
-                    // Create each option as a separate product
+                    // Process each option
                     for (let i = 0; i < currentOptions.length; i++) {
                         const suffix = String(i + 1).padStart(2, '0');
                         const optMcode = `${mcodeStr}-${suffix}`;
@@ -2931,7 +2926,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             images: currentOptions[i].imageUrl ? JSON.stringify([currentOptions[i].imageUrl]) : '[]',
                             parentImages: JSON.stringify(currentImages)
                         };
-                        await api.createProduct(optData);
+                        
+                        if (i < oldProducts.length) {
+                            await api.updateProduct(oldProducts[i].id, optData);
+                        } else {
+                            await api.createProduct(optData);
+                        }
+                    }
+                    
+                    // Delete any remaining old products
+                    for (let i = currentOptions.length; i < oldProducts.length; i++) {
+                        await api.deleteProduct(oldProducts[i].id);
                     }
                 } else {
                     // === Single product save (no options) ===
@@ -2952,27 +2957,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                         parentImages: '[]'
                     };
 
-                    // If converting from an option group to a single product, delete the old options
-                    if (editingGroupMcodes.length > 0) {
-                        const oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode));
-                        for (const op of oldProducts) {
-                            if (op.id) await api.deleteProduct(op.id);
-                        }
-                    }
-
                     if (currentEditingRow && originalEditMcode) {
+                        let existingId = null;
                         const existing = productList.find(p => p.mcode === originalEditMcode);
+                        
                         if (existing && existing.id) {
-                            const exportsForProduct = marketExportsMap[existing.id] || [];
+                            existingId = existing.id;
+                        } else if (editingGroupMcodes.length > 0) {
+                            // Convert first option into the base product to preserve its export history
+                            const firstOld = productList.find(p => p.mcode === editingGroupMcodes[0]);
+                            if (firstOld) existingId = firstOld.id;
+                        }
+
+                        if (existingId) {
+                            const exportsForProduct = marketExportsMap[existingId] || [];
                             if (exportsForProduct.length > 0) {
                                 const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
                                 if (!confirm(`⚠️ 이 상품은 [${marketNames}] 마켓에 연동되어 있습니다.\n수정본을 저장하시겠습니까?`)) return;
                             }
-                            await api.updateProduct(existing.id, productData);
+                            await api.updateProduct(existingId, productData);
                         } else {
-                            // The originalEditMcode was a group parent which didn't exist in DB as a single row.
-                            // Since we deleted the options above, we just need to create the single product.
                             await api.createProduct(productData);
+                        }
+                        
+                        // Delete remaining old options
+                        if (editingGroupMcodes.length > 0) {
+                            const oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode) && p.id !== existingId);
+                            for (const op of oldProducts) {
+                                if (op.id) await api.deleteProduct(op.id);
+                            }
                         }
                     } else {
                         await api.createProduct(productData);
