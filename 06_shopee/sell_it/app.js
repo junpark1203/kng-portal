@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Global System Settings for Smart Pricing
     let systemSettings = { margin_safe: 40, margin_standard: 30, margin_aggressive: 10 };
 
+    // Preset & Data Store variables (Moved to top to prevent TDZ errors)
+    let presets = [];
+    let promotionPresets = [];
+    let shippingPresets = [];
+
     function renderMAImageGrid() {
         const grid = document.getElementById('ma-image-grid');
         const addBtn = document.getElementById('ma-image-add-btn');
@@ -2621,9 +2626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.calcShippingCost = calcShippingCost;
 
     /* --- Preset Logic --- */
-    let presets = [];
-    let promotionPresets = [];
-    let shippingPresets = [];
 
     // API에서 프리셋 및 시스템 설정 로드
     try {
