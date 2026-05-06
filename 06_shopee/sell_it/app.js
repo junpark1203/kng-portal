@@ -2168,6 +2168,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ? `<div style="position: relative; display: inline-block;">
                        <img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display='block';">
                        <div style="position: absolute; bottom: 2px; left: 2px; background: rgba(0,0,0,0.6); color: white; font-size: 0.5rem; padding: 1px 3px; border-radius: 2px; display: none; pointer-events: none;"></div>
+                       <button type="button" class="opt-image-delete-btn" data-opt-idx="${idx}" style="position: absolute; top: -6px; right: -6px; background: white; border: 1px solid var(--outline-variant); color: #dc3545; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2); padding: 0; z-index: 2;" title="이미지 삭제"><i class="fa-solid fa-xmark"></i></button>
                    </div>`
                 : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="파일 업로드" style="width: 44px; height: 44px; border-radius: 4px; border: 1px dashed var(--outline-variant); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); flex-shrink: 0; background: var(--surface-container-lowest);"><i class="fa-solid fa-camera"></i></div>`;
             
@@ -2221,6 +2222,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         optionTableBody.querySelectorAll('.opt-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { currentOptions.splice(parseInt(e.currentTarget.dataset.optIdx), 1); renderOptionRows(); });
+        });
+        // Option Image Delete click
+        optionTableBody.querySelectorAll('.opt-image-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentOptions[parseInt(e.currentTarget.dataset.optIdx)].imageUrl = '';
+                renderOptionRows();
+            });
         });
         // File upload click
         optionTableBody.querySelectorAll('.opt-image-file-btn, .opt-image-thumb, .opt-image-placeholder').forEach(el => {
