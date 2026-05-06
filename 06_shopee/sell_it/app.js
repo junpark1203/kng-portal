@@ -578,6 +578,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const mcode = e.target.dataset.parentMcode;
                     const children = document.querySelectorAll(`.pc-child-checkbox[data-parent-mcode="${mcode}"]`);
                     children.forEach(cb => cb.checked = isChecked);
+                    updatePcBulkActionBar();
                 });
             });
 
@@ -585,22 +586,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             childCheckboxes.forEach(ccb => {
                 ccb.addEventListener('change', (e) => {
                     const mcode = e.target.dataset.parentMcode;
-                    if (!mcode) return; // standalone product
-                    const siblings = Array.from(document.querySelectorAll(`.pc-child-checkbox[data-parent-mcode="${mcode}"]`));
-                    const checkedCount = siblings.filter(cb => cb.checked).length;
-                    const parentCb = document.querySelector(`.pc-parent-checkbox[data-parent-mcode="${mcode}"]`);
-                    if (parentCb) {
-                        if (checkedCount === 0) {
-                            parentCb.checked = false;
-                            parentCb.indeterminate = false;
-                        } else if (checkedCount === siblings.length) {
-                            parentCb.checked = true;
-                            parentCb.indeterminate = false;
-                        } else {
-                            parentCb.checked = false;
-                            parentCb.indeterminate = true;
+                    if (mcode) {
+                        const siblings = Array.from(document.querySelectorAll(`.pc-child-checkbox[data-parent-mcode="${mcode}"]`));
+                        const checkedCount = siblings.filter(cb => cb.checked).length;
+                        const parentCb = document.querySelector(`.pc-parent-checkbox[data-parent-mcode="${mcode}"]`);
+                        if (parentCb) {
+                            if (checkedCount === 0) {
+                                parentCb.checked = false;
+                                parentCb.indeterminate = false;
+                            } else if (checkedCount === siblings.length) {
+                                parentCb.checked = true;
+                                parentCb.indeterminate = false;
+                            } else {
+                                parentCb.checked = false;
+                                parentCb.indeterminate = true;
+                            }
                         }
                     }
+                    updatePcBulkActionBar();
                 });
             });
 
@@ -623,14 +626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     tr.style.outlineOffset = '-2px';
                     openSidePanel(item, result, tr);
                 });
-
-                // Checkbox Event logic for Bulk Actions
-                const cb = tr.querySelector('.pc-row-checkbox');
-                if (cb) {
-                    cb.addEventListener('change', (e) => {
-                        updatePcBulkActionBar();
-                    });
-                }
             });
 
             // Master Checkbox logic
@@ -652,6 +647,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--error); padding: 2rem;">데이터 로드 실패: ${err.message}</td></tr>`;
         }
     };
+
+    // Bulk Actions Event Listeners (Outside render loop)
+    const btnPcBulkDelete = document.getElementById('pc-btn-bulk-delete');
+    if (btnPcBulkDelete) {
+        btnPcBulkDelete.addEventListener('click', async () => {
+            const checked = Array.from(document.querySelectorAll('.pc-child-checkbox:checked'));
+            if (checked.length === 0) return;
+
+            if (!confirm(`선택한 ${checked.length}개의 상품을 현재 마켓(${currentMarketContext.toUpperCase()})에서 삭제하시겠습니까?\nProduct List의 진출 마켓 표시도 함께 업데이트됩니다.`)) return;
+
+            const btnOriginalText = btnPcBulkDelete.innerHTML;
+            btnPcBulkDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 삭제 중...';
+            btnPcBulkDelete.disabled = true;
+
+            let successCount = 0;
+            let failCount = 0;
+
+            try {
+                // Get fresh exports to find the export IDs for the current market
+                const exports = await api.getMarketExports(currentMarketContext);
+
+                for (const cb of checked) {
+                    const productId = cb.dataset.id;
+                    // Find the export record ID
+                    const exportRecord = exports.find(e => String(e.productId) === String(productId));
+                    if (exportRecord && exportRecord.id) {
+                        try {
+                            await api.cancelMarketExport(exportRecord.id);
+                            successCount++;
+                        } catch (err) {
+                            console.error(`삭제 실패 (${productId}):`, err);
+                            failCount++;
+                        }
+                    } else {
+                        // If we can't find it, just skip
+                        console.warn(`Export record not found for product ${productId} in market ${currentMarketContext}`);
+                    }
+                }
+
+                alert(`삭제 완료 (성공: ${successCount}, 실패: ${failCount})`);
+                
+                // Refresh Market Exports Map so Product List badges update correctly
+                marketExportsMap = await api.getAllMarketExports();
+                renderProductList(); // Redraw Product List to reflect disabled badges
+
+                // Refresh Price Calc Grid
+                renderPriceCalcGrid(currentMarketContext);
+                updatePcBulkActionBar();
+
+            } catch (err) {
+                alert('삭제 처리 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                btnPcBulkDelete.innerHTML = btnOriginalText;
+                btnPcBulkDelete.disabled = false;
+            }
+        });
+    }
 
     function updatePcBulkActionBar() {
         const checked = document.querySelectorAll('.pc-row-checkbox:checked');
