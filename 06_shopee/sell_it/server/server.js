@@ -76,6 +76,31 @@ if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
+// 볼륨 마운트 검증: 마커 파일을 통해 영속성 확인
+const VOLUME_MARKER = path.join(UPLOAD_DIR, '.volume-marker');
+function verifyVolumeMount() {
+    try {
+        if (fs.existsSync(VOLUME_MARKER)) {
+            const marker = JSON.parse(fs.readFileSync(VOLUME_MARKER, 'utf-8'));
+            console.log(`✅ [Volume] uploads 볼륨 마운트 정상 확인 (최초 생성: ${marker.createdAt}, 파일 수: ${fs.readdirSync(UPLOAD_DIR).filter(f => !f.startsWith('.')).length})`);
+        } else {
+            // 첫 실행: 마커 파일 생성
+            const markerData = { createdAt: new Date().toISOString(), note: 'This file verifies volume persistence. If this file is missing after restart, the volume mount is broken.' };
+            fs.writeFileSync(VOLUME_MARKER, JSON.stringify(markerData, null, 2));
+            console.log('📌 [Volume] uploads 볼륨 마커 파일 최초 생성');
+        }
+        // 쓰기 테스트
+        const testFile = path.join(UPLOAD_DIR, '.write-test');
+        fs.writeFileSync(testFile, 'ok');
+        fs.unlinkSync(testFile);
+        return true;
+    } catch (err) {
+        console.error('❌ [Volume] uploads 디렉터리 접근 오류! 볼륨 마운트를 확인하세요:', err.message);
+        return false;
+    }
+}
+const volumeOk = verifyVolumeMount();
+
 // Multer 설정
 const storage = multer.diskStorage({
     destination: function(req, file, cb) { cb(null, UPLOAD_DIR); },
@@ -424,6 +449,58 @@ app.get('/api/debug/uploads', (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: err.message, upload_dir: UPLOAD_DIR });
+    }
+});
+
+// DB ↔ 파일 무결성 검사
+app.get('/api/debug/integrity', (req, res) => {
+    try {
+        const diskFiles = fs.readdirSync(UPLOAD_DIR).filter(f => !f.startsWith('.'));
+        
+        db.all('SELECT id, mcode, images, parentImages, optionName FROM products', [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // Collect all server-hosted filenames referenced in DB
+            const dbReferencedFiles = new Set();
+            const missingFiles = []; // files referenced in DB but not on disk
+            
+            rows.forEach(row => {
+                const allImageFields = [row.images, row.parentImages];
+                allImageFields.forEach(field => {
+                    if (!field) return;
+                    try {
+                        const urls = JSON.parse(field);
+                        if (!Array.isArray(urls)) return;
+                        urls.forEach(url => {
+                            if (url && url.includes('/api/images/')) {
+                                const filename = url.split('/api/images/').pop();
+                                dbReferencedFiles.add(filename);
+                                if (!diskFiles.includes(filename)) {
+                                    missingFiles.push({ product: row.mcode, filename, field: field === row.images ? 'images' : 'parentImages' });
+                                }
+                            }
+                        });
+                    } catch(e) {}
+                });
+            });
+            
+            // Orphan files: on disk but not referenced in DB
+            const orphanFiles = diskFiles.filter(f => !dbReferencedFiles.has(f));
+            
+            res.json({
+                volume_ok: volumeOk,
+                volume_marker_exists: fs.existsSync(VOLUME_MARKER),
+                disk_file_count: diskFiles.length,
+                db_referenced_file_count: dbReferencedFiles.size,
+                missing_files: missingFiles,
+                missing_count: missingFiles.length,
+                orphan_files: orphanFiles,
+                orphan_count: orphanFiles.length,
+                status: missingFiles.length === 0 ? '✅ ALL OK' : `⚠️ ${missingFiles.length} missing files`
+            });
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -1263,4 +1340,8 @@ app.listen(PORT, () => {
     console.log(`Sell_it API Server is running on port ${PORT}`);
     console.log(`API: http://localhost:${PORT}/api/products`);
     console.log(`Health: http://localhost:${PORT}/api/health`);
+    console.log(`Upload Dir: ${path.resolve(UPLOAD_DIR)}`);
+    console.log(`Volume Mount: ${volumeOk ? '✅ OK' : '❌ FAILED'}`);
+    const files = fs.readdirSync(UPLOAD_DIR).filter(f => !f.startsWith('.'));
+    console.log(`Upload Files: ${files.length} files found`);
 });

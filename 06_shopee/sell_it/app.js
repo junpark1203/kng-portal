@@ -1880,6 +1880,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     // --- Media Logic ---
+    // Helper: Delete image file from server if it's a server-hosted image
+    async function deleteImageFromServer(imageUrl) {
+        if (!imageUrl) return;
+        try {
+            // Only delete images hosted on our server (contains /api/images/)
+            if (imageUrl.includes('/api/images/')) {
+                const filename = imageUrl.split('/api/images/').pop();
+                if (filename) {
+                    await fetch(`${APP_API_BASE}/images/${filename}`, { method: 'DELETE' });
+                    console.log('[Cleanup] Server image deleted:', filename);
+                }
+            }
+        } catch (err) {
+            console.warn('[Cleanup] Failed to delete server image:', err.message);
+        }
+    }
+
     function renderMediaPreviews() {
         if (!mediaGalleryGrid) return;
         // Keep only the dropzone trigger
@@ -1901,10 +1918,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         document.querySelectorAll('.btn-remove-image').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 const idx = parseInt(e.currentTarget.dataset.index);
+                const removedUrl = currentImages[idx];
                 currentImages.splice(idx, 1);
                 renderMediaPreviews();
+                // Delete from server in background
+                await deleteImageFromServer(removedUrl);
             });
         });
 
@@ -2225,10 +2245,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         // Option Image Delete click
         optionTableBody.querySelectorAll('.opt-image-delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                currentOptions[parseInt(e.currentTarget.dataset.optIdx)].imageUrl = '';
+                const optIdx = parseInt(e.currentTarget.dataset.optIdx);
+                const removedUrl = currentOptions[optIdx].imageUrl;
+                currentOptions[optIdx].imageUrl = '';
                 renderOptionRows();
+                // Delete from server in background
+                await deleteImageFromServer(removedUrl);
             });
         });
         // File upload click
