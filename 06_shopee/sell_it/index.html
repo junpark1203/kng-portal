@@ -679,7 +679,15 @@
                                     <div class="form-card-title"><i class="fa-solid fa-align-left"></i> 상품 상세 설명</div>
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
-                                            <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(Shopee 마켓 연동용)</span></label>
+                                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                                <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(Shopee 마켓 연동용)</span></label>
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <select id="notice-template-select" class="form-control" style="width: auto; height: 28px; padding: 2px 8px; font-size: 0.8rem; display: inline-block;">
+                                                        <option value="">공지사항 템플릿 불러오기</option>
+                                                    </select>
+                                                    <button type="button" id="btn-manage-notices" class="btn btn-outline" style="height: 28px; padding: 0 8px; font-size: 0.8rem;" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
+                                                </div>
+                                            </div>
                                             <span id="count-description" class="label-sm text-secondary">0 / 5000</span>
                                         </div>
                                         <textarea id="input-description" class="form-control" rows="8" maxlength="5000" placeholder="상품에 대한 상세한 설명을 영문이나 한국어로 입력하세요. (최대 5,000자)" style="resize: vertical;"></textarea>
@@ -1205,6 +1213,54 @@
             <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn-secondary" id="btn-cancel-video-url">취소</button>
                 <button class="btn-primary" id="btn-apply-video-url">적용</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notice Templates Management Modal -->
+    <div id="notice-templates-modal" class="modal-overlay" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999;">
+        <div class="modal-content surface-container-low" style="width: 500px; padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; max-height: 90vh;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="title-lg"><i class="fa-solid fa-list-ul"></i> 공지사항 템플릿 관리</h3>
+                <button class="btn-icon" id="btn-close-notices-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div style="overflow-y: auto; flex: 1; margin-bottom: 1.5rem; padding-right: 8px;">
+                <!-- Add New Notice Form -->
+                <div style="background: var(--surface-container-highest); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--outline-variant); margin-bottom: 1.5rem;">
+                    <h4 class="title-md" style="margin-bottom: 1rem; color: var(--primary);">새 템플릿 추가/수정</h4>
+                    <input type="hidden" id="notice-edit-id" value="">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="label-sm">템플릿 제목</label>
+                        <input type="text" id="notice-title" class="form-control" placeholder="예: 기본 배송 안내">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label class="label-sm">템플릿 내용</label>
+                        <textarea id="notice-content" class="form-control" rows="4" placeholder="실제 추가될 공지사항 텍스트를 입력하세요." style="resize: vertical;"></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; cursor: pointer;">
+                            <input type="checkbox" id="notice-is-default">
+                            <span>기본 템플릿으로 설정</span>
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="btn-cancel-notice" class="btn btn-secondary" style="display: none; padding: 0.5rem 1rem;">취소</button>
+                            <button type="button" id="btn-save-notice" class="btn btn-primary" style="padding: 0.5rem 1rem;"><i class="fa-solid fa-plus"></i> 저장</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notices List -->
+                <div>
+                    <h4 class="title-md" style="margin-bottom: 1rem;">저장된 템플릿 목록</h4>
+                    <div id="notices-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="padding: 1rem; text-align: center; color: var(--text-secondary);">템플릿을 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--outline-variant);">
+                <button class="btn-secondary" id="btn-close-notices-footer">닫기</button>
             </div>
         </div>
     </div>

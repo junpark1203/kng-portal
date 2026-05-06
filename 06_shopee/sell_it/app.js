@@ -1802,6 +1802,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const today = new Date().toISOString().split('T')[0];
             inputDate.value = today;
+            
+            // Auto-fill default notice template if available
+            const defaultNotice = noticeTemplates.find(t => t.isDefault === 1);
+            if (defaultNotice && inputDescription) {
+                inputDescription.value = defaultNotice.content;
+                if (countDescription) countDescription.innerText = `${inputDescription.value.length} / 5000`;
+            }
             updateMcodePreview();
 
             if (window.latestExchangeRates && window.latestExchangeRates.usd) {
@@ -3560,7 +3567,168 @@ document.addEventListener('DOMContentLoaded', async () => {
     if(typeof renderSettingsShippingTable === 'function') renderSettingsShippingTable();
 
     // ==========================================
-    // MARKET ANALYSIS MODULE
+    // NOTICE TEMPLATES LOGIC
+    // ==========================================
+    const noticeTemplateSelect = document.getElementById('notice-template-select');
+    const btnManageNotices = document.getElementById('btn-manage-notices');
+    const noticeTemplatesModal = document.getElementById('notice-templates-modal');
+    const btnCloseNoticesModal = document.getElementById('btn-close-notices-modal');
+    const btnCloseNoticesFooter = document.getElementById('btn-close-notices-footer');
+    
+    const noticeEditId = document.getElementById('notice-edit-id');
+    const noticeTitle = document.getElementById('notice-title');
+    const noticeContent = document.getElementById('notice-content');
+    const noticeIsDefault = document.getElementById('notice-is-default');
+    const btnSaveNotice = document.getElementById('btn-save-notice');
+    const btnCancelNotice = document.getElementById('btn-cancel-notice');
+    const noticesListContainer = document.getElementById('notices-list-container');
+
+    let noticeTemplates = [];
+
+    async function loadNoticeTemplates() {
+        try {
+            const res = await fetch(`${APP_API_BASE}/notices`);
+            if (res.ok) {
+                noticeTemplates = await res.json();
+                renderNoticeDropdown();
+                renderNoticesList();
+            }
+        } catch (e) {
+            console.error('Failed to load notices:', e);
+        }
+    }
+
+    function renderNoticeDropdown() {
+        if (!noticeTemplateSelect) return;
+        noticeTemplateSelect.innerHTML = '<option value="">공지사항 템플릿 불러오기</option>';
+        noticeTemplates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.title + (t.isDefault ? ' (기본)' : '');
+            noticeTemplateSelect.appendChild(opt);
+        });
+    }
+
+    if (noticeTemplateSelect) {
+        noticeTemplateSelect.addEventListener('change', (e) => {
+            const selectedId = e.target.value;
+            if (!selectedId) return;
+            const template = noticeTemplates.find(t => t.id == selectedId);
+            if (template && inputDescription) {
+                const currentVal = inputDescription.value;
+                inputDescription.value = currentVal ? currentVal + '\n\n' + template.content : template.content;
+                if (countDescription) countDescription.innerText = `${inputDescription.value.length} / 5000`;
+            }
+            noticeTemplateSelect.value = ''; // Reset selection
+        });
+    }
+
+    function renderNoticesList() {
+        if (!noticesListContainer) return;
+        noticesListContainer.innerHTML = '';
+        if (noticeTemplates.length === 0) {
+            noticesListContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">저장된 템플릿이 없습니다.</div>';
+            return;
+        }
+
+        noticeTemplates.forEach(t => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--outline-variant);';
+            div.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 500; margin-bottom: 4px;">${t.title} ${t.isDefault ? '<span class="badge" style="background:var(--primary); color:white; font-size:0.7rem; padding:2px 6px; border-radius:12px;">기본</span>' : ''}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">${t.content}</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button class="btn btn-outline btn-edit-notice" data-id="${t.id}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">수정</button>
+                    <button class="btn btn-outline btn-delete-notice" data-id="${t.id}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; color: #dc3545; border-color: #dc3545;">삭제</button>
+                </div>
+            `;
+            noticesListContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-edit-notice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.getAttribute('data-id');
+                const t = noticeTemplates.find(x => x.id == id);
+                if (t) {
+                    noticeEditId.value = t.id;
+                    noticeTitle.value = t.title;
+                    noticeContent.value = t.content;
+                    noticeIsDefault.checked = t.isDefault === 1;
+                    btnSaveNotice.innerHTML = '<i class="fa-solid fa-check"></i> 수정 완료';
+                    btnCancelNotice.style.display = 'inline-block';
+                }
+            });
+        });
+
+        document.querySelectorAll('.btn-delete-notice').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+                const id = e.target.getAttribute('data-id');
+                try {
+                    await fetch(`${APP_API_BASE}/notices/${id}`, { method: 'DELETE' });
+                    loadNoticeTemplates();
+                } catch (err) {
+                    alert('삭제 실패: ' + err.message);
+                }
+            });
+        });
+    }
+
+    function resetNoticeForm() {
+        noticeEditId.value = '';
+        noticeTitle.value = '';
+        noticeContent.value = '';
+        noticeIsDefault.checked = false;
+        btnSaveNotice.innerHTML = '<i class="fa-solid fa-plus"></i> 저장';
+        btnCancelNotice.style.display = 'none';
+    }
+
+    if (btnManageNotices) btnManageNotices.addEventListener('click', () => { noticeTemplatesModal.style.display = 'flex'; loadNoticeTemplates(); resetNoticeForm(); });
+    if (btnCloseNoticesModal) btnCloseNoticesModal.addEventListener('click', () => noticeTemplatesModal.style.display = 'none');
+    if (btnCloseNoticesFooter) btnCloseNoticesFooter.addEventListener('click', () => noticeTemplatesModal.style.display = 'none');
+    if (btnCancelNotice) btnCancelNotice.addEventListener('click', resetNoticeForm);
+
+    if (btnSaveNotice) {
+        btnSaveNotice.addEventListener('click', async () => {
+            const title = noticeTitle.value.trim();
+            const content = noticeContent.value.trim();
+            const isDefault = noticeIsDefault.checked;
+            const id = noticeEditId.value;
+
+            if (!title || !content) {
+                alert('제목과 내용을 모두 입력해주세요.');
+                return;
+            }
+
+            const payload = { title, content, isDefault };
+            const url = id ? `${APP_API_BASE}/notices/${id}` : `${APP_API_BASE}/notices`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    resetNoticeForm();
+                    loadNoticeTemplates();
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                alert('저장 실패: ' + err.message);
+            }
+        });
+    }
+
+    // Call loadNoticeTemplates on init
+    loadNoticeTemplates();
+
+    // ==========================================
     // ==========================================
     // maData는 상단에서 선언됨 (TDZ 방지)
 

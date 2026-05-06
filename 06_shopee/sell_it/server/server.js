@@ -192,6 +192,19 @@ function initDb() {
             }
         });
 
+        db.run(`
+            CREATE TABLE IF NOT EXISTS notice_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                isDefault INTEGER DEFAULT 0,
+                createdAt TEXT
+            )
+        `, (err) => {
+            if (err) console.error('notice_templates 테이블 생성 오류:', err.message);
+            else console.log('notice_templates 테이블 확인 완료');
+        });
+
         // 마켓 전송 기록
         db.run(`
             CREATE TABLE IF NOT EXISTS market_exports (
@@ -1166,6 +1179,65 @@ app.delete('/api/images/:filename', (req, res) => {
     } else {
         res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
     }
+});
+
+// --- Notice Templates API ---
+app.get('/api/notices', (req, res) => {
+    db.all('SELECT * FROM notice_templates ORDER BY id ASC', (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/notices', (req, res) => {
+    const { title, content, isDefault } = req.body;
+    const now = new Date().toISOString();
+    
+    const insertNotice = () => {
+        db.run('INSERT INTO notice_templates (title, content, isDefault, createdAt) VALUES (?, ?, ?, ?)', 
+            [title, content, isDefault ? 1 : 0, now], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Success', id: this.lastID });
+        });
+    };
+
+    if (isDefault) {
+        db.run('UPDATE notice_templates SET isDefault = 0', (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            insertNotice();
+        });
+    } else {
+        insertNotice();
+    }
+});
+
+app.put('/api/notices/:id', (req, res) => {
+    const { title, content, isDefault } = req.body;
+    const id = req.params.id;
+    
+    const updateNotice = () => {
+        db.run('UPDATE notice_templates SET title = ?, content = ?, isDefault = ? WHERE id = ?',
+            [title, content, isDefault ? 1 : 0, id], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Success' });
+        });
+    };
+
+    if (isDefault) {
+        db.run('UPDATE notice_templates SET isDefault = 0', (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            updateNotice();
+        });
+    } else {
+        updateNotice();
+    }
+});
+
+app.delete('/api/notices/:id', (req, res) => {
+    db.run('DELETE FROM notice_templates WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Success' });
+    });
 });
 
 // ==========================================
