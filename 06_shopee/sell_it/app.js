@@ -869,6 +869,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalCostKrw = costKrw + shipKrw + pkgKrw;
         const commTotal = result.breakdown ? Object.values(result.breakdown).reduce((s,f) => s + f.amount, 0) : 0;
 
+        const marketFlagMap = { sg: '🇸🇬', my: '🇲🇾', tw: '🇹🇼', th: '🇹🇭', ph: '🇵🇭', vn: '🇻🇳', br: '🇧🇷', mx: '🇲🇽' };
+        const marketLangMap = { sg: 'English', my: 'Malay', tw: '繁體中文', th: 'ภาษาไทย', ph: 'Filipino', vn: 'Tiếng Việt', br: 'Português', mx: 'Español' };
+        const marketFlag = marketFlagMap[currentMarketContext] || '🌐';
+        const marketLangName = marketLangMap[currentMarketContext] || currentMarketContext.toUpperCase();
+
         let itemImages = [];
         try {
             if (item.images && typeof item.images === 'string') itemImages = JSON.parse(item.images);
@@ -989,15 +994,61 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 : '<span class="text-secondary">등록된 이미지가 없습니다.</span>'}
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                        <div class="form-card">
-                            <div class="form-card-title"><i class="fa-solid fa-bullhorn"></i> 공지사항 (Notice)</div>
-                            <div style="white-space: pre-wrap; font-size: 0.875rem; line-height: 1.5; color: var(--text-main); background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px; min-height: 200px;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
+
+                    <!-- Description: Side-by-Side -->
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-align-left"></i> 상세설명 (Description)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                    <span style="font-size: 1.1rem;">🇬🇧</span>
+                                    <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--secondary);">원문 (English) — 읽기 전용</span>
+                                </div>
+                                <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 220px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 1.1rem;">${marketFlag}</span>
+                                        <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
+                                    </div>
+                                    <span class="body-sm text-secondary pc-locale-desc-count">0 / 5000</span>
+                                </div>
+                                <textarea class="form-control pc-locale-desc" placeholder="${marketLangName}(으)로 번역된 상세설명을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 220px; max-height: 400px; resize: vertical;"></textarea>
+                            </div>
                         </div>
-                        <div class="form-card">
-                            <div class="form-card-title"><i class="fa-solid fa-align-left"></i> 상세설명 (Description)</div>
-                            <div style="white-space: pre-wrap; font-size: 0.875rem; line-height: 1.5; color: var(--text-main); background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px; min-height: 200px;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
+                    </div>
+
+                    <!-- Notice: Side-by-Side -->
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-bullhorn"></i> 공지사항 (Notice)</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                    <span style="font-size: 1.1rem;">🇬🇧</span>
+                                    <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--secondary);">원문 (English) — 읽기 전용</span>
+                                </div>
+                                <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 180px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
+                            </div>
+                            <div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 1.1rem;">${marketFlag}</span>
+                                        <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
+                                    </div>
+                                    <span class="body-sm text-secondary pc-locale-notice-count">0 / 5000</span>
+                                </div>
+                                <textarea class="form-control pc-locale-notice" placeholder="${marketLangName}(으)로 번역된 공지사항을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 180px; max-height: 400px; resize: vertical;"></textarea>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; align-items: center;">
+                        <span class="body-sm text-secondary pc-locale-updated" style="font-style: italic;"></span>
+                        <button type="button" class="btn-primary btn-save-locale" style="padding: 0.75rem 2rem;">
+                            <i class="fa-solid fa-floppy-disk"></i> ${marketLangName} 번역 저장
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1211,7 +1262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btnSave.addEventListener('click', async () => {
                 try {
                     btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-                    await api.updateMarketExportSettings(item.id, { 
+                    await api.updateMarketExportSettings(item.id || item.exportId, { 
                         feePresetId: item.feePresetId, 
                         promoPresetId: item.promoPresetId, 
                         shipPresetId: item.shipPresetId, 
@@ -1223,10 +1274,69 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                     alert('설정 저장 완료');
                     btnSave.innerHTML = '<i class="fa-solid fa-check"></i>';
-                    setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; }, 1000);
+                    setTimeout(() => { btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장'; }, 1000);
                 } catch (err) { 
                     alert('저장 실패: ' + err.message); 
-                    btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 저장'; 
+                    btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장'; 
+                }
+            });
+        }
+
+        // =====================================
+        // Locale Loading & Saving Logic
+        // =====================================
+        const txtDesc = content.querySelector('.pc-locale-desc');
+        const countDesc = content.querySelector('.pc-locale-desc-count');
+        const txtNotice = content.querySelector('.pc-locale-notice');
+        const countNotice = content.querySelector('.pc-locale-notice-count');
+        const btnSaveLocale = content.querySelector('.btn-save-locale');
+        const spanUpdated = content.querySelector('.pc-locale-updated');
+
+        const updateCount = (textarea, span) => {
+            if (!textarea || !span) return;
+            const len = textarea.value.length;
+            span.textContent = `${len} / 5000`;
+            span.style.color = len > 5000 ? 'var(--error)' : 'var(--secondary)';
+        };
+
+        if (txtDesc) txtDesc.addEventListener('input', () => updateCount(txtDesc, countDesc));
+        if (txtNotice) txtNotice.addEventListener('input', () => updateCount(txtNotice, countNotice));
+
+        // Fetch existing locale data
+        fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && !data.error) {
+                    if (txtDesc) { txtDesc.value = data.description || ''; updateCount(txtDesc, countDesc); }
+                    if (txtNotice) { txtNotice.value = data.notice || ''; updateCount(txtNotice, countNotice); }
+                    if (spanUpdated && data.updatedAt) {
+                        spanUpdated.textContent = '최종 저장: ' + new Date(data.updatedAt).toLocaleString();
+                    }
+                }
+            })
+            .catch(err => console.error('Failed to load locale:', err));
+
+        if (btnSaveLocale) {
+            btnSaveLocale.addEventListener('click', async () => {
+                const originalHtml = btnSaveLocale.innerHTML;
+                btnSaveLocale.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                try {
+                    const res = await fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            description: txtDesc ? txtDesc.value : '',
+                            notice: txtNotice ? txtNotice.value : ''
+                        })
+                    });
+                    if (!res.ok) throw new Error(await res.text());
+                    spanUpdated.textContent = '최종 저장: ' + new Date().toLocaleString();
+                    
+                    btnSaveLocale.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    setTimeout(() => { btnSaveLocale.innerHTML = originalHtml; }, 1000);
+                } catch (err) {
+                    alert('번역 저장 실패: ' + err.message);
+                    btnSaveLocale.innerHTML = originalHtml;
                 }
             });
         }

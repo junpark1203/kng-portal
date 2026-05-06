@@ -373,6 +373,22 @@ function initDb() {
                 });
             }
         });
+
+        // 국가별 상품 현지화 번역 저장
+        db.run(`
+            CREATE TABLE IF NOT EXISTS market_product_locales (
+                id TEXT PRIMARY KEY,
+                productId TEXT NOT NULL,
+                marketCode TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                notice TEXT DEFAULT '',
+                updatedAt TEXT,
+                UNIQUE(productId, marketCode)
+            )
+        `, (err) => {
+            if (err) console.error('market_product_locales 테이블 생성 오류:', err.message);
+            else console.log('market_product_locales 테이블 확인 완료');
+        });
     });
 }
 
@@ -1340,6 +1356,31 @@ app.delete('/api/notices/:id', (req, res) => {
     db.run('DELETE FROM notice_templates WHERE id = ?', [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Success' });
+    });
+});
+
+// ==========================================
+// Market Product Locales (국가별 번역)
+// ==========================================
+app.get('/api/market-locales/:productId/:marketCode', (req, res) => {
+    const { productId, marketCode } = req.params;
+    db.get('SELECT * FROM market_product_locales WHERE productId = ? AND marketCode = ?', [productId, marketCode], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(row || { productId, marketCode, description: '', notice: '' });
+    });
+});
+
+app.put('/api/market-locales/:productId/:marketCode', (req, res) => {
+    const { productId, marketCode } = req.params;
+    const { description, notice } = req.body;
+    const now = new Date().toISOString();
+    const id = `locale-${productId}-${marketCode}`;
+    const sql = `INSERT INTO market_product_locales (id, productId, marketCode, description, notice, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(productId, marketCode) DO UPDATE SET description=?, notice=?, updatedAt=?`;
+    db.run(sql, [id, productId, marketCode, description || '', notice || '', now, description || '', notice || '', now], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '번역 저장 완료', id });
     });
 });
 
