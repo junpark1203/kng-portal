@@ -642,7 +642,10 @@
                                             <input type="date" id="input-date" class="form-control" required>
                                         </div>
                                         <div class="col">
-                                            <label class="label-md">관리코드 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(자동생성)</span></label>
+                                            <label class="label-md" style="display: flex; align-items: center; gap: 6px;">
+                                                관리코드 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(자동생성)</span>
+                                                <i class="fa-solid fa-circle-question text-secondary" style="cursor: help; font-size: 0.85rem;" title="관리코드 생성 규칙:&#10;[연도][월]-[일]-[일련번호]&#10;* 연도: 1=K, 2=C, 3=Y, 4=J, 5=E, 6=G, 7=B, 8=T, 9=U, 0=0&#10;  (예: 26년 -> CG)&#10;* 월: 1월=J1 ... 12월=D1 (예: 5월 -> M2)&#10;* 예: CGM2-06-001 (26년 5월 6일 1번째 상품)"></i>
+                                            </label>
                                             <input type="text" id="input-mcode" class="form-control" readonly style="background: var(--surface-container-high); font-weight: 700; letter-spacing: 0.03em;">
                                         </div>
                                     </div>

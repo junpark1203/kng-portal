@@ -1306,6 +1306,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         return `${encodedYear}${encodedMonth}-${day}-${seq}`;
     };
 
+    window.decodeManagementCode = function(mcode) {
+        if (!mcode) return '';
+        const parts = mcode.split('-');
+        if (parts.length < 3) return '올바른 관리코드 형식이 아닙니다.';
+        const firstPart = parts[0];
+        if (firstPart.length !== 4) return '올바른 관리코드 형식이 아닙니다.';
+        
+        const yearStr = firstPart.slice(0, 2);
+        const monthStr = firstPart.slice(2, 4);
+        
+        const revYearMap = { 'K': '1', 'C': '2', 'Y': '3', 'J': '4', 'E': '5', 'G': '6', 'B': '7', 'T': '8', 'U': '9', '0': '0' };
+        const revMonthMap = {
+            'J1': '1월', 'F1': '2월', 'M1': '3월', 'A1': '4월', 'M2': '5월', 'J2': '6월',
+            'J3': '7월', 'A2': '8월', 'S1': '9월', 'O1': '10월', 'N1': '11월', 'D1': '12월'
+        };
+        
+        const y1 = revYearMap[yearStr[0]] || yearStr[0];
+        const y2 = revYearMap[yearStr[1]] || yearStr[1];
+        const month = revMonthMap[monthStr] || monthStr;
+        
+        const day = parts[1];
+        const seq = parts[2];
+        
+        let desc = `20${y1}${y2}년 ${month} ${day}일 (등록순번: ${seq})`;
+        if (parts.length > 3) desc += ` - 옵션: ${parts[3]}`;
+        return desc;
+    };
+
     /* --- 4. Product List & Drawer Logic --- */
     let productList = [];
     let marketExportsMap = {}; // { productId: [{marketCode, exportDate}] }
@@ -1678,6 +1706,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const nextSeq = maxSeq + 1;
         inputMcode.value = window.generateManagementCode(selectedDate, nextSeq);
+        inputMcode.title = window.decodeManagementCode(inputMcode.value);
         if (addProductMcodeBadge) addProductMcodeBadge.innerText = inputMcode.value;
     }
 
@@ -2366,6 +2395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Populate shared form fields
             inputDate.value = dateStr;
             inputMcode.value = isParentRow ? baseMcode : getBaseMcode(mcodeStr);
+            inputMcode.title = window.decodeManagementCode(inputMcode.value);
             inputCategoryEn.value = catEn;
             inputCategoryKo.value = catKo;
             inputCategorySearch.value = catEn && catKo ? `${catEn} / ${catKo}` : '';
