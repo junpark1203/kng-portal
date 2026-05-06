@@ -1743,7 +1743,6 @@ textarea.form-input {
   grid-template-columns: 1fr 380px;
   gap: 24px;
   padding: 24px;
-  overflow-y: auto;
   flex: 1;
 }
 
