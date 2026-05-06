@@ -870,81 +870,150 @@ document.addEventListener('DOMContentLoaded', async () => {
         const commTotal = result.breakdown ? Object.values(result.breakdown).reduce((s,f) => s + f.amount, 0) : 0;
 
         content.innerHTML = `
-            <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
-                
-                <!-- Left Column -->
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-                    <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-calculator"></i> 수동 가격 조정</div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
-                            <div class="form-group">
-                                <label class="form-label">할인율 (%)</label>
-                                <input type="number" class="form-control side-input-discount" value="${result._empty ? '' : result.discountRate.toFixed(1)}" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">판매가 (${curr})</label>
-                                <input type="number" class="form-control side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">순수익 (KRW)</label>
-                                <input type="number" class="form-control side-input-profit" value="${result._empty ? '' : result.marginKrw}">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">마진율 (%)</label>
-                                <input type="number" class="form-control side-input-margin" value="${result._empty ? '' : (result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0).toFixed(1)}" step="0.1">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>
-                        ${renderBreakdownPanel(item, result)}
+            <!-- Product Summary Card -->
+            <div class="panel surface-container-lowest" style="display: flex; gap: 1.5rem; align-items: center; padding: 1.5rem; margin-bottom: 0;">
+                <img src="${item.opt1Image || 'https://via.placeholder.com/100'}" alt="Thumb" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high);">
+                <div style="flex: 1;">
+                    <h3 class="title-md">${item.name || 'No Name'}</h3>
+                    <div class="body-sm text-secondary" style="margin-top: 0.25rem;">
+                        <span class="badge" style="background: var(--surface-container-high); color: var(--on-surface); padding: 4px 8px; border-radius: 4px; font-weight: 500;">SKU: ${item.mcode}</span>
+                        <span style="margin-left: 1rem;">매입원가: KRW ${costKrw.toLocaleString()}</span>
+                        <span style="margin-left: 1rem;">적용 환율: ${result.exchangeRate}</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Right Column -->
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-                    <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-receipt"></i> 비용 구조 요약</div>
-                        <div class="pc-cost-list">
-                            <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
-                            <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
-                            <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
-                            <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
-                            <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
-                            <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
-                            <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
-                            <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
-                            <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
-                            <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
-                            <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
+            <!-- Tab Navigation -->
+            <div class="pc-detail-tabs" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--surface-container-high); margin-bottom: 0.5rem;">
+                <button class="pc-tab-btn active" data-target="pc-tab-calc" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: 600;">💰 가격 시뮬레이션</button>
+                <button class="pc-tab-btn" data-target="pc-tab-info" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--secondary); font-weight: 500; border-bottom: 2px solid transparent;">📦 상품 정보</button>
+            </div>
+
+            <!-- Tab Content: Price Calc -->
+            <div class="pc-tab-pane" id="pc-tab-calc" style="display: block;">
+                <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
+                    
+                    <!-- Left Column -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-calculator"></i> 수동 가격 조정</div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                                <div class="form-group">
+                                    <label class="form-label">할인율 (%)</label>
+                                    <input type="number" class="form-control side-input-discount" value="${result._empty ? '' : result.discountRate.toFixed(1)}" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">판매가 (${curr})</label>
+                                    <input type="number" class="form-control side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">순수익 (KRW)</label>
+                                    <input type="number" class="form-control side-input-profit" value="${result._empty ? '' : result.marginKrw}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">마진율 (%)</label>
+                                    <input type="number" class="form-control side-input-margin" value="${result._empty ? '' : (result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0).toFixed(1)}" step="0.1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>
+                            ${renderBreakdownPanel(item, result)}
                         </div>
                     </div>
 
-                    <div class="form-card">
-                        <div class="form-card-title"><i class="fa-solid fa-sliders"></i> 개별 설정 재정의</div>
-                        <div class="form-group">
-                            <label class="form-label">수수료 프리셋</label>
-                            <select class="form-select pc-fee-override">${feeOptions}</select>
+                    <!-- Right Column -->
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-receipt"></i> 비용 구조 요약</div>
+                            <div class="pc-cost-list">
+                                <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
+                                <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
+                                <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
+                                <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
+                                <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
+                                <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
+                                <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
+                                <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
+                                <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
+                                <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
+                                <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">프로모션 프리셋</label>
-                            <select class="form-select pc-promo-override">${promoOptions}</select>
+
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-sliders"></i> 개별 설정 재정의</div>
+                            <div class="form-group">
+                                <label class="form-label">수수료 프리셋</label>
+                                <select class="form-select pc-fee-override">${feeOptions}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">프로모션 프리셋</label>
+                                <select class="form-select pc-promo-override">${promoOptions}</select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">배송비 요율표</label>
+                                <select class="form-select pc-ship-override">${shipOptions}</select>
+                            </div>
+                            <button type="button" class="btn-primary w-100 btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장</button>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">배송비 요율표</label>
-                            <select class="form-select pc-ship-override">${shipOptions}</select>
-                        </div>
-                        <button type="button" class="btn-primary w-100 btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장</button>
                     </div>
                 </div>
+            </div>
 
+            <!-- Tab Content: Product Info -->
+            <div class="pc-tab-pane" id="pc-tab-info" style="display: none;">
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-image"></i> 이미지 갤러리</div>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px;">
+                            ${[item.opt1Image, item.opt2Image, item.opt3Image, item.opt4Image, item.opt5Image]
+                                .filter(img => img && img.trim() !== '')
+                                .map(img => `<img src="${img}" style="width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">`)
+                                .join('') || '<span class="text-secondary">등록된 이미지가 없습니다.</span>'}
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-bullhorn"></i> 공지사항 (Notice)</div>
+                            <div style="white-space: pre-wrap; font-size: 0.875rem; line-height: 1.5; color: var(--text-main); background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px; min-height: 200px;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
+                        </div>
+                        <div class="form-card">
+                            <div class="form-card-title"><i class="fa-solid fa-align-left"></i> 상세설명 (Description)</div>
+                            <div style="white-space: pre-wrap; font-size: 0.875rem; line-height: 1.5; color: var(--text-main); background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px; min-height: 200px;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
         // Switch view from list to detail
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.getElementById('view-price-calc-detail').classList.add('active');
+
+        // Bind Tab Switching Events
+        const tabBtns = content.querySelectorAll('.pc-tab-btn');
+        const tabPanes = content.querySelectorAll('.pc-tab-pane');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.color = 'var(--secondary)';
+                    b.style.borderBottom = '2px solid transparent';
+                    b.style.fontWeight = '500';
+                });
+                tabPanes.forEach(p => p.style.display = 'none');
+                
+                btn.classList.add('active');
+                btn.style.color = 'var(--primary)';
+                btn.style.borderBottom = '2px solid var(--primary)';
+                btn.style.fontWeight = '600';
+                
+                const targetId = btn.getAttribute('data-target');
+                document.getElementById(targetId).style.display = 'block';
+            });
+        });
 
         // Bind Events
         const feeSel = content.querySelector('.pc-fee-override');
