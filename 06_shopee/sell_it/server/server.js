@@ -387,6 +387,21 @@ app.get('/api/exchange-rates', (req, res) => {
 // ==========================================
 
 // 전체 상품 조회
+app.get('/api/debug/uploads', (req, res) => {
+    try {
+        const fs = require('fs');
+        const files = fs.readdirSync(UPLOAD_DIR);
+        res.json({
+            upload_dir: UPLOAD_DIR,
+            resolved_path: path.resolve(UPLOAD_DIR),
+            file_count: files.length,
+            files: files.slice(-50) // Return up to 50 files to avoid massive JSON
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message, upload_dir: UPLOAD_DIR });
+    }
+});
+
 app.get('/api/products', (req, res) => {
     db.all('SELECT * FROM products ORDER BY date DESC, createdAt DESC', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
