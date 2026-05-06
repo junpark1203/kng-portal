@@ -1962,7 +1962,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const div = document.createElement('div');
             div.style.cssText = "position: relative; border: 1px solid var(--outline-variant); border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: var(--surface-container-highest); display: flex; align-items: center; justify-content: center;";
             div.innerHTML = `
-                <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display = 'block';">
+                <img src="${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display = 'block';">
                 <div style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; display: none; pointer-events: none;"></div>
                 <button type="button" class="btn-remove-image" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-xmark" style="font-size: 0.7rem;"></i>
@@ -2248,7 +2248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const optMcode = `${baseMcode}-${suffix}`;
             const imgPreview = opt.imageUrl
                 ? `<div style="position: relative; display: inline-block;">
-                       <img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display='block';">
+                       <img src="${opt.imageUrl}${opt.imageUrl.includes('?') ? '&' : '?'}t=${Date.now()}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display='block';">
                        <div style="position: absolute; bottom: 2px; left: 2px; background: rgba(0,0,0,0.6); color: white; font-size: 0.5rem; padding: 1px 3px; border-radius: 2px; display: none; pointer-events: none;"></div>
                        <button type="button" class="opt-image-delete-btn" data-opt-idx="${idx}" style="position: absolute; top: -6px; right: -6px; background: white; border: 1px solid var(--outline-variant); color: #dc3545; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.7rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2); padding: 0; z-index: 2;" title="이미지 삭제"><i class="fa-solid fa-xmark"></i></button>
                    </div>`
