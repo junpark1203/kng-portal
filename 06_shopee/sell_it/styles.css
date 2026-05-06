@@ -1436,3 +1436,234 @@ textarea.form-input {
   transition: width 0.3s ease;
   min-width: 0;
 }
+
+/* =========================================
+   Product Variant / Option Management
+========================================= */
+
+/* Toggle Switch */
+.option-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface-container-low);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+.option-toggle-wrapper:hover {
+  background: var(--surface-container-high);
+}
+.option-toggle-wrapper.active {
+  border-color: var(--primary);
+  background: var(--surface-container-lowest);
+}
+
+.toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-container-highest);
+  border-radius: 12px;
+  transition: background 0.25s ease;
+  cursor: pointer;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-switch input:checked + .toggle-track {
+  background: var(--primary);
+}
+.toggle-switch input:checked + .toggle-track::after {
+  transform: translateX(20px);
+}
+
+/* Option Table */
+.option-section {
+  margin-top: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.option-table-wrapper {
+  border: 1px solid var(--surface-container-high);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.option-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.option-table th {
+  background: var(--surface-container-low);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--surface-container-high);
+}
+.option-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--surface-container-low);
+  vertical-align: middle;
+  font-size: 0.875rem;
+}
+.option-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.option-table tbody tr {
+  transition: background 0.15s ease;
+}
+.option-table tbody tr:hover {
+  background: var(--surface-container-lowest);
+}
+
+/* Option Row Inputs */
+.option-table .opt-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--surface-container-high);
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-main);
+  background: var(--surface-container-lowest);
+  transition: var(--transition);
+}
+.option-table .opt-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 6, 102, 0.08);
+}
+.option-table .opt-input.readonly-mcode {
+  background: var(--surface-container-high);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+.option-table .opt-input-price {
+  width: 110px;
+  text-align: right;
+}
+
+/* Option Image Thumbnail */
+.opt-image-cell {
+  width: 52px;
+  text-align: center;
+}
+.opt-image-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid var(--surface-container-high);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.opt-image-thumb:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 6, 102, 0.1);
+}
+.opt-image-placeholder {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 2px dashed var(--surface-container-highest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-disabled);
+  font-size: 1rem;
+  transition: var(--transition);
+  background: var(--surface-container-low);
+}
+.opt-image-placeholder:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--surface-container-lowest);
+}
+
+/* Option Delete Button */
+.opt-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-disabled);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: var(--transition);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.opt-delete-btn:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+/* Add Option Button */
+.btn-add-option {
+  width: 100%;
+  padding: 10px;
+  border: 2px dashed var(--surface-container-highest);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-add-option:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(0, 6, 102, 0.03);
+}
+
+/* Option Count Badge */
+.opt-count-badge {
+  background: var(--primary);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 8px;
+}

@@ -618,15 +618,9 @@
                     <label class="label-md">상품명(한글)</label>
                     <input type="text" id="input-name-ko" class="form-control" placeholder="예: 프리미엄 무선 마우스" required>
                 </div>
-                <div class="form-group row" style="display: flex; gap: 1rem;">
-                    <div class="col" style="flex: 1;">
-                        <label class="label-md">상품명(영문)</label>
-                        <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
-                    </div>
-                    <div class="col" style="flex: 1;">
-                        <label class="label-md">옵션명 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(옵션 상품인 경우 입력)</span></label>
-                        <input type="text" id="input-option-name" class="form-control" placeholder="e.g. Red / M">
-                    </div>
+                <div class="form-group">
+                    <label class="label-md">상품명(영문)</label>
+                    <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
                 </div>
                 <div class="form-group row" style="display: flex; gap: 1rem;">
                     <div class="col" style="flex: 1;">
@@ -642,6 +636,46 @@
                         <input type="number" id="input-packaging-krw" class="form-control" placeholder="0" value="0">
                     </div>
                 </div>
+
+                <!-- 옵션(Variant) 관리 섹션 -->
+                <div class="form-group" id="option-management-section">
+                    <div class="option-toggle-wrapper" id="option-toggle-wrapper">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="option-toggle">
+                            <span class="toggle-track"></span>
+                        </label>
+                        <div>
+                            <span class="label-md" style="font-weight: 600;">이 상품에 옵션이 있습니다</span>
+                            <span class="opt-count-badge" id="opt-count-badge" style="display: none;">0</span>
+                        </div>
+                    </div>
+
+                    <!-- 옵션 테이블 (토글 ON 시 표시) -->
+                    <div class="option-section" id="option-section" style="display: none;">
+                        <div class="option-table-wrapper">
+                            <table class="option-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 140px;">관리코드</th>
+                                        <th>옵션명</th>
+                                        <th style="width: 120px;">매입가(KRW)</th>
+                                        <th class="opt-image-cell">이미지</th>
+                                        <th style="width: 36px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="option-table-body">
+                                    <!-- 동적으로 렌더링 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn-add-option" id="btn-add-option">
+                            <i class="fa-solid fa-plus"></i> 옵션 추가
+                        </button>
+                        <!-- 옵션별 이미지 업로드용 hidden input -->
+                        <input type="file" id="opt-image-file-input" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
                 <div class="form-group row">
                     <div class="col">
                         <label class="label-md">적용환율</label>

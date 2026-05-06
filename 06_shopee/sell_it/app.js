@@ -1465,7 +1465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 html += `
-                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest);" data-parent-mcode="${item.mcode}">
+                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest); cursor: pointer;" data-parent-mcode="${item.mcode}">
                         <td style="text-align: center;" class="td-checkbox">
                             <input type="checkbox" class="parent-checkbox" data-parent-mcode="${item.mcode}">
                         </td>
@@ -1551,6 +1551,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('#view-product-list .product-row').forEach(row => {
             attachRowClickEvent(row);
         });
+        // Attach parent (group header) row click events
+        document.querySelectorAll('#view-product-list .product-parent-row').forEach(row => {
+            attachRowClickEvent(row);
+        });
     }
     const btnAddProduct = document.getElementById('btn-add-product');
     const drawerOverlay = document.getElementById('add-product-overlay');
@@ -1569,7 +1573,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categoryAutocompleteList = document.getElementById('category-autocomplete-list');
     const inputNameKo = document.getElementById('input-name-ko');
     const inputNameEn = document.getElementById('input-name-en');
-    const inputOptionName = document.getElementById('input-option-name');
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -1579,11 +1582,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputLink = document.getElementById('input-link');
     const inputNote = document.getElementById('input-note');
 
+    // Option (Variant) UI Elements
+    const optionToggle = document.getElementById('option-toggle');
+    const optionToggleWrapper = document.getElementById('option-toggle-wrapper');
+    const optionSection = document.getElementById('option-section');
+    const optionTableBody = document.getElementById('option-table-body');
+    const btnAddOption = document.getElementById('btn-add-option');
+    const optCountBadge = document.getElementById('opt-count-badge');
+    const optImageFileInput = document.getElementById('opt-image-file-input');
+
     let currentEditingRow = null;
     let originalEditDate = null;
     let originalEditMcode = null;
     let currentImages = [];
     let currentVideo = '';
+    let currentOptions = []; // [{optionName, priceKrw, imageUrl, imageFile}]
+    let currentOptionImageTarget = -1; // index of option being targeted for image upload
+    let editingGroupMcodes = []; // mcodes of existing option products being edited
 
     // Media UI Elements
     const inputImagesFile = document.getElementById('input-images-file');
@@ -1625,6 +1640,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputDate.addEventListener('change', updateMcodePreview);
     }
 
+    function resetOptionState() {
+        currentOptions = [];
+        editingGroupMcodes = [];
+        currentOptionImageTarget = -1;
+        if (optionToggle) optionToggle.checked = false;
+        if (optionSection) optionSection.style.display = 'none';
+        if (optionToggleWrapper) optionToggleWrapper.classList.remove('active');
+        if (optCountBadge) { optCountBadge.innerText = '0'; optCountBadge.style.display = 'none'; }
+        if (optionTableBody) optionTableBody.innerHTML = '';
+        // Show main price field again
+        const priceCol = inputPriceKrw.closest('.col');
+        if (priceCol) priceCol.style.display = 'flex';
+        inputPriceKrw.required = true;
+    }
+
     function openDrawer(isEdit = false) {
         if (!isEdit) {
             addProductForm.reset();
@@ -1634,6 +1664,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentImages = [];
             currentVideo = '';
             renderMediaPreviews();
+            resetOptionState();
             
             const today = new Date().toISOString().split('T')[0];
             inputDate.value = today;
@@ -1665,6 +1696,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentImages = [];
             currentVideo = '';
             renderMediaPreviews();
+            resetOptionState();
         }
     }
 
@@ -1831,6 +1863,107 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    /* --- Option (Variant) Management Logic --- */
+    function renderOptionRows() {
+        if (!optionTableBody) return;
+        const baseMcode = inputMcode.value || '---';
+        optionTableBody.innerHTML = currentOptions.map((opt, idx) => {
+            const suffix = String(idx + 1).padStart(2, '0');
+            const optMcode = `${baseMcode}-${suffix}`;
+            const imgHtml = opt.imageUrl
+                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경">`
+                : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="클릭하여 이미지 추가"><i class="fa-solid fa-camera"></i></div>`;
+            return `
+                <tr data-opt-idx="${idx}">
+                    <td><input type="text" class="opt-input readonly-mcode" value="${optMcode}" readonly></td>
+                    <td><input type="text" class="opt-input opt-name-input" data-opt-idx="${idx}" value="${opt.optionName || ''}" placeholder="예: Red / M"></td>
+                    <td><input type="number" class="opt-input opt-input-price opt-price-input" data-opt-idx="${idx}" value="${opt.priceKrw || ''}" placeholder="0"></td>
+                    <td class="opt-image-cell">${imgHtml}</td>
+                    <td><button type="button" class="opt-delete-btn" data-opt-idx="${idx}" title="삭제"><i class="fa-solid fa-trash-can"></i></button></td>
+                </tr>`;
+        }).join('');
+
+        if (optCountBadge) {
+            optCountBadge.innerText = currentOptions.length;
+            optCountBadge.style.display = currentOptions.length > 0 ? 'inline' : 'none';
+        }
+
+        optionTableBody.querySelectorAll('.opt-name-input').forEach(inp => {
+            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].optionName = e.target.value; });
+        });
+        optionTableBody.querySelectorAll('.opt-price-input').forEach(inp => {
+            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].priceKrw = parseInt(e.target.value) || 0; });
+        });
+        optionTableBody.querySelectorAll('.opt-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { currentOptions.splice(parseInt(e.currentTarget.dataset.optIdx), 1); renderOptionRows(); });
+        });
+        optionTableBody.querySelectorAll('.opt-image-thumb, .opt-image-placeholder').forEach(el => {
+            el.addEventListener('click', (e) => { currentOptionImageTarget = parseInt(e.currentTarget.dataset.optIdx); optImageFileInput.click(); });
+        });
+    }
+
+    if (optionToggle) {
+        optionToggle.addEventListener('change', () => {
+            const isOn = optionToggle.checked;
+            optionSection.style.display = isOn ? 'block' : 'none';
+            optionToggleWrapper.classList.toggle('active', isOn);
+            if (isOn && currentOptions.length === 0) {
+                currentOptions.push({ optionName: '', priceKrw: 0, imageUrl: '', imageFile: null });
+                renderOptionRows();
+            }
+            // Hide main price input when options are active (each option has its own price)
+            const priceCol = inputPriceKrw.closest('.col');
+            if (priceCol) priceCol.style.display = isOn ? 'none' : 'flex';
+            // Toggle required so form validation doesn't block when hidden
+            inputPriceKrw.required = !isOn;
+        });
+    }
+
+    if (optionToggleWrapper) {
+        optionToggleWrapper.addEventListener('click', (e) => {
+            if (e.target.closest('.toggle-switch')) return;
+            optionToggle.checked = !optionToggle.checked;
+            optionToggle.dispatchEvent(new Event('change'));
+        });
+    }
+
+    if (btnAddOption) {
+        btnAddOption.addEventListener('click', () => {
+            currentOptions.push({ optionName: '', priceKrw: 0, imageUrl: '', imageFile: null });
+            renderOptionRows();
+            setTimeout(() => {
+                const inputs = optionTableBody.querySelectorAll('.opt-name-input');
+                if (inputs.length > 0) inputs[inputs.length - 1].focus();
+            }, 50);
+        });
+    }
+
+    if (optImageFileInput) {
+        optImageFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file || currentOptionImageTarget < 0) return;
+            const mcodeStr = inputMcode.value;
+            if (!mcodeStr) { alert('관리코드가 생성되지 않았습니다.'); return; }
+            const suffix = String(currentOptionImageTarget + 1).padStart(2, '0');
+            const optMcode = `${mcodeStr}-${suffix}`;
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('mcode', optMcode);
+                formData.append('index', 1);
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+                const res = await fetch(`${API_BASE}/products/upload-image`, { method: 'POST', body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    currentOptions[currentOptionImageTarget].imageUrl = data.url;
+                    renderOptionRows();
+                } else { throw new Error(data.error || '업로드 실패'); }
+            } catch (err) { alert('옵션 이미지 업로드 오류: ' + err.message); }
+            finally { optImageFileInput.value = ''; currentOptionImageTarget = -1; }
+        });
+    }
+
     /* --- Autocomplete Logic --- */
     function renderAutocomplete(query) {
         if (!query) {
@@ -1907,10 +2040,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mcodeStr = inputMcode.value;
             const catEn = inputCategoryEn.value;
             const catKo = inputCategoryKo.value;
-            const catSearch = inputCategorySearch.value;
             const nameKo = inputNameKo.value;
             const nameEn = inputNameEn.value;
-            const optionName = inputOptionName ? inputOptionName.value : '';
             const priceKrw = inputPriceKrw.value;
             const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
             const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
@@ -1925,77 +2056,83 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Duplicate Check (Array based)
-            let isDuplicate = false;
-            if (originalEditMcode !== mcodeStr) {
-                if (productList.find(p => p.mcode === mcodeStr)) {
-                    isDuplicate = true;
+            const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
+
+            // Validate options
+            if (hasOptions) {
+                for (let i = 0; i < currentOptions.length; i++) {
+                    if (!currentOptions[i].optionName || !currentOptions[i].optionName.trim()) {
+                        alert(`옵션 ${i + 1}의 옵션명을 입력해주세요.`);
+                        return;
+                    }
                 }
             }
 
-            if (isDuplicate) {
-                alert(`오류: 관리코드(${mcodeStr})가 이미 존재합니다. 날짜를 변경하거나 새로고침해 주세요.`);
-                return;
-            }
-
-            const productData = {
+            const baseProductData = {
                 date: dateStr,
-                mcode: mcodeStr,
-                catEn: catEn,
-                catKo: catKo,
-                nameKo: nameKo,
-                nameEn: nameEn,
-                optionName: optionName,
-                priceKrw: parseInt(priceKrw, 10) || 0,
+                catEn, catKo, nameKo, nameEn,
                 domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
                 packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
                 rate: parseFloat(rate) || 1,
-                rateDate: rateDate,
-                weight: parseInt(weight, 10) || 0,
-                link: link,
-                note: note,
-                images: JSON.stringify(currentImages),
-                video: currentVideo
+                rateDate, weight: parseInt(weight, 10) || 0,
+                link, note, video: currentVideo
             };
 
             try {
-                if (currentEditingRow && originalEditMcode) {
-                    // Update existing via API
-                    const existing = productList.find(p => p.mcode === originalEditMcode);
-                    if (existing && existing.id) {
-                        const isChanged = (
-                            (existing.date || '') !== productData.date ||
-                            (existing.mcode || '') !== productData.mcode ||
-                            (existing.catEn || '') !== productData.catEn ||
-                            (existing.catKo || '') !== productData.catKo ||
-                            (existing.nameKo || '') !== productData.nameKo ||
-                            (existing.nameEn || '') !== productData.nameEn ||
-                            Number(existing.priceKrw || 0) !== productData.priceKrw ||
-                            Number(existing.domesticShipping ?? 3000) !== productData.domesticShipping ||
-                            Number(existing.packagingKrw || 0) !== productData.packagingKrw ||
-                            Number(existing.rate || 1) !== productData.rate ||
-                            (existing.rateDate || '') !== productData.rateDate ||
-                            Number(existing.weight || 0) !== productData.weight ||
-                            (existing.link || '') !== productData.link ||
-                            (existing.note || '') !== productData.note
-                        );
-
-                        if (!isChanged) {
-                            closeDrawer();
-                            return;
+                if (hasOptions) {
+                    // === Multi-option save ===
+                    // Delete old group products if editing
+                    if (editingGroupMcodes.length > 0) {
+                        const oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode));
+                        for (const op of oldProducts) {
+                            if (op.id) await api.deleteProduct(op.id);
                         }
+                    }
 
-                        const exportsForProduct = marketExportsMap[existing.id] || [];
-                        if (exportsForProduct.length > 0) {
-                            const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
-                            const confirmMsg = `⚠️ 이 상품은 현재 [${marketNames}] 마켓의 Price Calculation에 연동되어 있습니다.nn여기서 정보를 수정하시면 해당 마켓의 마진 계산에도 즉시 변경 사항이 반영됩니다.n수정본을 저장하시겠습니까?`;
-                            if (!confirm(confirmMsg)) return;
-                        }
-                        await api.updateProduct(existing.id, productData);
+                    // Create each option as a separate product
+                    for (let i = 0; i < currentOptions.length; i++) {
+                        const suffix = String(i + 1).padStart(2, '0');
+                        const optMcode = `${mcodeStr}-${suffix}`;
+                        const optData = {
+                            ...baseProductData,
+                            mcode: optMcode,
+                            optionName: currentOptions[i].optionName,
+                            priceKrw: parseInt(currentOptions[i].priceKrw, 10) || 0,
+                            images: currentOptions[i].imageUrl ? JSON.stringify([currentOptions[i].imageUrl]) : '[]'
+                        };
+                        await api.createProduct(optData);
                     }
                 } else {
-                    // Create new via API
-                    await api.createProduct(productData);
+                    // === Single product save (no options) ===
+                    // Duplicate Check
+                    if (originalEditMcode !== mcodeStr) {
+                        if (productList.find(p => p.mcode === mcodeStr)) {
+                            alert(`오류: 관리코드(${mcodeStr})가 이미 존재합니다.`);
+                            return;
+                        }
+                    }
+
+                    const productData = {
+                        ...baseProductData,
+                        mcode: mcodeStr,
+                        optionName: '',
+                        priceKrw: parseInt(priceKrw, 10) || 0,
+                        images: JSON.stringify(currentImages)
+                    };
+
+                    if (currentEditingRow && originalEditMcode) {
+                        const existing = productList.find(p => p.mcode === originalEditMcode);
+                        if (existing && existing.id) {
+                            const exportsForProduct = marketExportsMap[existing.id] || [];
+                            if (exportsForProduct.length > 0) {
+                                const marketNames = exportsForProduct.map(e => e.marketCode.toUpperCase()).join(', ');
+                                if (!confirm(`⚠️ 이 상품은 [${marketNames}] 마켓에 연동되어 있습니다.\n수정본을 저장하시겠습니까?`)) return;
+                            }
+                            await api.updateProduct(existing.id, productData);
+                        }
+                    } else {
+                        await api.createProduct(productData);
+                    }
                 }
 
                 // Reload from API
@@ -2015,61 +2152,104 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.target.closest('a') || e.target.closest('input[type="checkbox"]')) return;
 
             currentEditingRow = row;
+            const mcodeStr = row.querySelector('.prod-mcode')?.innerText || '';
             
-            // Extract values safely
-            const dateStr = row.querySelector('.prod-date').innerText;
-            const mcodeStr = row.querySelector('.prod-mcode').innerText;
-            const tdCat = row.querySelector('[data-cat-en]');
-            const catEn = tdCat ? tdCat.dataset.catEn : (row.dataset.catEn || '');
-            const catKo = tdCat ? tdCat.dataset.catKo : (row.dataset.catKo || '');
-            const nameKo = row.querySelector('.prod-name-ko').innerText;
-            const nameEn = row.querySelector('.prod-name-en').innerText;
-            const priceKrwText = row.querySelector('.prod-price-krw').innerText;
-            const rate = row.querySelector('.prod-rate').innerText;
-            const weightText = row.querySelector('.prod-weight').innerText;
-            const linkHref = row.querySelector('.prod-link').getAttribute('href');
-            const note = row.querySelector('.prod-note').innerText;
-            const rateDateStr = row.dataset.rateDate || '';
+            // Check if this is a parent row (group product)
+            const isParentRow = row.classList.contains('product-parent-row');
+            const baseMcode = isParentRow ? row.dataset.parentMcode : mcodeStr;
+            
+            // Find the product(s)
+            let productObj = null;
+            let childProducts = [];
+            
+            if (isParentRow) {
+                // Load all children for this group
+                childProducts = productList.filter(p => getBaseMcode(p.mcode) === baseMcode && p.mcode !== baseMcode);
+                if (childProducts.length === 0) childProducts = productList.filter(p => getBaseMcode(p.mcode) === baseMcode);
+                productObj = childProducts[0]; // Use first child for shared fields
+            } else {
+                productObj = productList.find(pp => pp.mcode === mcodeStr);
+                // Check if this single row is part of a group
+                const base = getBaseMcode(mcodeStr);
+                const siblings = productList.filter(p => getBaseMcode(p.mcode) === base);
+                if (siblings.length > 1 || (productObj && productObj.optionName)) {
+                    childProducts = siblings;
+                    productObj = siblings[0];
+                }
+            }
 
-            // Populate form
+            if (!productObj) return;
+
+            // Extract shared values from product data
+            const dateStr = productObj.date || '';
+            const catEn = productObj.catEn || '';
+            const catKo = productObj.catKo || '';
+
+            // Populate shared form fields
             inputDate.value = dateStr;
-            inputMcode.value = mcodeStr;
+            inputMcode.value = isParentRow ? baseMcode : getBaseMcode(mcodeStr);
             inputCategoryEn.value = catEn;
             inputCategoryKo.value = catKo;
             inputCategorySearch.value = catEn && catKo ? `${catEn} / ${catKo}` : '';
-            inputNameKo.value = nameKo;
-            inputNameEn.value = nameEn;
-            inputPriceKrw.value = priceKrwText.replace(/[^0-9]/g, '');
-            // Load domesticShipping and packagingKrw from product data
-            const productObj = productList.find(pp => pp.mcode === mcodeStr);
-            if (inputOptionName) inputOptionName.value = productObj ? (productObj.optionName || '') : '';
-            if (inputDomesticShipping) inputDomesticShipping.value = productObj ? (productObj.domesticShipping ?? 3000) : 3000;
-            if (inputPackagingKrw) inputPackagingKrw.value = productObj ? (productObj.packagingKrw || 0) : 0;
-            
-            // Load Media
-            if (productObj && productObj.images) {
-                try {
-                    currentImages = typeof productObj.images === 'string' ? JSON.parse(productObj.images) : productObj.images;
-                } catch(e) {
-                    currentImages = [];
-                }
-            } else {
-                currentImages = [];
-            }
-            if (!Array.isArray(currentImages)) currentImages = [];
-            currentVideo = productObj ? (productObj.video || '') : '';
-            renderMediaPreviews();
-
-            inputRate.value = rate.replace(/,/g, '');
-            inputRateDate.value = rateDateStr;
-            inputWeight.value = weightText.replace(/[^0-9]/g, '');
-            inputLink.value = linkHref === '#' ? '' : linkHref;
-            inputNote.value = note === '-' ? '' : note;
+            inputNameKo.value = productObj.nameKo || '';
+            inputNameEn.value = productObj.nameEn || '';
+            if (inputDomesticShipping) inputDomesticShipping.value = productObj.domesticShipping ?? 3000;
+            if (inputPackagingKrw) inputPackagingKrw.value = productObj.packagingKrw || 0;
+            inputRate.value = String(productObj.rate || '').replace(/,/g, '');
+            inputRateDate.value = productObj.rateDate || '';
+            inputWeight.value = productObj.weight || '';
+            inputLink.value = productObj.link === '#' ? '' : (productObj.link || '');
+            inputNote.value = productObj.note === '-' ? '' : (productObj.note || '');
 
             originalEditDate = dateStr;
-            originalEditMcode = mcodeStr;
+            originalEditMcode = isParentRow ? baseMcode : mcodeStr;
 
+            // Handle options vs single product
+            if (childProducts.length > 1 || (childProducts.length === 1 && childProducts[0].optionName)) {
+                // Load as option group
+                resetOptionState();
+                editingGroupMcodes = childProducts.map(c => c.mcode);
+                currentOptions = childProducts.map(c => {
+                    let imgUrl = '';
+                    try {
+                        const imgs = typeof c.images === 'string' ? JSON.parse(c.images) : c.images;
+                        if (Array.isArray(imgs) && imgs.length > 0) imgUrl = imgs[0];
+                    } catch(e) {}
+                    return { optionName: c.optionName || '', priceKrw: c.priceKrw || 0, imageUrl: imgUrl, imageFile: null };
+                });
+                currentImages = []; // Parent images not loaded for option groups for now
+                currentVideo = productObj.video || '';
+                
+                optionToggle.checked = true;
+                optionSection.style.display = 'block';
+                optionToggleWrapper.classList.add('active');
+                const priceCol = inputPriceKrw.closest('.col');
+                if (priceCol) priceCol.style.display = 'none';
+                renderOptionRows();
+            } else {
+                // Single product edit
+                resetOptionState();
+                inputPriceKrw.value = String(productObj.priceKrw || '').replace(/[^0-9]/g, '');
+                
+                if (productObj.images) {
+                    try { currentImages = typeof productObj.images === 'string' ? JSON.parse(productObj.images) : productObj.images; }
+                    catch(e) { currentImages = []; }
+                } else { currentImages = []; }
+                if (!Array.isArray(currentImages)) currentImages = [];
+                currentVideo = productObj.video || '';
+            }
+            
+            renderMediaPreviews();
             openDrawer(true);
+        });
+    }
+
+    // Also handle parent row clicks
+    function attachParentRowClickEvent(row) {
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('a') || e.target.closest('input[type="checkbox"]')) return;
+            attachRowClickEvent(row);
+            // Trigger the click handler we just attached
         });
     }
 

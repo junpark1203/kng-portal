@@ -454,6 +454,32 @@ app.post('/api/products/delete', (req, res) => {
     });
 });
 
+// 상품 이미지 업로드
+const productImageStorage = multer.diskStorage({
+    destination: function(req, file, cb) { cb(null, UPLOAD_DIR); },
+    filename: function(req, file, cb) {
+        const mcode = req.body.mcode || 'UNKNOWN';
+        const index = req.body.index || '1';
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${mcode}-${index}${ext}`);
+    }
+});
+const productImageUpload = multer({
+    storage: productImageStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: function(req, file, cb) {
+        const allowed = /jpeg|jpg|png|gif|webp|bmp/;
+        if (allowed.test(path.extname(file.originalname).toLowerCase()) && allowed.test(file.mimetype)) return cb(null, true);
+        cb(new Error('이미지 파일만 업로드 가능합니다.'));
+    }
+});
+
+app.post('/api/products/upload-image', productImageUpload.single('image'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: '이미지 파일이 없습니다.' });
+    const url = `/api/images/${req.file.filename}`;
+    res.json({ url, filename: req.file.filename });
+});
+
 // ==========================================
 // Market Exports API
 // ==========================================
