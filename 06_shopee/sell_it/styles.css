@@ -354,6 +354,8 @@ body {
 .table-container {
   width: 100%;
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 230px);
   margin-top: 1.5rem;
   border-radius: var(--radius-md);
   background-color: var(--surface-container-highest); /* Creates the ghost frame */
@@ -391,7 +393,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   position: sticky;
-  top: 89px; /* 1px overlap under topbar to prevent gaps */
+  top: 0;
   z-index: 5;
   border-bottom: 2px solid var(--surface-container-highest);
 }
