@@ -1012,12 +1012,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label class="label-md" style="margin-bottom: 8px;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
-                                    <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 220px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.description || '<span class="text-secondary">상세설명이 없습니다.</span>'}</div>
+                                    <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 220px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.description || ''}</textarea>
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label class="label-md" style="margin-bottom: 8px;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
-                                    <div style="white-space: pre-wrap; font-size: 0.85rem; line-height: 1.6; color: var(--on-surface); background: var(--surface-container-high); padding: 1rem; border-radius: 8px; min-height: 180px; max-height: 400px; overflow-y: auto; opacity: 0.85;">${item.notice || '<span class="text-secondary">공지사항이 없습니다.</span>'}</div>
+                                    <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 180px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.notice || ''}</textarea>
                                 </div>
                             </div>
                             
@@ -1034,7 +1034,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <label class="label-md" style="margin-bottom: 8px;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                                            <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                            <div style="display: flex; align-items: center; gap: 4px;">
+                                                <select class="form-control pc-locale-notice-template" style="width: auto; height: 28px; padding: 2px 8px; font-size: 0.8rem; display: inline-block;">
+                                                    <option value="">공지사항 템플릿 불러오기</option>
+                                                    ${noticeTemplates && noticeTemplates.length > 0 ? noticeTemplates.map(t => `<option value="${t.id}">${t.title}</option>`).join('') : ''}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <textarea class="form-control pc-locale-notice" placeholder="${marketLangName}(으)로 번역된 공지사항을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 180px; max-height: 400px; resize: vertical;"></textarea>
                                 </div>
                             </div>
@@ -1288,6 +1298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const countTotal = content.querySelector('.pc-locale-total-count');
         const btnSaveLocale = content.querySelector('.btn-save-locale');
         const spanUpdated = content.querySelector('.pc-locale-updated');
+        const selNoticeTemplate = content.querySelector('.pc-locale-notice-template');
 
         const updateCount = () => {
             if (!countTotal) return;
@@ -1300,6 +1311,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (txtDesc) txtDesc.addEventListener('input', updateCount);
         if (txtNotice) txtNotice.addEventListener('input', updateCount);
+
+        if (selNoticeTemplate && txtNotice) {
+            selNoticeTemplate.addEventListener('change', (e) => {
+                const id = e.target.value;
+                if (!id) return;
+                const tmpl = noticeTemplates.find(t => String(t.id) === String(id));
+                if (tmpl) {
+                    txtNotice.value = tmpl.content;
+                    updateCount();
+                }
+                // Reset select so user can re-select the same template if needed
+                e.target.value = '';
+            });
+        }
 
         // Fetch existing locale data
         fetch(`${APP_API_BASE}/market-locales/${item.id}/${currentMarketContext}`)
