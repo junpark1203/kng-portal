@@ -1862,7 +1862,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const div = document.createElement('div');
             div.style.cssText = "position: relative; border: 1px solid var(--outline-variant); border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: var(--surface-container-highest); display: flex; align-items: center; justify-content: center;";
             div.innerHTML = `
-                <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display = 'block';">
+                <div style="position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 0.65rem; padding: 2px 4px; border-radius: 4px; display: none; pointer-events: none;"></div>
                 <button type="button" class="btn-remove-image" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                     <i class="fa-solid fa-xmark" style="font-size: 0.7rem;"></i>
                 </button>
@@ -2105,7 +2106,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             const suffix = String(idx + 1).padStart(2, '0');
             const optMcode = `${baseMcode}-${suffix}`;
             const imgPreview = opt.imageUrl
-                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;">`
+                ? `<div style="position: relative; display: inline-block;">
+                       <img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;" onload="this.nextElementSibling.innerText = this.naturalWidth + 'x' + this.naturalHeight; this.nextElementSibling.style.display='block';">
+                       <div style="position: absolute; bottom: 2px; left: 2px; background: rgba(0,0,0,0.6); color: white; font-size: 0.5rem; padding: 1px 3px; border-radius: 2px; display: none; pointer-events: none;"></div>
+                   </div>`
                 : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="파일 업로드" style="width: 44px; height: 44px; border-radius: 4px; border: 1px dashed var(--outline-variant); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); flex-shrink: 0; background: var(--surface-container-lowest);"><i class="fa-solid fa-camera"></i></div>`;
             
             const parentPrice = inputPriceKrw ? inputPriceKrw.value || '0' : '0';
