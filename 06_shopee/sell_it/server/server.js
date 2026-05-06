@@ -1458,6 +1458,7 @@ app.use((req, res) => {
 });
 
 // 서버 실행
+// Trigger CI build
 app.listen(PORT, () => {
     console.log(`Sell_it API Server is running on port ${PORT}`);
     console.log(`API: http://localhost:${PORT}/api/products`);
