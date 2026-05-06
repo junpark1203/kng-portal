@@ -2409,6 +2409,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             if (op.id) await api.deleteProduct(op.id);
                         }
                     }
+                    
+                    // Also delete the base product if it exists (e.g. converting a single product to options)
+                    const existingBase = productList.find(p => p.mcode === mcodeStr);
+                    if (existingBase && existingBase.id) {
+                        await api.deleteProduct(existingBase.id);
+                    }
 
                     // Create each option as a separate product
                     for (let i = 0; i < currentOptions.length; i++) {
@@ -2442,6 +2448,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         images: JSON.stringify(currentImages)
                     };
 
+                    // If converting from an option group to a single product, delete the old options
+                    if (editingGroupMcodes.length > 0) {
+                        const oldProducts = productList.filter(p => editingGroupMcodes.includes(p.mcode));
+                        for (const op of oldProducts) {
+                            if (op.id) await api.deleteProduct(op.id);
+                        }
+                    }
+
                     if (currentEditingRow && originalEditMcode) {
                         const existing = productList.find(p => p.mcode === originalEditMcode);
                         if (existing && existing.id) {
@@ -2451,6 +2465,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 if (!confirm(`⚠️ 이 상품은 [${marketNames}] 마켓에 연동되어 있습니다.\n수정본을 저장하시겠습니까?`)) return;
                             }
                             await api.updateProduct(existing.id, productData);
+                        } else {
+                            // The originalEditMcode was a group parent which didn't exist in DB as a single row.
+                            // Since we deleted the options above, we just need to create the single product.
+                            await api.createProduct(productData);
                         }
                     } else {
                         await api.createProduct(productData);
