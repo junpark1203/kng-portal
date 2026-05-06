@@ -1990,9 +1990,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     const formData = new FormData();
-                    formData.append('image', file);
                     formData.append('mcode', mcodeStr);
                     formData.append('index', startIndex + i);
+                    formData.append('image', file);
 
                     const res = await fetch('/api/products/upload-image', {
                         method: 'POST',
@@ -2209,9 +2209,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const optMcode = `${mcodeStr}-${suffix}`;
             try {
                 const formData = new FormData();
-                formData.append('image', file);
                 formData.append('mcode', optMcode);
                 formData.append('index', 1);
+                formData.append('image', file);
                 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                     ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
                 const res = await fetch(`${API_BASE}/products/upload-image`, { method: 'POST', body: formData });

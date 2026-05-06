@@ -973,27 +973,6 @@ app.post('/api/market-analysis/delete', (req, res) => {
     });
 });
 
-// 이미지 업로드 (파일)
-app.post('/api/products/upload-image', upload.single('image'), (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ error: '이미지 파일이 필요합니다.' });
-        const mcode = req.body.mcode || 'Unknown';
-        const index = req.body.index || '0';
-        
-        // mcode-index 로 파일명 변경
-        const ext = require('path').extname(req.file.originalname).toLowerCase();
-        const newFilename = `${mcode}-${index}${ext}`;
-        const newPath = require('path').join(req.file.destination, newFilename);
-        
-        require('fs').renameSync(req.file.path, newPath);
-        
-        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
-        const url = imgBase + '/api/images/' + newFilename;
-        res.json({ message: '업로드 성공', filename: newFilename, url, size: req.file.size });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 app.post('/api/products/upload-video', videoUpload.single('video'), (req, res) => {
     try {
