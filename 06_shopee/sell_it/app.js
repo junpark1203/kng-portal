@@ -1926,7 +1926,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnCancelMultiUrl) btnCancelMultiUrl.addEventListener('click', closeMultiUrlModal);
     
     if (btnApplyMultiUrl) {
-        btnApplyMultiUrl.addEventListener('click', () => {
+        btnApplyMultiUrl.addEventListener('click', async () => {
             const val = inputMultiUrls.value;
             const urls = val.split('\n').map(u => u.trim()).filter(u => u);
             if (urls.length === 0) {
@@ -1937,9 +1937,40 @@ document.addEventListener('DOMContentLoaded', async () => {
                 alert(`이미지는 최대 9장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장, 추가 시도 ${urls.length}장)`);
                 return;
             }
-            currentImages.push(...urls);
-            renderMediaPreviews();
-            closeMultiUrlModal();
+            
+            const mcodeStr = inputMcode.value;
+            if (!mcodeStr) { alert('관리코드가 지정되지 않았습니다. 관리코드를 먼저 생성하세요.'); return; }
+            
+            const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+                
+            btnApplyMultiUrl.disabled = true;
+            btnApplyMultiUrl.innerText = '처리 중...';
+            
+            try {
+                const startIndex = currentImages.length + 1;
+                for (let i = 0; i < urls.length; i++) {
+                    const res = await fetch(`${API_BASE}/products/upload-image-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: urls[i], mcode: mcodeStr, index: startIndex + i })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        currentImages.push(data.url);
+                    } else {
+                        console.error('URL 다운로드 실패:', urls[i], data.error);
+                        alert(`URL 다운로드 실패: ${data.error}`);
+                    }
+                }
+            } catch (err) {
+                alert('URL 처리 중 오류 발생: ' + err.message);
+            } finally {
+                btnApplyMultiUrl.disabled = false;
+                btnApplyMultiUrl.innerHTML = '<i class="fa-solid fa-check"></i> 적용';
+                renderMediaPreviews();
+                closeMultiUrlModal();
+            }
         });
     }
 
@@ -2147,12 +2178,40 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnCloseOptionUrlModal) btnCloseOptionUrlModal.addEventListener('click', closeOptionUrlModal);
     if (btnCancelOptionUrl) btnCancelOptionUrl.addEventListener('click', closeOptionUrlModal);
     if (btnApplyOptionUrl) {
-        btnApplyOptionUrl.addEventListener('click', () => {
+        btnApplyOptionUrl.addEventListener('click', async () => {
             const url = inputOptionUrl.value.trim();
             if (url && currentOptionImageTarget >= 0) {
-                currentOptions[currentOptionImageTarget].imageUrl = url;
-                renderOptionRows();
-                closeOptionUrlModal();
+                const mcodeStr = inputMcode.value;
+                if (!mcodeStr) { alert('관리코드가 없습니다.'); return; }
+                const suffix = String(currentOptionImageTarget + 1).padStart(2, '0');
+                const optMcode = `${mcodeStr}-${suffix}`;
+                
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+                    
+                btnApplyOptionUrl.disabled = true;
+                btnApplyOptionUrl.innerText = '처리 중...';
+                
+                try {
+                    const res = await fetch(`${API_BASE}/products/upload-image-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: url, mcode: optMcode, index: 1 })
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        currentOptions[currentOptionImageTarget].imageUrl = data.url;
+                        renderOptionRows();
+                        closeOptionUrlModal();
+                    } else {
+                        alert('URL 다운로드 실패: ' + (data.error || '알 수 없는 오류'));
+                    }
+                } catch (err) {
+                    alert('URL 처리 중 오류 발생: ' + err.message);
+                } finally {
+                    btnApplyOptionUrl.disabled = false;
+                    btnApplyOptionUrl.innerHTML = '<i class="fa-solid fa-check"></i> 적용';
+                }
             } else if (!url && currentOptionImageTarget >= 0) {
                 // allow clearing URL
                 currentOptions[currentOptionImageTarget].imageUrl = '';

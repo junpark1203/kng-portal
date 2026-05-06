@@ -544,6 +544,52 @@ app.post('/api/products/upload-image', productImageUpload.single('image'), (req,
     res.json({ url, filename: req.file.filename });
 });
 
+// 상품 이미지 업로드 (URL 다운로드)
+app.post('/api/products/upload-image-url', async (req, res) => {
+    try {
+        const { url, mcode, index } = req.body;
+        if (!url) return res.status(400).json({ error: 'URL이 필요합니다.' });
+        if (!mcode) return res.status(400).json({ error: 'mcode가 필요합니다.' });
+        
+        const fs = require('fs');
+        let ext = path.extname(new URL(url).pathname).toLowerCase();
+        if (!ext || !['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(ext)) {
+            ext = '.jpg'; // Fallback
+        }
+        
+        const idx = index || '1';
+        const newFilename = `${mcode}-${idx}${ext}`;
+        const filePath = path.join(UPLOAD_DIR, newFilename);
+        
+        const protocol = url.startsWith('https') ? require('https') : require('http');
+        
+        await new Promise((resolve, reject) => {
+            const request = protocol.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (response) => {
+                if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                    const rProto = response.headers.location.startsWith('https') ? require('https') : require('http');
+                    rProto.get(response.headers.location, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (r2) => {
+                        const ws = fs.createWriteStream(filePath); 
+                        r2.pipe(ws); 
+                        ws.on('finish', () => { ws.close(); resolve(); }); 
+                        ws.on('error', reject);
+                    }).on('error', reject);
+                    return;
+                }
+                const ws = fs.createWriteStream(filePath); 
+                response.pipe(ws); 
+                ws.on('finish', () => { ws.close(); resolve(); }); 
+                ws.on('error', reject);
+            }).on('error', reject);
+        });
+
+        const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+        const finalUrl = `/api/images/${newFilename}`;
+        res.json({ message: '다운로드 성공', filename: newFilename, url: finalUrl });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ==========================================
 // Market Exports API
 // ==========================================
