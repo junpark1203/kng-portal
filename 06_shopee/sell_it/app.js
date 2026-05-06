@@ -1374,10 +1374,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function renderSingleProductRow(p, extraStyle, parentMcode) {
-        let catEn1 = p.catEn;
+        let catEn1 = p.catEn || '';
         let catEn2 = '';
-        if(p.catEn.includes(' > ')) {
-            const parts = p.catEn.split(' > ');
+        if(catEn1 && catEn1.includes(' > ')) {
+            const parts = catEn1.split(' > ');
             catEn1 = parts[0] + ' >';
             catEn2 = parts[1];
         }
@@ -1461,10 +1461,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let maxPrice = Math.max(...item.children.map(c => c.priceKrw));
                 let priceRangeStr = minPrice === maxPrice ? `KRW ${minPrice.toLocaleString()}` : `KRW ${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}`;
                 
-                let catEn1 = item.catEn;
+                let catEn1 = item.catEn || '';
                 let catEn2 = '';
-                if(item.catEn.includes(' > ')) {
-                    const parts = item.catEn.split(' > ');
+                if(catEn1 && catEn1.includes(' > ')) {
+                    const parts = catEn1.split(' > ');
                     catEn1 = parts[0] + ' >';
                     catEn2 = parts[1];
                 }
