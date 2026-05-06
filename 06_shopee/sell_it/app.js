@@ -1598,7 +1598,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     const productListView = document.getElementById('view-product-list');
     const addProductPageTitle = document.getElementById('add-product-page-title');
     const addProductMcodeBadge = document.getElementById('add-product-mcode-badge');
-    
+
+    // SPA History & Data Loss Prevention
+    let isFormDirty = false;
+
+    if (addProductForm) {
+        addProductForm.addEventListener('input', () => { isFormDirty = true; });
+        addProductForm.addEventListener('change', () => { isFormDirty = true; });
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (isFormDirty && addProductView && addProductView.classList.contains('active')) {
+            e.preventDefault();
+            e.returnValue = '작성 중인 내용이 있습니다. 정말 나가시겠습니까?';
+        }
+    });
+
+    window.addEventListener('popstate', (e) => {
+        if (addProductView && addProductView.classList.contains('active')) {
+            if (isFormDirty) {
+                const confirmLeave = confirm('작성 중인 내용이 있습니다. 정말 나가시겠습니까?');
+                if (!confirmLeave) {
+                    history.pushState({ view: 'form' }, '', '#form');
+                    return;
+                }
+            }
+            isFormDirty = false;
+            cleanupFormAndGoList();
+        } else if (e.state && e.state.view === 'form') {
+            showAddProductView(false, true);
+        }
+    });
+
+    function cleanupFormAndGoList() {
+        addProductForm.reset();
+        currentEditingRow = null;
+        categoryAutocompleteList.style.display = 'none';
+        currentImages = [];
+        currentVideo = '';
+        renderMediaPreviews();
+        resetOptionState();
+        
+        const allViews = document.querySelectorAll('.view-section');
+        allViews.forEach(v => v.classList.remove('active'));
+        if (productListView) productListView.classList.add('active');
+        
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.innerText = 'Product List';
+    }
+
     // Inputs
     const inputDate = document.getElementById('input-date');
     const inputMcode = document.getElementById('input-mcode');
@@ -1735,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (inputWeight) inputWeight.required = true;
     }
 
-    function showAddProductView(isEdit = false) {
+    function showAddProductView(isEdit = false, fromPopState = false) {
         if (!isEdit) {
             addProductForm.reset();
             if (countNameKo) countNameKo.innerText = '0 / 180';
@@ -1776,24 +1824,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Scroll to top
         if (addProductView) addProductView.scrollTop = 0;
+
+        if (!fromPopState && location.hash !== '#form') {
+            history.pushState({ view: 'form' }, '', '#form');
+        }
+        setTimeout(() => { isFormDirty = false; }, 100);
     }
 
     function returnToProductList() {
-        addProductForm.reset();
-        currentEditingRow = null;
-        categoryAutocompleteList.style.display = 'none';
-        currentImages = [];
-        currentVideo = '';
-        renderMediaPreviews();
-        resetOptionState();
-        
-        // Switch back to product list
-        const allViews = document.querySelectorAll('.view-section');
-        allViews.forEach(v => v.classList.remove('active'));
-        if (productListView) productListView.classList.add('active');
-        
-        const pageTitle = document.getElementById('page-title');
-        if (pageTitle) pageTitle.innerText = 'Product List';
+        if (isFormDirty) {
+            const confirmLeave = confirm('작성 중인 내용이 있습니다. 정말 취소하시겠습니까?');
+            if (!confirmLeave) return;
+        }
+        isFormDirty = false;
+
+        if (location.hash === '#form') {
+            history.back();
+        } else {
+            cleanupFormAndGoList();
+        }
     }
 
     if (btnAddProduct) btnAddProduct.addEventListener('click', () => showAddProductView(false));
@@ -2352,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Reload from API
                 productList = await api.getProducts();
                 renderProductListTable();
+                isFormDirty = false;
                 returnToProductList();
             } catch (err) {
                 alert('저장 실패: ' + err.message);
