@@ -594,8 +594,39 @@
                         <!-- 2-Column Body -->
                         <form id="add-product-form">
                         <div class="add-product-body">
-                            <!-- Left Column -->
-                            <div class="add-product-left">
+                            <!-- Main Content Column -->
+                            <div class="add-product-content">
+                                <!-- Card 0: 미디어 업로드 -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-image"></i> 미디어 업로드</div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품 이미지 (최대 9장)</label>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="file" id="input-images-file" class="form-control" accept="image/*" multiple style="flex: 1;">
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="url" id="input-image-url" class="form-control" placeholder="이미지 URL 직접 입력" style="flex: 1;">
+                                            <button type="button" id="btn-add-image-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                                        </div>
+                                        <div id="image-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;"></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품 영상 (최대 1개, MP4, 30MB 이하)</label>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="file" id="input-video-file" class="form-control" accept="video/mp4" style="flex: 1;">
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="url" id="input-video-url" class="form-control" placeholder="영상 URL 직접 입력" style="flex: 1;">
+                                            <button type="button" id="btn-add-video-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                                        </div>
+                                        <div id="video-preview-container" style="margin-top: 0.5rem;"></div>
+                                    </div>
+                                    <div class="file-path-info">
+                                        <i class="fa-solid fa-folder-open"></i>
+                                        저장 경로: /uploads/{mcode}-{index}.ext · 접근: shopee-api.junparks.com/api/images/...
+                                    </div>
+                                </div>
+
                                 <!-- Card 1: 기본 정보 -->
                                 <div class="form-card">
                                     <div class="form-card-title"><i class="fa-solid fa-box"></i> 기본 정보</div>
@@ -712,40 +743,7 @@
                                 </div>
                             </div>
 
-                            <!-- Right Column (Sticky) -->
-                            <div class="add-product-right">
-                                <!-- Media Card -->
-                                <div class="form-card">
-                                    <div class="form-card-title"><i class="fa-solid fa-image"></i> 미디어 업로드</div>
-                                    <div class="form-group">
-                                        <label class="label-md">상품 이미지 (최대 9장)</label>
-                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <input type="file" id="input-images-file" class="form-control" accept="image/*" multiple style="flex: 1;">
-                                        </div>
-                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <input type="url" id="input-image-url" class="form-control" placeholder="이미지 URL 직접 입력" style="flex: 1;">
-                                            <button type="button" id="btn-add-image-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
-                                        </div>
-                                        <div id="image-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;"></div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="label-md">상품 영상 (최대 1개, MP4, 30MB 이하)</label>
-                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <input type="file" id="input-video-file" class="form-control" accept="video/mp4" style="flex: 1;">
-                                        </div>
-                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <input type="url" id="input-video-url" class="form-control" placeholder="영상 URL 직접 입력" style="flex: 1;">
-                                            <button type="button" id="btn-add-video-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
-                                        </div>
-                                        <div id="video-preview-container" style="margin-top: 0.5rem;"></div>
-                                    </div>
-                                    <div class="file-path-info">
-                                        <i class="fa-solid fa-folder-open"></i>
-                                        저장 경로: /uploads/{mcode}-{index}.ext · 접근: shopee-api.junparks.com/api/images/...
-                                    </div>
-                                </div>
                             </div>
-                        </div>
                         </form>
                     </div>
                 </div>

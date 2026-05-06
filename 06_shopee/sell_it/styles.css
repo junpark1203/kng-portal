@@ -1737,11 +1737,11 @@ textarea.form-input {
   gap: 10px;
 }
 
-/* 2-Column Grid Body */
+/* 1-Column Centered Body */
 .add-product-body {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 24px;
   flex: 1;
 }
@@ -1779,21 +1779,13 @@ textarea.form-input {
   margin-bottom: 0;
 }
 
-/* Left column stacking */
-.add-product-left {
+/* 1-Column Content Wrapper */
+.add-product-content {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-/* Right column sticky */
-.add-product-right {
-  position: sticky;
-  top: 80px;
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  width: 100%;
+  max-width: 1000px;
 }
 
 /* File path info display */
