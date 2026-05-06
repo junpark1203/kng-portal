@@ -1006,7 +1006,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <!-- Left: Original (English) -->
                             <div style="display: flex; flex-direction: column; gap: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 1.1rem;">🇬🇧</span>
                                     <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--secondary);">원문 (English) — 읽기 전용</span>
                                 </div>
                                 
@@ -1026,7 +1025,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <!-- Right: Translation -->
                             <div style="display: flex; flex-direction: column; gap: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 1.1rem;">${marketFlag}</span>
                                     <span class="form-label" style="margin-bottom: 0; font-weight: 600; color: var(--primary);">${marketLangName} 번역</span>
                                 </div>
                                 
