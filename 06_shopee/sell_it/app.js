@@ -3419,9 +3419,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-promo-fsp').value = p.settings.fspCcb;
                     document.getElementById('settings-promo-free-shipping').value = p.settings.freeShipThreshold;
                     const drEl = document.getElementById('settings-promo-discount-rate');
-                    if (drEl) drEl.value = p.settings.discountRate || 30;
+                    if (drEl) drEl.value = (p.settings.discountRate !== undefined && p.settings.discountRate !== null) ? p.settings.discountRate : 30;
                     const arEl = document.getElementById('settings-promo-adjustment-rate');
-                    if (arEl) arEl.value = p.settings.adjustmentRate || 130;
+                    if (arEl) arEl.value = (p.settings.adjustmentRate !== undefined && p.settings.adjustmentRate !== null) ? p.settings.adjustmentRate : 130;
                     document.getElementById('settings-promotion-form-title').innerText = `${currentMarketContext.toUpperCase()} 프로모션 수정하기`;
                     toggleSettingsForm('promotion', true);
                 }
@@ -3464,12 +3464,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         
+        const getPromoFloat = (id, fallback) => {
+            const el = document.getElementById(id);
+            if (!el || el.value.trim() === '') return fallback;
+            const val = parseFloat(el.value);
+            return isNaN(val) ? fallback : val;
+        };
+
         const newSettings = {
-            discountRate: parseFloat(document.getElementById('settings-promo-discount-rate')?.value) || 30,
-            adjustmentRate: parseFloat(document.getElementById('settings-promo-adjustment-rate')?.value) || 130,
-            voucher: parseFloat(document.getElementById('settings-promo-voucher').value) || 0,
-            fspCcb: parseFloat(document.getElementById('settings-promo-fsp').value) || 0,
-            freeShipThreshold: parseFloat(document.getElementById('settings-promo-free-shipping').value) || 0
+            discountRate: getPromoFloat('settings-promo-discount-rate', 30),
+            adjustmentRate: getPromoFloat('settings-promo-adjustment-rate', 130),
+            voucher: getPromoFloat('settings-promo-voucher', 0),
+            fspCcb: getPromoFloat('settings-promo-fsp', 0),
+            freeShipThreshold: getPromoFloat('settings-promo-free-shipping', 0)
         };
 
         if (id) {
