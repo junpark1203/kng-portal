@@ -2430,6 +2430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Load all children for this group
                 childProducts = productList.filter(p => getBaseMcode(p.mcode) === baseMcode && p.mcode !== baseMcode);
                 if (childProducts.length === 0) childProducts = productList.filter(p => getBaseMcode(p.mcode) === baseMcode);
+                childProducts.sort((a, b) => a.mcode.localeCompare(b.mcode));
                 productObj = childProducts[0]; // Use first child for shared fields
             } else {
                 productObj = productList.find(pp => pp.mcode === mcodeStr);
@@ -2438,7 +2439,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const siblings = productList.filter(p => getBaseMcode(p.mcode) === base);
                 if (siblings.length > 1 || (productObj && productObj.optionName)) {
                     childProducts = siblings;
-                    productObj = siblings[0];
+                    childProducts.sort((a, b) => a.mcode.localeCompare(b.mcode));
+                    productObj = childProducts[0];
                 }
             }
 
