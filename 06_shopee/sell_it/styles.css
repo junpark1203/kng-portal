@@ -367,7 +367,13 @@ body {
   border-collapse: collapse;
   background-color: var(--surface-container-lowest);
   border-radius: calc(var(--radius-md) - 1px);
-  overflow: hidden;
+}
+
+.data-table th:first-child {
+  border-top-left-radius: calc(var(--radius-md) - 1px);
+}
+.data-table th:last-child {
+  border-top-right-radius: calc(var(--radius-md) - 1px);
 }
 
 .data-table th, .data-table td {
