@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.querySelectorAll('.pc-product-row, .pc-parent-row').forEach(r => r.style.outline = 'none');
                     tr.style.outline = '2px solid var(--primary)';
                     tr.style.outlineOffset = '-2px';
-                    openSidePanel(item, result, tr);
+                    openPriceCalcDetail(item, result, tr);
                 });
             });
 
@@ -850,14 +850,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Helper: Open and Render Sliding Side Panel
+    // Helper: Open and Render Full Page Detail View
     window.currentOpenSidePanelId = null;
-    function openSidePanel(item, result, activeRow) {
+    function openPriceCalcDetail(item, result, activeRow) {
         const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[currentMarketContext] || 'SGD';
-        const panel = document.getElementById('pc-side-panel');
-        const overlay = document.getElementById('pc-side-panel-overlay');
-        const content = document.getElementById('pc-side-panel-content');
+        const content = document.getElementById('pc-detail-content-area');
         
+        document.getElementById('pc-detail-mcode-badge').innerText = item.mcode || '---';
         window.currentOpenSidePanelId = item.id;
 
         const feeOptions = `<option value="">마켓 기본값</option>` + presets.filter(p => p.market === currentMarketContext).map(p => `<option value="${p.id}" ${item.feePresetId===p.id?'selected':''}>${p.name}</option>`).join('');
@@ -871,72 +870,81 @@ document.addEventListener('DOMContentLoaded', async () => {
         const commTotal = result.breakdown ? Object.values(result.breakdown).reduce((s,f) => s + f.amount, 0) : 0;
 
         content.innerHTML = `
-            <div class="pc-side-panel-content">
-                <div class="pc-side-section">
-                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-receipt"></i> 비용 구조</div>
-                    <div class="pc-cost-list">
-                        <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
-                        <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
-                        <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
-                        <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
-                        <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
-                        <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
-                        <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
-                        <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
-                        <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
+            <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
+                
+                <!-- Left Column -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-calculator"></i> 수동 가격 조정</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                            <div class="form-group">
+                                <label class="form-label">할인율 (%)</label>
+                                <input type="number" class="form-control side-input-discount" value="${result._empty ? '' : result.discountRate.toFixed(1)}" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">판매가 (${curr})</label>
+                                <input type="number" class="form-control side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">순수익 (KRW)</label>
+                                <input type="number" class="form-control side-input-profit" value="${result._empty ? '' : result.marginKrw}">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">마진율 (%)</label>
+                                <input type="number" class="form-control side-input-margin" value="${result._empty ? '' : (result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0).toFixed(1)}" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>
+                        ${renderBreakdownPanel(item, result)}
                     </div>
                 </div>
 
-                <div class="pc-side-section pc-cockpit-settings">
-                    <div class="label-md" style="color: var(--primary); margin-bottom: 0.25rem;"><i class="fa-solid fa-calculator"></i> 수동 가격 조정</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
-                        <div>
-                            <label>할인율 (%)</label>
-                            <input type="number" class="form-control form-control-sm side-input-discount" value="${result._empty ? '' : result.discountRate.toFixed(1)}" step="0.1">
+                <!-- Right Column -->
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-receipt"></i> 비용 구조 요약</div>
+                        <div class="pc-cost-list">
+                            <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
+                            <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
+                            <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
+                            <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
+                            <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
+                            <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
+                            <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
+                            <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
+                            <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
+                            <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
+                            <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
                         </div>
-                        <div>
-                            <label>판매가 (${curr})</label>
-                            <input type="number" class="form-control form-control-sm side-input-sales" value="${result._empty ? '' : result.sellingPrice.toFixed(2)}" step="0.01">
+                    </div>
+
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fa-solid fa-sliders"></i> 개별 설정 재정의</div>
+                        <div class="form-group">
+                            <label class="form-label">수수료 프리셋</label>
+                            <select class="form-select pc-fee-override">${feeOptions}</select>
                         </div>
-                        <div>
-                            <label>순수익 (KRW)</label>
-                            <input type="number" class="form-control form-control-sm side-input-profit" value="${result._empty ? '' : result.marginKrw}">
+                        <div class="form-group">
+                            <label class="form-label">프로모션 프리셋</label>
+                            <select class="form-select pc-promo-override">${promoOptions}</select>
                         </div>
-                        <div>
-                            <label>마진율 (%)</label>
-                            <input type="number" class="form-control form-control-sm side-input-margin" value="${result._empty ? '' : (result.sellingPrice > 0 ? (result.marginSgd / result.sellingPrice) * 100 : 0).toFixed(1)}" step="0.1">
+                        <div class="form-group">
+                            <label class="form-label">배송비 요율표</label>
+                            <select class="form-select pc-ship-override">${shipOptions}</select>
                         </div>
+                        <button type="button" class="btn-primary w-100 btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장</button>
                     </div>
                 </div>
 
-                <div class="pc-side-section pc-cockpit-settings">
-                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.25rem;"><i class="fa-solid fa-sliders"></i> 개별 프리셋 재정의</div>
-                    <div>
-                        <label>수수료 프리셋</label>
-                        <select class="form-control form-control-sm pc-fee-override">${feeOptions}</select>
-                    </div>
-                    <div>
-                        <label>프로모션 프리셋</label>
-                        <select class="form-control form-control-sm pc-promo-override">${promoOptions}</select>
-                    </div>
-                    <div>
-                        <label>배송비 요율표</label>
-                        <select class="form-control form-control-sm pc-ship-override">${shipOptions}</select>
-                    </div>
-                    <button class="btn-primary btn-sm btn-save-settings" style="margin-top: 0.5rem;"><i class="fa-solid fa-floppy-disk"></i> 설정 수동 저장</button>
-                </div>
-
-                <div class="pc-side-section">
-                    <div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>
-                    ${renderBreakdownPanel(item, result)}
-                </div>
             </div>
         `;
 
-        panel.classList.add('active');
-        overlay.classList.add('active');
+        // Switch view from list to detail
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('view-price-calc-detail').classList.add('active');
 
         // Bind Events
         const feeSel = content.querySelector('.pc-fee-override');
@@ -1042,10 +1050,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                     if (cellMarginVat) cellMarginVat.textContent = isEmpty ? '—' : '+환급 ' + mwvr.toFixed(1) + '%';
                     
-                    // Also refresh the breakdown section inside the side panel
-                    const breakdownContainer = content.querySelector('.pc-side-section:last-child');
+                    // Also refresh the breakdown section inside the detail view
+                    const breakdownContainer = content.querySelector('.form-card:nth-child(2)');
                     if(breakdownContainer) {
-                        breakdownContainer.innerHTML = `<div class="label-md" style="color: var(--secondary); margin-bottom: 0.75rem;"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>` + renderBreakdownPanel(item, newResult);
+                        breakdownContainer.innerHTML = `<div class="form-card-title"><i class="fa-solid fa-magnifying-glass-chart"></i> 산식 상세 보기</div>` + renderBreakdownPanel(item, newResult);
                     }
                 }
             }, 300);
@@ -1082,9 +1090,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             item.promoPresetId = promoSel?.value || null;
             item.shipPresetId = shipSel?.value || null;
 
-            // Recalculate locally and reopen panel (no full reload)
+            // Recalculate locally and reopen detail view (no full reload)
             const newResult = calcProductRow(item);
-            openSidePanel(item, newResult, activeRow);
+            openPriceCalcDetail(item, newResult, activeRow);
 
             // Update main table row cells
             const isEmpty = newResult._empty;
@@ -1140,15 +1148,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Close Side Panel Logic
-    function closeSidePanel() {
-        document.getElementById('pc-side-panel').classList.remove('active');
-        document.getElementById('pc-side-panel-overlay').classList.remove('active');
+    // Close Detail View Logic (Back to List)
+    function closePriceCalcDetail() {
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('view-price-calc-container').classList.add('active');
         window.currentOpenSidePanelId = null;
         document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
     }
-    document.getElementById('btn-close-pc-panel')?.addEventListener('click', closeSidePanel);
-    document.getElementById('pc-side-panel-overlay')?.addEventListener('click', closeSidePanel);
+    document.getElementById('btn-back-to-pc-list')?.addEventListener('click', closePriceCalcDetail);
 
     // Helper: Render fee breakdown HTML
     function renderBreakdownPanel(item, result) {

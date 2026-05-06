@@ -568,6 +568,29 @@
                     </div>
                 </div>
 
+                <!-- Price Calc Detail Full-Page View -->
+                <div class="view-section" id="view-price-calc-detail">
+                    <div class="add-product-page">
+                        <div class="add-product-header">
+                            <div class="add-product-header-left">
+                                <button type="button" class="btn-back-link" id="btn-back-to-pc-list">
+                                    <i class="fa-solid fa-arrow-left"></i> PC List
+                                </button>
+                                <span class="add-product-header-title">가격 시뮬레이션 상세</span>
+                                <span class="add-product-header-mcode" id="pc-detail-mcode-badge">---</span>
+                            </div>
+                            <div class="add-product-header-right">
+                            </div>
+                        </div>
+                        <div class="add-product-body" style="align-items: stretch; max-width: 1200px; margin: 0 auto; width: 100%;">
+                            <div id="pc-detail-content-area" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
+                                <!-- Rendered dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
                 <!-- Generic Placeholder View for others -->
                 <div class="view-section" id="view-generic">
                     <div class="panel surface-container-lowest">
@@ -797,17 +820,7 @@
         </main>
     </div>
 
-    <!-- Price Calc Sliding Side Panel -->
-    <div class="drawer-overlay" id="pc-side-panel-overlay"></div>
-    <div class="drawer" id="pc-side-panel" style="width: 520px;">
-        <div class="drawer-header">
-            <h3 class="headline-md"><i class="fa-solid fa-microscope"></i> 가격 시뮬레이션 상세</h3>
-            <button class="btn-close" id="btn-close-pc-panel"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="drawer-body" id="pc-side-panel-content" style="background: var(--surface-container-lowest); padding: 1.5rem;">
-            <!-- Rendered dynamically by JS -->
-        </div>
-    </div>
+    <!-- Old Price Calc Sliding Side Panel removed -> Replaced by view-price-calc-detail -->
 
 
     <!-- Old Add Product Drawer removed — replaced by #view-add-product full-page view -->
