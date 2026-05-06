@@ -456,9 +456,12 @@ function cleanupProductImages(imagesJson) {
         const images = typeof imagesJson === 'string' ? JSON.parse(imagesJson) : imagesJson;
         if (!Array.isArray(images)) return;
         images.forEach(imgUrl => {
-            // imgUrl 형태: /api/images/CGM2-06-001-1.jpg
-            const filename = imgUrl.replace(/^\/api\/images\//, '');
-            if (filename && filename !== imgUrl) {
+            // imgUrl 형태: /api/images/CGM2-06-001-1.jpg 또는 https://.../api/images/...
+            let filename = '';
+            if (imgUrl.includes('/api/images/')) {
+                filename = imgUrl.split('/api/images/').pop();
+            }
+            if (filename) {
                 const filePath = path.join(UPLOAD_DIR, filename);
                 fs.unlink(filePath, (err) => {
                     if (err && err.code !== 'ENOENT') {
