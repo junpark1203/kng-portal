@@ -456,6 +456,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="pc-dot-cell">${presetDots}</div>
                 </td>
                 <td class="text-center">
+                    <span style="font-weight: 500;">${item.weight || 0}</span>
+                </td>
+                <td class="text-center">
                     <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
                     <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
                 </td>
@@ -542,6 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <div class="pc-name" title="${item.nameKo || ''}">${item.nameEn || item.nameKo}</div>
                             </td>
                             <td class="text-center"><div class="pc-dot-cell">-</div></td>
+                            <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
