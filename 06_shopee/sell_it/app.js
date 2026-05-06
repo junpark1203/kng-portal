@@ -1662,11 +1662,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const countNameKo = document.getElementById('count-name-ko');
     const countNameEn = document.getElementById('count-name-en');
     const inputDescription = document.getElementById('input-description');
+    const inputNoticeContent = document.getElementById('input-notice-content');
     const countDescription = document.getElementById('count-description');
 
     function updateCharCount(input, countElement, maxCount = 180) {
         if (!input || !countElement) return;
         countElement.innerText = `${input.value.length} / ${maxCount}`;
+    }
+
+    function updateCombinedDescriptionCount() {
+        if (!inputDescription || !countDescription) return;
+        const descLen = inputDescription.value.length;
+        const noticeLen = inputNoticeContent && inputNoticeContent.value ? inputNoticeContent.value.length : 0;
+        // The total length when concatenated with \n\n would be descLen + noticeLen + 2.
+        // We just do descLen + noticeLen + (descLen && noticeLen ? 2 : 0) to be accurate.
+        const total = descLen + noticeLen + (descLen && noticeLen ? 2 : 0);
+        countDescription.innerText = `${total} / 5000`;
     }
 
     if (inputNameKo && countNameKo) {
@@ -1676,7 +1687,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputNameEn.addEventListener('input', () => updateCharCount(inputNameEn, countNameEn, 180));
     }
     if (inputDescription && countDescription) {
-        inputDescription.addEventListener('input', () => updateCharCount(inputDescription, countDescription, 5000));
+        inputDescription.addEventListener('input', updateCombinedDescriptionCount);
+    }
+    if (inputNoticeContent && countDescription) {
+        inputNoticeContent.addEventListener('input', updateCombinedDescriptionCount);
     }
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
@@ -1805,10 +1819,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Auto-fill default notice template if available
             const defaultNotice = noticeTemplates.find(t => t.isDefault === 1);
-            if (defaultNotice && inputDescription) {
-                inputDescription.value = defaultNotice.content;
-                if (countDescription) countDescription.innerText = `${inputDescription.value.length} / 5000`;
+            if (defaultNotice && inputNoticeContent) {
+                inputNoticeContent.value = defaultNotice.content;
+            } else if (inputNoticeContent) {
+                inputNoticeContent.value = '';
             }
+            if (inputDescription) {
+                inputDescription.value = '';
+            }
+            updateCombinedDescriptionCount();
             updateMcodePreview();
 
             if (window.latestExchangeRates && window.latestExchangeRates.usd) {
@@ -2418,6 +2437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const link = inputLink.value;
             const note = inputNote.value;
             const description = inputDescription ? inputDescription.value : '';
+            const notice = inputNoticeContent ? inputNoticeContent.value : '';
 
             if (!catEn) {
                 alert("카테고리를 목록에서 올바르게 선택해주세요.");
@@ -2443,7 +2463,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
                 rate: parseFloat(rate) || 1,
                 rateDate, weight: parseInt(weight, 10) || 0,
-                link, note, description, video: currentVideo
+                link, note, description, notice, video: currentVideo
             };
 
             try {
@@ -2587,9 +2607,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputNameKo.value = productObj.nameKo || '';
             inputNameEn.value = productObj.nameEn || '';
             if (inputDescription) inputDescription.value = productObj.description || '';
+            if (inputNoticeContent) inputNoticeContent.value = productObj.notice || '';
             updateCharCount(inputNameKo, countNameKo, 180);
             updateCharCount(inputNameEn, countNameEn, 180);
-            if (inputDescription) updateCharCount(inputDescription, countDescription, 5000);
+            updateCombinedDescriptionCount();
             if (inputDomesticShipping) inputDomesticShipping.value = productObj.domesticShipping ?? 3000;
             if (inputPackagingKrw) inputPackagingKrw.value = productObj.packagingKrw || 0;
             inputRate.value = String(productObj.rate || '').replace(/,/g, '');
@@ -3614,10 +3635,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const selectedId = e.target.value;
             if (!selectedId) return;
             const template = noticeTemplates.find(t => t.id == selectedId);
-            if (template && inputDescription) {
-                const currentVal = inputDescription.value;
-                inputDescription.value = currentVal ? currentVal + '\n\n' + template.content : template.content;
-                if (countDescription) countDescription.innerText = `${inputDescription.value.length} / 5000`;
+            if (template && inputNoticeContent) {
+                inputNoticeContent.value = template.content;
+                updateCombinedDescriptionCount();
             }
             noticeTemplateSelect.value = ''; // Reset selection
         });
