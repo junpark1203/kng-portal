@@ -948,12 +948,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             <!-- Tab Navigation -->
             <div class="pc-detail-tabs" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--surface-container-high); margin-bottom: 0.5rem;">
-                <button class="pc-tab-btn active" data-target="pc-tab-calc" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: 600;">💰 가격 시뮬레이션</button>
-                <button class="pc-tab-btn" data-target="pc-tab-info" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--secondary); font-weight: 500; border-bottom: 2px solid transparent;">📦 상품 정보</button>
+                <button class="pc-tab-btn active" data-target="pc-tab-info" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--primary); border-bottom: 2px solid var(--primary); font-weight: 600;">📦 상품 정보</button>
+                <button class="pc-tab-btn" data-target="pc-tab-calc" style="background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; color: var(--secondary); font-weight: 500; border-bottom: 2px solid transparent;">💰 가격 시뮬레이션</button>
             </div>
 
             <!-- Tab Content: Price Calc -->
-            <div class="pc-tab-pane" id="pc-tab-calc" style="display: block;">
+            <div class="pc-tab-pane" id="pc-tab-calc" style="display: none;">
                 <div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
                     
                     <!-- Left Column -->
@@ -1026,7 +1026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
 
             <!-- Tab Content: Product Info -->
-            <div class="pc-tab-pane" id="pc-tab-info" style="display: none;">
+            <div class="pc-tab-pane" id="pc-tab-info" style="display: block;">
                 <div style="display: flex; flex-direction: column; gap: 24px;">
                     <div class="form-card">
                         <div class="form-card-title"><i class="fa-solid fa-image"></i> 이미지 갤러리</div>
