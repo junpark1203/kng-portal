@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let promotionPresets = [];
     let shippingPresets = [];
 
+    const APP_API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+
     function renderMAImageGrid() {
         const grid = document.getElementById('ma-image-grid');
         const addBtn = document.getElementById('ma-image-add-btn');
@@ -1942,8 +1945,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mcodeStr = inputMcode.value;
             if (!mcodeStr) { alert('관리코드가 지정되지 않았습니다. 관리코드를 먼저 생성하세요.'); return; }
             
-            const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+                // Use global APP_API_BASE
                 
             btnApplyMultiUrl.disabled = true;
             btnApplyMultiUrl.innerText = '처리 중...';
@@ -1951,7 +1953,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const startIndex = currentImages.length + 1;
                 for (let i = 0; i < urls.length; i++) {
-                    const res = await fetch(`${API_BASE}/products/upload-image-url`, {
+                    const res = await fetch(`${APP_API_BASE}/products/upload-image-url`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: urls[i], mcode: mcodeStr, index: startIndex + i })
@@ -2024,7 +2026,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formData.append('index', startIndex + i);
                 formData.append('image', file);
 
-                const res = await fetch('/api/products/upload-image', {
+                const res = await fetch(`${APP_API_BASE}/products/upload-image`, {
                     method: 'POST',
                     body: formData
                 });
@@ -2110,7 +2112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 formData.append('video', file);
                 formData.append('mcode', mcodeStr);
 
-                const res = await fetch('/api/products/upload-video', {
+                const res = await fetch(`${APP_API_BASE}/products/upload-video`, {
                     method: 'POST',
                     body: formData
                 });
@@ -2221,14 +2223,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const suffix = String(currentOptionImageTarget + 1).padStart(2, '0');
                 const optMcode = `${mcodeStr}-${suffix}`;
                 
-                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                    ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
+                // Use global APP_API_BASE
                     
                 btnApplyOptionUrl.disabled = true;
                 btnApplyOptionUrl.innerText = '처리 중...';
                 
                 try {
-                    const res = await fetch(`${API_BASE}/products/upload-image-url`, {
+                    const res = await fetch(`${APP_API_BASE}/products/upload-image-url`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: url, mcode: optMcode, index: 1 })
@@ -2304,7 +2305,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             formData.append('mcode', optMcode);
             formData.append('index', 1);
             formData.append('image', file);
-            const res = await fetch(`/api/products/upload-image`, { method: 'POST', body: formData });
+            const res = await fetch(`${APP_API_BASE}/products/upload-image`, { method: 'POST', body: formData });
             const data = await res.json();
             if (res.ok) {
                 currentOptions[optIdx].imageUrl = data.url;
