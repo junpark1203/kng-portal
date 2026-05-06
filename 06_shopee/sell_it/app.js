@@ -1999,52 +1999,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (inputImagesFile) {
-        inputImagesFile.addEventListener('change', async (e) => {
-            const files = Array.from(e.target.files);
-            if (!files.length) return;
-            
-            if (currentImages.length + files.length > 9) {
-                alert('이미지는 최대 9장까지만 업로드할 수 있습니다.');
-                inputImagesFile.value = '';
-                return;
-            }
+    async function uploadParentImages(filesArray) {
+        if (!filesArray.length) return;
+        
+        if (currentImages.length + filesArray.length > 9) {
+            alert('이미지는 최대 9장까지만 업로드할 수 있습니다.');
+            if (inputImagesFile) inputImagesFile.value = '';
+            return;
+        }
 
-            const mcodeStr = inputMcode.value;
-            if (!mcodeStr) {
-                alert('관리코드가 생성되지 않았습니다.');
-                return;
-            }
+        const mcodeStr = inputMcode.value;
+        if (!mcodeStr) {
+            alert('관리코드가 생성되지 않았습니다.');
+            return;
+        }
 
-            try {
-                // Determine starting index
-                let startIndex = currentImages.length + 1;
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const formData = new FormData();
-                    formData.append('mcode', mcodeStr);
-                    formData.append('index', startIndex + i);
-                    formData.append('image', file);
+        try {
+            // Determine starting index
+            let startIndex = currentImages.length + 1;
+            for (let i = 0; i < filesArray.length; i++) {
+                const file = filesArray[i];
+                const formData = new FormData();
+                formData.append('mcode', mcodeStr);
+                formData.append('index', startIndex + i);
+                formData.append('image', file);
 
-                    const res = await fetch('/api/products/upload-image', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await res.json();
-                    if (res.ok) {
-                        currentImages.push(data.url);
-                    } else {
-                        throw new Error(data.error || '업로드 실패');
-                    }
+                const res = await fetch('/api/products/upload-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    currentImages.push(data.url);
+                } else {
+                    throw new Error(data.error || '업로드 실패');
                 }
-                renderMediaPreviews();
-            } catch (err) {
-                alert('이미지 업로드 중 오류가 발생했습니다: ' + err.message);
-            } finally {
-                inputImagesFile.value = '';
             }
+            renderMediaPreviews();
+        } catch (err) {
+            alert('이미지 업로드 중 오류가 발생했습니다: ' + err.message);
+        } finally {
+            if (inputImagesFile) inputImagesFile.value = '';
+        }
+    }
+
+    if (inputImagesFile) {
+        inputImagesFile.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            uploadParentImages(files);
         });
     }
+
+    // Global Paste Event Listener for Images
+    document.addEventListener('paste', (e) => {
+        if (!addProductView || !addProductView.classList.contains('active')) return;
+        
+        // Prevent intercepting paste inside text inputs unless it's specifically for files
+        if (e.target.tagName === 'INPUT' && e.target.type !== 'file' || e.target.tagName === 'TEXTAREA') return;
+
+        if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+            const imageFiles = Array.from(e.clipboardData.files).filter(file => file.type.startsWith('image/'));
+            if (imageFiles.length > 0) {
+                e.preventDefault();
+                uploadParentImages(imageFiles);
+            }
+        }
+    });
 
     if (btnApplyVideoUrl) {
         btnApplyVideoUrl.addEventListener('click', () => {
