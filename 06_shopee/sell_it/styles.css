@@ -1687,13 +1687,13 @@ textarea.form-input {
   display: flex;
   flex-direction: column;
   gap: 0;
-  height: 100%;
+  min-height: 100%;
 }
 
 /* Sticky Header Bar */
 .add-product-header {
   position: sticky;
-  top: 0;
+  top: -1rem; /* Adjust for #view-container padding */
   z-index: 50;
   display: flex;
   align-items: center;
