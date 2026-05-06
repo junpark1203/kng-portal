@@ -1016,7 +1016,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <label class="label-md" style="margin-bottom: 8px;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                    <div style="display: flex; align-items: flex-end; margin-bottom: 8px; height: 28px;">
+                                        <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                    </div>
                                     <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 180px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.notice || ''}</textarea>
                                 </div>
                             </div>
@@ -1034,14 +1036,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; min-height: 28px;">
                                         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
                                             <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
                                             <div style="display: flex; align-items: center; gap: 4px;">
                                                 <select class="form-control pc-locale-notice-template" style="width: auto; height: 28px; padding: 2px 8px; font-size: 0.8rem; display: inline-block;">
                                                     <option value="">공지사항 템플릿 불러오기</option>
-                                                    ${noticeTemplates && noticeTemplates.length > 0 ? noticeTemplates.map(t => `<option value="${t.id}">${t.title}</option>`).join('') : ''}
                                                 </select>
+                                                <button type="button" class="btn-outline pc-btn-manage-notices" style="height: 28px; padding: 0 8px; font-size: 0.8rem;" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1299,6 +1301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const btnSaveLocale = content.querySelector('.btn-save-locale');
         const spanUpdated = content.querySelector('.pc-locale-updated');
         const selNoticeTemplate = content.querySelector('.pc-locale-notice-template');
+        const btnManageNoticesPC = content.querySelector('.pc-btn-manage-notices');
 
         const updateCount = () => {
             if (!countTotal) return;
@@ -1312,17 +1315,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (txtDesc) txtDesc.addEventListener('input', updateCount);
         if (txtNotice) txtNotice.addEventListener('input', updateCount);
 
+        const renderPCNoticeDropdown = () => {
+            if (!selNoticeTemplate) return;
+            selNoticeTemplate.innerHTML = '<option value="">공지사항 템플릿 불러오기</option>';
+            window.pcNoticeTemplates.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.title + (t.isDefault ? ' (기본)' : '');
+                selNoticeTemplate.appendChild(opt);
+            });
+        };
+
+        // Fetch notice templates for this market
+        if (window.loadPcNoticeTemplates) {
+            window.loadPcNoticeTemplates(currentMarketContext).then(() => {
+                renderPCNoticeDropdown();
+            });
+        }
+
         if (selNoticeTemplate && txtNotice) {
             selNoticeTemplate.addEventListener('change', (e) => {
                 const id = e.target.value;
                 if (!id) return;
-                const tmpl = noticeTemplates.find(t => String(t.id) === String(id));
+                const tmpl = window.pcNoticeTemplates.find(t => String(t.id) === String(id));
                 if (tmpl) {
                     txtNotice.value = tmpl.content;
                     updateCount();
                 }
                 // Reset select so user can re-select the same template if needed
                 e.target.value = '';
+            });
+        }
+
+        if (btnManageNoticesPC) {
+            btnManageNoticesPC.addEventListener('click', () => {
+                const modal = document.getElementById('pc-notice-templates-modal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    window.currentPcMarketForNotices = currentMarketContext;
+                    window.loadPcNoticeTemplates(currentMarketContext);
+                    if (window.resetPcNoticeForm) window.resetPcNoticeForm();
+                }
             });
         }
 
@@ -4075,7 +4108,167 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadNoticeTemplates();
 
     // ==========================================
+    // PRICE CALC LOCALE NOTICE TEMPLATES LOGIC
     // ==========================================
+    window.pcNoticeTemplates = [];
+    window.currentPcMarketForNotices = '';
+
+    const pcNoticeTemplatesModal = document.getElementById('pc-notice-templates-modal');
+    const pcBtnCloseNoticesModal = document.getElementById('pc-btn-close-notices-modal');
+    const pcBtnCloseNoticesFooter = document.getElementById('pc-btn-close-notices-footer');
+    
+    const pcNoticeEditId = document.getElementById('pc-notice-edit-id');
+    const pcNoticeTitle = document.getElementById('pc-notice-title');
+    const pcNoticeContent = document.getElementById('pc-notice-content');
+    const pcNoticeIsDefault = document.getElementById('pc-notice-is-default');
+    const pcBtnSaveNotice = document.getElementById('pc-btn-save-notice');
+    const pcBtnCancelNotice = document.getElementById('pc-btn-cancel-notice');
+    const pcNoticesListContainer = document.getElementById('pc-notices-list-container');
+
+    window.loadPcNoticeTemplates = async function(market) {
+        if (!market) return;
+        try {
+            const res = await fetch(`${APP_API_BASE}/locale-notices/${market}`);
+            if (res.ok) {
+                window.pcNoticeTemplates = await res.json();
+                renderPcNoticesList();
+                // We don't render dropdown here globally, the active openPriceCalcDetail will render it.
+            }
+        } catch (e) {
+            console.error('Failed to load pc notices:', e);
+        }
+    };
+
+    function renderPcNoticesList() {
+        if (!pcNoticesListContainer) return;
+        pcNoticesListContainer.innerHTML = '';
+        if (window.pcNoticeTemplates.length === 0) {
+            pcNoticesListContainer.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">저장된 템플릿이 없습니다.</div>';
+            return;
+        }
+
+        window.pcNoticeTemplates.forEach(t => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--outline-variant);';
+            div.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 500; margin-bottom: 4px;">${t.title} ${t.isDefault ? '<span class="badge" style="background:var(--primary); color:white; font-size:0.7rem; padding:2px 6px; border-radius:12px;">기본</span>' : ''}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;">${t.content}</div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <button class="btn btn-outline pc-btn-edit-notice" data-id="${t.id}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">수정</button>
+                    <button class="btn btn-outline pc-btn-delete-notice" data-id="${t.id}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; color: #dc3545; border-color: #dc3545;">삭제</button>
+                </div>
+            `;
+            pcNoticesListContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.pc-btn-edit-notice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.target.getAttribute('data-id');
+                const t = window.pcNoticeTemplates.find(x => x.id == id);
+                if (t) {
+                    pcNoticeEditId.value = t.id;
+                    pcNoticeTitle.value = t.title;
+                    pcNoticeContent.value = t.content;
+                    pcNoticeIsDefault.checked = t.isDefault === 1;
+                    pcBtnSaveNotice.innerHTML = '<i class="fa-solid fa-check"></i> 수정 완료';
+                    pcBtnCancelNotice.style.display = 'inline-block';
+                }
+            });
+        });
+
+        document.querySelectorAll('.pc-btn-delete-notice').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                if (!confirm('이 템플릿을 삭제하시겠습니까?')) return;
+                const id = e.target.getAttribute('data-id');
+                try {
+                    await fetch(`${APP_API_BASE}/locale-notices/${id}`, { method: 'DELETE' });
+                    window.loadPcNoticeTemplates(window.currentPcMarketForNotices);
+                    
+                    // Re-render dropdown in detail view if open
+                    const selNoticeTemplate = document.querySelector('.pc-locale-notice-template');
+                    if (selNoticeTemplate) {
+                        selNoticeTemplate.innerHTML = '<option value="">공지사항 템플릿 불러오기</option>';
+                        window.pcNoticeTemplates.filter(x => String(x.id) !== String(id)).forEach(tt => {
+                            const opt = document.createElement('option');
+                            opt.value = tt.id;
+                            opt.textContent = tt.title + (tt.isDefault ? ' (기본)' : '');
+                            selNoticeTemplate.appendChild(opt);
+                        });
+                    }
+                } catch (err) {
+                    alert('삭제 실패: ' + err.message);
+                }
+            });
+        });
+    }
+
+    window.resetPcNoticeForm = function() {
+        if (!pcNoticeEditId) return;
+        pcNoticeEditId.value = '';
+        pcNoticeTitle.value = '';
+        pcNoticeContent.value = '';
+        pcNoticeIsDefault.checked = false;
+        pcBtnSaveNotice.innerHTML = '<i class="fa-solid fa-plus"></i> 저장';
+        pcBtnCancelNotice.style.display = 'none';
+    };
+
+    if (pcBtnCloseNoticesModal) pcBtnCloseNoticesModal.addEventListener('click', () => pcNoticeTemplatesModal.style.display = 'none');
+    if (pcBtnCloseNoticesFooter) pcBtnCloseNoticesFooter.addEventListener('click', () => pcNoticeTemplatesModal.style.display = 'none');
+    if (pcBtnCancelNotice) pcBtnCancelNotice.addEventListener('click', window.resetPcNoticeForm);
+
+    if (pcBtnSaveNotice) {
+        pcBtnSaveNotice.addEventListener('click', async () => {
+            const title = pcNoticeTitle.value.trim();
+            const content = pcNoticeContent.value.trim();
+            const isDefault = pcNoticeIsDefault.checked;
+            const id = pcNoticeEditId.value;
+            const market = window.currentPcMarketForNotices;
+
+            if (!title || !content) {
+                alert('제목과 내용을 모두 입력해주세요.');
+                return;
+            }
+            if (!market) {
+                alert('마켓 정보가 없습니다.');
+                return;
+            }
+
+            const payload = { title, content, isDefault, market };
+            const url = id ? `${APP_API_BASE}/locale-notices/${id}` : `${APP_API_BASE}/locale-notices/${market}`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    window.resetPcNoticeForm();
+                    await window.loadPcNoticeTemplates(market);
+                    
+                    // Re-render dropdown in detail view if open
+                    const selNoticeTemplate = document.querySelector('.pc-locale-notice-template');
+                    if (selNoticeTemplate) {
+                        selNoticeTemplate.innerHTML = '<option value="">공지사항 템플릿 불러오기</option>';
+                        window.pcNoticeTemplates.forEach(t => {
+                            const opt = document.createElement('option');
+                            opt.value = t.id;
+                            opt.textContent = t.title + (t.isDefault ? ' (기본)' : '');
+                            selNoticeTemplate.appendChild(opt);
+                        });
+                    }
+                } else {
+                    const data = await res.json();
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                alert('저장 실패: ' + err.message);
+            }
+        });
+    }
     // maData는 상단에서 선언됨 (TDZ 방지)
 
     const MARKET_FLAGS = {

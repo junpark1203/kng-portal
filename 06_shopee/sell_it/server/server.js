@@ -236,6 +236,20 @@ function initDb() {
             else console.log('notice_templates 테이블 확인 완료');
         });
 
+        db.run(`
+            CREATE TABLE IF NOT EXISTS locale_notice_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                market TEXT,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                isDefault INTEGER DEFAULT 0,
+                createdAt TEXT
+            )
+        `, (err) => {
+            if (err) console.error('locale_notice_templates 테이블 생성 오류:', err.message);
+            else console.log('locale_notice_templates 테이블 확인 완료');
+        });
+
         // 마켓 전송 기록
         db.run(`
             CREATE TABLE IF NOT EXISTS market_exports (
@@ -1381,6 +1395,53 @@ app.put('/api/market-locales/:productId/:marketCode', (req, res) => {
     db.run(sql, [id, productId, marketCode, description || '', notice || '', now, description || '', notice || '', now], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: '번역 저장 완료', id });
+    });
+});
+
+// ==========================================
+// Locale Notice Templates (Price Calc 전용)
+// ==========================================
+app.get('/api/locale-notices/:market', (req, res) => {
+    db.all('SELECT * FROM locale_notice_templates WHERE market = ? ORDER BY isDefault DESC, createdAt DESC', [req.params.market], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/locale-notices/:market', (req, res) => {
+    const { title, content, isDefault } = req.body;
+    const market = req.params.market;
+    const now = new Date().toISOString();
+    
+    if (isDefault) {
+        db.run('UPDATE locale_notice_templates SET isDefault = 0 WHERE market = ?', [market]);
+    }
+    
+    db.run('INSERT INTO locale_notice_templates (market, title, content, isDefault, createdAt) VALUES (?, ?, ?, ?, ?)', 
+        [market, title, content, isDefault ? 1 : 0, now], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID });
+    });
+});
+
+app.put('/api/locale-notices/:id', (req, res) => {
+    const { title, content, isDefault, market } = req.body;
+    
+    if (isDefault) {
+        db.run('UPDATE locale_notice_templates SET isDefault = 0 WHERE market = ?', [market]);
+    }
+    
+    db.run('UPDATE locale_notice_templates SET title = ?, content = ?, isDefault = ? WHERE id = ?',
+        [title, content, isDefault ? 1 : 0, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Success' });
+    });
+});
+
+app.delete('/api/locale-notices/:id', (req, res) => {
+    db.run('DELETE FROM locale_notice_templates WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Success' });
     });
 });
 
