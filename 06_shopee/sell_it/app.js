@@ -2327,8 +2327,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const removedUrl = currentImages[idx];
                 currentImages.splice(idx, 1);
                 renderMediaPreviews();
-                // Delete from server in background
-                await deleteImageFromServer(removedUrl);
             });
         });
 
@@ -2663,8 +2661,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const removedUrl = currentOptions[optIdx].imageUrl;
                 currentOptions[optIdx].imageUrl = '';
                 renderOptionRows();
-                // Delete from server in background
-                await deleteImageFromServer(removedUrl);
             });
         });
         // File upload click
