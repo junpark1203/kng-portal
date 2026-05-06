@@ -1684,6 +1684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const priceCol = inputPriceKrw.closest('.col');
         if (priceCol) priceCol.style.display = 'flex';
         inputPriceKrw.required = true;
+        if (inputWeight) inputWeight.required = true;
     }
 
     function showAddProductView(isEdit = false) {
@@ -2075,6 +2076,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (priceCol) priceCol.style.display = isOn ? 'none' : 'flex';
             // Toggle required so form validation doesn't block when hidden
             inputPriceKrw.required = !isOn;
+            if (inputWeight) inputWeight.required = !isOn;
         });
     }
 
@@ -2375,7 +2377,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const imgs = typeof c.images === 'string' ? JSON.parse(c.images) : c.images;
                         if (Array.isArray(imgs) && imgs.length > 0) imgUrl = imgs[0];
                     } catch(e) {}
-                    return { optionName: c.optionName || '', priceKrw: c.priceKrw || 0, imageUrl: imgUrl, imageFile: null };
+                    return { optionName: c.optionName || '', priceKrw: c.priceKrw || 0, weight: c.weight || '', imageUrl: imgUrl, imageFile: null };
                 });
                 currentImages = []; // Parent images not loaded for option groups for now
                 currentVideo = productObj.video || '';
@@ -2385,6 +2387,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 optionToggleWrapper.classList.add('active');
                 const priceCol = inputPriceKrw.closest('.col');
                 if (priceCol) priceCol.style.display = 'none';
+                inputPriceKrw.required = false;
+                if (inputWeight) inputWeight.required = false;
                 renderOptionRows();
             } else {
                 // Single product edit
