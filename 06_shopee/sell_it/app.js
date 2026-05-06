@@ -612,6 +612,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tr.addEventListener('click', (e) => {
                     if (e.target.tagName === 'INPUT') return; // Don't trigger if clicking an input
                     
+                    // Check if text was selected (dragged)
+                    const selection = window.getSelection().toString();
+                    if (selection && selection.length > 0) return;
+                    
                     const productId = tr.dataset.productId;
                     if (!productId) return; // Virtual parent rows do not open side panel
                     
@@ -3008,6 +3012,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         row.addEventListener('click', (e) => {
             // Prevent drawer from opening if clicking a link or a checkbox
             if (e.target.closest('a') || e.target.closest('input[type="checkbox"]')) return;
+
+            // Check if text was selected (dragged)
+            const selection = window.getSelection().toString();
+            if (selection && selection.length > 0) return;
 
             currentEditingRow = row;
             const mcodeStr = row.querySelector('.prod-mcode')?.innerText || '';
