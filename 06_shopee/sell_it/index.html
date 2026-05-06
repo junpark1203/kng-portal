@@ -572,6 +572,184 @@
                         <p class="body-sm text-secondary">This module is under construction.</p>
                     </div>
                 </div>
+
+                <!-- Add/Edit Product Full-Page View -->
+                <div class="view-section" id="view-add-product">
+                    <div class="add-product-page">
+                        <!-- Sticky Header -->
+                        <div class="add-product-header">
+                            <div class="add-product-header-left">
+                                <button type="button" class="btn-back-link" id="btn-back-to-list">
+                                    <i class="fa-solid fa-arrow-left"></i> Product List
+                                </button>
+                                <span class="add-product-header-title" id="add-product-page-title">Add New Product</span>
+                                <span class="add-product-header-mcode" id="add-product-mcode-badge">---</span>
+                            </div>
+                            <div class="add-product-header-right">
+                                <button class="btn-secondary" id="btn-cancel-product">Cancel</button>
+                                <button class="btn-primary" id="btn-save-product"><i class="fa-solid fa-check"></i> Save Product</button>
+                            </div>
+                        </div>
+
+                        <!-- 2-Column Body -->
+                        <form id="add-product-form">
+                        <div class="add-product-body">
+                            <!-- Left Column -->
+                            <div class="add-product-left">
+                                <!-- Card 1: 기본 정보 -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-box"></i> 기본 정보</div>
+                                    <div class="form-group row">
+                                        <div class="col">
+                                            <label class="label-md">작성일자</label>
+                                            <input type="date" id="input-date" class="form-control" required>
+                                        </div>
+                                        <div class="col">
+                                            <label class="label-md">관리코드 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(자동생성)</span></label>
+                                            <input type="text" id="input-mcode" class="form-control" readonly style="background: var(--surface-container-high); font-weight: 700; letter-spacing: 0.03em;">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">카테고리</label>
+                                        <div style="position: relative;">
+                                            <input type="text" id="input-category-search" class="form-control" placeholder="카테고리 검색..." autocomplete="off">
+                                            <input type="hidden" id="input-category-en">
+                                            <input type="hidden" id="input-category-ko">
+                                            <div id="category-autocomplete-list" class="autocomplete-list"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품명(한글)</label>
+                                        <input type="text" id="input-name-ko" class="form-control" placeholder="예: 프리미엄 무선 마우스" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품명(영문)</label>
+                                        <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
+                                    </div>
+                                </div>
+
+                                <!-- Card 2: 가격 · 물류 -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-coins"></i> 가격 · 물류</div>
+                                    <div class="form-group row" style="display: flex; gap: 1rem;">
+                                        <div class="col" style="flex: 1;">
+                                            <label class="label-md">상품매입비(KRW)</label>
+                                            <input type="number" id="input-price-krw" class="form-control" placeholder="0" required>
+                                        </div>
+                                        <div class="col" style="flex: 1;">
+                                            <label class="label-md">국내배송비(KRW)</label>
+                                            <input type="number" id="input-domestic-shipping" class="form-control" placeholder="3000" value="3000">
+                                        </div>
+                                        <div class="col" style="flex: 1;">
+                                            <label class="label-md">기본포장비(KRW)</label>
+                                            <input type="number" id="input-packaging-krw" class="form-control" placeholder="0" value="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col">
+                                            <label class="label-md">적용환율</label>
+                                            <input type="number" id="input-rate" class="form-control" placeholder="1400" step="0.01" required>
+                                        </div>
+                                        <div class="col">
+                                            <label class="label-md">환율적용일자</label>
+                                            <input type="date" id="input-rate-date" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품무게(g)</label>
+                                        <input type="number" id="input-weight" class="form-control" placeholder="150" required>
+                                    </div>
+                                </div>
+
+                                <!-- Card 3: 옵션(Variant) -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-layer-group"></i> 상품 옵션 (Variants)</div>
+                                    <div id="option-management-section">
+                                        <div class="option-toggle-wrapper" id="option-toggle-wrapper">
+                                            <label class="toggle-switch">
+                                                <input type="checkbox" id="option-toggle">
+                                                <span class="toggle-track"></span>
+                                            </label>
+                                            <div>
+                                                <span class="label-md" style="font-weight: 600;">이 상품에 옵션이 있습니다</span>
+                                                <span class="opt-count-badge" id="opt-count-badge" style="display: none;">0</span>
+                                            </div>
+                                        </div>
+                                        <div class="option-section" id="option-section" style="display: none;">
+                                            <div class="option-table-wrapper">
+                                                <table class="option-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 140px;">관리코드</th>
+                                                            <th>옵션명</th>
+                                                            <th style="width: 120px;">매입가(KRW)</th>
+                                                            <th style="width: 200px;">이미지</th>
+                                                            <th style="width: 36px;"></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="option-table-body"></tbody>
+                                                </table>
+                                            </div>
+                                            <button type="button" class="btn-add-option" id="btn-add-option">
+                                                <i class="fa-solid fa-plus"></i> 옵션 추가
+                                            </button>
+                                            <input type="file" id="opt-image-file-input" accept="image/*" style="display: none;">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Card 4: 추가 정보 -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-circle-info"></i> 추가 정보</div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품구매링크</label>
+                                        <input type="url" id="input-link" class="form-control" placeholder="https://...">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">비고</label>
+                                        <textarea id="input-note" class="form-control" rows="3" placeholder="특이사항 입력..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Column (Sticky) -->
+                            <div class="add-product-right">
+                                <!-- Media Card -->
+                                <div class="form-card">
+                                    <div class="form-card-title"><i class="fa-solid fa-image"></i> 미디어 업로드</div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품 이미지 (최대 9장)</label>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="file" id="input-images-file" class="form-control" accept="image/*" multiple style="flex: 1;">
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="url" id="input-image-url" class="form-control" placeholder="이미지 URL 직접 입력" style="flex: 1;">
+                                            <button type="button" id="btn-add-image-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                                        </div>
+                                        <div id="image-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;"></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="label-md">상품 영상 (최대 1개, MP4, 30MB 이하)</label>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="file" id="input-video-file" class="form-control" accept="video/mp4" style="flex: 1;">
+                                        </div>
+                                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <input type="url" id="input-video-url" class="form-control" placeholder="영상 URL 직접 입력" style="flex: 1;">
+                                            <button type="button" id="btn-add-video-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
+                                        </div>
+                                        <div id="video-preview-container" style="margin-top: 0.5rem;"></div>
+                                    </div>
+                                    <div class="file-path-info">
+                                        <i class="fa-solid fa-folder-open"></i>
+                                        저장 경로: /uploads/{mcode}-{index}.ext · 접근: shopee-api.junparks.com/api/images/...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        </form>
+                    </div>
+                </div>
+
             </div>
         </main>
     </div>
@@ -588,157 +766,10 @@
         </div>
     </div>
 
-    <!-- Add Product Drawer -->
-    <div class="drawer-overlay" id="add-product-overlay"></div>
-    <div class="drawer" id="add-product-drawer">
-        <div class="drawer-header">
-            <h3 class="headline-md">Add New Product</h3>
-            <button class="btn-close" id="btn-close-drawer"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="drawer-body">
-            <form id="add-product-form">
-                <div class="form-group row">
-                    <div class="col">
-                        <label class="label-md">작성일자</label>
-                        <input type="date" id="input-date" class="form-control" required>
-                    </div>
-                    <div class="col">
-                        <label class="label-md">관리코드 (자동생성)</label>
-                        <input type="text" id="input-mcode" class="form-control" readonly style="background-color: var(--surface-container-high); cursor: not-allowed; color: var(--text-secondary);">
-                    </div>
-                </div>
-                <div class="form-group autocomplete-container" style="position: relative;">
-                    <label class="label-md">카테고리 (한글/영문 검색)</label>
-                    <input type="text" id="input-category-search" class="form-control" placeholder="예: 의류, 가방, bag..." required autocomplete="off">
-                    <input type="hidden" id="input-category-en">
-                    <input type="hidden" id="input-category-ko">
-                    <ul class="autocomplete-list" id="category-autocomplete-list"></ul>
-                </div>
-                <div class="form-group">
-                    <label class="label-md">상품명(한글)</label>
-                    <input type="text" id="input-name-ko" class="form-control" placeholder="예: 프리미엄 무선 마우스" required>
-                </div>
-                <div class="form-group">
-                    <label class="label-md">상품명(영문)</label>
-                    <input type="text" id="input-name-en" class="form-control" placeholder="e.g. Premium Wireless Mouse" required>
-                </div>
-                <div class="form-group row" style="display: flex; gap: 1rem;">
-                    <div class="col" style="flex: 1;">
-                        <label class="label-md">상품매입비(KRW)</label>
-                        <input type="number" id="input-price-krw" class="form-control" placeholder="0" required>
-                    </div>
-                    <div class="col" style="flex: 1;">
-                        <label class="label-md">국내배송비(KRW)</label>
-                        <input type="number" id="input-domestic-shipping" class="form-control" placeholder="3000" value="3000">
-                    </div>
-                    <div class="col" style="flex: 1;">
-                        <label class="label-md">기본포장비(KRW)</label>
-                        <input type="number" id="input-packaging-krw" class="form-control" placeholder="0" value="0">
-                    </div>
-                </div>
 
-                <!-- 옵션(Variant) 관리 섹션 -->
-                <div class="form-group" id="option-management-section">
-                    <div class="option-toggle-wrapper" id="option-toggle-wrapper">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="option-toggle">
-                            <span class="toggle-track"></span>
-                        </label>
-                        <div>
-                            <span class="label-md" style="font-weight: 600;">이 상품에 옵션이 있습니다</span>
-                            <span class="opt-count-badge" id="opt-count-badge" style="display: none;">0</span>
-                        </div>
-                    </div>
+    <!-- Old Add Product Drawer removed — replaced by #view-add-product full-page view -->
 
-                    <!-- 옵션 테이블 (토글 ON 시 표시) -->
-                    <div class="option-section" id="option-section" style="display: none;">
-                        <div class="option-table-wrapper">
-                            <table class="option-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 140px;">관리코드</th>
-                                        <th>옵션명</th>
-                                        <th style="width: 120px;">매입가(KRW)</th>
-                                        <th class="opt-image-cell">이미지</th>
-                                        <th style="width: 36px;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="option-table-body">
-                                    <!-- 동적으로 렌더링 -->
-                                </tbody>
-                            </table>
-                        </div>
-                        <button type="button" class="btn-add-option" id="btn-add-option">
-                            <i class="fa-solid fa-plus"></i> 옵션 추가
-                        </button>
-                        <!-- 옵션별 이미지 업로드용 hidden input -->
-                        <input type="file" id="opt-image-file-input" accept="image/*" style="display: none;">
-                    </div>
-                </div>
 
-                <div class="form-group row">
-                    <div class="col">
-                        <label class="label-md">적용환율</label>
-                        <input type="number" id="input-rate" class="form-control" placeholder="1400" step="0.01" required>
-                    </div>
-                    <div class="col">
-                        <label class="label-md">환율적용일자</label>
-                        <input type="date" id="input-rate-date" class="form-control">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="label-md">상품무게(g)</label>
-                    <input type="number" id="input-weight" class="form-control" placeholder="150" required>
-                </div>
-                <div class="form-group">
-                    <label class="label-md">상품구매링크</label>
-                    <input type="url" id="input-link" class="form-control" placeholder="https://...">
-                </div>
-                <div class="form-group">
-                    <label class="label-md">비고</label>
-                    <textarea id="input-note" class="form-control" rows="3" placeholder="특이사항 입력..."></textarea>
-                </div>
-                
-                <hr style="border: 0; border-top: 1px solid var(--outline-variant); margin: 1.5rem 0;">
-                
-                <h4 class="title-md" style="margin-bottom: 0.5rem;">미디어 업로드</h4>
-                
-                <!-- Images Section -->
-                <div class="form-group">
-                    <label class="label-md">상품 이미지 (최대 9장)</label>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="file" id="input-images-file" class="form-control" accept="image/*" multiple style="flex: 1;">
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="url" id="input-image-url" class="form-control" placeholder="이미지 URL 직접 입력" style="flex: 1;">
-                        <button type="button" id="btn-add-image-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
-                    </div>
-                    <div id="image-preview-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
-                        <!-- JS injected image thumbnails -->
-                    </div>
-                </div>
-
-                <!-- Video Section -->
-                <div class="form-group">
-                    <label class="label-md">상품 영상 (최대 1개, MP4, 30MB 이하)</label>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="file" id="input-video-file" class="form-control" accept="video/mp4" style="flex: 1;">
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="url" id="input-video-url" class="form-control" placeholder="영상 URL 직접 입력" style="flex: 1;">
-                        <button type="button" id="btn-add-video-url" class="btn-secondary" style="white-space: nowrap;">URL 추가</button>
-                    </div>
-                    <div id="video-preview-container" style="margin-top: 0.5rem;">
-                        <!-- JS injected video preview -->
-                    </div>
-                </div>
-            </form>
-        </div>
-        <div class="drawer-footer">
-            <button class="btn-secondary" id="btn-cancel-drawer">Cancel</button>
-            <button class="btn-primary" id="btn-save-product">Save Product</button>
-        </div>
-    </div>
 
     <!-- Old Price Calculation Drawer removed — replaced by inline expansion panels -->
 

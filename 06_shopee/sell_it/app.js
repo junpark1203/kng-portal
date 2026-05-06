@@ -1557,12 +1557,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     const btnAddProduct = document.getElementById('btn-add-product');
-    const drawerOverlay = document.getElementById('add-product-overlay');
-    const drawer = document.getElementById('add-product-drawer');
-    const btnCloseDrawer = document.getElementById('btn-close-drawer');
-    const btnCancelDrawer = document.getElementById('btn-cancel-drawer');
+    const btnBackToList = document.getElementById('btn-back-to-list');
+    const btnCancelProduct = document.getElementById('btn-cancel-product');
     const btnSaveProduct = document.getElementById('btn-save-product');
     const addProductForm = document.getElementById('add-product-form');
+    const addProductView = document.getElementById('view-add-product');
+    const productListView = document.getElementById('view-product-list');
+    const addProductPageTitle = document.getElementById('add-product-page-title');
+    const addProductMcodeBadge = document.getElementById('add-product-mcode-badge');
     
     // Inputs
     const inputDate = document.getElementById('input-date');
@@ -1634,6 +1636,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const nextSeq = maxSeq + 1;
         inputMcode.value = window.generateManagementCode(selectedDate, nextSeq);
+        if (addProductMcodeBadge) addProductMcodeBadge.innerText = inputMcode.value;
     }
 
     if (inputDate) {
@@ -1655,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         inputPriceKrw.required = true;
     }
 
-    function openDrawer(isEdit = false) {
+    function showAddProductView(isEdit = false) {
         if (!isEdit) {
             addProductForm.reset();
             currentEditingRow = null;
@@ -1675,37 +1678,48 @@ document.addEventListener('DOMContentLoaded', async () => {
                 inputRateDate.value = today;
             }
 
-            drawer.querySelector('.headline-md').innerText = 'Add New Product';
+            if (addProductPageTitle) addProductPageTitle.innerText = 'Add New Product';
         } else {
-            drawer.querySelector('.headline-md').innerText = 'Edit Product';
+            if (addProductPageTitle) addProductPageTitle.innerText = 'Edit Product';
         }
-        if(drawerOverlay && drawer) {
-            drawerOverlay.classList.add('active');
-            drawer.classList.add('active');
-        }
+        // Update mcode badge in header
+        if (addProductMcodeBadge) addProductMcodeBadge.innerText = inputMcode.value || '---';
+        
+        // Switch views
+        const allViews = document.querySelectorAll('.view-section');
+        allViews.forEach(v => v.classList.remove('active'));
+        if (addProductView) addProductView.classList.add('active');
+        
+        // Update page title in topbar
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.innerText = isEdit ? 'Edit Product' : 'Add Product';
+        
+        // Scroll to top
+        if (addProductView) addProductView.scrollTop = 0;
     }
 
-    function closeDrawer() {
-        if(drawerOverlay && drawer) {
-            drawerOverlay.classList.remove('active');
-            drawer.classList.remove('active');
-            addProductForm.reset();
-            currentEditingRow = null;
-            drawer.querySelector('.headline-md').innerText = 'Add New Product';
-            categoryAutocompleteList.style.display = 'none';
-            currentImages = [];
-            currentVideo = '';
-            renderMediaPreviews();
-            resetOptionState();
-        }
+    function returnToProductList() {
+        addProductForm.reset();
+        currentEditingRow = null;
+        categoryAutocompleteList.style.display = 'none';
+        currentImages = [];
+        currentVideo = '';
+        renderMediaPreviews();
+        resetOptionState();
+        
+        // Switch back to product list
+        const allViews = document.querySelectorAll('.view-section');
+        allViews.forEach(v => v.classList.remove('active'));
+        if (productListView) productListView.classList.add('active');
+        
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.innerText = 'Product List';
     }
 
-    if (btnAddProduct) btnAddProduct.addEventListener('click', () => openDrawer(false));
-    if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', closeDrawer);
-    if (btnCancelDrawer) btnCancelDrawer.addEventListener('click', closeDrawer);
-    if (drawerOverlay) drawerOverlay.addEventListener('click', () => {
-        closeDrawer();
-    });
+    if (btnAddProduct) btnAddProduct.addEventListener('click', () => showAddProductView(false));
+    if (btnBackToList) btnBackToList.addEventListener('click', returnToProductList);
+    if (btnCancelProduct) btnCancelProduct.addEventListener('click', returnToProductList);
+
 
     // --- Media Logic ---
     function renderMediaPreviews() {
@@ -1870,15 +1884,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         optionTableBody.innerHTML = currentOptions.map((opt, idx) => {
             const suffix = String(idx + 1).padStart(2, '0');
             const optMcode = `${baseMcode}-${suffix}`;
-            const imgHtml = opt.imageUrl
-                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경">`
-                : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="클릭하여 이미지 추가"><i class="fa-solid fa-camera"></i></div>`;
+            const imgPreview = opt.imageUrl
+                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="margin-bottom:4px;">`
+                : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="파일 업로드" style="margin-bottom:4px;"><i class="fa-solid fa-camera"></i></div>`;
             return `
                 <tr data-opt-idx="${idx}">
                     <td><input type="text" class="opt-input readonly-mcode" value="${optMcode}" readonly></td>
                     <td><input type="text" class="opt-input opt-name-input" data-opt-idx="${idx}" value="${opt.optionName || ''}" placeholder="예: Red / M"></td>
                     <td><input type="number" class="opt-input opt-input-price opt-price-input" data-opt-idx="${idx}" value="${opt.priceKrw || ''}" placeholder="0"></td>
-                    <td class="opt-image-cell">${imgHtml}</td>
+                    <td>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                            ${imgPreview}
+                            <div class="opt-image-actions">
+                                <input type="text" class="opt-image-url-input" data-opt-idx="${idx}" placeholder="URL 입력" value="${opt.imageUrl || ''}">
+                                <button type="button" class="opt-image-url-btn" data-opt-idx="${idx}" title="URL 적용">URL</button>
+                                <button type="button" class="opt-image-file-btn" data-opt-idx="${idx}" title="파일 업로드"><i class="fa-solid fa-upload"></i></button>
+                            </div>
+                        </div>
+                    </td>
                     <td><button type="button" class="opt-delete-btn" data-opt-idx="${idx}" title="삭제"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>`;
         }).join('');
@@ -1897,8 +1920,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         optionTableBody.querySelectorAll('.opt-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { currentOptions.splice(parseInt(e.currentTarget.dataset.optIdx), 1); renderOptionRows(); });
         });
-        optionTableBody.querySelectorAll('.opt-image-thumb, .opt-image-placeholder').forEach(el => {
+        // File upload click
+        optionTableBody.querySelectorAll('.opt-image-file-btn, .opt-image-thumb, .opt-image-placeholder').forEach(el => {
             el.addEventListener('click', (e) => { currentOptionImageTarget = parseInt(e.currentTarget.dataset.optIdx); optImageFileInput.click(); });
+        });
+        // URL apply click
+        optionTableBody.querySelectorAll('.opt-image-url-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const i = parseInt(e.currentTarget.dataset.optIdx);
+                const urlInput = optionTableBody.querySelector(`.opt-image-url-input[data-opt-idx="${i}"]`);
+                const url = urlInput ? urlInput.value.trim() : '';
+                if (url) {
+                    currentOptions[i].imageUrl = url;
+                    renderOptionRows();
+                } else {
+                    alert('URL을 입력해주세요.');
+                }
+            });
         });
     }
 
@@ -2138,7 +2176,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Reload from API
                 productList = await api.getProducts();
                 renderProductListTable();
-                closeDrawer();
+                returnToProductList();
             } catch (err) {
                 alert('저장 실패: ' + err.message);
             }
@@ -2240,7 +2278,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             renderMediaPreviews();
-            openDrawer(true);
+            showAddProductView(true);
         });
     }
 

@@ -1667,3 +1667,216 @@ textarea.form-input {
   border-radius: 10px;
   margin-left: 8px;
 }
+
+/* =========================================
+   Full-Page Add/Edit Product Form
+========================================= */
+.add-product-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+}
+
+/* Sticky Header Bar */
+.add-product-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--surface-container-high);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+.add-product-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.btn-back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: var(--transition);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+}
+.btn-back-link:hover {
+  color: var(--primary);
+  background: var(--surface-container-low);
+}
+.add-product-header-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.add-product-header-mcode {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-container-low);
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+}
+.add-product-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 2-Column Grid Body */
+.add-product-body {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Form Card Panels */
+.form-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--surface-container-high);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  margin-bottom: 0;
+}
+.form-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--surface-container-high);
+}
+.form-card-title i {
+  color: var(--primary);
+  font-size: 0.9rem;
+  width: 20px;
+  text-align: center;
+}
+.form-card .form-group {
+  margin-bottom: 14px;
+}
+.form-card .form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* Left column stacking */
+.add-product-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Right column sticky */
+.add-product-right {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* File path info display */
+.file-path-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface-container-low);
+  border-radius: 6px;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  word-break: break-all;
+}
+.file-path-info i {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Option image URL input row */
+.opt-image-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.opt-image-url-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--surface-container-high);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  color: var(--text-main);
+  background: var(--surface-container-lowest);
+  transition: var(--transition);
+}
+.opt-image-url-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.opt-image-url-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.opt-image-url-btn:hover {
+  opacity: 0.85;
+}
+.opt-image-file-btn {
+  background: var(--surface-container-high);
+  color: var(--text-secondary);
+  border: none;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.opt-image-file-btn:hover {
+  background: var(--surface-container-highest);
+}
+
+/* Responsive: collapse to 1 column */
+@media (max-width: 960px) {
+  .add-product-body {
+    grid-template-columns: 1fr;
+  }
+  .add-product-right {
+    position: static;
+  }
+}
+

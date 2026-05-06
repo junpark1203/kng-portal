@@ -428,29 +428,72 @@ app.put('/api/products/:id', (req, res) => {
     });
 });
 
-// 상품 삭제
+// 이미지 파일 정리 헬퍼 — product의 images JSON에서 파일 경로를 추출하여 삭제
+function cleanupProductImages(imagesJson) {
+    if (!imagesJson) return;
+    try {
+        const images = typeof imagesJson === 'string' ? JSON.parse(imagesJson) : imagesJson;
+        if (!Array.isArray(images)) return;
+        images.forEach(imgUrl => {
+            // imgUrl 형태: /api/images/CGM2-06-001-1.jpg
+            const filename = imgUrl.replace(/^\/api\/images\//, '');
+            if (filename && filename !== imgUrl) {
+                const filePath = path.join(UPLOAD_DIR, filename);
+                fs.unlink(filePath, (err) => {
+                    if (err && err.code !== 'ENOENT') {
+                        console.error(`[CLEANUP] 이미지 삭제 실패: ${filePath}`, err.message);
+                    } else if (!err) {
+                        console.log(`[CLEANUP] 이미지 삭제 완료: ${filename}`);
+                    }
+                });
+            }
+        });
+    } catch (e) {
+        console.error('[CLEANUP] images JSON 파싱 실패:', e.message);
+    }
+}
+
+// 상품 삭제 (이미지 파일도 정리)
 app.delete('/api/products/:id', (req, res) => {
-    db.run('DELETE FROM products WHERE id = ?', [req.params.id], function(err) {
+    const productId = req.params.id;
+    // 먼저 상품 정보를 조회하여 이미지 경로 확보
+    db.get('SELECT images FROM products WHERE id = ?', [productId], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
-        // 연관 market_exports도 삭제
-        db.run('DELETE FROM market_exports WHERE productId = ?', [req.params.id]);
-        res.json({ message: '삭제 성공' });
+        if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+
+        // 이미지 파일 정리
+        cleanupProductImages(row.images);
+
+        // DB 삭제
+        db.run('DELETE FROM products WHERE id = ?', [productId], function(delErr) {
+            if (delErr) return res.status(500).json({ error: delErr.message });
+            db.run('DELETE FROM market_exports WHERE productId = ?', [productId]);
+            res.json({ message: '삭제 성공' });
+        });
     });
 });
 
-// 상품 다중 삭제
+// 상품 다중 삭제 (이미지 파일도 정리)
 app.post('/api/products/delete', (req, res) => {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
     }
     const placeholders = ids.map(() => '?').join(',');
-    db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(err) {
+
+    // 먼저 모든 대상 상품의 이미지 정보 조회
+    db.all(`SELECT images FROM products WHERE id IN (${placeholders})`, ids, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        // 연관 market_exports도 삭제
-        db.run(`DELETE FROM market_exports WHERE productId IN (${placeholders})`, ids);
-        res.json({ message: '삭제 성공', deletedCount: this.changes });
+
+        // 각 상품의 이미지 파일 정리
+        (rows || []).forEach(row => cleanupProductImages(row.images));
+
+        // DB 삭제
+        db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(delErr) {
+            if (delErr) return res.status(500).json({ error: delErr.message });
+            db.run(`DELETE FROM market_exports WHERE productId IN (${placeholders})`, ids);
+            res.json({ message: '삭제 성공', deletedCount: this.changes });
+        });
     });
 });
 
