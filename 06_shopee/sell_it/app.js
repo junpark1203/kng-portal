@@ -869,10 +869,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         const totalCostKrw = costKrw + shipKrw + pkgKrw;
         const commTotal = result.breakdown ? Object.values(result.breakdown).reduce((s,f) => s + f.amount, 0) : 0;
 
+        let itemImages = [];
+        try {
+            if (item.images && typeof item.images === 'string') itemImages = JSON.parse(item.images);
+            else if (Array.isArray(item.images)) itemImages = item.images;
+        } catch(e) {}
+        
+        if (!itemImages || itemImages.length === 0 || (itemImages.length === 1 && !itemImages[0])) {
+            try {
+                if (item.parentImages && typeof item.parentImages === 'string') itemImages = JSON.parse(item.parentImages);
+                else if (Array.isArray(item.parentImages)) itemImages = item.parentImages;
+            } catch(e) {}
+        }
+        
+        itemImages = (itemImages || []).filter(img => img && typeof img === 'string' && img.trim() !== '');
+        const thumbImage = itemImages.length > 0 ? itemImages[0] : 'https://via.placeholder.com/100';
+
         content.innerHTML = `
             <!-- Product Summary Card -->
             <div class="panel surface-container-lowest" style="display: flex; gap: 1.5rem; align-items: center; padding: 1.5rem; margin-bottom: 0;">
-                <img src="${item.opt1Image || 'https://via.placeholder.com/100'}" alt="Thumb" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high);">
+                <img src="${thumbImage}" onerror="this.src='https://via.placeholder.com/100'" alt="Thumb" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high);">
                 <div style="flex: 1;">
                     <h3 class="title-md">${item.name || 'No Name'}</h3>
                     <div class="body-sm text-secondary" style="margin-top: 0.25rem;">
@@ -968,10 +984,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="form-card">
                         <div class="form-card-title"><i class="fa-solid fa-image"></i> 이미지 갤러리</div>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; background: var(--surface-container-lowest); padding: 1.5rem; border-radius: 8px;">
-                            ${[item.opt1Image, item.opt2Image, item.opt3Image, item.opt4Image, item.opt5Image]
-                                .filter(img => img && img.trim() !== '')
-                                .map(img => `<img src="${img}" style="width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">`)
-                                .join('') || '<span class="text-secondary">등록된 이미지가 없습니다.</span>'}
+                            ${itemImages.length > 0
+                                ? itemImages.map(img => `<img src="${img}" onerror="this.src='https://via.placeholder.com/100'" style="width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--surface-container-high); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">`).join('')
+                                : '<span class="text-secondary">등록된 이미지가 없습니다.</span>'}
                         </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
