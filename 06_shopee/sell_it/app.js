@@ -2426,7 +2426,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             optionName: currentOptions[i].optionName,
                             priceKrw: parseInt(currentOptions[i].priceKrw, 10) || parseInt(priceKrw, 10) || 0,
                             weight: parseInt(currentOptions[i].weight, 10) || baseProductData.weight,
-                            images: currentOptions[i].imageUrl ? JSON.stringify([currentOptions[i].imageUrl]) : '[]'
+                            images: currentOptions[i].imageUrl ? JSON.stringify([currentOptions[i].imageUrl]) : '[]',
+                            parentImages: JSON.stringify(currentImages)
                         };
                         await api.createProduct(optData);
                     }
@@ -2445,7 +2446,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         mcode: mcodeStr,
                         optionName: '',
                         priceKrw: parseInt(priceKrw, 10) || 0,
-                        images: JSON.stringify(currentImages)
+                        images: JSON.stringify(currentImages),
+                        parentImages: '[]'
                     };
 
                     // If converting from an option group to a single product, delete the old options
@@ -2565,7 +2567,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } catch(e) {}
                     return { optionName: c.optionName || '', priceKrw: c.priceKrw || 0, weight: c.weight || '', imageUrl: imgUrl, imageFile: null };
                 });
-                currentImages = []; // Parent images not loaded for option groups for now
+                
+                if (childProducts[0].parentImages) {
+                    try { currentImages = typeof childProducts[0].parentImages === 'string' ? JSON.parse(childProducts[0].parentImages) : childProducts[0].parentImages; }
+                    catch(e) { currentImages = []; }
+                } else { currentImages = []; }
+                if (!Array.isArray(currentImages)) currentImages = [];
+                
                 currentVideo = productObj.video || '';
                 
                 optionToggle.checked = true;

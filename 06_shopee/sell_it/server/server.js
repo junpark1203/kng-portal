@@ -146,7 +146,8 @@ function initDb() {
                 note TEXT,
                 description TEXT,
                 createdAt TEXT,
-                updatedAt TEXT
+                updatedAt TEXT,
+                parentImages TEXT
             )
         `, (err) => {
             if (err) console.error('products 테이블 생성 오류:', err.message);
@@ -181,6 +182,11 @@ function initDb() {
                 db.run(`ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''`, (alterErr) => {
                     if (alterErr && !alterErr.message.includes('duplicate column')) {
                         console.error('products ALTER TABLE (description) 오류:', alterErr.message);
+                    }
+                });
+                db.run(`ALTER TABLE products ADD COLUMN parentImages TEXT DEFAULT '[]'`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE (parentImages) 오류:', alterErr.message);
                     }
                 });
             }
@@ -423,10 +429,10 @@ app.post('/api/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, description, createdAt, updatedAt, images, video, optionName)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, description, createdAt, updatedAt, images, video, optionName, parentImages)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [id, p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', now, now, p.images||'[]', p.video||'', p.optionName||''];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', now, now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]'];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -438,10 +444,10 @@ app.put('/api/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, description=?, updatedAt=?, images=?, video=?, optionName=?
+    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, description=?, updatedAt=?, images=?, video=?, optionName=?, parentImages=?
                  WHERE id=?`;
     const params = [p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', now, p.images||'[]', p.video||'', p.optionName||'', id];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]', id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
@@ -481,12 +487,13 @@ function cleanupProductImages(imagesJson) {
 app.delete('/api/products/:id', (req, res) => {
     const productId = req.params.id;
     // 먼저 상품 정보를 조회하여 이미지 경로 확보
-    db.get('SELECT images FROM products WHERE id = ?', [productId], (err, row) => {
+    db.get('SELECT images, parentImages FROM products WHERE id = ?', [productId], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
 
         // 이미지 파일 정리
         cleanupProductImages(row.images);
+        cleanupProductImages(row.parentImages);
 
         // DB 삭제
         db.run('DELETE FROM products WHERE id = ?', [productId], function(delErr) {
@@ -506,11 +513,14 @@ app.post('/api/products/delete', (req, res) => {
     const placeholders = ids.map(() => '?').join(',');
 
     // 먼저 모든 대상 상품의 이미지 정보 조회
-    db.all(`SELECT images FROM products WHERE id IN (${placeholders})`, ids, (err, rows) => {
+    db.all(`SELECT images, parentImages FROM products WHERE id IN (${placeholders})`, ids, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
         // 각 상품의 이미지 파일 정리
-        (rows || []).forEach(row => cleanupProductImages(row.images));
+        (rows || []).forEach(row => {
+            cleanupProductImages(row.images);
+            cleanupProductImages(row.parentImages);
+        });
 
         // DB 삭제
         db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(delErr) {
