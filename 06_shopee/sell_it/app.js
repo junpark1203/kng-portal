@@ -1913,8 +1913,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (btnAddVideoUrl) {
-        btnAddVideoUrl.addEventListener('click', () => {
+    if (btnApplyVideoUrl) {
+        btnApplyVideoUrl.addEventListener('click', () => {
             const url = inputVideoUrl.value.trim();
             if (url) {
                 currentVideo = url;
