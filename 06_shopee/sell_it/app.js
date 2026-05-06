@@ -1610,17 +1610,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputNameEn = document.getElementById('input-name-en');
     const countNameKo = document.getElementById('count-name-ko');
     const countNameEn = document.getElementById('count-name-en');
+    const inputDescription = document.getElementById('input-description');
+    const countDescription = document.getElementById('count-description');
 
-    function updateCharCount(input, countElement) {
+    function updateCharCount(input, countElement, maxCount = 180) {
         if (!input || !countElement) return;
-        countElement.innerText = `${input.value.length} / 180`;
+        countElement.innerText = `${input.value.length} / ${maxCount}`;
     }
 
     if (inputNameKo && countNameKo) {
-        inputNameKo.addEventListener('input', () => updateCharCount(inputNameKo, countNameKo));
+        inputNameKo.addEventListener('input', () => updateCharCount(inputNameKo, countNameKo, 180));
     }
     if (inputNameEn && countNameEn) {
-        inputNameEn.addEventListener('input', () => updateCharCount(inputNameEn, countNameEn));
+        inputNameEn.addEventListener('input', () => updateCharCount(inputNameEn, countNameEn, 180));
+    }
+    if (inputDescription && countDescription) {
+        inputDescription.addEventListener('input', () => updateCharCount(inputDescription, countDescription, 5000));
     }
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
@@ -1735,6 +1740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             addProductForm.reset();
             if (countNameKo) countNameKo.innerText = '0 / 180';
             if (countNameEn) countNameEn.innerText = '0 / 180';
+            if (countDescription) countDescription.innerText = '0 / 5000';
             currentEditingRow = null;
             originalEditDate = null;
             originalEditMcode = null;
@@ -2256,6 +2262,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const weight = inputWeight.value;
             const link = inputLink.value;
             const note = inputNote.value;
+            const description = inputDescription ? inputDescription.value : '';
 
             if (!catEn) {
                 alert("카테고리를 목록에서 올바르게 선택해주세요.");
@@ -2281,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
                 rate: parseFloat(rate) || 1,
                 rateDate, weight: parseInt(weight, 10) || 0,
-                link, note, video: currentVideo
+                link, note, description, video: currentVideo
             };
 
             try {
@@ -2401,8 +2408,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputCategorySearch.value = catEn && catKo ? `${catEn} / ${catKo}` : '';
             inputNameKo.value = productObj.nameKo || '';
             inputNameEn.value = productObj.nameEn || '';
-            updateCharCount(inputNameKo, countNameKo);
-            updateCharCount(inputNameEn, countNameEn);
+            if (inputDescription) inputDescription.value = productObj.description || '';
+            updateCharCount(inputNameKo, countNameKo, 180);
+            updateCharCount(inputNameEn, countNameEn, 180);
+            if (inputDescription) updateCharCount(inputDescription, countDescription, 5000);
             if (inputDomesticShipping) inputDomesticShipping.value = productObj.domesticShipping ?? 3000;
             if (inputPackagingKrw) inputPackagingKrw.value = productObj.packagingKrw || 0;
             inputRate.value = String(productObj.rate || '').replace(/,/g, '');
