@@ -552,7 +552,7 @@ app.put('/api/products/:id', (req, res) => {
 });
 
 // 이미지 파일 정리 헬퍼 — product의 images JSON에서 파일 경로를 추출하여 삭제
-function cleanupProductImages(imagesJson) {
+function cleanupProductImages(imagesJson, excludeProductId) {
     if (!imagesJson) return;
     try {
         const images = typeof imagesJson === 'string' ? JSON.parse(imagesJson) : imagesJson;
@@ -564,13 +564,27 @@ function cleanupProductImages(imagesJson) {
                 filename = imgUrl.split('/api/images/').pop();
             }
             if (filename) {
-                const filePath = path.join(UPLOAD_DIR, filename);
-                fs.unlink(filePath, (err) => {
-                    if (err && err.code !== 'ENOENT') {
-                        console.error(`[CLEANUP] 이미지 삭제 실패: ${filePath}`, err.message);
-                    } else if (!err) {
-                        console.log(`[CLEANUP] 이미지 삭제 완료: ${filename}`);
+                // Check if any other product still references this image
+                const query = excludeProductId 
+                    ? `SELECT COUNT(*) as cnt FROM products WHERE id != ? AND (images LIKE ? OR parentImages LIKE ?)`
+                    : `SELECT COUNT(*) as cnt FROM products WHERE (images LIKE ? OR parentImages LIKE ?)`;
+                const params = excludeProductId 
+                    ? [excludeProductId, `%${filename}%`, `%${filename}%`]
+                    : [`%${filename}%`, `%${filename}%`];
+                
+                db.get(query, params, (err, row) => {
+                    if (err || (row && row.cnt > 0)) {
+                        console.log(`[CLEANUP] 이미지 보존 (다른 상품에서 사용 중): ${filename} (참조: ${row ? row.cnt : '?'}개)`);
+                        return; // Still referenced, do NOT delete
                     }
+                    const filePath = path.join(UPLOAD_DIR, filename);
+                    fs.unlink(filePath, (unlinkErr) => {
+                        if (unlinkErr && unlinkErr.code !== 'ENOENT') {
+                            console.error(`[CLEANUP] 이미지 삭제 실패: ${filePath}`, unlinkErr.message);
+                        } else if (!unlinkErr) {
+                            console.log(`[CLEANUP] 이미지 삭제 완료: ${filename}`);
+                        }
+                    });
                 });
             }
         });
@@ -587,9 +601,9 @@ app.delete('/api/products/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
 
-        // 이미지 파일 정리
-        cleanupProductImages(row.images);
-        cleanupProductImages(row.parentImages);
+        // 이미지 파일 정리 (다른 상품이 공유 중인 이미지는 보존)
+        cleanupProductImages(row.images, productId);
+        cleanupProductImages(row.parentImages, productId);
 
         // DB 삭제
         db.run('DELETE FROM products WHERE id = ?', [productId], function(delErr) {
@@ -612,7 +626,7 @@ app.post('/api/products/delete', (req, res) => {
     db.all(`SELECT images, parentImages FROM products WHERE id IN (${placeholders})`, ids, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
 
-        // 각 상품의 이미지 파일 정리
+        // 각 상품의 이미지 파일 정리 (다른 상품이 공유 중인 이미지는 보존)
         (rows || []).forEach(row => {
             cleanupProductImages(row.images);
             cleanupProductImages(row.parentImages);
@@ -1255,11 +1269,17 @@ app.post('/api/market-analysis/upload-video-url', async (req, res) => {
 });
 
 app.delete('/api/images/:filename', (req, res) => {
-    const filePath = path.join(UPLOAD_DIR, req.params.filename);
+    const filename = req.params.filename;
+    const filePath = path.join(UPLOAD_DIR, filename);
+    console.log(`[DELETE IMAGE] Request to delete: ${filename}`);
+    console.log(`[DELETE IMAGE] Full path: ${filePath}`);
+    console.log(`[DELETE IMAGE] Exists: ${fs.existsSync(filePath)}`);
     if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
+        console.log(`[DELETE IMAGE] ✅ Successfully deleted: ${filename}`);
         res.json({ message: '삭제 성공' });
     } else {
+        console.log(`[DELETE IMAGE] ⚠️ File not found: ${filename}`);
         res.status(404).json({ error: '파일을 찾을 수 없습니다.' });
     }
 });

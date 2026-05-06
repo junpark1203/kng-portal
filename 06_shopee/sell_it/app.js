@@ -2159,11 +2159,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
             const imageFiles = Array.from(e.clipboardData.files).filter(file => file.type.startsWith('image/'));
             if (imageFiles.length > 0) {
-                // If the user pasted text + image into an input, prevent the image part? 
-                // Actually, text inputs ignore image files entirely, but we'll preventDefault to be safe and handle it ourselves.
                 e.preventDefault();
                 
-                // Check if they are focused on an option row
+                // Check if they are focused on an option row (also check parent elements)
                 const optRow = e.target.closest('tr[data-opt-idx]');
                 if (optRow) {
                     const optIdx = parseInt(optRow.dataset.optIdx, 10);
@@ -2171,6 +2169,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                         uploadOptionImage(imageFiles[0], optIdx);
                         return; // Done
                     }
+                }
+
+                // Also check if focus is anywhere inside the option section (e.g. option table body)
+                const insideOptionSection = e.target.closest('#option-section') || e.target.closest('#option-table-body');
+                if (insideOptionSection && currentOptions.length > 0) {
+                    // Default to the first option that doesn't have an image, or the first option
+                    const targetIdx = currentOptions.findIndex(opt => !opt.imageUrl);
+                    const idx = targetIdx >= 0 ? targetIdx : 0;
+                    uploadOptionImage(imageFiles[0], idx);
+                    return;
                 }
                 
                 // Otherwise upload to parent images
@@ -2333,8 +2341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (url && currentOptionImageTarget >= 0) {
                 const mcodeStr = inputMcode.value;
                 if (!mcodeStr) { alert('관리코드가 없습니다.'); return; }
-                const suffix = String(currentOptionImageTarget + 1).padStart(2, '0');
-                const optMcode = `${mcodeStr}-${suffix}`;
+                const optMcode = `${mcodeStr}-opt_${currentOptionImageTarget + 1}`;
                 
                 // Use global APP_API_BASE
                     
@@ -2411,8 +2418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!file || optIdx < 0) return;
         const mcodeStr = inputMcode.value;
         if (!mcodeStr) { alert('관리코드가 생성되지 않았습니다.'); return; }
-        const suffix = String(optIdx + 1).padStart(2, '0');
-        const optMcode = `${mcodeStr}-${suffix}`;
+        const optMcode = `${mcodeStr}-opt_${optIdx + 1}`;
         try {
             const formData = new FormData();
             formData.append('mcode', optMcode);
