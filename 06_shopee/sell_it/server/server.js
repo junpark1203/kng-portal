@@ -795,7 +795,7 @@ app.get('/api/market-exports/all', (req, res) => {
 
 // 마켓 전송 등록 (bulk - 여러 상품을 한 마켓으로)
 app.post('/api/market-exports', (req, res) => {
-    const { productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue } = req.body;
+    const { productIds, marketCode, exchangeRate, feePresetId, promoPresetId, shipPresetId, targetMarginType, targetMarginValue, syncLocale } = req.body;
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0 || !marketCode) {
         return res.status(400).json({ error: 'productIds 배열과 marketCode가 필요합니다.' });
     }
@@ -816,7 +816,21 @@ app.post('/api/market-exports', (req, res) => {
 
     stmt.finalize((err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: '마켓 전송 완료', insertedCount: inserted, marketCode, exportDate });
+        
+        if (syncLocale) {
+            const placeholders = productIds.map(() => '?').join(',');
+            const localeSql = `INSERT INTO market_product_locales (id, productId, marketCode, description, notice, updatedAt)
+                               SELECT 'locale-' || id || '-' || ?, id, ?, description, notice, ?
+                               FROM products WHERE id IN (${placeholders})
+                               ON CONFLICT(productId, marketCode) DO NOTHING`;
+            const localeParams = [marketCode, marketCode, now, ...productIds];
+            db.run(localeSql, localeParams, function(localeErr) {
+                if (localeErr) console.error('[SyncLocale Error]', localeErr.message);
+                res.json({ message: '마켓 전송 완료', insertedCount: inserted, marketCode, exportDate });
+            });
+        } else {
+            res.json({ message: '마켓 전송 완료', insertedCount: inserted, marketCode, exportDate });
+        }
     });
 });
 

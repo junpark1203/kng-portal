@@ -1100,6 +1100,17 @@
                 </div>
             </div>
 
+            <!-- Sync Locale Checkbox -->
+            <div class="form-group" style="margin-bottom: 2rem;">
+                <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; background: var(--surface-container-lowest); padding: 0.75rem; border: 1px solid var(--outline-variant); border-radius: 8px;">
+                    <input type="checkbox" id="export-modal-sync-locale" checked style="margin-top: 4px;">
+                    <div>
+                        <span class="label-md" style="display: block; margin-bottom: 2px;">기본 상세설명 및 공지사항 동기화</span>
+                        <span class="body-sm text-secondary">체크 시 마켓 번역본 영역에 원래 상품의 상세내용과 공지사항이 자동으로 채워져 바로 복사하여 사용할 수 있습니다. (기존 번역본이 있다면 덮어쓰지 않습니다)</span>
+                    </div>
+                </label>
+            </div>
+
             <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn-secondary" id="btn-cancel-export">취소</button>
                 <button class="btn-primary" id="btn-confirm-export"><i class="fa-solid fa-paper-plane"></i> 적용 및 내보내기</button>

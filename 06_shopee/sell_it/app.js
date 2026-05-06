@@ -373,6 +373,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const targetMarginType = document.querySelector('input[name="export_margin_type"]:checked').value;
         const targetMarginValue = parseFloat(document.getElementById('export-margin-value').value) || null;
+        
+        const syncLocale = document.getElementById('export-modal-sync-locale')?.checked || false;
 
         const btn = document.getElementById('btn-confirm-export');
         const origHtml = btn.innerHTML;
@@ -380,7 +382,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
 
         try {
-            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue);
+            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, syncLocale);
             
             // UI 업데이트: 배지 활성화
             currentExportProductIds.forEach(pid => {
