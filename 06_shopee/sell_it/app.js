@@ -2053,14 +2053,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Global Paste Event Listener for Images
     document.addEventListener('paste', (e) => {
         if (!addProductView || !addProductView.classList.contains('active')) return;
-        
-        // Prevent intercepting paste inside text inputs unless it's specifically for files
-        if (e.target.tagName === 'INPUT' && e.target.type !== 'file' || e.target.tagName === 'TEXTAREA') return;
 
         if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
             const imageFiles = Array.from(e.clipboardData.files).filter(file => file.type.startsWith('image/'));
             if (imageFiles.length > 0) {
+                // If the user pasted text + image into an input, prevent the image part? 
+                // Actually, text inputs ignore image files entirely, but we'll preventDefault to be safe and handle it ourselves.
                 e.preventDefault();
+                
+                // Check if they are focused on an option row
+                const optRow = e.target.closest('tr[data-opt-idx]');
+                if (optRow) {
+                    const optIdx = parseInt(optRow.dataset.optIdx, 10);
+                    if (!isNaN(optIdx) && optIdx >= 0) {
+                        uploadOptionImage(imageFiles[0], optIdx);
+                        return; // Done
+                    }
+                }
+                
+                // Otherwise upload to parent images
                 uploadParentImages(imageFiles);
             }
         }
@@ -2282,29 +2293,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    async function uploadOptionImage(file, optIdx) {
+        if (!file || optIdx < 0) return;
+        const mcodeStr = inputMcode.value;
+        if (!mcodeStr) { alert('관리코드가 생성되지 않았습니다.'); return; }
+        const suffix = String(optIdx + 1).padStart(2, '0');
+        const optMcode = `${mcodeStr}-${suffix}`;
+        try {
+            const formData = new FormData();
+            formData.append('mcode', optMcode);
+            formData.append('index', 1);
+            formData.append('image', file);
+            const res = await fetch(`/api/products/upload-image`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (res.ok) {
+                currentOptions[optIdx].imageUrl = data.url;
+                renderOptionRows();
+            } else { throw new Error(data.error || '업로드 실패'); }
+        } catch (err) { alert('옵션 이미지 업로드 오류: ' + err.message); }
+    }
+
     if (optImageFileInput) {
         optImageFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if (!file || currentOptionImageTarget < 0) return;
-            const mcodeStr = inputMcode.value;
-            if (!mcodeStr) { alert('관리코드가 생성되지 않았습니다.'); return; }
-            const suffix = String(currentOptionImageTarget + 1).padStart(2, '0');
-            const optMcode = `${mcodeStr}-${suffix}`;
-            try {
-                const formData = new FormData();
-                formData.append('mcode', optMcode);
-                formData.append('index', 1);
-                formData.append('image', file);
-                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                    ? 'http://localhost:3000/api' : 'https://shopee-api.junparks.com/api';
-                const res = await fetch(`${API_BASE}/products/upload-image`, { method: 'POST', body: formData });
-                const data = await res.json();
-                if (res.ok) {
-                    currentOptions[currentOptionImageTarget].imageUrl = data.url;
-                    renderOptionRows();
-                } else { throw new Error(data.error || '업로드 실패'); }
-            } catch (err) { alert('옵션 이미지 업로드 오류: ' + err.message); }
-            finally { optImageFileInput.value = ''; currentOptionImageTarget = -1; }
+            const targetIdx = currentOptionImageTarget;
+            optImageFileInput.value = '';
+            currentOptionImageTarget = -1;
+            await uploadOptionImage(file, targetIdx);
         });
     }
 
