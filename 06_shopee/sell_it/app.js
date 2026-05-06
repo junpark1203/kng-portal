@@ -1580,6 +1580,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const categoryAutocompleteList = document.getElementById('category-autocomplete-list');
     const inputNameKo = document.getElementById('input-name-ko');
     const inputNameEn = document.getElementById('input-name-en');
+    const countNameKo = document.getElementById('count-name-ko');
+    const countNameEn = document.getElementById('count-name-en');
+
+    function updateCharCount(input, countElement) {
+        if (!input || !countElement) return;
+        countElement.innerText = `${input.value.length} / 180`;
+    }
+
+    if (inputNameKo && countNameKo) {
+        inputNameKo.addEventListener('input', () => updateCharCount(inputNameKo, countNameKo));
+    }
+    if (inputNameEn && countNameEn) {
+        inputNameEn.addEventListener('input', () => updateCharCount(inputNameEn, countNameEn));
+    }
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -1690,6 +1704,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     function showAddProductView(isEdit = false) {
         if (!isEdit) {
             addProductForm.reset();
+            if (countNameKo) countNameKo.innerText = '0 / 180';
+            if (countNameEn) countNameEn.innerText = '0 / 180';
             currentEditingRow = null;
             originalEditDate = null;
             originalEditMcode = null;
@@ -2355,6 +2371,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputCategorySearch.value = catEn && catKo ? `${catEn} / ${catKo}` : '';
             inputNameKo.value = productObj.nameKo || '';
             inputNameEn.value = productObj.nameEn || '';
+            updateCharCount(inputNameKo, countNameKo);
+            updateCharCount(inputNameEn, countNameEn);
             if (inputDomesticShipping) inputDomesticShipping.value = productObj.domesticShipping ?? 3000;
             if (inputPackagingKrw) inputPackagingKrw.value = productObj.packagingKrw || 0;
             inputRate.value = String(productObj.rate || '').replace(/,/g, '');
