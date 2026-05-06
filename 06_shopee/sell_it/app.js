@@ -1598,19 +1598,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     let originalEditMcode = null;
     let currentImages = [];
     let currentVideo = '';
-    let currentOptions = []; // [{optionName, priceKrw, imageUrl, imageFile}]
+    let currentOptions = []; // [{optionName, priceKrw, weight, imageUrl, imageFile}]
     let currentOptionImageTarget = -1; // index of option being targeted for image upload
     let editingGroupMcodes = []; // mcodes of existing option products being edited
 
     // Media UI Elements
     const inputImagesFile = document.getElementById('input-images-file');
-    const inputImageUrl = document.getElementById('input-image-url');
-    const btnAddImageUrl = document.getElementById('btn-add-image-url');
-    const imagePreviewGrid = document.getElementById('image-preview-grid');
+    const imagePreviewGrid = document.getElementById('image-preview-grid'); // Now media-gallery-grid? Wait, the id is still media-gallery-grid but we append before it? No, in HTML I removed image-preview-grid! Ah!
+    // I need to use the grid and insert before the trigger.
+    const mediaGalleryGrid = document.getElementById('media-gallery-grid');
+    const btnTriggerFileUpload = document.getElementById('btn-trigger-file-upload');
+    const btnOpenMultiUrl = document.getElementById('btn-open-multi-url');
+    
+    // Multi-URL Modal Elements
+    const multiUrlModal = document.getElementById('multi-url-modal');
+    const btnCloseMultiUrlModal = document.getElementById('btn-close-multi-url-modal');
+    const btnCancelMultiUrl = document.getElementById('btn-cancel-multi-url');
+    const btnApplyMultiUrl = document.getElementById('btn-apply-multi-url');
+    const inputMultiUrls = document.getElementById('input-multi-urls');
+    
+    // Option URL Modal Elements
+    const optionUrlModal = document.getElementById('option-url-modal');
+    const btnCloseOptionUrlModal = document.getElementById('btn-close-option-url-modal');
+    const btnCancelOptionUrl = document.getElementById('btn-cancel-option-url');
+    const btnApplyOptionUrl = document.getElementById('btn-apply-option-url');
+    const inputOptionUrl = document.getElementById('input-option-url');
     
     const inputVideoFile = document.getElementById('input-video-file');
     const inputVideoUrl = document.getElementById('input-video-url');
     const btnAddVideoUrl = document.getElementById('btn-add-video-url');
+    const btnTriggerVideoUpload = document.getElementById('btn-trigger-video-upload');
     const videoPreviewContainer = document.getElementById('video-preview-container');
 
     function updateMcodePreview() {
@@ -1723,15 +1740,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Media Logic ---
     function renderMediaPreviews() {
-        if (!imagePreviewGrid) return;
-        imagePreviewGrid.innerHTML = currentImages.map((url, idx) => `
-            <div style="position: relative; border: 1px solid var(--outline-variant); border-radius: 4px; overflow: hidden; aspect-ratio: 1; background: var(--surface-container-highest); display: flex; align-items: center; justify-content: center;">
+        if (!mediaGalleryGrid) return;
+        // Keep only the dropzone trigger
+        Array.from(mediaGalleryGrid.children).forEach(child => {
+            if (child.id !== 'btn-trigger-file-upload') child.remove();
+        });
+        
+        currentImages.forEach((url, idx) => {
+            const div = document.createElement('div');
+            div.style.cssText = "position: relative; border: 1px solid var(--outline-variant); border-radius: 8px; overflow: hidden; aspect-ratio: 1; background: var(--surface-container-highest); display: flex; align-items: center; justify-content: center;";
+            div.innerHTML = `
                 <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                <button type="button" class="btn-remove-image" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-xmark"></i>
+                <button type="button" class="btn-remove-image" data-index="${idx}" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-xmark" style="font-size: 0.7rem;"></i>
                 </button>
-            </div>
-        `).join('');
+            `;
+            mediaGalleryGrid.appendChild(div);
+        });
 
         document.querySelectorAll('.btn-remove-image').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -1743,6 +1768,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!videoPreviewContainer) return;
         if (currentVideo) {
+            videoPreviewContainer.style.display = 'block';
             videoPreviewContainer.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; border: 1px solid var(--outline-variant); border-radius: 4px; background: var(--surface-container-highest);">
                     <div style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden;">
@@ -1759,22 +1785,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                 renderMediaPreviews();
             });
         } else {
+            videoPreviewContainer.style.display = 'none';
             videoPreviewContainer.innerHTML = '';
         }
     }
 
-    if (btnAddImageUrl) {
-        btnAddImageUrl.addEventListener('click', () => {
-            const url = inputImageUrl.value.trim();
-            if (url) {
-                if (currentImages.length >= 9) {
-                    alert('이미지는 최대 9장까지 추가할 수 있습니다.');
-                    return;
-                }
-                currentImages.push(url);
-                inputImageUrl.value = '';
-                renderMediaPreviews();
+    // Dropzone Triggers
+    if (btnTriggerFileUpload) {
+        btnTriggerFileUpload.addEventListener('click', () => {
+            inputImagesFile.click();
+        });
+    }
+    if (btnTriggerVideoUpload) {
+        btnTriggerVideoUpload.addEventListener('click', () => {
+            inputVideoFile.click();
+        });
+    }
+
+    // Multi-URL Modal Logic
+    if (btnOpenMultiUrl) {
+        btnOpenMultiUrl.addEventListener('click', () => {
+            inputMultiUrls.value = '';
+            multiUrlModal.style.display = 'flex';
+        });
+    }
+    const closeMultiUrlModal = () => { multiUrlModal.style.display = 'none'; };
+    if (btnCloseMultiUrlModal) btnCloseMultiUrlModal.addEventListener('click', closeMultiUrlModal);
+    if (btnCancelMultiUrl) btnCancelMultiUrl.addEventListener('click', closeMultiUrlModal);
+    
+    if (btnApplyMultiUrl) {
+        btnApplyMultiUrl.addEventListener('click', () => {
+            const val = inputMultiUrls.value;
+            const urls = val.split('\n').map(u => u.trim()).filter(u => u);
+            if (urls.length === 0) {
+                alert('URL을 입력해주세요.');
+                return;
             }
+            if (currentImages.length + urls.length > 9) {
+                alert(`이미지는 최대 9장까지만 업로드할 수 있습니다. (현재 ${currentImages.length}장, 추가 시도 ${urls.length}장)`);
+                return;
+            }
+            currentImages.push(...urls);
+            renderMediaPreviews();
+            closeMultiUrlModal();
         });
     }
 
@@ -1885,24 +1938,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             const suffix = String(idx + 1).padStart(2, '0');
             const optMcode = `${baseMcode}-${suffix}`;
             const imgPreview = opt.imageUrl
-                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="margin-bottom:4px;">`
-                : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="파일 업로드" style="margin-bottom:4px;"><i class="fa-solid fa-camera"></i></div>`;
+                ? `<img src="${opt.imageUrl}" class="opt-image-thumb" data-opt-idx="${idx}" title="클릭하여 변경" style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--outline-variant); cursor: pointer; flex-shrink: 0; background: white;">`
+                : `<div class="opt-image-placeholder" data-opt-idx="${idx}" title="파일 업로드" style="width: 44px; height: 44px; border-radius: 4px; border: 1px dashed var(--outline-variant); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-secondary); flex-shrink: 0; background: var(--surface-container-lowest);"><i class="fa-solid fa-camera"></i></div>`;
+            
+            const parentPrice = inputPriceKrw ? inputPriceKrw.value || '0' : '0';
+            const parentWeight = inputWeight ? inputWeight.value || '150' : '150';
+
             return `
                 <tr data-opt-idx="${idx}">
-                    <td><input type="text" class="opt-input readonly-mcode" value="${optMcode}" readonly></td>
-                    <td><input type="text" class="opt-input opt-name-input" data-opt-idx="${idx}" value="${opt.optionName || ''}" placeholder="예: Red / M"></td>
-                    <td><input type="number" class="opt-input opt-input-price opt-price-input" data-opt-idx="${idx}" value="${opt.priceKrw || ''}" placeholder="0"></td>
+                    <td><input type="text" class="opt-input readonly-mcode" value="${optMcode}" readonly style="width: 100%;"></td>
                     <td>
-                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
-                            ${imgPreview}
-                            <div class="opt-image-actions">
-                                <input type="text" class="opt-image-url-input" data-opt-idx="${idx}" placeholder="URL 입력" value="${opt.imageUrl || ''}">
-                                <button type="button" class="opt-image-url-btn" data-opt-idx="${idx}" title="URL 적용">URL</button>
-                                <button type="button" class="opt-image-file-btn" data-opt-idx="${idx}" title="파일 업로드"><i class="fa-solid fa-upload"></i></button>
+                        <div class="opt-cell-flex">
+                            <input type="text" class="opt-input opt-name-input" data-opt-idx="${idx}" value="${opt.optionName || ''}" placeholder="옵션명 (예: Red / M)" style="width: 100%;">
+                            <div class="opt-cell-row">
+                                ${imgPreview}
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <button type="button" class="opt-action-btn opt-image-url-btn" data-opt-idx="${idx}"><i class="fa-solid fa-link" style="color:var(--primary);"></i> URL</button>
+                                    <button type="button" class="opt-action-btn opt-image-file-btn" data-opt-idx="${idx}"><i class="fa-solid fa-upload"></i> 파일</button>
+                                </div>
                             </div>
                         </div>
                     </td>
-                    <td><button type="button" class="opt-delete-btn" data-opt-idx="${idx}" title="삭제"><i class="fa-solid fa-trash-can"></i></button></td>
+                    <td>
+                        <div class="opt-cell-flex">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.75rem; color: var(--text-secondary); width: 40px;">매입가</span>
+                                <input type="number" class="opt-input opt-price-input" data-opt-idx="${idx}" value="${opt.priceKrw || ''}" placeholder="${parentPrice}" style="flex: 1;">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 0.75rem; color: var(--text-secondary); width: 40px;">중량(g)</span>
+                                <input type="number" class="opt-input opt-weight-input" data-opt-idx="${idx}" value="${opt.weight || ''}" placeholder="${parentWeight}" style="flex: 1;">
+                            </div>
+                        </div>
+                    </td>
+                    <td style="text-align: center;"><button type="button" class="opt-delete-btn" data-opt-idx="${idx}" title="삭제"><i class="fa-solid fa-trash-can"></i></button></td>
                 </tr>`;
         }).join('');
 
@@ -1915,7 +1984,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].optionName = e.target.value; });
         });
         optionTableBody.querySelectorAll('.opt-price-input').forEach(inp => {
-            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].priceKrw = parseInt(e.target.value) || 0; });
+            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].priceKrw = e.target.value; });
+        });
+        optionTableBody.querySelectorAll('.opt-weight-input').forEach(inp => {
+            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].weight = e.target.value; });
         });
         optionTableBody.querySelectorAll('.opt-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { currentOptions.splice(parseInt(e.currentTarget.dataset.optIdx), 1); renderOptionRows(); });
@@ -1924,19 +1996,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         optionTableBody.querySelectorAll('.opt-image-file-btn, .opt-image-thumb, .opt-image-placeholder').forEach(el => {
             el.addEventListener('click', (e) => { currentOptionImageTarget = parseInt(e.currentTarget.dataset.optIdx); optImageFileInput.click(); });
         });
-        // URL apply click
+        // URL modal trigger click
         optionTableBody.querySelectorAll('.opt-image-url-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const i = parseInt(e.currentTarget.dataset.optIdx);
-                const urlInput = optionTableBody.querySelector(`.opt-image-url-input[data-opt-idx="${i}"]`);
-                const url = urlInput ? urlInput.value.trim() : '';
-                if (url) {
-                    currentOptions[i].imageUrl = url;
-                    renderOptionRows();
-                } else {
-                    alert('URL을 입력해주세요.');
-                }
+                currentOptionImageTarget = parseInt(e.currentTarget.dataset.optIdx);
+                inputOptionUrl.value = currentOptions[currentOptionImageTarget].imageUrl || '';
+                if (optionUrlModal) optionUrlModal.style.display = 'flex';
             });
+        });
+    }
+
+    // Option URL Modal Events
+    const closeOptionUrlModal = () => { if (optionUrlModal) optionUrlModal.style.display = 'none'; };
+    if (btnCloseOptionUrlModal) btnCloseOptionUrlModal.addEventListener('click', closeOptionUrlModal);
+    if (btnCancelOptionUrl) btnCancelOptionUrl.addEventListener('click', closeOptionUrlModal);
+    if (btnApplyOptionUrl) {
+        btnApplyOptionUrl.addEventListener('click', () => {
+            const url = inputOptionUrl.value.trim();
+            if (url && currentOptionImageTarget >= 0) {
+                currentOptions[currentOptionImageTarget].imageUrl = url;
+                renderOptionRows();
+                closeOptionUrlModal();
+            } else if (!url && currentOptionImageTarget >= 0) {
+                // allow clearing URL
+                currentOptions[currentOptionImageTarget].imageUrl = '';
+                renderOptionRows();
+                closeOptionUrlModal();
+            }
         });
     }
 
@@ -1946,7 +2032,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             optionSection.style.display = isOn ? 'block' : 'none';
             optionToggleWrapper.classList.toggle('active', isOn);
             if (isOn && currentOptions.length === 0) {
-                currentOptions.push({ optionName: '', priceKrw: 0, imageUrl: '', imageFile: null });
+                currentOptions.push({ optionName: '', priceKrw: '', weight: '', imageUrl: '', imageFile: null });
                 renderOptionRows();
             }
             // Hide main price input when options are active (each option has its own price)
@@ -1967,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnAddOption) {
         btnAddOption.addEventListener('click', () => {
-            currentOptions.push({ optionName: '', priceKrw: 0, imageUrl: '', imageFile: null });
+            currentOptions.push({ optionName: '', priceKrw: '', weight: '', imageUrl: '', imageFile: null });
             renderOptionRows();
             setTimeout(() => {
                 const inputs = optionTableBody.querySelectorAll('.opt-name-input');
@@ -2135,7 +2221,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ...baseProductData,
                             mcode: optMcode,
                             optionName: currentOptions[i].optionName,
-                            priceKrw: parseInt(currentOptions[i].priceKrw, 10) || 0,
+                            priceKrw: parseInt(currentOptions[i].priceKrw, 10) || parseInt(priceKrw, 10) || 0,
+                            weight: parseInt(currentOptions[i].weight, 10) || baseProductData.weight,
                             images: currentOptions[i].imageUrl ? JSON.stringify([currentOptions[i].imageUrl]) : '[]'
                         };
                         await api.createProduct(optData);
