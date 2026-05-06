@@ -540,7 +540,8 @@ const productImageUpload = multer({
 
 app.post('/api/products/upload-image', productImageUpload.single('image'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: '이미지 파일이 없습니다.' });
-    const url = `/api/images/${req.file.filename}`;
+    const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
+    const url = imgBase + `/api/images/${req.file.filename}`;
     res.json({ url, filename: req.file.filename });
 });
 
@@ -583,7 +584,7 @@ app.post('/api/products/upload-image-url', async (req, res) => {
         });
 
         const imgBase = process.env.IMG_BASE_URL || (req.protocol + '://' + req.get('host'));
-        const finalUrl = `/api/images/${newFilename}`;
+        const finalUrl = imgBase + `/api/images/${newFilename}`;
         res.json({ message: '다운로드 성공', filename: newFilename, url: finalUrl });
     } catch (err) {
         res.status(500).json({ error: err.message });
