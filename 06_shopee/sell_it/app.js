@@ -671,10 +671,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 for (const cb of checked) {
                     const productId = cb.dataset.id;
                     // Find the export record ID
-                    const exportRecord = exports.find(e => String(e.productId) === String(productId));
-                    if (exportRecord && exportRecord.id) {
+                    const exportRecord = exports.find(e => String(e.id) === String(productId));
+                    if (exportRecord && exportRecord.exportId) {
                         try {
-                            await api.cancelMarketExport(exportRecord.id);
+                            await api.cancelMarketExport(exportRecord.exportId);
                             successCount++;
                         } catch (err) {
                             console.error(`삭제 실패 (${productId}):`, err);
@@ -690,7 +690,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Refresh Market Exports Map so Product List badges update correctly
                 marketExportsMap = await api.getAllMarketExports();
-                renderProductList(); // Redraw Product List to reflect disabled badges
+                if (typeof renderProductListTable === 'function') {
+                    renderProductListTable(); // Redraw Product List to reflect disabled badges
+                }
 
                 // Refresh Price Calc Grid
                 renderPriceCalcGrid(currentMarketContext);
