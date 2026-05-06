@@ -1750,7 +1750,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (p.mcode === originalEditMcode) return; // Skip currently editing
             if (p.date === selectedDate) {
                 const parts = p.mcode.split('-');
-                if (parts.length === 3) {
+                if (parts.length >= 3) {
                     const seq = parseInt(parts[2], 10);
                     if (seq > maxSeq) maxSeq = seq;
                 }
