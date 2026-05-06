@@ -1624,9 +1624,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnApplyOptionUrl = document.getElementById('btn-apply-option-url');
     const inputOptionUrl = document.getElementById('input-option-url');
     
-    const inputVideoFile = document.getElementById('input-video-file');
+    // Video URL Modal Elements
+    const videoUrlModal = document.getElementById('video-url-modal');
+    const btnOpenVideoUrl = document.getElementById('btn-open-video-url');
+    const btnCloseVideoUrlModal = document.getElementById('btn-close-video-url-modal');
+    const btnCancelVideoUrl = document.getElementById('btn-cancel-video-url');
+    const btnApplyVideoUrl = document.getElementById('btn-apply-video-url');
     const inputVideoUrl = document.getElementById('input-video-url');
-    const btnAddVideoUrl = document.getElementById('btn-add-video-url');
+
+    const inputVideoFile = document.getElementById('input-video-file');
     const btnTriggerVideoUpload = document.getElementById('btn-trigger-video-upload');
     const videoPreviewContainer = document.getElementById('video-preview-container');
 
@@ -1828,6 +1834,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentImages.push(...urls);
             renderMediaPreviews();
             closeMultiUrlModal();
+        });
+    }
+
+    // Video URL Modal Logic
+    if (btnOpenVideoUrl) {
+        btnOpenVideoUrl.addEventListener('click', () => {
+            inputVideoUrl.value = currentVideo || '';
+            videoUrlModal.style.display = 'flex';
+        });
+    }
+    const closeVideoUrlModal = () => { videoUrlModal.style.display = 'none'; };
+    if (btnCloseVideoUrlModal) btnCloseVideoUrlModal.addEventListener('click', closeVideoUrlModal);
+    if (btnCancelVideoUrl) btnCancelVideoUrl.addEventListener('click', closeVideoUrlModal);
+    
+    if (btnApplyVideoUrl) {
+        btnApplyVideoUrl.addEventListener('click', () => {
+            const url = inputVideoUrl.value.trim();
+            if (url) {
+                currentVideo = url;
+                renderMediaPreviews();
+                closeVideoUrlModal();
+            } else {
+                alert('URL을 입력해주세요.');
+            }
         });
     }
 
