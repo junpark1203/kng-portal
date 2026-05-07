@@ -648,6 +648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </td>
                 <td class="text-center">
                     <span style="font-weight: 500;">${item.weight || 0}g</span>
+                    <div class="body-sm text-secondary" style="font-size: 0.7rem;">${((item.weight || 0) / 1000).toFixed(2)}kg</div>
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
