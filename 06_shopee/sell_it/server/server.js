@@ -1335,6 +1335,7 @@ app.delete('/api/images/:filename', (req, res) => {
     }
 });
 
+
 // --- Notice Templates API ---
 app.get('/api/notices', (req, res) => {
     db.all('SELECT * FROM notice_templates ORDER BY id ASC', (err, rows) => {
@@ -1409,13 +1410,38 @@ app.put('/api/market-locales/:productId/:marketCode', (req, res) => {
     const { productId, marketCode } = req.params;
     const { description, notice } = req.body;
     const now = new Date().toISOString();
-    const id = `locale-${productId}-${marketCode}`;
-    const sql = `INSERT INTO market_product_locales (id, productId, marketCode, description, notice, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?)
-                 ON CONFLICT(productId, marketCode) DO UPDATE SET description=?, notice=?, updatedAt=?`;
-    db.run(sql, [id, productId, marketCode, description || '', notice || '', now, description || '', notice || '', now], function(err) {
+
+    db.get('SELECT mcode, parentMcode FROM products WHERE id = ?', [productId], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: '번역 저장 완료', id });
+        if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+
+        const baseMcode = row.parentMcode ? row.parentMcode : row.mcode;
+
+        db.all('SELECT id FROM products WHERE mcode = ? OR parentMcode = ?', [baseMcode, baseMcode], (err, products) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            const groupIds = products.map(p => p.id);
+            if (groupIds.length === 0) return res.status(200).json({ message: '업데이트 대상이 없습니다.' });
+
+            const sql = `INSERT INTO market_product_locales (id, productId, marketCode, description, notice, updatedAt)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(productId, marketCode) DO UPDATE SET description=?, notice=?, updatedAt=?`;
+
+            const stmt = db.prepare(sql);
+            let updatedCount = 0;
+
+            groupIds.forEach(gid => {
+                const localeId = `locale-${gid}-${marketCode}`;
+                stmt.run([localeId, gid, marketCode, description || '', notice || '', now, description || '', notice || '', now], function(stmtErr) {
+                    if (!stmtErr) updatedCount++;
+                });
+            });
+
+            stmt.finalize((finalErr) => {
+                if (finalErr) return res.status(500).json({ error: finalErr.message });
+                res.json({ message: '그룹 번역 동기화 완료', updatedCount, id: `locale-${productId}-${marketCode}` });
+            });
+        });
     });
 });
 
