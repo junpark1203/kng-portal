@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -1009,167 +1009,161 @@
     <!-- Scripts -->
     <script src="./categories.js"></script>
     <script src="./api.js?v=8"></script>
-    <!-- Smart Pricing Settings Modal -->
     <!-- Export Settings Modal -->
-    <div class="modal-overlay" id="export-settings-modal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000;">
-        <div class="modal-content surface-container-lowest" style="width: 1200px; max-width: 95vw; height: 90vh; display: flex; flex-direction: column; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-shrink: 0;">
-                <h3 class="headline-md" id="export-modal-title">마켓으로 상품 내보내기</h3>
-                <button class="btn-icon" id="btn-close-export-modal"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-overlay" id="export-settings-modal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); z-index: 2000; backdrop-filter: blur(4px);">
+        <div class="export-modal surface-container-lowest">
+            <!-- Header -->
+            <div class="export-modal-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h3 id="export-modal-title" style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">상품 내보내기</h3>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="export-modal-desc" class="body-sm text-secondary">선택된 X개의 상품 옵션(그룹)</span>
+                    <button class="btn-icon" id="btn-close-export-modal" style="width: 28px; height: 28px;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
             </div>
-            
-            <p class="body-md text-secondary" id="export-modal-desc" style="margin-bottom: 1.5rem; flex-shrink: 0;">선택된 X개의 상품을 SG 마켓으로 전송합니다.</p>
-            
-            <div style="display: grid; grid-template-columns: 400px 1fr; gap: 2rem; flex: 1; min-height: 0;">
-                
-                <!-- Left Column: Settings and Original Text -->
-                <div style="display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; padding-right: 0.5rem;" class="custom-scrollbar">
-                    
-                    <!-- Exchange Rate -->
-                    <div class="form-group" style="background: var(--surface-container-low); padding: 1rem; border-radius: 8px;">
-                        <label class="label-md" style="margin-bottom: 0.75rem; display: block;"><i class="fa-solid fa-money-bill-transfer"></i> 환율 설정</label>
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="radio" name="export_exrate_type" value="auto" checked>
-                                <span id="export-modal-auto-rate-text" class="body-sm">최신 자동 환율 적용</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                                <input type="radio" name="export_exrate_type" value="manual">
-                                <span class="body-sm">수동 입력</span>
-                                <input type="number" id="export-modal-manual-rate" class="form-control" style="width: 100px; padding: 2px 6px; font-size: 0.85rem;" disabled>
-                                <span class="body-sm">KRW</span>
-                            </label>
-                        </div>
-                    </div>
 
-                    <!-- Target Margin -->
-                    <div class="form-group" style="background: var(--surface-container-low); padding: 1rem; border-radius: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                            <label class="label-md"><i class="fa-solid fa-bullseye"></i> 목표 마진 설정</label>
-                            <button class="btn-icon" id="btn-export-margin-settings" title="퀵 프리셋 설정" style="width:24px;height:24px;"><i class="fa-solid fa-gear" style="font-size:0.9rem;"></i></button>
-                        </div>
-                        
-                        <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <!-- Compact Settings Bar -->
+            <div class="export-settings-bar">
+                <!-- Exchange Rate -->
+                <div class="export-setting-cell">
+                    <span class="export-setting-title">환율</span>
+                    <div class="export-setting-body">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="export_exrate_type" value="auto" checked>
+                            <span id="export-modal-auto-rate-text" class="body-sm">자동 환율</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="export_exrate_type" value="manual">
+                            <span class="body-sm">수동</span>
+                            <input type="number" id="export-modal-manual-rate" class="export-compact-input" disabled>
+                            <span class="body-sm text-secondary">KRW</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="export-setting-divider"></div>
+
+                <!-- Target Margin -->
+                <div class="export-setting-cell">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="export-setting-title">목표 마진</span>
+                        <button class="export-gear-btn" id="btn-export-margin-settings" title="퀵 프리셋 편집"><i class="fa-solid fa-gear"></i></button>
+                    </div>
+                    <div class="export-setting-body">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                 <input type="radio" name="export_margin_type" value="rate" checked>
-                                <span class="body-sm">비율 (%)</span>
+                                <span class="body-sm">%</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
                                 <input type="radio" name="export_margin_type" value="amount">
-                                <span class="body-sm">고정 금액 (₩)</span>
+                                <span class="body-sm">₩</span>
                             </label>
                         </div>
-
-                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-                            <button class="btn-secondary btn-margin-preset" data-preset="1" id="export-preset-btn-1" style="padding: 2px 8px; font-size: 0.8rem;">10%</button>
-                            <button class="btn-secondary btn-margin-preset" data-preset="2" id="export-preset-btn-2" style="padding: 2px 8px; font-size: 0.8rem;">30%</button>
-                            <button class="btn-secondary btn-margin-preset" data-preset="3" id="export-preset-btn-3" style="padding: 2px 8px; font-size: 0.8rem;">40%</button>
-                        </div>
-
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span class="body-sm">직접 입력:</span>
-                            <input type="number" id="export-margin-value" class="form-control" style="width: 80px; padding: 2px 6px; font-size: 0.85rem;" placeholder="30">
-                            <span id="export-margin-unit" class="body-sm">%</span>
-                        </div>
-
-                        <!-- Settings Form (Hidden) -->
-                        <div id="export-margin-settings-form" style="display: none; background: var(--surface-container-lowest); padding: 0.75rem; border-radius: 8px; margin-top: 0.75rem;">
-                            <h4 class="label-sm" style="margin-bottom: 0.5rem;">퀵 프리셋 설정</h4>
-                            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="number" id="export-setting-preset-1" class="form-control" style="width: 60px; padding: 2px; font-size: 0.8rem;">
-                                <input type="number" id="export-setting-preset-2" class="form-control" style="width: 60px; padding: 2px; font-size: 0.8rem;">
-                                <input type="number" id="export-setting-preset-3" class="form-control" style="width: 60px; padding: 2px; font-size: 0.8rem;">
-                            </div>
-                            <div style="text-align: right;">
-                                <button class="btn-primary" id="btn-save-margin-presets" style="padding: 2px 8px; font-size: 0.75rem;">저장</button>
-                            </div>
+                        <div style="display: flex; gap: 4px; align-items: center;">
+                            <button class="export-chip btn-margin-preset" data-preset="1" id="export-preset-btn-1">10%</button>
+                            <button class="export-chip btn-margin-preset" data-preset="2" id="export-preset-btn-2">30%</button>
+                            <button class="export-chip btn-margin-preset" data-preset="3" id="export-preset-btn-3">40%</button>
+                            <input type="number" id="export-margin-value" class="export-compact-input" style="width: 56px;" placeholder="직접">
+                            <span id="export-margin-unit" class="body-sm text-secondary">%</span>
                         </div>
                     </div>
-
-                    <!-- Presets -->
-                    <div class="form-group" style="background: var(--surface-container-low); padding: 1rem; border-radius: 8px;">
-                        <label class="label-md" style="margin-bottom: 0.75rem; display: block;"><i class="fa-solid fa-layer-group"></i> 일괄 적용 프리셋 (선택)</label>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span class="body-sm text-secondary" style="width: 60px;">수수료</span>
-                                <select id="export-modal-fee-preset" class="form-control" style="flex: 1; padding: 4px; font-size: 0.85rem;"></select>
-                            </div>
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span class="body-sm text-secondary" style="width: 60px;">프로모션</span>
-                                <select id="export-modal-promo-preset" class="form-control" style="flex: 1; padding: 4px; font-size: 0.85rem;"></select>
-                            </div>
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span class="body-sm text-secondary" style="width: 60px;">배송비</span>
-                                <select id="export-modal-ship-preset" class="form-control" style="flex: 1; padding: 4px; font-size: 0.85rem;"></select>
-                            </div>
+                    <!-- Hidden Settings Form -->
+                    <div id="export-margin-settings-form" style="display: none; background: var(--surface-container-lowest); padding: 8px; border-radius: 6px; margin-top: 6px;">
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <input type="number" id="export-setting-preset-1" class="export-compact-input" style="width: 50px;">
+                            <input type="number" id="export-setting-preset-2" class="export-compact-input" style="width: 50px;">
+                            <input type="number" id="export-setting-preset-3" class="export-compact-input" style="width: 50px;">
+                            <button class="btn-primary" id="btn-save-margin-presets" style="padding: 2px 10px; font-size: 0.7rem;">저장</button>
                         </div>
-                    </div>
-
-                    <hr style="border: 0; border-top: 1px solid var(--outline-variant); margin: 0.5rem 0;">
-
-                    <!-- Original Description (Readonly) -->
-                    <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label class="label-md">
-                                <span><i class="fa-solid fa-file-lines"></i> 원본 상세 내용</span>
-                            </label>
-                            <button class="btn-icon" id="btn-export-copy-orig-desc" title="상세내용 전체 복사"><i class="fa-regular fa-copy"></i></button>
-                        </div>
-                        <textarea id="export-modal-orig-desc" class="form-control custom-scrollbar" style="flex: 1; resize: none; background: var(--surface-container); font-size: 0.85rem; padding: 0.75rem;" readonly></textarea>
-                    </div>
-
-                    <!-- Original Notice (Readonly) -->
-                    <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 120px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label class="label-md">
-                                <span><i class="fa-solid fa-circle-exclamation"></i> 원본 공지사항</span>
-                            </label>
-                            <button class="btn-icon" id="btn-export-copy-orig-notice" title="공지사항 전체 복사"><i class="fa-regular fa-copy"></i></button>
-                        </div>
-                        <textarea id="export-modal-orig-notice" class="form-control custom-scrollbar" style="flex: 1; resize: none; background: var(--surface-container); font-size: 0.85rem; padding: 0.75rem;" readonly></textarea>
                     </div>
                 </div>
 
-                <!-- Right Column: Translation -->
-                <div style="display: flex; flex-direction: column; gap: 1.5rem; overflow-y: auto; padding-left: 0.5rem; border-left: 1px solid var(--outline-variant);" class="custom-scrollbar">
-                    
-                    <!-- Translated Description -->
-                    <div class="form-group" style="flex: 2; display: flex; flex-direction: column; min-height: 300px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label class="label-lg" style="color: var(--primary);"><i class="fa-solid fa-language"></i> 마켓 번역본 상세 내용</label>
-                            <div style="display: flex; gap: 1rem; align-items: center;">
-                                <span id="export-modal-char-count" class="body-sm text-secondary">0 / 5000</span>
-                                <button class="btn-icon" id="btn-export-copy-desc" title="상세내용 복사"><i class="fa-regular fa-copy"></i></button>
-                            </div>
-                        </div>
-                        <textarea id="export-modal-trans-desc" class="form-control custom-scrollbar" style="flex: 1; resize: none; font-size: 0.9rem; padding: 1rem;" placeholder="마켓 언어(영어 등)로 번역된 상세 내용을 작성하세요."></textarea>
-                    </div>
+                <div class="export-setting-divider"></div>
 
-                    <!-- Translated Notice -->
-                    <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <label class="label-lg" style="color: var(--primary);"><i class="fa-solid fa-language"></i> 마켓 번역본 공지사항</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                <select id="export-modal-notice-template" class="form-control" style="width: 150px; padding: 4px; font-size: 0.85rem;">
-                                    <option value="">템플릿 선택</option>
-                                </select>
-                                <button class="btn-icon" id="btn-export-manage-templates" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
-                                <div style="width: 1px; height: 16px; background: var(--outline-variant); margin: 0 4px;"></div>
-                                <button class="btn-icon" id="btn-export-copy-notice" title="공지사항 복사"><i class="fa-regular fa-copy"></i></button>
-                            </div>
+                <!-- Presets -->
+                <div class="export-setting-cell">
+                    <span class="export-setting-title">프리셋</span>
+                    <div class="export-setting-body" style="gap: 4px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="body-sm text-secondary" style="width: 40px; flex-shrink: 0;">수수료</span>
+                            <select id="export-modal-fee-preset" class="export-compact-select"></select>
                         </div>
-                        <textarea id="export-modal-trans-notice" class="form-control custom-scrollbar" style="flex: 1; resize: none; font-size: 0.9rem; padding: 1rem;" placeholder="마켓 언어(영어 등)로 번역된 공지사항을 작성하세요."></textarea>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="body-sm text-secondary" style="width: 40px; flex-shrink: 0;">프로모</span>
+                            <select id="export-modal-promo-preset" class="export-compact-select"></select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="body-sm text-secondary" style="width: 40px; flex-shrink: 0;">배송비</span>
+                            <select id="export-modal-ship-preset" class="export-compact-select"></select>
+                        </div>
                     </div>
-
                 </div>
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; flex-shrink: 0; border-top: 1px solid var(--outline-variant); padding-top: 1.5rem;">
-                <button class="btn-secondary" id="btn-cancel-export" style="padding: 0.75rem 1.5rem;">취소</button>
-                <button class="btn-primary" id="btn-confirm-export" style="padding: 0.75rem 1.5rem; font-size: 1rem;"><i class="fa-solid fa-paper-plane"></i> 마켓으로 내보내기</button>
+            <!-- Main Content: Side-by-side Translation -->
+            <div class="export-content custom-scrollbar">
+                <!-- Description Section -->
+                <div class="export-section">
+                    <div class="export-section-label">상세 내용</div>
+                    <div class="export-pair">
+                        <div class="export-text-panel">
+                            <div class="export-panel-bar">
+                                <span class="export-panel-tag original">원본</span>
+                                <button class="export-copy-btn" id="btn-export-copy-orig-desc" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                            <textarea id="export-modal-orig-desc" class="export-textarea custom-scrollbar" readonly placeholder="원본 상세 내용이 여기에 표시됩니다."></textarea>
+                        </div>
+                        <div class="export-text-panel">
+                            <div class="export-panel-bar">
+                                <span class="export-panel-tag translated">번역본</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span id="export-modal-char-count" class="body-sm text-secondary">0 / 5000</span>
+                                    <button class="export-copy-btn" id="btn-export-copy-desc" title="번역본 복사"><i class="fa-regular fa-copy"></i></button>
+                                </div>
+                            </div>
+                            <textarea id="export-modal-trans-desc" class="export-textarea custom-scrollbar" placeholder="마켓 언어로 번역된 상세 내용을 작성하세요."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notice Section -->
+                <div class="export-section">
+                    <div class="export-section-label">공지사항</div>
+                    <div class="export-pair">
+                        <div class="export-text-panel">
+                            <div class="export-panel-bar">
+                                <span class="export-panel-tag original">원본</span>
+                                <button class="export-copy-btn" id="btn-export-copy-orig-notice" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                            <textarea id="export-modal-orig-notice" class="export-textarea export-textarea-sm custom-scrollbar" readonly placeholder="원본 공지사항이 여기에 표시됩니다."></textarea>
+                        </div>
+                        <div class="export-text-panel">
+                            <div class="export-panel-bar">
+                                <span class="export-panel-tag translated">번역본</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <select id="export-modal-notice-template" class="export-compact-select" style="width: 130px;">
+                                        <option value="">템플릿 선택</option>
+                                    </select>
+                                    <button class="export-gear-btn" id="btn-export-manage-templates" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
+                                    <button class="export-copy-btn" id="btn-export-copy-notice" title="번역본 복사"><i class="fa-regular fa-copy"></i></button>
+                                </div>
+                            </div>
+                            <textarea id="export-modal-trans-notice" class="export-textarea export-textarea-sm custom-scrollbar" placeholder="마켓 언어로 번역된 공지사항을 작성하세요."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="export-modal-footer">
+                <button class="btn-secondary" id="btn-cancel-export">취소</button>
+                <button class="btn-primary" id="btn-confirm-export" style="padding: 0.65rem 2rem;">내보내기</button>
             </div>
         </div>
     </div>
+
 
     <!-- Price Calc Bulk Settings Modal -->
     <div class="modal-overlay" id="pc-bulk-settings-modal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000;">
