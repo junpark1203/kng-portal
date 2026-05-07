@@ -1655,6 +1655,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (btnSaveLocale) {
             btnSaveLocale.addEventListener('click', async () => {
+                const confirmSave = confirm('저장 시 이 상품과 동일한 그룹에 속한 모든 옵션(본품 포함)의 번역문이 한꺼번에 똑같이 수정됩니다.\n\n정말 저장하시겠습니까?');
+                if (!confirmSave) return;
+
                 const originalHtml = btnSaveLocale.innerHTML;
                 btnSaveLocale.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
                 try {
