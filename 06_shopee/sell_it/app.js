@@ -222,7 +222,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Setup Modal
             document.getElementById('export-modal-title').innerText = `${selectedMarket.toUpperCase()} 마켓으로 상품 내보내기`;
-            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품 옵션(그룹)을 전송합니다.`;
+            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품 옵션(그룹)`;
+
+            // Populate Product Summary Strip
+            const stripProduct = productList.find(item => item.id === productIds[0]);
+            if (stripProduct) {
+                document.getElementById('export-strip-name-en').textContent = stripProduct.nameEn || stripProduct.nameKo || '—';
+                document.getElementById('export-strip-name-ko').textContent = stripProduct.nameKo || '';
+                const baseMcode = stripProduct.mcode ? stripProduct.mcode.split('-').slice(0, 3).join('-') : stripProduct.mcode;
+                document.getElementById('export-strip-mcode').textContent = baseMcode || '—';
+                document.getElementById('export-strip-cat').textContent = stripProduct.catEn || stripProduct.catKo || '';
+                document.getElementById('export-strip-count').textContent = productIds.length === 1 ? '단일 상품' : `${productIds.length}개 옵션`;
+            }
             
             // Pre-fill Original Text
             const origDescEl = document.getElementById('export-modal-orig-desc');

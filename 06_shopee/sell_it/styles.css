@@ -2037,6 +2037,67 @@ textarea.form-input {
   gap: 6px;
   min-height: 0;
 }
+/* Product Summary Strip */
+.export-product-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--surface-container-lowest);
+  border-bottom: 1px solid var(--surface-container-high);
+  flex-shrink: 0;
+  gap: 16px;
+}
+.export-strip-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.export-strip-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.export-strip-name-ko {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.export-strip-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.export-strip-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--surface-container-low);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  font-family: var(--font-heading);
+}
+.export-strip-cat {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+.export-strip-count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-container-high);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
 .export-panel-bar {
   display: flex;
   justify-content: space-between;
