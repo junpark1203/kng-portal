@@ -1994,6 +1994,11 @@ textarea.form-input {
   border-color: var(--primary);
   color: var(--primary);
 }
+.export-chip.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
 .export-gear-btn {
   background: none;
   border: none;

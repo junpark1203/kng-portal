@@ -342,6 +342,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const idx = newBtn.dataset.preset;
                         const val = type === 'rate' ? sysSettings[`margin_rate_preset_${idx}`] : sysSettings[`margin_amount_preset_${idx}`];
                         document.getElementById('export-margin-value').value = val;
+                        // Highlight selected preset
+                        document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
+                        newBtn.classList.add('active');
                     });
                 });
 
@@ -394,6 +397,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 console.error("Failed to load margin settings", err);
             }
+            // Clear preset highlight when user types custom value
+            document.getElementById('export-margin-value')?.addEventListener('input', () => {
+                document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
+            });
 
             // Open Modal
             document.getElementById('export-settings-modal').style.display = 'flex';
