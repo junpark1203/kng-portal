@@ -2042,6 +2042,9 @@ textarea.form-input {
   justify-content: space-between;
   align-items: center;
 }
+.export-panel-bar > .export-panel-tag {
+  margin-right: 6px;
+}
 .export-panel-tag {
   font-size: 0.68rem;
   font-weight: 600;

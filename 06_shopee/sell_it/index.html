@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -1110,18 +1110,20 @@
                     <div class="export-pair">
                         <div class="export-text-panel">
                             <div class="export-panel-bar">
-                                <span class="export-panel-tag original">원본</span>
-                                <button class="export-copy-btn" id="btn-export-copy-orig-desc" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="export-panel-tag original">원본</span>
+                                    <button class="export-copy-btn" id="btn-export-copy-orig-desc" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                                </div>
                             </div>
                             <textarea id="export-modal-orig-desc" class="export-textarea custom-scrollbar" readonly placeholder="원본 상세 내용이 여기에 표시됩니다."></textarea>
                         </div>
                         <div class="export-text-panel">
                             <div class="export-panel-bar">
-                                <span class="export-panel-tag translated">번역본</span>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span id="export-modal-char-count" class="body-sm text-secondary">0 / 5000</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="export-panel-tag translated">번역본</span>
                                     <button class="export-copy-btn" id="btn-export-copy-desc" title="번역본 복사"><i class="fa-regular fa-copy"></i></button>
                                 </div>
+                                <span id="export-modal-char-count" class="body-sm text-secondary">0 / 5000</span>
                             </div>
                             <textarea id="export-modal-trans-desc" class="export-textarea custom-scrollbar" placeholder="마켓 언어로 번역된 상세 내용을 작성하세요."></textarea>
                         </div>
@@ -1134,20 +1136,24 @@
                     <div class="export-pair">
                         <div class="export-text-panel">
                             <div class="export-panel-bar">
-                                <span class="export-panel-tag original">원본</span>
-                                <button class="export-copy-btn" id="btn-export-copy-orig-notice" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="export-panel-tag original">원본</span>
+                                    <button class="export-copy-btn" id="btn-export-copy-orig-notice" title="원본 복사"><i class="fa-regular fa-copy"></i></button>
+                                </div>
                             </div>
                             <textarea id="export-modal-orig-notice" class="export-textarea export-textarea-sm custom-scrollbar" readonly placeholder="원본 공지사항이 여기에 표시됩니다."></textarea>
                         </div>
                         <div class="export-text-panel">
                             <div class="export-panel-bar">
-                                <span class="export-panel-tag translated">번역본</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="export-panel-tag translated">번역본</span>
+                                    <button class="export-copy-btn" id="btn-export-copy-notice" title="번역본 복사"><i class="fa-regular fa-copy"></i></button>
+                                </div>
                                 <div style="display: flex; align-items: center; gap: 6px;">
                                     <select id="export-modal-notice-template" class="export-compact-select" style="width: 130px;">
                                         <option value="">템플릿 선택</option>
                                     </select>
                                     <button class="export-gear-btn" id="btn-export-manage-templates" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
-                                    <button class="export-copy-btn" id="btn-export-copy-notice" title="번역본 복사"><i class="fa-regular fa-copy"></i></button>
                                 </div>
                             </div>
                             <textarea id="export-modal-trans-notice" class="export-textarea export-textarea-sm custom-scrollbar" placeholder="마켓 언어로 번역된 공지사항을 작성하세요."></textarea>

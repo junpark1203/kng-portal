@@ -1221,17 +1221,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                                         <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
-                                        <button type="button" class="btn-copy-orig-desc" title="본문 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i></button>
+                                        <button type="button" class="btn-copy-orig-desc" title="본문 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i></button>
                                     </div>
                                     <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 220px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.description || ''}</textarea>
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; height: 28px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; height: 28px;">
                                         <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
-                                        <button type="button" class="btn-copy-orig-notice" title="공지사항 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; padding-bottom: 2px;"><i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i></button>
+                                        <button type="button" class="btn-copy-orig-notice" title="공지사항 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; padding-bottom: 2px;"><i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i></button>
                                     </div>
                                     <textarea readonly class="form-control" style="font-size: 0.85rem; line-height: 1.6; color: var(--text-main); background: var(--surface-container-high); min-height: 180px; max-height: 400px; resize: vertical; opacity: 0.85;">${item.notice || ''}</textarea>
                                 </div>
@@ -1244,25 +1244,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                                         <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
-                                        <button type="button" class="btn-copy-locale-desc" title="번역본 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i></button>
+                                        <button type="button" class="btn-copy-locale-desc" title="번역본 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i></button>
                                     </div>
                                     <textarea class="form-control pc-locale-desc" placeholder="${marketLangName}(으)로 번역된 상세설명을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 220px; max-height: 400px; resize: vertical;"></textarea>
                                 </div>
                                 
                                 <div class="form-group" style="margin-bottom: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px; min-height: 28px;">
-                                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                                            <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
-                                            <div style="display: flex; align-items: center; gap: 4px;">
-                                                <select class="form-control pc-locale-notice-template" style="width: auto; height: 28px; padding: 2px 8px; font-size: 0.8rem; display: inline-block;">
-                                                    <option value="">공지사항 템플릿 불러오기</option>
-                                                </select>
-                                                <button type="button" class="btn-outline pc-btn-manage-notices" style="height: 28px; padding: 0 8px; font-size: 0.8rem;" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
-                                            </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 28px; flex-wrap: wrap;">
+                                        <label class="label-md" style="margin-bottom: 0;">공지사항 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(하단 첨부)</span></label>
+                                        <button type="button" class="btn-copy-locale-notice" title="번역본 공지사항 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i></button>
+                                        <div style="display: flex; align-items: center; gap: 4px; margin-left: auto;">
+                                            <select class="form-control pc-locale-notice-template" style="width: auto; height: 28px; padding: 2px 8px; font-size: 0.8rem; display: inline-block;">
+                                                <option value="">공지사항 템플릿 불러오기</option>
+                                            </select>
+                                            <button type="button" class="btn-outline pc-btn-manage-notices" style="height: 28px; padding: 0 8px; font-size: 0.8rem;" title="템플릿 관리"><i class="fa-solid fa-gear"></i></button>
                                         </div>
-                                        <button type="button" class="btn-copy-locale-notice" title="번역본 공지사항 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; padding-bottom: 2px;"><i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i></button>
                                     </div>
                                     <textarea class="form-control pc-locale-notice" placeholder="${marketLangName}(으)로 번역된 공지사항을 입력하세요..." style="font-size: 0.85rem; line-height: 1.6; min-height: 180px; max-height: 400px; resize: vertical;"></textarea>
                                 </div>
