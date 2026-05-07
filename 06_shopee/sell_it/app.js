@@ -1790,6 +1790,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 section.classList.remove('active');
             });
 
+            // Clear all bulk action bars & checkboxes when switching views
+            document.querySelectorAll('.row-checkbox, .child-checkbox, .parent-checkbox, .pc-row-checkbox, .pc-child-checkbox, .pc-parent-checkbox, .ma-row-checkbox').forEach(cb => cb.checked = false);
+            const bulkBar = document.getElementById('bulk-action-bar');
+            if (bulkBar) bulkBar.classList.remove('active');
+            const pcBulkBar = document.getElementById('pc-bulk-action-bar');
+            if (pcBulkBar) pcBulkBar.classList.remove('active');
+            const maBulkBar = document.getElementById('ma-bulk-action-bar');
+            if (maBulkBar) maBulkBar.classList.remove('active');
+
             // Handle Price Calculation views dynamically
             if (viewId.startsWith('price-calc-')) {
                 const targetViewElement = document.getElementById('view-price-calc-container');
