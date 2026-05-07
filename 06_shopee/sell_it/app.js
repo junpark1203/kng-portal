@@ -2302,6 +2302,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     const inputNoticeContent = document.getElementById('input-notice-content');
     const countDescription = document.getElementById('count-description');
 
+    // Copy buttons for description and notice
+    document.getElementById('btn-copy-description')?.addEventListener('click', () => {
+        if (inputDescription && inputDescription.value) {
+            navigator.clipboard.writeText(inputDescription.value).then(() => {
+                const btn = document.getElementById('btn-copy-description');
+                btn.innerHTML = '<i class="fa-solid fa-check" style="font-size: 0.9rem; color: var(--success, #16a34a);"></i>';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i>'; }, 1000);
+            });
+        }
+    });
+    document.getElementById('btn-copy-notice')?.addEventListener('click', () => {
+        if (inputNoticeContent && inputNoticeContent.value) {
+            navigator.clipboard.writeText(inputNoticeContent.value).then(() => {
+                const btn = document.getElementById('btn-copy-notice');
+                btn.innerHTML = '<i class="fa-solid fa-check" style="font-size: 0.9rem; color: var(--success, #16a34a);"></i>';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i>'; }, 1000);
+            });
+        }
+    });
+
     function updateCharCount(input, countElement, maxCount = 180) {
         if (!input || !countElement) return;
         countElement.innerText = `${input.value.length} / ${maxCount}`;
