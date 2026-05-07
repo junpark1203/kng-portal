@@ -57,7 +57,10 @@ body {
   background-color: var(--surface);
   color: var(--text-main);
   line-height: 1.5;
-  overflow-x: hidden;
+  overflow: hidden; /* Prevent body scroll; only .main-content should scroll */
+}
+html {
+  overflow: hidden; /* Prevent double-scroll with .main-content */
 }
 
 /* Typography Scale */
