@@ -232,7 +232,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const baseMcode = stripProduct.mcode ? stripProduct.mcode.split('-').slice(0, 3).join('-') : stripProduct.mcode;
                 document.getElementById('export-strip-mcode').textContent = baseMcode || '—';
                 document.getElementById('export-strip-cat').textContent = stripProduct.catEn || stripProduct.catKo || '';
-                document.getElementById('export-strip-count').textContent = productIds.length === 1 ? '단일 상품' : `${productIds.length}개 옵션`;
+                // Build option names list
+                const optionNames = productIds.map(pid => {
+                    const p = productList.find(x => x.id === pid);
+                    return p && p.optionName ? p.optionName : null;
+                }).filter(Boolean);
+                document.getElementById('export-strip-options').textContent = optionNames.length > 0 ? optionNames.join(' / ') : '';
             }
             
             // Pre-fill Original Text
