@@ -648,7 +648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </td>
                 <td class="text-center">
                     <span style="font-weight: 500;">${item.weight || 0}g</span>
-                    <div class="body-sm text-secondary" style="font-size: 0.7rem;">${((item.weight || 0) / 1000).toFixed(2)}kg</div>
+                    <div class="body-sm text-secondary" style="font-size: 0.7rem;">${((item.weight || 0) / 1000).toFixed(3)}kg</div>
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
@@ -2849,6 +2849,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     /* --- Option (Variant) Management Logic --- */
+    function updateOptTotalCosts() {
+        const shipping = parseFloat(document.getElementById('input-domestic-shipping')?.value) || 0;
+        const packaging = parseFloat(document.getElementById('input-packaging-krw')?.value) || 0;
+        const parentPrice = parseFloat(document.getElementById('input-price-krw')?.value) || 0;
+        document.querySelectorAll('.opt-total-cost').forEach(el => {
+            const idx = parseInt(el.dataset.optIdx);
+            const optPrice = parseFloat(currentOptions[idx]?.priceKrw) || parentPrice;
+            const total = optPrice + shipping + packaging;
+            el.textContent = total > 0 ? `₩${total.toLocaleString()}` : '—';
+        });
+    }
+    // Re-calculate option totals when parent fields change
+    ['input-price-krw', 'input-domestic-shipping', 'input-packaging-krw'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateOptTotalCosts);
+    });
+
     function renderOptionRows() {
         if (!optionTableBody) return;
         const baseMcode = inputMcode.value || '---';
@@ -2891,6 +2907,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <span style="font-size: 0.75rem; color: var(--text-secondary); width: 40px;">중량(g)</span>
                                 <input type="number" class="opt-input opt-weight-input" data-opt-idx="${idx}" value="${opt.weight || ''}" placeholder="${parentWeight}" style="flex: 1;">
                             </div>
+                            <div style="display: flex; align-items: center; gap: 6px; padding-top: 4px; border-top: 1px dashed var(--outline-variant);">
+                                <span style="font-size: 0.7rem; color: var(--text-secondary); width: 40px;">합계</span>
+                                <span class="opt-total-cost" data-opt-idx="${idx}" style="font-size: 0.78rem; font-weight: 600; color: var(--primary);">—</span>
+                            </div>
                         </div>
                     </td>
                     <td style="text-align: center;"><button type="button" class="opt-delete-btn" data-opt-idx="${idx}" title="삭제"><i class="fa-solid fa-trash-can"></i></button></td>
@@ -2906,11 +2926,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].optionName = e.target.value; });
         });
         optionTableBody.querySelectorAll('.opt-price-input').forEach(inp => {
-            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].priceKrw = e.target.value; });
+            inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].priceKrw = e.target.value; updateOptTotalCosts(); });
         });
         optionTableBody.querySelectorAll('.opt-weight-input').forEach(inp => {
             inp.addEventListener('input', (e) => { currentOptions[parseInt(e.target.dataset.optIdx)].weight = e.target.value; });
         });
+
+        // Calculate & display total cost per option
+        updateOptTotalCosts();
         optionTableBody.querySelectorAll('.opt-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => { currentOptions.splice(parseInt(e.currentTarget.dataset.optIdx), 1); renderOptionRows(); });
         });
