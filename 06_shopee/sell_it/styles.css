@@ -1225,22 +1225,13 @@ textarea.form-input {
   color: var(--error);
 }
 
-/* Row Coloring by Margin Rate */
-.pc-product-row[data-margin="high"] {
-  background: rgba(76, 175, 80, 0.07) !important;
-}
-.pc-product-row[data-margin="mid"] {
-  background: rgba(255, 193, 7, 0.06) !important;
-}
-.pc-product-row[data-margin="low"] {
+/* Row Coloring by Margin Rate (Disabled per user request) */
+.pc-product-row[data-margin="high"],
+.pc-product-row[data-margin="mid"],
+.pc-product-row[data-margin="low"],
+.pc-product-row[data-margin="neg"] {
   background: transparent;
 }
-.pc-product-row[data-margin="neg"] {
-  background: rgba(244, 67, 54, 0.07) !important;
-}
-.pc-product-row:hover[data-margin="high"] { background: rgba(76, 175, 80, 0.12) !important; }
-.pc-product-row:hover[data-margin="mid"]  { background: rgba(255, 193, 7, 0.10) !important; }
-.pc-product-row:hover[data-margin="neg"]  { background: rgba(244, 67, 54, 0.12) !important; }
 
 .pc-product-row {
   cursor: pointer;
