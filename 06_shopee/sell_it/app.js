@@ -439,12 +439,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Notice Templates Logic for Export Modal
-    async function loadExportNoticeTemplates(market) {
+    window.loadExportNoticeTemplates = async function(market) {
         try {
-            const res = await api.getSystemSettings();
-            let allTemplates = [];
-            try { allTemplates = JSON.parse(res.notice_templates || '[]'); } catch(e){}
-            const templates = allTemplates.filter(t => t.market === market);
+            const res = await fetch(`${APP_API_BASE}/locale-notices/${market}`);
+            let templates = [];
+            if (res.ok) {
+                templates = await res.json();
+            }
             
             const sel = document.getElementById('export-modal-notice-template');
             if (sel) {
@@ -452,7 +453,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 templates.forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t.id;
-                    opt.innerText = t.title;
+                    opt.innerText = t.title + (t.isDefault ? ' (기본)' : '');
                     opt.dataset.content = t.content;
                     sel.appendChild(opt);
                 });
@@ -4483,6 +4484,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             selNoticeTemplate.appendChild(opt);
                         });
                     }
+                    
+                    // Re-render export modal dropdown if open
+                    if (typeof window.loadExportNoticeTemplates === 'function') {
+                        window.loadExportNoticeTemplates(window.currentPcMarketForNotices);
+                    }
                 } catch (err) {
                     alert('삭제 실패: ' + err.message);
                 }
@@ -4545,6 +4551,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             opt.textContent = t.title + (t.isDefault ? ' (기본)' : '');
                             selNoticeTemplate.appendChild(opt);
                         });
+                    }
+                    
+                    // Re-render export modal dropdown if open
+                    if (typeof window.loadExportNoticeTemplates === 'function') {
+                        window.loadExportNoticeTemplates(market);
                     }
                 } else {
                     const data = await res.json();
