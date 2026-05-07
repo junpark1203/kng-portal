@@ -1680,15 +1680,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Close Detail View Logic (Back to List)
+    let _closingPcDetail = false; // Guard flag to prevent re-entrant calls
     function closePriceCalcDetail(isPopState = false) {
+        if (_closingPcDetail) return;
+        _closingPcDetail = true;
+
         document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
         document.getElementById('view-price-calc-container').classList.add('active');
         window.currentOpenSidePanelId = null;
         document.querySelectorAll('.pc-product-row').forEach(r => r.style.outline = 'none');
-        
-        if (!isPopState && ((history.state && history.state.view === 'pcDetail') || window.location.hash === '#pcDetail')) {
-            history.back(); // If closed manually via X button, go back to clear history
+
+        // Clean up hash without triggering popstate
+        if (window.location.hash === '#pcDetail') {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
         }
+
+        setTimeout(() => { _closingPcDetail = false; }, 100);
     }
     document.getElementById('btn-back-to-pc-list')?.addEventListener('click', () => closePriceCalcDetail(false));
 
@@ -2215,11 +2222,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     window.addEventListener('popstate', (e) => {
         // 1. Handle Price Calc Detail Panel
-        if (document.getElementById('view-price-calc-detail')?.classList.contains('active')) {
-            if (!e.state || e.state.view !== 'pcDetail') {
-                closePriceCalcDetail(true);
-                return; // Stop here, already handled
-            }
+        const pcDetailView = document.getElementById('view-price-calc-detail');
+        if (pcDetailView && pcDetailView.classList.contains('active')) {
+            closePriceCalcDetail(true);
+            return; // Stop here, already handled
         }
 
         // 2. Handle Add Product Form
