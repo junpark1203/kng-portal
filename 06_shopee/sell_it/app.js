@@ -185,19 +185,66 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // 선택된 상품의 ID를 수집
             const productIds = [];
+            const selectedBaseMcodes = new Set();
+            let alreadyExported = false;
+
             checkedBoxes.forEach(cb => {
                 const row = cb.closest('tr');
                 if (row && row.dataset.productId) {
-                    productIds.push(row.dataset.productId);
+                    const pid = row.dataset.productId;
+                    productIds.push(pid);
+                    
+                    const p = productList.find(item => item.id === pid);
+                    if (p) {
+                        selectedBaseMcodes.add(getBaseMcode(p.mcode));
+                    }
+                    
+                    // Check if already exported
+                    const exports = marketExportsMap[pid] || [];
+                    if (exports.some(e => e.marketCode === selectedMarket)) {
+                        alreadyExported = true;
+                    }
                 }
             });
+
+            if (selectedBaseMcodes.size > 1) {
+                alert('서로 다른 상품을 동시에 내보낼 수 없습니다.\n단일 상품(또는 동일 그룹의 옵션들)만 선택해주세요.');
+                return;
+            }
+
+            if (alreadyExported) {
+                alert(`이미 ${selectedMarket.toUpperCase()} 마켓으로 내보내진 상품이 포함되어 있습니다.\n중복 전송은 불가능합니다.`);
+                return;
+            }
 
             currentExportProductIds = productIds;
             currentExportMarket = selectedMarket;
 
             // Setup Modal
             document.getElementById('export-modal-title').innerText = `${selectedMarket.toUpperCase()} 마켓으로 상품 내보내기`;
-            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품을 ${selectedMarket.toUpperCase()} 마켓으로 전송합니다.`;
+            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품 옵션(그룹)을 전송합니다.`;
+            
+            // Pre-fill Original Text
+            const origDescEl = document.getElementById('export-modal-orig-desc');
+            const origNoticeEl = document.getElementById('export-modal-orig-notice');
+            const transDescEl = document.getElementById('export-modal-trans-desc');
+            const transNoticeEl = document.getElementById('export-modal-trans-notice');
+            
+            if (origDescEl && origNoticeEl && transDescEl && transNoticeEl) {
+                const firstProduct = productList.find(item => item.id === productIds[0]);
+                origDescEl.value = firstProduct ? (firstProduct.description || '') : '';
+                origNoticeEl.value = firstProduct ? (firstProduct.notice || '') : '';
+                transDescEl.value = '';
+                transNoticeEl.value = '';
+                
+                // Character limit
+                const maxChars = selectedMarket === 'sg' ? 3000 : 5000;
+                transDescEl.dataset.maxChars = maxChars;
+                if (typeof updateExportCharCount === 'function') updateExportCharCount();
+                
+                // Load templates into the dropdown
+                loadExportNoticeTemplates(selectedMarket);
+            }
             
             // Exchange Rate
             const autoRateText = document.getElementById('export-modal-auto-rate-text');
@@ -353,6 +400,99 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('export-settings-modal').style.display = 'none';
     });
 
+    // --- Export Modal Translation UI Handlers ---
+    window.updateExportCharCount = function() {
+        const transDescEl = document.getElementById('export-modal-trans-desc');
+        const countEl = document.getElementById('export-modal-char-count');
+        if (!transDescEl || !countEl) return;
+        
+        const len = transDescEl.value.length;
+        const max = parseInt(transDescEl.dataset.maxChars) || 5000;
+        countEl.innerText = `${len} / ${max}`;
+        if (len > max) {
+            countEl.style.color = 'var(--error)';
+            countEl.style.fontWeight = 'bold';
+        } else {
+            countEl.style.color = 'var(--text-secondary)';
+            countEl.style.fontWeight = 'normal';
+        }
+    };
+
+    document.getElementById('export-modal-trans-desc')?.addEventListener('input', updateExportCharCount);
+
+    document.getElementById('btn-export-copy-desc')?.addEventListener('click', async (e) => {
+        const val = document.getElementById('export-modal-trans-desc')?.value || '';
+        await navigator.clipboard.writeText(val);
+        const btn = e.currentTarget;
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    });
+
+    document.getElementById('btn-export-copy-notice')?.addEventListener('click', async (e) => {
+        const val = document.getElementById('export-modal-trans-notice')?.value || '';
+        await navigator.clipboard.writeText(val);
+        const btn = e.currentTarget;
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    });
+
+    // Notice Templates Logic for Export Modal
+    async function loadExportNoticeTemplates(market) {
+        try {
+            const res = await api.getSystemSettings();
+            let allTemplates = [];
+            try { allTemplates = JSON.parse(res.notice_templates || '[]'); } catch(e){}
+            const templates = allTemplates.filter(t => t.market === market);
+            
+            const sel = document.getElementById('export-modal-notice-template');
+            if (sel) {
+                sel.innerHTML = '<option value="">템플릿 선택</option>';
+                templates.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.id;
+                    opt.innerText = t.title;
+                    opt.dataset.content = t.content;
+                    sel.appendChild(opt);
+                });
+            }
+            window.exportModalTemplates = templates;
+        } catch(e) {
+            console.error('[ExportModal] Failed to load templates:', e);
+        }
+    }
+
+    document.getElementById('export-modal-notice-template')?.addEventListener('change', (e) => {
+        const opt = e.target.selectedOptions[0];
+        if (opt && opt.value) {
+            const transNoticeEl = document.getElementById('export-modal-trans-notice');
+            if (transNoticeEl) {
+                const currentVal = transNoticeEl.value.trim();
+                const toAppend = opt.dataset.content || '';
+                if (currentVal) {
+                    transNoticeEl.value = currentVal + '\n\n' + toAppend;
+                } else {
+                    transNoticeEl.value = toAppend;
+                }
+            }
+            e.target.value = ''; // reset selection
+        }
+    });
+
+    document.getElementById('btn-export-manage-templates')?.addEventListener('click', () => {
+        // Open the generic PC notice templates modal, but configure it for the export market
+        const modal = document.getElementById('pc-notice-templates-modal');
+        if (modal && currentExportMarket) {
+            modal.style.display = 'flex';
+            window.currentPcMarketForNotices = currentExportMarket;
+            if (typeof window.loadPcNoticeTemplates === 'function') {
+                window.loadPcNoticeTemplates(currentExportMarket);
+            }
+            if (window.resetPcNoticeForm) window.resetPcNoticeForm();
+        }
+    });
+
     document.getElementById('btn-confirm-export')?.addEventListener('click', async () => {
         const type = document.querySelector('input[name="export_exrate_type"]:checked').value;
         let appliedRate = 0;
@@ -374,7 +514,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const targetMarginType = document.querySelector('input[name="export_margin_type"]:checked').value;
         const targetMarginValue = parseFloat(document.getElementById('export-margin-value').value) || null;
         
-        const syncLocale = document.getElementById('export-modal-sync-locale')?.checked || false;
+        const transDesc = document.getElementById('export-modal-trans-desc')?.value || '';
+        const transNotice = document.getElementById('export-modal-trans-notice')?.value || '';
+
+        const maxChars = parseInt(document.getElementById('export-modal-trans-desc')?.dataset.maxChars) || 5000;
+        if (transDesc.length > maxChars) {
+            alert(`상세 내용 글자 수 제한(${maxChars}자)을 초과했습니다.`);
+            return;
+        }
 
         const btn = document.getElementById('btn-confirm-export');
         const origHtml = btn.innerHTML;
@@ -382,7 +529,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
 
         try {
-            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, syncLocale);
+            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, transDesc, transNotice);
             
             // UI 업데이트: 배지 활성화
             currentExportProductIds.forEach(pid => {
@@ -398,7 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
             
             document.getElementById('export-settings-modal').style.display = 'none';
-            alert(`${result.insertedCount}개 상품이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
+            alert(`${result.insertedCount}개의 옵션(그룹)이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
         } catch (err) {
             alert("내보내기 실패: " + err.message);
         } finally {
