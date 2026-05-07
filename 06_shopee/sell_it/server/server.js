@@ -1411,13 +1411,16 @@ app.put('/api/market-locales/:productId/:marketCode', (req, res) => {
     const { description, notice } = req.body;
     const now = new Date().toISOString();
 
-    db.get('SELECT mcode, parentMcode FROM products WHERE id = ?', [productId], (err, row) => {
+    db.get('SELECT mcode FROM products WHERE id = ?', [productId], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
 
-        const baseMcode = row.parentMcode ? row.parentMcode : row.mcode;
+        const mcodeStr = row.mcode || '';
+        const parts = mcodeStr.split('-');
+        const baseMcode = parts.length >= 3 ? parts.slice(0, 3).join('-') : mcodeStr;
+        const likePattern = baseMcode + '-%';
 
-        db.all('SELECT id FROM products WHERE mcode = ? OR parentMcode = ?', [baseMcode, baseMcode], (err, products) => {
+        db.all('SELECT id FROM products WHERE mcode = ? OR mcode LIKE ?', [baseMcode, likePattern], (err, products) => {
             if (err) return res.status(500).json({ error: err.message });
 
             const groupIds = products.map(p => p.id);
