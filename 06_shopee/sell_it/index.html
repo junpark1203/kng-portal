@@ -1109,17 +1109,23 @@
 
                     <!-- Original Description (Readonly) -->
                     <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
-                        <label class="label-md" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-                            <span><i class="fa-solid fa-file-lines"></i> 원본 상세 내용</span>
-                        </label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label class="label-md">
+                                <span><i class="fa-solid fa-file-lines"></i> 원본 상세 내용</span>
+                            </label>
+                            <button class="btn-icon" id="btn-export-copy-orig-desc" title="상세내용 전체 복사"><i class="fa-regular fa-copy"></i></button>
+                        </div>
                         <textarea id="export-modal-orig-desc" class="form-control custom-scrollbar" style="flex: 1; resize: none; background: var(--surface-container); font-size: 0.85rem; padding: 0.75rem;" readonly></textarea>
                     </div>
 
                     <!-- Original Notice (Readonly) -->
                     <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 120px;">
-                        <label class="label-md" style="margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
-                            <span><i class="fa-solid fa-circle-exclamation"></i> 원본 공지사항</span>
-                        </label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <label class="label-md">
+                                <span><i class="fa-solid fa-circle-exclamation"></i> 원본 공지사항</span>
+                            </label>
+                            <button class="btn-icon" id="btn-export-copy-orig-notice" title="공지사항 전체 복사"><i class="fa-regular fa-copy"></i></button>
+                        </div>
                         <textarea id="export-modal-orig-notice" class="form-control custom-scrollbar" style="flex: 1; resize: none; background: var(--surface-container); font-size: 0.85rem; padding: 0.75rem;" readonly></textarea>
                     </div>
                 </div>

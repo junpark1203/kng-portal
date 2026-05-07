@@ -420,6 +420,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('export-modal-trans-desc')?.addEventListener('input', updateExportCharCount);
 
+    document.getElementById('btn-export-copy-orig-desc')?.addEventListener('click', async (e) => {
+        const val = document.getElementById('export-modal-orig-desc')?.value || '';
+        await navigator.clipboard.writeText(val);
+        const btn = e.currentTarget;
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    });
+
+    document.getElementById('btn-export-copy-orig-notice')?.addEventListener('click', async (e) => {
+        const val = document.getElementById('export-modal-orig-notice')?.value || '';
+        await navigator.clipboard.writeText(val);
+        const btn = e.currentTarget;
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    });
+
     document.getElementById('btn-export-copy-desc')?.addEventListener('click', async (e) => {
         const val = document.getElementById('export-modal-trans-desc')?.value || '';
         await navigator.clipboard.writeText(val);
