@@ -5919,10 +5919,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const plFieldOptions = [['all','통합검색'],['mcode','관리코드'],['nameEn','상품명(EN)'],['nameKo','상품명(KO)'],['catEn','카테고리'],['note','비고']];
 
     function plApplySearchAndPaginate() {
+        const startDate = document.getElementById('plSearchStartDate')?.value;
+        const endDate = document.getElementById('plSearchEndDate')?.value;
         const allGrouped = groupProductsByParent(productList);
-        const filtered = plActiveFilters.length > 0
-            ? allGrouped.filter(g => KngSearchEngine.matchesGroupConditions(g, plActiveFilters, true, ['mcode','nameEn','nameKo','catEn','catKo','note','optionName']))
-            : allGrouped;
+        
+        let filtered = allGrouped.filter(g => {
+            if (startDate && g.date < startDate) return false;
+            if (endDate && g.date > endDate) return false;
+            return true;
+        });
+
+        filtered = plActiveFilters.length > 0
+            ? filtered.filter(g => KngSearchEngine.matchesGroupConditions(g, plActiveFilters, true, ['mcode','nameEn','nameKo','catEn','catKo','note','optionName']))
+            : filtered;
 
         if (filtered.length === 0 && plActiveFilters.length > 0) {
             const tbody = document.querySelector('#pl-table tbody');
@@ -5956,6 +5965,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     function plClearSearch() {
         plActiveFilters = [];
         plCurrentPage = 1;
+        const sd = document.getElementById('plSearchStartDate');
+        const ed = document.getElementById('plSearchEndDate');
+        if (sd) sd.value = '';
+        if (ed) ed.value = '';
         const container = document.getElementById('pl-search-conditions');
         if (container) {
             container.innerHTML = '';
@@ -5969,6 +5982,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Product List search event listeners
+    document.getElementById('plSearchStartDate')?.addEventListener('change', () => { plCurrentPage = 1; plApplySearchAndPaginate(); });
+    document.getElementById('plSearchEndDate')?.addEventListener('change', () => { plCurrentPage = 1; plApplySearchAndPaginate(); });
     document.getElementById('pl-add-condition')?.addEventListener('click', () => addConditionRow('pl-search-conditions', plFieldOptions));
     document.getElementById('pl-clear-search')?.addEventListener('click', plClearSearch);
     document.getElementById('pl-do-search')?.addEventListener('click', () => {

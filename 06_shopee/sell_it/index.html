@@ -500,7 +500,16 @@
                         <p class="body-sm text-secondary">A comprehensive list of all uploaded products and their base information.</p>
 
                         <!-- Search Bar -->
-                        <div class="si-search-bar" id="pl-search-bar">
+                        <div class="si-search-bar" id="pl-search-bar" style="padding-top: 16px;">
+                            <!-- Fixed Filters Row -->
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--outline-variant);">
+                                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);"><i class="fa-regular fa-calendar"></i> 작성 기간</span>
+                                <div style="display: flex; align-items: center; gap: 8px; background: var(--surface); padding: 4px 10px; border: 1px solid var(--outline-variant); border-radius: var(--radius-sm);">
+                                    <input type="date" id="plSearchStartDate" style="border: none; background: transparent; font-size: 0.8rem; color: var(--text-main); outline: none; font-family: inherit;">
+                                    <span style="color: var(--text-disabled);">~</span>
+                                    <input type="date" id="plSearchEndDate" style="border: none; background: transparent; font-size: 0.8rem; color: var(--text-main); outline: none; font-family: inherit;">
+                                </div>
+                            </div>
                             <div id="pl-search-conditions">
                                 <!-- First condition row (no logic toggle) -->
                                 <div class="si-condition-row">
