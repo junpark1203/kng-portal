@@ -493,9 +493,8 @@
                 <!-- Product List View -->
                 <div class="view-section" id="view-product-list">
                     <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div style="margin-bottom: 1rem;">
                             <h3 class="headline-md">Product List</h3>
-                            <button class="btn-secondary" id="btn-add-product"><i class="fa-solid fa-plus"></i> Add Product</button>
                         </div>
                         <p class="body-sm text-secondary">A comprehensive list of all uploaded products and their base information.</p>
 
@@ -531,6 +530,12 @@
                             </div>
                         </div>
                         <div class="si-filter-chips" id="pl-filter-chips"></div>
+
+                        <!-- Table Action Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                            <div class="label-md text-secondary"><span id="pl-total-count-display" style="color: var(--primary); font-weight: bold;">0</span> 개의 상품이 검색되었습니다.</div>
+                            <button class="btn-primary" id="btn-add-product" style="padding: 6px 16px; font-size: 0.85rem;"><i class="fa-solid fa-plus"></i> Add Product</button>
+                        </div>
 
                         <div class="table-container">
                             <table class="data-table" id="pl-table">

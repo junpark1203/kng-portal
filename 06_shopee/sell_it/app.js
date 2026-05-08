@@ -5971,6 +5971,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { pageData, totalItems: totalGroups, totalPages, currentPage } = KngSearchEngine.paginateData(filtered, plCurrentPage, effectivePageSize);
         plCurrentPage = currentPage;
 
+        const countDisplay = document.getElementById('pl-total-count-display');
+        if (countDisplay) countDisplay.textContent = totalGroups;
+
         renderProductListTable(pageData);
         KngSearchEngine.renderPaginationHTML('pl-pagination', totalGroups, totalPages, plCurrentPage, plPageSize,
             (page) => { plCurrentPage = page; plApplySearchAndPaginate(); },
