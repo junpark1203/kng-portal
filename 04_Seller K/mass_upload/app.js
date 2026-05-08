@@ -150,7 +150,8 @@ function initRouter() {
                 }
                 _isEditing = false;
                 startNewProduct();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+                var pb = document.getElementById('pageBody') || document.querySelector('.page-body');
+                if (pb) pb.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
     }
@@ -224,42 +225,76 @@ function initSidebar() {
 // WIZARD
 // ════════════════════════════════════════
 function initWizard() {
-    document.getElementById('btnNext1').addEventListener('click', function() { if (validateStep(1)) { collectStepData(1); goToStep(2); } });
-    document.getElementById('btnPrev2').addEventListener('click', function() { collectStepData(2); goToStep(1); });
-    document.getElementById('btnNext2').addEventListener('click', function() { if (validateStep(2)) { collectStepData(2); goToStep(3); } });
-    document.getElementById('btnPrev3').addEventListener('click', function() { collectStepData(3); goToStep(2); });
-    document.getElementById('btnNext3').addEventListener('click', function() { collectStepData(3); goToStep(4); });
-    document.getElementById('btnPrev4').addEventListener('click', function() { goToStep(3); });
-    document.getElementById('btnNext4').addEventListener('click', function() { goToStep(5); });
-    document.getElementById('btnPrev5').addEventListener('click', function() { goToStep(4); });
-    document.getElementById('btnNext5').addEventListener('click', function() { collectStepData(5); goToStep(6); renderPreview(); });
-    document.getElementById('btnPrev6').addEventListener('click', function() { goToStep(5); });
+    // Action Buttons
     document.getElementById('btnSave').addEventListener('click', saveProduct);
     document.getElementById('btnDraft').addEventListener('click', saveDraft);
+    document.getElementById('btnPreview').addEventListener('click', function() {
+        // Collect all data and show preview
+        [1, 2, 3, 4, 5].forEach(function(s) { collectStepData(s); });
+        renderPreview();
+        // Since step 6 is gone, we might want to scroll to the bottom or open a modal
+        // For now, let's just alert or implement a modal later if needed
+    });
 
-    // Clickable wizard steps (for edit mode)
-    document.querySelectorAll('.wizard-step').forEach(function(step) {
-        step.addEventListener('click', function() {
-            if (!this.classList.contains('clickable')) return;
-            var targetStep = parseInt(this.dataset.step);
-            collectStepData(currentStep); // Save current progress before jumping
-            if (targetStep === 6) renderPreview();
-            goToStep(targetStep);
+    // Scroll Spy Logic
+    var navItems = document.querySelectorAll('.scroll-spy-nav li');
+    var sections = Array.from(navItems).map(function(li) {
+        return document.getElementById(li.dataset.target);
+    }).filter(Boolean);
+
+    // Scroll to section on nav click
+    navItems.forEach(function(item) {
+        item.addEventListener('click', function() {
+            var targetId = this.dataset.target;
+            var targetSection = document.getElementById(targetId);
+            var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+            if (targetSection && pageBody) {
+                var targetRect = targetSection.getBoundingClientRect();
+                var containerRect = pageBody.getBoundingClientRect();
+                var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 20;
+                pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
+            }
         });
     });
+
+    // IntersectionObserver to highlight nav items on scroll
+    if ('IntersectionObserver' in window) {
+        var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+        var observerOptions = {
+            root: pageBody,
+            rootMargin: '-50px 0px -50% 0px',
+            threshold: 0
+        };
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    navItems.forEach(function(li) {
+                        li.classList.remove('active');
+                        if (li.dataset.target === entry.target.id) {
+                            li.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(function(section) {
+            observer.observe(section);
+        });
+    }
 }
 
 function goToStep(n) {
-    currentStep = n;
-    document.querySelectorAll('.step-panel').forEach(function(p) { p.classList.remove('active'); });
+    // Compatibility function for legacy calls
     var panel = document.getElementById('step' + n);
-    if (panel) panel.classList.add('active');
-    document.querySelectorAll('.wizard-step').forEach(function(s) {
-        var stepNum = parseInt(s.dataset.step);
-        s.classList.remove('active', 'completed');
-        if (stepNum < n) s.classList.add('completed');
-        if (stepNum === n) s.classList.add('active');
-    });
+    var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+    if (panel && pageBody) {
+        var targetRect = panel.getBoundingClientRect();
+        var containerRect = pageBody.getBoundingClientRect();
+        var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 20;
+        pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
+    }
 }
 
 // ── 관리번호 lazy 생성 (Promise 캐시) ──
@@ -936,6 +971,8 @@ function renderPreview() {
     }
     html += '</div></div>';
     el.innerHTML = html;
+    var modal = document.getElementById('previewModal');
+    if (modal) modal.classList.remove('hidden');
 }
 
 // ════════════════════════════════════════

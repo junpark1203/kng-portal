@@ -1418,38 +1418,40 @@ document.addEventListener('DOMContentLoaded', function() {
     var internalSections = ['dashboard', 'forms', 'inventory', 'transactions'];
 
     function showInternalView(href, label) {
-        // iframe 숨기고 내부 페이지 표시
-        if (iframeContainer) iframeContainer.classList.add('hidden');
-        if (appIframe) appIframe.src = 'about:blank';
-        if (internalPages) internalPages.style.display = '';
+    // iframe 숨기고 내부 페이지 표시
+    if (iframeContainer) iframeContainer.classList.add('hidden');
+    if (appIframe) appIframe.src = 'about:blank';
+    if (internalPages) internalPages.style.display = '';
 
-        // 모든 내부 섹션 숨기기
+    var targetId = href.replace('#', '');
+
+    // dashboard 클릭 시 모든 섹션 표시
+    if (targetId === 'dashboard') {
+        internalSections.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = '';
+        });
+    } else {
+        // 다른 탭일 경우 해당 섹션만 표시
         internalSections.forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
-
-        // 선택한 섹션만 표시
-        var targetId = href.replace('#', '');
         var targetEl = document.getElementById(targetId);
         if (targetEl) targetEl.style.display = '';
-
-        // dashboard 클릭 시 KPI strip도 함께 표시
-        if (targetId === 'dashboard') {
-            // dashboard는 kpi-strip이므로 바로 표시됨
-        }
-
-        // 검색바 / VAT 버튼: 재고 관련 페이지에서만 표시
-        var showControls = ['forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
-        if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
-        if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
-
-        // 페이지 타이틀 업데이트
-        if (topbarPageTitle) topbarPageTitle.textContent = label || '요약정보';
-
-        // 스크롤 맨 위로
-        if (internalPages) internalPages.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // 검색바 / VAT 버튼: dashboard 포함해서 표시
+    var showControls = ['dashboard', 'forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
+    if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
+    if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
+
+    // 페이지 제목 업데이트
+    if (topbarPageTitle) topbarPageTitle.textContent = label || '요약정보';
+
+    // 스크롤 맨위로
+    if (internalPages) internalPages.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
     /** iframe 모드로 전환 */
     function showIframeView(src, label) {

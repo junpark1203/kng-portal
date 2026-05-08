@@ -31,47 +31,27 @@
 
                 <!-- ═══ PAGE: 상품 등록 ═══ -->
                 <div class="page-view" id="pageRegister">
-                    <!-- Wizard Steps -->
-                    <div class="wizard-steps" id="wizardSteps">
-                        <div class="wizard-step active" data-step="1">
-                            <div class="wizard-step-circle">1</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">상품 기본</span>
+                    <div class="registration-layout">
+                        <!-- Sidebar Navigation -->
+                        <div class="registration-sidebar">
+                            <div style="position: sticky; top: 20px;">
+                                <ul class="scroll-spy-nav" id="scrollSpyNav">
+                                    <li class="active" data-target="step1"><span class="step-num">1</span> 상품 기본</li>
+                                    <li data-target="step2"><span class="step-num">2</span> 가격 및 배송</li>
+                                    <li data-target="step3"><span class="step-num">3</span> 옵션 및 재고</li>
+                                    <li data-target="step4"><span class="step-num">4</span> 이미지 관리</li>
+                                    <li data-target="step5"><span class="step-num">5</span> 상품 상세 정보</li>
+                                </ul>
+                                <div class="registration-actions" style="margin-top: 24px;">
+                                    <button type="button" class="btn-outline" id="btnDraft" style="width: 100%; justify-content: center; margin-bottom: 8px; border-color: var(--primary); color: var(--primary);"><i class='bx bx-save'></i> 임시저장</button>
+                                    <button type="button" class="btn-primary" id="btnSave" style="width: 100%; justify-content: center; margin-bottom: 8px;"><i class='bx bx-check'></i> 저장</button>
+                                    <button type="button" class="btn-secondary" id="btnPreview" style="width: 100%; justify-content: center;"><i class='bx bx-show'></i> 미리보기</button>
+                                    <button type="button" class="btn-edit-save hidden" onclick="saveFromEditMode()" style="width: 100%; justify-content: center; margin-top: 8px; background-color: var(--primary); color: white;"><i class='bx bx-check-circle'></i> 수정완료</button>
+                                </div>
                             </div>
                         </div>
-                        <div class="wizard-step" data-step="2">
-                            <div class="wizard-step-circle">2</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">가격/배송</span>
-                            </div>
-                        </div>
-                        <div class="wizard-step" data-step="3">
-                            <div class="wizard-step-circle">3</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">옵션</span>
-                            </div>
-                        </div>
-                        <div class="wizard-step" data-step="4">
-                            <div class="wizard-step-circle">4</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">이미지</span>
-                            </div>
-                        </div>
-                        <div class="wizard-step" data-step="5">
-                            <div class="wizard-step-circle">5</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">상품 상세</span>
-                            </div>
-                        </div>
-                        <div class="wizard-step" data-step="6">
-                            <div class="wizard-step-circle">6</div>
-                            <div class="wizard-step-info">
-                                <span class="wizard-step-label">미리보기</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="wizard-body">
+                        <div class="registration-content" id="registrationContent">
                         <!-- Step 1: 상품 기본 -->
                         <div class="step-panel active" id="step1">
                             <div class="wizard-section-title">
@@ -150,14 +130,8 @@
                                 </div>
                                 
                             </div>
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-primary" id="btnNext1">다음 <i
-                                            class='bx bx-right-arrow-alt'></i></button>
-                                    <button class="btn-edit-save hidden" onclick="saveFromEditMode()"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                                <div></div>
                             </div>
+
                         
                         </div>
 
@@ -266,14 +240,8 @@
                                     <textarea id="fldAsGuide" rows="2" placeholder="A/S 관련 안내사항">상품상세 참조</textarea>
                                 </div>
                             </div>
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-primary" id="btnNext2">다음 <i class='bx bx-right-arrow-alt'></i></button>
-                                    <button class="btn-edit-save hidden" onclick="saveFromEditMode()"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                                <button class="btn-secondary" id="btnPrev2"><i class='bx bx-left-arrow-alt'></i> 이전</button>
                             </div>
-                        </div>
+
 
                         <!-- Step 3: 옵션 및 재고 -->
                         <div class="step-panel" id="step3">
@@ -350,17 +318,8 @@
                                 </div>
                             </div>
 
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-primary" id="btnNext3">다음 <i
-                                            class='bx bx-right-arrow-alt'></i></button>
-                                    <button class="btn-edit-save hidden" onclick="saveFromEditMode()"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                                <button class="btn-secondary" id="btnPrev3"><i class='bx bx-left-arrow-alt'></i>
-                                    이전</button>
                             </div>
-                        
-                        </div>
+
 
                         <!-- Step 4: 이미지 -->
                         <div class="step-panel" id="step4">
@@ -444,17 +403,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-primary" id="btnNext4">다음 <i
-                                            class='bx bx-right-arrow-alt'></i></button>
-                                    <button class="btn-edit-save hidden" onclick="saveFromEditMode()"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                                <button class="btn-secondary" id="btnPrev4"><i class='bx bx-left-arrow-alt'></i>
-                                    이전</button>
                             </div>
-                        
-                        </div>
+
 
                         <!-- Step 5: 상품 상세 -->
                         <div class="step-panel" id="step5">
@@ -526,37 +476,12 @@
                                     <input type="text" id="fldNotice_maker" placeholder="제조자 입력" value="상세설명에 표시">
                                 </div>
                             </div>
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-primary" id="btnNext5">다음 <i
-                                            class='bx bx-right-arrow-alt'></i></button>
-                                    <button class="btn-edit-save hidden" onclick="saveFromEditMode()"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                                <button class="btn-secondary" id="btnPrev5"><i class='bx bx-left-arrow-alt'></i>
-                                    이전</button>
                             </div>
-                        
-                        </div>
+
 
                         <!-- Step 6: 미리보기 -->
-                        <div class="step-panel" id="step6">
-                            <div class="wizard-section-title">
-                                <i class='bx bx-show'></i> 상품 미리보기
-                            </div>
-                            <div class="preview-card" id="previewContent">
-                                <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
-                                    상품 정보를 입력하면 미리보기가 표시됩니다.
-                                </p>
-                            </div>
-                            <div class="wizard-footer">
-                                <div style="display:flex;gap:8px;">
-                                    <button class="btn-outline" id="btnDraft"><i class='bx bx-save'></i> 임시저장</button>
-                                    <button class="btn-primary" id="btnSave"><i class='bx bx-check'></i> 저장</button>
-                                </div>
-                                <button class="btn-secondary" id="btnPrev6"><i class='bx bx-left-arrow-alt'></i>
-                                    이전</button>
-                            </div>
-                        </div>
+                        
+
                     </div>
                 </div>
 
@@ -887,6 +812,27 @@
     <script src="app.js"></script>
     <script src="app-features.js"></script>
     <script type="module" src="auth.js"></script>
+
+<!-- Preview Modal -->
+<div id="previewModal" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal-content" style="max-width: 600px; width: 90%;">
+        <div class="modal-header">
+            <h3 class="modal-title">상품 미리보기</h3>
+            <button class="btn-close" onclick="document.getElementById('previewModal').classList.add('hidden')"><i class='bx bx-x'></i></button>
+        </div>
+        <div class="modal-body" style="padding: 0;">
+            <div class="preview-card" id="previewContent">
+                <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
+                    상품 정보를 입력하면 미리보기가 표시됩니다.
+                </p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="document.getElementById('previewModal').classList.add('hidden')">닫기</button>
+        </div>
+    </div>
+</div>
+
 </body>
 
 </html>
