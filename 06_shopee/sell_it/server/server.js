@@ -774,7 +774,7 @@ app.get('/api/market-exports', (req, res) => {
                p.*
         FROM market_exports me
         JOIN products p ON me.productId = p.id
-        WHERE me.marketCode = ? AND p.status = 'active'
+        WHERE me.marketCode = ?
         ORDER BY me.exportDate DESC
     `;
     db.all(sql, [market], (err, rows) => {

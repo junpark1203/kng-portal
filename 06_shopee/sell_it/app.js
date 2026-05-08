@@ -5675,14 +5675,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // renderPriceCalcGrid는 nav 핸들러 이전으로 이동됨 (line ~105)
 
     // Restore active view from localStorage on load
-    // ※ 모든 모듈 초기화가 완료된 후 실행해야 TDZ 에러를 방지합니다.
-    const savedViewId = localStorage.getItem('activeViewId');
-    if (savedViewId) {
-        const targetNav = document.querySelector(`.sidebar .nav-item[data-view="${savedViewId}"]`);
-        if (targetNav) {
-            targetNav.click();
-        }
-    }
+    // (이동됨: DOMContentLoaded의 가장 마지막으로)
     // --- Smart Pricing Settings Modal Logic ---
     const smartModal = document.getElementById('smart-pricing-modal');
     const btnOpenSmart = document.getElementById('btn-open-smart-pricing-modal');
@@ -6574,5 +6567,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.gs-row-checkbox, .gs-child-checkbox, .gs-parent-checkbox').forEach(cb => cb.checked = false);
         });
     });
+
+    // Restore active view from localStorage on load
+    // 모든 모듈(특히 Global SKU 등 새로 추가된 모듈)의 초기화 및 이벤트 리스너 등록이 완료된 후 실행
+    const savedViewId = localStorage.getItem('activeViewId');
+    if (savedViewId) {
+        const targetNav = document.querySelector(`.sidebar .nav-item[data-view="${savedViewId}"]`);
+        if (targetNav) {
+            targetNav.click();
+        }
+    }
 
 });
