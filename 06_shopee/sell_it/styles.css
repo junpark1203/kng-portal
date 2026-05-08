@@ -805,7 +805,7 @@ input[type="checkbox"] {
   background: var(--surface-container-lowest);
   border-radius: var(--radius-lg);
   box-shadow: 0 10px 30px rgba(0, 7, 103, 0.2);
-  z-index: 101;
+  z-index: 2001;
   opacity: 0;
   pointer-events: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
