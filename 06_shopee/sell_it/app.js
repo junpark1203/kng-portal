@@ -5913,148 +5913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
        SEARCH / FILTER / PAGINATION MODULE
        ========================================================================= */
 
-    // --- Helpers ---
-    function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-    function highlightText(text, queries) {
-        if (!text || !queries || queries.length === 0) return text;
-        let result = String(text);
-        queries.forEach(q => {
-            if (!q) return;
-            const regex = new RegExp(`(${escapeRegex(q)})`, 'gi');
-            result = result.replace(regex, '<mark class="si-highlight">$1</mark>');
-        });
-        return result;
-    }
-
-    function matchesCondition(item, field, query) {
-        if (!query) return true;
-        const q = query.toLowerCase();
-        if (field === 'all') {
-            return ['mcode','nameEn','nameKo','catEn','catKo','note','optionName'].some(f => {
-                const val = item[f];
-                return val && String(val).toLowerCase().includes(q);
-            });
-        }
-        const val = item[field];
-        return val && String(val).toLowerCase().includes(q);
-    }
-
-    function matchesGroupConditions(group, filters) {
-        if (!filters || filters.length === 0) return true;
-        const items = group.isVirtualParent ? group.children : [group];
-        // Check if ANY item in the group matches the filter chain
-        return items.some(item => {
-            let result = matchesCondition(item, filters[0].field, filters[0].query);
-            for (let i = 1; i < filters.length; i++) {
-                const f = filters[i];
-                const match = matchesCondition(item, f.field, f.query);
-                if (f.logic === 'AND') result = result && match;
-                else result = result || match;
-            }
-            return result;
-        });
-    }
-
-    function paginateGrouped(groupedData, page, pageSize) {
-        if (pageSize <= 0) return { pageData: groupedData, totalGroups: groupedData.length, totalPages: 1 };
-        const totalGroups = groupedData.length;
-        const totalPages = Math.max(1, Math.ceil(totalGroups / pageSize));
-        const safePage = Math.min(Math.max(1, page), totalPages);
-        const start = (safePage - 1) * pageSize;
-        const end = start + pageSize;
-        return { pageData: groupedData.slice(start, end), totalGroups, totalPages, currentPage: safePage };
-    }
-
-    function renderPaginationHTML(containerId, totalGroups, totalPages, currentPage, pageSize, onPageChange, onPageSizeChange) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        if (totalGroups === 0) { container.innerHTML = ''; return; }
-        const startItem = (currentPage - 1) * pageSize + 1;
-        const endItem = Math.min(currentPage * pageSize, totalGroups);
-
-        let pagesHtml = '';
-        pagesHtml += `<button class="si-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-        const maxVisible = 5;
-        let startP = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-        let endP = Math.min(totalPages, startP + maxVisible - 1);
-        if (endP - startP < maxVisible - 1) startP = Math.max(1, endP - maxVisible + 1);
-        if (startP > 1) { pagesHtml += `<button class="si-page-btn" data-page="1">1</button>`; if (startP > 2) pagesHtml += `<span class="si-page-ellipsis">…</span>`; }
-        for (let p = startP; p <= endP; p++) {
-            pagesHtml += `<button class="si-page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
-        }
-        if (endP < totalPages) { if (endP < totalPages - 1) pagesHtml += `<span class="si-page-ellipsis">…</span>`; pagesHtml += `<button class="si-page-btn" data-page="${totalPages}">${totalPages}</button>`; }
-        pagesHtml += `<button class="si-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-
-        container.innerHTML = `
-            <div class="si-pagination-info">전체 <strong>${totalGroups}</strong>건 중 <strong>${startItem}-${endItem}</strong>건 표시</div>
-            <div class="si-pagination-pages">${pagesHtml}</div>
-            <div class="si-pagination-size">페이지당 <select class="si-page-size-select">
-                ${[10,30,50,100,0].map(s => `<option value="${s}" ${s === pageSize ? 'selected' : ''}>${s === 0 ? '전체' : s}</option>`).join('')}
-            </select>건</div>
-        `;
-
-        container.querySelectorAll('.si-page-btn:not(:disabled)').forEach(btn => {
-            btn.addEventListener('click', () => onPageChange(parseInt(btn.dataset.page)));
-        });
-        container.querySelector('.si-page-size-select')?.addEventListener('change', (e) => {
-            onPageSizeChange(parseInt(e.target.value));
-        });
-    }
-
-    // --- Search Bar Logic ---
-    function getConditionsFromBar(containerId) {
-        const container = document.getElementById(containerId);
-        if (!container) return [];
-        const rows = container.querySelectorAll('.si-condition-row');
-        const conditions = [];
-        rows.forEach((row, idx) => {
-            const field = row.querySelector('[data-role="field"]')?.value || 'all';
-            const query = row.querySelector('[data-role="query"]')?.value?.trim() || '';
-            const logicBtn = row.querySelector('.si-logic-toggle');
-            const logic = idx === 0 ? 'AND' : (logicBtn?.textContent || 'AND');
-            if (query) conditions.push({ field, query, logic });
-        });
-        return conditions;
-    }
-
-    function addConditionRow(containerId, fieldOptions) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        const row = document.createElement('div');
-        row.className = 'si-condition-row';
-        const optionsHtml = fieldOptions.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-        row.innerHTML = `
-            <button type="button" class="si-logic-toggle">AND</button>
-            <select class="si-field-select" data-role="field">${optionsHtml}</select>
-            <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
-            <button type="button" class="si-btn-remove-row"><i class="fa-solid fa-xmark"></i></button>
-        `;
-        row.querySelector('.si-logic-toggle').addEventListener('click', (e) => {
-            e.target.textContent = e.target.textContent === 'AND' ? 'OR' : 'AND';
-        });
-        row.querySelector('.si-btn-remove-row').addEventListener('click', () => row.remove());
-        // Enter key triggers search
-        row.querySelector('.si-search-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') container.closest('.si-search-bar')?.querySelector('.si-btn-search')?.click();
-        });
-        container.appendChild(row);
-    }
-
-    function renderFilterChips(chipsContainerId, filters, labels, onRemove) {
-        const container = document.getElementById(chipsContainerId);
-        if (!container) return;
-        if (!filters || filters.length === 0) { container.innerHTML = ''; return; }
-        let html = '';
-        filters.forEach((f, idx) => {
-            if (idx > 0) html += `<span class="si-chip-logic">${f.logic}</span>`;
-            html += `<span class="si-chip">${labels[f.field] || f.field}: ${f.query} <button class="si-chip-remove" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button></span>`;
-        });
-        container.innerHTML = html;
-        container.querySelectorAll('.si-chip-remove').forEach(btn => {
-            btn.addEventListener('click', () => onRemove(parseInt(btn.dataset.idx)));
-        });
-    }
+    // Search engine helpers removed as they are now in KngSearchEngine
 
     // --- PRODUCT LIST Search + Pagination ---
     const plFieldOptions = [['all','통합검색'],['mcode','관리코드'],['nameEn','상품명(EN)'],['nameKo','상품명(KO)'],['catEn','카테고리'],['note','비고']];
@@ -6062,7 +5921,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function plApplySearchAndPaginate() {
         const allGrouped = groupProductsByParent(productList);
         const filtered = plActiveFilters.length > 0
-            ? allGrouped.filter(g => matchesGroupConditions(g, plActiveFilters))
+            ? allGrouped.filter(g => KngSearchEngine.matchesGroupConditions(g, plActiveFilters, true, ['mcode','nameEn','nameKo','catEn','catKo','note','optionName']))
             : allGrouped;
 
         if (filtered.length === 0 && plActiveFilters.length > 0) {
@@ -6070,26 +5929,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (tbody) tbody.innerHTML = `<tr><td colspan="9"><div class="si-no-results"><i class="fa-solid fa-magnifying-glass"></i><div class="si-no-results-text">검색 결과가 없습니다.</div><button class="si-btn-reset" id="pl-reset-from-table">필터 초기화</button></div></td></tr>`;
             document.getElementById('pl-pagination').innerHTML = '';
             document.getElementById('pl-reset-from-table')?.addEventListener('click', plClearSearch);
-            renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
+            KngSearchEngine.renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
             return;
         }
 
         const effectivePageSize = plPageSize === 0 ? filtered.length : plPageSize;
-        const { pageData, totalGroups, totalPages, currentPage } = paginateGrouped(filtered, plCurrentPage, effectivePageSize);
+        const { pageData, totalItems: totalGroups, totalPages, currentPage } = KngSearchEngine.paginateData(filtered, plCurrentPage, effectivePageSize);
         plCurrentPage = currentPage;
 
         renderProductListTable(pageData);
-        renderPaginationHTML('pl-pagination', totalGroups, totalPages, plCurrentPage, plPageSize,
+        KngSearchEngine.renderPaginationHTML('pl-pagination', totalGroups, totalPages, plCurrentPage, plPageSize,
             (page) => { plCurrentPage = page; plApplySearchAndPaginate(); },
             (size) => { plPageSize = size; plCurrentPage = 1; plApplySearchAndPaginate(); }
         );
-        renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
+        KngSearchEngine.renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
 
         // Apply text highlight
         if (plActiveFilters.length > 0) {
             const queries = plActiveFilters.map(f => f.query).filter(Boolean);
             document.querySelectorAll('#pl-table tbody .prod-mcode, #pl-table tbody .prod-name-en, #pl-table tbody .prod-name-ko, #pl-table tbody .prod-cat-en-1, #pl-table tbody .prod-cat-en-2, #pl-table tbody .prod-cat-ko, #pl-table tbody .prod-note').forEach(el => {
-                el.innerHTML = highlightText(el.textContent, queries);
+                el.innerHTML = KngSearchEngine.highlightText(el.textContent, queries);
             });
         }
     }
@@ -6195,17 +6054,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             catEn: g.rows[r]?.querySelector('.pc-cat')?.textContent || ''
                         };
                         // If any child matches, include the group
-                        let childMatch = matchesCondition(childItem, pcActiveFilters[0].field, pcActiveFilters[0].query);
+                        let childMatch = KngSearchEngine.matchesCondition(childItem, pcActiveFilters[0].field, pcActiveFilters[0].query, ['mcode','nameEn','catEn']);
                         for (let f = 1; f < pcActiveFilters.length; f++) {
-                            const fm = matchesCondition(childItem, pcActiveFilters[f].field, pcActiveFilters[f].query);
+                            const fm = KngSearchEngine.matchesCondition(childItem, pcActiveFilters[f].field, pcActiveFilters[f].query, ['mcode','nameEn','catEn']);
                             childMatch = pcActiveFilters[f].logic === 'AND' ? childMatch && fm : childMatch || fm;
                         }
                         if (childMatch) return true;
                     }
                 }
-                let result = matchesCondition(item, pcActiveFilters[0].field, pcActiveFilters[0].query);
+                let result = KngSearchEngine.matchesCondition(item, pcActiveFilters[0].field, pcActiveFilters[0].query, ['mcode','nameEn','catEn']);
                 for (let f = 1; f < pcActiveFilters.length; f++) {
-                    const fm = matchesCondition(item, pcActiveFilters[f].field, pcActiveFilters[f].query);
+                    const fm = KngSearchEngine.matchesCondition(item, pcActiveFilters[f].field, pcActiveFilters[f].query, ['mcode','nameEn','catEn']);
                     result = pcActiveFilters[f].logic === 'AND' ? result && fm : result || fm;
                 }
                 return result;
@@ -6232,25 +6091,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('pc-reset-from-table')?.addEventListener('click', () => { pcActiveFilters = []; pcCurrentPage = 1; pcApplyPagination(); });
         }
 
-        renderPaginationHTML('pc-pagination', totalGroups, totalPages, pcCurrentPage, pcPageSize,
+        KngSearchEngine.renderPaginationHTML('pc-pagination', totalGroups, totalPages, pcCurrentPage, pcPageSize,
             (page) => { pcCurrentPage = page; pcApplyPagination(); },
             (size) => { pcPageSize = size; pcCurrentPage = 1; pcApplyPagination(); }
         );
-        renderFilterChips('pc-filter-chips', pcActiveFilters, pcFieldLabels, (idx) => { pcActiveFilters.splice(idx, 1); pcCurrentPage = 1; pcApplyPagination(); });
+        KngSearchEngine.renderFilterChips('pc-filter-chips', pcActiveFilters, pcFieldLabels, (idx) => { pcActiveFilters.splice(idx, 1); pcCurrentPage = 1; pcApplyPagination(); });
 
         // Apply highlight
         if (pcActiveFilters.length > 0) {
             const queries = pcActiveFilters.map(f => f.query).filter(Boolean);
             pageGroups.forEach(g => g.rows.forEach(r => {
                 r.querySelectorAll('.pc-mcode, .pc-name-en, .pc-name, .pc-cat').forEach(el => {
-                    el.innerHTML = highlightText(el.textContent, queries);
+                    el.innerHTML = KngSearchEngine.highlightText(el.textContent, queries);
                 });
             }));
         }
     }
 
     // Price Calc search event listeners
-    document.getElementById('pc-add-condition')?.addEventListener('click', () => addConditionRow('pc-search-conditions', pcFieldOptions));
+    document.getElementById('pc-add-condition')?.addEventListener('click', () => KngSearchEngine.addConditionRow('pc-search-conditions', pcFieldOptions));
     document.getElementById('pc-clear-search')?.addEventListener('click', () => {
         pcActiveFilters = [];
         pcCurrentPage = 1;
@@ -6266,7 +6125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pcApplyPagination();
     });
     document.getElementById('pc-do-search')?.addEventListener('click', () => {
-        pcActiveFilters = getConditionsFromBar('pc-search-conditions');
+        pcActiveFilters = KngSearchEngine.getConditionsFromBar('pc-search-conditions');
         pcCurrentPage = 1;
         pcApplyPagination();
     });

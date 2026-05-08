@@ -35,28 +35,35 @@
                                 <div class="category-filter-wrap" id="categoryChips">
                                     <button class="cat-chip active" data-cat="all">전체</button>
                                 </div>
-                                <div class="header-controls">
-                                    <div class="table-search-wrap">
-                                        <select id="searchField" class="search-field-select">
-                                            <option value="all">통합검색</option>
-                                            <option value="site">현장명</option>
-                                            <option value="supplier">공급사</option>
-                                            <option value="manufacturer">제조사</option>
-                                            <option value="item">품목명</option>
-                                            <option value="category">구분</option>
-                                        </select>
-                                        <div class="table-search-input">
-                                            <i class='bx bx-search'></i>
-                                            <input type="text" id="searchInput" placeholder="검색어 입력...">
+                                <div class="header-controls" style="align-items: flex-start;">
+                                    <div class="si-search-container" style="flex: 1; min-width: 300px;">
+                                        <div class="si-search-bar" id="search-conditions">
+                                            <div class="si-condition-row">
+                                                <select class="si-field-select" data-role="field">
+                                                    <option value="all">통합검색</option>
+                                                    <option value="site">현장명</option>
+                                                    <option value="supplier">공급사</option>
+                                                    <option value="manufacturer">제조사</option>
+                                                    <option value="item">품목명</option>
+                                                    <option value="category">구분</option>
+                                                </select>
+                                                <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+                                            </div>
+                                        </div>
+                                        <div class="si-search-actions">
+                                            <button type="button" class="si-btn-add" id="btn-add-condition"><i class="bx bx-plus"></i> 조건추가</button>
+                                            <button type="button" class="si-btn-reset" id="btn-clear-search"><i class="bx bx-reset"></i> 초기화</button>
+                                            <button type="button" class="si-btn-search" id="btn-do-search"><i class="bx bx-search"></i> 검색</button>
                                         </div>
                                     </div>
-                                    <div class="date-range-wrap">
+                                    <div class="date-range-wrap" style="margin-top: 4px;">
                                         <input type="date" id="searchStartDate">
                                         <span>~</span>
                                         <input type="date" id="searchEndDate">
                                     </div>
                                 </div>
                             </div>
+                            <div class="si-filter-chips" id="filter-chips" style="padding: 0 1.5rem 1rem 1.5rem;"></div>
                         </div>
 
                         <!-- KPI Bar -->
@@ -191,6 +198,8 @@
 
     <div id="toastContainer" class="toast-container"></div>
     <script src="../../common/js/kng-table-utils.js"></script>
-    <script src="supply-history.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="../../Common/js/search-engine.js"></script>
+    <script type="module" src="supply-history.js"></script>
 </body>
 </html>

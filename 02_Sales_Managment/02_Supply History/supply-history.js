@@ -9,13 +9,13 @@ let filteredData = [];
 let currentSort = { column: 'supplyDate', asc: false };
 let currentPage = 1;
 let pageSize = 50;
-let activeCategoryFilter = 'all';
+let activeFilters = [];
+const fieldLabels = { all: '통합검색', site: '현장명', supplier: '공급사', manufacturer: '제조사', item: '품목명', category: '구분' };
+const fieldOptions = [['all', '통합검색'], ['site', '현장명'], ['supplier', '공급사'], ['manufacturer', '제조사'], ['item', '품목명'], ['category', '구분']];
 
 const $ = id => document.getElementById(id);
-const elTableBody = $('tableBody');
+const elTableBody = $('dataTable').querySelector('tbody');
 const elTotalCount = $('totalCount');
-const elSearchField = $('searchField');
-const elSearchInput = $('searchInput');
 const elStartDate = $('searchStartDate');
 const elEndDate = $('searchEndDate');
 const elPagination = $('pagination');
@@ -35,10 +35,34 @@ document.addEventListener('DOMContentLoaded', () => {
 const debouncedSearch = debounce(() => { currentPage = 1; applyFiltersAndSort(); }, 300);
 
 function initEvents() {
-    elSearchInput.addEventListener('input', debouncedSearch);
-    elSearchField.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
-    elStartDate.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
-    elEndDate.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
+    elStartDate?.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
+    elEndDate?.addEventListener('change', () => { currentPage = 1; applyFiltersAndSort(); });
+
+    $('btn-add-condition')?.addEventListener('click', () => KngSearchEngine.addConditionRow('search-conditions', fieldOptions));
+    $('btn-clear-search')?.addEventListener('click', () => {
+        const container = $('search-conditions');
+        if (container) {
+            container.innerHTML = '';
+            const row = document.createElement('div');
+            row.className = 'si-condition-row';
+            row.innerHTML = `<select class="si-field-select" data-role="field">${fieldOptions.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}</select><input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">`;
+            row.querySelector('.si-search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('btn-do-search')?.click(); });
+            container.appendChild(row);
+        }
+        activeFilters = [];
+        if (elStartDate) elStartDate.value = '';
+        if (elEndDate) elEndDate.value = '';
+        currentPage = 1;
+        applyFiltersAndSort();
+    });
+    $('btn-do-search')?.addEventListener('click', () => {
+        activeFilters = KngSearchEngine.getConditionsFromBar('search-conditions');
+        currentPage = 1;
+        applyFiltersAndSort();
+    });
+    document.querySelector('#search-conditions .si-search-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $('btn-do-search')?.click();
+    });
 
     document.querySelectorAll('th.sortable').forEach(th => {
         th.addEventListener('click', () => {
@@ -99,6 +123,9 @@ function buildCategoryChips() {
         btn.addEventListener('click', () => {
             wrap.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            activeFilters.push({ field: 'category', query: btn.dataset.cat, logic: 'AND' }); // Note: category filtering is now just a query addition, but we can manage it cleanly
+            // Wait, actually, let's keep the category chip visual but it just runs a filter logic.
+            // A better way is to leave activeCategoryFilter logic inside applyFiltersAndSort.
             activeCategoryFilter = btn.dataset.cat;
             currentPage = 1;
             applyFiltersAndSort();
@@ -128,20 +155,22 @@ function fillDL(id, vals) {
 // Filter & Sort
 // ==========================================
 function applyFiltersAndSort() {
-    const query = elSearchInput.value.trim();
-    const field = elSearchField.value;
-    const startDate = elStartDate.value;
-    const endDate = elEndDate.value;
+    const startDate = elStartDate?.value;
+    const endDate = elEndDate?.value;
+    
+    // Support the legacy activeCategoryFilter if a user clicks the category chips
+    // but the main multi-search engine covers everything else.
+    let currentCategoryFilter = typeof activeCategoryFilter !== 'undefined' ? activeCategoryFilter : 'all';
 
     filteredData = itemsData.filter(item => {
-        if (activeCategoryFilter !== 'all' && item.category !== activeCategoryFilter) return false;
+        if (currentCategoryFilter !== 'all' && item.category !== currentCategoryFilter) return false;
         if (startDate && item.supplyDate < startDate) return false;
         if (endDate && item.supplyDate > endDate) return false;
-        if (!query) return true;
-        if (field === 'all') {
-            return ['site', 'item', 'category', 'supplier', 'manufacturer'].some(f => fuzzyMatch(item[f], query));
+        
+        if (activeFilters.length > 0) {
+            if (!KngSearchEngine.matchesGroupConditions(item, activeFilters, false, ['site', 'item', 'category', 'supplier', 'manufacturer'])) return false;
         }
-        return fuzzyMatch(item[field], query);
+        return true;
     });
 
     const numericCols = ['qty', 'price', 'total'];
@@ -153,37 +182,10 @@ function applyFiltersAndSort() {
 }
 
 function updateActiveFilters() {
-    const filters = [];
-    if (activeCategoryFilter !== 'all') filters.push({ key: 'category', label: '구분', value: activeCategoryFilter });
-    if (elSearchInput.value.trim()) filters.push({ key: 'search', label: '검색', value: elSearchInput.value.trim() });
-    if (elStartDate.value) filters.push({ key: 'startDate', label: '시작일', value: elStartDate.value });
-    if (elEndDate.value) filters.push({ key: 'endDate', label: '종료일', value: elEndDate.value });
-
-    renderActiveFilters({
-        container: 'activeFilters',
-        filters,
-        onRemove: key => {
-            if (key === 'category') {
-                activeCategoryFilter = 'all';
-                document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
-                document.querySelector('.cat-chip[data-cat="all"]')?.classList.add('active');
-            }
-            if (key === 'search') elSearchInput.value = '';
-            if (key === 'startDate') elStartDate.value = '';
-            if (key === 'endDate') elEndDate.value = '';
-            currentPage = 1;
-            applyFiltersAndSort();
-        },
-        onClearAll: () => {
-            activeCategoryFilter = 'all';
-            document.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
-            document.querySelector('.cat-chip[data-cat="all"]')?.classList.add('active');
-            elSearchInput.value = '';
-            elStartDate.value = '';
-            elEndDate.value = '';
-            currentPage = 1;
-            applyFiltersAndSort();
-        }
+    KngSearchEngine.renderFilterChips('filter-chips', activeFilters, fieldLabels, (idx) => {
+        activeFilters.splice(idx, 1);
+        currentPage = 1;
+        applyFiltersAndSort();
     });
 }
 
@@ -241,6 +243,15 @@ function renderTable() {
     });
 
     elTableBody.innerHTML = html;
+    
+    // Apply highlight
+    if (activeFilters.length > 0) {
+        const queries = activeFilters.map(f => f.query).filter(Boolean);
+        elTableBody.querySelectorAll('.col-site, .col-item, .supply-col, .product-col').forEach(el => {
+            el.innerHTML = KngSearchEngine.highlightText(el.textContent, queries);
+        });
+    }
+
     renderPagination({
         container: elPagination,
         totalFiltered: filteredData.length,
