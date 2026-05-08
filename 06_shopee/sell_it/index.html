@@ -1501,7 +1501,10 @@
             <button class="btn-icon" id="btn-close-desc-ko-modal"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="modal-body" style="padding: 24px;">
-            <p class="body-sm text-secondary" style="margin-bottom: 12px;">이곳에 작성된 한글 원문은 내보내기(Export) 데이터에 포함되지 않으며, 사내 참고 및 번역 수정 시 백업 용도로만 안전하게 보관됩니다.</p>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px;">
+                <p class="body-sm text-secondary" style="margin: 0;">이곳에 작성된 한글 원문은 내보내기(Export) 데이터에 포함되지 않으며, 사내 참고 및 번역 수정 시 백업 용도로만 안전하게 보관됩니다.</p>
+                <button type="button" id="btn-copy-desc-ko" title="전체 복사" style="background: none; border: none; color: var(--primary); cursor: pointer; flex-shrink: 0; padding: 4px;"><i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i></button>
+            </div>
             <textarea id="input-desc-ko" class="form-control" rows="12" placeholder="한글 원문 내용을 입력하세요..." style="resize: vertical; width: 100%;"></textarea>
             
             <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">

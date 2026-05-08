@@ -2345,6 +2345,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         }
     });
+    document.getElementById('btn-copy-desc-ko')?.addEventListener('click', () => {
+        if (inputDescKo && inputDescKo.value) {
+            navigator.clipboard.writeText(inputDescKo.value).then(() => {
+                const btn = document.getElementById('btn-copy-desc-ko');
+                btn.innerHTML = '<i class="fa-solid fa-check" style="font-size: 1.1rem; color: var(--success, #16a34a);"></i>';
+                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i>'; }, 1000);
+            });
+        }
+    });
 
     function updateCharCount(input, countElement, maxCount = 180) {
         if (!input || !countElement) return;
