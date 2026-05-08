@@ -1977,6 +1977,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* --- 4. Product List & Drawer Logic --- */
     let productList = [];
     let marketExportsMap = {}; // { productId: [{marketCode, exportDate}] }
+    
+    // --- Search & Pagination State ---
+    let plCurrentPage = 1, plPageSize = 30;
+    let pcCurrentPage = 1, pcPageSize = 30;
+    let plActiveFilters = []; // [{field, query, logic}]
+    let pcActiveFilters = [];
+    const fieldLabels = { all: '통합검색', mcode: '관리코드', nameEn: '상품명(EN)', nameKo: '상품명(KO)', catEn: '카테고리', note: '비고' };
+    const pcFieldLabels = { all: '통합검색', mcode: 'SKU#', nameEn: '상품명', catEn: '카테고리' };
 
     // API에서 데이터 로드
     try {
@@ -5905,16 +5913,7 @@ document.addEventListener('DOMContentLoaded', async () => {
        SEARCH / FILTER / PAGINATION MODULE
        ========================================================================= */
 
-    // --- State ---
-    let plCurrentPage = 1, plPageSize = 30;
-    let pcCurrentPage = 1, pcPageSize = 30;
-    let plActiveFilters = []; // [{field, query, logic}]
-    let pcActiveFilters = [];
-
     // --- Helpers ---
-    const fieldLabels = { all: '통합검색', mcode: '관리코드', nameEn: '상품명(EN)', nameKo: '상품명(KO)', catEn: '카테고리', note: '비고' };
-    const pcFieldLabels = { all: '통합검색', mcode: 'SKU#', nameEn: '상품명', catEn: '카테고리' };
-
     function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     function highlightText(text, queries) {
