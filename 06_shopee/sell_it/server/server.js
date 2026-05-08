@@ -174,7 +174,8 @@ function initDb() {
                 updatedAt TEXT,
                 parentImages TEXT,
                 notice TEXT,
-                descKo TEXT
+                descKo TEXT,
+                status TEXT DEFAULT 'active'
             )
         `, (err) => {
             if (err) console.error('products 테이블 생성 오류:', err.message);
@@ -224,6 +225,11 @@ function initDb() {
                 db.run(`ALTER TABLE products ADD COLUMN descKo TEXT DEFAULT ''`, (alterErr) => {
                     if (alterErr && !alterErr.message.includes('duplicate column')) {
                         console.error('products ALTER TABLE (descKo) 오류:', alterErr.message);
+                    }
+                });
+                db.run(`ALTER TABLE products ADD COLUMN status TEXT DEFAULT 'active'`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column')) {
+                        console.error('products ALTER TABLE (status) 오류:', alterErr.message);
                     }
                 });
             }
@@ -561,10 +567,10 @@ app.post('/api/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('P-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, description, notice, createdAt, updatedAt, images, video, optionName, parentImages, descKo)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO products (id, date, mcode, catEn, catKo, nameEn, nameKo, priceKrw, domesticShipping, packagingKrw, rate, rateDate, weight, link, note, description, notice, createdAt, updatedAt, images, video, optionName, parentImages, descKo, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const params = [id, p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', p.notice||'', now, now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]', p.descKo||''];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', p.notice||'', now, now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]', p.descKo||'', p.status||'active'];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id: id });
@@ -576,10 +582,10 @@ app.put('/api/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, description=?, notice=?, updatedAt=?, images=?, video=?, optionName=?, parentImages=?, descKo=?
+    const sql = `UPDATE products SET date=?, mcode=?, catEn=?, catKo=?, nameEn=?, nameKo=?, priceKrw=?, domesticShipping=?, packagingKrw=?, rate=?, rateDate=?, weight=?, link=?, note=?, description=?, notice=?, updatedAt=?, images=?, video=?, optionName=?, parentImages=?, descKo=?, status=?
                  WHERE id=?`;
     const params = [p.date||'', p.mcode||'', p.catEn||'', p.catKo||'', p.nameEn||'', p.nameKo||'',
-                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', p.notice||'', now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]', p.descKo||'', id];
+                    p.priceKrw||0, p.domesticShipping!=null?p.domesticShipping:3000, p.packagingKrw||0, p.rate||0, p.rateDate||'', p.weight||0, p.link||'', p.note||'', p.description||'', p.notice||'', now, p.images||'[]', p.video||'', p.optionName||'', p.parentImages||'[]', p.descKo||'', p.status||'active', id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
@@ -768,7 +774,7 @@ app.get('/api/market-exports', (req, res) => {
                p.*
         FROM market_exports me
         JOIN products p ON me.productId = p.id
-        WHERE me.marketCode = ?
+        WHERE me.marketCode = ? AND p.status = 'active'
         ORDER BY me.exportDate DESC
     `;
     db.all(sql, [market], (err, rows) => {

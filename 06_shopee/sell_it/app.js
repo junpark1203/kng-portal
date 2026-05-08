@@ -2070,15 +2070,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
         const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
-        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}</div>`;
+        const statusBadge = p.status === 'draft' ? `<span style="background-color: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fed7aa; font-weight: bold; margin-left: 8px;">임시저장</span>` : '';
+        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}${statusBadge}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}${statusBadge}</div>`;
         const catHtml = parentMcode ? `<div style="opacity: 0.3; font-size: 0.8rem;">(Same as parent)</div>` : `
             <div class="prod-cat-en-1">${catEn1}</div>
             <div class="prod-cat-en-2">${catEn2}</div>
             <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${p.catKo}</div>
         `;
+        const rowOpacity = p.status === 'draft' ? 'opacity: 0.6;' : '';
 
         return `
-            <tr class="product-row" style="cursor: pointer; ${extraStyle}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}" data-parent-mcode="${parentMcode || ''}">
+            <tr class="product-row" style="cursor: pointer; ${extraStyle} ${rowOpacity}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}" data-parent-mcode="${parentMcode || ''}">
                 <td style="text-align: center;" class="td-checkbox">
                     <input type="checkbox" class="row-checkbox child-checkbox" data-parent-mcode="${parentMcode || ''}" data-id="${p.id}">
                 </td>
@@ -2152,8 +2154,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     catEn2 = parts[1];
                 }
 
+                const statusBadge = item.children[0] && item.children[0].status === 'draft' ? `<span style="background-color: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fed7aa; font-weight: bold; margin-left: 8px;">임시저장</span>` : '';
+                const rowOpacity = item.children[0] && item.children[0].status === 'draft' ? 'opacity: 0.6;' : '';
+
                 html += `
-                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest); cursor: pointer;" data-parent-mcode="${item.mcode}">
+                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest); cursor: pointer; ${rowOpacity}" data-parent-mcode="${item.mcode}">
                         <td style="text-align: center;" class="td-checkbox">
                             <input type="checkbox" class="parent-checkbox" data-parent-mcode="${item.mcode}">
                         </td>
@@ -2168,7 +2173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </td>
                         <td>
                             <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
-                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
+                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}${statusBadge}</div>
                         </td>
                         <td>
                             <div class="market-badges">
@@ -3184,58 +3189,66 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Form Submission (Save Product)
-    if (btnSaveProduct) {
-        btnSaveProduct.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (!addProductForm.checkValidity()) {
-                addProductForm.reportValidity();
-                return;
-            }
-
-            const dateStr = inputDate.value;
-            const mcodeStr = inputMcode.value;
-            const catEn = inputCategoryEn.value;
-            const catKo = inputCategoryKo.value;
-            const nameKo = inputNameKo.value;
-            const nameEn = inputNameEn.value;
-            const priceKrw = inputPriceKrw.value;
-            const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
-            const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
-            const rate = inputRate.value;
-            const rateDate = inputRateDate.value;
-            const weight = inputWeight.value;
-            const link = inputLink.value;
-            const note = inputNote.value;
-            const description = inputDescription ? inputDescription.value : '';
-            const descKo = inputDescKo ? inputDescKo.value : '';
-            const notice = inputNoticeContent ? inputNoticeContent.value : '';
-
-            if (!catEn) {
-                alert("카테고리를 목록에서 올바르게 선택해주세요.");
-                return;
-            }
-
+    async function submitProduct(targetStatus) {
+        let status = targetStatus;
+        if (status === 'active') {
+            const missing = [];
+            if (!inputDate.value) missing.push('작성일자');
+            if (!inputCategoryEn.value) missing.push('카테고리');
+            if (!inputNameKo.value) missing.push('상품명(한글)');
+            if (!inputNameEn.value) missing.push('상품명(영문)');
+            if (!inputPriceKrw.value) missing.push('상품매입비(KRW)');
+            if (!inputRate.value) missing.push('적용환율');
+            if (!inputWeight.value) missing.push('상품무게(g)');
+            
             const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
-
-            // Validate options
             if (hasOptions) {
                 for (let i = 0; i < currentOptions.length; i++) {
                     if (!currentOptions[i].optionName || !currentOptions[i].optionName.trim()) {
-                        alert(`옵션 ${i + 1}의 옵션명을 입력해주세요.`);
-                        return;
+                        missing.push(`옵션 ${i + 1}의 옵션명`);
                     }
                 }
             }
+            if (missing.length > 0) {
+                const msg = `다음 필수 항목이 입력되지 않았습니다:\n- ${missing.join('\n- ')}\n\n현재 상태로 임시 저장하시겠습니까?`;
+                if (confirm(msg)) {
+                    status = 'draft';
+                } else {
+                    return;
+                }
+            }
+        }
 
-            const baseProductData = {
-                date: dateStr,
-                catEn, catKo, nameKo, nameEn,
-                domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
-                packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
-                rate: parseFloat(rate) || 1,
-                rateDate, weight: parseInt(weight, 10) || 0,
-                link, note, description, descKo, notice, video: currentVideo
-            };
+        const dateStr = inputDate.value;
+        const mcodeStr = inputMcode.value;
+        const catEn = inputCategoryEn.value;
+        const catKo = inputCategoryKo.value;
+        const nameKo = inputNameKo.value;
+        const nameEn = inputNameEn.value;
+        const priceKrw = inputPriceKrw.value;
+        const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
+        const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
+        const rate = inputRate.value;
+        const rateDate = inputRateDate.value;
+        const weight = inputWeight.value;
+        const link = inputLink.value;
+        const note = inputNote.value;
+        const description = inputDescription ? inputDescription.value : '';
+        const descKo = inputDescKo ? inputDescKo.value : '';
+        const notice = inputNoticeContent ? inputNoticeContent.value : '';
+
+        const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
+
+        const baseProductData = {
+            date: dateStr,
+            catEn, catKo, nameKo, nameEn,
+            domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
+            packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
+            rate: parseFloat(rate) || 1,
+            rateDate, weight: parseInt(weight, 10) || 0,
+            link, note, description, descKo, notice, video: currentVideo,
+            status: status
+        };
 
             try {
                 if (hasOptions) {
@@ -3336,8 +3349,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 alert('저장 실패: ' + err.message);
             }
-        });
-    }
+        } // End of submitProduct
+
+        if (btnSaveProduct) btnSaveProduct.addEventListener('click', (e) => { e.preventDefault(); submitProduct('active'); });
+        const btnSaveDraft = document.getElementById('btn-save-draft');
+        if (btnSaveDraft) btnSaveDraft.addEventListener('click', (e) => { e.preventDefault(); submitProduct('draft'); });
 
     // Row Click Logic for Editing
     function attachRowClickEvent(row) {
