@@ -6205,6 +6205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (err) {
             console.error('[GS] Global SKU 로드 실패:', err.message);
             globalSkuList = [];
+            renderGlobalSkuTable();
         }
     }
 
@@ -6488,17 +6489,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Global SKU Search & Pagination ---
     function gsApplySearchAndPaginate() {
         const allGrouped = groupProductsByParent(globalSkuList);
-        const filtered = KngSearchEngine.filterGroupedData(allGrouped, gsActiveFilters, {
-            all: (g) => {
-                const r = g.isVirtualParent ? g : g;
-                return [r.mcode||'', r.nameEn||'', r.nameKo||'', r.catEn||'', r.note||''].join(' ');
-            },
-            mcode: g => g.mcode||'',
-            nameEn: g => g.nameEn||'',
-            nameKo: g => g.nameKo||'',
-            catEn: g => g.catEn||'',
-            note: g => g.note||''
-        });
+        
+        let filtered = allGrouped;
+        if (gsActiveFilters.length > 0) {
+            filtered = allGrouped.filter(g => KngSearchEngine.matchesGroupConditions(g, gsActiveFilters, true, ['mcode','nameEn','nameKo','catEn','catKo','note','optionName']));
+        }
 
         const effectivePageSize = gsPageSize === 0 ? filtered.length : gsPageSize;
 
