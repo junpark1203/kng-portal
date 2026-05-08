@@ -233,6 +233,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             transDescEl.value = '';
             transNoticeEl.value = '';
             
+            const koDescEl = document.getElementById('export-modal-ko-desc');
+            if (koDescEl) {
+                koDescEl.value = firstProduct ? (firstProduct.descKo || '') : '';
+            }
+            
             const maxChars = selectedMarket === 'sg' ? 3000 : 5000;
             transDescEl.dataset.maxChars = maxChars;
             if (typeof updateExportCharCount === 'function') updateExportCharCount();
@@ -443,6 +448,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-export-copy-notice')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         const val = document.getElementById('export-modal-trans-notice')?.value || '';
+        await navigator.clipboard.writeText(val);
+        const oldHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';
+        setTimeout(() => btn.innerHTML = oldHtml, 1500);
+    });
+
+    document.getElementById('btn-accordion-desc')?.addEventListener('click', (e) => {
+        const content = document.getElementById('accordion-content-desc');
+        const icon = e.currentTarget.querySelector('i');
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            content.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    });
+
+    document.getElementById('btn-export-copy-ko-desc')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const val = document.getElementById('export-modal-ko-desc')?.value || '';
         await navigator.clipboard.writeText(val);
         const oldHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fa-solid fa-check text-success"></i>';

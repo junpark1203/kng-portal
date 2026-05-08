@@ -1309,7 +1309,19 @@
             <div class="export-content custom-scrollbar">
                 <!-- Description Section -->
                 <div class="export-section">
-                    <div class="export-section-label">상세 내용</div>
+                    <div class="export-section-label" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>상세 내용</span>
+                        <button type="button" class="btn-ko-accordion" id="btn-accordion-desc" style="background:none; border:none; color:var(--primary); font-size:0.875rem; cursor:pointer;"><i class="fa-solid fa-chevron-down"></i> 한글 원문 보기</button>
+                    </div>
+                    
+                    <div class="ko-accordion-content" id="accordion-content-desc" style="display: none; margin-bottom: 12px; background: rgba(0,0,0,0.02); border: 1px solid var(--border); border-radius: 6px; padding: 12px;">
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between;">
+                            <span>🇰🇷 한글 원문 (내보내기에 포함되지 않음)</span>
+                            <button type="button" class="export-copy-btn" id="btn-export-copy-ko-desc" title="한글 복사"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                        <textarea id="export-modal-ko-desc" class="export-textarea custom-scrollbar" readonly style="min-height: 100px; background: transparent; border: none; box-shadow: none; padding: 0; outline: none;"></textarea>
+                    </div>
+
                     <div class="export-pair">
                         <div class="export-text-panel">
                             <div class="export-panel-bar">
