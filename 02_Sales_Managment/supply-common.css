@@ -47,18 +47,12 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* ── Table Group Headers ── */
-.th-group-supply {
-    background: rgba(99, 102, 241, 0.07) !important;
-    color: #6366f1 !important;
-}
-.th-group-product {
-    background: rgba(16, 185, 129, 0.07) !important;
-    color: #059669 !important;
-}
+/* ── Table Group Headers (Monotone) ── */
+.th-group-supply,
+.th-group-product,
 .th-group-amount {
-    background: rgba(245, 158, 11, 0.07) !important;
-    color: #d97706 !important;
+    background: var(--gray-50) !important;
+    color: var(--gray-600) !important;
 }
 
 .th-group-label {
@@ -66,7 +60,13 @@
     font-size: 10.5px !important;
     font-weight: 700 !important;
     letter-spacing: 0.3px;
-    border-bottom: 2px solid currentColor !important;
+    border-bottom: 2px solid var(--gray-300) !important;
+}
+
+/* Vertical dividers between groups (first cell of each group) */
+.supply-table thead tr:first-child th.th-group-product,
+.supply-table thead tr:first-child th.th-group-amount {
+    border-left: 2px solid var(--gray-200) !important;
 }
 
 /* Sub-header row */
@@ -77,14 +77,27 @@
     font-weight: 600;
 }
 
-/* ── Data Cell Tints ── */
-td.supply-col { background: rgba(99, 102, 241, 0.02); }
-td.product-col { background: rgba(16, 185, 129, 0.02); }
-td.amount-col { background: rgba(245, 158, 11, 0.025); }
+/* ── Data Cell — no colored tints ── */
+td.supply-col,
+td.product-col,
+td.amount-col {
+    background: transparent;
+}
 
-.supply-table tbody tr:hover td.supply-col { background: rgba(99, 102, 241, 0.05) !important; }
-.supply-table tbody tr:hover td.product-col { background: rgba(16, 185, 129, 0.05) !important; }
-.supply-table tbody tr:hover td.amount-col { background: rgba(245, 158, 11, 0.06) !important; }
+/* Vertical dividers in data rows */
+.supply-table tbody td.product-col:first-of-type,
+.supply-table tbody td.col-item {
+    border-left: 1px solid var(--gray-100);
+}
+.supply-table tbody td.amount-col:first-of-type,
+.supply-table tbody td.col-num-sm {
+    border-left: 1px solid var(--gray-100);
+}
+
+/* Unified hover */
+.supply-table tbody tr:hover td {
+    background: var(--gray-50) !important;
+}
 
 /* ── Sortable ── */
 .supply-table th.sortable {
@@ -103,7 +116,7 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     pointer-events: none;
     font-size: 11px;
 }
-.supply-table th.sortable:hover { background: rgba(79, 110, 247, 0.06) !important; }
+.supply-table th.sortable:hover { background: rgba(0, 0, 0, 0.03) !important; }
 .supply-table th.sortable:hover i { opacity: 0.3; }
 
 /* ── Row Cursor ── */
@@ -120,7 +133,7 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     text-align: right !important;
 }
 
-/* ── Category Chip Tags ── */
+/* ── Category Chip Tags (desaturated) ── */
 .cat-tag {
     display: inline-block;
     padding: 1px 6px;
@@ -129,15 +142,15 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     font-weight: 600;
     white-space: nowrap;
 }
-.cat-tag.cat-안전자재 { background: #fee2e2; color: #dc2626; }
-.cat-tag.cat-잡자재 { background: #fef3c7; color: #d97706; }
+.cat-tag.cat-안전자재 { background: #fde8e8; color: #b91c1c; }
+.cat-tag.cat-잡자재 { background: #fef6e0; color: #b45309; }
 .cat-tag.cat-미분류 { background: var(--gray-100); color: var(--gray-500); }
-.cat-tag.cat-유압유 { background: #dbeafe; color: #2563eb; }
-.cat-tag.cat-기어유 { background: #fef3c7; color: #d97706; }
-.cat-tag.cat-그리스 { background: #dcfce7; color: #16a34a; }
-.cat-tag.cat-테일씰그리스 { background: #fce7f3; color: #db2777; }
-.cat-tag.cat-절삭유 { background: #e0e7ff; color: #4f46e5; }
-.cat-tag.cat-안전용품 { background: #fee2e2; color: #dc2626; }
+.cat-tag.cat-유압유 { background: #e8f0fe; color: #1d4ed8; }
+.cat-tag.cat-기어유 { background: #fef6e0; color: #b45309; }
+.cat-tag.cat-그리스 { background: #e6f4ea; color: #15803d; }
+.cat-tag.cat-테일씰그리스 { background: #fce8f3; color: #be185d; }
+.cat-tag.cat-절삭유 { background: #e8eaf6; color: #4338ca; }
+.cat-tag.cat-안전용품 { background: #fde8e8; color: #b91c1c; }
 
 /* ── Header Layout (Split Two Rows) ── */
 .panel-header.complex-header {
@@ -277,6 +290,7 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     flex-direction: column;
     gap: 3px;
     min-width: 0;
+    position: relative;
 }
 .modal-form-grid .fg > label:first-child {
     font-size: 10.5px;
@@ -313,19 +327,24 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
     cursor: default;
 }
 
+/* ── Modal Section Title (Monotone with left accent) ── */
 .modal-section-title {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.8px;
-    padding: 8px 0 4px;
+    padding: 8px 0 4px 10px;
     margin: 4px 0 0;
     border-bottom: 1px solid var(--gray-100);
+    border-left: 3px solid var(--gray-400);
     grid-column: 1 / -1;
+    color: var(--gray-600);
 }
-.modal-section-title.section-supply { color: #6366f1; }
-.modal-section-title.section-product { color: #059669; }
-.modal-section-title.section-amount { color: #d97706; }
+.modal-section-title.section-supply,
+.modal-section-title.section-product,
+.modal-section-title.section-amount {
+    color: var(--gray-600);
+}
 
 .modal-footer {
     display: flex;
@@ -396,9 +415,220 @@ td.amount-col { background: rgba(245, 158, 11, 0.025); }
 }
 .afc-clear-all:hover { border-color: #dc2626; color: #dc2626; }
 
+/* ==========================================
+   Custom Autocomplete Dropdown
+   ========================================== */
+.ac-wrapper {
+    position: relative;
+}
+.ac-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    z-index: 1000;
+    display: none;
+}
+.ac-dropdown.open {
+    display: block;
+}
+.ac-option {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: background 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ac-option:hover,
+.ac-option.ac-highlighted {
+    background: var(--gray-100);
+    color: var(--gray-900);
+}
+.ac-option .ac-match {
+    font-weight: 700;
+    color: var(--primary);
+}
+.ac-no-result {
+    padding: 8px 10px;
+    font-size: 11px;
+    color: var(--gray-400);
+    text-align: center;
+}
+
+/* ==========================================
+   Multi-line Items (Bulk Registration)
+   ========================================== */
+.item-lines-container {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.item-line {
+    display: grid;
+    grid-template-columns: 1fr 0.7fr 0.5fr 0.7fr 0.7fr 60px;
+    gap: 8px;
+    align-items: end;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--gray-100);
+    position: relative;
+}
+
+.item-line:last-child {
+    border-bottom: none;
+}
+
+.item-line .fg {
+    min-width: 0;
+}
+
+.item-line .fg > label {
+    font-size: 9.5px !important;
+    font-weight: 600;
+    color: var(--gray-400);
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+}
+
+.item-line input {
+    height: 32px !important;
+    font-size: 12px !important;
+    padding: 0 8px !important;
+}
+
+.item-line .line-total-display {
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    padding-right: 4px;
+    background: var(--gray-50);
+    border-radius: 5px;
+    border: 1px solid var(--gray-100);
+}
+
+.item-line-actions {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 1px;
+}
+
+.item-line-actions button {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--gray-200);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--gray-400);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+    padding: 0;
+}
+
+.item-line-actions button:hover {
+    border-color: var(--gray-400);
+    color: var(--gray-600);
+    background: var(--gray-50);
+}
+.item-line-actions button.line-remove-btn:hover {
+    border-color: #dc2626;
+    color: #dc2626;
+    background: #fef2f2;
+}
+
+.add-line-btn {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    border: 1px dashed var(--gray-300);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--gray-500);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+}
+.add-line-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(79, 110, 247, 0.04);
+}
+
+/* Grand total bar in modal */
+.modal-grand-total {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 6px;
+    margin-top: 4px;
+}
+.modal-grand-total .gt-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-500);
+}
+.modal-grand-total .gt-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Item line header labels (first line only) ── */
+.item-lines-header {
+    display: grid;
+    grid-template-columns: 1fr 0.7fr 0.5fr 0.7fr 0.7fr 60px;
+    gap: 8px;
+    padding: 0 0 4px;
+    border-bottom: 1px solid var(--gray-200);
+    grid-column: 1 / -1;
+}
+.item-lines-header span {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
     .modal-form-grid { grid-template-columns: 1fr; }
     .supply-table { font-size: 9px !important; }
     .kpi-bar { flex-direction: column; }
+    .item-line {
+        grid-template-columns: 1fr 1fr;
+    }
+    .item-lines-header {
+        display: none;
+    }
 }

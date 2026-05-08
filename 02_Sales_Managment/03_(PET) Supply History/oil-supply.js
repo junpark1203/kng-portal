@@ -1,6 +1,6 @@
 /* =========================================================================
-   유류 자재 공급 내역 V2 (oil-supply.js)
-   - 통합검색, 카테고리칩, date range picker, KPI, 그룹헤더 테이블
+   유류 자재 공급 내역 V3 (oil-supply.js)
+   - 다건 등록, 커스텀 자동완성, 키보드 네비게이션, 모노톤 UI
    ========================================================================= */
 
 const API_BASE = 'https://kng.junparks.com/api/oil-supply-history';
@@ -10,6 +10,10 @@ let currentSort = { column: 'date', asc: false };
 let currentPage = 1;
 let pageSize = 50;
 let activeCategoryFilter = 'all';
+
+// Autocomplete data pools
+let acPools = { site: [], supplier: [], manufacturer: [], category: [], item: [], spec: [] };
+const CATEGORY_DEFAULTS = ['유압유','기어유','그리스','테일씰그리스','절삭유','안전용품','기타'];
 
 const $ = id => document.getElementById(id);
 const elTableBody = $('tableBody');
@@ -31,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadData();
 });
 
-// Debounced search
 const debouncedSearch = debounce(() => { currentPage = 1; applyFiltersAndSort(); }, 300);
 
 function initEvents() {
@@ -61,9 +64,13 @@ function initEvents() {
     window.addEventListener('click', e => { if (e.target === itemModal) closeModal(); });
     itemForm.addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
 
-    ['inpQty', 'inpPrice'].forEach(id => {
-        $(id)?.addEventListener('input', updateCalc);
-    });
+    $('addLineBtn').addEventListener('click', () => addItemLine());
+
+    // Setup autocompletes for common fields
+    setupAutocomplete('inpSite', 'acSite', 'site');
+    setupAutocomplete('inpSupplier', 'acSupplier', 'supplier');
+    setupAutocomplete('inpManufacturer', 'acMfr', 'manufacturer');
+    setupAutocomplete('inpCategory', 'acCategory', 'category');
 }
 
 // ==========================================
@@ -75,7 +82,7 @@ async function loadData() {
         if (!res.ok) throw new Error('fetch failed');
         itemsData = await res.json();
         buildCategoryChips();
-        updateDatalists();
+        buildAcPools();
         applyFiltersAndSort();
     } catch (e) {
         console.error(e);
@@ -106,27 +113,288 @@ function buildCategoryChips() {
 }
 
 // ==========================================
-// Datalists
+// Autocomplete Pools
 // ==========================================
-function updateDatalists() {
-    const sites = new Set(), suppliers = new Set(), mfrs = new Set(), items = new Set(), specs = new Set();
+function buildAcPools() {
+    const sets = { site: new Set(), supplier: new Set(), manufacturer: new Set(), category: new Set(CATEGORY_DEFAULTS), item: new Set(), spec: new Set() };
     itemsData.forEach(d => {
-        if (d.site) sites.add(d.site);
-        if (d.supplier) suppliers.add(d.supplier);
-        if (d.manufacturer) mfrs.add(d.manufacturer);
-        if (d.item) items.add(d.item);
-        if (d.spec) specs.add(d.spec);
+        if (d.site) sets.site.add(d.site);
+        if (d.supplier) sets.supplier.add(d.supplier);
+        if (d.manufacturer) sets.manufacturer.add(d.manufacturer);
+        if (d.category) sets.category.add(d.category);
+        if (d.item) sets.item.add(d.item);
+        if (d.spec) sets.spec.add(d.spec);
     });
-    fillDL('listSite', sites);
-    fillDL('listSupplier', suppliers);
-    fillDL('listMfr', mfrs);
-    fillDL('listItem', items);
-    fillDL('listSpec', specs);
+    for (const key in sets) {
+        acPools[key] = [...sets[key]].sort();
+    }
 }
 
-function fillDL(id, vals) {
-    const dl = $(id);
-    if (dl) dl.innerHTML = [...vals].sort().map(v => `<option value="${v}">`).join('');
+// ==========================================
+// Custom Autocomplete Engine
+// ==========================================
+function setupAutocomplete(inputId, dropdownId, poolKey) {
+    const input = $(inputId);
+    const dropdown = $(dropdownId);
+    if (!input || !dropdown) return;
+
+    let highlightIdx = -1;
+
+    input.addEventListener('input', () => {
+        highlightIdx = -1;
+        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+    });
+
+    input.addEventListener('focus', () => {
+        highlightIdx = -1;
+        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+    });
+
+    input.addEventListener('keydown', e => {
+        if (!dropdown.classList.contains('open')) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightIdx = -1;
+                renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+            }
+            return;
+        }
+        const options = dropdown.querySelectorAll('.ac-option');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightIdx = Math.min(highlightIdx + 1, options.length - 1);
+            updateAcHighlight(dropdown, highlightIdx);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightIdx = Math.max(highlightIdx - 1, 0);
+            updateAcHighlight(dropdown, highlightIdx);
+        } else if (e.key === 'Enter' && highlightIdx >= 0) {
+            e.preventDefault();
+            const opt = options[highlightIdx];
+            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); }
+        } else if (e.key === 'Escape') {
+            closeAcDropdown(dropdown);
+        }
+    });
+
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            closeAcDropdown(dropdown);
+        }
+    });
+}
+
+function setupLineAutocomplete(input, poolKey) {
+    // Create dropdown element
+    let dropdown = input.parentElement.querySelector('.ac-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'ac-dropdown';
+        input.parentElement.classList.add('ac-wrapper');
+        input.parentElement.appendChild(dropdown);
+    }
+    let highlightIdx = -1;
+
+    input.addEventListener('input', () => {
+        highlightIdx = -1;
+        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+    });
+    input.addEventListener('focus', () => {
+        highlightIdx = -1;
+        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+    });
+    input.addEventListener('keydown', e => {
+        if (!dropdown.classList.contains('open')) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                highlightIdx = -1;
+                renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+            }
+            return;
+        }
+        const options = dropdown.querySelectorAll('.ac-option');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightIdx = Math.min(highlightIdx + 1, options.length - 1);
+            updateAcHighlight(dropdown, highlightIdx);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightIdx = Math.max(highlightIdx - 1, 0);
+            updateAcHighlight(dropdown, highlightIdx);
+        } else if (e.key === 'Enter' && highlightIdx >= 0) {
+            e.preventDefault();
+            const opt = options[highlightIdx];
+            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); }
+        } else if (e.key === 'Escape') {
+            closeAcDropdown(dropdown);
+        }
+    });
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            closeAcDropdown(dropdown);
+        }
+    });
+}
+
+function renderAcDropdown(input, dropdown, poolKey, highlightIdx) {
+    const query = input.value.trim();
+    const pool = acPools[poolKey] || [];
+
+    let matches;
+    if (!query) {
+        matches = pool.slice(0, 30); // show all when empty (max 30)
+    } else {
+        matches = pool.filter(v => fuzzyMatch(v, query));
+    }
+
+    if (matches.length === 0 && query) {
+        dropdown.innerHTML = '<div class="ac-no-result">일치하는 항목 없음</div>';
+        dropdown.classList.add('open');
+        return;
+    }
+    if (matches.length === 0) {
+        closeAcDropdown(dropdown);
+        return;
+    }
+
+    let html = '';
+    matches.forEach((val, idx) => {
+        const cls = idx === highlightIdx ? 'ac-option ac-highlighted' : 'ac-option';
+        html += `<div class="${cls}" data-value="${val}" data-idx="${idx}">${val}</div>`;
+    });
+    dropdown.innerHTML = html;
+    dropdown.classList.add('open');
+
+    dropdown.querySelectorAll('.ac-option').forEach(opt => {
+        opt.addEventListener('mousedown', e => {
+            e.preventDefault();
+            input.value = opt.dataset.value;
+            closeAcDropdown(dropdown);
+            // Trigger input event for any dependent logic
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+}
+
+function updateAcHighlight(dropdown, idx) {
+    dropdown.querySelectorAll('.ac-option').forEach((opt, i) => {
+        opt.classList.toggle('ac-highlighted', i === idx);
+        if (i === idx) opt.scrollIntoView({ block: 'nearest' });
+    });
+}
+
+function closeAcDropdown(dropdown) {
+    dropdown.classList.remove('open');
+    dropdown.innerHTML = '';
+}
+
+// ==========================================
+// Item Lines (Multi-line entry)
+// ==========================================
+let lineCounter = 0;
+
+function addItemLine(data = null) {
+    lineCounter++;
+    const container = $('itemLinesContainer');
+    const line = document.createElement('div');
+    line.className = 'item-line';
+    line.dataset.lineId = lineCounter;
+
+    line.innerHTML = `
+        <div class="fg">
+            <input type="text" class="line-item" placeholder="품명" autocomplete="off" ${!data ? 'required' : ''}>
+        </div>
+        <div class="fg">
+            <input type="text" class="line-spec" placeholder="규격" autocomplete="off">
+        </div>
+        <div class="fg">
+            <input type="number" class="line-qty" placeholder="0" min="0">
+        </div>
+        <div class="fg">
+            <input type="number" class="line-price" placeholder="0" min="0">
+        </div>
+        <div class="fg">
+            <div class="line-total-display">0</div>
+        </div>
+        <div class="item-line-actions">
+            <button type="button" class="line-clone-btn" title="복제"><i class='bx bx-copy'></i></button>
+            <button type="button" class="line-remove-btn" title="삭제"><i class='bx bx-x'></i></button>
+        </div>
+    `;
+
+    container.appendChild(line);
+
+    // Fill data if editing
+    if (data) {
+        line.querySelector('.line-item').value = data.item || '';
+        line.querySelector('.line-spec').value = data.spec || '';
+        line.querySelector('.line-qty').value = data.qty || 0;
+        line.querySelector('.line-price').value = data.price || 0;
+        updateLineTotal(line);
+    }
+
+    // Setup autocomplete for item and spec inputs
+    setupLineAutocomplete(line.querySelector('.line-item'), 'item');
+    setupLineAutocomplete(line.querySelector('.line-spec'), 'spec');
+
+    // Calc events
+    line.querySelector('.line-qty').addEventListener('input', () => { updateLineTotal(line); updateGrandTotal(); });
+    line.querySelector('.line-price').addEventListener('input', () => { updateLineTotal(line); updateGrandTotal(); });
+
+    // Clone button
+    line.querySelector('.line-clone-btn').addEventListener('click', () => {
+        const cloneData = {
+            item: line.querySelector('.line-item').value,
+            spec: line.querySelector('.line-spec').value,
+            qty: parseInt(line.querySelector('.line-qty').value) || 0,
+            price: parseInt(line.querySelector('.line-price').value) || 0
+        };
+        addItemLine(cloneData);
+    });
+
+    // Remove button
+    line.querySelector('.line-remove-btn').addEventListener('click', () => {
+        if (container.children.length <= 1) {
+            showToast('최소 1개의 품목이 필요합니다.', 'warning');
+            return;
+        }
+        line.remove();
+        updateGrandTotal();
+    });
+
+    updateGrandTotal();
+    return line;
+}
+
+function updateLineTotal(line) {
+    const qty = parseInt(line.querySelector('.line-qty').value) || 0;
+    const price = parseInt(line.querySelector('.line-price').value) || 0;
+    const total = qty * price;
+    line.querySelector('.line-total-display').textContent = total > 0 ? total.toLocaleString() : '0';
+}
+
+function updateGrandTotal() {
+    let grand = 0;
+    document.querySelectorAll('.item-line').forEach(line => {
+        const qty = parseInt(line.querySelector('.line-qty').value) || 0;
+        const price = parseInt(line.querySelector('.line-price').value) || 0;
+        grand += qty * price;
+    });
+    $('grandTotalValue').textContent = grand > 0 ? grand.toLocaleString() : '0';
+}
+
+function getItemLines() {
+    const lines = [];
+    document.querySelectorAll('.item-line').forEach(line => {
+        const item = line.querySelector('.line-item').value.trim();
+        const spec = line.querySelector('.line-spec').value.trim();
+        const qty = parseInt(line.querySelector('.line-qty').value) || 0;
+        const price = parseInt(line.querySelector('.line-price').value) || 0;
+        if (item) {
+            lines.push({ item, spec, qty, price, total: qty * price });
+        }
+    });
+    return lines;
 }
 
 // ==========================================
@@ -206,7 +474,7 @@ function updateKPI() {
     });
     $('kpiCount').textContent = filteredData.length.toLocaleString();
     $('kpiQty').textContent = totalQty.toLocaleString();
-    $('kpiTotal').textContent = '₩' + totalAmt.toLocaleString();
+    $('kpiTotal').textContent = totalAmt.toLocaleString();
     $('kpiSites').textContent = siteSet.size;
 }
 
@@ -236,14 +504,14 @@ function renderTable() {
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
                 <td class="supply-col" onclick="openModal('${d.id}')">${d.date || '-'}</td>
                 <td class="col-site supply-col" onclick="openModal('${d.id}')">${d.site || '-'}</td>
-                <td class="supply-col" onclick="openModal('${d.id}')" style="color:#059669; font-weight:500;">${d.supplier || '-'}</td>
+                <td class="supply-col" onclick="openModal('${d.id}')" style="font-weight:500;">${d.supplier || '-'}</td>
                 <td class="supply-col" onclick="openModal('${d.id}')">${d.manufacturer || '-'}</td>
                 <td class="supply-col" onclick="openModal('${d.id}')">${catTag}</td>
                 <td class="col-item product-col" onclick="openModal('${d.id}')">${d.item || '-'}</td>
                 <td class="product-col" onclick="openModal('${d.id}')">${d.spec || '-'}</td>
                 <td class="col-num-sm amount-col" onclick="openModal('${d.id}')">${fmtN(d.qty)}</td>
-                <td class="col-num amount-col" onclick="openModal('${d.id}')">₩${fmtN(d.price)}</td>
-                <td class="col-num amount-col total-highlight" onclick="openModal('${d.id}')">₩${fmtN(d.total)}</td>
+                <td class="col-num amount-col" onclick="openModal('${d.id}')">${fmtN(d.price)}</td>
+                <td class="col-num amount-col total-highlight" onclick="openModal('${d.id}')">${fmtN(d.total)}</td>
             </tr>`;
     });
 
@@ -267,23 +535,15 @@ function fmtN(n) {
 }
 
 // ==========================================
-// Modal Auto-Calc
-// ==========================================
-function updateCalc() {
-    const qty = parseInt($('inpQty')?.value) || 0;
-    const price = parseInt($('inpPrice')?.value) || 0;
-    const total = qty * price;
-    $('inpTotal').value = total > 0 ? '₩' + total.toLocaleString() : '';
-}
-
-// ==========================================
 // CRUD
 // ==========================================
 window.openModal = function(id = null) {
     itemForm.reset();
-    $('inpTotal').value = '';
+    $('itemLinesContainer').innerHTML = '';
+    lineCounter = 0;
 
     if (id) {
+        // Edit mode: single item
         const d = itemsData.find(x => x.id === id);
         if (!d) return;
         $('modalTitle').textContent = '공급 내역 수정';
@@ -293,15 +553,18 @@ window.openModal = function(id = null) {
         $('inpSupplier').value = d.supplier || '';
         $('inpManufacturer').value = d.manufacturer || '';
         $('inpCategory').value = d.category || '';
-        $('inpItem').value = d.item || '';
-        $('inpSpec').value = d.spec || '';
-        $('inpQty').value = d.qty || 0;
-        $('inpPrice').value = d.price || 0;
-        updateCalc();
+        addItemLine({ item: d.item, spec: d.spec, qty: d.qty, price: d.price });
+        // Hide add-line button in edit mode
+        $('addLineBtn').style.display = 'none';
+        $('itemLinesHeader').style.display = '';
     } else {
+        // New mode: multi-line
         $('modalTitle').textContent = '신규 납품 등록';
         $('editId').value = '';
         $('inpDate').value = new Date().toISOString().split('T')[0];
+        addItemLine();
+        $('addLineBtn').style.display = '';
+        $('itemLinesHeader').style.display = '';
     }
 
     itemModal.classList.add('active');
@@ -310,35 +573,79 @@ window.openModal = function(id = null) {
 function closeModal() { itemModal.classList.remove('active'); }
 
 async function saveItem() {
-    const id = $('editId').value;
-    const qty = parseInt($('inpQty').value) || 0;
-    const price = parseInt($('inpPrice').value) || 0;
-    const payload = {
+    const editId = $('editId').value;
+    const commonData = {
         date: $('inpDate').value,
         site: $('inpSite').value.trim(),
         supplier: $('inpSupplier').value.trim(),
         manufacturer: $('inpManufacturer').value.trim(),
-        category: $('inpCategory').value.trim(),
-        item: $('inpItem').value.trim(),
-        spec: $('inpSpec').value.trim(),
-        qty, price,
-        total: qty * price
+        category: $('inpCategory').value.trim()
     };
 
+    const lines = getItemLines();
+    if (lines.length === 0) {
+        showToast('최소 1개의 품목을 입력해주세요.', 'warning');
+        return;
+    }
+
     try {
-        const url = id ? `${API_BASE}/${id}` : API_BASE;
-        const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, {
-            method, headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-            showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
-            closeModal();
-            loadData();
+        if (editId) {
+            // Edit: single item update
+            const line = lines[0];
+            const payload = { ...commonData, ...line };
+            const res = await fetch(`${API_BASE}/${editId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                showToast('수정되었습니다.', 'success');
+                closeModal();
+                loadData();
+            } else {
+                const err = await res.json();
+                showToast('저장 실패: ' + err.error, 'error');
+            }
         } else {
-            const err = await res.json();
-            showToast('저장 실패: ' + err.error, 'error');
+            // New: bulk insert
+            if (lines.length === 1) {
+                // Single item — use normal POST
+                const payload = { ...commonData, ...lines[0] };
+                const res = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    showToast('등록되었습니다.', 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    const err = await res.json();
+                    showToast('저장 실패: ' + err.error, 'error');
+                }
+            } else {
+                // Multi items — use bulk endpoint
+                const bulkPayload = lines.map(line => ({
+                    ...commonData,
+                    ...line,
+                    id: 'OSH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)
+                }));
+                const res = await fetch(`${API_BASE}/bulk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bulkPayload)
+                });
+                if (res.ok) {
+                    const result = await res.json();
+                    showToast(`${result.insertedCount || lines.length}건이 등록되었습니다.`, 'success');
+                    closeModal();
+                    loadData();
+                } else {
+                    const err = await res.json();
+                    showToast('저장 실패: ' + err.error, 'error');
+                }
+            }
         }
     } catch (e) {
         console.error(e);

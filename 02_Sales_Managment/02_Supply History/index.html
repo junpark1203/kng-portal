@@ -100,9 +100,9 @@
                                 <thead>
                                     <tr>
                                         <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th colspan="5" class="th-group-label th-group-supply">📋 공급 정보</th>
-                                        <th colspan="1" class="th-group-label th-group-product">📦 품목</th>
-                                        <th colspan="3" class="th-group-label th-group-amount">💰 금액</th>
+                                        <th colspan="5" class="th-group-label th-group-supply">공급 정보</th>
+                                        <th colspan="1" class="th-group-label th-group-product">품목</th>
+                                        <th colspan="3" class="th-group-label th-group-amount">금액</th>
                                     </tr>
                                     <tr>
                                         <th class="sortable" data-sort="supplyDate">일자 <i class='bx bx-sort'></i></th>
@@ -139,7 +139,7 @@
                 <form id="itemForm" autocomplete="off">
                     <input type="hidden" id="editId">
                     <div class="modal-form-grid">
-                        <div class="modal-section-title section-supply fg-full">📋 공급 정보</div>
+                        <div class="modal-section-title section-supply fg-full">공급 정보</div>
                         <div class="fg">
                             <label for="inpDate">일자</label>
                             <input type="date" id="inpDate" required>
@@ -159,14 +159,14 @@
                             </datalist>
                         </div>
 
-                        <div class="modal-section-title section-product fg-full">📦 품목</div>
+                        <div class="modal-section-title section-product fg-full">품목</div>
                         <div class="fg fg-full">
                             <label for="inpItem">품목명</label>
                             <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력" required>
                             <datalist id="listItem"></datalist>
                         </div>
 
-                        <div class="modal-section-title section-amount fg-full">💰 금액</div>
+                        <div class="modal-section-title section-amount fg-full">금액</div>
                         <div class="fg">
                             <label for="inpQty">수량</label>
                             <input type="number" id="inpQty" placeholder="0" min="0" required>

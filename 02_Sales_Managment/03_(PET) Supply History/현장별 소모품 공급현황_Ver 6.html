@@ -70,7 +70,7 @@
                             </div>
                             <div class="kpi-card">
                                 <div class="kpi-label">총 금액</div>
-                                <div class="kpi-value" id="kpiTotal">₩0</div>
+                                <div class="kpi-value" id="kpiTotal">0</div>
                             </div>
                             <div class="kpi-card">
                                 <div class="kpi-label">현장 수</div>
@@ -100,9 +100,9 @@
                                 <thead>
                                     <tr>
                                         <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th colspan="5" class="th-group-label th-group-supply">📋 공급 정보</th>
-                                        <th colspan="2" class="th-group-label th-group-product">📦 품목</th>
-                                        <th colspan="3" class="th-group-label th-group-amount">💰 금액</th>
+                                        <th colspan="5" class="th-group-label th-group-supply">공급 정보</th>
+                                        <th colspan="2" class="th-group-label th-group-product">품목</th>
+                                        <th colspan="3" class="th-group-label th-group-amount">금액</th>
                                     </tr>
                                     <tr>
                                         <th class="sortable" data-sort="date">일자 <i class='bx bx-sort'></i></th>
@@ -131,7 +131,7 @@
 
     <!-- Add/Edit Modal -->
     <div id="itemModal" class="modal">
-        <div class="modal-content" style="max-width:640px;">
+        <div class="modal-content" style="max-width:720px;">
             <div class="modal-header">
                 <h2 id="modalTitle">신규 납품 등록</h2>
                 <button type="button" class="btn-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
@@ -140,59 +140,57 @@
                 <form id="itemForm" autocomplete="off">
                     <input type="hidden" id="editId">
                     <div class="modal-form-grid">
-                        <div class="modal-section-title section-supply fg-full">📋 공급 정보</div>
+                        <div class="modal-section-title section-supply fg-full">공급 정보</div>
                         <div class="fg">
                             <label for="inpDate">공급일자</label>
                             <input type="date" id="inpDate" required>
                         </div>
-                        <div class="fg">
+                        <div class="fg ac-wrapper">
                             <label for="inpSite">현장명</label>
-                            <input type="text" id="inpSite" list="listSite" placeholder="선택 또는 직접 입력" required>
-                            <datalist id="listSite"></datalist>
+                            <input type="text" id="inpSite" placeholder="선택 또는 직접 입력" required autocomplete="off">
+                            <div class="ac-dropdown" id="acSite"></div>
                         </div>
-                        <div class="fg">
+                        <div class="fg ac-wrapper">
                             <label for="inpSupplier">공급사</label>
-                            <input type="text" id="inpSupplier" list="listSupplier" placeholder="선택 또는 직접 입력">
-                            <datalist id="listSupplier"></datalist>
+                            <input type="text" id="inpSupplier" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-dropdown" id="acSupplier"></div>
                         </div>
-                        <div class="fg">
+                        <div class="fg ac-wrapper">
                             <label for="inpManufacturer">제조사</label>
-                            <input type="text" id="inpManufacturer" list="listMfr" placeholder="선택 또는 직접 입력">
-                            <datalist id="listMfr"></datalist>
+                            <input type="text" id="inpManufacturer" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-dropdown" id="acMfr"></div>
                         </div>
-                        <div class="fg fg-full">
+                        <div class="fg fg-full ac-wrapper">
                             <label for="inpCategory">구분</label>
-                            <input type="text" id="inpCategory" list="listCategory" placeholder="선택 또는 직접 입력">
-                            <datalist id="listCategory">
-                                <option value="유압유"><option value="기어유"><option value="그리스">
-                                <option value="테일씰그리스"><option value="절삭유"><option value="안전용품"><option value="기타">
-                            </datalist>
+                            <input type="text" id="inpCategory" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-dropdown" id="acCategory"></div>
                         </div>
 
-                        <div class="modal-section-title section-product fg-full">📦 품목</div>
-                        <div class="fg">
-                            <label for="inpItem">품명</label>
-                            <input type="text" id="inpItem" list="listItem" placeholder="선택 또는 직접 입력" required>
-                            <datalist id="listItem"></datalist>
-                        </div>
-                        <div class="fg">
-                            <label for="inpSpec">규격</label>
-                            <input type="text" id="inpSpec" list="listSpec" placeholder="예: 200L(D/M)">
-                            <datalist id="listSpec"></datalist>
+                        <div class="modal-section-title section-product fg-full">품목</div>
+
+                        <!-- Column headers for item lines -->
+                        <div class="item-lines-header" id="itemLinesHeader">
+                            <span>품명</span>
+                            <span>규격</span>
+                            <span>수량</span>
+                            <span>단가</span>
+                            <span>총액</span>
+                            <span></span>
                         </div>
 
-                        <div class="modal-section-title section-amount fg-full">💰 금액</div>
-                        <div class="fg">
-                            <label for="inpQty">수량</label>
-                            <input type="number" id="inpQty" placeholder="0" min="0" required>
+                        <!-- Dynamic item lines container -->
+                        <div class="item-lines-container" id="itemLinesContainer">
+                            <!-- Lines are added dynamically via JS -->
                         </div>
-                        <div class="fg">
-                            <label for="inpPrice">단가</label>
-                            <input type="number" id="inpPrice" placeholder="0" min="0" required>
-                        </div>
-                        <div class="fg fg-full">
-                            <label>총액 (자동계산)</label>
-                            <input type="text" id="inpTotal" class="calc-preview" readonly placeholder="수량 × 단가">
+
+                        <button type="button" class="add-line-btn" id="addLineBtn">
+                            <i class='bx bx-plus'></i> 품목 추가
+                        </button>
+
+                        <!-- Grand total -->
+                        <div class="modal-grand-total" id="grandTotalBar">
+                            <span class="gt-label">합계</span>
+                            <span class="gt-value" id="grandTotalValue">0</span>
                         </div>
                     </div>
                     <div class="modal-footer">
