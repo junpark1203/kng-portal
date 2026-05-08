@@ -3193,19 +3193,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         let status = targetStatus;
         if (status === 'active') {
             const missing = [];
+            const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
+
             if (!inputDate.value) missing.push('작성일자');
             if (!inputCategoryEn.value) missing.push('카테고리');
             if (!inputNameKo.value) missing.push('상품명(한글)');
             if (!inputNameEn.value) missing.push('상품명(영문)');
-            if (!inputPriceKrw.value) missing.push('상품매입비(KRW)');
             if (!inputRate.value) missing.push('적용환율');
-            if (!inputWeight.value) missing.push('상품무게(g)');
-            
-            const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
-            if (hasOptions) {
+
+            if (!hasOptions) {
+                if (!inputPriceKrw.value) missing.push('상품매입비(KRW)');
+                if (!inputWeight.value) missing.push('상품무게(g)');
+            } else {
                 for (let i = 0; i < currentOptions.length; i++) {
                     if (!currentOptions[i].optionName || !currentOptions[i].optionName.trim()) {
                         missing.push(`옵션 ${i + 1}의 옵션명`);
+                    }
+                    if (!currentOptions[i].priceKrw) {
+                        missing.push(`옵션 ${i + 1}의 매입비`);
+                    }
+                    if (!currentOptions[i].weight) {
+                        missing.push(`옵션 ${i + 1}의 무게`);
                     }
                 }
             }
