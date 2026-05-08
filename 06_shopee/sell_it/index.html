@@ -497,7 +497,31 @@
                             <button class="btn-secondary" id="btn-add-product"><i class="fa-solid fa-plus"></i> Add Product</button>
                         </div>
                         <p class="body-sm text-secondary">A comprehensive list of all uploaded products and their base information.</p>
-                        
+
+                        <!-- Search Bar -->
+                        <div class="si-search-bar" id="pl-search-bar">
+                            <div id="pl-search-conditions">
+                                <!-- First condition row (no logic toggle) -->
+                                <div class="si-condition-row">
+                                    <select class="si-field-select" data-role="field">
+                                        <option value="all">통합검색</option>
+                                        <option value="mcode">관리코드</option>
+                                        <option value="nameEn">상품명(EN)</option>
+                                        <option value="nameKo">상품명(KO)</option>
+                                        <option value="catEn">카테고리</option>
+                                        <option value="note">비고</option>
+                                    </select>
+                                    <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+                                </div>
+                            </div>
+                            <div class="si-search-actions">
+                                <button type="button" class="si-btn-add-condition" id="pl-add-condition"><i class="fa-solid fa-plus"></i> 조건 추가</button>
+                                <button type="button" class="si-btn-clear" id="pl-clear-search">초기화</button>
+                                <button type="button" class="si-btn-search" id="pl-do-search"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
+                            </div>
+                        </div>
+                        <div class="si-filter-chips" id="pl-filter-chips"></div>
+
                         <div class="table-container">
                             <table class="data-table" id="pl-table">
                                 <thead>
@@ -518,6 +542,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="si-pagination" id="pl-pagination"></div>
                     </div>
                 </div>
 
@@ -528,6 +553,28 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                             <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
                         </div>
+
+                        <!-- Search Bar -->
+                        <div class="si-search-bar" id="pc-search-bar">
+                            <div id="pc-search-conditions">
+                                <div class="si-condition-row">
+                                    <select class="si-field-select" data-role="field">
+                                        <option value="all">통합검색</option>
+                                        <option value="mcode">SKU#</option>
+                                        <option value="nameEn">상품명</option>
+                                        <option value="catEn">카테고리</option>
+                                    </select>
+                                    <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+                                </div>
+                            </div>
+                            <div class="si-search-actions">
+                                <button type="button" class="si-btn-add-condition" id="pc-add-condition"><i class="fa-solid fa-plus"></i> 조건 추가</button>
+                                <button type="button" class="si-btn-clear" id="pc-clear-search">초기화</button>
+                                <button type="button" class="si-btn-search" id="pc-do-search"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
+                            </div>
+                        </div>
+                        <div class="si-filter-chips" id="pc-filter-chips"></div>
+
                         <div class="table-container" style="margin-top: 0;">
                             <table class="data-table" id="price-calc-table">
                                 <thead>
@@ -551,6 +598,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <div class="si-pagination" id="pc-pagination"></div>
                     </div>
 
                     <!-- Price Calc Floating Bulk Action Bar -->
