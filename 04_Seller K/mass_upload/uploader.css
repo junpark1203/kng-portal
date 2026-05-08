@@ -145,6 +145,21 @@
     box-shadow: var(--shadow-sm);
     padding: 24px;
     animation: none;
+    scroll-margin-top: 20px;
+}
+
+/* Section heading styling inside step panels */
+.step-panel .wizard-section-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--on-surface);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--surface-container-high);
 }
 
 /* ════════════════════════════════════════
@@ -157,7 +172,7 @@
 }
 
 .registration-sidebar {
-    width: 240px;
+    width: 220px;
     flex-shrink: 0;
 }
 
@@ -166,7 +181,42 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
+}
+
+/* Responsive: hide sidebar when narrow (iframe context) */
+@media (max-width: 900px) {
+    .registration-layout {
+        flex-direction: column;
+    }
+    .registration-sidebar {
+        width: 100%;
+    }
+    .registration-sidebar > div {
+        position: static !important;
+    }
+    .scroll-spy-nav {
+        display: flex;
+        overflow-x: auto;
+    }
+    .scroll-spy-nav li {
+        white-space: nowrap;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+    .scroll-spy-nav li.active {
+        border-bottom-color: var(--primary);
+        border-left-color: transparent;
+    }
+    .registration-actions {
+        display: flex;
+        gap: 8px;
+    }
+    .registration-actions button {
+        flex: 1;
+    }
 }
 
 .scroll-spy-nav {
