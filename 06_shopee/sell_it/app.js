@@ -6117,6 +6117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Show/hide rows based on filter + pagination
         const effectivePageSize = pcPageSize === 0 ? filteredGroups.length : pcPageSize;
         const totalGroups = filteredGroups.length;
+        
+        const countDisplay = document.getElementById('pc-total-count-display');
+        if (countDisplay) countDisplay.textContent = totalGroups;
+
         const totalPages = Math.max(1, Math.ceil(totalGroups / effectivePageSize));
         pcCurrentPage = Math.min(Math.max(1, pcCurrentPage), totalPages);
         const startIdx = (pcCurrentPage - 1) * effectivePageSize;

@@ -564,8 +564,8 @@
                 <!-- Price Calculation Shared View Container -->
                 <div class="view-section" id="view-price-calc-container">
                     <!-- Products Table -->
-                    <div class="panel surface-container-lowest">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                        <div style="margin-bottom: 1rem;">
                             <h3 class="headline-md" id="price-calc-title">Market Price Calc</h3>
                         </div>
 
@@ -589,6 +589,12 @@
                             </div>
                         </div>
                         <div class="si-filter-chips" id="pc-filter-chips"></div>
+
+                        <!-- Table Action Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                            <div class="label-md text-secondary"><span id="pc-total-count-display" style="color: var(--primary); font-weight: bold;">0</span> 개의 상품이 검색되었습니다.</div>
+                            <div></div>
+                        </div>
 
                         <div class="table-container" style="margin-top: 0;">
                             <table class="data-table" id="price-calc-table">
