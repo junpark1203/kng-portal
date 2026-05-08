@@ -2007,6 +2007,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     isVirtualParent: true,
                     mcode: baseMcode,
                     date: items[0].date,
+                    exportCreatedAt: items[0].exportCreatedAt,
                     catEn: items[0].catEn,
                     catKo: items[0].catKo,
                     nameEn: items[0].nameEn,
@@ -2019,9 +2020,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // Sort descending by date, then base mcode
+        // Sort descending by exportCreatedAt (if available) or date, then base mcode
         grouped.sort((a, b) => {
-            const dateDiff = new Date(b.date) - new Date(a.date);
+            const dateA = a.exportCreatedAt || a.date;
+            const dateB = b.exportCreatedAt || b.date;
+            const dateDiff = new Date(dateB) - new Date(dateA);
             if (dateDiff !== 0) return dateDiff;
             return b.mcode.localeCompare(a.mcode);
         });
