@@ -767,9 +767,10 @@
                                     </div>
                                     
                                     <div class="form-group" style="margin-bottom: 1rem;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; width: 100%;">
                                             <label class="label-md" style="margin-bottom: 0;">상세 내용 <span class="text-secondary" style="font-weight:normal; font-size:0.8rem;">(본문)</span></label>
                                             <button type="button" id="btn-copy-description" title="상세 내용 복사" style="background: none; border: none; color: var(--primary); cursor: pointer;"><i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i></button>
+                                            <button type="button" id="btn-open-desc-ko" class="btn-outline" style="margin-left: auto; padding: 2px 8px; font-size: 0.75rem;"><i class="fa-solid fa-language"></i> 한글 원문</button>
                                         </div>
                                         <textarea id="input-description" class="form-control" rows="6" placeholder="상품에 대한 상세한 설명을 영문이나 한국어로 입력하세요." style="resize: vertical;"></textarea>
                                     </div>
@@ -1477,6 +1478,24 @@
 
             <div style="display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--outline-variant);">
                 <button class="btn-secondary" id="pc-btn-close-notices-footer">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Korean Description Modal -->
+    <div class="modal-overlay" id="desc-ko-modal-overlay"></div>
+    <div class="modal" id="desc-ko-modal" style="width: 600px;">
+        <div class="modal-header">
+            <h3 class="title-md">한글 원문 작성</h3>
+            <button class="btn-icon" id="btn-close-desc-ko-modal"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="padding: 24px;">
+            <p class="body-sm text-secondary" style="margin-bottom: 12px;">이곳에 작성된 한글 원문은 내보내기(Export) 데이터에 포함되지 않으며, 사내 참고 및 번역 수정 시 백업 용도로만 안전하게 보관됩니다.</p>
+            <textarea id="input-desc-ko" class="form-control" rows="12" placeholder="한글 원문 내용을 입력하세요..." style="resize: vertical; width: 100%;"></textarea>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                <button type="button" class="btn-secondary" id="btn-cancel-desc-ko">취소</button>
+                <button type="button" class="btn-primary" id="btn-save-desc-ko">입력 완료</button>
             </div>
         </div>
     </div>

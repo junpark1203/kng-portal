@@ -2322,6 +2322,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const countNameKo = document.getElementById('count-name-ko');
     const countNameEn = document.getElementById('count-name-en');
     const inputDescription = document.getElementById('input-description');
+    const inputDescKo = document.getElementById('input-desc-ko');
     const inputNoticeContent = document.getElementById('input-notice-content');
     const countDescription = document.getElementById('count-description');
 
@@ -2372,6 +2373,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (inputNoticeContent && countDescription) {
         inputNoticeContent.addEventListener('input', updateCombinedDescriptionCount);
     }
+
+    // Korean Description Modal Logic
+    const descKoModalOverlay = document.getElementById('desc-ko-modal-overlay');
+    const descKoModal = document.getElementById('desc-ko-modal');
+    
+    function closeDescKoModal() {
+        if(descKoModal) descKoModal.classList.remove('active');
+        if(descKoModalOverlay) descKoModalOverlay.classList.remove('active');
+    }
+
+    document.getElementById('btn-open-desc-ko')?.addEventListener('click', () => {
+        if(descKoModal) descKoModal.classList.add('active');
+        if(descKoModalOverlay) descKoModalOverlay.classList.add('active');
+    });
+    
+    document.getElementById('btn-close-desc-ko-modal')?.addEventListener('click', closeDescKoModal);
+    document.getElementById('btn-cancel-desc-ko')?.addEventListener('click', closeDescKoModal);
+    document.getElementById('btn-save-desc-ko')?.addEventListener('click', closeDescKoModal);
+    descKoModalOverlay?.addEventListener('click', closeDescKoModal);
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -2506,6 +2526,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (inputDescription) {
                 inputDescription.value = '';
+            }
+            if (inputDescKo) {
+                inputDescKo.value = '';
             }
             updateCombinedDescriptionCount();
             updateMcodePreview();
@@ -3175,6 +3198,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const link = inputLink.value;
             const note = inputNote.value;
             const description = inputDescription ? inputDescription.value : '';
+            const descKo = inputDescKo ? inputDescKo.value : '';
             const notice = inputNoticeContent ? inputNoticeContent.value : '';
 
             if (!catEn) {
@@ -3201,7 +3225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
                 rate: parseFloat(rate) || 1,
                 rateDate, weight: parseInt(weight, 10) || 0,
-                link, note, description, notice, video: currentVideo
+                link, note, description, descKo, notice, video: currentVideo
             };
 
             try {
@@ -3362,6 +3386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputNameKo.value = productObj.nameKo || '';
             inputNameEn.value = productObj.nameEn || '';
             if (inputDescription) inputDescription.value = productObj.description || '';
+            if (inputDescKo) inputDescKo.value = productObj.descKo || '';
             if (inputNoticeContent) inputNoticeContent.value = productObj.notice || '';
             updateCharCount(inputNameKo, countNameKo, 180);
             updateCharCount(inputNameEn, countNameEn, 180);
