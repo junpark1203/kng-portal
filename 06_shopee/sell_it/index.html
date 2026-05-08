@@ -545,7 +545,7 @@
                                         <th class="sortable-th" data-sort-key="date">작성정보 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th style="width: 160px;" class="sortable-th" data-sort-key="catEn">카테고리 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th class="sortable-th" data-sort-key="nameEn">상품명 <i class="fa-solid fa-sort sort-icon"></i></th>
-                                        <th style="width: 170px;">진출 국가</th>
+                                        <th style="width: 80px; text-align: center;">Global</th>
                                         <th class="text-right sortable-th" data-sort-key="priceKrw">매입단가 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th class="text-right sortable-th" data-sort-key="weight">환율/무게 <i class="fa-solid fa-sort sort-icon"></i></th>
                                         <th>구매링크</th>
@@ -558,6 +558,93 @@
                             </table>
                         </div>
                         <div class="si-pagination" id="pl-pagination"></div>
+                    </div>
+                </div>
+
+                <!-- Global SKU View -->
+                <div class="view-section" id="view-global-sku">
+                    <div class="panel surface-container-lowest" style="padding-bottom: 1rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <h3 class="headline-md">Global SKU</h3>
+                        </div>
+                        <p class="body-sm text-secondary">Product List에서 전송된 글로벌 상품 목록입니다. 여기서 국가별 Price Calc로 내보내기합니다.</p>
+
+                        <!-- Search Bar -->
+                        <div class="si-search-bar" id="gs-search-bar" style="padding-top: 16px;">
+                            <div id="gs-search-conditions">
+                                <div class="si-condition-row">
+                                    <select class="si-field-select" data-role="field">
+                                        <option value="all">통합검색</option>
+                                        <option value="mcode">관리코드</option>
+                                        <option value="nameEn">상품명(EN)</option>
+                                        <option value="nameKo">상품명(KO)</option>
+                                        <option value="catEn">카테고리</option>
+                                        <option value="note">비고</option>
+                                    </select>
+                                    <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+                                </div>
+                            </div>
+                            <div class="si-search-actions">
+                                <button type="button" class="si-btn-add-condition" id="gs-add-condition"><i class="fa-solid fa-plus"></i> 조건 추가</button>
+                                <button type="button" class="si-btn-clear" id="gs-clear-search">초기화</button>
+                                <button type="button" class="si-btn-search" id="gs-do-search"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
+                            </div>
+                        </div>
+                        <div class="si-filter-chips" id="gs-filter-chips"></div>
+
+                        <!-- Table Action Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.75rem;">
+                            <div class="label-md text-secondary"><span id="gs-total-count-display" style="color: var(--primary); font-weight: bold;">0</span> 개의 상품이 등록되어 있습니다.</div>
+                            <div></div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table" id="gs-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 48px; text-align: center;"><input type="checkbox" id="gs-check-all"></th>
+                                        <th class="sortable-th" data-sort-key="date">작성정보 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th style="width: 160px;" class="sortable-th" data-sort-key="catEn">카테고리 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="sortable-th" data-sort-key="nameEn">상품명 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th style="width: 170px;">진출 국가</th>
+                                        <th class="text-right sortable-th" data-sort-key="priceKrw">매입단가 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th class="text-right sortable-th" data-sort-key="weight">환율/무게 <i class="fa-solid fa-sort sort-icon"></i></th>
+                                        <th>구매링크</th>
+                                        <th>비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Rendered by JS (renderGlobalSkuTable) -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="si-pagination" id="gs-pagination"></div>
+                    </div>
+
+                    <!-- Global SKU Floating Bulk Action Bar -->
+                    <div class="bulk-action-bar" id="gs-bulk-action-bar">
+                        <div class="bulk-info">
+                            <span class="bulk-count" id="gs-bulk-count">0</span> items selected
+                        </div>
+                        <div class="bulk-actions">
+                            <select id="gs-export-market-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 0.875rem; border: none; background: rgba(255,255,255,0.1); color: white; border-radius: 4px; outline: none; margin-right: 8px;">
+                                <option value="sg" style="color: black;">SG Market</option>
+                                <option value="my" style="color: black;">MY Market</option>
+                                <option value="tw" style="color: black;">TW Market</option>
+                                <option value="th" style="color: black;">TH Market</option>
+                                <option value="ph" style="color: black;">PH Market</option>
+                                <option value="vn" style="color: black;">VN Market</option>
+                                <option value="br" style="color: black;">BR Market</option>
+                                <option value="mx" style="color: black;">MX Market</option>
+                            </select>
+                            <button class="btn-bulk btn-bulk-primary" id="gs-btn-export-market">
+                                <i class="fa-solid fa-share-from-square"></i> Send to Market
+                            </button>
+                            <div class="bulk-divider"></div>
+                            <button class="btn-bulk btn-bulk-danger" id="gs-btn-delete-bulk">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -907,24 +994,14 @@
 
     <!-- Old Price Calculation Drawer removed — replaced by inline expansion panels -->
 
-    <!-- Floating Action Bar for Bulk Selection -->
+    <!-- Floating Action Bar for Bulk Selection (Product List) -->
     <div class="bulk-action-bar" id="bulk-action-bar">
         <div class="bulk-info">
             <span class="bulk-count" id="bulk-count">0</span> items selected
         </div>
         <div class="bulk-actions">
-            <select id="export-market-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 0.875rem; border: none; background: rgba(255,255,255,0.1); color: white; border-radius: 4px; outline: none; margin-right: 8px;">
-                <option value="sg" style="color: black;">SG Market</option>
-                <option value="my" style="color: black;">MY Market</option>
-                <option value="tw" style="color: black;">TW Market</option>
-                <option value="th" style="color: black;">TH Market</option>
-                <option value="ph" style="color: black;">PH Market</option>
-                <option value="vn" style="color: black;">VN Market</option>
-                <option value="br" style="color: black;">BR Market</option>
-                <option value="mx" style="color: black;">MX Market</option>
-            </select>
-            <button class="btn-bulk btn-bulk-primary" id="btn-export-market">
-                <i class="fa-solid fa-share-from-square"></i> Send to Market
+            <button class="btn-bulk btn-bulk-primary" id="btn-send-to-global-sku">
+                <i class="fa-solid fa-globe"></i> Send to Global SKU
             </button>
             <div class="bulk-divider"></div>
             <button class="btn-bulk btn-bulk-danger" id="btn-delete-bulk">

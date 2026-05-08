@@ -1,0 +1,4 @@
+{
+  "createdAt": "2026-05-08T00:46:52.163Z",
+  "note": "This file verifies volume persistence. If this file is missing after restart, the volume mount is broken."
+}

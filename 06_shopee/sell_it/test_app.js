@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', async () => {
+async function run() {
 
     let currentMAImages = [];
     let currentMAVideoUrl = '';
@@ -112,7 +112,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Bulk Action Logic Elements ---
     const checkAll = document.getElementById('check-all');
-    const btnSendToGlobalSku = document.getElementById('btn-send-to-global-sku');
+    const btnExportMarket = document.getElementById('btn-export-market');
+    const exportMarketSelect = document.getElementById('export-market-select');
 
     window.updateBulkActionBar = function() {
         const bar = document.getElementById('bulk-action-bar');
@@ -149,233 +150,262 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let currentExportProductIds = [];
     let currentExportMarket = '';
-    let globalSkuList = []; // Global SKU에 있는 상품 목록 (market_exports에서 global로 필터링된 products)
 
-    // --- Product List: Send to Global SKU ---
-    if (btnSendToGlobalSku) {
-        btnSendToGlobalSku.addEventListener('click', async () => {
-            const checkedBoxes = document.querySelectorAll('#view-product-list .child-checkbox:checked, #view-product-list .row-checkbox:checked:not(.child-checkbox)');
+    if (btnExportMarket && exportMarketSelect) {
+        btnExportMarket.addEventListener('click', async () => {
+            const selectedMarket = exportMarketSelect.value;
+            // Now we should query both .row-checkbox:checked and .child-checkbox:checked just in case, but child-checkbox IS a row-checkbox.
+            // Wait, in my renderSingleProductRow I added class="row-checkbox child-checkbox"
+            const checkedBoxes = document.querySelectorAll('.child-checkbox:checked, .row-checkbox:checked:not(.child-checkbox)');
+            
             if (checkedBoxes.length === 0) return;
 
+            // Check for partial selection warning
+            let hasPartialSelection = false;
+            const parentMcodeSet = new Set();
+            checkedBoxes.forEach(cb => {
+                const parentMcode = cb.dataset.parentMcode;
+                if (parentMcode) parentMcodeSet.add(parentMcode);
+            });
+
+            for (const mcode of parentMcodeSet) {
+                const totalChildren = document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]`).length;
+                const checkedChildren = document.querySelectorAll(`.child-checkbox[data-parent-mcode="${mcode}"]:checked`).length;
+                if (checkedChildren > 0 && checkedChildren < totalChildren) {
+                    hasPartialSelection = true;
+                    break;
+                }
+            }
+
+            if (hasPartialSelection) {
+                if (!confirm('⚠️ 주의: 그룹 상품 중 일부 옵션만 선택된 항목이 있습니다.nn선택되지 않은 옵션은 제외하고 전송됩니다. 계속하시겠습니까?')) {
+                    return;
+                }
+            }
+
+            // 선택된 상품의 ID를 수집
             const productIds = [];
-            let alreadyInGlobal = false;
+            const selectedBaseMcodes = new Set();
+            let alreadyExported = false;
+
             checkedBoxes.forEach(cb => {
                 const row = cb.closest('tr');
                 if (row && row.dataset.productId) {
                     const pid = row.dataset.productId;
                     productIds.push(pid);
+                    
+                    const p = productList.find(item => item.id === pid);
+                    if (p) {
+                        selectedBaseMcodes.add(getBaseMcode(p.mcode));
+                    }
+                    
+                    // Check if already exported
                     const exports = marketExportsMap[pid] || [];
-                    if (exports.some(e => e.marketCode === 'global')) {
-                        alreadyInGlobal = true;
+                    if (exports.some(e => e.marketCode === selectedMarket)) {
+                        alreadyExported = true;
                     }
                 }
             });
 
-            if (alreadyInGlobal) {
-                alert('이미 Global SKU에 등록된 상품이 포함되어 있습니다.\n중복 전송은 불가능합니다.');
+            if (selectedBaseMcodes.size > 1) {
+                alert('서로 다른 상품을 동시에 내보낼 수 없습니다.\n단일 상품(또는 동일 그룹의 옵션들)만 선택해주세요.');
                 return;
             }
 
-            if (!confirm(`${productIds.length}개의 상품(옵션)을 Global SKU로 전송하시겠습니까?`)) return;
-
-            try {
-                const result = await api.exportToMarket(productIds, 'global', null, null, null, null, null, null, '', '');
-                // Update marketExportsMap
-                productIds.forEach(pid => {
-                    if (!marketExportsMap[pid]) marketExportsMap[pid] = [];
-                    marketExportsMap[pid].push({ marketCode: 'global', exportDate: new Date().toISOString().split('T')[0] });
-                });
-                // Re-render to show updated badges
-                renderProductListTable();
-                document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
-                if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
-                alert(`${result.insertedCount}개의 상품이 Global SKU로 전송되었습니다.`);
-            } catch (err) {
-                alert('Global SKU 전송 실패: ' + err.message);
+            if (alreadyExported) {
+                alert(`이미 ${selectedMarket.toUpperCase()} 마켓으로 내보내진 상품이 포함되어 있습니다.\n중복 전송은 불가능합니다.`);
+                return;
             }
+
+            currentExportProductIds = productIds;
+            currentExportMarket = selectedMarket;
+
+            // Setup Modal
+            document.getElementById('export-modal-title').innerText = `${selectedMarket.toUpperCase()} 마켓으로 상품 내보내기`;
+            document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품 옵션(그룹)`;
+
+            // Populate Product Summary Strip
+            const stripProduct = productList.find(item => item.id === productIds[0]);
+            if (stripProduct) {
+                document.getElementById('export-strip-name-en').textContent = stripProduct.nameEn || stripProduct.nameKo || '—';
+                document.getElementById('export-strip-name-ko').textContent = stripProduct.nameKo || '';
+                const baseMcode = stripProduct.mcode ? stripProduct.mcode.split('-').slice(0, 3).join('-') : stripProduct.mcode;
+                document.getElementById('export-strip-mcode').textContent = baseMcode || '—';
+                document.getElementById('export-strip-cat').textContent = stripProduct.catEn || stripProduct.catKo || '';
+                // Build option names list
+                const optionNames = productIds.map(pid => {
+                    const p = productList.find(x => x.id === pid);
+                    return p && p.optionName ? p.optionName : null;
+                }).filter(Boolean);
+                document.getElementById('export-strip-options').textContent = optionNames.length > 0 ? optionNames.join(' / ') : '';
+            }
+            
+            // Pre-fill Original Text
+            const origDescEl = document.getElementById('export-modal-orig-desc');
+            const origNoticeEl = document.getElementById('export-modal-orig-notice');
+            const transDescEl = document.getElementById('export-modal-trans-desc');
+            const transNoticeEl = document.getElementById('export-modal-trans-notice');
+            
+            if (origDescEl && origNoticeEl && transDescEl && transNoticeEl) {
+                const firstProduct = productList.find(item => item.id === productIds[0]);
+                origDescEl.value = firstProduct ? (firstProduct.description || '') : '';
+                origNoticeEl.value = firstProduct ? (firstProduct.notice || '') : '';
+                transDescEl.value = '';
+                transNoticeEl.value = '';
+                
+                // Character limit
+                const maxChars = selectedMarket === 'sg' ? 3000 : 5000;
+                transDescEl.dataset.maxChars = maxChars;
+                if (typeof updateExportCharCount === 'function') updateExportCharCount();
+                
+                // Load templates into the dropdown
+                loadExportNoticeTemplates(selectedMarket);
+            }
+            
+            // Exchange Rate
+            const autoRateText = document.getElementById('export-modal-auto-rate-text');
+            const manualRateInput = document.getElementById('export-modal-manual-rate');
+            const radioAuto = document.querySelector('input[name="export_exrate_type"][value="auto"]');
+            const radioManual = document.querySelector('input[name="export_exrate_type"][value="manual"]');
+
+            if (window.latestExchangeRates && window.latestExchangeRates[selectedMarket]) {
+                const autoRate = window.latestExchangeRates[selectedMarket];
+                autoRateText.innerText = `최신 자동 환율 적용 (1 단위당 ${autoRate} KRW)`;
+                radioAuto.checked = true;
+                radioAuto.disabled = false;
+                manualRateInput.disabled = true;
+                manualRateInput.value = '';
+            } else {
+                autoRateText.innerText = `최신 자동 환율 적용 (정보 없음)`;
+                radioAuto.checked = false;
+                radioAuto.disabled = true;
+                radioManual.checked = true;
+                manualRateInput.disabled = false;
+                manualRateInput.value = '1000';
+            }
+
+            // Load Presets for dropdowns
+            function populateSelect(selectId, dataArr, defaultObj) {
+                const sel = document.getElementById(selectId);
+                sel.innerHTML = '<option value="">미지정</option>' + dataArr.map(p => 
+                    `<option value="${p.id}" ${defaultObj && defaultObj.id === p.id ? 'selected' : ''}>${p.name}</option>`
+                ).join('');
+            }
+
+            const mcode = selectedMarket;
+            const marketFeePresets = presets.filter(p => p.market === mcode);
+            const feeDef = marketFeePresets.find(p => p.isDefault) || marketFeePresets[0];
+            populateSelect('export-modal-fee-preset', marketFeePresets, feeDef);
+
+            const marketPromoPresets = promotionPresets.filter(p => p.market === mcode);
+            const promoDef = marketPromoPresets.find(p => p.isDefault) || marketPromoPresets[0];
+            populateSelect('export-modal-promo-preset', marketPromoPresets, promoDef);
+
+            const marketShipPresets = shippingPresets.filter(p => p.market === mcode);
+            const shipDef = marketShipPresets.find(p => p.isDefault) || marketShipPresets[0];
+            populateSelect('export-modal-ship-preset', marketShipPresets, shipDef);
+
+            // Margin Setup
+            try {
+                const sysSettings = await api.getSystemSettings();
+                
+                const loadMarginPresets = (type) => {
+                    if (type === 'rate') {
+                        document.getElementById('export-preset-btn-1').innerText = (sysSettings.margin_rate_preset_1 || 10) + '%';
+                        document.getElementById('export-preset-btn-2').innerText = (sysSettings.margin_rate_preset_2 || 30) + '%';
+                        document.getElementById('export-preset-btn-3').innerText = (sysSettings.margin_rate_preset_3 || 40) + '%';
+                        document.getElementById('export-margin-unit').innerText = '%';
+                        document.getElementById('export-margin-value').value = sysSettings.margin_rate_preset_2 || 30;
+                    } else {
+                        document.getElementById('export-preset-btn-1').innerText = '₩' + Number(sysSettings.margin_amount_preset_1 || 1000).toLocaleString();
+                        document.getElementById('export-preset-btn-2').innerText = '₩' + Number(sysSettings.margin_amount_preset_2 || 3000).toLocaleString();
+                        document.getElementById('export-preset-btn-3').innerText = '₩' + Number(sysSettings.margin_amount_preset_3 || 5000).toLocaleString();
+                        document.getElementById('export-margin-unit').innerText = '₩';
+                        document.getElementById('export-margin-value').value = sysSettings.margin_amount_preset_2 || 3000;
+                    }
+                };
+
+                // Default to rate
+                document.querySelector('input[name="export_margin_type"][value="rate"]').checked = true;
+                loadMarginPresets('rate');
+
+                document.querySelectorAll('input[name="export_margin_type"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => loadMarginPresets(e.target.value));
+                });
+
+                document.querySelectorAll('.btn-margin-preset').forEach(btn => {
+                    // Remove old listeners to prevent duplicates
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.addEventListener('click', () => {
+                        const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                        const idx = newBtn.dataset.preset;
+                        const val = type === 'rate' ? sysSettings[`margin_rate_preset_${idx}`] : sysSettings[`margin_amount_preset_${idx}`];
+                        document.getElementById('export-margin-value').value = val;
+                        // Highlight selected preset
+                        document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
+                        newBtn.classList.add('active');
+                    });
+                });
+
+                // Margin Settings Form Toggle
+                const btnSettings = document.getElementById('btn-export-margin-settings');
+                const formSettings = document.getElementById('export-margin-settings-form');
+                const newBtnSettings = btnSettings.cloneNode(true);
+                btnSettings.parentNode.replaceChild(newBtnSettings, btnSettings);
+                
+                newBtnSettings.addEventListener('click', () => {
+                    const isHidden = formSettings.style.display === 'none';
+                    formSettings.style.display = isHidden ? 'block' : 'none';
+                    if (isHidden) {
+                        const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                        document.getElementById('export-setting-preset-1').value = sysSettings[`margin_${type}_preset_1`] || '';
+                        document.getElementById('export-setting-preset-2').value = sysSettings[`margin_${type}_preset_2`] || '';
+                        document.getElementById('export-setting-preset-3').value = sysSettings[`margin_${type}_preset_3`] || '';
+                    }
+                });
+
+                // Save Margin Settings
+                const btnSaveSettings = document.getElementById('btn-save-margin-presets');
+                const newBtnSaveSettings = btnSaveSettings.cloneNode(true);
+                btnSaveSettings.parentNode.replaceChild(newBtnSaveSettings, btnSaveSettings);
+                
+                newBtnSaveSettings.addEventListener('click', async () => {
+                    const type = document.querySelector('input[name="export_margin_type"]:checked').value;
+                    const v1 = document.getElementById('export-setting-preset-1').value;
+                    const v2 = document.getElementById('export-setting-preset-2').value;
+                    const v3 = document.getElementById('export-setting-preset-3').value;
+                    
+                    const payload = {};
+                    if (v1) payload[`margin_${type}_preset_1`] = v1;
+                    if (v2) payload[`margin_${type}_preset_2`] = v2;
+                    if (v3) payload[`margin_${type}_preset_3`] = v3;
+
+                    try {
+                        newBtnSaveSettings.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+                        await api.updateSystemSettings(payload);
+                        Object.assign(sysSettings, payload);
+                        loadMarginPresets(type);
+                        formSettings.style.display = 'none';
+                    } catch (e) {
+                        alert('설정 저장 실패: ' + e.message);
+                    } finally {
+                        newBtnSaveSettings.innerHTML = '저장';
+                    }
+                });
+
+            } catch (err) {
+                console.error("Failed to load margin settings", err);
+            }
+            // Clear preset highlight when user types custom value
+            document.getElementById('export-margin-value')?.addEventListener('input', () => {
+                document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
+            });
+
+            // Open Modal
+            document.getElementById('export-settings-modal').style.display = 'flex';
         });
     }
-
-    // --- Reusable: Open Export Modal (called from Global SKU → Send to Market) ---
-    window.openExportModal = async function(productIds, selectedMarket, sourceProductList) {
-        currentExportProductIds = productIds;
-        currentExportMarket = selectedMarket;
-
-        // Setup Modal
-        document.getElementById('export-modal-title').innerText = `${selectedMarket.toUpperCase()} 마켓으로 상품 내보내기`;
-        document.getElementById('export-modal-desc').innerText = `선택된 ${productIds.length}개의 상품 옵션(그룹)`;
-
-        // Populate Product Summary Strip
-        const stripProduct = sourceProductList.find(item => item.id === productIds[0]);
-        if (stripProduct) {
-            document.getElementById('export-strip-name-en').textContent = stripProduct.nameEn || stripProduct.nameKo || '—';
-            document.getElementById('export-strip-name-ko').textContent = stripProduct.nameKo || '';
-            const baseMcode = stripProduct.mcode ? stripProduct.mcode.split('-').slice(0, 3).join('-') : stripProduct.mcode;
-            document.getElementById('export-strip-mcode').textContent = baseMcode || '—';
-            document.getElementById('export-strip-cat').textContent = stripProduct.catEn || stripProduct.catKo || '';
-            const optionNames = productIds.map(pid => {
-                const p = sourceProductList.find(x => x.id === pid);
-                return p && p.optionName ? p.optionName : null;
-            }).filter(Boolean);
-            document.getElementById('export-strip-options').textContent = optionNames.length > 0 ? optionNames.join(' / ') : '';
-        }
-        
-        // Pre-fill Original Text
-        const origDescEl = document.getElementById('export-modal-orig-desc');
-        const origNoticeEl = document.getElementById('export-modal-orig-notice');
-        const transDescEl = document.getElementById('export-modal-trans-desc');
-        const transNoticeEl = document.getElementById('export-modal-trans-notice');
-        
-        if (origDescEl && origNoticeEl && transDescEl && transNoticeEl) {
-            const firstProduct = sourceProductList.find(item => item.id === productIds[0]);
-            origDescEl.value = firstProduct ? (firstProduct.description || '') : '';
-            origNoticeEl.value = firstProduct ? (firstProduct.notice || '') : '';
-            transDescEl.value = '';
-            transNoticeEl.value = '';
-            
-            const maxChars = selectedMarket === 'sg' ? 3000 : 5000;
-            transDescEl.dataset.maxChars = maxChars;
-            if (typeof updateExportCharCount === 'function') updateExportCharCount();
-            loadExportNoticeTemplates(selectedMarket);
-        }
-        
-        // Exchange Rate
-        const autoRateText = document.getElementById('export-modal-auto-rate-text');
-        const manualRateInput = document.getElementById('export-modal-manual-rate');
-        const radioAuto = document.querySelector('input[name="export_exrate_type"][value="auto"]');
-        const radioManual = document.querySelector('input[name="export_exrate_type"][value="manual"]');
-
-        if (window.latestExchangeRates && window.latestExchangeRates[selectedMarket]) {
-            const autoRate = window.latestExchangeRates[selectedMarket];
-            autoRateText.innerText = `최신 자동 환율 적용 (1 단위당 ${autoRate} KRW)`;
-            radioAuto.checked = true;
-            radioAuto.disabled = false;
-            manualRateInput.disabled = true;
-            manualRateInput.value = '';
-        } else {
-            autoRateText.innerText = `최신 자동 환율 적용 (정보 없음)`;
-            radioAuto.checked = false;
-            radioAuto.disabled = true;
-            radioManual.checked = true;
-            manualRateInput.disabled = false;
-            manualRateInput.value = '1000';
-        }
-
-        // Load Presets for dropdowns
-        function populateSelect(selectId, dataArr, defaultObj) {
-            const sel = document.getElementById(selectId);
-            sel.innerHTML = '<option value="">미지정</option>' + dataArr.map(p => 
-                `<option value="${p.id}" ${defaultObj && defaultObj.id === p.id ? 'selected' : ''}>${p.name}</option>`
-            ).join('');
-        }
-
-        const mcode = selectedMarket;
-        const marketFeePresets = presets.filter(p => p.market === mcode);
-        const feeDef = marketFeePresets.find(p => p.isDefault) || marketFeePresets[0];
-        populateSelect('export-modal-fee-preset', marketFeePresets, feeDef);
-
-        const marketPromoPresets = promotionPresets.filter(p => p.market === mcode);
-        const promoDef = marketPromoPresets.find(p => p.isDefault) || marketPromoPresets[0];
-        populateSelect('export-modal-promo-preset', marketPromoPresets, promoDef);
-
-        const marketShipPresets = shippingPresets.filter(p => p.market === mcode);
-        const shipDef = marketShipPresets.find(p => p.isDefault) || marketShipPresets[0];
-        populateSelect('export-modal-ship-preset', marketShipPresets, shipDef);
-
-        // Margin Setup
-        try {
-            const sysSettings = await api.getSystemSettings();
-            
-            const loadMarginPresets = (type) => {
-                if (type === 'rate') {
-                    document.getElementById('export-preset-btn-1').innerText = (sysSettings.margin_rate_preset_1 || 10) + '%';
-                    document.getElementById('export-preset-btn-2').innerText = (sysSettings.margin_rate_preset_2 || 30) + '%';
-                    document.getElementById('export-preset-btn-3').innerText = (sysSettings.margin_rate_preset_3 || 40) + '%';
-                    document.getElementById('export-margin-unit').innerText = '%';
-                    document.getElementById('export-margin-value').value = sysSettings.margin_rate_preset_2 || 30;
-                } else {
-                    document.getElementById('export-preset-btn-1').innerText = '₩' + Number(sysSettings.margin_amount_preset_1 || 1000).toLocaleString();
-                    document.getElementById('export-preset-btn-2').innerText = '₩' + Number(sysSettings.margin_amount_preset_2 || 3000).toLocaleString();
-                    document.getElementById('export-preset-btn-3').innerText = '₩' + Number(sysSettings.margin_amount_preset_3 || 5000).toLocaleString();
-                    document.getElementById('export-margin-unit').innerText = '₩';
-                    document.getElementById('export-margin-value').value = sysSettings.margin_amount_preset_2 || 3000;
-                }
-            };
-
-            document.querySelector('input[name="export_margin_type"][value="rate"]').checked = true;
-            loadMarginPresets('rate');
-
-            document.querySelectorAll('input[name="export_margin_type"]').forEach(radio => {
-                radio.addEventListener('change', (e) => loadMarginPresets(e.target.value));
-            });
-
-            document.querySelectorAll('.btn-margin-preset').forEach(btn => {
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                newBtn.addEventListener('click', () => {
-                    const type = document.querySelector('input[name="export_margin_type"]:checked').value;
-                    const idx = newBtn.dataset.preset;
-                    const val = type === 'rate' ? sysSettings[`margin_rate_preset_${idx}`] : sysSettings[`margin_amount_preset_${idx}`];
-                    document.getElementById('export-margin-value').value = val;
-                    document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
-                    newBtn.classList.add('active');
-                });
-            });
-
-            const btnSettings = document.getElementById('btn-export-margin-settings');
-            const formSettings = document.getElementById('export-margin-settings-form');
-            const newBtnSettings = btnSettings.cloneNode(true);
-            btnSettings.parentNode.replaceChild(newBtnSettings, btnSettings);
-            
-            newBtnSettings.addEventListener('click', () => {
-                const isHidden = formSettings.style.display === 'none';
-                formSettings.style.display = isHidden ? 'block' : 'none';
-                if (isHidden) {
-                    const type = document.querySelector('input[name="export_margin_type"]:checked').value;
-                    document.getElementById('export-setting-preset-1').value = sysSettings[`margin_${type}_preset_1`] || '';
-                    document.getElementById('export-setting-preset-2').value = sysSettings[`margin_${type}_preset_2`] || '';
-                    document.getElementById('export-setting-preset-3').value = sysSettings[`margin_${type}_preset_3`] || '';
-                }
-            });
-
-            const btnSaveSettings = document.getElementById('btn-save-margin-presets');
-            const newBtnSaveSettings = btnSaveSettings.cloneNode(true);
-            btnSaveSettings.parentNode.replaceChild(newBtnSaveSettings, btnSaveSettings);
-            
-            newBtnSaveSettings.addEventListener('click', async () => {
-                const type = document.querySelector('input[name="export_margin_type"]:checked').value;
-                const v1 = document.getElementById('export-setting-preset-1').value;
-                const v2 = document.getElementById('export-setting-preset-2').value;
-                const v3 = document.getElementById('export-setting-preset-3').value;
-                
-                const payload = {};
-                if (v1) payload[`margin_${type}_preset_1`] = v1;
-                if (v2) payload[`margin_${type}_preset_2`] = v2;
-                if (v3) payload[`margin_${type}_preset_3`] = v3;
-
-                try {
-                    newBtnSaveSettings.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-                    await api.updateSystemSettings(payload);
-                    Object.assign(sysSettings, payload);
-                    loadMarginPresets(type);
-                    formSettings.style.display = 'none';
-                } catch (e) {
-                    alert('설정 저장 실패: ' + e.message);
-                } finally {
-                    newBtnSaveSettings.innerHTML = '저장';
-                }
-            });
-
-        } catch (err) {
-            console.error("Failed to load margin settings", err);
-        }
-        document.getElementById('export-margin-value')?.addEventListener('input', () => {
-            document.querySelectorAll('.btn-margin-preset').forEach(b => b.classList.remove('active'));
-        });
-
-        // Open Modal
-        document.getElementById('export-settings-modal').style.display = 'flex';
-    };
 
     // Modal Events
     document.querySelectorAll('input[name="export_exrate_type"]').forEach(radio => {
@@ -543,27 +573,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, transDesc, transNotice);
             
-            // Update marketExportsMap with the new export
+            // UI 업데이트: 배지 활성화
             currentExportProductIds.forEach(pid => {
-                if (!marketExportsMap[pid]) marketExportsMap[pid] = [];
-                marketExportsMap[pid].push({ marketCode: currentExportMarket, exportDate: new Date().toISOString().split('T')[0] });
-            });
-
-            // UI 업데이트: Global SKU 테이블 배지 활성화
-            currentExportProductIds.forEach(pid => {
-                const tr = document.querySelector(`#gs-table tr[data-product-id="${pid}"]`);
+                const tr = document.querySelector(`tr[data-product-id="${pid}"]`);
                 if (tr) {
                     const badge = tr.querySelector(`.badge-market[data-market="${currentExportMarket}"]`);
                     if (badge) badge.classList.add('active');
                 }
             });
 
-            // 체크박스 해제 (Global SKU)
-            document.querySelectorAll('#gs-table .gs-row-checkbox').forEach(cb => cb.checked = false);
-            const gsCheckAll = document.getElementById('gs-check-all');
-            if (gsCheckAll) gsCheckAll.checked = false;
-            const gsBulkBar = document.getElementById('gs-bulk-action-bar');
-            if (gsBulkBar) gsBulkBar.classList.remove('active');
+            // 체크박스 해제
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            if (typeof updateBulkActionBar === 'function') updateBulkActionBar();
             
             document.getElementById('export-settings-modal').style.display = 'none';
             alert(`${result.insertedCount}개의 옵션(그룹)이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
@@ -1956,14 +1977,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* --- 4. Product List & Drawer Logic --- */
     let productList = [];
     let marketExportsMap = {}; // { productId: [{marketCode, exportDate}] }
-    
-    // --- Search & Pagination State ---
-    let plCurrentPage = 1, plPageSize = 30;
-    let pcCurrentPage = 1, pcPageSize = 30;
-    let plActiveFilters = []; // [{field, query, logic}]
-    let pcActiveFilters = [];
-    const fieldLabels = { all: '통합검색', mcode: '관리코드', nameEn: '상품명(EN)', nameKo: '상품명(KO)', catEn: '카테고리', note: '비고' };
-    const pcFieldLabels = { all: '통합검색', mcode: 'SKU#', nameEn: '상품명', catEn: '카테고리' };
 
     // API에서 데이터 로드
     try {
@@ -2038,26 +2051,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         const priceUsd = (p.priceKrw / (p.rate || 1)).toFixed(2);
 
-        // Global SKU 전송 상태 확인
+        // 마켓 전송 상태 확인
         const exports = marketExportsMap[p.id] || [];
-        const isInGlobal = exports.some(e => e.marketCode === 'global');
-        const globalBadgeHtml = isInGlobal 
-            ? `<span class="badge-market active" data-market="global" style="font-size: 0.75rem;"><i class="fa-solid fa-check" style="font-size: 0.6rem;"></i> Global</span>`
-            : `<span class="badge-market" data-market="global" style="font-size: 0.75rem;">—</span>`;
+        const exportedMarkets = exports.map(e => e.marketCode);
+        const marketCodes = ['sg','my','tw','th','ph','vn','br','mx'];
+        const badgesHtml = marketCodes.map(code => {
+            const isActive = exportedMarkets.includes(code) ? ' active' : '';
+            return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
+        }).join('\n                            ');
 
         const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
         const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
-        const statusBadge = p.status === 'draft' ? `<span style="background-color: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fed7aa; font-weight: bold; margin-left: 8px;">임시저장</span>` : '';
-        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}${statusBadge}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}${statusBadge}</div>`;
+        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}</div>`;
         const catHtml = parentMcode ? `<div style="opacity: 0.3; font-size: 0.8rem;">(Same as parent)</div>` : `
             <div class="prod-cat-en-1">${catEn1}</div>
             <div class="prod-cat-en-2">${catEn2}</div>
             <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${p.catKo}</div>
         `;
-        const rowOpacity = p.status === 'draft' ? 'opacity: 0.6;' : '';
 
         return `
-            <tr class="product-row" style="cursor: pointer; ${extraStyle} ${rowOpacity}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}" data-parent-mcode="${parentMcode || ''}">
+            <tr class="product-row" style="cursor: pointer; ${extraStyle}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-rate-date="${p.rateDate || ''}" data-parent-mcode="${parentMcode || ''}">
                 <td style="text-align: center;" class="td-checkbox">
                     <input type="checkbox" class="row-checkbox child-checkbox" data-parent-mcode="${parentMcode || ''}" data-id="${p.id}">
                 </td>
@@ -2073,8 +2086,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${nameKoHtml}
                     ${optionBadge}
                 </td>
-                <td style="text-align: center;">
-                    ${globalBadgeHtml}
+                <td>
+                    <div class="market-badges">
+                        <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
+                        ${badgesHtml}
+                    </div>
                 </td>
                 <td class="text-right">
                     <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(p.priceKrw).toLocaleString()}</div>
@@ -2128,11 +2144,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     catEn2 = parts[1];
                 }
 
-                const statusBadge = item.children[0] && item.children[0].status === 'draft' ? `<span style="background-color: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fed7aa; font-weight: bold; margin-left: 8px;">임시저장</span>` : '';
-                const rowOpacity = item.children[0] && item.children[0].status === 'draft' ? 'opacity: 0.6;' : '';
-
                 html += `
-                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest); cursor: pointer; ${rowOpacity}" data-parent-mcode="${item.mcode}">
+                    <tr class="product-parent-row" style="background-color: var(--surface-container-highest); cursor: pointer;" data-parent-mcode="${item.mcode}">
                         <td style="text-align: center;" class="td-checkbox">
                             <input type="checkbox" class="parent-checkbox" data-parent-mcode="${item.mcode}">
                         </td>
@@ -2147,10 +2160,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </td>
                         <td>
                             <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
-                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}${statusBadge}</div>
+                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
                         </td>
-                        <td style="text-align: center;">
-                            <span class="badge-market" data-market="global" style="font-size: 0.75rem;">—</span>
+                        <td>
+                            <div class="market-badges">
+                                <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
+                            </div>
                         </td>
                         <td class="text-right">
                             <div style="font-weight: 600;" class="prod-price-krw">${priceRangeStr}</div>
@@ -2299,7 +2314,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const countNameKo = document.getElementById('count-name-ko');
     const countNameEn = document.getElementById('count-name-en');
     const inputDescription = document.getElementById('input-description');
-    const inputDescKo = document.getElementById('input-desc-ko');
     const inputNoticeContent = document.getElementById('input-notice-content');
     const countDescription = document.getElementById('count-description');
 
@@ -2319,15 +2333,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const btn = document.getElementById('btn-copy-notice');
                 btn.innerHTML = '<i class="fa-solid fa-check" style="font-size: 0.9rem; color: var(--success, #16a34a);"></i>';
                 setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy" style="font-size: 0.9rem;"></i>'; }, 1000);
-            });
-        }
-    });
-    document.getElementById('btn-copy-desc-ko')?.addEventListener('click', () => {
-        if (inputDescKo && inputDescKo.value) {
-            navigator.clipboard.writeText(inputDescKo.value).then(() => {
-                const btn = document.getElementById('btn-copy-desc-ko');
-                btn.innerHTML = '<i class="fa-solid fa-check" style="font-size: 1.1rem; color: var(--success, #16a34a);"></i>';
-                setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy" style="font-size: 1.1rem;"></i>'; }, 1000);
             });
         }
     });
@@ -2359,25 +2364,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (inputNoticeContent && countDescription) {
         inputNoticeContent.addEventListener('input', updateCombinedDescriptionCount);
     }
-
-    // Korean Description Modal Logic
-    const descKoModalOverlay = document.getElementById('desc-ko-modal-overlay');
-    const descKoModal = document.getElementById('desc-ko-modal');
-    
-    function closeDescKoModal() {
-        if(descKoModal) descKoModal.classList.remove('active');
-        if(descKoModalOverlay) descKoModalOverlay.style.display = 'none';
-    }
-
-    document.getElementById('btn-open-desc-ko')?.addEventListener('click', () => {
-        if(descKoModal) descKoModal.classList.add('active');
-        if(descKoModalOverlay) descKoModalOverlay.style.display = 'flex';
-    });
-    
-    document.getElementById('btn-close-desc-ko-modal')?.addEventListener('click', closeDescKoModal);
-    document.getElementById('btn-cancel-desc-ko')?.addEventListener('click', closeDescKoModal);
-    document.getElementById('btn-save-desc-ko')?.addEventListener('click', closeDescKoModal);
-    descKoModalOverlay?.addEventListener('click', closeDescKoModal);
     const inputPriceKrw = document.getElementById('input-price-krw');
     const inputDomesticShipping = document.getElementById('input-domestic-shipping');
     const inputPackagingKrw = document.getElementById('input-packaging-krw');
@@ -2512,9 +2498,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             if (inputDescription) {
                 inputDescription.value = '';
-            }
-            if (inputDescKo) {
-                inputDescKo.value = '';
             }
             updateCombinedDescriptionCount();
             updateMcodePreview();
@@ -3161,74 +3144,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Form Submission (Save Product)
-    async function submitProduct(targetStatus) {
-        let status = targetStatus;
-        if (status === 'active') {
-            const missing = [];
+    if (btnSaveProduct) {
+        btnSaveProduct.addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!addProductForm.checkValidity()) {
+                addProductForm.reportValidity();
+                return;
+            }
+
+            const dateStr = inputDate.value;
+            const mcodeStr = inputMcode.value;
+            const catEn = inputCategoryEn.value;
+            const catKo = inputCategoryKo.value;
+            const nameKo = inputNameKo.value;
+            const nameEn = inputNameEn.value;
+            const priceKrw = inputPriceKrw.value;
+            const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
+            const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
+            const rate = inputRate.value;
+            const rateDate = inputRateDate.value;
+            const weight = inputWeight.value;
+            const link = inputLink.value;
+            const note = inputNote.value;
+            const description = inputDescription ? inputDescription.value : '';
+            const notice = inputNoticeContent ? inputNoticeContent.value : '';
+
+            if (!catEn) {
+                alert("카테고리를 목록에서 올바르게 선택해주세요.");
+                return;
+            }
+
             const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
 
-            if (!inputDate.value) missing.push('작성일자');
-            if (!inputCategoryEn.value) missing.push('카테고리');
-            if (!inputNameKo.value) missing.push('상품명(한글)');
-            if (!inputNameEn.value) missing.push('상품명(영문)');
-            if (!inputRate.value) missing.push('적용환율');
-
-            if (!hasOptions) {
-                if (!inputPriceKrw.value) missing.push('상품매입비(KRW)');
-                if (!inputWeight.value) missing.push('상품무게(g)');
-            } else {
+            // Validate options
+            if (hasOptions) {
                 for (let i = 0; i < currentOptions.length; i++) {
                     if (!currentOptions[i].optionName || !currentOptions[i].optionName.trim()) {
-                        missing.push(`옵션 ${i + 1}의 옵션명`);
-                    }
-                    if (!currentOptions[i].priceKrw) {
-                        missing.push(`옵션 ${i + 1}의 매입비`);
-                    }
-                    if (!currentOptions[i].weight) {
-                        missing.push(`옵션 ${i + 1}의 무게`);
+                        alert(`옵션 ${i + 1}의 옵션명을 입력해주세요.`);
+                        return;
                     }
                 }
             }
-            if (missing.length > 0) {
-                const msg = `다음 필수 항목이 입력되지 않았습니다:\n- ${missing.join('\n- ')}\n\n현재 상태로 임시 저장하시겠습니까?`;
-                if (confirm(msg)) {
-                    status = 'draft';
-                } else {
-                    return;
-                }
-            }
-        }
 
-        const dateStr = inputDate.value;
-        const mcodeStr = inputMcode.value;
-        const catEn = inputCategoryEn.value;
-        const catKo = inputCategoryKo.value;
-        const nameKo = inputNameKo.value;
-        const nameEn = inputNameEn.value;
-        const priceKrw = inputPriceKrw.value;
-        const domesticShipping = inputDomesticShipping ? inputDomesticShipping.value : '3000';
-        const packagingKrw = inputPackagingKrw ? inputPackagingKrw.value : '0';
-        const rate = inputRate.value;
-        const rateDate = inputRateDate.value;
-        const weight = inputWeight.value;
-        const link = inputLink.value;
-        const note = inputNote.value;
-        const description = inputDescription ? inputDescription.value : '';
-        const descKo = inputDescKo ? inputDescKo.value : '';
-        const notice = inputNoticeContent ? inputNoticeContent.value : '';
-
-        const hasOptions = optionToggle && optionToggle.checked && currentOptions.length > 0;
-
-        const baseProductData = {
-            date: dateStr,
-            catEn, catKo, nameKo, nameEn,
-            domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
-            packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
-            rate: parseFloat(rate) || 1,
-            rateDate, weight: parseInt(weight, 10) || 0,
-            link, note, description, descKo, notice, video: currentVideo,
-            status: status
-        };
+            const baseProductData = {
+                date: dateStr,
+                catEn, catKo, nameKo, nameEn,
+                domesticShipping: domesticShipping === '' ? 0 : (parseInt(domesticShipping, 10) || 0),
+                packagingKrw: packagingKrw === '' ? 0 : (parseInt(packagingKrw, 10) || 0),
+                rate: parseFloat(rate) || 1,
+                rateDate, weight: parseInt(weight, 10) || 0,
+                link, note, description, notice, video: currentVideo
+            };
 
             try {
                 if (hasOptions) {
@@ -3329,11 +3295,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (err) {
                 alert('저장 실패: ' + err.message);
             }
-        } // End of submitProduct
-
-        if (btnSaveProduct) btnSaveProduct.addEventListener('click', (e) => { e.preventDefault(); submitProduct('active'); });
-        const btnSaveDraft = document.getElementById('btn-save-draft');
-        if (btnSaveDraft) btnSaveDraft.addEventListener('click', (e) => { e.preventDefault(); submitProduct('draft'); });
+        });
+    }
 
     // Row Click Logic for Editing
     function attachRowClickEvent(row) {
@@ -3391,7 +3354,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputNameKo.value = productObj.nameKo || '';
             inputNameEn.value = productObj.nameEn || '';
             if (inputDescription) inputDescription.value = productObj.description || '';
-            if (inputDescKo) inputDescKo.value = productObj.descKo || '';
             if (inputNoticeContent) inputNoticeContent.value = productObj.notice || '';
             updateCharCount(inputNameKo, countNameKo, 180);
             updateCharCount(inputNameEn, countNameEn, 180);
@@ -5943,54 +5905,192 @@ document.addEventListener('DOMContentLoaded', async () => {
        SEARCH / FILTER / PAGINATION MODULE
        ========================================================================= */
 
-    // Search engine helpers removed as they are now in KngSearchEngine
+    // --- State ---
+    let plCurrentPage = 1, plPageSize = 30;
+    let pcCurrentPage = 1, pcPageSize = 30;
+    let plActiveFilters = []; // [{field, query, logic}]
+    let pcActiveFilters = [];
+
+    // --- Helpers ---
+    const fieldLabels = { all: '통합검색', mcode: '관리코드', nameEn: '상품명(EN)', nameKo: '상품명(KO)', catEn: '카테고리', note: '비고' };
+    const pcFieldLabels = { all: '통합검색', mcode: 'SKU#', nameEn: '상품명', catEn: '카테고리' };
+
+    function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+    function highlightText(text, queries) {
+        if (!text || !queries || queries.length === 0) return text;
+        let result = String(text);
+        queries.forEach(q => {
+            if (!q) return;
+            const regex = new RegExp(`(${escapeRegex(q)})`, 'gi');
+            result = result.replace(regex, '<mark class="si-highlight">$1</mark>');
+        });
+        return result;
+    }
+
+    function matchesCondition(item, field, query) {
+        if (!query) return true;
+        const q = query.toLowerCase();
+        if (field === 'all') {
+            return ['mcode','nameEn','nameKo','catEn','catKo','note','optionName'].some(f => {
+                const val = item[f];
+                return val && String(val).toLowerCase().includes(q);
+            });
+        }
+        const val = item[field];
+        return val && String(val).toLowerCase().includes(q);
+    }
+
+    function matchesGroupConditions(group, filters) {
+        if (!filters || filters.length === 0) return true;
+        const items = group.isVirtualParent ? group.children : [group];
+        // Check if ANY item in the group matches the filter chain
+        return items.some(item => {
+            let result = matchesCondition(item, filters[0].field, filters[0].query);
+            for (let i = 1; i < filters.length; i++) {
+                const f = filters[i];
+                const match = matchesCondition(item, f.field, f.query);
+                if (f.logic === 'AND') result = result && match;
+                else result = result || match;
+            }
+            return result;
+        });
+    }
+
+    function paginateGrouped(groupedData, page, pageSize) {
+        if (pageSize <= 0) return { pageData: groupedData, totalGroups: groupedData.length, totalPages: 1 };
+        const totalGroups = groupedData.length;
+        const totalPages = Math.max(1, Math.ceil(totalGroups / pageSize));
+        const safePage = Math.min(Math.max(1, page), totalPages);
+        const start = (safePage - 1) * pageSize;
+        const end = start + pageSize;
+        return { pageData: groupedData.slice(start, end), totalGroups, totalPages, currentPage: safePage };
+    }
+
+    function renderPaginationHTML(containerId, totalGroups, totalPages, currentPage, pageSize, onPageChange, onPageSizeChange) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        if (totalGroups === 0) { container.innerHTML = ''; return; }
+        const startItem = (currentPage - 1) * pageSize + 1;
+        const endItem = Math.min(currentPage * pageSize, totalGroups);
+
+        let pagesHtml = '';
+        pagesHtml += `<button class="si-page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+        const maxVisible = 5;
+        let startP = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endP = Math.min(totalPages, startP + maxVisible - 1);
+        if (endP - startP < maxVisible - 1) startP = Math.max(1, endP - maxVisible + 1);
+        if (startP > 1) { pagesHtml += `<button class="si-page-btn" data-page="1">1</button>`; if (startP > 2) pagesHtml += `<span class="si-page-ellipsis">…</span>`; }
+        for (let p = startP; p <= endP; p++) {
+            pagesHtml += `<button class="si-page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
+        }
+        if (endP < totalPages) { if (endP < totalPages - 1) pagesHtml += `<span class="si-page-ellipsis">…</span>`; pagesHtml += `<button class="si-page-btn" data-page="${totalPages}">${totalPages}</button>`; }
+        pagesHtml += `<button class="si-page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+
+        container.innerHTML = `
+            <div class="si-pagination-info">전체 <strong>${totalGroups}</strong>건 중 <strong>${startItem}-${endItem}</strong>건 표시</div>
+            <div class="si-pagination-pages">${pagesHtml}</div>
+            <div class="si-pagination-size">페이지당 <select class="si-page-size-select">
+                ${[10,30,50,100,0].map(s => `<option value="${s}" ${s === pageSize ? 'selected' : ''}>${s === 0 ? '전체' : s}</option>`).join('')}
+            </select>건</div>
+        `;
+
+        container.querySelectorAll('.si-page-btn:not(:disabled)').forEach(btn => {
+            btn.addEventListener('click', () => onPageChange(parseInt(btn.dataset.page)));
+        });
+        container.querySelector('.si-page-size-select')?.addEventListener('change', (e) => {
+            onPageSizeChange(parseInt(e.target.value));
+        });
+    }
+
+    // --- Search Bar Logic ---
+    function getConditionsFromBar(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return [];
+        const rows = container.querySelectorAll('.si-condition-row');
+        const conditions = [];
+        rows.forEach((row, idx) => {
+            const field = row.querySelector('[data-role="field"]')?.value || 'all';
+            const query = row.querySelector('[data-role="query"]')?.value?.trim() || '';
+            const logicBtn = row.querySelector('.si-logic-toggle');
+            const logic = idx === 0 ? 'AND' : (logicBtn?.textContent || 'AND');
+            if (query) conditions.push({ field, query, logic });
+        });
+        return conditions;
+    }
+
+    function addConditionRow(containerId, fieldOptions) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const row = document.createElement('div');
+        row.className = 'si-condition-row';
+        const optionsHtml = fieldOptions.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+        row.innerHTML = `
+            <button type="button" class="si-logic-toggle">AND</button>
+            <select class="si-field-select" data-role="field">${optionsHtml}</select>
+            <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+            <button type="button" class="si-btn-remove-row"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        row.querySelector('.si-logic-toggle').addEventListener('click', (e) => {
+            e.target.textContent = e.target.textContent === 'AND' ? 'OR' : 'AND';
+        });
+        row.querySelector('.si-btn-remove-row').addEventListener('click', () => row.remove());
+        // Enter key triggers search
+        row.querySelector('.si-search-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') container.closest('.si-search-bar')?.querySelector('.si-btn-search')?.click();
+        });
+        container.appendChild(row);
+    }
+
+    function renderFilterChips(chipsContainerId, filters, labels, onRemove) {
+        const container = document.getElementById(chipsContainerId);
+        if (!container) return;
+        if (!filters || filters.length === 0) { container.innerHTML = ''; return; }
+        let html = '';
+        filters.forEach((f, idx) => {
+            if (idx > 0) html += `<span class="si-chip-logic">${f.logic}</span>`;
+            html += `<span class="si-chip">${labels[f.field] || f.field}: ${f.query} <button class="si-chip-remove" data-idx="${idx}"><i class="fa-solid fa-xmark"></i></button></span>`;
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('.si-chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => onRemove(parseInt(btn.dataset.idx)));
+        });
+    }
 
     // --- PRODUCT LIST Search + Pagination ---
     const plFieldOptions = [['all','통합검색'],['mcode','관리코드'],['nameEn','상품명(EN)'],['nameKo','상품명(KO)'],['catEn','카테고리'],['note','비고']];
 
     function plApplySearchAndPaginate() {
-        const startDate = document.getElementById('plSearchStartDate')?.value;
-        const endDate = document.getElementById('plSearchEndDate')?.value;
         const allGrouped = groupProductsByParent(productList);
-        
-        let filtered = allGrouped.filter(g => {
-            if (startDate && g.date < startDate) return false;
-            if (endDate && g.date > endDate) return false;
-            return true;
-        });
-
-        filtered = plActiveFilters.length > 0
-            ? filtered.filter(g => KngSearchEngine.matchesGroupConditions(g, plActiveFilters, true, ['mcode','nameEn','nameKo','catEn','catKo','note','optionName']))
-            : filtered;
+        const filtered = plActiveFilters.length > 0
+            ? allGrouped.filter(g => matchesGroupConditions(g, plActiveFilters))
+            : allGrouped;
 
         if (filtered.length === 0 && plActiveFilters.length > 0) {
             const tbody = document.querySelector('#pl-table tbody');
             if (tbody) tbody.innerHTML = `<tr><td colspan="9"><div class="si-no-results"><i class="fa-solid fa-magnifying-glass"></i><div class="si-no-results-text">검색 결과가 없습니다.</div><button class="si-btn-reset" id="pl-reset-from-table">필터 초기화</button></div></td></tr>`;
             document.getElementById('pl-pagination').innerHTML = '';
             document.getElementById('pl-reset-from-table')?.addEventListener('click', plClearSearch);
-            KngSearchEngine.renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
+            renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
             return;
         }
 
         const effectivePageSize = plPageSize === 0 ? filtered.length : plPageSize;
-        const { pageData, totalItems: totalGroups, totalPages, currentPage } = KngSearchEngine.paginateData(filtered, plCurrentPage, effectivePageSize);
+        const { pageData, totalGroups, totalPages, currentPage } = paginateGrouped(filtered, plCurrentPage, effectivePageSize);
         plCurrentPage = currentPage;
 
-        const countDisplay = document.getElementById('pl-total-count-display');
-        if (countDisplay) countDisplay.textContent = totalGroups;
-
         renderProductListTable(pageData);
-        KngSearchEngine.renderPaginationHTML('pl-pagination', totalGroups, totalPages, plCurrentPage, plPageSize,
+        renderPaginationHTML('pl-pagination', totalGroups, totalPages, plCurrentPage, plPageSize,
             (page) => { plCurrentPage = page; plApplySearchAndPaginate(); },
             (size) => { plPageSize = size; plCurrentPage = 1; plApplySearchAndPaginate(); }
         );
-        KngSearchEngine.renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
+        renderFilterChips('pl-filter-chips', plActiveFilters, fieldLabels, (idx) => { plActiveFilters.splice(idx, 1); plCurrentPage = 1; plApplySearchAndPaginate(); });
 
         // Apply text highlight
         if (plActiveFilters.length > 0) {
             const queries = plActiveFilters.map(f => f.query).filter(Boolean);
             document.querySelectorAll('#pl-table tbody .prod-mcode, #pl-table tbody .prod-name-en, #pl-table tbody .prod-name-ko, #pl-table tbody .prod-cat-en-1, #pl-table tbody .prod-cat-en-2, #pl-table tbody .prod-cat-ko, #pl-table tbody .prod-note').forEach(el => {
-                el.innerHTML = KngSearchEngine.highlightText(el.textContent, queries);
+                el.innerHTML = highlightText(el.textContent, queries);
             });
         }
     }
@@ -5998,10 +6098,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     function plClearSearch() {
         plActiveFilters = [];
         plCurrentPage = 1;
-        const sd = document.getElementById('plSearchStartDate');
-        const ed = document.getElementById('plSearchEndDate');
-        if (sd) sd.value = '';
-        if (ed) ed.value = '';
         const container = document.getElementById('pl-search-conditions');
         if (container) {
             container.innerHTML = '';
@@ -6015,8 +6111,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Product List search event listeners
-    document.getElementById('plSearchStartDate')?.addEventListener('change', () => { plCurrentPage = 1; plApplySearchAndPaginate(); });
-    document.getElementById('plSearchEndDate')?.addEventListener('change', () => { plCurrentPage = 1; plApplySearchAndPaginate(); });
     document.getElementById('pl-add-condition')?.addEventListener('click', () => addConditionRow('pl-search-conditions', plFieldOptions));
     document.getElementById('pl-clear-search')?.addEventListener('click', plClearSearch);
     document.getElementById('pl-do-search')?.addEventListener('click', () => {
@@ -6102,17 +6196,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             catEn: g.rows[r]?.querySelector('.pc-cat')?.textContent || ''
                         };
                         // If any child matches, include the group
-                        let childMatch = KngSearchEngine.matchesCondition(childItem, pcActiveFilters[0].field, pcActiveFilters[0].query, ['mcode','nameEn','catEn']);
+                        let childMatch = matchesCondition(childItem, pcActiveFilters[0].field, pcActiveFilters[0].query);
                         for (let f = 1; f < pcActiveFilters.length; f++) {
-                            const fm = KngSearchEngine.matchesCondition(childItem, pcActiveFilters[f].field, pcActiveFilters[f].query, ['mcode','nameEn','catEn']);
+                            const fm = matchesCondition(childItem, pcActiveFilters[f].field, pcActiveFilters[f].query);
                             childMatch = pcActiveFilters[f].logic === 'AND' ? childMatch && fm : childMatch || fm;
                         }
                         if (childMatch) return true;
                     }
                 }
-                let result = KngSearchEngine.matchesCondition(item, pcActiveFilters[0].field, pcActiveFilters[0].query, ['mcode','nameEn','catEn']);
+                let result = matchesCondition(item, pcActiveFilters[0].field, pcActiveFilters[0].query);
                 for (let f = 1; f < pcActiveFilters.length; f++) {
-                    const fm = KngSearchEngine.matchesCondition(item, pcActiveFilters[f].field, pcActiveFilters[f].query, ['mcode','nameEn','catEn']);
+                    const fm = matchesCondition(item, pcActiveFilters[f].field, pcActiveFilters[f].query);
                     result = pcActiveFilters[f].logic === 'AND' ? result && fm : result || fm;
                 }
                 return result;
@@ -6122,10 +6216,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Show/hide rows based on filter + pagination
         const effectivePageSize = pcPageSize === 0 ? filteredGroups.length : pcPageSize;
         const totalGroups = filteredGroups.length;
-        
-        const countDisplay = document.getElementById('pc-total-count-display');
-        if (countDisplay) countDisplay.textContent = totalGroups;
-
         const totalPages = Math.max(1, Math.ceil(totalGroups / effectivePageSize));
         pcCurrentPage = Math.min(Math.max(1, pcCurrentPage), totalPages);
         const startIdx = (pcCurrentPage - 1) * effectivePageSize;
@@ -6143,25 +6233,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('pc-reset-from-table')?.addEventListener('click', () => { pcActiveFilters = []; pcCurrentPage = 1; pcApplyPagination(); });
         }
 
-        KngSearchEngine.renderPaginationHTML('pc-pagination', totalGroups, totalPages, pcCurrentPage, pcPageSize,
+        renderPaginationHTML('pc-pagination', totalGroups, totalPages, pcCurrentPage, pcPageSize,
             (page) => { pcCurrentPage = page; pcApplyPagination(); },
             (size) => { pcPageSize = size; pcCurrentPage = 1; pcApplyPagination(); }
         );
-        KngSearchEngine.renderFilterChips('pc-filter-chips', pcActiveFilters, pcFieldLabels, (idx) => { pcActiveFilters.splice(idx, 1); pcCurrentPage = 1; pcApplyPagination(); });
+        renderFilterChips('pc-filter-chips', pcActiveFilters, pcFieldLabels, (idx) => { pcActiveFilters.splice(idx, 1); pcCurrentPage = 1; pcApplyPagination(); });
 
         // Apply highlight
         if (pcActiveFilters.length > 0) {
             const queries = pcActiveFilters.map(f => f.query).filter(Boolean);
             pageGroups.forEach(g => g.rows.forEach(r => {
                 r.querySelectorAll('.pc-mcode, .pc-name-en, .pc-name, .pc-cat').forEach(el => {
-                    el.innerHTML = KngSearchEngine.highlightText(el.textContent, queries);
+                    el.innerHTML = highlightText(el.textContent, queries);
                 });
             }));
         }
     }
 
     // Price Calc search event listeners
-    document.getElementById('pc-add-condition')?.addEventListener('click', () => KngSearchEngine.addConditionRow('pc-search-conditions', pcFieldOptions));
+    document.getElementById('pc-add-condition')?.addEventListener('click', () => addConditionRow('pc-search-conditions', pcFieldOptions));
     document.getElementById('pc-clear-search')?.addEventListener('click', () => {
         pcActiveFilters = [];
         pcCurrentPage = 1;
@@ -6177,7 +6267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         pcApplyPagination();
     });
     document.getElementById('pc-do-search')?.addEventListener('click', () => {
-        pcActiveFilters = KngSearchEngine.getConditionsFromBar('pc-search-conditions');
+        pcActiveFilters = getConditionsFromBar('pc-search-conditions');
         pcCurrentPage = 1;
         pcApplyPagination();
     });
@@ -6186,393 +6276,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // --- Override initial render to use pagination ---
+    // Replace the initial call to renderProductListTable
+    // The original is called during init; we intercept it after data loads
     const _origPlRender = renderProductListTable;
+    // We need to call plApplySearchAndPaginate on first load
     setTimeout(() => {
         if (productList.length > 0) plApplySearchAndPaginate();
     }, 100);
 
-    // ==========================================
-    // GLOBAL SKU MODULE
-    // ==========================================
-    let gsCurrentPage = 1, gsPageSize = 30;
-    let gsActiveFilters = [];
-    const gsFieldLabels = { all: '통합검색', mcode: '관리코드', nameEn: '상품명(EN)', nameKo: '상품명(KO)', catEn: '카테고리', note: '비고' };
-    const gsFieldOptions = [['all','통합검색'],['mcode','관리코드'],['nameEn','상품명(EN)'],['nameKo','상품명(KO)'],['catEn','카테고리'],['note','비고']];
-
-    // Load Global SKU data from API
-    async function loadGlobalSkuData() {
-        try {
-            const data = await api.getMarketExports('global');
-            globalSkuList = data || [];
-            console.log(`[GS] ${globalSkuList.length}개 Global SKU 로드 완료`);
-            renderGlobalSkuTable();
-        } catch (err) {
-            console.error('[GS] Global SKU 로드 실패:', err.message);
-            globalSkuList = [];
-        }
-    }
-
-    // Render Global SKU row (similar to renderSingleProductRow but with country badges)
-    function renderGsRow(p, extraStyle, parentMcode) {
-        let catEn1 = p.catEn || '';
-        let catEn2 = '';
-        if (catEn1 && catEn1.includes(' > ')) {
-            const parts = catEn1.split(' > ');
-            catEn1 = parts[0] + ' >';
-            catEn2 = parts[1];
-        }
-        const priceUsd = (p.priceKrw / (p.rate || 1)).toFixed(2);
-
-        // 국가별 마켓 전송 상태 (Global SKU에서는 country badges 표시)
-        const exports = marketExportsMap[p.id] || [];
-        const exportedMarkets = exports.map(e => e.marketCode);
-        const marketCodes = ['sg','my','tw','th','ph','vn','br','mx'];
-        const badgesHtml = marketCodes.map(code => {
-            const isActive = exportedMarkets.includes(code) ? ' active' : '';
-            return `<span class="badge-market${isActive}" data-market="${code}">${code.toUpperCase()}</span>`;
-        }).join('\n                            ');
-
-        const optionBadge = p.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${p.optionName}</div>` : '';
-        const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="prod-name-en">${p.nameEn}</div>` : `<div style="font-weight: 600;" class="prod-name-en">${p.nameEn}</div>`;
-        const statusBadge = p.status === 'draft' ? `<span style="background-color: #fff7ed; color: #c2410c; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; border: 1px solid #fed7aa; font-weight: bold; margin-left: 8px;">임시저장</span>` : '';
-        const nameKoHtml = parentMcode ? `<div class="body-sm text-secondary prod-name-ko" style="opacity: 0.5;">${p.nameKo}${statusBadge}</div>` : `<div class="body-sm text-secondary prod-name-ko">${p.nameKo}${statusBadge}</div>`;
-        const catHtml = parentMcode ? `<div style="opacity: 0.3; font-size: 0.8rem;">(Same as parent)</div>` : `
-            <div class="prod-cat-en-1">${catEn1}</div>
-            <div class="prod-cat-en-2">${catEn2}</div>
-            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${p.catKo}</div>
-        `;
-
-        return `
-            <tr class="product-row gs-product-row" style="cursor: pointer; ${extraStyle}" data-mcode="${p.mcode}" data-product-id="${p.id}" data-parent-mcode="${parentMcode || ''}">
-                <td style="text-align: center;" class="td-checkbox">
-                    <input type="checkbox" class="gs-row-checkbox gs-child-checkbox" data-parent-mcode="${parentMcode || ''}" data-id="${p.id}">
-                </td>
-                <td>
-                    <div style="font-weight: 600; ${parentMcode ? 'opacity:0.5;' : ''}" class="prod-date">${p.date}</div>
-                    <div class="body-sm text-secondary prod-mcode">${p.mcode}</div>
-                </td>
-                <td data-cat-en="${escapeHtmlAttr(p.catEn)}" data-cat-ko="${escapeHtmlAttr(p.catKo)}">
-                    ${catHtml}
-                </td>
-                <td>
-                    ${nameEnHtml}
-                    ${nameKoHtml}
-                    ${optionBadge}
-                </td>
-                <td>
-                    <div class="market-badges">
-                        <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
-                        ${badgesHtml}
-                    </div>
-                </td>
-                <td class="text-right">
-                    <div style="font-weight: 600;" class="prod-price-krw">KRW ${Number(p.priceKrw).toLocaleString()}</div>
-                    <div class="body-sm text-secondary prod-price-usd">USD ${priceUsd}</div>
-                </td>
-                <td class="text-right">
-                    <div class="prod-rate">${p.rate}</div>
-                    <div class="body-sm text-secondary prod-weight">${p.weight}g</div>
-                </td>
-                <td>
-                    <div><a href="${p.link || '#'}" class="link-btn prod-link" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.link ? '링크' : '-'}</a></div>
-                </td>
-                <td>
-                    <div class="body-sm text-secondary prod-note">${p.note || '-'}</div>
-                </td>
-            </tr>
-        `;
-    }
-
-    function renderGlobalSkuTable(filteredGrouped) {
-        if (!filteredGrouped && typeof gsApplySearchAndPaginate === 'function') {
-            gsApplySearchAndPaginate();
-            return;
-        }
-        const tbody = document.querySelector('#gs-table tbody');
-        if (!tbody) return;
-
-        if (globalSkuList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-disabled);">Global SKU에 등록된 상품이 없습니다.</td></tr>';
-            const pag = document.getElementById('gs-pagination');
-            if (pag) pag.innerHTML = '';
-            return;
-        }
-
-        const groupedData = filteredGrouped || groupProductsByParent(globalSkuList);
-
-        let html = '';
-        groupedData.forEach(item => {
-            if (item.isVirtualParent) {
-                let minPrice = Math.min(...item.children.map(c => c.priceKrw));
-                let maxPrice = Math.max(...item.children.map(c => c.priceKrw));
-                let priceRangeStr = minPrice === maxPrice ? `KRW ${minPrice.toLocaleString()}` : `KRW ${minPrice.toLocaleString()} ~ ${maxPrice.toLocaleString()}`;
-                
-                let catEn1 = item.catEn || '';
-                let catEn2 = '';
-                if (catEn1 && catEn1.includes(' > ')) {
-                    const parts = catEn1.split(' > ');
-                    catEn1 = parts[0] + ' >';
-                    catEn2 = parts[1];
-                }
-
-                html += `
-                    <tr class="product-parent-row gs-product-row" style="background-color: var(--surface-container-highest); cursor: pointer;" data-parent-mcode="${item.mcode}">
-                        <td style="text-align: center;" class="td-checkbox">
-                            <input type="checkbox" class="gs-parent-checkbox" data-parent-mcode="${item.mcode}">
-                        </td>
-                        <td>
-                            <div style="font-weight: 600;" class="prod-date">${item.date}</div>
-                            <div class="body-sm text-secondary prod-mcode">${item.mcode} <span style="font-size:0.75rem; background:var(--primary); color:white; padding:2px 4px; border-radius:4px; margin-left:4px;">Group</span></div>
-                        </td>
-                        <td>
-                            <div class="prod-cat-en-1">${catEn1}</div>
-                            <div class="prod-cat-en-2">${catEn2}</div>
-                            <div class="body-sm text-secondary prod-cat-ko" style="margin-top: 4px;">${item.catKo}</div>
-                        </td>
-                        <td>
-                            <div style="font-weight: 600;" class="prod-name-en">${item.nameEn}</div>
-                            <div class="body-sm text-secondary prod-name-ko">${item.nameKo}</div>
-                        </td>
-                        <td>
-                            <div class="market-badges">
-                                <span class="badge-empty" style="color: var(--text-disabled); font-size: 0.875rem; padding: 4px;">-</span>
-                            </div>
-                        </td>
-                        <td class="text-right">
-                            <div style="font-weight: 600;" class="prod-price-krw">${priceRangeStr}</div>
-                        </td>
-                        <td class="text-right">
-                            <div class="body-sm text-secondary prod-weight">(${item.children.length} Options)</div>
-                        </td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                `;
-
-                item.children.forEach((c, idx) => {
-                    const isLast = idx === item.children.length - 1;
-                    const borderStyle = isLast ? 'border-left: 3px solid var(--primary); border-bottom-left-radius: 4px; background-color: var(--surface);' : 'border-left: 3px solid var(--primary); background-color: var(--surface);';
-                    html += renderGsRow(c, borderStyle, item.mcode);
-                });
-            } else {
-                html += renderGsRow(item, '', '');
-            }
-        });
-
-        tbody.innerHTML = html;
-
-        // Attach hierarchical checkbox events for GS
-        document.querySelectorAll('.gs-parent-checkbox').forEach(pcb => {
-            pcb.addEventListener('change', (e) => {
-                const parentMcode = pcb.dataset.parentMcode;
-                document.querySelectorAll(`.gs-child-checkbox[data-parent-mcode="${parentMcode}"]`).forEach(cb => {
-                    cb.checked = e.target.checked;
-                });
-                updateGsBulkActionBar();
-            });
-        });
-        document.querySelectorAll('.gs-child-checkbox').forEach(cb => {
-            cb.addEventListener('change', () => updateGsBulkActionBar());
-        });
-    }
-
-    // Global SKU Bulk Action Bar
-    function updateGsBulkActionBar() {
-        const bar = document.getElementById('gs-bulk-action-bar');
-        const countEl = document.getElementById('gs-bulk-count');
-        if (!bar || !countEl) return;
-
-        const checkedBoxes = document.querySelectorAll('.gs-row-checkbox:checked, .gs-child-checkbox:checked');
-        const count = checkedBoxes.length;
-        countEl.innerText = count;
-
-        if (count > 0) {
-            bar.classList.add('active');
-        } else {
-            bar.classList.remove('active');
-        }
-
-        const gsCheckAll = document.getElementById('gs-check-all');
-        const allBoxes = document.querySelectorAll('.gs-row-checkbox, .gs-child-checkbox');
-        if (gsCheckAll) {
-            gsCheckAll.checked = count > 0 && count === allBoxes.length;
-            gsCheckAll.indeterminate = count > 0 && count < allBoxes.length;
-        }
-    }
-
-    // Check All for Global SKU
-    document.getElementById('gs-check-all')?.addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        document.querySelectorAll('.gs-row-checkbox, .gs-child-checkbox, .gs-parent-checkbox').forEach(cb => {
-            cb.checked = isChecked;
-        });
-        updateGsBulkActionBar();
-    });
-
-    // Global SKU → Send to Market (opens Export Modal)
-    document.getElementById('gs-btn-export-market')?.addEventListener('click', async () => {
-        const selectedMarket = document.getElementById('gs-export-market-select').value;
-        const checkedBoxes = document.querySelectorAll('.gs-child-checkbox:checked, .gs-row-checkbox:checked');
-        
-        if (checkedBoxes.length === 0) return;
-
-        // Collect product IDs and validate
-        const productIds = [];
-        const selectedBaseMcodes = new Set();
-        let alreadyExported = false;
-
-        checkedBoxes.forEach(cb => {
-            const row = cb.closest('tr');
-            if (row && row.dataset.productId) {
-                const pid = row.dataset.productId;
-                productIds.push(pid);
-                
-                const p = globalSkuList.find(item => item.id === pid);
-                if (p) selectedBaseMcodes.add(getBaseMcode(p.mcode));
-                
-                const exports = marketExportsMap[pid] || [];
-                if (exports.some(e => e.marketCode === selectedMarket)) {
-                    alreadyExported = true;
-                }
-            }
-        });
-
-        if (selectedBaseMcodes.size > 1) {
-            alert('서로 다른 상품을 동시에 내보낼 수 없습니다.\n단일 상품(또는 동일 그룹의 옵션들)만 선택해주세요.');
-            return;
-        }
-
-        if (alreadyExported) {
-            alert(`이미 ${selectedMarket.toUpperCase()} 마켓으로 내보내진 상품이 포함되어 있습니다.\n중복 전송은 불가능합니다.`);
-            return;
-        }
-
-        // Open Export Modal with Global SKU data as source
-        window.openExportModal(productIds, selectedMarket, globalSkuList);
-    });
-
-    // Global SKU → Bulk Delete (remove from Global SKU only)
-    document.getElementById('gs-btn-delete-bulk')?.addEventListener('click', async () => {
-        const checked = document.querySelectorAll('.gs-child-checkbox:checked, .gs-row-checkbox:checked');
-        if (checked.length === 0) return;
-        if (!confirm(`${checked.length}개 상품을 Global SKU에서 제거하시겠습니까?\n(원본 상품은 Product List에 유지됩니다.)`)) return;
-
-        const idsToDelete = [];
-        checked.forEach(cb => {
-            const row = cb.closest('tr[data-product-id]');
-            if (row) {
-                const pid = row.dataset.productId;
-                idsToDelete.push(`ME-${pid}-global`);
-            }
-        });
-
-        try {
-            for (const id of idsToDelete) {
-                await api.cancelMarketExport(id);
-            }
-            // Update local state
-            checked.forEach(cb => {
-                const row = cb.closest('tr[data-product-id]');
-                if (row) {
-                    const pid = row.dataset.productId;
-                    if (marketExportsMap[pid]) {
-                        marketExportsMap[pid] = marketExportsMap[pid].filter(e => e.marketCode !== 'global');
-                    }
-                }
-            });
-            // Reload
-            await loadGlobalSkuData();
-            renderProductListTable(); // Update PL badges
-            updateGsBulkActionBar();
-        } catch (err) {
-            alert('삭제 실패: ' + err.message);
-        }
-    });
-
-    // --- Global SKU Search & Pagination ---
-    function gsApplySearchAndPaginate() {
-        const allGrouped = groupProductsByParent(globalSkuList);
-        const filtered = KngSearchEngine.filterGroupedData(allGrouped, gsActiveFilters, {
-            all: (g) => {
-                const r = g.isVirtualParent ? g : g;
-                return [r.mcode||'', r.nameEn||'', r.nameKo||'', r.catEn||'', r.note||''].join(' ');
-            },
-            mcode: g => g.mcode||'',
-            nameEn: g => g.nameEn||'',
-            nameKo: g => g.nameKo||'',
-            catEn: g => g.catEn||'',
-            note: g => g.note||''
-        });
-
-        const effectivePageSize = gsPageSize === 0 ? filtered.length : gsPageSize;
-
-        if (filtered.length === 0 && gsActiveFilters.length > 0) {
-            const tbody = document.querySelector('#gs-table tbody');
-            if (tbody) tbody.innerHTML = `<tr><td colspan="9"><div class="si-no-results"><i class="fa-solid fa-magnifying-glass"></i><div class="si-no-results-text">검색 결과가 없습니다.</div><button class="si-btn-reset" id="gs-reset-from-table">필터 초기화</button></div></td></tr>`;
-            document.getElementById('gs-reset-from-table')?.addEventListener('click', () => { gsActiveFilters = []; gsCurrentPage = 1; gsApplySearchAndPaginate(); });
-            const countDisplay = document.getElementById('gs-total-count-display');
-            if (countDisplay) countDisplay.textContent = 0;
-            return;
-        }
-
-        const { pageData, totalItems: totalGroups, totalPages, currentPage } = KngSearchEngine.paginateData(filtered, gsCurrentPage, effectivePageSize);
-        gsCurrentPage = currentPage;
-
-        const countDisplay = document.getElementById('gs-total-count-display');
-        if (countDisplay) countDisplay.textContent = totalGroups;
-
-        renderGlobalSkuTable(pageData);
-
-        KngSearchEngine.renderPaginationHTML('gs-pagination', totalGroups, totalPages, gsCurrentPage, gsPageSize,
-            (page) => { gsCurrentPage = page; gsApplySearchAndPaginate(); },
-            (size) => { gsPageSize = size; gsCurrentPage = 1; gsApplySearchAndPaginate(); }
-        );
-        KngSearchEngine.renderFilterChips('gs-filter-chips', gsActiveFilters, gsFieldLabels, (idx) => { gsActiveFilters.splice(idx, 1); gsCurrentPage = 1; gsApplySearchAndPaginate(); });
-    }
-
-    // GS Search event listeners
-    document.getElementById('gs-add-condition')?.addEventListener('click', () => KngSearchEngine.addConditionRow('gs-search-conditions', gsFieldOptions));
-    document.getElementById('gs-clear-search')?.addEventListener('click', () => {
-        gsActiveFilters = [];
-        gsCurrentPage = 1;
-        const container = document.getElementById('gs-search-conditions');
-        if (container) {
-            container.innerHTML = '';
-            const row = document.createElement('div');
-            row.className = 'si-condition-row';
-            row.innerHTML = `<select class="si-field-select" data-role="field">${gsFieldOptions.map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}</select><input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">`;
-            row.querySelector('.si-search-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gs-do-search')?.click(); });
-            container.appendChild(row);
-        }
-        gsApplySearchAndPaginate();
-    });
-    document.getElementById('gs-do-search')?.addEventListener('click', () => {
-        gsActiveFilters = KngSearchEngine.getConditionsFromBar('gs-search-conditions');
-        gsCurrentPage = 1;
-        gsApplySearchAndPaginate();
-    });
-    document.querySelector('#gs-search-conditions .si-search-input')?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') document.getElementById('gs-do-search')?.click();
-    });
-
-    // Nav hook: when Global SKU view becomes active, load data
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const viewId = item.getAttribute('data-view');
-            if (viewId === 'global-sku') {
-                loadGlobalSkuData();
-            }
-        });
-    });
-
-    // Also clear GS bulk bar when switching views (add to the existing nav handler)
-    const origNavClearHandler = navItems;
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const gsBulkBar = document.getElementById('gs-bulk-action-bar');
-            if (gsBulkBar) gsBulkBar.classList.remove('active');
-            document.querySelectorAll('.gs-row-checkbox, .gs-child-checkbox, .gs-parent-checkbox').forEach(cb => cb.checked = false);
-        });
-    });
-
-});
+}
+run().catch(console.error);
