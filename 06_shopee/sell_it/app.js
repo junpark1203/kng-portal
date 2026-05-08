@@ -2380,12 +2380,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     function closeDescKoModal() {
         if(descKoModal) descKoModal.classList.remove('active');
-        if(descKoModalOverlay) descKoModalOverlay.classList.remove('active');
+        if(descKoModalOverlay) descKoModalOverlay.style.display = 'none';
     }
 
     document.getElementById('btn-open-desc-ko')?.addEventListener('click', () => {
         if(descKoModal) descKoModal.classList.add('active');
-        if(descKoModalOverlay) descKoModalOverlay.classList.add('active');
+        if(descKoModalOverlay) descKoModalOverlay.style.display = 'flex';
     });
     
     document.getElementById('btn-close-desc-ko-modal')?.addEventListener('click', closeDescKoModal);
