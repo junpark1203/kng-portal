@@ -8,6 +8,40 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./styles.css?v=2">
     <link rel="stylesheet" href="../../Common/css/search-engine.css">
+    <!-- ERROR CATCHER FOR DEBUGGING -->
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.right = '10px';
+            errDiv.style.padding = '15px';
+            errDiv.style.background = 'red';
+            errDiv.style.color = 'white';
+            errDiv.style.zIndex = '999999';
+            errDiv.style.whiteSpace = 'pre-wrap';
+            errDiv.style.fontSize = '14px';
+            errDiv.innerHTML = '<b>JS ERROR DETECTED:</b><br>' + message + '<br>' + source + ':' + lineno + ':' + colno + '<br>' + (error && error.stack ? error.stack : '');
+            if(document.body) { document.body.appendChild(errDiv); } else { window.addEventListener('DOMContentLoaded', () => document.body.appendChild(errDiv)); }
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed';
+            errDiv.style.bottom = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.right = '10px';
+            errDiv.style.padding = '15px';
+            errDiv.style.background = 'orange';
+            errDiv.style.color = 'black';
+            errDiv.style.zIndex = '999999';
+            errDiv.style.whiteSpace = 'pre-wrap';
+            errDiv.style.fontSize = '14px';
+            errDiv.innerHTML = '<b>UNHANDLED PROMISE REJECTION:</b><br>' + (event.reason && event.reason.stack ? event.reason.stack : event.reason);
+            if(document.body) { document.body.appendChild(errDiv); } else { window.addEventListener('DOMContentLoaded', () => document.body.appendChild(errDiv)); }
+        });
+    </script>
 </head>
 <body>
     <div id="app-container">
@@ -1592,7 +1626,7 @@
         </div>
     </div>
 
-    <script src="../../Common/js/search-engine.js?v=16"></script>
-    <script src="app.js?v=16"></script>
+    <script src="../../Common/js/search-engine.js?v=17"></script>
+    <script src="app.js?v=17"></script>
 </body>
 </html>
