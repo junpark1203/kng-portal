@@ -157,7 +157,21 @@ html {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 1rem;
+  padding: 0 1rem 1.5rem 1rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Subtle scrollbar for sidebar */
+.nav-links::-webkit-scrollbar {
+  width: 4px;
+}
+.nav-links::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nav-links::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 4px;
 }
 
 .nav-item a {
