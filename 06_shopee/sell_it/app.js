@@ -1852,6 +1852,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('settings-preset-form-title').innerText = `${marketCode.toUpperCase()} 새 프리셋 만들기`;
                 document.getElementById('settings-promotion-form-title').innerText = `${marketCode.toUpperCase()} 새 프로모션 만들기`;
                 document.getElementById('settings-shipping-form-title').innerText = `${marketCode.toUpperCase()} 새 배송비 요율 만들기`;
+                
+                // Update currency labels dynamically
+                const curMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+                const marketCurr = curMap[marketCode] || 'SGD';
+                document.querySelectorAll('.settings-currency-label').forEach(el => el.innerText = marketCurr);
+                
                 targetViewElement.classList.add('active');
                 if (typeof renderSettingsPresetTable === 'function') {
                     renderSettingsPresetTable();
@@ -4099,12 +4105,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        const curMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+        const marketCurr = curMap[currentMarketContext] || 'SGD';
+
         tbody.innerHTML = marketPresets.map(p => `
             <tr>
                 <td><div style="font-weight: 600;">${p.name}</div></td>
                 <td>
                     <div class="body-sm text-secondary">
-                        할인 ${p.settings.discountRate || 0}% · 조정 ${p.settings.adjustmentRate || 100}% | Voucher: ${p.settings.voucher}% | FSP+CCB: ${p.settings.fspCcb}% | FreeShip: SGD ${p.settings.freeShipThreshold}
+                        할인 ${p.settings.discountRate || 0}% · 조정 ${p.settings.adjustmentRate || 100}% | Voucher: ${p.settings.voucher}% | FSP+CCB: ${p.settings.fspCcb}% | FreeShip: ${marketCurr} ${p.settings.freeShipThreshold || 0}
                     </div>
                 </td>
                 <td style="text-align: center;">
@@ -4366,11 +4375,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /* --- Shipping Rate Tester Logic --- */
     function calculateShippingTest() {
+        const curMap = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' };
+        const marketCurr = curMap[currentMarketContext] || 'SGD';
         const weightStr = document.getElementById('settings-shipping-test-weight')?.value;
         if (!weightStr) {
-            document.getElementById('test-total-fee').innerText = `SGD 0.00`;
-            document.getElementById('test-rebate').innerText = `- SGD 0.00`;
-            document.getElementById('test-seller-borne').innerText = `SGD 0.00`;
+            document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> 0.00`;
+            document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> 0.00`;
+            document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> 0.00`;
             return;
         }
 
@@ -4396,11 +4407,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalFee = tier3Base + (units * tier3Add);
         }
 
-        document.getElementById('test-total-fee').innerText = `SGD ${totalFee.toFixed(2)}`;
-        document.getElementById('test-rebate').innerText = `- SGD ${rebate.toFixed(2)}`;
+        document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${totalFee.toFixed(2)}`;
+        document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${rebate.toFixed(2)}`;
         
         const sellerBorne = totalFee - rebate;
-        document.getElementById('test-seller-borne').innerText = `SGD ${sellerBorne.toFixed(2)}`;
+        document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${sellerBorne.toFixed(2)}`;
     }
 
     document.getElementById('settings-shipping-test-weight')?.addEventListener('input', calculateShippingTest);
