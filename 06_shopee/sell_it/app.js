@@ -547,6 +547,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // Price Calc expects Local/KRW, but appliedRate is KRW/Local
+        const dbRate = 1 / appliedRate;
+
         const feeId = document.getElementById('export-modal-fee-preset').value || null;
         const promoId = document.getElementById('export-modal-promo-preset').value || null;
         const shipId = document.getElementById('export-modal-ship-preset').value || null;
@@ -569,7 +572,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
 
         try {
-            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, appliedRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, transDesc, transNotice);
+            const result = await api.exportToMarket(currentExportProductIds, currentExportMarket, dbRate, feeId, promoId, shipId, targetMarginType, targetMarginValue, transDesc, transNotice);
             
             // Update marketExportsMap with the new export
             currentExportProductIds.forEach(pid => {

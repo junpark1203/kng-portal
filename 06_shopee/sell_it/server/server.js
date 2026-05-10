@@ -447,9 +447,13 @@ function fetchExchangeRates() {
                     const newRates = {};
                     for (const [market, currency] of Object.entries(marketCurrencyMap)) {
                         if (data.rates[currency]) {
-                            newRates[market] = Number((1 / data.rates[currency]).toFixed(2));
+                            // UI & Market Analysis expects KRW / Local
+                            newRates[market] = 1 / data.rates[currency];
+                            // Price Calc expects Local / KRW
+                            newRates[currency] = data.rates[currency];
                         }
                     }
+                    if (data.rates['USD']) newRates['usd'] = 1 / data.rates['USD'];
                     cachedExchangeRates = newRates;
                     console.log('[Cron] Exchange rates updated successfully.');
                 }
