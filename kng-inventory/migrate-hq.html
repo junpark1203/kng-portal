@@ -21,6 +21,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -33,6 +34,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
 
         const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -43,10 +45,18 @@
         const log = msg => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
 
         document.getElementById('startBtn').addEventListener('click', async function() {
+            const email = prompt("Firebase 읽기 권한을 위해 K&G 관리자 이메일을 입력하세요:", "admin@kng.com");
+            if (!email) return;
+            const pwd = prompt("비밀번호를 입력하세요:");
+            if (!pwd) return;
+
             this.disabled = true;
-            log('1. Firebase 데이터 읽기 시작...');
+            log('1. Firebase 로그인 중...');
 
             try {
+                await signInWithEmailAndPassword(auth, email, pwd);
+                log(' - 로그인 성공! 데이터 읽기 시작...');
+
                 // Products
                 const pSnap = await getDocs(collection(db, 'kng_products'));
                 const products = [];
