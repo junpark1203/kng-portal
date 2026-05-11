@@ -3521,7 +3521,7 @@ document.addEventListener('DOMContentLoaded', async () => {
      * @returns {{grossShipping: number, sellerShipping: number, rebate: number}}
      */
     function calcShippingCost(weightG, ship) {
-        if (!ship || weightG <= 0) return { grossShipping: 0, sellerShipping: 0, rebate: 0 };
+        if (!ship || weightG <= 0) return { grossShipping: 0, sellerShipping: 0, rebate: 0, buyerShipping: 0 };
         let gross = 0;
         if (weightG <= 50) {
             gross = ship.tier1Base;
@@ -3531,8 +3531,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             gross = ship.tier3Base + Math.ceil((weightG - 1000) / 100) * ship.tier3Add;
         }
         const rebate = ship.rebate || 0;
-        const sellerShipping = Math.max(0, gross - rebate);
-        return { grossShipping: gross, sellerShipping, rebate };
+        const buyerShipping = ship.buyerShipping || 0;
+        const sellerShipping = Math.max(0, gross - rebate - buyerShipping);
+        return { grossShipping: gross, sellerShipping, rebate, buyerShipping };
     }
 
     /**
@@ -4304,7 +4305,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-shipping-tier3-base').value = p.settings.tier3Base;
                     document.getElementById('settings-shipping-tier3-add').value = p.settings.tier3Add;
                     document.getElementById('settings-shipping-rebate').value = p.settings.rebate;
-                    document.getElementById('settings-shipping-form-title').innerText = `${currentMarketContext.toUpperCase()} 배송비 요율 수정하기`;
+                    const buyerEl = document.getElementById('settings-shipping-buyer');
+                    if (buyerEl) buyerEl.value = p.settings.buyerShipping || 0;
+                    document.getElementById('settings-shipping-form-title').innerText = `${currentMarketContext.toUpperCase()} 배송비 수정하기`;
                     calculateShippingTest();
                     toggleSettingsForm('shipping', true);
                 }
@@ -4353,7 +4356,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             tier2Add: parseFloat(document.getElementById('settings-shipping-tier2-add').value) || 0,
             tier3Base: parseFloat(document.getElementById('settings-shipping-tier3-base').value) || 0,
             tier3Add: parseFloat(document.getElementById('settings-shipping-tier3-add').value) || 0,
-            rebate: parseFloat(document.getElementById('settings-shipping-rebate').value) || 0
+            rebate: parseFloat(document.getElementById('settings-shipping-rebate').value) || 0,
+            buyerShipping: parseFloat(document.getElementById('settings-shipping-buyer')?.value) || 0
         };
 
         if (id) {
@@ -4388,6 +4392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!weightStr) {
             document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> 0.00`;
             document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> 0.00`;
+            document.getElementById('test-buyer-shipping').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> 0.00`;
             document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> 0.00`;
             return;
         }
@@ -4398,6 +4403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const tier3Base = parseFloat(document.getElementById('settings-shipping-tier3-base').value) || 0;
         const tier3Add = parseFloat(document.getElementById('settings-shipping-tier3-add').value) || 0;
         const rebate = parseFloat(document.getElementById('settings-shipping-rebate').value) || 0;
+        const buyerShipping = parseFloat(document.getElementById('settings-shipping-buyer')?.value) || 0;
 
         let totalFee = 0;
         if (weight <= 0) {
@@ -4416,8 +4422,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${totalFee.toFixed(2)}`;
         document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${rebate.toFixed(2)}`;
+        document.getElementById('test-buyer-shipping').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${buyerShipping.toFixed(2)}`;
         
-        const sellerBorne = totalFee - rebate;
+        const sellerBorne = Math.max(0, totalFee - rebate - buyerShipping);
         document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${sellerBorne.toFixed(2)}`;
     }
 
@@ -4427,6 +4434,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('settings-shipping-tier3-base')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-tier3-add')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-rebate')?.addEventListener('input', calculateShippingTest);
+    document.getElementById('settings-shipping-buyer')?.addEventListener('input', calculateShippingTest);
     
     // Initial Render
     if(typeof renderSettingsShippingTable === 'function') renderSettingsShippingTable();
