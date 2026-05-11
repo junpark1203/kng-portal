@@ -3585,13 +3585,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const voucherFee = TP * voucherR;
         const fspCcbFee = TP * fspCcbR;
 
+        const F = fees.fixed || 0;
+
         // Revenue & Settlement
         const revenue = TP * (1 + G);
-        const settlement = revenue - commission - pgFee - totalGst - sellerShipping - voucherFee - fspCcbFee;
+        const settlement = revenue - commission - pgFee - totalGst - sellerShipping - voucherFee - fspCcbFee - F;
         const payoneerFee = settlement * payR;
 
         // Margin
-        const marginSgd = revenue - costSgd - sellerShipping - commission - pgFee - serviceFee - payoneerFee - totalGst;
+        const marginSgd = revenue - costSgd - sellerShipping - commission - pgFee - serviceFee - payoneerFee - totalGst - F;
         const marginKrw = exchangeRate > 0 ? Math.round(marginSgd / exchangeRate) : 0;
 
         // VAT Refund (10% on total cost)
@@ -3601,7 +3603,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const marginWithVatSgd = marginSgd + vatRefundSgd;
 
         // Total fees
-        const totalFees = commission + pgFee + serviceFee + payoneerFee + totalGst;
+        const totalFees = commission + pgFee + serviceFee + payoneerFee + totalGst + F;
 
         return {
             // Inputs echoed
@@ -3621,6 +3623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 commission: { label: '쇼피 판매 수수료', rate: fees.commission, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: commission },
                 pgFee:      { label: '해외 PG 수수료', rate: fees.pg, base: 'TP×(1+G)+Rebate', baseLabel: '부가세포함 주문금액+배송비감면액', baseValue: TP * (1 + G) + rebate, amount: pgFee },
                 serviceFee: { label: '기본 서비스 수수료', rate: fees.service, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: serviceFee },
+                fixedFee:   { label: '주문당 고정 처리비', rate: 0, base: '-', baseLabel: '고정 비용', baseValue: 0, amount: F },
                 productGst: { label: 'Product GST', rate: fees.gst, base: 'TP', baseLabel: '부가세제외 주문금액', baseValue: TP, amount: productGst },
                 shippingGst: { label: 'Shipping GST', rate: fees.gst, base: 'Rebate/(1+G)', baseLabel: '배송비감면액/(1+GST)', baseValue: rebate / (1 + G), amount: shippingGst },
                 payoneer:   { label: '페이오니아 인출', rate: fees.payoneer, base: 'Settlement', baseLabel: '쇼피정산금', baseValue: settlement, amount: payoneerFee },
@@ -3660,6 +3663,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const D = (promo.discountRate || 0) / 100;
         const voucherR = (promo.voucher || 0) / 100;
         const fspCcbR = (promo.fspCcb || 0) / 100;
+        const F = fees.fixed || 0;
 
         const totalCostKrw = costKrw + domesticShipping + packagingKrw;
         const costSgd = totalCostKrw * exchangeRate;
@@ -3681,7 +3685,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return calcPricingFromPrice({ ...input, sellingPriceSgd: 0 });
         }
 
-        const TP = (targetMarginSgd + C - payAdj) / denominator;
+        const TP = (targetMarginSgd + C - payAdj + F * (1 - payR)) / denominator;
         const P = D < 1 ? TP / (1 - D) : TP;
 
         // Now do forward calc with this P
@@ -3967,7 +3971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td><div style="font-weight: 600;">${p.name}</div></td>
                 <td>
                     <div class="body-sm text-secondary">
-                        Com: ${p.fees.commission}% | PG: ${p.fees.pg}% | Serv: ${p.fees.service}%
+                        Com: ${p.fees.commission}% | PG: ${p.fees.pg}% | Serv: ${p.fees.service}% | Fixed: ${p.fees.fixed || 0}
                     </div>
                 </td>
                 <td style="text-align: center;">
@@ -4013,6 +4017,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-special-fee') && (document.getElementById('settings-special-fee').value = p.fees.special || 0);
                     const gstEl = document.getElementById('settings-gst-fee');
                     if (gstEl) gstEl.value = p.fees.gst || p.fees.special || 0;
+                    const fixedEl = document.getElementById('settings-fixed-fee');
+                    if (fixedEl) fixedEl.value = p.fees.fixed || 0;
                     document.getElementById('settings-preset-form-title').innerText = `${currentMarketContext.toUpperCase()} 프리셋 수정하기`;
                     toggleSettingsForm('fee', true);
                 }
@@ -4062,7 +4068,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             service: parseFloat(document.getElementById('settings-service-fee').value) || 0,
             payoneer: parseFloat(document.getElementById('settings-payoneer-fee').value) || 0,
             special: parseFloat(document.getElementById('settings-special-fee')?.value) || 0,
-            gst: parseFloat(document.getElementById('settings-gst-fee')?.value) || 0
+            gst: parseFloat(document.getElementById('settings-gst-fee')?.value) || 0,
+            fixed: parseFloat(document.getElementById('settings-fixed-fee')?.value) || 0
         };
 
         if (id) {
