@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase → NAS Docker 마이그레이션</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; padding: 40px; background: #f8f9fa; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; }
+        button { padding: 12px 24px; background: #4f6ef7; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #log { margin-top: 20px; padding: 15px; background: #2d3748; color: #a0aec0; border-radius: 8px; font-family: monospace; height: 200px; overflow-y: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>데이터 마이그레이션 도구</h2>
+        <p>기존 Firebase의 K&G 요약정보(재고/내역)를 NAS 서버(SQLite)로 안전하게 복사합니다.</p>
+        <button id="startBtn">마이그레이션 시작</button>
+        <div id="log">대기 중...</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDqdzlXTddvoBYWaVbTM7_ERO_rUGWjIgE",
+            authDomain: "kng-inventory.firebaseapp.com",
+            projectId: "kng-inventory",
+            storageBucket: "kng-inventory.firebasestorage.app",
+            messagingSenderId: "647181899026",
+            appId: "1:647181899026:web:7cd3b62a7a10771b204fcb"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000/api/hq'
+            : 'https://kng.junparks.com/api/hq';
+
+        const logEl = document.getElementById('log');
+        const log = msg => { logEl.textContent += msg + '\n'; logEl.scrollTop = logEl.scrollHeight; };
+
+        document.getElementById('startBtn').addEventListener('click', async function() {
+            this.disabled = true;
+            log('1. Firebase 데이터 읽기 시작...');
+
+            try {
+                // Products
+                const pSnap = await getDocs(collection(db, 'kng_products'));
+                const products = [];
+                pSnap.forEach(d => products.push(d.data()));
+                log(` - 상품 ${products.length}건 로드 완료`);
+
+                // Transactions
+                const tSnap = await getDocs(collection(db, 'kng_transactions'));
+                const transactions = [];
+                tSnap.forEach(d => transactions.push(Object.assign({id: d.id}, d.data())));
+                log(` - 입출고 내역 ${transactions.length}건 로드 완료`);
+
+                // Metrics
+                const mSnap = await getDoc(doc(db, 'kng_data', 'metrics'));
+                const metrics = mSnap.exists() ? mSnap.data() : { totalRevenue: 0, totalCost: 0 };
+                log(` - KPI 로드 완료 (매출: ${metrics.totalRevenue}, 비용: ${metrics.totalCost})`);
+
+                log('\n2. NAS 서버로 데이터 전송 중...');
+                const res = await fetch(API_BASE + '/migrate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ products, transactions, metrics })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+                const result = await res.json();
+                
+                log('\n3. 마이그레이션 완료!');
+                log(` - 결과: ${JSON.stringify(result, null, 2)}`);
+                log('\n✅ 모든 작업이 완료되었습니다. 이 창을 닫아주세요.');
+
+            } catch (err) {
+                log(`\n❌ 에러 발생: ${err.message}`);
+                this.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -10,6 +10,10 @@ const fs = require('fs');
 const massUploadRoutes = require('./routes/mass-upload');
 const { initMassUploadTables } = require('./db-mass-upload');
 
+// HQ Inventory 모듈 (본사 매입 현황)
+const hqInventoryRoutes = require('./routes/hq-inventory');
+const { initHqTables } = hqInventoryRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -88,6 +92,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initMassUploadTables(db).then(() => {
             massUploadRoutes.setDb(db);
             console.log('mass_upload API 준비 완료');
+        });
+        // HQ Inventory 테이블 초기화 + 라우트에 DB 주입
+        initHqTables(db).then(() => {
+            hqInventoryRoutes.setDb(db);
+            console.log('hq_inventory API 준비 완료');
         });
     }
 });
@@ -668,6 +677,11 @@ app.post('/api/unit-prices/delete', (req, res) => {
 // Mass Upload API 라우트 마운트
 // ==========================================
 app.use('/api/mass-upload', massUploadRoutes);
+
+// ==========================================
+// HQ Inventory (본사 매입 현황) API 라우트 마운트
+// ==========================================
+app.use('/api/hq', hqInventoryRoutes);
 
 // ==========================================
 // API 상태 확인 엔드포인트

@@ -1547,8 +1547,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 새로고침(F5) 시 이전 접속 페이지 복원
-    var lastNavHref = sessionStorage.getItem('lastNavHref');
+    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 본사 매입 현황이 기본값
+    var lastNavHref = sessionStorage.getItem('lastNavHref') || 'hq-inventory.html';
     if (lastNavHref) {
         var savedLink = document.querySelector('.menu a[href="' + lastNavHref + '"]');
         if (savedLink) {

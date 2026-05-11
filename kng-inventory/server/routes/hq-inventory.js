@@ -1,0 +1,389 @@
+/**
+ * 본사 매입 현황 API (/api/hq/...)
+ * - 상품 마스터 CRUD
+ * - 입출고 내역 CRUD (재고 자동 증감 + 메트릭 갱신)
+ * - KPI 메트릭 조회
+ * - 자동완성 지원
+ */
+const express = require('express');
+const router = express.Router();
+
+let db = null;
+
+function setDb(database) {
+    db = database;
+}
+
+/** DB 테이블 초기화 */
+function initHqTables(database) {
+    return new Promise((resolve, reject) => {
+        database.serialize(() => {
+            // 상품 마스터
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_products (
+                    id TEXT PRIMARY KEY,
+                    supplier TEXT DEFAULT '최가유통',
+                    brand TEXT NOT NULL DEFAULT '',
+                    name TEXT NOT NULL DEFAULT '',
+                    color TEXT NOT NULL DEFAULT '',
+                    size TEXT NOT NULL DEFAULT '',
+                    stock INTEGER DEFAULT 0,
+                    buyPrice INTEGER DEFAULT 0,
+                    sellPrice INTEGER DEFAULT 0,
+                    createdAt TEXT DEFAULT (datetime('now')),
+                    updatedAt TEXT DEFAULT (datetime('now'))
+                )
+            `);
+
+            // 입출고 내역
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_transactions (
+                    id TEXT PRIMARY KEY,
+                    type TEXT NOT NULL CHECK(type IN ('IN', 'OUT')),
+                    txDate TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    productId TEXT,
+                    supplier TEXT,
+                    brand TEXT,
+                    productName TEXT,
+                    color TEXT,
+                    size TEXT,
+                    qty INTEGER NOT NULL DEFAULT 0,
+                    price INTEGER NOT NULL DEFAULT 0,
+                    buyPrice INTEGER DEFAULT 0,
+                    basePrice INTEGER DEFAULT 0,
+                    freight INTEGER DEFAULT 0,
+                    remarks TEXT,
+                    createdAt TEXT DEFAULT (datetime('now'))
+                )
+            `);
+
+            // 집계 메트릭 (KPI)
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_metrics (
+                    key TEXT PRIMARY KEY,
+                    value REAL DEFAULT 0
+                )
+            `);
+
+            // 기본 메트릭 삽입 (이미 있으면 무시)
+            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalRevenue', 0)`);
+            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalCost', 0)`, (err) => {
+                if (err) reject(err);
+                else {
+                    console.log('hq_products / hq_transactions / hq_metrics 테이블 확인 완료');
+                    resolve();
+                }
+            });
+        });
+    });
+}
+
+// ==========================================
+// 상품 API
+// ==========================================
+
+// 전체 상품 목록
+router.get('/products', (req, res) => {
+    db.all('SELECT * FROM hq_products ORDER BY supplier, brand, name', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 단일 상품 조회
+router.get('/products/:id', (req, res) => {
+    db.get('SELECT * FROM hq_products WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+        res.json(row);
+    });
+});
+
+// 상품 등록
+router.post('/products', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('HQP-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id });
+    });
+});
+
+// 상품 수정
+router.put('/products/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE hq_products SET supplier=?, brand=?, name=?, color=?, size=?, stock=?, buyPrice=?, sellPrice=?, updatedAt=? WHERE id=?`;
+    const params = [p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, id];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 상품 삭제 (다중)
+router.post('/products/delete', (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`DELETE FROM hq_products WHERE id IN (${placeholders})`, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
+// ==========================================
+// 입출고 내역 API
+// ==========================================
+
+// 내역 목록 (쿼리 필터 지원)
+router.get('/transactions', (req, res) => {
+    let sql = 'SELECT * FROM hq_transactions WHERE 1=1';
+    const params = [];
+
+    if (req.query.type) {
+        sql += ' AND type = ?';
+        params.push(req.query.type);
+    }
+    if (req.query.startDate) {
+        sql += ' AND txDate >= ?';
+        params.push(req.query.startDate);
+    }
+    if (req.query.endDate) {
+        sql += ' AND txDate <= ?';
+        params.push(req.query.endDate);
+    }
+
+    sql += ' ORDER BY txDate DESC, timestamp DESC';
+
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 입출고 등록 (재고 자동 증감 + 메트릭 갱신)
+router.post('/transactions', (req, res) => {
+    const t = req.body;
+    const id = t.id || ('HQT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+
+    const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, createdAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [
+        id, t.type, t.txDate||'', now,
+        t.productId||'', t.supplier||'', t.brand||'', t.productName||'',
+        t.color||'', t.size||'', t.qty||0, t.price||0,
+        t.buyPrice||0, t.basePrice||0, t.freight||0,
+        t.remarks||'', now
+    ];
+
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const qty = t.qty || 0;
+        const price = t.price || 0;
+        const totalAmount = qty * price;
+
+        // 재고 증감
+        if (t.productId) {
+            const stockDelta = t.type === 'IN' ? qty : -qty;
+            db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?',
+                [stockDelta, now, t.productId]);
+        }
+
+        // 메트릭 갱신
+        if (t.type === 'IN') {
+            db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalCost']);
+        } else {
+            db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalRevenue']);
+        }
+
+        res.status(201).json({ message: '등록 성공', id });
+    });
+});
+
+// 입출고 내역 수정
+router.put('/transactions/:id', (req, res) => {
+    const id = req.params.id;
+    const t = req.body;
+    const now = new Date().toISOString();
+
+    // 기존 내역 조회 (메트릭 롤백용)
+    db.get('SELECT * FROM hq_transactions WHERE id = ?', [id], (err, old) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!old) return res.status(404).json({ error: '내역을 찾을 수 없습니다.' });
+
+        const sql = `UPDATE hq_transactions SET type=?, txDate=?, supplier=?, brand=?, productName=?, color=?, size=?, qty=?, price=?, buyPrice=?, basePrice=?, freight=?, remarks=? WHERE id=?`;
+        const params = [
+            t.type||old.type, t.txDate||old.txDate, t.supplier||'', t.brand||'', t.productName||'',
+            t.color||'', t.size||'', t.qty||0, t.price||0,
+            t.buyPrice||0, t.basePrice||0, t.freight||0,
+            t.remarks||'', id
+        ];
+
+        db.run(sql, params, function(err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            if (this.changes === 0) return res.status(404).json({ error: '내역을 찾을 수 없습니다.' });
+
+            // 재고 롤백 & 재적용
+            if (old.productId) {
+                const oldDelta = old.type === 'IN' ? -old.qty : old.qty;
+                db.run('UPDATE hq_products SET stock = stock + ? WHERE id = ?', [oldDelta, old.productId]);
+            }
+            const productId = t.productId || old.productId;
+            if (productId) {
+                const newDelta = (t.type||old.type) === 'IN' ? (t.qty||0) : -(t.qty||0);
+                db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [newDelta, now, productId]);
+            }
+
+            // 메트릭 롤백 & 재적용
+            const oldTotal = old.qty * old.price;
+            const newTotal = (t.qty||0) * (t.price||0);
+            if (old.type === 'IN') {
+                db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [oldTotal, 'totalCost']);
+            } else {
+                db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [oldTotal, 'totalRevenue']);
+            }
+            if ((t.type||old.type) === 'IN') {
+                db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [newTotal, 'totalCost']);
+            } else {
+                db.run('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [newTotal, 'totalRevenue']);
+            }
+
+            res.json({ message: '수정 성공' });
+        });
+    });
+});
+
+// 입출고 내역 삭제 (재고 롤백 + 메트릭 롤백)
+router.post('/transactions/delete', (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
+    }
+
+    const placeholders = ids.map(() => '?').join(',');
+    // 삭제 전 데이터 조회 (롤백용)
+    db.all(`SELECT * FROM hq_transactions WHERE id IN (${placeholders})`, ids, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const now = new Date().toISOString();
+        rows.forEach(old => {
+            // 재고 롤백
+            if (old.productId) {
+                const rollback = old.type === 'IN' ? -old.qty : old.qty;
+                db.run('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [rollback, now, old.productId]);
+            }
+            // 메트릭 롤백
+            const total = old.qty * old.price;
+            if (old.type === 'IN') {
+                db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [total, 'totalCost']);
+            } else {
+                db.run('UPDATE hq_metrics SET value = value - ? WHERE key = ?', [total, 'totalRevenue']);
+            }
+        });
+
+        db.run(`DELETE FROM hq_transactions WHERE id IN (${placeholders})`, ids, function(err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            res.json({ message: '삭제 성공', deletedCount: this.changes });
+        });
+    });
+});
+
+// ==========================================
+// KPI 메트릭
+// ==========================================
+router.get('/metrics', (req, res) => {
+    db.all('SELECT * FROM hq_metrics', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const result = {};
+        rows.forEach(r => { result[r.key] = r.value; });
+        res.json(result);
+    });
+});
+
+// ==========================================
+// 자동완성
+// ==========================================
+router.get('/autocomplete/:field', (req, res) => {
+    const field = req.params.field;
+    const allowed = ['supplier', 'brand', 'name', 'color', 'size'];
+    if (!allowed.includes(field)) {
+        return res.status(400).json({ error: '허용되지 않는 필드입니다.' });
+    }
+    const sql = `SELECT DISTINCT ${field} as value FROM hq_products WHERE ${field} IS NOT NULL AND ${field} != '' ORDER BY ${field}`;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows.map(r => r.value));
+    });
+});
+
+// ==========================================
+// 마이그레이션 (Firebase → SQLite)
+// ==========================================
+router.post('/migrate', (req, res) => {
+    const { products, transactions, metrics } = req.body;
+    const now = new Date().toISOString();
+    let pCount = 0, tCount = 0;
+
+    db.serialize(() => {
+        // 상품 마이그레이션
+        if (products && Array.isArray(products)) {
+            const pStmt = db.prepare(`INSERT OR REPLACE INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, createdAt, updatedAt)
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+            products.forEach(p => {
+                pStmt.run([p.id, p.supplier||'최가유통', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, now], function(err) {
+                    if (!err && this.changes > 0) pCount++;
+                });
+            });
+            pStmt.finalize();
+        }
+
+        // 트랜잭션 마이그레이션
+        if (transactions && Array.isArray(transactions)) {
+            const tStmt = db.prepare(`INSERT OR REPLACE INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, createdAt)
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+            transactions.forEach(t => {
+                const txDate = t.txDate || (t.timestamp ? t.timestamp.split('T')[0] : '');
+                tStmt.run([t.id, t.type||'IN', txDate, t.timestamp||now, t.productId||'', t.supplier||'', t.brand||'', t.productName||'', t.color||'', t.size||'', t.qty||0, t.price||0, t.buyPrice||0, t.basePrice||0, t.freight||0, t.remarks||'', now], function(err) {
+                    if (!err && this.changes > 0) tCount++;
+                });
+            });
+            tStmt.finalize();
+        }
+
+        // 메트릭 마이그레이션
+        if (metrics) {
+            if (metrics.totalRevenue !== undefined) {
+                db.run('UPDATE hq_metrics SET value = ? WHERE key = ?', [metrics.totalRevenue, 'totalRevenue']);
+            }
+            if (metrics.totalCost !== undefined) {
+                db.run('UPDATE hq_metrics SET value = ? WHERE key = ?', [metrics.totalCost, 'totalCost']);
+            }
+        }
+
+        // finalize 후 응답 (약간의 딜레이)
+        setTimeout(() => {
+            res.json({
+                message: 'Firebase → SQLite 마이그레이션 완료',
+                products: pCount,
+                transactions: tCount,
+                metrics: metrics ? 'updated' : 'skipped'
+            });
+        }, 500);
+    });
+});
+
+module.exports = router;
+module.exports.setDb = setDb;
+module.exports.initHqTables = initHqTables;
