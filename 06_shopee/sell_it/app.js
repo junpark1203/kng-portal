@@ -603,7 +603,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (gsBulkBar) gsBulkBar.classList.remove('active');
             
             document.getElementById('export-settings-modal').style.display = 'none';
-            alert(`${result.insertedCount}개의 옵션(그룹)이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.`);
+            if (confirm(`${result.insertedCount}개의 옵션(그룹)이 ${currentExportMarket.toUpperCase()} 마켓으로 전송되었습니다.\n해당 price calc 페이지로 이동하시겠습니까?`)) {
+                const targetNav = document.querySelector(`.sidebar .nav-item[data-view="price-calc-${currentExportMarket}"]`);
+                if (targetNav) {
+                    targetNav.click();
+                }
+            }
         } catch (err) {
             alert("내보내기 실패: " + err.message);
         } finally {
