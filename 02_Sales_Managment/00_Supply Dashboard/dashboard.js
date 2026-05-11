@@ -17,6 +17,8 @@ let activeSource = 'all'; // 'all' | 'general' | 'oil'
 let activeMetric = 'amount'; // 'amount' | 'qty'
 let activeAggTab = 'item'; // 'item' | 'site'
 let aggSearchQuery = '';
+let activeSite = ''; // '' = 전체 현장
+let activeItem = ''; // '' = 전체 품목
 
 const $ = id => document.getElementById(id);
 
@@ -43,7 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initMetricTabs();
     initAggTabs();
     initAggSearch();
+    initCrossFilter();
     await loadAllData();
+    populateCrossFilterOptions();
     applyFilter();
 });
 
@@ -166,7 +170,7 @@ async function loadAllData() {
 // Combined filtered data helper
 // ==========================================
 function getCombined() {
-    const list = [];
+    let list = [];
     if (activeSource === 'all' || activeSource === 'general') {
         filtered.general.forEach(d => list.push({
             date: d.supplyDate || '', site: d.site || '', item: d.item || '',
@@ -181,6 +185,9 @@ function getCombined() {
             type: 'oil'
         }));
     }
+    // Cross-filter: 현장/품목 필터 적용
+    if (activeSite) list = list.filter(d => d.site === activeSite);
+    if (activeItem) list = list.filter(d => d.item === activeItem);
     return list;
 }
 
@@ -521,3 +528,203 @@ function renderAggTable() {
         <span>총 납품: <strong>${fmtN(totalCnt)}회</strong></span>
     `;
 }
+
+// ==========================================
+// Cross-Filter: 현장/품목 교차 필터
+// ==========================================
+function initCrossFilter() {
+    // Site combobox toggle
+    $('cfSiteSelectWrap').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllCombos('cfSiteCombo');
+        $('cfSiteCombo').classList.toggle('open');
+        if ($('cfSiteCombo').classList.contains('open')) {
+            $('cfSiteSearch').value = '';
+            $('cfSiteSearch').focus();
+            filterComboOptions('cfSiteOptions', '');
+        }
+    });
+
+    // Item combobox toggle
+    $('cfItemSelectWrap').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllCombos('cfItemCombo');
+        $('cfItemCombo').classList.toggle('open');
+        if ($('cfItemCombo').classList.contains('open')) {
+            $('cfItemSearch').value = '';
+            $('cfItemSearch').focus();
+            filterComboOptions('cfItemOptions', '');
+        }
+    });
+
+    // Search inputs
+    $('cfSiteSearch').addEventListener('input', (e) => {
+        filterComboOptions('cfSiteOptions', e.target.value.trim().toLowerCase());
+    });
+    $('cfItemSearch').addEventListener('input', (e) => {
+        filterComboOptions('cfItemOptions', e.target.value.trim().toLowerCase());
+    });
+
+    // Prevent dropdown close when clicking inside
+    $('cfSiteDropdown').addEventListener('click', (e) => e.stopPropagation());
+    $('cfItemDropdown').addEventListener('click', (e) => e.stopPropagation());
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', () => closeAllCombos());
+
+    // Reset button
+    $('cfResetBtn').addEventListener('click', () => {
+        activeSite = '';
+        activeItem = '';
+        updateComboDisplay();
+        renderCrossFilterChips();
+        applyFilter();
+    });
+}
+
+function closeAllCombos(exceptId) {
+    ['cfSiteCombo', 'cfItemCombo'].forEach(id => {
+        if (id !== exceptId) $(id).classList.remove('open');
+    });
+}
+
+function filterComboOptions(listId, query) {
+    const items = $(listId).querySelectorAll('.cf-option');
+    let visibleCount = 0;
+    items.forEach(li => {
+        if (li.classList.contains('all-option')) { li.style.display = ''; return; }
+        const text = li.dataset.value.toLowerCase();
+        const show = !query || text.includes(query);
+        li.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    });
+    // Show/hide empty message
+    let emptyEl = $(listId).querySelector('.cf-option-empty');
+    if (visibleCount === 0 && query) {
+        if (!emptyEl) {
+            emptyEl = document.createElement('li');
+            emptyEl.className = 'cf-option-empty';
+            emptyEl.textContent = '검색 결과가 없습니다.';
+            $(listId).appendChild(emptyEl);
+        }
+        emptyEl.style.display = '';
+    } else if (emptyEl) {
+        emptyEl.style.display = 'none';
+    }
+}
+
+function populateCrossFilterOptions() {
+    const sites = new Set();
+    const items = new Set();
+
+    rawGeneral.forEach(d => {
+        if (d.site) sites.add(d.site);
+        if (d.item) items.add(d.item);
+    });
+    rawOil.forEach(d => {
+        if (d.site) sites.add(d.site);
+        if (d.item) items.add(d.item);
+    });
+
+    buildOptionList('cfSiteOptions', [...sites].sort(), 'site');
+    buildOptionList('cfItemOptions', [...items].sort(), 'item');
+}
+
+function buildOptionList(listId, values, type) {
+    const ul = $(listId);
+    ul.innerHTML = '';
+
+    // "전체" option
+    const allLi = document.createElement('li');
+    allLi.className = 'cf-option all-option selected';
+    allLi.dataset.value = '';
+    allLi.innerHTML = `<span class="cf-check"><i class='bx bx-check'></i></span> ${type === 'site' ? '전체 현장' : '전체 품목'}`;
+    allLi.addEventListener('click', () => {
+        if (type === 'site') activeSite = '';
+        else activeItem = '';
+        updateComboDisplay();
+        renderCrossFilterChips();
+        closeAllCombos();
+        applyFilter();
+    });
+    ul.appendChild(allLi);
+
+    values.forEach(val => {
+        const li = document.createElement('li');
+        li.className = 'cf-option';
+        li.dataset.value = val;
+        li.innerHTML = `<span class="cf-check"></span> ${val}`;
+        li.addEventListener('click', () => {
+            if (type === 'site') activeSite = val;
+            else activeItem = val;
+            updateComboDisplay();
+            renderCrossFilterChips();
+            closeAllCombos();
+            applyFilter();
+        });
+        ul.appendChild(li);
+    });
+}
+
+function updateComboDisplay() {
+    // Site
+    $('cfSiteText').textContent = activeSite || '전체 현장';
+    if (activeSite) $('cfSiteSelectWrap').classList.add('has-value');
+    else $('cfSiteSelectWrap').classList.remove('has-value');
+
+    // Item
+    $('cfItemText').textContent = activeItem || '전체 품목';
+    if (activeItem) $('cfItemSelectWrap').classList.add('has-value');
+    else $('cfItemSelectWrap').classList.remove('has-value');
+
+    // Update selected states in option lists
+    updateOptionSelected('cfSiteOptions', activeSite);
+    updateOptionSelected('cfItemOptions', activeItem);
+
+    // Show/hide reset button
+    $('cfResetBtn').style.display = (activeSite || activeItem) ? '' : 'none';
+}
+
+function updateOptionSelected(listId, activeValue) {
+    $(listId).querySelectorAll('.cf-option').forEach(li => {
+        const isSelected = li.dataset.value === activeValue;
+        li.classList.toggle('selected', isSelected);
+        const check = li.querySelector('.cf-check');
+        if (check) check.innerHTML = isSelected ? "<i class='bx bx-check'></i>" : '';
+    });
+}
+
+function renderCrossFilterChips() {
+    const container = $('cfChips');
+    container.innerHTML = '';
+
+    if (activeSite) {
+        container.innerHTML += `
+            <span class="cf-chip">
+                <i class='bx bx-building-house label-icon'></i>
+                현장: ${activeSite}
+                <button class="cf-chip-remove" data-type="site" title="현장 필터 해제"><i class='bx bx-x'></i></button>
+            </span>`;
+    }
+    if (activeItem) {
+        container.innerHTML += `
+            <span class="cf-chip">
+                <i class='bx bx-box label-icon'></i>
+                품목: ${activeItem}
+                <button class="cf-chip-remove" data-type="item" title="품목 필터 해제"><i class='bx bx-x'></i></button>
+            </span>`;
+    }
+
+    // Bind chip remove buttons
+    container.querySelectorAll('.cf-chip-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const type = e.currentTarget.dataset.type;
+            if (type === 'site') activeSite = '';
+            else activeItem = '';
+            updateComboDisplay();
+            renderCrossFilterChips();
+            applyFilter();
+        });
+    });
+}
+
