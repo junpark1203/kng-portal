@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Global System Settings for Smart Pricing
     let systemSettings = { margin_safe: 40, margin_standard: 30, margin_aggressive: 10 };
 
+    // Utility: format foreign currency values — rounds high-denomination currencies (VND etc.) to integers with commas
+    function fmtFx(value, exchangeRate) {
+        if (exchangeRate >= 1) return Math.round(value).toLocaleString();
+        return value.toFixed(2);
+    }
+
     // Preset & Data Store variables (Moved to top to prevent TDZ errors)
     let presets = [];
     let promotionPresets = [];
@@ -636,6 +642,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const exRateInv = exRate > 0 ? (1 / exRate) : 0;
         
         const curr = { sg: 'SGD', my: 'MYR', tw: 'TWD', th: 'THB', ph: 'PHP', vn: 'VND', br: 'BRL', mx: 'MXN' }[marketCode] || 'SGD';
+        // High-denomination currencies: round to integer with commas. Others: 2 decimal places.
+        const isHighDenom = exRate >= 1;
+        const fmtFx = (v) => isHighDenom ? Math.round(v).toLocaleString() : v.toFixed(2);
 
         const optionBadge = item.optionName ? `<div style="margin-top:4px; font-size:0.8rem; color:var(--primary); font-weight:bold;">↳ Opt: ${item.optionName}</div>` : '';
         const nameEnHtml = parentMcode ? `<div style="font-weight: 600; opacity: 0.5;" class="pc-name-en">${item.nameEn || item.nameKo}</div>` : `<div style="font-weight: 600;" class="pc-name-en">${item.nameEn || item.nameKo}</div>`;
@@ -666,18 +675,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
-                    <div class="pc-data-bottom">${curr} ${result.costSgd.toFixed(2)}</div>
+                    <div class="pc-data-bottom">${curr} ${fmtFx(result.costSgd)}</div>
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top">KRW ${(exRate > 0 ? Math.round(result.totalFees / exRate) : 0).toLocaleString()}</div>
-                    <div class="pc-data-bottom">${curr} ${result.totalFees.toFixed(2)}</div>
+                    <div class="pc-data-bottom">${curr} ${fmtFx(result.totalFees)}</div>
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top" style="color: var(--primary);" id="cell-discount-${item.id}">${isEmpty ? '—' : result.discountRate.toFixed(1) + '%'}</div>
                     <div class="pc-data-bottom" id="cell-discount-amt-${item.id}">${isEmpty ? '—' : 'KRW ' + discountAmountKrw.toLocaleString()}</div>
                 </td>
                 <td class="text-center">
-                    <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + salesPriceSgd.toFixed(2)}</div>
+                    <div class="pc-data-top" style="color: var(--primary);" id="cell-sales-sgd-${item.id}">${isEmpty ? '—' : curr + ' ' + fmtFx(salesPriceSgd)}</div>
                     <div class="pc-data-bottom" id="cell-sales-krw-${item.id}">${isEmpty ? '—' : 'KRW ' + salesKrw.toLocaleString()}</div>
                 </td>
                 <td class="text-center">
@@ -731,7 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         
                         const minSales = Math.min(...validSales);
                         const maxSales = Math.max(...validSales);
-                        salesSgdRangeStr = minSales === maxSales ? minSales.toFixed(2) : `${minSales.toFixed(2)} ~ ${maxSales.toFixed(2)}`;
+                        salesSgdRangeStr = minSales === maxSales ? fmtFx(minSales, exRate0) : `${fmtFx(minSales, exRate0)} ~ ${fmtFx(maxSales, exRate0)}`;
                     }
 
                     html += `
@@ -1197,12 +1206,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 <div class="pc-cost-item"><span class="label">상품매입비</span><span class="value">KRW ${costKrw.toLocaleString()}</span></div>
                                 <div class="pc-cost-item"><span class="label">국내배송비</span><span class="value">KRW ${shipKrw.toLocaleString()}</span></div>
                                 <div class="pc-cost-item"><span class="label">포장비</span><span class="value">KRW ${pkgKrw.toLocaleString()}</span></div>
-                                <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${result.costSgd.toFixed(2)}</span></div>
-                                <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${result.sellerShipping.toFixed(2)}</span></div>
-                                <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${commTotal.toFixed(2)}</span></div>
-                                <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
-                                <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${result.sellingPrice.toFixed(2)}</span></span></div>
-                                <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${result.marginSgd.toFixed(2)}</span></div>
+                                <div class="pc-cost-item subtotal"><span class="label">매입원가 합계</span><span class="value">KRW ${totalCostKrw.toLocaleString()} → ${curr} ${fmtFx(result.costSgd, result.exchangeRate)}</span></div>
+                                <div class="pc-cost-item"><span class="label">해외배송비</span><span class="value">${curr} ${fmtFx(result.sellerShipping, result.exchangeRate)}</span></div>
+                                <div class="pc-cost-item"><span class="label">수수료 합계</span><span class="value">${curr} ${fmtFx(commTotal, result.exchangeRate)}</span></div>
+                                <div class="pc-cost-item subtotal"><span class="label">총 비용</span><span class="value">${curr} ${fmtFx(result.costSgd + result.sellerShipping + result.totalFees, result.exchangeRate)}</span></div>
+                                <div class="pc-cost-item total"><span class="label">판매가 (P)</span><span class="value">${curr} <span>${fmtFx(result.sellingPrice, result.exchangeRate)}</span></span></div>
+                                <div class="pc-cost-item ${result.marginKrw < 0 ? 'negative' : ''}"><span class="label">순수익</span><span class="value">KRW <span>${result.marginKrw.toLocaleString()}</span> / ${curr} ${fmtFx(result.marginSgd, result.exchangeRate)}</span></div>
                                 <div class="pc-cost-item"><span class="label" style="color: var(--secondary);">+ VAT 환급</span><span class="value" style="color: var(--secondary);">KRW <span>${result.vatRefundKrw.toLocaleString()}</span></span></div>
                                 <div class="pc-cost-item total"><span class="label">최종 수익</span><span class="value">KRW <span>${result.marginWithVatKrw.toLocaleString()}</span></span></div>
                             </div>
@@ -1489,7 +1498,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         cellDiscAmt.textContent = isEmpty ? '—' : 'KRW ' + newDiscountAmountKrw.toLocaleString();
                     }
                     if (cellSalesKrw) cellSalesKrw.textContent = isEmpty ? '—' : 'KRW ' + (newResult.exchangeRate > 0 ? Math.round(newResult.sellingPrice / newResult.exchangeRate).toLocaleString() : '—');
-                    if (cellSalesSgd) cellSalesSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.sellingPrice.toFixed(2);
+                    const _isHD = (newResult.exchangeRate || 0) >= 1;
+                    const _fmtFx = (v) => _isHD ? Math.round(v).toLocaleString() : v.toFixed(2);
+                    if (cellSalesSgd) cellSalesSgd.textContent = isEmpty ? '—' : curr + ' ' + _fmtFx(newResult.sellingPrice);
                     if (cellProfitKrw) {
                         cellProfitKrw.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString();
                         cellProfitKrw.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)';
@@ -1556,7 +1567,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const cSgd = activeRow.querySelector(`#cell-sales-sgd-${item.id}`);
             const cPK = activeRow.querySelector(`#cell-profit-krw-${item.id}`);
             const cMR = activeRow.querySelector(`#cell-margin-rate-${item.id}`);
-            if (cSgd) cSgd.textContent = isEmpty ? '—' : curr + ' ' + newResult.sellingPrice.toFixed(2);
+            if (cSgd) cSgd.textContent = isEmpty ? '—' : curr + ' ' + fmtFx(newResult.sellingPrice, newResult.exchangeRate);
             if (cPK) { cPK.textContent = isEmpty ? '—' : 'KRW ' + newResult.marginKrw.toLocaleString(); cPK.style.color = newResult.marginKrw < 0 ? 'var(--error)' : 'var(--text-main)'; }
             if (cMR) { cMR.textContent = isEmpty ? '—' : mr2.toFixed(1) + '%'; cMR.style.color = mr2 < 0 ? 'var(--error)' : 'var(--primary)'; }
             const cPV = activeRow.querySelector(`#cell-profit-vat-${item.id}`);
@@ -1742,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                     <span class="label" style="font-weight: 600; color: var(--text-main);">${f.label} <span style="color: var(--primary); font-size: 0.75rem; margin-left: 4px;">${f.rate}%</span></span>
-                    <span class="value" style="font-weight: 600;">${curr} ${f.amount.toFixed(2)}</span>
+                    <span class="value" style="font-weight: 600;">${curr} ${fmtFx(f.amount, result.exchangeRate)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
                     <span>${f.baseLabel}</span>
@@ -1756,7 +1767,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                     <span class="label" style="font-weight: 600; color: var(--text-main);">원가 (${curr})</span>
-                    <span class="value" style="font-weight: 600;">${curr} ${result.costSgd.toFixed(2)}</span>
+                    <span class="value" style="font-weight: 600;">${curr} ${fmtFx(result.costSgd, result.exchangeRate)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
                     <span>KRW ${result.costKrw.toLocaleString()} × ${result.exchangeRate}</span>
@@ -1765,17 +1776,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="pc-cost-item" style="flex-direction: column; align-items: stretch; border-bottom: 1px solid var(--outline-variant); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
                     <span class="label" style="font-weight: 600; color: var(--text-main);">셀러 배송비</span>
-                    <span class="value" style="font-weight: 600;">${curr} ${result.sellerShipping.toFixed(2)}</span>
+                    <span class="value" style="font-weight: 600;">${curr} ${fmtFx(result.sellerShipping, result.exchangeRate)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-secondary);">
-                    <span>${item.weight}g → 원래운임 ${result.grossShipping.toFixed(2)} − 감면 ${result.rebate.toFixed(2)}</span>
+                    <span>${item.weight}g → 원래운임 ${fmtFx(result.grossShipping, result.exchangeRate)} − 감면 ${fmtFx(result.rebate, result.exchangeRate)}</span>
                 </div>
             </div>
             ${rows}
-            <div class="pc-cost-item subtotal" style="margin-top: 1rem; border-top: 2px solid var(--outline-variant); padding-top: 0.5rem;"><span class="label">총 비용 (원가+배송+수수료)</span><span class="value">${curr} ${(result.costSgd + result.sellerShipping + result.totalFees).toFixed(2)}</span></div>
-            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--primary);">정산 마진</span><span class="value" style="color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'}; font-weight: 700;">${curr} ${result.marginSgd.toFixed(2)} (KRW ${result.marginKrw.toLocaleString()})</span></div>
-            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액</span><span class="value" style="color: var(--secondary);">+ ${curr} ${result.vatRefundSgd.toFixed(2)} (KRW ${result.vatRefundKrw.toLocaleString()})</span></div>
-            <div class="pc-cost-item total" style="margin-top: 0.5rem;"><span class="label" style="color: var(--primary);">환급 포함 최종 마진</span><span class="value" style="color: var(--primary); font-weight: 800;">${curr} ${result.marginWithVatSgd.toFixed(2)} (KRW ${result.marginWithVatKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item subtotal" style="margin-top: 1rem; border-top: 2px solid var(--outline-variant); padding-top: 0.5rem;"><span class="label">총 비용 (원가+배송+수수료)</span><span class="value">${curr} ${fmtFx(result.costSgd + result.sellerShipping + result.totalFees, result.exchangeRate)}</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--primary);">정산 마진</span><span class="value" style="color: ${result.marginSgd >= 0 ? 'var(--primary)' : 'var(--error)'}; font-weight: 700;">${curr} ${fmtFx(result.marginSgd, result.exchangeRate)} (KRW ${result.marginKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item" style="margin-top: 0.25rem;"><span class="label" style="color: var(--secondary);"><i class="fa-solid fa-money-bill-transfer"></i> 부가세 환급 예상액</span><span class="value" style="color: var(--secondary);">+ ${curr} ${fmtFx(result.vatRefundSgd, result.exchangeRate)} (KRW ${result.vatRefundKrw.toLocaleString()})</span></div>
+            <div class="pc-cost-item total" style="margin-top: 0.5rem;"><span class="label" style="color: var(--primary);">환급 포함 최종 마진</span><span class="value" style="color: var(--primary); font-weight: 800;">${curr} ${fmtFx(result.marginWithVatSgd, result.exchangeRate)} (KRW ${result.marginWithVatKrw.toLocaleString()})</span></div>
         </div>`;
     }
 
@@ -4432,12 +4443,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalFee = tier3Base + (units * tier3Add);
         }
 
-        document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${totalFee.toFixed(2)}`;
-        document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${rebate.toFixed(2)}`;
-        document.getElementById('test-buyer-shipping').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${buyerShipping.toFixed(2)}`;
+        const isHD = ['vn', 'tw', 'th', 'ph'].includes(currentMarketContext);
+        const fmtShip = (v) => isHD ? Math.round(v).toLocaleString() : v.toFixed(2);
+
+        document.getElementById('test-total-fee').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${fmtShip(totalFee)}`;
+        document.getElementById('test-rebate').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${fmtShip(rebate)}`;
+        document.getElementById('test-buyer-shipping').innerHTML = `- <span class="settings-currency-label">${marketCurr}</span> ${fmtShip(buyerShipping)}`;
         
         const sellerBorne = Math.max(0, totalFee - rebate - buyerShipping);
-        document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${sellerBorne.toFixed(2)}`;
+        document.getElementById('test-seller-borne').innerHTML = `<span class="settings-currency-label">${marketCurr}</span> ${fmtShip(sellerBorne)}`;
     }
 
     document.getElementById('settings-shipping-test-weight')?.addEventListener('input', calculateShippingTest);
