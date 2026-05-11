@@ -26,20 +26,6 @@
                         <h1><i class='bx bx-bar-chart-alt-2'></i> 공급 현황 대시보드</h1>
                         <span class="dash-subtitle" id="periodLabel">전체 기간</span>
                     </div>
-                    <div class="dash-header-right">
-                        <div class="date-range-wrap">
-                            <i class='bx bx-calendar' style="color:var(--gray-400); margin-right:4px;"></i>
-                            <input type="date" id="filterStart">
-                            <span>~</span>
-                            <input type="date" id="filterEnd">
-                        </div>
-                        <div class="dash-period-chips">
-                            <button class="period-chip active" data-period="all">전체</button>
-                            <button class="period-chip" data-period="year">올해</button>
-                            <button class="period-chip" data-period="quarter">이번 분기</button>
-                            <button class="period-chip" data-period="month">이번 달</button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Source Filter Tabs -->
@@ -68,9 +54,28 @@
                     </div>
                 </div>
 
-                <!-- Cross-Filter Strip (현장/품목 교차 필터) -->
+                <!-- Cross-Filter Strip (기간/현장/품목 교차 필터) -->
                 <div class="cross-filter-bar" id="crossFilterBar">
                     <div class="cf-dropdowns">
+                        <!-- Date Filter Moved Here -->
+                        <div class="cf-combo">
+                            <label class="cf-label"><i class='bx bx-calendar'></i> 조회 기간</label>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <div class="date-range-wrap" style="height: 37px;">
+                                    <input type="date" id="filterStart">
+                                    <span style="color:var(--gray-400);">~</span>
+                                    <input type="date" id="filterEnd">
+                                </div>
+                                <div class="dash-period-chips" style="height: 37px; align-items: center;">
+                                    <button class="period-chip active" data-period="all">전체</button>
+                                    <button class="period-chip" data-period="year">올해</button>
+                                    <button class="period-chip" data-period="quarter">이번 분기</button>
+                                    <button class="period-chip" data-period="month">이번 달</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Site Filter -->
                         <div class="cf-combo" id="cfSiteCombo">
                             <label class="cf-label"><i class='bx bx-building-house'></i> 현장</label>
                             <div class="cf-select-wrap" id="cfSiteSelectWrap">
@@ -85,6 +90,8 @@
                                 <ul class="cf-options" id="cfSiteOptions"></ul>
                             </div>
                         </div>
+
+                        <!-- Item Filter -->
                         <div class="cf-combo" id="cfItemCombo">
                             <label class="cf-label"><i class='bx bx-box'></i> 품목</label>
                             <div class="cf-select-wrap" id="cfItemSelectWrap">
@@ -99,6 +106,7 @@
                                 <ul class="cf-options" id="cfItemOptions"></ul>
                             </div>
                         </div>
+
                         <button class="cf-reset-btn" id="cfResetBtn" title="필터 초기화" style="display:none;">
                             <i class='bx bx-reset'></i> 초기화
                         </button>
