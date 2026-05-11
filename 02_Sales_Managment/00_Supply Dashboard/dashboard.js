@@ -107,6 +107,11 @@ function initSourceTabs() {
             document.querySelectorAll('.source-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             activeSource = btn.dataset.source;
+            activeSite = '';
+            activeItem = '';
+            populateCrossFilterOptions();
+            updateComboDisplay();
+            renderCrossFilterChips();
             applyFilter();
         });
     });
@@ -617,14 +622,18 @@ function populateCrossFilterOptions() {
     const sites = new Set();
     const items = new Set();
 
-    rawGeneral.forEach(d => {
-        if (d.site) sites.add(d.site);
-        if (d.item) items.add(d.item);
-    });
-    rawOil.forEach(d => {
-        if (d.site) sites.add(d.site);
-        if (d.item) items.add(d.item);
-    });
+    if (activeSource === 'all' || activeSource === 'general') {
+        rawGeneral.forEach(d => {
+            if (d.site) sites.add(d.site);
+            if (d.item) items.add(d.item);
+        });
+    }
+    if (activeSource === 'all' || activeSource === 'oil') {
+        rawOil.forEach(d => {
+            if (d.site) sites.add(d.site);
+            if (d.item) items.add(d.item);
+        });
+    }
 
     buildOptionList('cfSiteOptions', [...sites].sort(), 'site');
     buildOptionList('cfItemOptions', [...items].sort(), 'item');
