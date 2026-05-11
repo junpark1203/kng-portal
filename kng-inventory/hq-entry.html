@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="K&G 본사 매입 현황 — 입출고 등록">
+    <title>입출고 등록</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .main-content { margin-left: 0; padding: 40px; display: flex; justify-content: center; }
+        .entry-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 30px; width: 100%; max-width: 800px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .entry-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 24px; }
+        .entry-header h2 { font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px; }
+        .entry-header h2 i { color: var(--primary); font-size: 24px; }
+        .toggle-group { display: flex; gap: 8px; background: var(--surface-container-lowest); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+        .toggle-label { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; color: var(--text-secondary); transition: all 0.2s; }
+        input[type="radio"] { display: none; }
+        input[type="radio"]:checked + .toggle-label { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(79,110,247,0.3); }
+        
+        .form-section { margin-bottom: 24px; }
+        .form-section-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .form-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .form-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+        .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .form-grid.cols-1 { grid-template-columns: 1fr; }
+        
+        .fg { display: flex; flex-direction: column; gap: 6px; }
+        .fg label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+        .fg input { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--surface); color: var(--text-primary); outline: none; transition: all 0.2s; }
+        .fg input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 110, 247, 0.1); }
+        .fg input.readonly-input { background: var(--surface-container-lowest); color: var(--text-secondary); cursor: not-allowed; }
+        
+        .input-vat-group { display: flex; flex-direction: column; gap: 8px; }
+        .vat-chip { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--text-secondary); user-select: none; }
+        .vat-chip input { margin: 0; width: 14px; height: 14px; accent-color: var(--primary); cursor: pointer; }
+        
+        .form-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 24px; border-top: 1px solid var(--border); margin-top: 32px; }
+        .btn-submit { padding: 12px 32px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+        .btn-submit:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,110,247,0.3); }
+        .btn-reset { padding: 12px 24px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn-reset:hover { background: var(--surface-container-lowest); color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="entry-container">
+                <form id="entryForm" autocomplete="off">
+                    <div class="entry-header">
+                        <h2><i class='bx bx-edit'></i> 입출고 등록</h2>
+                        <div class="toggle-group">
+                            <input type="radio" id="typeIn" name="txType" value="IN" checked>
+                            <label for="typeIn" class="toggle-label"><i class='bx bx-down-arrow-circle'></i> 매입 (IN)</label>
+                            <input type="radio" id="typeOut" name="txType" value="OUT">
+                            <label for="typeOut" class="toggle-label"><i class='bx bx-up-arrow-circle'></i> 출고 (OUT)</label>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">기본 정보</div>
+                        <div class="form-grid cols-2">
+                            <div class="fg"><label for="txDate">일자</label><input type="date" id="txDate" required></div>
+                            <div class="fg"><label for="fSupplier">공급사</label><input type="text" id="fSupplier" required placeholder="최가유통"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">상품 정보</div>
+                        <div class="form-grid cols-4">
+                            <div class="fg"><label for="fBrand">브랜드</label><input type="text" id="fBrand" required placeholder="K2 세이프티"></div>
+                            <div class="fg"><label for="fName">상품명</label><input type="text" id="fName" required placeholder="에어윈드베스트 선풍기조끼"></div>
+                            <div class="fg"><label for="fColor">컬러</label><input type="text" id="fColor" required placeholder="블랙"></div>
+                            <div class="fg"><label for="fSize">사이즈</label><input type="text" id="fSize" required placeholder="FREE"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">수량 및 단가</div>
+                        <div class="form-grid cols-4">
+                            <div class="fg"><label for="txQty">수량</label><input type="number" id="txQty" min="1" required placeholder="0"></div>
+                            <div class="fg" id="basePriceCol"><label for="txBasePrice">상품가</label>
+                                <div class="input-vat-group"><input type="number" id="txBasePrice" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="txBaseVat" checked><span>VAT별도</span></label></div>
+                            </div>
+                            <div class="fg" id="freightCol"><label for="txFreight">운임</label>
+                                <div class="input-vat-group"><input type="number" id="txFreight" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="txFreightVat" checked><span>VAT별도</span></label></div>
+                            </div>
+                            <div class="fg"><label id="lblPrice" for="txPrice">매입단가 (₩)</label>
+                                <input type="number" id="txPrice" min="0" required placeholder="자동계산" readonly class="readonly-input" style="height: 40px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">추가 정보</div>
+                        <div class="form-grid cols-1">
+                            <div class="fg"><label for="txRemarks">비고</label><input type="text" id="txRemarks" placeholder="추가적인 메모나 특이사항을 입력하세요"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-reset" id="resetEntry"><i class='bx bx-reset'></i> 초기화</button>
+                        <button type="submit" class="btn-submit"><i class='bx bx-check'></i> 등록하기</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="hq-entry.js"></script>
+</body>
+</html>

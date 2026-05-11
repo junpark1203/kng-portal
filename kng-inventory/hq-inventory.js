@@ -153,123 +153,6 @@
         container.innerHTML = html;
     }
 
-    // ==========================================
-    // Entry Modal
-    // ==========================================
-    function openEntryModal() {
-        $('entryForm').reset();
-        $('txDate').value = new Date().toISOString().split('T')[0];
-        $('typeIn').checked = true;
-        toggleEntryMode('IN');
-        $('entryModal').classList.add('active');
-    }
-
-    function closeEntryModal() {
-        $('entryModal').classList.remove('active');
-    }
-
-    function toggleEntryMode(type) {
-        const bpCol = $('basePriceCol');
-        const frCol = $('freightCol');
-        const priceInput = $('txPrice');
-        const lbl = $('lblPrice');
-
-        if (type === 'IN') {
-            lbl.textContent = '매입단가 (₩)';
-            bpCol.style.display = '';
-            frCol.style.display = '';
-            priceInput.readOnly = true;
-            priceInput.classList.add('readonly-input');
-            priceInput.placeholder = '자동계산';
-        } else {
-            lbl.textContent = '매출단가 (₩)';
-            bpCol.style.display = 'none';
-            frCol.style.display = 'none';
-            priceInput.readOnly = false;
-            priceInput.classList.remove('readonly-input');
-            priceInput.placeholder = '판매가 입력';
-        }
-    }
-
-    function updateCalcPrice() {
-        const base = parseInt($('txBasePrice').value, 10) || 0;
-        const freight = parseInt($('txFreight').value, 10) || 0;
-        const pureBase = $('txBaseVat').checked ? base : Math.round(base / 1.1);
-        const pureFreight = $('txFreightVat').checked ? freight : Math.round(freight / 1.1);
-        $('txPrice').value = pureBase + pureFreight;
-    }
-
-    async function handleEntry(e) {
-        e.preventDefault();
-        const type = document.querySelector('input[name="txType"]:checked').value;
-        const data = {
-            type: type,
-            txDate: $('txDate').value,
-            supplier: $('fSupplier').value.trim(),
-            brand: $('fBrand').value.trim(),
-            productName: $('fName').value.trim(),
-            color: $('fColor').value.trim(),
-            size: $('fSize').value.trim(),
-            qty: parseInt($('txQty').value, 10) || 0,
-            price: parseInt($('txPrice').value, 10) || 0,
-            basePrice: parseInt($('txBasePrice').value, 10) || 0,
-            freight: parseInt($('txFreight').value, 10) || 0,
-            remarks: $('txRemarks').value.trim()
-        };
-
-        if (!data.qty || !data.price) {
-            showToast('수량과 단가를 입력해 주세요.', 'warning');
-            return;
-        }
-
-        // 매칭되는 상품 찾기
-        const match = products.find(p =>
-            p.brand === data.brand && p.name === data.productName &&
-            p.color === data.color && p.size === data.size
-        );
-
-        if (match) {
-            data.productId = match.id;
-            data.buyPrice = match.buyPrice;
-        } else if (type === 'IN') {
-            // 신규 상품 자동 등록
-            try {
-                const pRes = await fetch(API_BASE + '/products', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        supplier: data.supplier,
-                        brand: data.brand,
-                        name: data.productName,
-                        color: data.color,
-                        size: data.size,
-                        stock: 0,
-                        buyPrice: data.price
-                    })
-                });
-                const pResult = await pRes.json();
-                data.productId = pResult.id;
-            } catch(e) {
-                showToast('상품 등록 실패: ' + e.message, 'error');
-                return;
-            }
-        }
-
-        try {
-            const res = await fetch(API_BASE + '/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (!res.ok) throw new Error('등록 실패');
-            showToast((type === 'IN' ? '매입' : '출고') + ' 등록 완료!', 'success');
-            closeEntryModal();
-            fetchProducts();
-            fetchMetrics();
-        } catch(e) {
-            showToast('등록 실패: ' + e.message, 'error');
-        }
-    }
 
     // ==========================================
     // Delete
@@ -298,40 +181,11 @@
     }
 
     // ==========================================
-        // Init
+    // Init
     // ==========================================
-    function checkHash() {
-        if (window.location.hash === '#open-entry') {
-            openEntryModal();
-            // Clear hash so it can be opened again if closed and clicked again
-            history.replaceState(null, null, ' ');
-        }
-    }
-
-    window.addEventListener('hashchange', checkHash);
-
     document.addEventListener('DOMContentLoaded', () => {
         fetchProducts();
         fetchMetrics();
-        checkHash();
-
-        // Entry modal
-        $('entryBtn').addEventListener('click', openEntryModal);
-        $('closeEntryModal').addEventListener('click', closeEntryModal);
-        $('cancelEntry').addEventListener('click', closeEntryModal);
-        $('entryForm').addEventListener('submit', handleEntry);
-        $('entryModal').addEventListener('click', e => { if (e.target === $('entryModal')) closeEntryModal(); });
-
-        // Toggle IN/OUT
-        document.querySelectorAll('input[name="txType"]').forEach(r => {
-            r.addEventListener('change', e => toggleEntryMode(e.target.value));
-        });
-
-        // Auto-calc price
-        $('txBasePrice').addEventListener('input', updateCalcPrice);
-        $('txFreight').addEventListener('input', updateCalcPrice);
-        $('txBaseVat').addEventListener('change', updateCalcPrice);
-        $('txFreightVat').addEventListener('change', updateCalcPrice);
 
         // Delete
         $('deleteBtn').addEventListener('click', handleDelete);

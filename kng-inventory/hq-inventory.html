@@ -40,7 +40,6 @@
                             <div class="header-top">
                                 <h2><i class='bx bx-box'></i> 실시간 재고 현황 <span class="product-count-text" id="totalCount">0건</span></h2>
                                 <div class="header-controls">
-                                    <button id="entryBtn" class="btn-primary"><i class='bx bx-edit-alt'></i> 입출고 등록</button>
                                     <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
                                 </div>
                             </div>
@@ -95,58 +94,6 @@
                 </section>
             </div>
         </main>
-    </div>
-
-    <!-- Entry Modal -->
-    <div id="entryModal" class="modal">
-        <div class="modal-content" style="max-width: 680px;">
-            <div class="modal-header">
-                <h2 id="entryModalTitle">입출고 등록</h2>
-                <button type="button" class="btn-close" id="closeEntryModal"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="entryForm" autocomplete="off">
-                    <div class="panel-header" style="border:none; padding: 0 0 12px;">
-                        <div class="toggle-group">
-                            <input type="radio" id="typeIn" name="txType" value="IN" checked>
-                            <label for="typeIn" class="toggle-label">매입 (IN)</label>
-                            <input type="radio" id="typeOut" name="txType" value="OUT">
-                            <label for="typeOut" class="toggle-label">출고 (OUT)</label>
-                        </div>
-                    </div>
-
-                    <div class="form-row fr-row1">
-                        <div class="fg"><label for="txDate">일자</label><input type="date" id="txDate" required></div>
-                        <div class="fg"><label for="fSupplier">공급사</label><input type="text" id="fSupplier" required placeholder="최가유통"></div>
-                    </div>
-                    <div class="form-row fr-row2">
-                        <div class="fg"><label for="fBrand">브랜드</label><input type="text" id="fBrand" required placeholder="K2 세이프티"></div>
-                        <div class="fg"><label for="fName">상품명</label><input type="text" id="fName" required placeholder="에어윈드베스트 선풍기조끼"></div>
-                        <div class="fg"><label for="fColor">컬러</label><input type="text" id="fColor" required placeholder="블랙"></div>
-                        <div class="fg"><label for="fSize">사이즈</label><input type="text" id="fSize" required placeholder="FREE"></div>
-                    </div>
-                    <div class="form-row fr-row3">
-                        <div class="fg"><label for="txQty">수량</label><input type="number" id="txQty" min="1" required placeholder="0"></div>
-                        <div class="fg" id="basePriceCol"><label for="txBasePrice">상품가</label>
-                            <div class="input-vat-group"><input type="number" id="txBasePrice" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="txBaseVat" checked><span>VAT별도</span></label></div>
-                        </div>
-                        <div class="fg" id="freightCol"><label for="txFreight">운임</label>
-                            <div class="input-vat-group"><input type="number" id="txFreight" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="txFreightVat" checked><span>VAT별도</span></label></div>
-                        </div>
-                        <div class="fg"><label id="lblPrice" for="txPrice">매입단가 (₩)</label>
-                            <input type="number" id="txPrice" min="0" required placeholder="자동계산" readonly class="readonly-input">
-                        </div>
-                    </div>
-                    <div class="form-row fr-row4">
-                        <div class="fg"><label for="txRemarks">비고</label><input type="text" id="txRemarks" placeholder="메모 입력"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-outline" id="cancelEntry">취소</button>
-                        <button type="submit" class="btn-primary"><i class='bx bx-plus-circle'></i> 등록</button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
