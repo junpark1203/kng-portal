@@ -298,11 +298,22 @@
     }
 
     // ==========================================
-    // Init
+        // Init
     // ==========================================
+    function checkHash() {
+        if (window.location.hash === '#open-entry') {
+            openEntryModal();
+            // Clear hash so it can be opened again if closed and clicked again
+            history.replaceState(null, null, ' ');
+        }
+    }
+
+    window.addEventListener('hashchange', checkHash);
+
     document.addEventListener('DOMContentLoaded', () => {
         fetchProducts();
         fetchMetrics();
+        checkHash();
 
         // Entry modal
         $('entryBtn').addEventListener('click', openEntryModal);
