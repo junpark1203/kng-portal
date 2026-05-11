@@ -51,7 +51,6 @@ function initHqTables(database) {
                     qty INTEGER NOT NULL DEFAULT 0,
                     price INTEGER NOT NULL DEFAULT 0,
                     buyPrice INTEGER DEFAULT 0,
-                    buyPrice INTEGER DEFAULT 0,
                     basePrice INTEGER DEFAULT 0,
                     freight INTEGER DEFAULT 0,
                     remarks TEXT,
