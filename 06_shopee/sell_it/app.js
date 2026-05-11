@@ -736,12 +736,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (validMargins.length > 0) {
                         const minMarginKrw = Math.min(...validMargins);
                         const maxMarginKrw = Math.max(...validMargins);
-                        marginKrwRangeStr = minMarginKrw === maxMarginKrw ? `KRW ${minMarginKrw.toLocaleString()}` : `KRW ${minMarginKrw.toLocaleString()} ~ ${maxMarginKrw.toLocaleString()}`;
+                        marginKrwRangeStr = minMarginKrw === maxMarginKrw ? `KRW ${minMarginKrw.toLocaleString()}` : `KRW ${minMarginKrw.toLocaleString()}<br>~ ${maxMarginKrw.toLocaleString()}`;
                         
                         const minSales = Math.min(...validSales);
                         const maxSales = Math.max(...validSales);
                         const exRate0 = childResults.find(r => !r._empty)?.exchangeRate || 0;
-                        salesSgdRangeStr = minSales === maxSales ? fmtFx(minSales, exRate0) : `${fmtFx(minSales, exRate0)} ~ ${fmtFx(maxSales, exRate0)}`;
+                        salesSgdRangeStr = minSales === maxSales ? fmtFx(minSales, exRate0) : `${fmtFx(minSales, exRate0)}<br>~ ${fmtFx(maxSales, exRate0)}`;
                     }
 
                     html += `
@@ -763,10 +763,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">
-                                <div class="pc-data-top" style="color: var(--primary);">${curr} ${salesSgdRangeStr}</div>
+                                <div class="pc-data-top" style="color: var(--primary); white-space: normal; line-height: 1.3; font-size: 0.75rem;">${curr} ${salesSgdRangeStr}</div>
                             </td>
                             <td class="text-center">
-                                <div class="pc-data-top" style="color: var(--text-main);">${marginKrwRangeStr}</div>
+                                <div class="pc-data-top" style="color: var(--text-main); white-space: normal; line-height: 1.3; font-size: 0.75rem;">${marginKrwRangeStr}</div>
                             </td>
                             <td class="text-center">
                                 <div class="pc-data-top" style="color: var(--primary);">(${item.children.length} Opts)</div>
