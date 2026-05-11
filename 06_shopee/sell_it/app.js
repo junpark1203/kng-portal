@@ -740,6 +740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         
                         const minSales = Math.min(...validSales);
                         const maxSales = Math.max(...validSales);
+                        const exRate0 = childResults.find(r => !r._empty)?.exchangeRate || 0;
                         salesSgdRangeStr = minSales === maxSales ? fmtFx(minSales, exRate0) : `${fmtFx(minSales, exRate0)} ~ ${fmtFx(maxSales, exRate0)}`;
                     }
 
