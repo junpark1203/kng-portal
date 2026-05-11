@@ -18,6 +18,7 @@ let activeMetric = 'amount'; // 'amount' | 'qty'
 let activeAggTab = 'item'; // 'item' | 'site'
 let aggSearchQuery = '';
 let activeSite = ''; // '' = 전체 현장
+let activeCategory = ''; // '' = 전체 구분
 let activeItem = ''; // '' = 전체 품목
 
 const $ = id => document.getElementById(id);
@@ -108,6 +109,7 @@ function initSourceTabs() {
             btn.classList.add('active');
             activeSource = btn.dataset.source;
             activeSite = '';
+            activeCategory = '';
             activeItem = '';
             populateCrossFilterOptions();
             updateComboDisplay();
@@ -190,9 +192,19 @@ function getCombined() {
             type: 'oil'
         }));
     }
-    // Cross-filter: 현장/품목 필터 적용
-    if (activeSite) list = list.filter(d => d.site === activeSite);
-    if (activeItem) list = list.filter(d => d.item === activeItem);
+    // Cross-filter: 현장/구분/품목 필터 적용 (부분 일치 검색)
+    if (activeSite) {
+        const query = activeSite.toLowerCase();
+        list = list.filter(d => (d.site || '').toLowerCase().includes(query));
+    }
+    if (activeCategory) {
+        const query = activeCategory.toLowerCase();
+        list = list.filter(d => (d.category || '미분류').toLowerCase().includes(query));
+    }
+    if (activeItem) {
+        const query = activeItem.toLowerCase();
+        list = list.filter(d => (d.item || '').toLowerCase().includes(query));
+    }
     return list;
 }
 
@@ -550,6 +562,18 @@ function initCrossFilter() {
         }
     });
 
+    // Category combobox toggle
+    $('cfCategorySelectWrap').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllCombos('cfCategoryCombo');
+        $('cfCategoryCombo').classList.toggle('open');
+        if ($('cfCategoryCombo').classList.contains('open')) {
+            $('cfCategorySearch').value = '';
+            $('cfCategorySearch').focus();
+            filterComboOptions('cfCategoryOptions', '', 'category');
+        }
+    });
+
     // Item combobox toggle
     $('cfItemSelectWrap').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -558,20 +582,24 @@ function initCrossFilter() {
         if ($('cfItemCombo').classList.contains('open')) {
             $('cfItemSearch').value = '';
             $('cfItemSearch').focus();
-            filterComboOptions('cfItemOptions', '');
+            filterComboOptions('cfItemOptions', '', 'item');
         }
     });
 
     // Search inputs
     $('cfSiteSearch').addEventListener('input', (e) => {
-        filterComboOptions('cfSiteOptions', e.target.value.trim().toLowerCase());
+        filterComboOptions('cfSiteOptions', e.target.value.trim().toLowerCase(), 'site');
+    });
+    $('cfCategorySearch').addEventListener('input', (e) => {
+        filterComboOptions('cfCategoryOptions', e.target.value.trim().toLowerCase(), 'category');
     });
     $('cfItemSearch').addEventListener('input', (e) => {
-        filterComboOptions('cfItemOptions', e.target.value.trim().toLowerCase());
+        filterComboOptions('cfItemOptions', e.target.value.trim().toLowerCase(), 'item');
     });
 
     // Prevent dropdown close when clicking inside
     $('cfSiteDropdown').addEventListener('click', (e) => e.stopPropagation());
+    $('cfCategoryDropdown').addEventListener('click', (e) => e.stopPropagation());
     $('cfItemDropdown').addEventListener('click', (e) => e.stopPropagation());
 
     // Close dropdowns on outside click
@@ -580,6 +608,7 @@ function initCrossFilter() {
     // Reset button
     $('cfResetBtn').addEventListener('click', () => {
         activeSite = '';
+        activeCategory = '';
         activeItem = '';
         updateComboDisplay();
         renderCrossFilterChips();
@@ -588,13 +617,19 @@ function initCrossFilter() {
 }
 
 function closeAllCombos(exceptId) {
-    ['cfSiteCombo', 'cfItemCombo'].forEach(id => {
+    ['cfSiteCombo', 'cfCategoryCombo', 'cfItemCombo'].forEach(id => {
         if (id !== exceptId) $(id).classList.remove('open');
     });
 }
 
-function filterComboOptions(listId, query) {
-    const items = $(listId).querySelectorAll('.cf-option');
+function filterComboOptions(listId, query, type) {
+    const ul = $(listId);
+    
+    // Remove existing partial search option
+    const existingPartial = ul.querySelector('.partial-search-option');
+    if (existingPartial) existingPartial.remove();
+
+    const items = ul.querySelectorAll('.cf-option:not(.partial-search-option)');
     let visibleCount = 0;
     items.forEach(li => {
         if (li.classList.contains('all-option')) { li.style.display = ''; return; }
@@ -603,14 +638,42 @@ function filterComboOptions(listId, query) {
         li.style.display = show ? '' : 'none';
         if (show) visibleCount++;
     });
+
+    // Inject partial search button at the top if there is a query
+    if (query) {
+        const partialLi = document.createElement('li');
+        partialLi.className = 'cf-option partial-search-option';
+        partialLi.style.borderBottom = '1px dashed var(--gray-200)';
+        partialLi.style.color = '#4f6ef7';
+        partialLi.style.fontWeight = '600';
+        partialLi.innerHTML = `<i class='bx bx-search' style="margin-right:6px;"></i> "${query}" 포함 검색`;
+        partialLi.addEventListener('click', () => {
+            if (type === 'site') activeSite = query;
+            else if (type === 'category') activeCategory = query;
+            else activeItem = query;
+            updateComboDisplay();
+            renderCrossFilterChips();
+            closeAllCombos();
+            applyFilter();
+        });
+        
+        // Insert right after the "all" option
+        const allOpt = ul.querySelector('.all-option');
+        if (allOpt && allOpt.nextSibling) {
+            ul.insertBefore(partialLi, allOpt.nextSibling);
+        } else {
+            ul.appendChild(partialLi);
+        }
+    }
+
     // Show/hide empty message
-    let emptyEl = $(listId).querySelector('.cf-option-empty');
+    let emptyEl = ul.querySelector('.cf-option-empty');
     if (visibleCount === 0 && query) {
         if (!emptyEl) {
             emptyEl = document.createElement('li');
             emptyEl.className = 'cf-option-empty';
-            emptyEl.textContent = '검색 결과가 없습니다.';
-            $(listId).appendChild(emptyEl);
+            emptyEl.textContent = '일치하는 항목이 없습니다.';
+            ul.appendChild(emptyEl);
         }
         emptyEl.style.display = '';
     } else if (emptyEl) {
@@ -620,22 +683,26 @@ function filterComboOptions(listId, query) {
 
 function populateCrossFilterOptions() {
     const sites = new Set();
+    const categories = new Set();
     const items = new Set();
 
     if (activeSource === 'all' || activeSource === 'general') {
         rawGeneral.forEach(d => {
             if (d.site) sites.add(d.site);
+            if (d.category) categories.add(d.category);
             if (d.item) items.add(d.item);
         });
     }
     if (activeSource === 'all' || activeSource === 'oil') {
         rawOil.forEach(d => {
             if (d.site) sites.add(d.site);
+            if (d.category) categories.add(d.category);
             if (d.item) items.add(d.item);
         });
     }
 
     buildOptionList('cfSiteOptions', [...sites].sort(), 'site');
+    buildOptionList('cfCategoryOptions', [...categories].sort(), 'category');
     buildOptionList('cfItemOptions', [...items].sort(), 'item');
 }
 
@@ -647,9 +714,13 @@ function buildOptionList(listId, values, type) {
     const allLi = document.createElement('li');
     allLi.className = 'cf-option all-option selected';
     allLi.dataset.value = '';
-    allLi.innerHTML = `<span class="cf-check"><i class='bx bx-check'></i></span> ${type === 'site' ? '전체 현장' : '전체 품목'}`;
+    let allLabel = '전체 현장';
+    if (type === 'category') allLabel = '전체 구분';
+    else if (type === 'item') allLabel = '전체 품목';
+    allLi.innerHTML = `<span class="cf-check"><i class='bx bx-check'></i></span> ${allLabel}`;
     allLi.addEventListener('click', () => {
         if (type === 'site') activeSite = '';
+        else if (type === 'category') activeCategory = '';
         else activeItem = '';
         updateComboDisplay();
         renderCrossFilterChips();
@@ -665,6 +736,7 @@ function buildOptionList(listId, values, type) {
         li.innerHTML = `<span class="cf-check"></span> ${val}`;
         li.addEventListener('click', () => {
             if (type === 'site') activeSite = val;
+            else if (type === 'category') activeCategory = val;
             else activeItem = val;
             updateComboDisplay();
             renderCrossFilterChips();
@@ -681,6 +753,11 @@ function updateComboDisplay() {
     if (activeSite) $('cfSiteSelectWrap').classList.add('has-value');
     else $('cfSiteSelectWrap').classList.remove('has-value');
 
+    // Category
+    $('cfCategoryText').textContent = activeCategory || '전체 구분';
+    if (activeCategory) $('cfCategorySelectWrap').classList.add('has-value');
+    else $('cfCategorySelectWrap').classList.remove('has-value');
+
     // Item
     $('cfItemText').textContent = activeItem || '전체 품목';
     if (activeItem) $('cfItemSelectWrap').classList.add('has-value');
@@ -688,10 +765,11 @@ function updateComboDisplay() {
 
     // Update selected states in option lists
     updateOptionSelected('cfSiteOptions', activeSite);
+    updateOptionSelected('cfCategoryOptions', activeCategory);
     updateOptionSelected('cfItemOptions', activeItem);
 
     // Show/hide reset button
-    $('cfResetBtn').style.display = (activeSite || activeItem) ? '' : 'none';
+    $('cfResetBtn').style.display = (activeSite || activeCategory || activeItem) ? '' : 'none';
 }
 
 function updateOptionSelected(listId, activeValue) {
@@ -715,6 +793,14 @@ function renderCrossFilterChips() {
                 <button class="cf-chip-remove" data-type="site" title="현장 필터 해제"><i class='bx bx-x'></i></button>
             </span>`;
     }
+    if (activeCategory) {
+        container.innerHTML += `
+            <span class="cf-chip">
+                <i class='bx bx-category label-icon'></i>
+                구분: ${activeCategory}
+                <button class="cf-chip-remove" data-type="category" title="구분 필터 해제"><i class='bx bx-x'></i></button>
+            </span>`;
+    }
     if (activeItem) {
         container.innerHTML += `
             <span class="cf-chip">
@@ -729,6 +815,7 @@ function renderCrossFilterChips() {
         btn.addEventListener('click', (e) => {
             const type = e.currentTarget.dataset.type;
             if (type === 'site') activeSite = '';
+            else if (type === 'category') activeCategory = '';
             else activeItem = '';
             updateComboDisplay();
             renderCrossFilterChips();
