@@ -123,6 +123,8 @@
                     '<td>' + escHtml(t.supplier || '-') + '</td>' +
                     '<td>' + prodDisplay + '</td>' +
                     '<td>' + t.qty + '</td>' +
+                    '<td>' + (t.type === 'IN' ? fmtCurrency(t.basePrice || 0) : '-') + '</td>' +
+                    '<td>' + (t.type === 'IN' ? fmtCurrency(t.freight || 0) : '-') + '</td>' +
                     '<td>' + fmtCurrency(t.price) + '</td>' +
                     '<td>' + escHtml(t.remarks || '') + '</td>' +
                     '<td><button class="btn-action" data-edit="' + escHtml(t.id) + '"><i class="bx bx-edit-alt"></i> 수정</button></td>';

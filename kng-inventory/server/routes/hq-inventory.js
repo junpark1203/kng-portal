@@ -51,9 +51,11 @@ function initHqTables(database) {
                     qty INTEGER NOT NULL DEFAULT 0,
                     price INTEGER NOT NULL DEFAULT 0,
                     buyPrice INTEGER DEFAULT 0,
+                    buyPrice INTEGER DEFAULT 0,
                     basePrice INTEGER DEFAULT 0,
                     freight INTEGER DEFAULT 0,
                     remarks TEXT,
+                    batchId TEXT,
                     createdAt TEXT DEFAULT (datetime('now'))
                 )
             `);
@@ -68,12 +70,13 @@ function initHqTables(database) {
 
             // 기본 메트릭 삽입 (이미 있으면 무시)
             database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalRevenue', 0)`);
-            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalCost', 0)`, (err) => {
-                if (err) reject(err);
-                else {
+            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalCost', 0)`, () => {
+                // ALTER TABLE to add batchId if missing
+                database.run(`ALTER TABLE hq_transactions ADD COLUMN batchId TEXT`, (err) => {
+                    // Ignore error if column already exists
                     console.log('hq_products / hq_transactions / hq_metrics 테이블 확인 완료');
                     resolve();
-                }
+                });
             });
         });
     });
@@ -176,16 +179,31 @@ router.post('/transactions', (req, res) => {
     const t = req.body;
     const id = t.id || ('HQT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
+    
+    // Check negative stock for OUT
+    if (t.type === 'OUT' && t.productId) {
+        db.get('SELECT stock, name FROM hq_products WHERE id = ?', [t.productId], (err, prod) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (!prod) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+            if (prod.stock - (t.qty || 0) < 0) {
+                return res.status(400).json({ error: `재고 부족: ${prod.name} (현재 재고: ${prod.stock}, 출고 요청: ${t.qty})` });
+            }
+            insertTx();
+        });
+    } else {
+        insertTx();
+    }
 
-    const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, createdAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [
-        id, t.type, t.txDate||'', now,
-        t.productId||'', t.supplier||'', t.brand||'', t.productName||'',
-        t.color||'', t.size||'', t.qty||0, t.price||0,
-        t.buyPrice||0, t.basePrice||0, t.freight||0,
-        t.remarks||'', now
-    ];
+    function insertTx() {
+        const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, batchId, createdAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [
+            id, t.type, t.txDate||'', now,
+            t.productId||'', t.supplier||'', t.brand||'', t.productName||'',
+            t.color||'', t.size||'', t.qty||0, t.price||0,
+            t.buyPrice||0, t.basePrice||0, t.freight||0,
+            t.remarks||'', t.batchId||null, now
+        ];
 
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -210,6 +228,71 @@ router.post('/transactions', (req, res) => {
 
         res.status(201).json({ message: '등록 성공', id });
     });
+    }
+});
+
+// 일괄 입출고 등록 (다중 항목)
+router.post('/transactions/bulk', async (req, res) => {
+    const items = req.body.items;
+    if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: '데이터가 없습니다.' });
+
+    const batchId = 'BATCH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const now = new Date().toISOString();
+
+    const dbGet = (sql, params) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)));
+    const dbRun = (sql, params) => new Promise((resolve, reject) => db.run(sql, params, function(err) { err ? reject(err) : resolve(this) }));
+
+    try {
+        await dbRun('BEGIN TRANSACTION', []);
+
+        for (const t of items) {
+            const qty = t.qty || 0;
+            const price = t.price || 0;
+            const totalAmount = qty * price;
+            const productId = t.productId || '';
+            const type = t.type;
+
+            if (type === 'OUT' && productId) {
+                const prod = await dbGet('SELECT stock, name FROM hq_products WHERE id = ?', [productId]);
+                if (!prod) throw new Error(`등록되지 않은 상품입니다: ${t.productName}`);
+                if (prod.stock - qty < 0) {
+                    throw new Error(`재고 부족: ${prod.name} (현재 재고: ${prod.stock}, 요청: ${qty})`);
+                }
+            }
+
+            const id = t.id || ('HQT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+
+            const sql = `INSERT INTO hq_transactions (id, type, txDate, timestamp, productId, supplier, brand, productName, color, size, qty, price, buyPrice, basePrice, freight, remarks, batchId, createdAt)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            const params = [
+                id, type, t.txDate||'', now,
+                productId, t.supplier||'', t.brand||'', t.productName||'',
+                t.color||'', t.size||'', qty, price,
+                t.buyPrice||0, t.basePrice||0, t.freight||0,
+                t.remarks||'', batchId, now
+            ];
+
+            await dbRun(sql, params);
+
+            if (productId) {
+                const stockDelta = type === 'IN' ? qty : -qty;
+                await dbRun('UPDATE hq_products SET stock = stock + ?, updatedAt = ? WHERE id = ?', [stockDelta, now, productId]);
+            }
+
+            if (type === 'IN') {
+                await dbRun('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalCost']);
+            } else {
+                await dbRun('UPDATE hq_metrics SET value = value + ? WHERE key = ?', [totalAmount, 'totalRevenue']);
+            }
+        }
+
+        await dbRun('COMMIT', []);
+        res.status(201).json({ message: '일괄 등록 성공', batchId, count: items.length });
+
+    } catch (error) {
+        await dbRun('ROLLBACK', []);
+        res.status(400).json({ error: error.message });
+    }
 });
 
 // 입출고 내역 수정
