@@ -446,18 +446,29 @@
                                                     <input type="number" id="settings-shipping-tier1-base" class="form-control" value="2.23" step="0.01">
                                                 </div>
                                                 <div class="col">
-                                                    <label class="label-md">추가 (50~1000g) 요금 / 10g</label>
+                                                    <label class="label-md">추가 요금 / 10g</label>
                                                     <input type="number" id="settings-shipping-tier2-add" class="form-control" value="0.08" step="0.01">
                                                 </div>
                                             </div>
 
                                             <div class="form-group row">
                                                 <div class="col">
-                                                    <label class="label-md">기본 (>1000g) 누적 요금</label>
+                                                    <label class="label-md">Tier2→3 전환 중량 (g)</label>
+                                                    <input type="number" id="settings-shipping-tier2-max" class="form-control" value="1000" step="10">
+                                                </div>
+                                                <div class="col">
+                                                    <label class="label-md">Tier3 추가 단위 (g)</label>
+                                                    <input type="number" id="settings-shipping-tier3-unit" class="form-control" value="100" step="10">
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group row">
+                                                <div class="col">
+                                                    <label class="label-md">Tier3 누적 기본 요금</label>
                                                     <input type="number" id="settings-shipping-tier3-base" class="form-control" value="9.83" step="0.01">
                                                 </div>
                                                 <div class="col">
-                                                    <label class="label-md">추가 (>1000g) 요금 / 100g</label>
+                                                    <label class="label-md">Tier3 추가 요금 / 단위</label>
                                                     <input type="number" id="settings-shipping-tier3-add" class="form-control" value="0.70" step="0.01">
                                                 </div>
                                             </div>

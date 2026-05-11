@@ -3522,13 +3522,15 @@ document.addEventListener('DOMContentLoaded', async () => {
      */
     function calcShippingCost(weightG, ship) {
         if (!ship || weightG <= 0) return { grossShipping: 0, sellerShipping: 0, rebate: 0, buyerShipping: 0 };
+        const tier2Max = ship.tier2Max || 1000;
+        const tier3Unit = ship.tier3Unit || 100;
         let gross = 0;
         if (weightG <= 50) {
             gross = ship.tier1Base;
-        } else if (weightG <= 1000) {
+        } else if (weightG <= tier2Max) {
             gross = ship.tier1Base + Math.ceil((weightG - 50) / 10) * ship.tier2Add;
         } else {
-            gross = ship.tier3Base + Math.ceil((weightG - 1000) / 100) * ship.tier3Add;
+            gross = ship.tier3Base + Math.ceil((weightG - tier2Max) / tier3Unit) * ship.tier3Add;
         }
         const rebate = ship.rebate || 0;
         const buyerShipping = ship.buyerShipping || 0;
@@ -4307,6 +4309,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('settings-shipping-rebate').value = p.settings.rebate;
                     const buyerEl = document.getElementById('settings-shipping-buyer');
                     if (buyerEl) buyerEl.value = p.settings.buyerShipping || 0;
+                    const t2mEl = document.getElementById('settings-shipping-tier2-max');
+                    if (t2mEl) t2mEl.value = p.settings.tier2Max || 1000;
+                    const t3uEl = document.getElementById('settings-shipping-tier3-unit');
+                    if (t3uEl) t3uEl.value = p.settings.tier3Unit || 100;
                     document.getElementById('settings-shipping-form-title').innerText = `${currentMarketContext.toUpperCase()} 배송비 수정하기`;
                     calculateShippingTest();
                     toggleSettingsForm('shipping', true);
@@ -4354,6 +4360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newSettings = {
             tier1Base: parseFloat(document.getElementById('settings-shipping-tier1-base').value) || 0,
             tier2Add: parseFloat(document.getElementById('settings-shipping-tier2-add').value) || 0,
+            tier2Max: parseFloat(document.getElementById('settings-shipping-tier2-max')?.value) || 1000,
+            tier3Unit: parseFloat(document.getElementById('settings-shipping-tier3-unit')?.value) || 100,
             tier3Base: parseFloat(document.getElementById('settings-shipping-tier3-base').value) || 0,
             tier3Add: parseFloat(document.getElementById('settings-shipping-tier3-add').value) || 0,
             rebate: parseFloat(document.getElementById('settings-shipping-rebate').value) || 0,
@@ -4400,6 +4408,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const weight = parseFloat(weightStr) || 0;
         const tier1Base = parseFloat(document.getElementById('settings-shipping-tier1-base').value) || 0;
         const tier2Add = parseFloat(document.getElementById('settings-shipping-tier2-add').value) || 0;
+        const tier2Max = parseFloat(document.getElementById('settings-shipping-tier2-max')?.value) || 1000;
+        const tier3Unit = parseFloat(document.getElementById('settings-shipping-tier3-unit')?.value) || 100;
         const tier3Base = parseFloat(document.getElementById('settings-shipping-tier3-base').value) || 0;
         const tier3Add = parseFloat(document.getElementById('settings-shipping-tier3-add').value) || 0;
         const rebate = parseFloat(document.getElementById('settings-shipping-rebate').value) || 0;
@@ -4410,13 +4420,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             totalFee = 0;
         } else if (weight <= 50) {
             totalFee = tier1Base;
-        } else if (weight <= 1000) {
+        } else if (weight <= tier2Max) {
             const extraWeight = weight - 50;
             const units = Math.ceil(extraWeight / 10);
             totalFee = tier1Base + (units * tier2Add);
         } else {
-            const extraWeight = weight - 1000;
-            const units = Math.ceil(extraWeight / 100);
+            const extraWeight = weight - tier2Max;
+            const units = Math.ceil(extraWeight / tier3Unit);
             totalFee = tier3Base + (units * tier3Add);
         }
 
@@ -4433,6 +4443,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('settings-shipping-tier2-add')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-tier3-base')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-tier3-add')?.addEventListener('input', calculateShippingTest);
+    document.getElementById('settings-shipping-tier2-max')?.addEventListener('input', calculateShippingTest);
+    document.getElementById('settings-shipping-tier3-unit')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-rebate')?.addEventListener('input', calculateShippingTest);
     document.getElementById('settings-shipping-buyer')?.addEventListener('input', calculateShippingTest);
     
