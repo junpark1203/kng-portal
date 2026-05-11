@@ -661,8 +661,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div class="body-sm text-secondary" style="font-size: 0.7rem;">${((item.weight || 0) / 1000).toFixed(3)}kg</div>
                 </td>
                 <td class="text-center">
-                    <div class="pc-data-top">KRW ${exRateInv > 0 ? Math.round(exRateInv).toLocaleString() : '—'}</div>
-                    <div class="pc-data-bottom">${curr} ${exRate > 0 ? exRate.toFixed(5) : '—'}</div>
+                    <div class="pc-data-top">KRW ${exRateInv > 0 ? (exRateInv >= 1 ? Math.round(exRateInv).toLocaleString() : exRateInv.toFixed(4)) : '—'}</div>
+                    <div class="pc-data-bottom">${curr} ${exRate > 0 ? (exRate >= 1 ? exRate.toFixed(2) : exRate.toFixed(5)) : '—'}</div>
                 </td>
                 <td class="text-center">
                     <div class="pc-data-top">KRW ${sourcingCostKrw.toLocaleString()}</div>
