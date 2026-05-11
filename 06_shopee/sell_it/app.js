@@ -3699,8 +3699,10 @@ document.addEventListener('DOMContentLoaded', async () => {
      * Search calculation: Given a target margin rate (%), solve for selling price P using binary search.
      */
     function calcPricingFromMarginRate(input, targetMarginRate) {
+        // Dynamic upper bound: for SGD (rate~0.00086) → ~100k, for VND (rate~17) → ~100M
+        const exRate = input.exchangeRate || 0.00086;
         let lowP = 0.01;
-        let highP = 100000;
+        let highP = exRate > 1 ? 100000000 : 100000;  // VND needs much higher ceiling
         let bestResult = null;
         for (let i = 0; i < 50; i++) {
             let midP = (lowP + highP) / 2;
