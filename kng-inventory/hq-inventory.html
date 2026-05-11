@@ -95,6 +95,32 @@
             </div>
         </main>
     </div>
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>재고 수량 수정</h2>
+                <button type="button" class="btn-close" id="closeEditModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    <div style="margin-bottom: 16px;">
+                        <div style="font-size: 13px; color: var(--gray-500); margin-bottom: 4px;" id="editProdName">상품명</div>
+                        <div style="font-weight: 600; font-size: 14px;" id="editProdDetails">옵션 정보</div>
+                    </div>
+                    <div class="fg" style="margin-bottom: 24px;">
+                        <label for="eStock">현재 재고</label>
+                        <input type="number" id="eStock" min="0" required style="font-size: 16px; font-weight: 600;">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-outline" id="cancelEdit">취소</button>
+                        <button type="submit" class="btn-primary"><i class='bx bx-save'></i> 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <div id="toastContainer" class="toast-container"></div>
     <script src="../common/js/kng-table-utils.js"></script>

@@ -95,7 +95,12 @@
         // Sort
         filtered.sort((a, b) => {
             let va = a[sort.col] || '', vb = b[sort.col] || '';
-            if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb+'').toLowerCase(); }
+            if (sort.col === 'stock' || sort.col === 'buyPrice') {
+                va = parseFloat(va) || 0;
+                vb = parseFloat(vb) || 0;
+            } else if (typeof va === 'string') {
+                va = va.toLowerCase(); vb = (vb+'').toLowerCase();
+            }
             if (va < vb) return sort.asc ? -1 : 1;
             if (va > vb) return sort.asc ? 1 : -1;
             return 0;
@@ -236,24 +241,46 @@
         });
 
         // Inline edit delegation
+        function closeEditModal() { $('editModal').classList.remove('active'); }
+        
         $('tableBody').addEventListener('click', e => {
             const btn = e.target.closest('[data-edit]');
             if (btn) {
                 const id = btn.dataset.edit;
                 const prod = products.find(p => p.id === id);
                 if (prod) {
-                    const newStock = prompt('재고 수량 수정 (' + prod.name + ')', prod.stock);
-                    if (newStock !== null) {
-                        fetch(API_BASE + '/products/' + id, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(Object.assign({}, prod, { stock: parseInt(newStock, 10) || 0 }))
-                        }).then(() => {
-                            showToast('수정 완료', 'success');
-                            fetchProducts();
-                        }).catch(err => showToast('수정 실패', 'error'));
-                    }
+                    $('editId').value = prod.id;
+                    $('editProdName').textContent = prod.name;
+                    $('editProdDetails').textContent = `${prod.brand} | ${prod.color} | ${prod.size}`;
+                    $('eStock').value = prod.stock;
+                    $('editModal').classList.add('active');
                 }
+            }
+        });
+
+        $('closeEditModal').addEventListener('click', closeEditModal);
+        $('cancelEdit').addEventListener('click', closeEditModal);
+        $('editModal').addEventListener('click', e => { if (e.target === $('editModal')) closeEditModal(); });
+
+        $('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = $('editId').value;
+            const prod = products.find(p => p.id === id);
+            if (!prod) return;
+
+            const newStock = parseInt($('eStock').value, 10) || 0;
+            try {
+                const res = await fetch(API_BASE + '/products/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.assign({}, prod, { stock: newStock }))
+                });
+                if (!res.ok) throw new Error('수정 실패');
+                showToast('수정 완료', 'success');
+                closeEditModal();
+                fetchProducts();
+            } catch(err) {
+                showToast('수정 실패', 'error');
             }
         });
     });

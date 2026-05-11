@@ -84,6 +84,9 @@
             if (sort.col === 'txDate' || sort.col === 'timestamp') {
                 va = new Date(va).getTime() || 0;
                 vb = new Date(vb).getTime() || 0;
+            } else if (sort.col === 'qty' || sort.col === 'price') {
+                va = parseFloat(va) || 0;
+                vb = parseFloat(vb) || 0;
             } else if (typeof va === 'string') {
                 va = va.toLowerCase(); vb = (vb+'').toLowerCase();
             }
@@ -143,6 +146,14 @@
     }
 
     // Edit Modal
+    function updateEditCalcPrice() {
+        const base = parseInt($('eBasePrice').value, 10) || 0;
+        const freight = parseInt($('eFreight').value, 10) || 0;
+        const pureBase = $('eBaseVat').checked ? base : Math.round(base / 1.1);
+        const pureFreight = $('eFreightVat').checked ? freight : Math.round(freight / 1.1);
+        $('ePrice').value = pureBase + pureFreight;
+    }
+
     function openEditModal(id) {
         const t = transactions.find(x => x.id === id);
         if (!t) return;
@@ -155,8 +166,38 @@
         $('eColor').value = t.color || '';
         $('eSize').value = t.size || '';
         $('eQty').value = t.qty;
-        $('ePrice').value = t.price;
-        $('eRemarks').value = t.remarks || '';
+        
+        const isOut = t.type === 'OUT';
+        const bpCol = $('eBasePriceCol');
+        const frCol = $('eFreightCol');
+        const priceInput = $('ePrice');
+        const lbl = $('eLblPrice');
+
+        if (isOut) {
+            lbl.textContent = '단가 (매출)';
+            bpCol.style.display = 'none';
+            frCol.style.display = 'none';
+            priceInput.readOnly = false;
+            priceInput.classList.remove('readonly-input');
+            priceInput.placeholder = '판매가 입력';
+            $('eBasePrice').value = '';
+            $('eFreight').value = '';
+            $('ePrice').value = t.price;
+        } else {
+            lbl.textContent = '단가 (매입)';
+            bpCol.style.display = '';
+            frCol.style.display = '';
+            priceInput.readOnly = true;
+            priceInput.classList.add('readonly-input');
+            priceInput.placeholder = '자동계산';
+            $('eBasePrice').value = t.basePrice || 0;
+            $('eFreight').value = t.freight || 0;
+            $('ePrice').value = t.price;
+            // Set VAT toggles to true as we assume the DB value is pure
+            $('eBaseVat').checked = true;
+            $('eFreightVat').checked = true;
+        }
+
         $('editModal').classList.add('active');
     }
 
@@ -180,8 +221,8 @@
             qty: parseInt($('eQty').value, 10) || 0,
             price: parseInt($('ePrice').value, 10) || 0,
             buyPrice: orig.buyPrice || 0,
-            basePrice: orig.basePrice || 0,
-            freight: orig.freight || 0,
+            basePrice: orig.type === 'IN' ? parseInt($('eBasePrice').value, 10) || 0 : orig.basePrice || 0,
+            freight: orig.type === 'IN' ? parseInt($('eFreight').value, 10) || 0 : orig.freight || 0,
             remarks: $('eRemarks').value.trim()
         };
 
@@ -235,8 +276,23 @@
         });
 
         // Search
-        $('searchInput').addEventListener('keydown', e => {
-            if (e.key === 'Enter') { page = 1; renderTable(); }
+        const searchInput = $('searchInput');
+        const searchField = $('searchField');
+        if ($('btn-do-search')) {
+            $('btn-do-search').addEventListener('click', () => { page = 1; renderTable(); });
+        }
+        if ($('btn-clear-search')) {
+            $('btn-clear-search').addEventListener('click', () => {
+                searchField.value = 'all';
+                searchInput.value = '';
+                $('startDate').value = '';
+                $('endDate').value = '';
+                page = 1;
+                renderTable();
+            });
+        }
+        searchInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); page = 1; renderTable(); }
         });
         $('startDate').addEventListener('change', () => { page = 1; fetchTransactions(); });
         $('endDate').addEventListener('change', () => { page = 1; fetchTransactions(); });
@@ -271,6 +327,11 @@
         $('cancelEdit').addEventListener('click', closeEditModal);
         $('editForm').addEventListener('submit', handleEdit);
         $('editModal').addEventListener('click', e => { if (e.target === $('editModal')) closeEditModal(); });
+
+        $('eBasePrice').addEventListener('input', updateEditCalcPrice);
+        $('eFreight').addEventListener('input', updateEditCalcPrice);
+        $('eBaseVat').addEventListener('change', updateEditCalcPrice);
+        $('eFreightVat').addEventListener('change', updateEditCalcPrice);
 
         // Delete
         $('deleteBtn').addEventListener('click', handleDelete);

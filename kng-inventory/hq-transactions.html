@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../Common/css/search-engine.css">
     <style>.main-content { margin-left: 0; }</style>
 </head>
 <body>
@@ -34,27 +35,31 @@
 
                         <!-- Search -->
                         <div class="search-strip" style="padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface-container-lowest);">
-                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <select id="searchField" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--surface);">
-                                    <option value="all">통합검색</option>
-                                    <option value="timestamp">일시</option>
-                                    <option value="type">구분</option>
-                                    <option value="supplier">공급사</option>
-                                    <option value="productName">상품명</option>
-                                    <option value="qty">수량</option>
-                                    <option value="price">단가</option>
-                                    <option value="remarks">비고</option>
-                                </select>
-                                <div style="position:relative; flex:1; min-width:200px;">
-                                    <i class='bx bx-search' style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--gray-400);"></i>
-                                    <input type="text" id="searchInput" placeholder="검색어 입력..."
-                                           style="width:100%; padding: 8px 12px 8px 32px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">
+                            <div class="si-search-container">
+                                <div class="si-search-bar" id="search-conditions" style="margin-bottom: 0;">
+                                    <div class="si-condition-row">
+                                        <select class="si-field-select" data-role="field" id="searchField">
+                                            <option value="all">통합검색</option>
+                                            <option value="timestamp">일시</option>
+                                            <option value="type">구분</option>
+                                            <option value="supplier">공급사</option>
+                                            <option value="productName">상품명</option>
+                                            <option value="qty">수량</option>
+                                            <option value="price">단가</option>
+                                            <option value="remarks">비고</option>
+                                        </select>
+                                        <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력..." id="searchInput">
+                                        <div style="display:flex; gap:6px; align-items:center; margin-left: 8px;">
+                                            <label style="font-size:12px; color:var(--gray-500);">기간</label>
+                                            <input type="date" id="startDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
+                                            <span style="color:var(--gray-400);">~</span>
+                                            <input type="date" id="endDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="display:flex; gap:6px; align-items:center;">
-                                    <label style="font-size:12px; color:var(--gray-500);">기간</label>
-                                    <input type="date" id="startDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
-                                    <span style="color:var(--gray-400);">~</span>
-                                    <input type="date" id="endDate" style="padding:6px 8px; border:1px solid var(--border); border-radius:8px; font-size:12px;">
+                                <div class="si-search-actions" style="margin-top: 8px;">
+                                    <button type="button" class="si-btn-reset" id="btn-clear-search"><i class="bx bx-reset"></i> 초기화</button>
+                                    <button type="button" class="si-btn-search" id="btn-do-search"><i class="bx bx-search"></i> 검색</button>
                                 </div>
                             </div>
                         </div>
@@ -108,9 +113,17 @@
                         <div class="fg"><label for="eColor">컬러</label><input type="text" id="eColor"></div>
                         <div class="fg"><label for="eSize">사이즈</label><input type="text" id="eSize"></div>
                     </div>
-                    <div class="form-row fr-row3">
+                    <div class="form-row fr-row3" style="grid-template-columns: repeat(4, 1fr);">
                         <div class="fg"><label for="eQty">수량</label><input type="number" id="eQty" min="1" required></div>
-                        <div class="fg"><label for="ePrice">단가</label><input type="number" id="ePrice" min="0" required></div>
+                        <div class="fg" id="eBasePriceCol"><label for="eBasePrice">상품가</label>
+                            <div class="input-vat-group"><input type="number" id="eBasePrice" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eBaseVat" checked><span>VAT별도</span></label></div>
+                        </div>
+                        <div class="fg" id="eFreightCol"><label for="eFreight">운임</label>
+                            <div class="input-vat-group"><input type="number" id="eFreight" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eFreightVat" checked><span>VAT별도</span></label></div>
+                        </div>
+                        <div class="fg"><label id="eLblPrice" for="ePrice">단가</label>
+                            <input type="number" id="ePrice" min="0" required placeholder="자동계산" class="readonly-input">
+                        </div>
                     </div>
                     <div class="form-row fr-row4">
                         <div class="fg"><label for="eRemarks">비고</label><input type="text" id="eRemarks"></div>

@@ -128,6 +128,11 @@
                 submitBtn.innerHTML = "<i class='bx bx-check'></i> 등록하기";
                 return;
             }
+        } else {
+            showToast('출고하려는 상품이 등록되어 있지 않습니다.', 'warning');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = "<i class='bx bx-check'></i> 등록하기";
+            return;
         }
 
         try {
