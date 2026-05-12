@@ -3,6 +3,15 @@
    - 통합검색, 카테고리칩, date range picker, KPI, 그룹헤더 테이블
    ========================================================================= */
 
+// --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
+async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!options.headers) options.headers = {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    return fetch(url, options);
+}
+
 const API_BASE = 'https://kng.junparks.com/api/supply-history';
 let itemsData = [];
 let filteredData = [];
@@ -96,7 +105,7 @@ function initEvents() {
 // ==========================================
 async function loadData() {
     try {
-        const res = await fetch(API_BASE);
+        const res = await authFetch(API_BASE);
         if (!res.ok) throw new Error('fetch failed');
         itemsData = await res.json();
         buildCategoryChips();
@@ -326,7 +335,7 @@ async function saveItem() {
     try {
         const url = id ? `${API_BASE}/${id}` : API_BASE;
         const method = id ? 'PUT' : 'POST';
-        const res = await fetch(url, {
+        const res = await authFetch(url, {
             method, headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
@@ -349,7 +358,7 @@ async function deleteSelected() {
     if (!ids.length) return showToast('삭제할 항목을 선택해주세요.', 'warning');
     if (!confirm(`선택한 ${ids.length}개 항목을 삭제하시겠습니까?`)) return;
     try {
-        const res = await fetch(`${API_BASE}/delete`, {
+        const res = await authFetch(`${API_BASE}/delete`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids })
         });

@@ -7,6 +7,15 @@
    - 품목별/현장별 집계 테이블
    ========================================================================= */
 
+// --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
+async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!options.headers) options.headers = {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    return fetch(url, options);
+}
+
 const API_GENERAL = 'https://kng.junparks.com/api/supply-history';
 const API_OIL     = 'https://kng.junparks.com/api/oil-supply-history';
 
@@ -164,7 +173,7 @@ function initAggSearch() {
 async function loadAllData() {
     try {
         const [resG, resO] = await Promise.all([
-            fetch(API_GENERAL), fetch(API_OIL)
+            authFetch(API_GENERAL), authFetch(API_OIL)
         ]);
         if (resG.ok) rawGeneral = await resG.json();
         if (resO.ok) rawOil = await resO.json();

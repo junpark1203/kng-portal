@@ -3,6 +3,15 @@
    - 다건 등록, 커스텀 자동완성, 키보드 네비게이션, 모노톤 UI
    ========================================================================= */
 
+// --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
+async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!options.headers) options.headers = {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    return fetch(url, options);
+}
+
 const API_BASE = 'https://kng.junparks.com/api/oil-supply-history';
 let itemsData = [];
 let filteredData = [];
@@ -102,7 +111,7 @@ function initEvents() {
 // ==========================================
 async function loadData() {
     try {
-        const res = await fetch(API_BASE);
+        const res = await authFetch(API_BASE);
         if (!res.ok) throw new Error('fetch failed');
         itemsData = await res.json();
         buildCategoryChips();
@@ -599,7 +608,7 @@ async function saveItem() {
             // Edit: single item update
             const line = lines[0];
             const payload = { ...commonData, ...line };
-            const res = await fetch(`${API_BASE}/${editId}`, {
+            const res = await authFetch(`${API_BASE}/${editId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -617,7 +626,7 @@ async function saveItem() {
             if (lines.length === 1) {
                 // Single item — use normal POST
                 const payload = { ...commonData, ...lines[0] };
-                const res = await fetch(API_BASE, {
+                const res = await authFetch(API_BASE, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -637,7 +646,7 @@ async function saveItem() {
                     ...line,
                     id: 'OSH-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6)
                 }));
-                const res = await fetch(`${API_BASE}/bulk`, {
+                const res = await authFetch(`${API_BASE}/bulk`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(bulkPayload)
@@ -664,7 +673,7 @@ async function deleteSelected() {
     if (!ids.length) return showToast('삭제할 항목을 선택해주세요.', 'warning');
     if (!confirm(`선택한 ${ids.length}개 항목을 삭제하시겠습니까?`)) return;
     try {
-        const res = await fetch(`${API_BASE}/delete`, {
+        const res = await authFetch(`${API_BASE}/delete`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids })
         });
