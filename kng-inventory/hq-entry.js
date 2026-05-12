@@ -141,13 +141,17 @@
     let activeDropdown = null;
     function closeAutocomplete() { if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; } }
 
+    // IN mode autocomplete
     function showAutocomplete(input, row) {
         closeAutocomplete();
         const val = input.value.trim().toLowerCase();
         if (val.length < 1) return;
         const brandFilter = row.querySelector('.row-brand').value.trim().toLowerCase();
 
-        let matches = products.filter(p => p.name.toLowerCase().includes(val));
+        let matches = products.filter(p => {
+            const haystack = `${p.brand} ${p.name} ${p.color} ${p.size}`.toLowerCase();
+            return haystack.includes(val);
+        });
         if (brandFilter) matches = matches.filter(p => p.brand.toLowerCase().includes(brandFilter));
 
         const unique = []; const seen = new Set();
@@ -180,7 +184,69 @@
         input.parentNode.appendChild(list);
         activeDropdown = list;
     }
-    document.addEventListener('click', e => { if (!e.target.classList.contains('row-name')) closeAutocomplete(); });
+
+    // OUT mode searchable dropdown — substring match on brand/name/color/size
+    function showOutAutocomplete(input, row) {
+        closeAutocomplete();
+        const val = input.value.trim().toLowerCase();
+        const inStockProducts = products.filter(p => (p.stock || 0) > 0);
+
+        let matches = inStockProducts;
+        if (val.length > 0) {
+            matches = inStockProducts.filter(p => {
+                const haystack = `${p.brand} ${p.name} ${p.color} ${p.size}`.toLowerCase();
+                return haystack.includes(val);
+            });
+        }
+
+        if (matches.length === 0) {
+            const list = document.createElement('div');
+            list.className = 'autocomplete-list';
+            list.style.display = 'block';
+            list.innerHTML = `<div class="autocomplete-item" style="color:var(--gray-400);cursor:default;justify-content:center;">검색 결과 없음</div>`;
+            input.parentNode.appendChild(list);
+            activeDropdown = list;
+            return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'autocomplete-list';
+        list.style.display = 'block';
+
+        matches.slice(0, 15).forEach(p => {
+            const stock = p.stock || 0;
+            const stockClass = stock > 10 ? 'ok' : stock > 0 ? 'low' : 'zero';
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `<div><span class="ac-name">${escHtml(p.brand)} — ${escHtml(p.name)}</span><br><span class="ac-detail">${escHtml(p.color)} / ${escHtml(p.size)}</span></div><span class="ac-stock" style="background:var(--${stockClass === 'ok' ? 'success' : stockClass === 'low' ? 'warning' : 'danger'}-muted);color:var(--${stockClass === 'ok' ? 'success' : stockClass === 'low' ? 'warning' : 'danger'})">${stock}개</span>`;
+            item.addEventListener('click', () => {
+                // Store selected product data on the row
+                row.dataset.productId = p.id;
+                row.dataset.brand = p.brand;
+                row.dataset.name = p.name;
+                row.dataset.color = p.color;
+                row.dataset.size = p.size;
+                row.dataset.stock = stock;
+                row.dataset.buyPrice = p.buyPrice || 0;
+
+                input.value = `${p.brand} — ${p.name} (${p.color}/${p.size})`;
+                const stockBadge = row.querySelector('.stock-badge');
+                stockBadge.textContent = stock;
+                stockBadge.className = 'stock-badge ' + stockClass;
+                closeAutocomplete();
+                updateSummary();
+            });
+            list.appendChild(item);
+        });
+        input.parentNode.appendChild(list);
+        activeDropdown = list;
+    }
+
+    document.addEventListener('click', e => {
+        if (!e.target.classList.contains('row-name') && !e.target.classList.contains('out-search-input')) {
+            closeAutocomplete();
+        }
+    });
 
     // =============================================
     //  Add Row
@@ -213,38 +279,19 @@
             nameInput.addEventListener('input', () => showAutocomplete(nameInput, tr));
             nameInput.addEventListener('focus', () => { if (nameInput.value.trim()) showAutocomplete(nameInput, tr); });
         } else {
-            // OUT mode — select from inventory
-            const inStockProducts = products.filter(p => (p.stock || 0) > 0);
-            let optionsHtml = '<option value="">— 상품을 선택하세요 —</option>';
-            inStockProducts.forEach(p => {
-                const label = `${p.brand} — ${p.name} (${p.color} / ${p.size})`;
-                optionsHtml += `<option value="${p.id}" data-stock="${p.stock||0}" data-brand="${escHtml(p.brand)}" data-name="${escHtml(p.name)}" data-color="${escHtml(p.color)}" data-size="${escHtml(p.size)}">${escHtml(label)}</option>`;
-            });
-
+            // OUT mode — searchable autocomplete (only in-stock products)
             tr.innerHTML = `
                 <td class="row-num">${rowNum}</td>
-                <td><select class="out-select row-product-select" required>${optionsHtml}</select></td>
+                <td class="autocomplete-wrapper"><input type="text" class="out-search-input text-left" placeholder="상품명, 브랜드, 컬러 등 검색..." autocomplete="off" required></td>
                 <td><div class="stock-badge zero" data-field="stock">—</div></td>
                 <td><input type="number" class="row-qty" min="1" placeholder="0" required></td>
                 <td><input type="number" class="row-price" min="0" placeholder="단가" required></td>
                 <td><button type="button" class="btn-icon btn-remove-row"><i class='bx bx-trash'></i></button></td>
             `;
 
-            // Show stock when product selected
-            const select = tr.querySelector('.row-product-select');
-            select.addEventListener('change', () => {
-                const opt = select.selectedOptions[0];
-                const stockBadge = tr.querySelector('.stock-badge');
-                if (opt && opt.value) {
-                    const stock = parseInt(opt.dataset.stock, 10) || 0;
-                    stockBadge.textContent = stock;
-                    stockBadge.className = 'stock-badge ' + (stock > 10 ? 'ok' : stock > 0 ? 'low' : 'zero');
-                } else {
-                    stockBadge.textContent = '—';
-                    stockBadge.className = 'stock-badge zero';
-                }
-                updateSummary();
-            });
+            const searchInput = tr.querySelector('.out-search-input');
+            searchInput.addEventListener('input', () => showOutAutocomplete(searchInput, tr));
+            searchInput.addEventListener('focus', () => showOutAutocomplete(searchInput, tr));
             tr.querySelector('.row-qty').addEventListener('input', () => updateSummary());
             tr.querySelector('.row-price').addEventListener('input', () => updateSummary());
         }
@@ -321,17 +368,20 @@
             if (!qty || !price) continue;
 
             if (type === 'OUT') {
-                const select = row.querySelector('.row-product-select');
-                if (!select || !select.value) continue;
-                const opt = select.selectedOptions[0];
-                productId = select.value;
-                brand = opt.dataset.brand;
-                name = opt.dataset.name;
-                color = opt.dataset.color;
-                size = opt.dataset.size;
+                productId = row.dataset.productId;
+                if (!productId) {
+                    showToast('상품이 선택되지 않은 행이 있습니다.', 'warning');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origHtml;
+                    return;
+                }
+                brand = row.dataset.brand;
+                name = row.dataset.name;
+                color = row.dataset.color;
+                size = row.dataset.size;
 
                 // Client-side stock check
-                const stock = parseInt(opt.dataset.stock, 10) || 0;
+                const stock = parseInt(row.dataset.stock, 10) || 0;
                 if (qty > stock) {
                     showToast(`재고 부족: ${name} (재고 ${stock}, 요청 ${qty})`, 'error');
                     submitBtn.disabled = false;
@@ -339,8 +389,7 @@
                     return;
                 }
 
-                const match = products.find(p => p.id === productId);
-                buyPrice = match ? match.buyPrice : 0;
+                buyPrice = parseInt(row.dataset.buyPrice, 10) || 0;
                 items.push({ type, txDate, supplier, brand, productName: name, color, size, qty, price, basePrice: 0, freight: 0, remarks: commonRemarks, productId, buyPrice });
 
             } else {
