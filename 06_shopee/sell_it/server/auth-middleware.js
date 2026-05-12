@@ -1,0 +1,41 @@
+const admin = require('firebase-admin');
+
+let serviceAccount;
+try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+        const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+    } else {
+        serviceAccount = require('./firebase-service-account.json');
+    }
+
+    if (!admin.apps.length) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        console.log('[Auth] Firebase Admin SDK initialized successfully.');
+    }
+} catch (error) {
+    console.warn('[Auth Warning] Failed to load Firebase Service Account. API calls will fail if token validation is required.', error.message);
+}
+
+const verifyToken = async (req, res, next) => {
+    if (req.method === 'OPTIONS') return next();
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: '인증 토큰이 누락되었습니다. (Unauthorized)' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    try {
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        console.error('[Auth Error] Invalid Token:', error.message);
+        return res.status(403).json({ error: '유효하지 않거나 만료된 토큰입니다. (Forbidden)' });
+    }
+};
+
+module.exports = { verifyToken };

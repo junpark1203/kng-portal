@@ -4,6 +4,14 @@
  */
 (function() {
     'use strict';
+    async function authFetch(url, options = {}) {
+        let token = null;
+        try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+        if (!options.headers) options.headers = {};
+        if (token) options.headers['Authorization'] = 'Bearer ' + token;
+        return authFetch(url, options);
+    }
+
 
     // ==========================================
     // API 설정
@@ -49,7 +57,7 @@
     // ==========================================
     async function fetchProducts() {
         try {
-            const res = await fetch(API_BASE + '/products');
+            const res = await authFetch(API_BASE + '/products');
             if (!res.ok) throw new Error('서버 오류');
             products = await res.json();
             renderTable();
@@ -60,7 +68,7 @@
 
     async function fetchMetrics() {
         try {
-            const res = await fetch(API_BASE + '/metrics');
+            const res = await authFetch(API_BASE + '/metrics');
             if (!res.ok) return;
             const m = await res.json();
             $('kpiRevenue').textContent = fmtCurrency(m.totalRevenue || 0);
@@ -172,7 +180,7 @@
 
         const ids = Array.from(checked).map(c => c.value);
         try {
-            const res = await fetch(API_BASE + '/products/delete', {
+            const res = await authFetch(API_BASE + '/products/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ids })
@@ -270,7 +278,7 @@
 
             const newStock = parseInt($('eStock').value, 10) || 0;
             try {
-                const res = await fetch(API_BASE + '/products/' + id, {
+                const res = await authFetch(API_BASE + '/products/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(Object.assign({}, prod, { stock: newStock }))

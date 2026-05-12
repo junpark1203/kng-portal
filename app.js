@@ -1320,6 +1320,11 @@ function setupAuth() {
     }
 }
 
+window.getAuthToken = async function() {
+    if (!auth.currentUser) return null;
+    return await auth.currentUser.getIdToken(true);
+};
+
 // ==========================================
 // 앱 시작
 // ==========================================

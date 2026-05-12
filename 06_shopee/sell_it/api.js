@@ -4,6 +4,14 @@
  */
 (function() {
     'use strict';
+    async function authFetch(url, options = {}) {
+        let token = null;
+        try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+        if (!options.headers) options.headers = {};
+        if (token) options.headers['Authorization'] = 'Bearer ' + token;
+        return authFetch(url, options);
+    }
+
 
     const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:')
         ? 'http://localhost:3000/api'
@@ -19,7 +27,7 @@
         };
 
         try {
-            const res = await fetch(url, config);
+            const res = await authFetch(url, config);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({ error: res.statusText }));
                 throw new Error(errData.error || `HTTP ${res.status}`);
@@ -234,7 +242,7 @@
             const formData = new FormData();
             formData.append('image', file);
             const url = `${API_BASE}/market-analysis/upload-image`;
-            const res = await fetch(url, { method: 'POST', body: formData });
+            const res = await authFetch(url, { method: 'POST', body: formData });
             if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
             return res.json();
         },
@@ -250,7 +258,7 @@
             const formData = new FormData();
             formData.append('video', file);
             const url = `${API_BASE}/market-analysis/upload-video`;
-            const res = await fetch(url, { method: 'POST', body: formData });
+            const res = await authFetch(url, { method: 'POST', body: formData });
             if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || `HTTP ${res.status}`); }
             return res.json();
         },

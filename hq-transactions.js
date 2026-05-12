@@ -3,6 +3,14 @@
  */
 (function() {
     'use strict';
+    async function authFetch(url, options = {}) {
+        let token = null;
+        try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+        if (!options.headers) options.headers = {};
+        if (token) options.headers['Authorization'] = 'Bearer ' + token;
+        return authFetch(url, options);
+    }
+
 
     const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:3000/api/hq'
@@ -41,7 +49,7 @@
             const ed = $('endDate').value; if (ed) params.push('endDate=' + ed);
             if (params.length) url += '?' + params.join('&');
 
-            const res = await fetch(url);
+            const res = await authFetch(url);
             if (!res.ok) throw new Error('서버 오류');
             transactions = await res.json();
             renderTable();
@@ -229,7 +237,7 @@
         };
 
         try {
-            const res = await fetch(API_BASE + '/transactions/' + id, {
+            const res = await authFetch(API_BASE + '/transactions/' + id, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -249,7 +257,7 @@
         if (!confirm(checked.length + '건을 삭제하시겠습니까?')) return;
         const ids = Array.from(checked).map(c => c.value);
         try {
-            const res = await fetch(API_BASE + '/transactions/delete', {
+            const res = await authFetch(API_BASE + '/transactions/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ids })

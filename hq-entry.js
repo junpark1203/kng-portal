@@ -5,6 +5,14 @@
  */
 (function() {
     'use strict';
+    async function authFetch(url, options = {}) {
+        let token = null;
+        try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+        if (!options.headers) options.headers = {};
+        if (token) options.headers['Authorization'] = 'Bearer ' + token;
+        return authFetch(url, options);
+    }
+
 
     const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:3000/api/hq'
@@ -33,7 +41,7 @@
 
     async function fetchProducts() {
         try {
-            const res = await fetch(API_BASE + '/products');
+            const res = await authFetch(API_BASE + '/products');
             if (res.ok) products = await res.json();
         } catch(e) { console.error('Failed to load products', e); }
     }
@@ -407,7 +415,7 @@
                     items.push(data);
                 } else {
                     try {
-                        const pRes = await fetch(API_BASE + '/products', {
+                        const pRes = await authFetch(API_BASE + '/products', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ supplier, brand, name, color, size, stock: 0, buyPrice: price })
@@ -435,7 +443,7 @@
         }
 
         try {
-            const res = await fetch(API_BASE + '/transactions/bulk', {
+            const res = await authFetch(API_BASE + '/transactions/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items })

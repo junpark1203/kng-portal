@@ -69,9 +69,16 @@ const apiLimiter = rateLimit({
     keyGenerator: function(req) {
         // Cloudflare를 거쳐 올 경우 실제 접속자 IP를 식별
         return req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.ip;
-    }
 });
 app.use('/api/', apiLimiter);
+
+// 인증 미들웨어 (JWT 토큰 검증)
+const { verifyToken } = require('./auth-middleware');
+// health check 등 인증이 필요 없는 라우트는 미들웨어 적용 이전에 선언
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+app.use('/api/', verifyToken);
 
 // 데이터 디렉터리 확인 및 생성
 // NAS에서 볼륨으로 마운트될 디렉터리입니다.
@@ -682,13 +689,6 @@ app.use('/api/mass-upload', massUploadRoutes);
 // HQ Inventory (본사 매입 현황) API 라우트 마운트
 // ==========================================
 app.use('/api/hq', hqInventoryRoutes);
-
-// ==========================================
-// API 상태 확인 엔드포인트
-// ==========================================
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // 알 수 없는 경로 → 404
 app.use((req, res) => {

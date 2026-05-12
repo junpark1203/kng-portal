@@ -132,8 +132,18 @@ const videoUpload = multer({
 });
 
 
-// 이미지 정적 서빙
+// 이미지 정적 서빙 (인증 예외)
 app.use('/api/images', express.static(UPLOAD_DIR));
+
+// Health Check (인증 예외)
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', service: 'sell-it-api', timestamp: new Date().toISOString() });
+});
+
+// 인증 미들웨어 (JWT 토큰 검증)
+const { verifyToken } = require('./auth-middleware');
+app.use('/api/', verifyToken);
+
 
 // SQLite DB 연결
 const dbFile = path.join(dataDir, 'sell_it.db');
@@ -1509,13 +1519,6 @@ app.delete('/api/locale-notices/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Success' });
     });
-});
-
-// ==========================================
-// Health Check
-// ==========================================
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', service: 'sell-it-api', timestamp: new Date().toISOString() });
 });
 
 // 404 핸들러
