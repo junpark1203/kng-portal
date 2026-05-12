@@ -14,6 +14,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+
+async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!token && typeof auth !== 'undefined' && auth.currentUser) token = await auth.currentUser.getIdToken(true);
+    if (!options.headers) options.headers = {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    return fetch(url, options);
+}
+
 // ==========================================
 // 유틸리티 함수
 // ==========================================
@@ -79,7 +89,7 @@ var editingId = null;
 // ==========================================
 function loadProducts() {
     updateConnectionStatus(false);
-    fetch(API_BASE)
+    authFetch(API_BASE)
         .then(function(res) { return res.json(); })
         .then(function(data) {
             products = data || [];
@@ -388,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (editingId) {
             data.id = editingId;
-            fetch(API_BASE + '/' + editingId, {
+            authFetch(API_BASE + '/' + editingId, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -404,7 +414,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         } else {
             data.id = generateId();
-            fetch(API_BASE, {
+            authFetch(API_BASE, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -433,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var idsToDelete = [];
         checked.forEach(function(cb) { idsToDelete.push(cb.value); });
 
-        fetch(API_BASE + '/delete', {
+        authFetch(API_BASE + '/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: idsToDelete })
