@@ -11,10 +11,10 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
-        .main-content { margin-left: 0; padding: 20px; display: flex; justify-content: center; }
+        .main-content { margin-left: 0; padding: 0; display: flex; justify-content: center; min-height: 100vh; }
 
         /* ── Container Card ── */
-        .entry-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); width: 100%; max-width: 1200px; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.03); overflow: hidden; }
+        .entry-container { background: var(--surface); width: 100%; overflow: hidden; }
         .entry-header-bar { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--primary) 0%, #1a2d7a 100%); color: #fff; }
         .entry-header-bar.out-mode { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); }
         .entry-header-bar h2 { font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: -.3px; }
@@ -28,14 +28,14 @@
         .out-mode input[type="radio"]:checked + .toggle-label { color: #92400e; }
 
         /* ── Step Info Bar ── */
-        .step-bar { padding: 16px 24px; display: flex; gap: 16px; border-bottom: 1px solid var(--border); background: var(--gray-50); flex-wrap: wrap; align-items: flex-end; }
-        .fg-inline { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+        .step-bar { padding: 12px 20px; display: flex; gap: 12px; border-bottom: 1px solid var(--border); background: var(--gray-50); flex-wrap: wrap; align-items: flex-end; }
+        .fg-inline { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 130px; }
         .fg-inline label { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; }
         .fg-inline input { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); outline: none; transition: all .15s; color: var(--gray-800); }
         .fg-inline input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-muted); }
 
         /* ── Table ── */
-        .table-wrap { padding: 0 24px 12px; }
+        .table-wrap { padding: 0 20px 8px; }
         .invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; }
         .invoice-table thead th { position: sticky; top: 0; background: var(--gray-50); font-weight: 700; font-size: 11px; color: var(--gray-500); text-align: center; text-transform: uppercase; letter-spacing: .3px; padding: 10px 8px; border-bottom: 2px solid var(--border); }
         .invoice-table thead th:first-child { border-radius: var(--radius) 0 0 0; }
@@ -69,11 +69,11 @@
         .vat-toggle input { margin: 0; width: 12px; height: 12px; accent-color: var(--primary); cursor: pointer; }
 
         /* ── Add Row ── */
-        .btn-add-row { width: calc(100% - 48px); margin: 0 24px 20px; padding: 10px; background: transparent; color: var(--gray-500); border: 2px dashed var(--gray-200); border-radius: var(--radius); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-add-row { width: calc(100% - 40px); margin: 0 20px 12px; padding: 8px; background: transparent; color: var(--gray-500); border: 2px dashed var(--gray-200); border-radius: var(--radius); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-add-row:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-muted); }
 
         /* ── Footer ── */
-        .entry-footer { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--gray-50); display: flex; justify-content: space-between; align-items: center; }
+        .entry-footer { padding: 12px 20px; border-top: 1px solid var(--border); background: var(--gray-50); display: flex; justify-content: space-between; align-items: center; }
         .summary-info { display: flex; gap: 24px; align-items: center; }
         .summary-chip { font-size: 13px; color: var(--gray-600); display: flex; align-items: center; gap: 6px; }
         .summary-chip strong { font-size: 16px; font-weight: 800; color: var(--primary); }
@@ -129,9 +129,9 @@
                     </div>
 
                     <div class="step-bar">
-                        <div class="fg-inline" style="flex: 0 0 150px;"><label>📅 일자</label><input type="date" id="txDate" required></div>
-                        <div class="fg-inline" style="flex: 0 0 180px;"><label>🏢 공급사 / 출고처</label><input type="text" id="fSupplier" required placeholder="공급사명 입력"></div>
-                        <div class="fg-inline" style="flex: 2;"><label>📝 비고</label><input type="text" id="txRemarks" placeholder="전체 항목에 적용될 메모 (선택)"></div>
+                        <div class="fg-inline" style="flex: 0 0 150px;"><label>일자</label><input type="date" id="txDate" required></div>
+                        <div class="fg-inline" style="flex: 0 0 180px;"><label>공급사 / 출고처</label><input type="text" id="fSupplier" required placeholder="공급사명 입력"></div>
+                        <div class="fg-inline" style="flex: 2;"><label>비고</label><input type="text" id="txRemarks" placeholder="전체 항목에 적용될 메모 (선택)"></div>
                     </div>
 
                     <div class="table-wrap">
