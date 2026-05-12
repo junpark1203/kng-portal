@@ -69,6 +69,7 @@ const apiLimiter = rateLimit({
     keyGenerator: function(req) {
         // Cloudflare를 거쳐 올 경우 실제 접속자 IP를 식별
         return req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.ip;
+    }
 });
 app.use('/api/', apiLimiter);
 
