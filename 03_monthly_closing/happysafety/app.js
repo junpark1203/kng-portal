@@ -326,7 +326,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabs=[['전체','전체보기'],['잡자재','잡자재'],['안전자재','안전자재'],['기타자재','기타자재'],['쇼핑몰','쇼핑몰'],['직접입력','직접입력 (기타)']];
     sh+='<div class="tab-container">';
     tabs.forEach(([k,l])=>{sh+='<button class="tab-btn'+(window.currentTab===k?' active':'')+'" onclick="window.setFilterTab(\''+k+'\')">'+l+'</button>';});
-    sh+='</div><div class="summary-list">';
+    sh+='</div>'
+      +'<div style="margin-bottom: 0.8rem; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; background: var(--surface-container-highest); padding: 0.6rem 1rem; border-radius: 0.5rem;">'
+      +'<span style="font-size: 1rem;">💡</span>'
+      +'<span>현장 칩을 <strong>드래그</strong>하여 순서를 변경하거나, <strong>Shift 키 + 드래그</strong>하여 현장을 병합할 수 있습니다.</span>'
+      +'</div>'
+      +'<div class="summary-list">';
 
     sh+='<button class="summary-chip" style="background:var(--primary-fixed);border:2px solid var(--primary);" onclick="window.openSiteModal(-1)"><strong style="color:var(--primary);">📊 전체 현장</strong></button>';
 
