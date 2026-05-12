@@ -12,61 +12,101 @@
     <link rel="stylesheet" href="styles.css">
     <style>
         .main-content { margin-left: 0; padding: 20px; display: flex; justify-content: center; }
-        .entry-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 100%; max-width: 1200px; box-shadow: var(--shadow-sm); }
-        .entry-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 20px; }
-        .entry-header h2 { font-size: 20px; font-weight: 700; color: var(--gray-900); margin: 0; display: flex; align-items: center; gap: 8px; }
-        .entry-header h2 i { color: var(--primary); font-size: 24px; }
-        
-        .toggle-group { display: flex; gap: 4px; background: var(--surface-container-lowest); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
-        .toggle-label { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; color: var(--gray-600); transition: all var(--transition-fast); }
+
+        /* ── Container Card ── */
+        .entry-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); width: 100%; max-width: 1200px; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.03); overflow: hidden; }
+        .entry-header-bar { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--primary) 0%, #1a2d7a 100%); color: #fff; }
+        .entry-header-bar.out-mode { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); }
+        .entry-header-bar h2 { font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: -.3px; }
+        .entry-header-bar h2 i { font-size: 22px; opacity: .85; }
+
+        /* ── Toggle ── */
+        .toggle-group { display: flex; gap: 2px; background: rgba(255,255,255,.15); padding: 3px; border-radius: 8px; backdrop-filter: blur(4px); }
+        .toggle-label { padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; color: rgba(255,255,255,.7); transition: all .2s; display: flex; align-items: center; gap: 5px; }
         input[type="radio"] { display: none; }
-        input[type="radio"]:checked + .toggle-label { background: var(--primary); color: white; box-shadow: 0 2px 4px rgba(44, 62, 143, 0.25); }
+        input[type="radio"]:checked + .toggle-label { background: #fff; color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+        .out-mode input[type="radio"]:checked + .toggle-label { color: #92400e; }
 
-        .common-info-bar { display: flex; gap: 16px; align-items: center; background: var(--surface-container-low); padding: 16px; border-radius: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-        .fg-inline { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 150px; }
-        .fg-inline label { font-size: 12px; font-weight: 600; color: var(--gray-700); }
-        .fg-inline input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface); outline: none; }
-        .fg-inline input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted); }
+        /* ── Step Info Bar ── */
+        .step-bar { padding: 16px 24px; display: flex; gap: 16px; border-bottom: 1px solid var(--border); background: var(--gray-50); flex-wrap: wrap; align-items: flex-end; }
+        .fg-inline { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+        .fg-inline label { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; }
+        .fg-inline input { padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); outline: none; transition: all .15s; color: var(--gray-800); }
+        .fg-inline input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-muted); }
 
-        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-        .invoice-table th, .invoice-table td { padding: 8px; border: 1px solid var(--border); }
-        .invoice-table th { background: var(--surface-container-low); font-weight: 600; font-size: 12px; color: var(--gray-600); text-align: center; }
-        .invoice-table td input { width: 100%; padding: 8px; border: 1px solid transparent; border-radius: 4px; font-size: 13px; outline: none; background: transparent; text-align: center; }
-        .invoice-table td input.text-left { text-align: left; }
-        .invoice-table td input:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 2px var(--primary-muted); }
-        .invoice-table td input.readonly-input { color: var(--gray-500); cursor: not-allowed; }
-        
-        .btn-icon { background: transparent; border: none; color: var(--gray-400); cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
-        .btn-icon:hover { color: var(--danger); }
-        
-        .btn-add-row { width: 100%; padding: 12px; background: transparent; color: var(--gray-600); border: 1px dashed var(--border); border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all var(--transition-fast); margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        /* ── Table ── */
+        .table-wrap { padding: 0 24px 12px; }
+        .invoice-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 16px; }
+        .invoice-table thead th { position: sticky; top: 0; background: var(--gray-50); font-weight: 700; font-size: 11px; color: var(--gray-500); text-align: center; text-transform: uppercase; letter-spacing: .3px; padding: 10px 8px; border-bottom: 2px solid var(--border); }
+        .invoice-table thead th:first-child { border-radius: var(--radius) 0 0 0; }
+        .invoice-table thead th:last-child { border-radius: 0 var(--radius) 0 0; }
+        .invoice-table tbody tr { transition: background .1s; }
+        .invoice-table tbody tr:hover { background: var(--gray-50); }
+        .invoice-table tbody td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .invoice-table tbody td input, .invoice-table tbody td select { width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius); font-size: 13px; outline: none; background: transparent; text-align: center; transition: all .15s; color: var(--gray-800); }
+        .invoice-table tbody td input.text-left, .invoice-table tbody td select { text-align: left; }
+        .invoice-table tbody td input:focus, .invoice-table tbody td select:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px var(--primary-muted); }
+        .invoice-table tbody td input:hover, .invoice-table tbody td select:hover { border-color: var(--gray-300); }
+        .invoice-table tbody td input.readonly-input { color: var(--gray-500); cursor: not-allowed; background: var(--gray-50); }
+
+        .row-num { width: 36px; text-align: center; font-weight: 700; font-size: 12px; color: var(--gray-400); }
+        .col-qty { width: 75px; }
+        .col-price { width: 105px; }
+        .col-action { width: 44px; }
+        .col-stock { width: 65px; }
+
+        .btn-icon { background: transparent; border: none; color: var(--gray-400); cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all .15s; }
+        .btn-icon:hover { color: var(--danger); background: var(--danger-muted); }
+
+        /* ── Stock Badge ── */
+        .stock-badge { font-size: 12px; font-weight: 700; text-align: center; padding: 4px; border-radius: 4px; }
+        .stock-badge.ok { color: var(--success); background: var(--success-muted); }
+        .stock-badge.low { color: var(--warning); background: var(--warning-muted); }
+        .stock-badge.zero { color: var(--danger); background: var(--danger-muted); }
+
+        /* ── VAT Toggle ── */
+        .vat-toggle { font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 3px; color: var(--gray-400); cursor: pointer; margin-top: 2px; }
+        .vat-toggle input { margin: 0; width: 12px; height: 12px; accent-color: var(--primary); cursor: pointer; }
+
+        /* ── Add Row ── */
+        .btn-add-row { width: calc(100% - 48px); margin: 0 24px 20px; padding: 10px; background: transparent; color: var(--gray-500); border: 2px dashed var(--gray-200); border-radius: var(--radius); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-add-row:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-muted); }
 
-        .form-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 20px; border-top: 1px solid var(--border); }
-        .btn-submit { padding: 10px 24px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all var(--transition-fast); }
-        .btn-submit:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-        .btn-reset { padding: 10px 20px; background: var(--surface); color: var(--gray-600); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all var(--transition-fast); }
+        /* ── Footer ── */
+        .entry-footer { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--gray-50); display: flex; justify-content: space-between; align-items: center; }
+        .summary-info { display: flex; gap: 24px; align-items: center; }
+        .summary-chip { font-size: 13px; color: var(--gray-600); display: flex; align-items: center; gap: 6px; }
+        .summary-chip strong { font-size: 16px; font-weight: 800; color: var(--primary); }
+        .footer-actions { display: flex; gap: 10px; }
+        .btn-submit { padding: 10px 28px; background: var(--primary); color: white; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s; letter-spacing: -.2px; }
+        .btn-submit:hover { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(44,62,143,.25); }
+        .btn-submit.out-mode { background: #b45309; }
+        .btn-submit.out-mode:hover { background: #92400e; box-shadow: 0 4px 12px rgba(180,83,9,.25); }
+        .btn-reset { padding: 10px 20px; background: var(--surface); color: var(--gray-600); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .btn-reset:hover { background: var(--gray-100); color: var(--gray-800); }
 
-        .summary-bar { font-size: 14px; font-weight: 700; color: var(--gray-800); display: flex; align-items: center; gap: 16px; margin-bottom: 16px; justify-content: flex-end; }
-        .summary-val { color: var(--primary); font-size: 16px; }
-
-        /* Autocomplete styles */
+        /* ── Autocomplete ── */
         .autocomplete-wrapper { position: relative; }
-        .autocomplete-list { position: absolute; top: 100%; left: 0; min-width: 250px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; box-shadow: var(--shadow-md); z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
-        .autocomplete-item { padding: 8px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid var(--border); text-align: left; }
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; min-width: 280px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 100; max-height: 220px; overflow-y: auto; display: none; }
+        .autocomplete-item { padding: 10px 14px; cursor: pointer; font-size: 12px; border-bottom: 1px solid var(--gray-100); text-align: left; display: flex; justify-content: space-between; align-items: center; transition: background .1s; }
         .autocomplete-item:last-child { border-bottom: none; }
-        .autocomplete-item:hover, .autocomplete-item.active { background: var(--primary-muted); color: var(--primary); font-weight: 600; }
+        .autocomplete-item:hover, .autocomplete-item.active { background: var(--primary-muted); }
+        .ac-name { font-weight: 600; color: var(--gray-800); }
+        .ac-detail { font-size: 11px; color: var(--gray-500); }
+        .ac-stock { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--success-muted); color: var(--success); }
 
-        .vat-toggle { font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--gray-500); cursor: pointer; margin-top: 4px; }
-        .vat-toggle input { margin: 0; width: auto; height: auto; cursor: pointer; }
+        /* ── OUT Mode Select ── */
+        .out-select { padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius); font-size: 13px; background: transparent; cursor: pointer; color: var(--gray-800); appearance: none; -webkit-appearance: none; }
+        .out-select:focus { border-color: #b45309; box-shadow: 0 0 0 3px rgba(180,83,9,.12); background: #fff; }
 
-        .col-qty { width: 80px; }
-        .col-price { width: 110px; }
-        .col-action { width: 50px; }
+        /* ── Mode Indicator ── */
+        .mode-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+        .mode-indicator.in { background: rgba(255,255,255,.2); color: rgba(255,255,255,.9); }
+        .mode-indicator.out { background: rgba(255,255,255,.2); color: rgba(255,255,255,.9); }
 
         @media (max-width: 1024px) {
             .invoice-table { display: block; overflow-x: auto; white-space: nowrap; }
+            .step-bar { flex-direction: column; }
         }
     </style>
 </head>
@@ -75,50 +115,47 @@
         <main class="main-content">
             <div class="entry-container">
                 <form id="entryForm" autocomplete="off">
-                    <div class="entry-header">
-                        <h2><i class='bx bx-edit'></i> 일괄 입출고 등록</h2>
+                    <div class="entry-header-bar" id="headerBar">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <h2><i class='bx bx-package'></i> 입출고 등록</h2>
+                            <span class="mode-indicator in" id="modeIndicator"><i class='bx bx-down-arrow-circle'></i> 매입 모드</span>
+                        </div>
                         <div class="toggle-group">
                             <input type="radio" id="typeIn" name="txType" value="IN" checked>
-                            <label for="typeIn" class="toggle-label"><i class='bx bx-down-arrow-circle'></i> 매입 (IN)</label>
+                            <label for="typeIn" class="toggle-label"><i class='bx bx-down-arrow-circle'></i> 매입</label>
                             <input type="radio" id="typeOut" name="txType" value="OUT">
-                            <label for="typeOut" class="toggle-label"><i class='bx bx-up-arrow-circle'></i> 출고 (OUT)</label>
+                            <label for="typeOut" class="toggle-label"><i class='bx bx-up-arrow-circle'></i> 출고</label>
                         </div>
                     </div>
 
-                    <div class="common-info-bar">
-                        <div class="fg-inline" style="flex: 0 0 150px;"><label for="txDate">일자</label><input type="date" id="txDate" required></div>
-                        <div class="fg-inline"><label for="fSupplier">공급사</label><input type="text" id="fSupplier" required placeholder="최가유통"></div>
-                        <div class="fg-inline" style="flex: 2;"><label for="txRemarks">공통 비고</label><input type="text" id="txRemarks" placeholder="전체 항목에 적용될 메모 입력"></div>
+                    <div class="step-bar">
+                        <div class="fg-inline" style="flex: 0 0 150px;"><label>📅 일자</label><input type="date" id="txDate" required></div>
+                        <div class="fg-inline" style="flex: 0 0 180px;"><label>🏢 공급사 / 출고처</label><input type="text" id="fSupplier" required placeholder="공급사명 입력"></div>
+                        <div class="fg-inline" style="flex: 2;"><label>📝 비고</label><input type="text" id="txRemarks" placeholder="전체 항목에 적용될 메모 (선택)"></div>
                     </div>
 
-                    <table class="invoice-table" id="itemsTable">
-                        <thead>
-                            <tr>
-                                <th>브랜드</th>
-                                <th>상품명 (입력시 자동완성)</th>
-                                <th>컬러</th>
-                                <th>사이즈</th>
-                                <th class="col-qty">수량</th>
-                                <th class="col-price" class="in-only-th">상품가<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="basePrice" checked>VAT별도</label></th>
-                                <th class="col-price" class="in-only-th">운임<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="freight" checked>VAT별도</label></th>
-                                <th class="col-price">단가</th>
-                                <th class="col-action">삭제</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsBody">
-                            <!-- Rows will be added dynamically -->
-                        </tbody>
-                    </table>
+                    <div class="table-wrap">
+                        <table class="invoice-table" id="itemsTable">
+                            <thead id="tableHead">
+                                <!-- populated by JS -->
+                            </thead>
+                            <tbody id="itemsBody">
+                                <!-- Rows will be added dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
 
                     <button type="button" class="btn-add-row" id="btnAddRow"><i class='bx bx-plus'></i> 상품 행 추가</button>
 
-                    <div class="summary-bar">
-                        총 <span class="summary-val" id="summaryQty">0</span>건 등록 대기중
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="btn-reset" id="resetEntry"><i class='bx bx-reset'></i> 초기화</button>
-                        <button type="submit" class="btn-submit"><i class='bx bx-check'></i> 일괄 등록하기</button>
+                    <div class="entry-footer">
+                        <div class="summary-info">
+                            <div class="summary-chip"><i class='bx bx-box' style="font-size:18px;color:var(--gray-400)"></i> 등록 대기 <strong id="summaryRows">0</strong> 건</div>
+                            <div class="summary-chip" id="summaryTotalWrap" style="display:none;">총액 <strong id="summaryTotal">0</strong> 원</div>
+                        </div>
+                        <div class="footer-actions">
+                            <button type="button" class="btn-reset" id="resetEntry"><i class='bx bx-reset'></i> 초기화</button>
+                            <button type="submit" class="btn-submit" id="submitBtn"><i class='bx bx-check'></i> 일괄 등록</button>
+                        </div>
                     </div>
                 </form>
             </div>
