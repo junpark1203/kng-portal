@@ -273,6 +273,66 @@ h1, h2, h3, h4, h5, h6, .brand-font {
   font-size: 1.2rem; color: var(--secondary); font-weight: 800;
 }
 
+/* Chip order number */
+.chip-order-num {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.6rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--surface-container-high);
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+/* Drag reorder visual (blue border) */
+.summary-chip.drag-reorder-chip {
+  border: 2px solid var(--primary);
+  background: var(--primary-fixed);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(13, 27, 110, 0.15);
+}
+
+/* Order controls in accordion header */
+.order-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-right: 0.25rem;
+}
+.order-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  line-height: 1;
+  transition: all 0.15s;
+}
+.order-btn:hover:not(:disabled) {
+  color: var(--primary);
+  background: var(--primary-fixed);
+}
+.order-btn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+.order-num {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1;
+}
+
 /* ===== Accordion Card (No-Line Design) ===== */
 .accordion-card {
   background: var(--surface-container-lowest);

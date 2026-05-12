@@ -164,11 +164,21 @@ document.addEventListener('DOMContentLoaded', () => {
     renderResults();
   };
 
-  window.handleChipDragStart=function(e,i){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('sourceIndex',i);setTimeout(()=>e.target.classList.add('dragging'),0);};
-  window.handleChipDragEnd=function(e){e.target.classList.remove('dragging');};
-  window.handleChipDragOver=function(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('drag-over-chip');};
-  window.handleChipDragLeave=function(e){e.currentTarget.classList.remove('drag-over-chip');};
-  window.handleChipDrop=function(e,ti){e.preventDefault();e.currentTarget.classList.remove('drag-over-chip');const si=parseInt(e.dataTransfer.getData('sourceIndex'),10);if(isNaN(si)||si===ti)return;const src=globalSitesData[si],tgt=globalSitesData[ti];if(confirm('"'+src.siteName+'"→"'+tgt.siteName+'" 병합하시겠습니까?')){saveState();tgt.items.push(...src.items);tgt.items.sort((a,b)=>{let d=String(a.date||"").localeCompare(String(b.date||""));return d!==0?d:(parseInt(a.seqNo)||0)-(parseInt(b.seqNo)||0);});tgt.sortConfig=[{col:'date',asc:true},{col:'seqNo',asc:true}];globalSitesData.splice(si,1);updateFloatingBar();renderResults();}};
+  window.handleChipDragStart=function(e,i){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('sourceIndex',i);e.dataTransfer.setData('shiftKey',e.shiftKey?'1':'0');setTimeout(()=>e.target.classList.add('dragging'),0);};
+  window.handleChipDragEnd=function(e){e.target.classList.remove('dragging');document.querySelectorAll('.drag-over-chip,.drag-reorder-chip').forEach(el=>{el.classList.remove('drag-over-chip','drag-reorder-chip');});};
+  window.handleChipDragOver=function(e){e.preventDefault();e.dataTransfer.dropEffect='move';if(e.shiftKey){e.currentTarget.classList.add('drag-over-chip');e.currentTarget.classList.remove('drag-reorder-chip');}else{e.currentTarget.classList.add('drag-reorder-chip');e.currentTarget.classList.remove('drag-over-chip');}};
+  window.handleChipDragLeave=function(e){e.currentTarget.classList.remove('drag-over-chip','drag-reorder-chip');};
+  window.handleChipDrop=function(e,ti){e.preventDefault();e.currentTarget.classList.remove('drag-over-chip','drag-reorder-chip');const si=parseInt(e.dataTransfer.getData('sourceIndex'),10);if(isNaN(si)||si===ti)return;
+    if(e.shiftKey){
+      // Shift+드래그: 병합
+      const src=globalSitesData[si],tgt=globalSitesData[ti];
+      if(confirm('"'+src.siteName+'" → "'+tgt.siteName+'" 병합하시겠습니까?')){saveState();tgt.items.push(...src.items);tgt.items.sort((a,b)=>{let d=String(a.date||"").localeCompare(String(b.date||""));return d!==0?d:(parseInt(a.seqNo)||0)-(parseInt(b.seqNo)||0);});tgt.sortConfig=[{col:'date',asc:true},{col:'seqNo',asc:true}];globalSitesData.splice(si,1);updateFloatingBar();renderResults();}
+    } else {
+      // 일반 드래그: 순서 변경
+      saveState();const [moved]=globalSitesData.splice(si,1);globalSitesData.splice(ti,0,moved);renderResults();
+    }
+  };
+  window.moveSiteOrder=function(si,dir){const ni=si+dir;if(ni<0||ni>=globalSitesData.length)return;saveState();const temp=globalSitesData[si];globalSitesData[si]=globalSitesData[ni];globalSitesData[ni]=temp;if(expandedSiteIndex===si)expandedSiteIndex=ni;else if(expandedSiteIndex===ni)expandedSiteIndex=si;renderResults();};
 
   let amountSortAsc=false,nameSortAsc=true;
   window.sortByAmount=function(){globalSitesData.sort((a,b)=>{let aT=a.filteredTotalPurchase||0,bT=b.filteredTotalPurchase||0;return amountSortAsc?aT-bT:bT-aT;});amountSortAsc=!amountSortAsc;renderResults();};
@@ -311,7 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
       +'<div class="progress-bar-container"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div></div>'
       +'</div>';
 
-    // #4 검색
     sh+='<div class="search-container"><span class="search-icon">🔍</span><input type="text" class="search-input" placeholder="품목명, 일자, No.로 검색..." value="'+searchQuery+'" oninput="window.handleSearch(this.value)"></div>';
 
     const tabs=[['전체','전체보기'],['잡자재','잡자재'],['안전자재','안전자재'],['기타자재','기타자재'],['쇼핑몰','쇼핑몰'],['직접입력','직접입력 (기타)']];
@@ -319,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabs.forEach(([k,l])=>{sh+='<button class="tab-btn'+(window.currentTab===k?' active':'')+'" onclick="window.setFilterTab(\''+k+'\')">'+l+'</button>';});
     sh+='</div><div class="summary-list">';
 
-    // 전체 현장 칩
     sh+='<button class="summary-chip" style="background:var(--primary-fixed);border:2px solid var(--primary);" onclick="window.openSiteModal(-1)"><strong style="color:var(--primary);">📊 전체 현장</strong></button>';
 
     globalSitesData.forEach((site,idx)=>{
@@ -334,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sh+='</div>';
     sdiv.innerHTML=sh;sitesContainer.appendChild(sdiv);
 
-    // 아코디언
     globalSitesData.forEach((site,idx)=>{
       if(window.currentTab!=='전체'&&site.filteredItems.length===0)return;
       const isExp=(expandedSiteIndex===idx);
@@ -350,6 +357,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let ch='<div class="accordion-header" onclick="window.toggleAccordion('+idx+')">'
         +'<div class="accordion-header-left">'
+        +'<div class="order-controls" onclick="event.stopPropagation()">'
+        +'<button class="order-btn" onclick="window.moveSiteOrder('+idx+',-1)" '+(idx===0?'disabled':'')+' title="위로 이동">▲</button>'
+        +'<span class="order-num">'+(idx+1)+'</span>'
+        +'<button class="order-btn" onclick="window.moveSiteOrder('+idx+',1)" '+(idx===globalSitesData.length-1?'disabled':'')+' title="아래로 이동">▼</button>'
+        +'</div>'
         +'<span class="accordion-arrow">'+(isExp?'▼':'▶')+'</span>'
         +'<h3 class="accordion-site-name" ondblclick="event.stopPropagation();window.editSiteName('+idx+',this)">'+site.siteName+'</h3>'
         +'<span class="accordion-item-count">'+itemCount+'건</span>'
