@@ -332,14 +332,47 @@ function setupAuth() {
     var mainApp = document.getElementById('mainApp');
     var logoutBtn = document.getElementById('logoutBtn');
 
-    onAuthStateChanged(auth, function(user) {
-        if (user) {
-            if (mainApp) mainApp.classList.remove('hidden');
-            loadProducts();
+    // 1. Try to get token from parent iframe first (fast path)
+    try {
+        if (window.parent && window.parent.getAuthToken) {
+            window.parent.getAuthToken().then(function(token) {
+                if (token) {
+                    if (mainApp) mainApp.classList.remove('hidden');
+                    loadProducts();
+                } else {
+                    waitForFirebaseAuth();
+                }
+            }).catch(waitForFirebaseAuth);
         } else {
-            window.location.href = 'index.html';
+            waitForFirebaseAuth();
         }
-    });
+    } catch(e) {
+        waitForFirebaseAuth();
+    }
+
+    function waitForFirebaseAuth() {
+        let authChecked = false;
+        onAuthStateChanged(auth, function(user) {
+            if (!authChecked) {
+                authChecked = true;
+                if (user) {
+                    if (mainApp) mainApp.classList.remove('hidden');
+                    loadProducts();
+                } else {
+                    window.location.href = 'index.html';
+                }
+            }
+        });
+        
+        // Fallback just in case onAuthStateChanged never fires
+        setTimeout(function() {
+            if (!authChecked) {
+                authChecked = true;
+                if (mainApp) mainApp.classList.remove('hidden');
+                loadProducts();
+            }
+        }, 2000);
+    }
 
     if (logoutBtn) {
         logoutBtn.addEventListener('click', function(e) {

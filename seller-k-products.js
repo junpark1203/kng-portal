@@ -586,8 +586,39 @@ function updateCalcPreview() {
 // 인증 (Firebase Auth)
 // ==========================================
 function setupAuth() {
-    // 포털 전용: 인증은 포털(index.html)에서 처리하므로 바로 데이터 로드
-    loadProducts();
+    // 1. Try to get token from parent iframe first (fast path)
+    try {
+        if (window.parent && window.parent.getAuthToken) {
+            window.parent.getAuthToken().then(function(token) {
+                if (token) {
+                    loadProducts();
+                } else {
+                    waitForFirebaseAuth();
+                }
+            }).catch(waitForFirebaseAuth);
+            return;
+        }
+    } catch(e) {}
+    
+    waitForFirebaseAuth();
+}
+
+function waitForFirebaseAuth() {
+    let authChecked = false;
+    onAuthStateChanged(auth, function(user) {
+        if (!authChecked) {
+            authChecked = true;
+            loadProducts();
+        }
+    });
+    
+    // Fallback just in case onAuthStateChanged never fires
+    setTimeout(function() {
+        if (!authChecked) {
+            authChecked = true;
+            loadProducts();
+        }
+    }, 2000);
 }
 
 // ==========================================
