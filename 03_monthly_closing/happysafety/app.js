@@ -14,6 +14,15 @@ document.addEventListener('DOMContentLoaded', () => {
   window.currentTab = '전체';
   window.categoryMemory = {};
 
+  // --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
+  async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!options.headers) options.headers = {};
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
+    return fetch(url, options);
+  }
+
   // --- Auto Save & Load ---
   function saveToLocalStorage() {
     if(globalSitesData.length === 0) { localStorage.removeItem('happySafety_autosave'); return; }
@@ -348,7 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
       +'<button class="sort-btn" onclick="window.sortByName()">가나다순 ↕</button>'
       +'<button class="sort-btn" onclick="window.sortByAmount()">금액순 ↕</button>'
       +'<button class="sort-btn" onclick="window.selectAllUnclassified()" style="background:#FFF3E0;border-color:#FF9800;color:#E65100;">📋 미분류 일괄</button>'
-      +'<button class="sort-btn" onclick="window.downloadExcel()" style="background:var(--secondary-container);color:var(--on-secondary-container);">📥 엑셀</button></div></div>';
+      +'<button class="sort-btn" onclick="window.downloadExcel()" style="background:var(--secondary-container);color:var(--on-secondary-container);">📥 엑셀</button>'
+      +'<button class="sort-btn" onclick="window.sendToSupplyHistory()" style="background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;">📤 공급내역 전송</button></div></div>';
 
     // #8 대시보드 카드
     sh+='<div class="stats-dashboard">'
@@ -453,5 +463,89 @@ document.addEventListener('DOMContentLoaded', () => {
     var today=new Date();var dt=today.getFullYear()+''+String(today.getMonth()+1).padStart(2,'0')+String(today.getDate()).padStart(2,'0');
     var tabName=window.currentTab==='전체'?'전체':window.currentTab;
     XLSX.writeFile(wb,'월마감_'+tabName+'_'+dt+'.xlsx');
+  };
+
+  /* ===== 공급내역 전송 ===== */
+  window.sendToSupplyHistory = async function() {
+    if(!globalSitesData.length) return alert('전송할 데이터가 없습니다.');
+
+    // 미분류 체크
+    let uncatCount = 0;
+    globalSitesData.forEach(s => s.items.forEach(it => { if(!it.category) uncatCount++; }));
+    if(uncatCount > 0) {
+      if(!confirm(`아직 미분류 항목이 ${uncatCount}건 있습니다.\n미분류 항목은 "미분류"로 전송됩니다. 계속하시겠습니까?`)) return;
+    }
+
+    // 전송할 데이터 구성
+    const bulkItems = [];
+    const today = new Date();
+    const yearPrefix = today.getFullYear().toString();
+    // 현재 월 기준으로 일자 변환 (MMDD → YYYY-MM-DD)
+    const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const currentYear = today.getFullYear();
+
+    globalSitesData.forEach(site => {
+      site.items.forEach(it => {
+        // 매입란(purchase)이 있는 행은 현장 소계이므로 제외 (마지막 행)
+        // 실제 품목 데이터만 전송
+        const itemName = (it.itemName || '').trim();
+        if(!itemName) return;
+
+        // 수량, 단가, 판매금액 파싱
+        const qty = parseNum(it.qty) || 0;
+        const price = parseNum(it.unitPrice) || 0;
+        const total = parseNum(it.sales) || 0;
+        if(qty === 0 && price === 0 && total === 0) return; // 빈 행 제외
+
+        // 일자 변환: 엑셀 원본은 "MMDD" 또는 "MDD" 형태
+        let dateStr = (it.date || '').trim();
+        let supplyDate = '';
+        if(dateStr.length >= 3 && dateStr.length <= 4) {
+          const mm = dateStr.length === 4 ? dateStr.substring(0, 2) : '0' + dateStr.substring(0, 1);
+          const dd = dateStr.length === 4 ? dateStr.substring(2, 4) : dateStr.substring(1, 3);
+          supplyDate = currentYear + '-' + mm + '-' + dd;
+        }
+
+        bulkItems.push({
+          id: 'SH-HS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          supplyDate,
+          site: site.siteName,
+          supplier: '행복한안전',
+          manufacturer: '',
+          item: itemName,
+          qty,
+          price,
+          total,
+          category: it.category || '미분류'
+        });
+      });
+    });
+
+    if(bulkItems.length === 0) return alert('전송할 품목이 없습니다.');
+
+    const msg = `총 ${bulkItems.length}건의 품목을 일반 자재 공급내역으로 전송합니다.\n\n` +
+      `• 현장: ${globalSitesData.length}곳\n` +
+      `• 공급사: 행복한안전 (자동)\n` +
+      `• 합계: ₩${bulkItems.reduce((s,i) => s + i.total, 0).toLocaleString()}\n\n` +
+      `전송하시겠습니까?`;
+    if(!confirm(msg)) return;
+
+    try {
+      const res = await authFetch('https://kng.junparks.com/api/supply-history/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bulkItems)
+      });
+      if(res.ok) {
+        const result = await res.json();
+        alert(`✅ 전송 완료!\n\n${result.insertedCount || bulkItems.length}건이 공급내역에 등록되었습니다.\n(중복 항목은 자동으로 건너뜁니다)`);
+      } else {
+        const err = await res.json();
+        alert('❌ 전송 실패: ' + (err.error || '서버 오류'));
+      }
+    } catch(e) {
+      console.error(e);
+      alert('❌ 서버 연결 오류. 네트워크 상태를 확인해주세요.');
+    }
   };
 });
