@@ -14,6 +14,43 @@ document.addEventListener('DOMContentLoaded', () => {
   window.currentTab = '전체';
   window.categoryMemory = {};
 
+  // --- Auto Save & Load ---
+  function saveToLocalStorage() {
+    if(globalSitesData.length === 0) { localStorage.removeItem('happySafety_autosave'); return; }
+    const payload = {
+      globalSitesData,
+      categoryMemory,
+      globalCategories: Array.from(window.globalCategories)
+    };
+    localStorage.setItem('happySafety_autosave', JSON.stringify(payload));
+  }
+  
+  function loadFromLocalStorage() {
+    const saved = localStorage.getItem('happySafety_autosave');
+    if(saved) {
+      if(confirm('저장된 이전 작업 내역이 있습니다. 불러오시겠습니까?')) {
+        try {
+          const parsed = JSON.parse(saved);
+          globalSitesData = parsed.globalSitesData || [];
+          window.categoryMemory = parsed.categoryMemory || {};
+          if(parsed.globalCategories) window.globalCategories = new Set(parsed.globalCategories);
+          renderResults();
+        } catch(e) { console.error('Failed to load autosave', e); }
+      } else {
+        localStorage.removeItem('happySafety_autosave');
+      }
+    }
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (globalSitesData.length > 0) {
+      e.returnValue = '진행 중인 작업이 있습니다. 창을 닫으시겠습니까?';
+    }
+  });
+
+  loadFromLocalStorage();
+  // -------------------------
+
   // #5 키보드 단축키
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') { e.preventDefault(); window.undoAction(); }
@@ -278,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ===== Rendering ===== */
   function renderResults() {
+    saveToLocalStorage();
     if(!globalSitesData.length){sitesContainer.innerHTML='';resultsSection.style.display='none';return;}
     let gTP=0,gTotal=0,gUncat=0;
     globalSitesData.forEach(site=>{
