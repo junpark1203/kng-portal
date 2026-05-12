@@ -10,7 +10,7 @@
         try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
         if (!options.headers) options.headers = {};
         if (token) options.headers['Authorization'] = 'Bearer ' + token;
-        return authFetch(url, options);
+        return fetch(url, options);
     }
 
 
