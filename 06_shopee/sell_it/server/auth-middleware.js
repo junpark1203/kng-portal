@@ -6,7 +6,18 @@ try {
         const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8');
         serviceAccount = JSON.parse(decoded);
     } else {
-        serviceAccount = require('./firebase-service-account.json');
+        const fs = require('fs');
+        const path = require('path');
+        const rootPath = path.join(__dirname, 'firebase-service-account.json');
+        const dataPath = path.join(__dirname, 'data', 'firebase-service-account.json');
+        
+        if (fs.existsSync(rootPath)) {
+            serviceAccount = require('./firebase-service-account.json');
+        } else if (fs.existsSync(dataPath)) {
+            serviceAccount = require('./data/firebase-service-account.json');
+        } else {
+            throw new Error('Firebase service account key not found in root or data directory');
+        }
     }
 
     if (!admin.apps.length) {
