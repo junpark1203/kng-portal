@@ -168,7 +168,6 @@
 .registration-layout {
     display: flex;
     gap: 24px;
-    align-items: flex-start;
 }
 
 .registration-sidebar {
