@@ -13,23 +13,42 @@ if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
 }
 
 // ── 인증 fetch 래퍼 (JWT 토큰 자동 첨부) ──
+// Firebase Auth 세션 복구 대기 Promise (한 번만 생성)
+var _authReadyPromise = null;
+function _waitForAuth() {
+    if (_authReadyPromise) return _authReadyPromise;
+    var auth = window.fbAuth;
+    if (!auth) return Promise.resolve(null);
+    // 이미 로그인 상태면 즉시 반환
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
+    // 아직 세션 복구 중이면 onAuthStateChanged 대기
+    _authReadyPromise = new Promise(function(resolve) {
+        var unsubscribe = auth.onAuthStateChanged(function(user) {
+            unsubscribe();
+            resolve(user);
+        });
+    });
+    return _authReadyPromise;
+}
+
 function _authFetch(url, options) {
     options = options || {};
-    var auth = window.fbAuth;
-    if (auth && auth.currentUser) {
-        return auth.currentUser.getIdToken().then(function(token) {
-            if (options.headers && typeof options.headers.set === 'function') {
-                // Headers 객체인 경우
-                options.headers.set('Authorization', 'Bearer ' + token);
-            } else {
-                options.headers = options.headers || {};
-                options.headers['Authorization'] = 'Bearer ' + token;
-            }
-            return fetch(url, options);
-        });
-    }
-    return fetch(url, options);
+    return _waitForAuth().then(function(user) {
+        if (user) {
+            return user.getIdToken().then(function(token) {
+                if (options.headers && typeof options.headers.set === 'function') {
+                    options.headers.set('Authorization', 'Bearer ' + token);
+                } else {
+                    options.headers = options.headers || {};
+                    options.headers['Authorization'] = 'Bearer ' + token;
+                }
+                return fetch(url, options);
+            });
+        }
+        return fetch(url, options);
+    });
 }
+
 
 var Storage = {
     // ── 인메모리 캐시 ──
