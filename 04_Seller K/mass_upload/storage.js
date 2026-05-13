@@ -12,6 +12,25 @@ if (location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
     STORAGE_API = 'http://127.0.0.1:3000/api/mass-upload';
 }
 
+// ── 인증 fetch 래퍼 (JWT 토큰 자동 첨부) ──
+function _authFetch(url, options) {
+    options = options || {};
+    var auth = window.fbAuth;
+    if (auth && auth.currentUser) {
+        return auth.currentUser.getIdToken().then(function(token) {
+            if (options.headers && typeof options.headers.set === 'function') {
+                // Headers 객체인 경우
+                options.headers.set('Authorization', 'Bearer ' + token);
+            } else {
+                options.headers = options.headers || {};
+                options.headers['Authorization'] = 'Bearer ' + token;
+            }
+            return fetch(url, options);
+        });
+    }
+    return fetch(url, options);
+}
+
 var Storage = {
     // ── 인메모리 캐시 ──
     _cache: {
@@ -30,15 +49,15 @@ var Storage = {
     init: function() {
         var self = this;
         return Promise.all([
-            fetch(STORAGE_API + '/products').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/presets').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/addresses').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/export-cart').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/settings/defaults').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/settings/cat_favorites').then(function(r) { return r.json(); }),
-            fetch(STORAGE_API + '/settings/margin_presets').then(function(r) { return r.json(); }).catch(function() { return { value: null }; }),
-            fetch(STORAGE_API + '/settings/notice_images').then(function(r) { return r.json(); }).catch(function() { return { value: null }; }),
-            fetch(STORAGE_API + '/settings/consent_images').then(function(r) { return r.json(); }).catch(function() { return { value: null }; })
+            _authFetch(STORAGE_API + '/products').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/presets').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/addresses').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/export-cart').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/settings/defaults').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/settings/cat_favorites').then(function(r) { return r.json(); }),
+            _authFetch(STORAGE_API + '/settings/margin_presets').then(function(r) { return r.json(); }).catch(function() { return { value: null }; }),
+            _authFetch(STORAGE_API + '/settings/notice_images').then(function(r) { return r.json(); }).catch(function() { return { value: null }; }),
+            _authFetch(STORAGE_API + '/settings/consent_images').then(function(r) { return r.json(); }).catch(function() { return { value: null }; })
         ]).then(function(results) {
             self._cache.products = results[0] || [];
             self._cache.presets = results[1] || [];
@@ -92,7 +111,7 @@ var Storage = {
         } else {
             self._cache.products.push(product);
         }
-        return fetch(STORAGE_API + '/products', {
+        return _authFetch(STORAGE_API + '/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(product)
@@ -107,7 +126,7 @@ var Storage = {
     saveProducts: function(products) {
         this._cache.products = products;
         var promises = products.map(function(p) {
-            return fetch(STORAGE_API + '/products', {
+            return _authFetch(STORAGE_API + '/products', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(p)
@@ -129,7 +148,7 @@ var Storage = {
 
     deleteProduct: function(id) {
         this._cache.products = this._cache.products.filter(function(p) { return p.id !== id; });
-        return fetch(STORAGE_API + '/products/delete', {
+        return _authFetch(STORAGE_API + '/products/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: [id] })
@@ -138,7 +157,7 @@ var Storage = {
 
     deleteProducts: function(ids) {
         this._cache.products = this._cache.products.filter(function(p) { return !ids.includes(p.id); });
-        return fetch(STORAGE_API + '/products/delete', {
+        return _authFetch(STORAGE_API + '/products/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: ids })
@@ -156,7 +175,7 @@ var Storage = {
     saveShippingPresets: function(presets) {
         this._cache.presets = presets;
         var promises = presets.map(function(p) {
-            return fetch(STORAGE_API + '/presets', {
+            return _authFetch(STORAGE_API + '/presets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(p)
@@ -172,7 +191,7 @@ var Storage = {
         } else {
             this._cache.presets.push(preset);
         }
-        return fetch(STORAGE_API + '/presets', {
+        return _authFetch(STORAGE_API + '/presets', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(preset)
@@ -181,7 +200,7 @@ var Storage = {
 
     deletePreset: function(id) {
         this._cache.presets = this._cache.presets.filter(function(p) { return p.id !== id; });
-        return fetch(STORAGE_API + '/presets/' + id, {
+        return _authFetch(STORAGE_API + '/presets/' + id, {
             method: 'DELETE'
         }).then(function(r) { return r.json(); });
     },
@@ -219,7 +238,7 @@ var Storage = {
     saveAddresses: function(addresses) {
         this._cache.addresses = addresses;
         var promises = addresses.map(function(a) {
-            return fetch(STORAGE_API + '/addresses', {
+            return _authFetch(STORAGE_API + '/addresses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(a)
@@ -235,7 +254,7 @@ var Storage = {
         } else {
             this._cache.addresses.push(address);
         }
-        return fetch(STORAGE_API + '/addresses', {
+        return _authFetch(STORAGE_API + '/addresses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(address)
@@ -244,7 +263,7 @@ var Storage = {
 
     deleteAddress: function(id) {
         this._cache.addresses = this._cache.addresses.filter(function(a) { return a.id !== id; });
-        return fetch(STORAGE_API + '/addresses/' + id, {
+        return _authFetch(STORAGE_API + '/addresses/' + id, {
             method: 'DELETE'
         }).then(function(r) { return r.json(); });
     },
@@ -269,7 +288,7 @@ var Storage = {
 
     saveCategoryFavorites: function(favs) {
         this._cache.settings.cat_favorites = favs;
-        return fetch(STORAGE_API + '/settings/cat_favorites', {
+        return _authFetch(STORAGE_API + '/settings/cat_favorites', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: favs })
@@ -285,7 +304,7 @@ var Storage = {
 
     saveMarginPresets: function(presets) {
         this._cache.settings.margin_presets = presets;
-        return fetch(STORAGE_API + '/settings/margin_presets', {
+        return _authFetch(STORAGE_API + '/settings/margin_presets', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: presets })
@@ -308,7 +327,7 @@ var Storage = {
 
     saveDefaults: function(defaults) {
         this._cache.settings.defaults = defaults;
-        return fetch(STORAGE_API + '/settings/defaults', {
+        return _authFetch(STORAGE_API + '/settings/defaults', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: defaults })
@@ -351,7 +370,7 @@ var Storage = {
         formData.append('autoName', autoName);
         // 파일은 마지막에 append
         formData.append('image', file);
-        return fetch(STORAGE_API + '/images/upload', {
+        return _authFetch(STORAGE_API + '/images/upload', {
             method: 'POST',
             body: formData
         }).then(function(r) { return r.json(); }).then(function(res) {
@@ -364,7 +383,7 @@ var Storage = {
     },
 
     deleteImage: function(filename) {
-        return fetch(STORAGE_API + '/images/' + encodeURIComponent(filename), {
+        return _authFetch(STORAGE_API + '/images/' + encodeURIComponent(filename), {
             method: 'DELETE'
         }).then(function(r) { return r.json(); });
     },
@@ -388,7 +407,7 @@ var Storage = {
         } else {
             autoName = productCode + '_img.' + ext;
         }
-        return fetch(STORAGE_API + '/images/upload-url', {
+        return _authFetch(STORAGE_API + '/images/upload-url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: url, autoName: autoName })
@@ -439,7 +458,7 @@ var Storage = {
 
     incrementTodaySequence: function() {
         // async 버전 사용 권장 → generateProductCode에서 호출
-        return fetch(STORAGE_API + '/sequence/next', {
+        return _authFetch(STORAGE_API + '/sequence/next', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         }).then(function(r) { return r.json(); }).then(function(res) {
@@ -468,7 +487,7 @@ var Storage = {
                 numAdded++;
             }
         });
-        fetch(STORAGE_API + '/export-cart', {
+        _authFetch(STORAGE_API + '/export-cart', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: ids })
@@ -478,7 +497,7 @@ var Storage = {
 
     removeFromExportCart: function(ids) {
         this._cache.exportCart = this._cache.exportCart.filter(function(id) { return !ids.includes(id); });
-        fetch(STORAGE_API + '/export-cart/remove', {
+        _authFetch(STORAGE_API + '/export-cart/remove', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: ids })
@@ -487,7 +506,7 @@ var Storage = {
 
     clearExportCart: function() {
         this._cache.exportCart = [];
-        fetch(STORAGE_API + '/export-cart', {
+        _authFetch(STORAGE_API + '/export-cart', {
             method: 'DELETE'
         }).catch(function(err) { console.error('[Storage] clearExportCart 실패:', err); });
     },
@@ -507,7 +526,7 @@ var Storage = {
         try { data.settings = { defaults: JSON.parse(localStorage.getItem('kng_mass_defaults')), cat_favorites: JSON.parse(localStorage.getItem('kng_mass_cat_favorites')) }; } catch(e) {}
         try { data.exportCart = JSON.parse(localStorage.getItem('kng_mass_export_cart')); } catch(e) {}
 
-        return fetch(STORAGE_API + '/migrate', {
+        return _authFetch(STORAGE_API + '/migrate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -529,7 +548,7 @@ var Storage = {
     saveNoticeImages: function(images) {
         this._cache.settings.notice_images = images;
         localStorage.setItem('kng_mass_notice_images', JSON.stringify(images));
-        return fetch(STORAGE_API + '/settings/notice_images', {
+        return _authFetch(STORAGE_API + '/settings/notice_images', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: images })
@@ -542,7 +561,7 @@ var Storage = {
     saveConsentImages: function(images) {
         this._cache.settings.consent_images = images;
         localStorage.setItem('kng_mass_consent_images', JSON.stringify(images));
-        return fetch(STORAGE_API + '/settings/consent_images', {
+        return _authFetch(STORAGE_API + '/settings/consent_images', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: images })
