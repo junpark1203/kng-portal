@@ -559,6 +559,15 @@
     transform: scale(1.02);
 }
 
+.image-upload-zone:focus,
+.image-upload-zone.paste-ready {
+    border-color: var(--primary);
+    background: var(--primary-subtle);
+    box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.12);
+    outline: none;
+}
+
+
 .image-upload-zone i {
     font-size: 28px;
     color: var(--gray-400);
@@ -753,6 +762,15 @@
     border-color: var(--primary);
     background: var(--primary-subtle);
 }
+
+.image-upload-small:focus,
+.image-upload-small.paste-ready {
+    border-color: var(--primary);
+    background: var(--primary-subtle);
+    box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.12);
+    outline: none;
+}
+
 
 .image-upload-small i {
     font-size: 28px;

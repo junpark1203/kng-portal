@@ -30,7 +30,85 @@ function initImageManager() {
     if (btnDetailUrl) btnDetailUrl.addEventListener('click', function() {
         showUrlInputModal('상세설명 이미지 URL (한 줄에 하나씩)', true, function(urls) { handleDetailImageUrls(urls); });
     });
+
+    // ── 클립보드 붙여넣기 바인딩 ──
+    bindPasteToUploadZones();
 }
+
+// ── 클립보드 붙여넣기 지원 ──
+// 업로드 영역(tabindex="0")에 포커스 후 Ctrl+V로 이미지 붙여넣기
+var _pasteTarget = null; // 현재 포커스된 업로드 영역의 타입: 'main' | 'add' | 'detail'
+
+function bindPasteToUploadZones() {
+    // 대표 이미지 영역
+    _bindPasteZone('mainImageUpload', 'main');
+    // 추가 이미지 영역
+    _bindPasteZone('addImageUpload', 'add');
+    // 상세 이미지 영역
+    _bindPasteZone('detailImageUpload', 'detail');
+}
+
+function _bindPasteZone(elementId, type) {
+    var zone = document.getElementById(elementId);
+    if (!zone) return;
+    // 포커스 가능하게 설정
+    zone.setAttribute('tabindex', '0');
+    // 포커스 시 안내 텍스트 변경
+    zone.addEventListener('focus', function() {
+        _pasteTarget = type;
+        var span = zone.querySelector('span');
+        if (span) span.textContent = '📋 Ctrl+V로 이미지를 붙여넣으세요';
+    });
+    zone.addEventListener('blur', function() {
+        if (_pasteTarget === type) _pasteTarget = null;
+        var span = zone.querySelector('span');
+        if (span) {
+            span.textContent = type === 'main' ? '클릭 또는 드래그' : '클릭 또는 드래그하여 추가';
+        }
+    });
+    // 붙여넣기 이벤트
+    zone.addEventListener('paste', function(e) {
+        e.preventDefault();
+        var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                var blob = items[i].getAsFile();
+                if (!blob) continue;
+                // 파일명 생성 (클립보드 이미지는 이름이 없으므로)
+                var ext = blob.type.split('/')[1] || 'png';
+                if (ext === 'jpeg') ext = 'jpg';
+                var pasteFile = new File([blob], 'paste_' + Date.now() + '.' + ext, { type: blob.type });
+                _handlePastedImage(type, pasteFile);
+                return; // 첫 번째 이미지만 처리
+            }
+        }
+        showToast('클립보드에 이미지가 없습니다.', 'warning');
+    });
+}
+
+function _handlePastedImage(type, file) {
+    if (type === 'main') {
+        // 대표 이미지가 이미 있으면 확인
+        if (currentImages.main) {
+            if (!confirm('대표 이미지가 이미 등록되어 있습니다.\n붙여넣은 이미지로 교체하시겠습니까?')) {
+                return;
+            }
+        }
+        showToast('📋 붙여넣은 이미지 업로드 중...', 'info');
+        handleMainImage(file);
+    } else if (type === 'add') {
+        if (currentImages.additional.length >= 9) {
+            showToast('추가 이미지는 최대 9장까지 등록할 수 있습니다.', 'warning');
+            return;
+        }
+        showToast('📋 붙여넣은 이미지 업로드 중...', 'info');
+        handleAdditionalImages([file]);
+    } else if (type === 'detail') {
+        showToast('📋 붙여넣은 이미지 업로드 중...', 'info');
+        handleDetailImages([file]);
+    }
+}
+
 
 // ── URL 입력 모달 ──
 function showUrlInputModal(title, multiline, callback) {
@@ -175,7 +253,7 @@ function renderImagePreviews() {
             '<div class="auto-name">' + (currentImages.main.autoName || '') + '</div></div>' +
             '<button class="btn-outline btn-sm" onclick="removeMainImage()" style="margin-left:auto;"><i class="bx bx-trash"></i> 삭제</button></div>';
     } else if (mainArea) {
-        mainArea.innerHTML = '<div class="image-upload-zone" id="mainImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭 또는 드래그</span>' +
+        mainArea.innerHTML = '<div class="image-upload-zone" id="mainImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
             '<input type="file" accept="image/*" id="mainImageInput"></div>';
         var ni = document.getElementById('mainImageInput');
         if (ni) ni.addEventListener('change', function (e) { if (e.target.files[0]) handleMainImage(e.target.files[0]); });
@@ -184,7 +262,7 @@ function renderImagePreviews() {
     if (addGrid) {
         var ah = '';
         if (currentImages.additional.length < 9) {
-            ah += '<div class="image-upload-small" id="addImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭 또는 드래그하여 추가</span>' +
+            ah += '<div class="image-upload-small" id="addImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
                 '<input type="file" accept="image/*" multiple id="addImageInput"></div>';
         }
         if (currentImages.additional.length > 0) {
@@ -205,7 +283,7 @@ function renderImagePreviews() {
     var detailGrid = document.getElementById('detailImageGrid');
     if (detailGrid) {
         var dh = '';
-        dh += '<div class="image-upload-small" id="detailImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭 또는 드래그하여 추가</span>' +
+        dh += '<div class="image-upload-small" id="detailImageUpload"><i class="bx bx-cloud-upload"></i><span>클릭, 드래그 또는 Ctrl+V</span>' +
             '<input type="file" accept="image/*" multiple id="detailImageInput"></div>';
         if (currentImages.detail.length > 0) {
             dh += '<div class="image-thumb-row">';
@@ -222,7 +300,10 @@ function renderImagePreviews() {
         if (di) di.addEventListener('change', function (e) { handleDetailImages(e.target.files); });
         document.getElementById('detailImageCount').textContent = currentImages.detail.length + '장';
     }
+    // 재생성된 업로드 영역에 붙여넣기 이벤트 재바인딩
+    bindPasteToUploadZones();
 }
+
 
 function removeMainImage() { currentImages.main = null; renderImagePreviews(); }
 function removeAdditionalImage(idx) { currentImages.additional.splice(idx, 1); renderImagePreviews(); }
