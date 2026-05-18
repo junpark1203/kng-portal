@@ -608,9 +608,28 @@
 .image-upload-zone:focus,
 .image-upload-zone.paste-ready {
     border-color: var(--primary);
-    background: var(--primary-subtle);
-    box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.12);
+    border-style: solid;
+    background: linear-gradient(135deg, var(--primary-subtle), var(--primary-muted));
+    box-shadow: 0 0 0 4px rgba(0, 6, 102, 0.18), inset 0 0 20px rgba(0, 6, 102, 0.05);
     outline: none;
+    animation: paste-pulse 1.5s ease-in-out infinite;
+}
+
+.image-upload-zone:focus i,
+.image-upload-zone.paste-ready i {
+    color: var(--primary);
+    font-size: 32px;
+}
+
+.image-upload-zone:focus span,
+.image-upload-zone.paste-ready span {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+@keyframes paste-pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(0, 6, 102, 0.18); }
+    50% { box-shadow: 0 0 0 6px rgba(0, 6, 102, 0.10), 0 0 16px rgba(0, 6, 102, 0.08); }
 }
 
 
@@ -812,9 +831,23 @@
 .image-upload-small:focus,
 .image-upload-small.paste-ready {
     border-color: var(--primary);
-    background: var(--primary-subtle);
-    box-shadow: 0 0 0 3px rgba(0, 6, 102, 0.12);
+    border-style: solid;
+    background: linear-gradient(135deg, var(--primary-subtle), var(--primary-muted));
+    box-shadow: 0 0 0 4px rgba(0, 6, 102, 0.18), inset 0 0 20px rgba(0, 6, 102, 0.05);
     outline: none;
+    animation: paste-pulse 1.5s ease-in-out infinite;
+}
+
+.image-upload-small:focus i,
+.image-upload-small.paste-ready i {
+    color: var(--primary);
+    font-size: 32px;
+}
+
+.image-upload-small:focus span,
+.image-upload-small.paste-ready span {
+    color: var(--primary);
+    font-weight: 700;
 }
 
 
