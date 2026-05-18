@@ -395,7 +395,7 @@ var Storage = {
         }).then(function(r) { return r.json(); }).then(function(res) {
             return {
                 filename: res.filename,
-                url: res.url,
+                url: IMG_BASE_URL + '/' + res.filename,
                 autoName: res.filename
             };
         });
@@ -436,7 +436,7 @@ var Storage = {
         }).then(function(res) {
             return {
                 filename: res.filename,
-                url: res.url,
+                url: IMG_BASE_URL + '/' + res.filename,
                 autoName: res.filename
             };
         });
