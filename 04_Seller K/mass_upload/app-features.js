@@ -33,6 +33,7 @@ function initImageManager() {
 
     // ── 클립보드 붙여넣기 바인딩 ──
     bindPasteToUploadZones();
+    bindPasteButtons();
 }
 
 // ── 클립보드 붙여넣기 지원 ──
@@ -83,6 +84,62 @@ function _bindPasteZone(elementId, type) {
             }
         }
         showToast('클립보드에 이미지가 없습니다.', 'warning');
+    });
+}
+
+// ── 붙여넣기 버튼 (Clipboard API) ──
+// 버튼 클릭 시 navigator.clipboard.read()로 즉시 클립보드에서 이미지를 읽어 업로드
+function bindPasteButtons() {
+    var btnMain = document.getElementById('btnPasteMain');
+    var btnAdd = document.getElementById('btnPasteAdd');
+    var btnDetail = document.getElementById('btnPasteDetail');
+
+    if (btnMain) btnMain.addEventListener('click', function() { _readClipboardImage('main', this); });
+    if (btnAdd) btnAdd.addEventListener('click', function() { _readClipboardImage('add', this); });
+    if (btnDetail) btnDetail.addEventListener('click', function() { _readClipboardImage('detail', this); });
+}
+
+function _readClipboardImage(type, btnEl) {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+        showToast('이 브라우저에서는 클립보드 읽기가 지원되지 않습니다.\nCtrl+V를 사용해주세요.', 'warning');
+        return;
+    }
+
+    // 버튼 로딩 상태 표시
+    var origHTML = btnEl.innerHTML;
+    btnEl.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 읽는 중...";
+    btnEl.disabled = true;
+
+    navigator.clipboard.read().then(function(items) {
+        for (var i = 0; i < items.length; i++) {
+            var imageType = null;
+            for (var j = 0; j < items[i].types.length; j++) {
+                if (items[i].types[j].indexOf('image') !== -1) {
+                    imageType = items[i].types[j];
+                    break;
+                }
+            }
+            if (imageType) {
+                return items[i].getType(imageType).then(function(blob) {
+                    var ext = blob.type.split('/')[1] || 'png';
+                    if (ext === 'jpeg') ext = 'jpg';
+                    var pasteFile = new File([blob], 'paste_' + Date.now() + '.' + ext, { type: blob.type });
+                    _handlePastedImage(type, pasteFile);
+                });
+            }
+        }
+        showToast('클립보드에 이미지가 없습니다.', 'warning');
+    }).catch(function(err) {
+        console.error('[Clipboard] 읽기 실패:', err);
+        if (err.name === 'NotAllowedError') {
+            showToast('클립보드 접근이 거부되었습니다.\n브라우저 주소창 왼쪽의 🔒 아이콘에서 권한을 허용해주세요.', 'error');
+        } else {
+            showToast('클립보드 읽기 실패: ' + err.message, 'error');
+        }
+    }).finally(function() {
+        // 버튼 원래 상태로 복원
+        btnEl.innerHTML = origHTML;
+        btnEl.disabled = false;
     });
 }
 

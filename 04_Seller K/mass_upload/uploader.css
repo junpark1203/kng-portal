@@ -530,6 +530,52 @@
     margin-left: auto;
 }
 
+/* Clipboard paste button */
+.btn-paste-clipboard {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-subtle);
+    border: 1.5px solid var(--primary-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-paste-clipboard:hover {
+    background: var(--primary-muted);
+    color: var(--primary);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-paste-clipboard:active {
+    transform: translateY(0);
+}
+
+.btn-paste-clipboard:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
+}
+
+.btn-paste-clipboard i {
+    font-size: 14px;
+}
+
+/* label-count가 있는 경우 label-count의 margin-left: auto 대신 버튼이 auto */
+.image-section-title .label-count + .btn-paste-clipboard {
+    margin-left: 8px;
+}
+
 /* Upload zone — unified full-width rectangle */
 .image-upload-zone {
     width: 100%;
