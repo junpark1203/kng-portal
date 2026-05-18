@@ -79,6 +79,9 @@ const { verifyToken } = require('./auth-middleware');
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+// 이미지 업로드 파일 — <img> 태그에서 직접 접근하므로 인증 제외
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+app.use('/api/mass-upload/uploads', express.static(UPLOAD_DIR));
 app.use('/api/', verifyToken);
 
 // 데이터 디렉터리 확인 및 생성
