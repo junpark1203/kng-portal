@@ -158,6 +158,7 @@ function createEmptyProduct() {
         noticeCert: '상세설명에 표시',
         noticeMaker: '상세설명에 표시',
         shippingPresetId: 'default',
+        shippingOverrides: null,
         shippingAddressId: 'default',
         returnAddressId: 'default',
         asPhone: defaults.asPhone || '',

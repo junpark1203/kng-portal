@@ -1154,3 +1154,103 @@ h1, h2, h3, .font-headline {
     justify-content: flex-end;
     margin-top: 14px;
 }
+
+/* ════════════════════════════════════════
+   SHIPPING PRESET INLINE OVERRIDE
+   ════════════════════════════════════════ */
+.preset-override-panel {
+    padding: 14px 16px;
+    background: var(--surface-container);
+    border-radius: 10px;
+    border: 1px solid var(--surface-container-high);
+}
+
+.preset-override-panel .fg {
+    position: relative;
+}
+
+/* 수정된 필드 시각적 표시 */
+.override-field.modified {
+    position: relative;
+}
+.override-field.modified::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--primary);
+    border-radius: 2px;
+    animation: overrideSlideIn 0.2s ease;
+}
+.override-field.modified > label:first-child {
+    color: var(--primary) !important;
+}
+.override-field.modified input,
+.override-field.modified select {
+    border-color: var(--primary);
+    background: rgba(0, 6, 102, 0.03);
+}
+
+@keyframes overrideSlideIn {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+/* 되돌리기 버튼 (각 필드 label 내부) */
+.btn-override-reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin-left: 4px;
+    background: var(--primary-muted);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--primary);
+    font-size: 10px;
+    transition: all 0.15s;
+    vertical-align: middle;
+}
+.btn-override-reset:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: rotate(-180deg);
+}
+.btn-override-reset i {
+    font-size: 10px;
+}
+
+/* 오버라이드 뱃지 */
+.preset-override-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--primary-muted), rgba(0, 6, 102, 0.12));
+    color: var(--primary);
+    letter-spacing: 0.3px;
+    animation: badgePop 0.25s ease;
+}
+
+@keyframes badgePop {
+    0% { transform: scale(0.7); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* btn-xs (extra small) */
+.btn-xs {
+    padding: 2px 8px;
+    font-size: 10px;
+    gap: 3px;
+}
+.btn-xs i {
+    font-size: 12px;
+}

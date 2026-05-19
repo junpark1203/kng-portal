@@ -607,6 +607,7 @@ function collectStepData(step) {
         currentProduct.vat = document.getElementById('fldVat').value;
         currentProduct.minorPurchase = document.getElementById('fldMinorPurchase').value;
         currentProduct.shippingPresetId = document.getElementById('fldShippingPreset').value;
+        currentProduct.shippingOverrides = (typeof collectShippingOverrides === 'function') ? collectShippingOverrides() : null;
         currentProduct.shippingAddressId = document.getElementById('fldShippingAddress').value;
         currentProduct.returnAddressId = document.getElementById('fldReturnAddress').value;
         currentProduct.asPhone = document.getElementById('fldAsPhone').value.trim();

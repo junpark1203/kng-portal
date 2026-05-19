@@ -858,7 +858,13 @@ function downloadExcel() {
                     detailUrls += '<img src="' + (cImg.url || cImg.autoName) + '">';
                 }
                 var presets = Storage.getShippingPresets();
-                var sp = presets.find(function(pr) { return pr.id === p.shippingPresetId; }) || presets[0] || {};
+                var sp = Object.assign({}, presets.find(function(pr) { return pr.id === p.shippingPresetId; }) || presets[0] || {});
+                // 상품별 오버라이드 머지
+                if (p.shippingOverrides) {
+                    Object.keys(p.shippingOverrides).forEach(function(key) {
+                        sp[key] = p.shippingOverrides[key];
+                    });
+                }
 
                 var optType = p.optionType || '';
                 var optNames = '';
@@ -1571,14 +1577,183 @@ function applyPresetAddresses(presetId) {
     }
 }
 
+// ── 오버라이드 상태 관리 변수 ──
+var _currentPresetOriginal = null;  // 현재 선택된 프리셋의 원본 값
+var _overrideFieldMap = {
+    method:        'fldOverrideMethod',
+    courierCode:   'fldOverrideCourierCode',
+    feeType:       'fldOverrideFeeType',
+    fee:           'fldOverrideFee',
+    payMethod:     'fldOverridePayMethod',
+    freeCondition: 'fldOverrideFreeCondition',
+    qty:           'fldOverrideQuantity',
+    section2Qty:   'fldOverrideSection2Qty',
+    addFee:        'fldOverrideAddFee',
+    section3Qty:   'fldOverrideSection3Qty',
+    section3Fee:   'fldOverrideSection3Fee',
+    returnFee:     'fldOverrideReturnFee',
+    exchangeFee:   'fldOverrideExchangeFee'
+};
+
+function _populateCourierSelect() {
+    var sel = document.getElementById('fldOverrideCourierCode');
+    if (!sel || sel.options.length > 2) return; // 이미 채워졌으면 스킵
+    sel.innerHTML = '<option value="">택배사 선택</option>';
+    var allData = typeof DELIVERY_DATA !== 'undefined' ? DELIVERY_DATA : [];
+    allData.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = d.code;
+        opt.textContent = d.name + ' (' + d.code + ')';
+        sel.appendChild(opt);
+    });
+}
+
+function _updateOverrideFeeVisibility() {
+    var val = document.getElementById('fldOverrideFeeType').value;
+    // 모든 조건부 필드 숨김
+    document.querySelectorAll('.override-fee-cond').forEach(function(el) { el.classList.add('hidden'); });
+    // 유형에 따라 표시
+    if (val !== '무료') {
+        document.querySelectorAll('.override-cond-base').forEach(function(el) { el.classList.remove('hidden'); });
+    }
+    if (val === '조건부 무료') {
+        document.querySelectorAll('.override-cond-condition-free').forEach(function(el) { el.classList.remove('hidden'); });
+    } else if (val === '수량별') {
+        document.querySelectorAll('.override-cond-quantity').forEach(function(el) { el.classList.remove('hidden'); });
+    } else if (val === '구간별') {
+        document.querySelectorAll('.override-cond-section').forEach(function(el) { el.classList.remove('hidden'); });
+    }
+}
+
+function _getFieldValue(fieldKey) {
+    var elId = _overrideFieldMap[fieldKey];
+    if (!elId) return undefined;
+    var el = document.getElementById(elId);
+    if (!el) return undefined;
+    if (el.type === 'number') return el.value === '' ? '' : (parseInt(el.value) || 0);
+    return el.value;
+}
+
+function _setFieldValue(fieldKey, val) {
+    var elId = _overrideFieldMap[fieldKey];
+    if (!elId) return;
+    var el = document.getElementById(elId);
+    if (!el) return;
+    el.value = (val === undefined || val === null) ? '' : val;
+}
+
+function _checkOverrideStatus() {
+    if (!_currentPresetOriginal) return;
+    var overrideCount = 0;
+    Object.keys(_overrideFieldMap).forEach(function(key) {
+        var fg = document.querySelector('.override-field[data-field="' + key + '"]');
+        if (!fg) return;
+        var currentVal = _getFieldValue(key);
+        var originalVal = _currentPresetOriginal[key];
+        // 숫자 비교 정규화
+        if (typeof originalVal === 'number') currentVal = parseInt(currentVal) || 0;
+        if (originalVal === '' || originalVal === undefined || originalVal === null) originalVal = '';
+        if (currentVal === '' || currentVal === undefined || currentVal === null) currentVal = '';
+        var isModified = (String(currentVal) !== String(originalVal));
+        var resetBtn = fg.querySelector('.btn-override-reset');
+        if (isModified) {
+            fg.classList.add('modified');
+            if (resetBtn) resetBtn.classList.remove('hidden');
+            overrideCount++;
+        } else {
+            fg.classList.remove('modified');
+            if (resetBtn) resetBtn.classList.add('hidden');
+        }
+    });
+    // 뱃지 및 전체 되돌리기 버튼 표시
+    var badge = document.getElementById('presetOverrideBadge');
+    var resetAllBtn = document.getElementById('btnResetAllOverrides');
+    if (overrideCount > 0) {
+        if (badge) { badge.textContent = overrideCount + '개 수정됨'; badge.classList.remove('hidden'); }
+        if (resetAllBtn) resetAllBtn.style.display = '';
+    } else {
+        if (badge) badge.classList.add('hidden');
+        if (resetAllBtn) resetAllBtn.style.display = 'none';
+    }
+}
+
+function collectShippingOverrides() {
+    if (!_currentPresetOriginal) return null;
+    var overrides = {};
+    Object.keys(_overrideFieldMap).forEach(function(key) {
+        var currentVal = _getFieldValue(key);
+        var originalVal = _currentPresetOriginal[key];
+        // 숫자 비교 정규화
+        var cmp1 = (currentVal === '' || currentVal === undefined || currentVal === null) ? '' : String(currentVal);
+        var cmp2 = (originalVal === '' || originalVal === undefined || originalVal === null) ? '' : String(originalVal);
+        if (cmp1 !== cmp2) {
+            // 숫자 필드는 숫자로 저장
+            var numFields = ['fee', 'freeCondition', 'qty', 'section2Qty', 'addFee', 'section3Qty', 'section3Fee', 'returnFee', 'exchangeFee'];
+            if (numFields.indexOf(key) >= 0) {
+                overrides[key] = currentVal === '' ? '' : (parseInt(currentVal) || 0);
+            } else {
+                overrides[key] = currentVal;
+            }
+        }
+    });
+    return Object.keys(overrides).length > 0 ? overrides : null;
+}
+
+function _resetOverrideField(fieldKey) {
+    if (!_currentPresetOriginal) return;
+    _setFieldValue(fieldKey, _currentPresetOriginal[fieldKey]);
+    if (fieldKey === 'feeType') _updateOverrideFeeVisibility();
+    _checkOverrideStatus();
+}
+
+function _resetAllOverrides() {
+    if (!_currentPresetOriginal) return;
+    Object.keys(_overrideFieldMap).forEach(function(key) {
+        _setFieldValue(key, _currentPresetOriginal[key]);
+    });
+    _updateOverrideFeeVisibility();
+    _checkOverrideStatus();
+}
+
+function _initOverrideFieldListeners() {
+    // 필드 변경 감지
+    Object.keys(_overrideFieldMap).forEach(function(key) {
+        var el = document.getElementById(_overrideFieldMap[key]);
+        if (!el) return;
+        el.addEventListener('change', _checkOverrideStatus);
+        el.addEventListener('input', _checkOverrideStatus);
+    });
+    // 배송비 유형 변경 시 조건부 필드 표시/숨김
+    var feeTypeEl = document.getElementById('fldOverrideFeeType');
+    if (feeTypeEl) feeTypeEl.addEventListener('change', _updateOverrideFeeVisibility);
+    // 각 필드의 되돌리기 버튼
+    document.querySelectorAll('.override-field').forEach(function(fg) {
+        var btn = fg.querySelector('.btn-override-reset');
+        if (!btn) return;
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var fieldKey = fg.dataset.field;
+            if (fieldKey) _resetOverrideField(fieldKey);
+        });
+    });
+    // 전체 되돌리기 버튼
+    var resetAllBtn = document.getElementById('btnResetAllOverrides');
+    if (resetAllBtn) resetAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        _resetAllOverrides();
+    });
+}
+
+var _overrideListenersInitialized = false;
+
 function renderPresetSummary(presetId) {
     var wrap = document.getElementById('presetSummaryWrap');
-    var card = document.getElementById('presetSummaryCard');
-    if (!wrap || !card) return;
+    if (!wrap) return;
 
     if (!presetId) {
         wrap.style.display = 'none';
-        card.innerHTML = '';
+        _currentPresetOriginal = null;
         return;
     }
 
@@ -1586,53 +1761,54 @@ function renderPresetSummary(presetId) {
     var sp = presets.find(function(p) { return p.id === presetId; });
     if (!sp) {
         wrap.style.display = 'none';
-        card.innerHTML = '';
+        _currentPresetOriginal = null;
         return;
     }
 
-    // Resolve courier name from code
-    var courierName = sp.courierCode || '-';
-    if (typeof DELIVERY_DATA !== 'undefined' && sp.courierCode) {
-        var match = DELIVERY_DATA.find(function(d) { return d.code === sp.courierCode; });
-        if (match) courierName = match.name + ' (' + match.code + ')';
+    // 원본 프리셋 저장 (깊은 복사)
+    _currentPresetOriginal = JSON.parse(JSON.stringify(sp));
+
+    // 택배사 select 채우기 (최초 1회)
+    _populateCourierSelect();
+
+    // 헤더 업데이트
+    var nameEl = document.getElementById('presetSummaryName');
+    if (nameEl) nameEl.textContent = sp.name;
+
+    // 필드에 프리셋 값 채우기
+    _setFieldValue('method', sp.method || '택배, 소포, 등기');
+    _setFieldValue('courierCode', sp.courierCode || '');
+    _setFieldValue('feeType', sp.feeType || '무료');
+    _setFieldValue('fee', sp.fee === '' ? '' : (sp.fee || 0));
+    _setFieldValue('payMethod', sp.payMethod || '선결제');
+    _setFieldValue('freeCondition', sp.freeCondition || '');
+    _setFieldValue('qty', sp.qty || '');
+    _setFieldValue('section2Qty', sp.section2Qty || '');
+    _setFieldValue('addFee', sp.addFee || '');
+    _setFieldValue('section3Qty', sp.section3Qty || '');
+    _setFieldValue('section3Fee', sp.section3Fee || '');
+    _setFieldValue('returnFee', sp.returnFee || 0);
+    _setFieldValue('exchangeFee', sp.exchangeFee || 0);
+
+    // 기존 오버라이드가 있으면 적용
+    if (typeof currentProduct !== 'undefined' && currentProduct && currentProduct.shippingOverrides) {
+        Object.keys(currentProduct.shippingOverrides).forEach(function(key) {
+            _setFieldValue(key, currentProduct.shippingOverrides[key]);
+        });
     }
 
-    var feeDesc = sp.feeType || '-';
-    if (sp.feeType === '무료') {
-        feeDesc = '무료';
-    } else if (sp.feeType === '유료') {
-        feeDesc = '유료 — ' + formatCurrency(sp.fee) + '원';
-    } else if (sp.feeType === '조건부 무료') {
-        feeDesc = '조건부 무료 — 기본 ' + formatCurrency(sp.fee) + '원 / ' + formatCurrency(sp.freeCondition) + '원 이상 무료';
-    } else if (sp.feeType === '수량별') {
-        feeDesc = '수량별 — ' + formatCurrency(sp.fee) + '원 / ' + sp.qty + '개마다 부과';
-    } else if (sp.feeType === '구간별') {
-        feeDesc = '구간별 — 기본 ' + formatCurrency(sp.fee) + '원';
-        if (sp.section2Qty) feeDesc += ' / ~' + sp.section2Qty + '개 기본';
-        if (sp.section3Qty) feeDesc += ' / ~' + sp.section3Qty + '개 +' + formatCurrency(sp.section3Fee) + '원';
-        feeDesc += ' / 초과 +' + formatCurrency(sp.addFee) + '원';
+    // 조건부 필드 표시 업데이트
+    _updateOverrideFeeVisibility();
+
+    // 이벤트 리스너 (최초 1회만)
+    if (!_overrideListenersInitialized) {
+        _initOverrideFieldListeners();
+        _overrideListenersInitialized = true;
     }
 
-    var payDesc = sp.payMethod || '-';
-    if (sp.feeType === '무료') payDesc = '-';
+    // 오버라이드 상태 확인
+    _checkOverrideStatus();
 
-    var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
-        '<i class="bx bx-package" style="font-size:16px;color:var(--primary);"></i>' +
-        '<span style="font-size:13px;font-weight:700;color:var(--on-surface);">' + sp.name + '</span>' +
-        '<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--primary-container);color:var(--on-primary-container);font-weight:600;">' + sp.feeType + '</span>' +
-        '</div>';
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;">';
-    html += '<div><span style="color:var(--gray-400);">배송방법</span> <span style="font-weight:600;color:var(--on-surface);">' + (sp.method || '-') + '</span></div>';
-    html += '<div><span style="color:var(--gray-400);">택배사</span> <span style="font-weight:600;color:var(--on-surface);">' + courierName + '</span></div>';
-    html += '<div style="grid-column:1/-1;"><span style="color:var(--gray-400);">배송비</span> <span style="font-weight:600;color:var(--on-surface);">' + feeDesc + '</span></div>';
-    if (sp.feeType !== '무료') {
-        html += '<div><span style="color:var(--gray-400);">결제방식</span> <span style="font-weight:600;color:var(--on-surface);">' + payDesc + '</span></div>';
-    }
-    html += '<div><span style="color:var(--gray-400);">반품배송비</span> <span style="font-weight:600;color:var(--on-surface);">' + formatCurrency(sp.returnFee) + '원</span></div>';
-    html += '<div><span style="color:var(--gray-400);">교환배송비</span> <span style="font-weight:600;color:var(--on-surface);">' + formatCurrency(sp.exchangeFee) + '원</span></div>';
-    html += '</div>';
-
-    card.innerHTML = html;
     wrap.style.display = 'block';
 }
 
@@ -2049,7 +2225,10 @@ function exportToInventory() {
     allProducts.forEach(function(p) {
         if (idsToExport.indexOf(p.id) !== -1) {
             var presets = Storage.getShippingPresets();
-            var sp = presets.find(function(pr) { return pr.id === p.shippingPresetId; }) || presets[0] || {};
+            var sp = Object.assign({}, presets.find(function(pr) { return pr.id === p.shippingPresetId; }) || presets[0] || {});
+            if (p.shippingOverrides) {
+                Object.keys(p.shippingOverrides).forEach(function(key) { sp[key] = p.shippingOverrides[key]; });
+            }
             exportPayload.push({
                 supplier: supplier,
                 brand: p.brand || '',

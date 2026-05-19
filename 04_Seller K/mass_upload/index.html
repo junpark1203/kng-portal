@@ -146,7 +146,81 @@
                                     <span class="form-help" style="margin-top:2px;font-size:10px;color:var(--gray-400);">프리셋 관리 메뉴에서 배송 설정을 등록하세요.</span>
                                 </div>
                                 <div class="fg fg-full" id="presetSummaryWrap" style="display:none;">
-                                    <div id="presetSummaryCard" style="padding:14px 16px;background:var(--surface-container);border-radius:10px;border:1px solid var(--surface-container-high);"></div>
+                                    <div id="presetSummaryHeader" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                                        <i class='bx bx-package' style="font-size:16px;color:var(--primary);"></i>
+                                        <span id="presetSummaryName" style="font-size:13px;font-weight:700;color:var(--on-surface);"></span>
+                                        <span id="presetOverrideBadge" class="preset-override-badge hidden">수정됨</span>
+                                        <button type="button" class="btn-outline btn-xs" id="btnResetAllOverrides" style="margin-left:auto;font-size:10px;display:none;" title="프리셋 원본으로 전체 되돌리기"><i class='bx bx-reset'></i> 전체 되돌리기</button>
+                                    </div>
+                                    <div class="form-grid preset-override-panel" id="presetOverrideFields">
+                                        <div class="fg override-field" data-field="method">
+                                            <label>배송방법 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <select id="fldOverrideMethod">
+                                                <option value="택배, 소포, 등기">택배, 소포, 등기</option>
+                                                <option value="직접배송(화물배달)">직접배송(화물배달)</option>
+                                            </select>
+                                        </div>
+                                        <div class="fg override-field" data-field="courierCode">
+                                            <label>택배사 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <select id="fldOverrideCourierCode">
+                                                <option value="">택배사 선택</option>
+                                            </select>
+                                        </div>
+                                        <div class="fg override-field" data-field="feeType">
+                                            <label>배송비 유형 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <select id="fldOverrideFeeType">
+                                                <option value="무료">무료</option>
+                                                <option value="조건부 무료">조건부 무료</option>
+                                                <option value="유료">유료</option>
+                                                <option value="수량별">수량별</option>
+                                                <option value="구간별">구간별</option>
+                                            </select>
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-base" data-field="fee">
+                                            <label>기본 배송비 (원) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideFee" min="0">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-base" data-field="payMethod">
+                                            <label>결제방식 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <select id="fldOverridePayMethod">
+                                                <option value="선결제">선결제</option>
+                                                <option value="착불">착불</option>
+                                                <option value="착불 또는 선결제">착불 또는 선결제</option>
+                                            </select>
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-condition-free hidden" data-field="freeCondition">
+                                            <label>조건부무료 금액 (원) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideFreeCondition" min="0">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-quantity hidden" data-field="qty">
+                                            <label>수량별 부과수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideQuantity" min="1">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section2Qty">
+                                            <label>2구간수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideSection2Qty" min="1">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="addFee">
+                                            <label>추가배송비 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideAddFee" min="10">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section3Qty">
+                                            <label>3구간수량 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideSection3Qty" min="1" placeholder="미입력시 2구간">
+                                        </div>
+                                        <div class="fg override-field override-fee-cond override-cond-section hidden" data-field="section3Fee">
+                                            <label>3구간배송비 <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideSection3Fee" min="10">
+                                        </div>
+                                        <div class="fg override-field" data-field="returnFee">
+                                            <label>반품배송비 (편도) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideReturnFee" min="0">
+                                        </div>
+                                        <div class="fg override-field" data-field="exchangeFee">
+                                            <label>교환배송비 (왕복) <button type="button" class="btn-override-reset hidden" title="원본으로 되돌리기"><i class='bx bx-reset'></i></button></label>
+                                            <input type="number" id="fldOverrideExchangeFee" min="0">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="fg">
                                     <label>출고지</label>
