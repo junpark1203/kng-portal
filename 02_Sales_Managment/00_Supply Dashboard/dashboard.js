@@ -29,6 +29,7 @@ let aggSearchQuery = '';
 let activeSite = ''; // '' = 전체 현장
 let activeCategory = ''; // '' = 전체 구분
 let activeItem = ''; // '' = 전체 품목
+let activeSupplier = ''; // '' = 전체 공급업체
 
 const $ = id => document.getElementById(id);
 
@@ -120,6 +121,7 @@ function initSourceTabs() {
             activeSite = '';
             activeCategory = '';
             activeItem = '';
+            activeSupplier = '';
             populateCrossFilterOptions();
             updateComboDisplay();
             renderCrossFilterChips();
@@ -191,14 +193,14 @@ function getCombined() {
         filtered.general.forEach(d => list.push({
             date: d.supplyDate || '', site: d.site || '', item: d.item || '',
             qty: d.qty || 0, total: d.total || 0, category: d.category || '미분류',
-            type: 'general'
+            supplier: d.supplier || '', type: 'general'
         }));
     }
     if (activeSource === 'all' || activeSource === 'oil') {
         filtered.oil.forEach(d => list.push({
             date: d.date || '', site: d.site || '', item: d.item || '',
             qty: d.qty || 0, total: d.total || 0, category: d.category || '미분류',
-            type: 'oil'
+            supplier: d.supplier || '', type: 'oil'
         }));
     }
     // Cross-filter: 현장/구분/품목 필터 적용 (부분 일치 검색)
@@ -213,6 +215,10 @@ function getCombined() {
     if (activeItem) {
         const query = activeItem.toLowerCase();
         list = list.filter(d => (d.item || '').toLowerCase().includes(query));
+    }
+    if (activeSupplier) {
+        const query = activeSupplier.toLowerCase();
+        list = list.filter(d => (d.supplier || '').toLowerCase().includes(query));
     }
     return list;
 }
@@ -595,6 +601,18 @@ function initCrossFilter() {
         }
     });
 
+    // Supplier combobox toggle
+    $('cfSupplierSelectWrap').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllCombos('cfSupplierCombo');
+        $('cfSupplierCombo').classList.toggle('open');
+        if ($('cfSupplierCombo').classList.contains('open')) {
+            $('cfSupplierSearch').value = '';
+            $('cfSupplierSearch').focus();
+            filterComboOptions('cfSupplierOptions', '', 'supplier');
+        }
+    });
+
     // Search inputs
     $('cfSiteSearch').addEventListener('input', (e) => {
         filterComboOptions('cfSiteOptions', e.target.value.trim().toLowerCase(), 'site');
@@ -605,11 +623,15 @@ function initCrossFilter() {
     $('cfItemSearch').addEventListener('input', (e) => {
         filterComboOptions('cfItemOptions', e.target.value.trim().toLowerCase(), 'item');
     });
+    $('cfSupplierSearch').addEventListener('input', (e) => {
+        filterComboOptions('cfSupplierOptions', e.target.value.trim().toLowerCase(), 'supplier');
+    });
 
     // Prevent dropdown close when clicking inside
     $('cfSiteDropdown').addEventListener('click', (e) => e.stopPropagation());
     $('cfCategoryDropdown').addEventListener('click', (e) => e.stopPropagation());
     $('cfItemDropdown').addEventListener('click', (e) => e.stopPropagation());
+    $('cfSupplierDropdown').addEventListener('click', (e) => e.stopPropagation());
 
     // Close dropdowns on outside click
     document.addEventListener('click', () => closeAllCombos());
@@ -619,6 +641,7 @@ function initCrossFilter() {
         activeSite = '';
         activeCategory = '';
         activeItem = '';
+        activeSupplier = '';
         updateComboDisplay();
         renderCrossFilterChips();
         applyFilter();
@@ -626,7 +649,7 @@ function initCrossFilter() {
 }
 
 function closeAllCombos(exceptId) {
-    ['cfSiteCombo', 'cfCategoryCombo', 'cfItemCombo'].forEach(id => {
+    ['cfSiteCombo', 'cfCategoryCombo', 'cfItemCombo', 'cfSupplierCombo'].forEach(id => {
         if (id !== exceptId) $(id).classList.remove('open');
     });
 }
@@ -659,7 +682,8 @@ function filterComboOptions(listId, query, type) {
         partialLi.addEventListener('click', () => {
             if (type === 'site') activeSite = query;
             else if (type === 'category') activeCategory = query;
-            else activeItem = query;
+            else if (type === 'item') activeItem = query;
+            else if (type === 'supplier') activeSupplier = query;
             updateComboDisplay();
             renderCrossFilterChips();
             closeAllCombos();
@@ -694,12 +718,14 @@ function populateCrossFilterOptions() {
     const sites = new Set();
     const categories = new Set();
     const items = new Set();
+    const suppliers = new Set();
 
     if (activeSource === 'all' || activeSource === 'general') {
         rawGeneral.forEach(d => {
             if (d.site) sites.add(d.site);
             if (d.category) categories.add(d.category);
             if (d.item) items.add(d.item);
+            if (d.supplier) suppliers.add(d.supplier);
         });
     }
     if (activeSource === 'all' || activeSource === 'oil') {
@@ -707,12 +733,14 @@ function populateCrossFilterOptions() {
             if (d.site) sites.add(d.site);
             if (d.category) categories.add(d.category);
             if (d.item) items.add(d.item);
+            if (d.supplier) suppliers.add(d.supplier);
         });
     }
 
     buildOptionList('cfSiteOptions', [...sites].sort(), 'site');
     buildOptionList('cfCategoryOptions', [...categories].sort(), 'category');
     buildOptionList('cfItemOptions', [...items].sort(), 'item');
+    buildOptionList('cfSupplierOptions', [...suppliers].sort(), 'supplier');
 }
 
 function buildOptionList(listId, values, type) {
@@ -726,11 +754,13 @@ function buildOptionList(listId, values, type) {
     let allLabel = '전체 현장';
     if (type === 'category') allLabel = '전체 구분';
     else if (type === 'item') allLabel = '전체 품목';
+    else if (type === 'supplier') allLabel = '전체 공급업체';
     allLi.innerHTML = `<span class="cf-check"><i class='bx bx-check'></i></span> ${allLabel}`;
     allLi.addEventListener('click', () => {
         if (type === 'site') activeSite = '';
         else if (type === 'category') activeCategory = '';
-        else activeItem = '';
+        else if (type === 'item') activeItem = '';
+        else if (type === 'supplier') activeSupplier = '';
         updateComboDisplay();
         renderCrossFilterChips();
         closeAllCombos();
@@ -746,7 +776,8 @@ function buildOptionList(listId, values, type) {
         li.addEventListener('click', () => {
             if (type === 'site') activeSite = val;
             else if (type === 'category') activeCategory = val;
-            else activeItem = val;
+            else if (type === 'item') activeItem = val;
+            else if (type === 'supplier') activeSupplier = val;
             updateComboDisplay();
             renderCrossFilterChips();
             closeAllCombos();
@@ -772,13 +803,19 @@ function updateComboDisplay() {
     if (activeItem) $('cfItemSelectWrap').classList.add('has-value');
     else $('cfItemSelectWrap').classList.remove('has-value');
 
+    // Supplier
+    $('cfSupplierText').textContent = activeSupplier || '전체 공급업체';
+    if (activeSupplier) $('cfSupplierSelectWrap').classList.add('has-value');
+    else $('cfSupplierSelectWrap').classList.remove('has-value');
+
     // Update selected states in option lists
     updateOptionSelected('cfSiteOptions', activeSite);
     updateOptionSelected('cfCategoryOptions', activeCategory);
     updateOptionSelected('cfItemOptions', activeItem);
+    updateOptionSelected('cfSupplierOptions', activeSupplier);
 
     // Show/hide reset button
-    $('cfResetBtn').style.display = (activeSite || activeCategory || activeItem) ? '' : 'none';
+    $('cfResetBtn').style.display = (activeSite || activeCategory || activeItem || activeSupplier) ? '' : 'none';
 }
 
 function updateOptionSelected(listId, activeValue) {
@@ -818,6 +855,14 @@ function renderCrossFilterChips() {
                 <button class="cf-chip-remove" data-type="item" title="품목 필터 해제"><i class='bx bx-x'></i></button>
             </span>`;
     }
+    if (activeSupplier) {
+        container.innerHTML += `
+            <span class="cf-chip">
+                <i class='bx bx-store label-icon'></i>
+                공급업체: ${activeSupplier}
+                <button class="cf-chip-remove" data-type="supplier" title="공급업체 필터 해제"><i class='bx bx-x'></i></button>
+            </span>`;
+    }
 
     // Bind chip remove buttons
     container.querySelectorAll('.cf-chip-remove').forEach(btn => {
@@ -825,7 +870,8 @@ function renderCrossFilterChips() {
             const type = e.currentTarget.dataset.type;
             if (type === 'site') activeSite = '';
             else if (type === 'category') activeCategory = '';
-            else activeItem = '';
+            else if (type === 'item') activeItem = '';
+            else if (type === 'supplier') activeSupplier = '';
             updateComboDisplay();
             renderCrossFilterChips();
             applyFilter();
