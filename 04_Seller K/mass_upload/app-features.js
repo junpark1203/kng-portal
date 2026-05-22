@@ -2251,7 +2251,7 @@ function exportToInventory() {
     
     if (exportPayload.length === 0) return;
     
-    fetch('https://kng.junparks.com/api/seller-k/products/bulk', {
+    _authFetch('https://kng.junparks.com/api/seller-k/products/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products: exportPayload })
