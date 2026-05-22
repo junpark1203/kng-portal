@@ -368,15 +368,35 @@ function renderTrendChart() {
         ? (v => v >= 1000 ? (v/1000).toFixed(0)+'K' : v)
         : (v => v >= 1000000 ? (v/1000000).toFixed(0)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v);
 
+    // Compact label formatter for datalabels
+    const labelFmt = isQty
+        ? (v => v >= 1000 ? (v/1000).toFixed(1).replace(/\.0$/, '') + 'K' : v === 0 ? '' : fmtN(v))
+        : (v => {
+            if (v === 0) return '';
+            if (v >= 100000000) return (v/100000000).toFixed(1).replace(/\.0$/, '') + '억';
+            if (v >= 10000) return Math.round(v/10000).toLocaleString() + '만';
+            return fmtW(v);
+        });
+
     if (chartTrend) chartTrend.destroy();
     chartTrend = new Chart($('chartTrend'), {
         type: 'bar',
         data: { labels, datasets },
+        plugins: [ChartDataLabels],
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'top', labels: { font: { size: 11, family: 'Inter' }, usePointStyle: true, padding: 16 } },
-                tooltip: { callbacks: { label: tooltipFmt } }
+                tooltip: { callbacks: { label: tooltipFmt } },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 2,
+                    font: { size: 10, family: 'Inter', weight: '600' },
+                    color: '#555',
+                    formatter: (value) => labelFmt(value),
+                    display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0
+                }
             },
             scales: {
                 x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' } } },
