@@ -63,6 +63,8 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 .pv-label .el:hover{box-shadow:0 0 0 1px #7c3aed;z-index:10}
 .pv-label .el.dragging{box-shadow:0 0 0 2px #7c3aed;opacity:.85;z-index:20}
 .pv-label .el.selected{box-shadow:0 0 0 2px #3b82f6;z-index:15}
+.pv-label .el.key-object{box-shadow:0 0 0 2px #ef4444;z-index:16}
+.pv-label .el.key-object .resizer{background:#ef4444}
 .pv-label .el .resizer{display:none;position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b82f6;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:30}
 .pv-label .el.selected .resizer{display:block}
 .pv-label .marquee{position:absolute;border:1px dashed #3b82f6;background:rgba(59,130,246,.08);z-index:50;pointer-events:none}
@@ -145,11 +147,15 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div class="pv-title"><i class='bx bx-show'></i> 미리보기 <label style="margin-left:auto;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkTableMode"> 테이블 모드</label><select id="pvZoom" style="margin-left:8px; margin-right:8px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; font-size:11px; font-weight:normal; outline:none"><option value="1">100%</option><option value="1.2">120%</option><option value="1.5" selected>150%</option><option value="2">200%</option></select><button class="btn-rst" id="btnRst"><i class='bx bx-reset'></i> 위치 초기화</button></div>
 <div class="pv-hint">
   <div style="display:flex;align-items:center;gap:4px"><i class='bx bx-move'></i> 요소를 드래그하여 위치 변경</div>
+  <div id="pvToolbar" style="display:none;align-items:center;gap:4px;margin-right:auto;margin-left:8px;padding-left:8px;border-left:1px solid var(--border)">
+    <button class="btn-align" id="btnTBold" style="font-weight:bold" title="굵게(B)">B</button>
+    <input type="number" id="inTSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
+  </div>
   <div style="display:flex;gap:4px">
-    <button class="btn-align" data-align="left" title="좌측 정렬"><i class='bx bx-align-left'></i></button>
+    <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
     <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
-    <button class="btn-align" data-align="right" title="우측 정렬"><i class='bx bx-align-right'></i></button>
-    <button class="btn-align" data-align="distribute" title="세로 간격 균등 분배"><i class='bx bx-vertical-center'></i></button>
+    <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
+    <button class="btn-align" data-align="distribute" title="세로 간격 동일하게"><i class='bx bx-sort'></i></button>
   </div>
 </div>
 <div id="pvC"></div>
@@ -169,5 +175,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </main></div>
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=5"></script>
+<script src="hq-label.js?v=6"></script>
 </body></html>

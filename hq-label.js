@@ -3,7 +3,7 @@
 async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set();
+let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null;
 const PP={A4:{w:210,h:297},A3:{w:297,h:420}};
 function toast(m,t='info'){const c=$('toastC');if(!c)return;const el=document.createElement('div');el.className='toast '+t;el.innerHTML=`<i class='bx bx-${t==='success'?'check-circle':t==='error'?'error-circle':t==='warning'?'error':'info-circle'}'></i> <span>${E(m)}</span>`;c.appendChild(el);setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),300)},3e3)}
 
@@ -19,11 +19,11 @@ function initLT(){$('logoTplSel').onchange=()=>{const t=ltpls.find(x=>x.id===$('
 // Data
 function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
 function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
-function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();load({layout})}
+function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;load({layout})}
 
 // Layout
-function dp(){return{logo:{x:50,y:15},product:{x:50,y:38},mfr:{x:50,y:52},price:{x:50,y:66},info:{x:50,y:80},memo:{x:50,y:92},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1}}
+function dp(){return{logo:{x:50,y:15},product_lbl:{x:20,y:38},product_val:{x:60,y:38},mfr_lbl:{x:20,y:52},mfr_val:{x:60,y:52},price_lbl:{x:20,y:66},price_val:{x:60,y:66},info_lbl:{x:20,y:80},info_val:{x:60,y:80},memo_lbl:{x:20,y:92},memo_val:{x:60,y:92},table:{x:50,y:50},memoImg:{x:50,y:80}}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold||false}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -57,21 +57,33 @@ function updPv(){
         th += `</table>`;
         if(th.includes('<tr>')) els.push({k:'table', h:th});
     } else {
-        if(d.productName)els.push({k:'product',h:makeRow('품 명', E(d.productName))});
-        if(d.manufacturer)els.push({k:'mfr',h:makeRow('제조사', E(d.manufacturer))});
-        if(d.price)els.push({k:'price',h:makeRow('가 격', formatPrice(d.price), true)});
+        if(d.productName){ els.push({k:'product_lbl',h:'품 명'}); els.push({k:'product_val',h:E(d.productName)}); }
+        if(d.manufacturer){ els.push({k:'mfr_lbl',h:'제조사'}); els.push({k:'mfr_val',h:E(d.manufacturer)}); }
+        if(d.price){ els.push({k:'price_lbl',h:'가 격'}); els.push({k:'price_val',h:formatPrice(d.price)}); }
         const ip=[d.origin,d.spec].filter(Boolean);
-        if(ip.length)els.push({k:'info',h:makeRow('정 보', E(ip.join(' | ')))});
-        if(d.memo)els.push({k:'memo',h:makeRow('메 모', E(d.memo))});
+        if(ip.length){ els.push({k:'info_lbl',h:'정 보'}); els.push({k:'info_val',h:E(ip.join(' | '))}); }
+        if(d.memo){ els.push({k:'memo_lbl',h:'메 모'}); els.push({k:'memo_val',h:E(d.memo)}); }
     }
     
     let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
     for(const e of els){
         const p=gp(e.k);
         const sel=selectedKeys.has(e.k)?'selected':'';
-        s+=`<div class="el ${sel}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy})">${e.h}<div class="resizer"></div></div>`;
+        const ko=keyObjectKey===e.k?'key-object':'';
+        const stFS=p.fs?`font-size:${p.fs}px;`:'';
+        const stB=p.bold?`font-weight:bold;`:'';
+        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}">${e.h}<div class="resizer"></div></div>`;
     }
     s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
+
+    if($('pvToolbar')){
+        $('pvToolbar').style.display=selectedKeys.size>0?'flex':'none';
+        if(selectedKeys.size>0){
+            const lo=layout[[...selectedKeys][0]]||{};
+            $('inTSize').value=lo.fs||'';
+            $('btnTBold').style.background=lo.bold?'#e2e8f0':'';
+        }
+    }
 }
 
 function initInteraction(el){
@@ -118,10 +130,17 @@ function initInteraction(el){
             const k=n.dataset.key, rect=el.getBoundingClientRect();
             // Selection logic
             if(e.shiftKey){
-                if(selectedKeys.has(k))selectedKeys.delete(k); else selectedKeys.add(k);
+                if(selectedKeys.has(k)){
+                    selectedKeys.delete(k);
+                    if(keyObjectKey===k)keyObjectKey=null;
+                } else selectedKeys.add(k);
                 updPv(); return;
             } else if(!selectedKeys.has(k)){
-                selectedKeys.clear(); selectedKeys.add(k); updPv();
+                selectedKeys.clear(); selectedKeys.add(k); keyObjectKey=null; updPv();
+            } else {
+                keyObjectKey=k;
+                el.querySelectorAll('.el').forEach(x=>x.classList.remove('key-object'));
+                n.classList.add('key-object');
             }
             // Collect initial positions of all selected
             const startX=e.clientX, startY=e.clientY;
@@ -165,6 +184,7 @@ function initInteraction(el){
         if(e.target!==el)return;
         e.preventDefault();
         selectedKeys.clear();
+        keyObjectKey=null;
         // Marquee selection
         const rect=el.getBoundingClientRect();
         const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
@@ -194,25 +214,40 @@ function initInteraction(el){
 }
 
     function alignElements(type) {
-        const allKeys = ['logo', 'memoImg', 'table', 'product', 'mfr', 'price', 'info', 'memo'];
-    // Use selected items if any, otherwise all visible items
-    let activeKeys = selectedKeys.size > 0
-        ? [...selectedKeys].filter(k => document.querySelector(`.el[data-key="${k}"]`))
-        : allKeys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
-    if(!activeKeys.length) return;
-    activeKeys.forEach(k => { if(!layout[k]) layout[k] = {...gp(k)}; });
-    
-    if(type === 'left') activeKeys.forEach(k => layout[k].x = 10);
-    else if(type === 'center') activeKeys.forEach(k => layout[k].x = 50);
-    else if(type === 'right') activeKeys.forEach(k => layout[k].x = 90);
-    else if(type === 'distribute') {
-        activeKeys.sort((a,b) => (layout[a]?.y??gp(a).y) - (layout[b]?.y??gp(b).y));
-        const startY = 15, endY = 90;
-        const step = activeKeys.length > 1 ? (endY - startY) / (activeKeys.length - 1) : 0;
-        activeKeys.forEach((k, i) => layout[k].y = Math.round((startY + step * i)*10)/10);
+        // Find all possible keys in the current UI
+        const allKeys = Array.from(document.querySelectorAll('.pv-label .el')).map(n=>n.dataset.key);
+        let activeKeys = selectedKeys.size > 0 ? [...selectedKeys] : allKeys;
+        activeKeys = activeKeys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
+        if(!activeKeys.length) return;
+        activeKeys.forEach(k => { if(!layout[k]) layout[k] = {...gp(k)}; });
+        
+        let targetX = 50, targetY = 50;
+        if (keyObjectKey && selectedKeys.has(keyObjectKey)) {
+            targetX = layout[keyObjectKey].x;
+            targetY = layout[keyObjectKey].y;
+        } else if (selectedKeys.size > 0) {
+            const xs = activeKeys.map(k => layout[k].x);
+            const ys = activeKeys.map(k => layout[k].y);
+            if(type==='left') targetX = Math.min(...xs);
+            else if(type==='right') targetX = Math.max(...xs);
+            else if(type==='center') targetX = xs.reduce((a,b)=>a+b,0)/xs.length;
+        } else {
+            if(type==='left') targetX = 10;
+            else if(type==='right') targetX = 90;
+            else if(type==='center') targetX = 50;
+        }
+
+        if(type === 'left' || type === 'center' || type === 'right') {
+            activeKeys.forEach(k => layout[k].x = targetX);
+        } else if(type === 'distribute') {
+            activeKeys.sort((a,b) => layout[a].y - layout[b].y);
+            const startY = activeKeys.length > 1 ? layout[activeKeys[0]].y : 15;
+            const endY = activeKeys.length > 1 ? layout[activeKeys[activeKeys.length-1]].y : 90;
+            const step = activeKeys.length > 1 ? (endY - startY) / (activeKeys.length - 1) : 0;
+            activeKeys.forEach((k, i) => layout[k].y = Math.round((startY + step * i)*10)/10);
+        }
+        updPv();
     }
-    updPv();
-}
 
 // Labels CRUD
 async function fetchL(){try{const r=await af(API+'/labels');if(r.ok)labels=await r.json()}catch(e){}}
@@ -306,15 +341,20 @@ function doPrint(){
                 th += `</table>`;
                 if(th.includes('<tr>')) els.push({k:'table', v:th});
             } else {
-                if(d.productName)els.push({k:'product',v:makeRow('품 명', E(d.productName))});
-                if(d.manufacturer)els.push({k:'mfr',v:makeRow('제조사', E(d.manufacturer))});
-                if(d.price)els.push({k:'price',v:makeRow('가 격', formatPrice(d.price), true)});
+                if(d.productName){ els.push({k:'product_lbl',v:'품 명'}); els.push({k:'product_val',v:E(d.productName)}); }
+                if(d.manufacturer){ els.push({k:'mfr_lbl',v:'제조사'}); els.push({k:'mfr_val',v:E(d.manufacturer)}); }
+                if(d.price){ els.push({k:'price_lbl',v:'가 격'}); els.push({k:'price_val',v:formatPrice(d.price)}); }
                 const ip=[d.origin,d.spec].filter(Boolean);
-                if(ip.length)els.push({k:'info',v:makeRow('정 보', E(ip.join(' | ')))});
-                if(d.memo)els.push({k:'memo',v:makeRow('메 모', E(d.memo))});
+                if(ip.length){ els.push({k:'info_lbl',v:'정 보'}); els.push({k:'info_val',v:E(ip.join(' | '))}); }
+                if(d.memo){ els.push({k:'memo_lbl',v:'메 모'}); els.push({k:'memo_val',v:E(d.memo)}); }
             }
             
-            for(const e of els){const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center">${e.v}</div>`}
+            for(const e of els){
+                const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;
+                const stFS=p.fs?`font-size:${p.fs}px;`:'';
+                const stB=p.bold?`font-weight:bold;`:'';
+                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}">${e.v}</div>`
+            }
             h+='</div>'}
         h+='</div>'}
     const pa=$('printArea');pa.innerHTML=h;pa.style.display='block';
@@ -357,6 +397,23 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
     if($('pvZoom'))$('pvZoom').onchange=updPv;
     if($('chkTableMode'))$('chkTableMode').onchange=updPv;
+    
+    // Toolbar events
+    if($('btnTBold')) $('btnTBold').onclick=()=>{
+        selectedKeys.forEach(k=>{
+            if(!layout[k]) layout[k] = {...gp(k)};
+            layout[k].bold = !layout[k].bold;
+        });
+        updPv();
+    };
+    if($('inTSize')) $('inTSize').oninput=(e)=>{
+        const val = parseInt(e.target.value) || null;
+        selectedKeys.forEach(k=>{
+            if(!layout[k]) layout[k] = {...gp(k)};
+            layout[k].fs = val;
+        });
+        updPv();
+    };
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
     $('btnPrint').onclick=doPrint;
