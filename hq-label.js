@@ -28,7 +28,7 @@ function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selec
 
 // Layout
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false,groupId:l.groupId||null}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -178,15 +178,24 @@ function initInteraction(el){
             if(e.target.classList.contains('resizer'))return;
             e.preventDefault();
             const k=n.dataset.key, rect=el.getBoundingClientRect();
+            
+            const getGroupKeys = key => {
+                const p = gp(key);
+                if(!p.groupId) return [key];
+                const allKeys = Array.from(document.querySelectorAll('.pv-label .el')).map(nd=>nd.dataset.key);
+                return allKeys.filter(ak => gp(ak).groupId === p.groupId);
+            };
+            const groupKeys = getGroupKeys(k);
+
             // Selection logic
             if(e.shiftKey){
                 if(selectedKeys.has(k)){
-                    selectedKeys.delete(k);
-                    if(keyObjectKey===k)keyObjectKey=null;
-                } else selectedKeys.add(k);
+                    groupKeys.forEach(gk => selectedKeys.delete(gk));
+                    if(groupKeys.includes(keyObjectKey))keyObjectKey=null;
+                } else groupKeys.forEach(gk => selectedKeys.add(gk));
                 updPv(); return;
             } else if(!selectedKeys.has(k)){
-                selectedKeys.clear(); selectedKeys.add(k); keyObjectKey=null; updPv();
+                selectedKeys.clear(); groupKeys.forEach(gk => selectedKeys.add(gk)); keyObjectKey=null; updPv();
             } else {
                 keyObjectKey=k;
                 el.querySelectorAll('.el').forEach(x=>x.classList.remove('key-object'));
@@ -251,10 +260,19 @@ function initInteraction(el){
         const up=v=>{
             document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
             const mr=mq.getBoundingClientRect();
+            
+            const getGroupKeys = key => {
+                const p = gp(key);
+                if(!p.groupId) return [key];
+                const allKeys = Array.from(document.querySelectorAll('.pv-label .el')).map(nd=>nd.dataset.key);
+                return allKeys.filter(ak => gp(ak).groupId === p.groupId);
+            };
+
             el.querySelectorAll('.el').forEach(nd=>{
                 const er=nd.getBoundingClientRect();
                 if(er.left<mr.right&&er.right>mr.left&&er.top<mr.bottom&&er.bottom>mr.top){
-                    selectedKeys.add(nd.dataset.key);
+                    const k = nd.dataset.key;
+                    getGroupKeys(k).forEach(gk => selectedKeys.add(gk));
                 }
             });
             mq.remove();
@@ -491,9 +509,27 @@ function initSheetInteraction(){
         const up=v=>{
             document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
             const mr=mq.getBoundingClientRect();
+            
+            const getGroupShKeys = key => {
+                const [idx, ...b] = key.split('_'); const bk = b.join('_');
+                const sl = sheetSlots[idx];
+                const p = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{};
+                if(!p.groupId) return [key];
+                const allKeys = Array.from(sc.querySelectorAll('.sh-el')).map(nd=>nd.dataset.key);
+                return allKeys.filter(ak => {
+                    const [aIdx, ...ab] = ak.split('_'); const abk = ab.join('_');
+                    const asl = sheetSlots[aIdx];
+                    const ap = asl.lo&&asl.lo[abk]?asl.lo[abk]:dp()[abk]||{};
+                    return ap.groupId === p.groupId;
+                });
+            };
+
             sc.querySelectorAll('.sh-el').forEach(nd=>{
                 const er=nd.getBoundingClientRect();
-                if(er.left<mr.right&&er.right>mr.left&&er.top<mr.bottom&&er.bottom>mr.top) sheetSelectedKeys.add(nd.dataset.key);
+                if(er.left<mr.right&&er.right>mr.left&&er.top<mr.bottom&&er.bottom>mr.top) {
+                    const k = nd.dataset.key;
+                    getGroupShKeys(k).forEach(gk => sheetSelectedKeys.add(gk));
+                }
             });
             mq.remove();
             renderSheet();
@@ -563,14 +599,30 @@ function initSheetInteraction(){
         n.onmousedown=e=>{
             e.preventDefault();e.stopPropagation();
             const fK=n.dataset.key;
+            
+            const getGroupShKeys = key => {
+                const [idx, ...b] = key.split('_'); const bk = b.join('_');
+                const sl = sheetSlots[idx];
+                const p = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{};
+                if(!p.groupId) return [key];
+                const allKeys = Array.from(sc.querySelectorAll('.sh-el')).map(nd=>nd.dataset.key);
+                return allKeys.filter(ak => {
+                    const [aIdx, ...ab] = ak.split('_'); const abk = ab.join('_');
+                    const asl = sheetSlots[aIdx];
+                    const ap = asl.lo&&asl.lo[abk]?asl.lo[abk]:dp()[abk]||{};
+                    return ap.groupId === p.groupId;
+                });
+            };
+            const groupKeys = getGroupShKeys(fK);
+
             if(e.shiftKey){
                 if(sheetSelectedKeys.has(fK)){
-                    sheetSelectedKeys.delete(fK);
-                    if(sheetKeyObjectKey===fK)sheetKeyObjectKey=null;
-                } else sheetSelectedKeys.add(fK);
+                    groupKeys.forEach(gk => sheetSelectedKeys.delete(gk));
+                    if(groupKeys.includes(sheetKeyObjectKey))sheetKeyObjectKey=null;
+                } else groupKeys.forEach(gk => sheetSelectedKeys.add(gk));
                 renderSheet(); return;
             } else if(!sheetSelectedKeys.has(fK)){
-                sheetSelectedKeys.clear(); sheetSelectedKeys.add(fK); sheetKeyObjectKey=null; renderSheet();
+                sheetSelectedKeys.clear(); groupKeys.forEach(gk => sheetSelectedKeys.add(gk)); sheetKeyObjectKey=null; renderSheet();
             } else {
                 sheetKeyObjectKey=fK;
                 sc.querySelectorAll('.sh-el').forEach(x=>{
@@ -919,11 +971,79 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if($('btnUndo')) $('btnUndo').onclick=undo;
     if($('btnTDel')) $('btnTDel').onclick=deleteSelected;
     
+    function generateUUID(){ return Math.random().toString(36).substring(2, 11); }
+    function groupSelected() {
+        if(selectedKeys.size < 2) { toast('그룹화할 객체를 2개 이상 선택하세요.', 'warning'); return; }
+        saveHistory();
+        const gid = generateUUID();
+        selectedKeys.forEach(k => {
+            if(!layout[k]) layout[k] = {...gp(k)};
+            layout[k].groupId = gid;
+        });
+        updPv();
+        toast('그룹으로 묶였습니다.', 'success');
+    }
+    function ungroupSelected() {
+        if(selectedKeys.size === 0) return;
+        saveHistory();
+        let ungrouped = false;
+        selectedKeys.forEach(k => {
+            if(layout[k] && layout[k].groupId) {
+                layout[k].groupId = null;
+                ungrouped = true;
+            }
+        });
+        updPv();
+        if(ungrouped) toast('그룹이 해제되었습니다.', 'info');
+    }
+    if($('btnTGroup')) $('btnTGroup').onclick = groupSelected;
+    if($('btnTUngroup')) $('btnTUngroup').onclick = ungroupSelected;
+
+    function groupShSelected() {
+        if(sheetSelectedKeys.size < 2) { toast('그룹화할 객체를 2개 이상 선택하세요.', 'warning'); return; }
+        saveShHistory();
+        const gid = generateUUID();
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl=sheetSlots[idx];
+            if(!sl.lo) sl.lo={};
+            if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+            sl.lo[bk].groupId = gid;
+        });
+        renderSheet();
+        toast('시트에서 그룹으로 묶였습니다.', 'success');
+    }
+    function ungroupShSelected() {
+        if(sheetSelectedKeys.size === 0) return;
+        saveShHistory();
+        let ungrouped = false;
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl=sheetSlots[idx];
+            if(sl.lo && sl.lo[bk] && sl.lo[bk].groupId){
+                sl.lo[bk].groupId = null;
+                ungrouped = true;
+            }
+        });
+        renderSheet();
+        if(ungrouped) toast('시트에서 그룹이 해제되었습니다.', 'info');
+    }
+    if($('btnShGroup')) $('btnShGroup').onclick = groupShSelected;
+    if($('btnShUngroup')) $('btnShUngroup').onclick = ungroupShSelected;
+    
     document.addEventListener('keydown', e=>{
         const isSheet = $('sheetEditor').style.display === 'flex';
         if(e.ctrlKey && e.key.toLowerCase()==='z'){
             e.preventDefault();
             if(isSheet) undoSh(); else undo();
+        }
+        if(e.ctrlKey && e.key.toLowerCase()==='g'){
+            e.preventDefault();
+            if(e.shiftKey){
+                if(isSheet) ungroupShSelected(); else ungroupSelected();
+            } else {
+                if(isSheet) groupShSelected(); else groupSelected();
+            }
         }
         if((e.key==='Delete' || e.key==='Backspace') && (isSheet ? sheetSelectedKeys.size>0 : selectedKeys.size>0)){
             if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;

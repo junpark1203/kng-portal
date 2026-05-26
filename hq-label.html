@@ -154,7 +154,7 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
   </div>
   <div style="display:flex;gap:4px">
     <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
-    <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
+    <button class="btn-align" data-align="center" title="수평 중앙 정렬"><i class='bx bx-align-middle'></i></button>
     <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
     <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
     <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
@@ -162,6 +162,9 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
     <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
     <div style="width:1px;background:var(--border);margin:0 2px"></div>
     <button class="btn-align" data-align="distribute" title="세로 간격 동일하게"><i class='bx bx-sort'></i></button>
+    <div style="width:1px;background:var(--border);margin:0 2px"></div>
+    <button class="btn-align" id="btnTGroup" title="그룹 (Ctrl+G)"><i class='bx bx-group'></i></button>
+    <button class="btn-align" id="btnTUngroup" title="그룹 해제 (Ctrl+Shift+G)"><i class='bx bx-ungroup'></i></button>
   </div>
 </div>
 <div id="pvC"></div>
@@ -196,11 +199,14 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
             <button class="btn-align" id="btnShDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
             <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
             <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
-            <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
+            <button class="btn-align" data-align="center" title="수평 중앙 정렬"><i class='bx bx-align-middle'></i></button>
             <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
             <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
             <button class="btn-align" data-align="middle" title="수직 중앙 정렬"><i class='bx bx-vertical-center'></i></button>
             <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
+            <div style="width:1px;background:var(--border);margin:0 2px"></div>
+            <button class="btn-align" id="btnShGroup" title="그룹 (Ctrl+G)"><i class='bx bx-group'></i></button>
+            <button class="btn-align" id="btnShUngroup" title="그룹 해제 (Ctrl+Shift+G)"><i class='bx bx-ungroup'></i></button>
         </div>
         
         <button class="btn-rst" id="btnShUndo" title="실행 취소 (Ctrl+Z)"><i class='bx bx-undo'></i> 되돌리기</button>
