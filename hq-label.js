@@ -53,6 +53,24 @@ function updPv(){
 }
 function initDrag(el){if(!el)return;el.querySelectorAll('.el').forEach(n=>{n.onmousedown=e=>{e.preventDefault();const k=n.dataset.key,r=el.getBoundingClientRect();n.classList.add('dragging');const mv=v=>{n.style.left=Math.max(0,Math.min(100,(v.clientX-r.left)/r.width*100))+'%';n.style.top=Math.max(0,Math.min(100,(v.clientY-r.top)/r.height*100))+'%'};const up=v=>{n.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);layout[k]={x:Math.round(Math.max(0,Math.min(100,(v.clientX-r.left)/r.width*100))*10)/10,y:Math.round(Math.max(0,Math.min(100,(v.clientY-r.top)/r.height*100))*10)/10};updPv()};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)}})}
 
+function alignElements(type) {
+    const keys = ['logo', 'product', 'mfr', 'price', 'info', 'memo'];
+    const activeKeys = keys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
+    if(!activeKeys.length) return;
+    activeKeys.forEach(k => { if(!layout[k]) layout[k] = gp(k); });
+    
+    if(type === 'left') activeKeys.forEach(k => layout[k].x = 10);
+    else if(type === 'center') activeKeys.forEach(k => layout[k].x = 50);
+    else if(type === 'right') activeKeys.forEach(k => layout[k].x = 90);
+    else if(type === 'distribute') {
+        activeKeys.sort((a,b) => layout[a].y - layout[b].y);
+        const startY = 15, endY = 90;
+        const step = activeKeys.length > 1 ? (endY - startY) / (activeKeys.length - 1) : 0;
+        activeKeys.forEach((k, i) => layout[k].y = Math.round((startY + step * i)*10)/10);
+    }
+    updPv();
+}
+
 // Labels CRUD
 async function fetchL(){try{const r=await af(API+'/labels');if(r.ok)labels=await r.json()}catch(e){}}
 async function saveL(){const d=coll();if(!d.name){toast('라벨 이름을 입력하세요','warning');return}try{const u=curId?`${API}/labels/${curId}`:`${API}/labels`;const r=await af(u,{method:curId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);if(!curId)curId=j.id;await fetchL();toast('저장 완료','success')}catch(e){toast(e.message,'error')}}
@@ -141,6 +159,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     ['fName','fProd','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>$(id).oninput=updPv);
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={};updPv();toast('초기화','info')};
+    document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
     if($('pvSpec'))$('pvSpec').onchange=updPv;
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};

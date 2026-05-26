@@ -52,9 +52,11 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 .btn-add{width:calc(100% - 40px);margin:0 20px 10px;padding:7px;background:transparent;color:var(--gray-500);border:2px dashed var(--gray-200);border-radius:var(--radius);font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}.btn-add:hover{border-color:#7c3aed;color:#7c3aed}
 /* Preview */
 .pv-title{font-size:12px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
-.pv-hint{font-size:10px;color:var(--gray-400);margin-bottom:10px;text-align:center;display:flex;align-items:center;gap:4px;justify-content:center}
+.pv-hint{font-size:10px;color:var(--gray-400);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;width:100%;padding:0 10px;box-sizing:border-box}
 .pv-hint i{font-size:13px}
 .btn-rst{padding:3px 8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-weight:600;color:var(--gray-500);cursor:pointer;margin-left:8px}.btn-rst:hover{color:var(--danger);border-color:var(--danger)}
+.btn-align{padding:3px 6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--gray-500);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.btn-align:hover{color:#7c3aed;border-color:#7c3aed;background:rgba(124,58,237,.05)}
 .pv-sheet{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);position:relative;overflow:hidden}
 .pv-label{border:1px dashed var(--gray-200);position:relative;overflow:hidden;box-sizing:border-box}
 .pv-label .el{position:absolute;cursor:move;user-select:none;transition:box-shadow .15s;padding:1px 2px;border-radius:2px}
@@ -134,7 +136,15 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </div>
 <div class="right">
 <div class="pv-title"><i class='bx bx-show'></i> 미리보기 <select id="pvSpec" style="margin-left:auto; margin-right:8px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; font-size:11px; font-weight:normal; outline:none"><option value="">기본 (63.5×38.1)</option></select><button class="btn-rst" id="btnRst"><i class='bx bx-reset'></i> 위치 초기화</button></div>
-<div class="pv-hint"><i class='bx bx-move'></i> 요소를 드래그하여 위치 변경</div>
+<div class="pv-hint">
+  <div style="display:flex;align-items:center;gap:4px"><i class='bx bx-move'></i> 요소를 드래그하여 위치 변경</div>
+  <div style="display:flex;gap:4px">
+    <button class="btn-align" data-align="left" title="좌측 정렬"><i class='bx bx-align-left'></i></button>
+    <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
+    <button class="btn-align" data-align="right" title="우측 정렬"><i class='bx bx-align-right'></i></button>
+    <button class="btn-align" data-align="distribute" title="세로 간격 균등 분배"><i class='bx bx-vertical-center'></i></button>
+  </div>
+</div>
 <div id="pvC"></div>
 </div></div>
 <!-- Spec Modal -->
