@@ -22,8 +22,8 @@ function undo(){if(historyStack.length>0){layout=JSON.parse(historyStack.pop());
 function deleteSelected(){if(!selectedKeys.size)return;saveHistory();selectedKeys.forEach(k=>{if(!layout[k])layout[k]={...gp(k)};layout[k].hidden=true;});selectedKeys.clear();keyObjectKey=null;updPv();}
 
 // Data
-function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),color:$('fColor').value.trim(),size:$('fSize').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
-function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fColor').value=d.color||'';$('fSize').value=d.size||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
+function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),labelSpecId:$('fLabelSpecId')?$('fLabelSpecId').value:'',productName:$('fProd').value.trim(),color:$('fColor').value.trim(),size:$('fSize').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
+function load(d){$('fName').value=d.name||'';if($('fLabelSpecId'))$('fLabelSpecId').value=d.labelSpecId||'';$('fProd').value=d.productName||'';$('fColor').value=d.color||'';$('fSize').value=d.size||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
 function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;historyStack=[];load({layout})}
 
 // Layout
@@ -36,8 +36,11 @@ function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor(
 // Preview (single label for editor)
 function updPv(){
     const d=coll(),c=$('pvC');
-    const lw=parseFloat($('inLW')?$('inLW').value:63.5)||63.5;
-    const lh=parseFloat($('inLH')?$('inLH').value:38.1)||38.1;
+    let lw=63.5, lh=38.1;
+    if($('fLabelSpecId') && $('fLabelSpecId').value){
+        const sp = specs.find(s=>s.id===$('fLabelSpecId').value);
+        if(sp){ lw = sp.labelWidth||63.5; lh = sp.labelHeight||38.1; }
+    }
     const zoom=parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
     const w=lw*3.78*zoom, h=lh*3.78*zoom;
     const fs=Math.max(10, Math.min(20, w/18));
@@ -337,21 +340,30 @@ function getChecked(){
 }
 function updCalc(){
     const items=getChecked(),total=items.reduce((s,i)=>s+i.qty,0);
-    const sp=getPS(),g=calcG(sp.pw,sp.ph,sp.lw,sp.lh,sp.mt,sp.mb,sp.ml,sp.mr,sp.gx,sp.gy);
+    if(total===0){ $('calcInfo').innerHTML='출력할 라벨을 선택하세요.'; return; }
+    const specIds = new Set(items.map(i=>i.label.labelSpecId||''));
+    if(specIds.size > 1){
+        $('calcInfo').innerHTML='<span style="color:var(--danger)">인쇄 규격이 서로 다른 라벨은 함께 출력할 수 없습니다.</span>';
+        return;
+    }
+    const sp=getPS(items),g=calcG(sp.pw,sp.ph,sp.lw,sp.lh,sp.mt,sp.mb,sp.ml,sp.mr,sp.gx,sp.gy);
     const lps=g.cols*g.rows,sheets=total?Math.ceil(total/lps):0;
     $('calcInfo').innerHTML=`라벨 ${sp.lw}×${sp.lh}mm · <b>${g.cols}열×${g.rows}행=${lps}칸</b>/장 · 선택 ${total}개 → <b>${sheets}장</b> 출력`
 }
-function getPS(){
-    const p=PP[$('selPaper').value]||PP.A4;
-    const sp=specs.find(s=>s.id===$('selSpec').value);
-    return{pw:p.w,ph:p.h,lw:parseFloat($('inLW').value)||63.5,lh:parseFloat($('inLH').value)||38.1,mt:sp?sp.marginTop:15,mb:sp?sp.marginBottom:15,ml:sp?sp.marginLeft:7,mr:sp?sp.marginRight:7,gx:sp?sp.gapX:2.5,gy:sp?sp.gapY:0}
+function getPS(items){
+    const p=PP[$('selPaper')?$('selPaper').value:'A4']||PP.A4;
+    let sp = null;
+    if(items && items.length > 0){
+        sp = specs.find(s=>s.id===(items[0].label.labelSpecId||''));
+    }
+    return{pw:p.w,ph:p.h,lw:sp?sp.labelWidth:63.5,lh:sp?sp.labelHeight:38.1,mt:sp?sp.marginTop:15,mb:sp?sp.marginBottom:15,ml:sp?sp.marginLeft:7,mr:sp?sp.marginRight:7,gx:sp?sp.gapX:2.5,gy:sp?sp.gapY:0}
 }
 
 // Specs
 async function fetchS(){try{const r=await af(API+'/label-specs');if(r.ok)specs=await r.json()}catch(e){}popSel()}
 function popSel(){
-    const s=$('selSpec');
-    if(s){const p=s.value;s.innerHTML='<option value="">직접 입력</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
+    const s=$('fLabelSpecId');
+    if(s){const p=s.value;s.innerHTML='<option value="">기본 (63.5 x 38.1)</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
 }
 function renderSpecs(){$('specList').innerHTML=specs.map(s=>`<div class="sp-item"><div class="sp-hd"><div class="sp-nm">${E(s.name)} ${s.isDefault?'<span class="sp-badge">기본</span>':''}</div><div class="sp-act"><button class="ed" data-id="${s.id}"><i class='bx bx-edit'></i></button>${!s.isDefault?`<button class="dl" data-id="${s.id}"><i class='bx bx-trash'></i></button>`:''}</div></div><div class="sp-dt"><span>${s.labelWidth||'?'}×${s.labelHeight||'?'}mm</span><span>여백 ${s.marginTop}/${s.marginBottom}/${s.marginLeft}/${s.marginRight}</span></div></div>`).join('');$('specList').querySelectorAll('.ed').forEach(b=>b.onclick=()=>openSM(b.dataset.id));$('specList').querySelectorAll('.dl').forEach(b=>b.onclick=()=>delSp(b.dataset.id))}
 function openSM(id){esId=id||null;const s=id?specs.find(x=>x.id===id):null;$('mSpTitle').textContent=s?'규격 수정':'규격 추가';$('sName').value=s?s.name:'';$('sLW').value=s?s.labelWidth:63.5;$('sLH').value=s?s.labelHeight:38.1;$('sMT').value=s?s.marginTop:15;$('sMB').value=s?s.marginBottom:15;$('sML').value=s?s.marginLeft:7;$('sMR').value=s?s.marginRight:7;$('sGX').value=s?s.gapX:2.5;$('sGY').value=s?s.gapY:0;$('mSpec').style.display='flex'}
@@ -361,7 +373,12 @@ async function delSp(id){if(!confirm('삭제?'))return;try{await af(`${API}/labe
 // Sheet Editor Print Flow
 function openSheetEditor(){
     const items=getChecked();if(!items.length){toast('라벨을 체크하세요','warning');return}
-    const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
+    const specIds = new Set(items.map(i=>i.label.labelSpecId||''));
+    if(specIds.size > 1){
+        toast('인쇄 규격이 서로 다른 라벨은 함께 출력할 수 없습니다.', 'error');
+        return;
+    }
+    const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const flat=[];items.forEach(i=>{let lo={};try{lo=typeof i.label.layout==='string'?JSON.parse(i.label.layout||'{}'):(i.label.layout||{})}catch(e){}for(let n=0;n<i.qty;n++)flat.push({d:i.label,lo:JSON.parse(JSON.stringify(lo))})});
     const lps=g.cols*g.rows,sheets=Math.ceil(flat.length/lps)||1;
     
@@ -369,10 +386,10 @@ function openSheetEditor(){
     for(let i=0;i<sheets*lps;i++) sheetSlots.push(i<flat.length?flat[i]:null);
     
     $('sheetEditor').style.display='flex';
-    renderSheet();
+    renderSheet(items);
 }
-function renderSheet(){
-    const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
+function renderSheet(items){
+    const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
     const fs=Math.max(6,Math.min(11,s.lw/7));
     
@@ -645,7 +662,8 @@ function alignSheetElements(type){
 }
 
 function executePrint(){
-    const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
+    const items=getChecked();
+    const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
     const fs=Math.max(6,Math.min(11,s.lw/7));
     let h='';
@@ -750,7 +768,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     await Promise.all([fetchL(),fetchS(),fetchLT()]);
     renderList();
     renderSpecs();
-    ['fName','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).oninput=updPv;});
+    ['fName','fLabelSpecId','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).onchange=$(id).oninput=updPv;});
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();updPv();toast('초기화','info')};
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
@@ -903,8 +921,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
             if(isSheet) $('btnShDel').click(); else deleteSelected();
         }
     });
-    $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
-    $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
+    $('selPaper').onchange=updCalc;
     $('btnPrint').onclick=openSheetEditor;
     $('btnAddSp').onclick=()=>openSM(null);
     $('mSpX').onclick=$('mSpCancel').onclick=()=>$('mSpec').style.display='none';
