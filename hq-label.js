@@ -21,13 +21,13 @@ function undo(){if(historyStack.length>0){layout=JSON.parse(historyStack.pop());
 function deleteSelected(){if(!selectedKeys.size)return;saveHistory();selectedKeys.forEach(k=>{if(!layout[k])layout[k]={...gp(k)};layout[k].hidden=true;});selectedKeys.clear();keyObjectKey=null;updPv();}
 
 // Data
-function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
-function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
+function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),color:$('fColor').value.trim(),size:$('fSize').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
+function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fColor').value=d.color||'';$('fSize').value=d.size||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
 function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;historyStack=[];load({layout})}
 
 // Layout
-function dp(){return{logo:{x:50,y:15},product_lbl:{x:20,y:38},product_val:{x:60,y:38},mfr_lbl:{x:20,y:52},mfr_val:{x:60,y:52},price_lbl:{x:20,y:66},price_val:{x:60,y:66},info_lbl:{x:20,y:80},info_val:{x:60,y:80},memo_lbl:{x:20,y:92},memo_val:{x:60,y:92},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold||false,hidden:l.hidden||false}}
+function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,hidden:l.hidden||false}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -53,6 +53,8 @@ function updPv(){
     if(isTableMode){
         let th = `<table class="lbl-table">`;
         if(d.productName)th+=`<tr><td style="width:3em;font-weight:600">품 명</td><td style="font-weight:600">${E(d.productName)}</td></tr>`;
+        if(d.color)th+=`<tr><td style="font-weight:600">컬 러</td><td style="font-weight:600">${E(d.color)}</td></tr>`;
+        if(d.size)th+=`<tr><td style="font-weight:600">사이즈</td><td style="font-weight:600">${E(d.size)}</td></tr>`;
         if(d.manufacturer)th+=`<tr><td style="font-weight:600">제조사</td><td style="font-weight:600">${E(d.manufacturer)}</td></tr>`;
         if(d.origin)th+=`<tr><td style="font-weight:600">브랜드</td><td style="font-weight:600">${E(d.origin)}</td></tr>`;
         if(d.spec)th+=`<tr><td style="font-weight:600">포장규격</td><td style="font-weight:600">${E(d.spec)}</td></tr>`;
@@ -62,6 +64,8 @@ function updPv(){
         if(th.includes('<tr>')) els.push({k:'table', h:th});
     } else {
         if(d.productName){ els.push({k:'product_lbl',h:'품 명'}); els.push({k:'product_val',h:E(d.productName)}); }
+        if(d.color){ els.push({k:'color_lbl',h:'컬 러'}); els.push({k:'color_val',h:E(d.color)}); }
+        if(d.size){ els.push({k:'size_lbl',h:'사이즈'}); els.push({k:'size_val',h:E(d.size)}); }
         if(d.manufacturer){ els.push({k:'mfr_lbl',h:'제조사'}); els.push({k:'mfr_val',h:E(d.manufacturer)}); }
         if(d.price){ els.push({k:'price_lbl',h:'가 격'}); els.push({k:'price_val',h:formatPrice(d.price)}); }
         const ip=[d.origin,d.spec].filter(Boolean);
@@ -77,7 +81,8 @@ function updPv(){
         const ko=keyObjectKey===e.k?'key-object':'';
         const stFS=p.fs?`font-size:${p.fs}px;`:'';
         const stB=p.bold?`font-weight:bold;`:'';
-        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}">${e.h}<div class="resizer"></div></div>`;
+        const stW=p.nowrap?`white-space:nowrap;`:'';
+        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}">${e.h}<div class="resizer"></div></div>`;
     }
     s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
 
@@ -88,6 +93,7 @@ function updPv(){
             const p = gp(fKey);
             $('inTSize').value=p.fs||'';
             $('btnTBold').style.background=p.bold?'#e2e8f0':'';
+            if($('btnTWrap')) $('btnTWrap').style.background=p.nowrap?'#e2e8f0':'';
             
             const hasImg = [...selectedKeys].some(k=>k==='logo'||k==='memoImg');
             if($('inTScale')){
@@ -367,6 +373,8 @@ function renderSheet(){
                 if(isTableMode){
                     let th=`<table class="lbl-table" style="pointer-events:none">`;
                     if(d.productName)th+=`<tr><td style="width:3em;font-weight:600">품 명</td><td style="font-weight:600">${E(d.productName)}</td></tr>`;
+                    if(d.color)th+=`<tr><td style="font-weight:600">컬 러</td><td style="font-weight:600">${E(d.color)}</td></tr>`;
+                    if(d.size)th+=`<tr><td style="font-weight:600">사이즈</td><td style="font-weight:600">${E(d.size)}</td></tr>`;
                     if(d.manufacturer)th+=`<tr><td style="font-weight:600">제조사</td><td style="font-weight:600">${E(d.manufacturer)}</td></tr>`;
                     if(d.origin)th+=`<tr><td style="font-weight:600">브랜드</td><td style="font-weight:600">${E(d.origin)}</td></tr>`;
                     if(d.spec)th+=`<tr><td style="font-weight:600">포장규격</td><td style="font-weight:600">${E(d.spec)}</td></tr>`;
@@ -376,6 +384,8 @@ function renderSheet(){
                     if(th.includes('<tr>'))els.push({k:'table',v:th});
                 } else {
                     if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                    if(d.color){els.push({k:'color_lbl',v:'컬 러'});els.push({k:'color_val',v:E(d.color)});}
+                    if(d.size){els.push({k:'size_lbl',v:'사이즈'});els.push({k:'size_val',v:E(d.size)});}
                     if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
                     if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                     const ip=[d.origin,d.spec].filter(Boolean);
@@ -391,8 +401,9 @@ function renderSheet(){
                     const ko=sheetKeyObjectKey===fK?'sh-ko':'';
                     const stFS=p.fs?`font-size:${p.fs}px;`:'';
                     const stB=p.bold?`font-weight:bold;`:'';
+                    const stW=p.nowrap?`white-space:nowrap;`:'';
                     const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
-                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB};${bs}">${e.v}</div>`;
+                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW};${bs}">${e.v}</div>`;
                 }
             }
             h+=`</div>`;
@@ -565,6 +576,7 @@ function updateShToolbar(){
         const gpp = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{};
         $('inShSize').value=gpp.fs||'';
         $('btnShBold').style.background=gpp.bold?'#e2e8f0':'';
+        if($('btnShWrap')) $('btnShWrap').style.background=gpp.nowrap?'#e2e8f0':'';
         const hasImg=[...sheetSelectedKeys].some(k=>k.endsWith('_logo')||k.endsWith('_memoImg'));
         $('inShScale').style.display=hasImg?'inline-block':'none';
         if(hasImg) $('inShScale').value=Math.round((gpp.sx||1)*100);
@@ -637,6 +649,8 @@ function executePrint(){
             if(isTableMode){
                 let th=`<table class="lbl-table">`;
                 if(d.productName)th+=`<tr><td style="width:3em;font-weight:600">품 명</td><td style="font-weight:600">${E(d.productName)}</td></tr>`;
+                if(d.color)th+=`<tr><td style="font-weight:600">컬 러</td><td style="font-weight:600">${E(d.color)}</td></tr>`;
+                if(d.size)th+=`<tr><td style="font-weight:600">사이즈</td><td style="font-weight:600">${E(d.size)}</td></tr>`;
                 if(d.manufacturer)th+=`<tr><td style="font-weight:600">제조사</td><td style="font-weight:600">${E(d.manufacturer)}</td></tr>`;
                 if(d.origin)th+=`<tr><td style="font-weight:600">브랜드</td><td style="font-weight:600">${E(d.origin)}</td></tr>`;
                 if(d.spec)th+=`<tr><td style="font-weight:600">포장규격</td><td style="font-weight:600">${E(d.spec)}</td></tr>`;
@@ -646,6 +660,8 @@ function executePrint(){
                 if(th.includes('<tr>'))els.push({k:'table',v:th});
             } else {
                 if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                if(d.color){els.push({k:'color_lbl',v:'컬 러'});els.push({k:'color_val',v:E(d.color)});}
+                if(d.size){els.push({k:'size_lbl',v:'사이즈'});els.push({k:'size_val',v:E(d.size)});}
                 if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
                 if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                 const ip=[d.origin,d.spec].filter(Boolean);
@@ -658,7 +674,8 @@ function executePrint(){
                 if(p.hidden)continue;
                 const stFS=p.fs?`font-size:${p.fs}px;`:'';
                 const stB=p.bold?`font-weight:bold;`:'';
-                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}">${e.v}</div>`
+                const stW=p.nowrap?`white-space:nowrap;`:'';
+                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}">${e.v}</div>`
             }
             h+='</div>';
         }
@@ -698,7 +715,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     await Promise.all([fetchL(),fetchS(),fetchLT()]);
     renderList();
     renderSpecs();
-    ['fName','fProd','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).oninput=updPv;});
+    ['fName','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).oninput=updPv;});
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();updPv();toast('초기화','info')};
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
@@ -730,6 +747,17 @@ document.addEventListener('DOMContentLoaded',async()=>{
             if(!sl.lo) sl.lo={};
             if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
             sl.lo[bk].bold = !sl.lo[bk].bold;
+        });
+        renderSheet();
+    };
+    $('btnShWrap').onclick = () => {
+        saveShHistory();
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl = sheetSlots[idx];
+            if(!sl.lo) sl.lo={};
+            if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+            sl.lo[bk].nowrap = !sl.lo[bk].nowrap;
         });
         renderSheet();
     };
@@ -769,6 +797,14 @@ document.addEventListener('DOMContentLoaded',async()=>{
         selectedKeys.forEach(k=>{
             if(!layout[k]) layout[k] = {...gp(k)};
             layout[k].bold = !layout[k].bold;
+        });
+        updPv();
+    };
+    if($('btnTWrap')) $('btnTWrap').onclick=()=>{
+        saveHistory();
+        selectedKeys.forEach(k=>{
+            if(!layout[k]) layout[k] = {...gp(k)};
+            layout[k].nowrap = !layout[k].nowrap;
         });
         updPv();
     };

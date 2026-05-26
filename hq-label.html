@@ -113,6 +113,7 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div class="sec-title"><i class='bx bx-detail'></i> 라벨 정보</div>
 <div class="fg"><label>라벨 이름 (저장용)</label><input id="fName" placeholder="예: K2 안전화 라벨"></div>
 <div class="fg"><label>품명</label><input id="fProd" placeholder="에어윈드베스트 선풍기조끼"></div>
+<div class="fr"><div class="fg"><label>컬러</label><input id="fColor" placeholder="블랙"></div><div class="fg"><label>사이즈</label><input id="fSize" placeholder="105"></div></div>
 <div class="fr"><div class="fg"><label>제조사</label><input id="fMfr" placeholder="K2 세이프티"></div><div class="fg"><label>가격</label><input id="fPrice" placeholder="₩45,000"></div></div>
 <div class="fr"><div class="fg"><label>브랜드</label><input id="fOrigin" placeholder="K2"></div><div class="fg"><label>포장규격</label><input id="fSpec" placeholder="FREE"></div></div>
 <div class="fg" style="display:none"><label>바코드</label><input id="fBarcode" placeholder="8801234567890"></div>
@@ -157,7 +158,9 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
     <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
     <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
     <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
-    <div style="width:1px;background:var(--border);margin:0 2px"></div>
+    <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
+    <button id="btnTWrap" class="btn-align" title="줄바꿈 금지"><i class='bx bx-minus'></i></button>
+    <button id="btnTDel" class="btn-align" title="삭제" style="color:var(--danger)"><i class='bx bx-trash'></i></button>
     <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
     <button class="btn-align" data-align="middle" title="수직 중앙 정렬"><i class='bx bx-vertical-center'></i></button>
     <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
@@ -191,7 +194,8 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
             <input type="number" id="inShSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
             <input type="number" id="inShScale" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
             <button class="btn-align" id="btnShDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
-            <div style="width:1px;background:var(--border);margin:0 2px"></div>
+            <div style="width:1px;height:14px;background:var(--border);margin:0 4px"></div>
+            <button class="btn-align" id="btnShWrap" title="줄바꿈 금지"><i class='bx bx-minus'></i></button>
             <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
             <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
             <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
