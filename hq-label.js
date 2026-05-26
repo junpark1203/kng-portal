@@ -27,7 +27,7 @@ function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selec
 
 // Layout
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,hidden:l.hidden||false}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -83,7 +83,8 @@ function updPv(){
         const stB=p.bold?`font-weight:bold;`:'';
         const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
         const stWd=p.w?`width:${p.w}%;`:'';
-        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}${stWd}">${e.h}<div class="resizer"></div></div>`;
+        const stAlign=p.textAlign?`text-align:${p.textAlign};`:'';
+        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}${stWd}${stAlign}">${e.h}<div class="resizer"></div></div>`;
     }
     s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
 
@@ -95,6 +96,9 @@ function updPv(){
             $('inTSize').value=p.fs||'';
             $('btnTBold').style.background=p.bold?'#e2e8f0':'';
             if($('btnTWrap')) $('btnTWrap').style.background=p.nowrap?'#e2e8f0':'';
+            if($('btnTAlignL')) $('btnTAlignL').style.background=p.textAlign==='left'?'#e2e8f0':'';
+            if($('btnTAlignC')) $('btnTAlignC').style.background=p.textAlign==='center'?'#e2e8f0':'';
+            if($('btnTAlignR')) $('btnTAlignR').style.background=p.textAlign==='right'?'#e2e8f0':'';
             
             const hasImg = [...selectedKeys].some(k=>k==='logo'||k==='memoImg');
             if($('inTScale')){
@@ -426,8 +430,9 @@ function renderSheet(){
                     const stB=p.bold?`font-weight:bold;`:'';
                     const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
                     const stWd=p.w?`width:${p.w}%;`:'';
+                    const stAlign=p.textAlign?`text-align:${p.textAlign};`:'';
                     const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
-                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW}${stWd};${bs}">${e.v}</div>`;
+                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW}${stWd}${stAlign};${bs}">${e.v}</div>`;
                 }
             }
             h+=`</div>`;
@@ -601,6 +606,9 @@ function updateShToolbar(){
         $('inShSize').value=gpp.fs||'';
         $('btnShBold').style.background=gpp.bold?'#e2e8f0':'';
         if($('btnShWrap')) $('btnShWrap').style.background=gpp.nowrap?'#e2e8f0':'';
+        if($('btnShAlignL')) $('btnShAlignL').style.background=gpp.textAlign==='left'?'#e2e8f0':'';
+        if($('btnShAlignC')) $('btnShAlignC').style.background=gpp.textAlign==='center'?'#e2e8f0':'';
+        if($('btnShAlignR')) $('btnShAlignR').style.background=gpp.textAlign==='right'?'#e2e8f0':'';
         const hasImg=[...sheetSelectedKeys].some(k=>k.endsWith('_logo')||k.endsWith('_memoImg'));
         $('inShScale').style.display=hasImg?'inline-block':'none';
         if(hasImg) $('inShScale').value=Math.round((gpp.sx||1)*100);
@@ -700,7 +708,8 @@ function executePrint(){
                 const stB=p.bold?`font-weight:bold;`:'';
                 const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
                 const stWd=p.w?`width:${p.w}%;`:'';
-                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}${stWd}">${e.v}</div>`
+                const stAlign=p.textAlign?`text-align:${p.textAlign};`:'';
+                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}${stWd}${stAlign}">${e.v}</div>`
             }
             h+='</div>';
         }
@@ -786,6 +795,28 @@ document.addEventListener('DOMContentLoaded',async()=>{
         });
         renderSheet();
     };
+    ['L','C','R'].forEach(a => {
+        const am = {L:'left', C:'center', R:'right'};
+        if($('btnShAlign'+a)) $('btnShAlign'+a).onclick = () => {
+            saveShHistory();
+            sheetSelectedKeys.forEach(sk=>{
+                const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+                const sl = sheetSlots[idx];
+                if(!sl.lo) sl.lo={};
+                if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+                sl.lo[bk].textAlign = am[a];
+            });
+            renderSheet();
+        };
+        if($('btnTAlign'+a)) $('btnTAlign'+a).onclick = () => {
+            saveHistory();
+            selectedKeys.forEach(k=>{
+                if(!layout[k]) layout[k] = {...gp(k)};
+                layout[k].textAlign = am[a];
+            });
+            updPv();
+        };
+    });
     $('inShSize').onchange = (e) => {
         saveShHistory();
         const val = parseInt(e.target.value) || null;
