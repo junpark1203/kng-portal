@@ -277,7 +277,7 @@ function initInteraction(el){
         if (keyObjectKey && selectedKeys.has(keyObjectKey)) {
             targetX = layout[keyObjectKey].x;
             targetY = layout[keyObjectKey].y;
-        } else if (selectedKeys.size > 0) {
+        } else if (selectedKeys.size > 1) {
             const xs = activeKeys.map(k => layout[k].x);
             const ys = activeKeys.map(k => layout[k].y);
             if(type==='left') targetX = Math.min(...xs);
@@ -649,11 +649,14 @@ function alignSheetElements(type){
     if(sheetKeyObjectKey && sheetSelectedKeys.has(sheetKeyObjectKey)){
         const [idx, ...b] = sheetKeyObjectKey.split('_'); const bk = b.join('_');
         const sl=sheetSlots[idx]; targetX = sl.lo[bk].x; targetY = sl.lo[bk].y;
-    } else {
+    } else if (sheetSelectedKeys.size > 1) {
         const xs = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].x);
         const ys = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].y);
         if(type==='left') targetX=Math.min(...xs); else if(type==='right') targetX=Math.max(...xs); else if(type==='center') targetX=xs.reduce((a,b)=>a+b,0)/xs.length;
         if(type==='top') targetY=Math.min(...ys); else if(type==='bottom') targetY=Math.max(...ys); else if(type==='middle') targetY=ys.reduce((a,b)=>a+b,0)/ys.length;
+    } else {
+        if(type==='left') targetX=10; else if(type==='right') targetX=90; else if(type==='center') targetX=50;
+        if(type==='top') targetY=15; else if(type==='bottom') targetY=90; else if(type==='middle') targetY=50;
     }
     
     if(type==='left'||type==='center'||type==='right') parsed.forEach(p=>sheetSlots[p.idx].lo[p.bk].x=targetX);
