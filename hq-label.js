@@ -50,8 +50,8 @@ function updPv(){
     const isTableMode=$('chkTableMode').checked;
 
     const els=[];
-    if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:${h*0.35}px;max-width:${w*0.7}px;object-fit:contain" src="${d.logoBase64}">`});
-    if(d.memoImageBase64)els.push({k:'memoImg',h:`<img style="max-height:${h*0.3}px;max-width:${w*0.7}px;object-fit:contain" src="${d.memoImageBase64}">`});
+    if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:35%;max-width:70%;object-fit:contain" src="${d.logoBase64}">`});
+    if(d.memoImageBase64)els.push({k:'memoImg',h:`<img style="max-height:30%;max-width:70%;object-fit:contain" src="${d.memoImageBase64}">`});
 
     if(isTableMode){
         let th = `<table class="lbl-table">`;
