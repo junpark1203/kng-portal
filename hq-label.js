@@ -36,14 +36,19 @@ function updPv(){
     const zoom=parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
     const w=lw*3.78*zoom, h=lh*3.78*zoom;
     const fs=Math.max(10, Math.min(20, w/18));
+    
+    const formatPrice = p => { if(!p)return''; let n=Number(p.replace(/,/g,'')); return isNaN(n)?E(p):n.toLocaleString()+'원'; };
+    const makeRow = (lbl, val, isPrc=false) => `<div style="display:flex;align-items:flex-start;text-align:left;line-height:1.3;white-space:nowrap;color:#000"><div style="width:2.8em;margin-right:1em;text-align-last:justify;font-weight:600">${lbl}</div><div style="font-weight:${isPrc?'800':'600'}">${isPrc?`${val}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span>`:val}</div></div>`;
+
     const els=[];
     if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:${h*0.35}px;max-width:${w*0.7}px;object-fit:contain" src="${d.logoBase64}">`});
-    if(d.productName)els.push({k:'product',h:`<div class="p-nm" style="max-width:${w-10}px;font-size:110%">${E(d.productName)}</div>`});
-    if(d.manufacturer)els.push({k:'mfr',h:`<div class="p-mfr" style="max-width:${w-10}px;font-size:85%">${E(d.manufacturer)}</div>`});
-    if(d.price)els.push({k:'price',h:`<div class="p-prc" style="font-size:120%">${E(d.price)}</div>`});
+    if(d.productName)els.push({k:'product',h:makeRow('품 명', E(d.productName))});
+    if(d.manufacturer)els.push({k:'mfr',h:makeRow('제조사', E(d.manufacturer))});
+    if(d.price)els.push({k:'price',h:makeRow('가 격', formatPrice(d.price), true)});
     const ip=[d.origin,d.spec,d.barcode].filter(Boolean);
-    if(ip.length)els.push({k:'info',h:`<div class="p-info" style="max-width:${w-10}px;font-size:75%">${E(ip.join(' | '))}</div>`});
-    if(d.memo)els.push({k:'memo',h:`<div class="p-info" style="max-width:${w-10}px;font-size:70%">${E(d.memo)}</div>`});
+    if(ip.length)els.push({k:'info',h:makeRow('정 보', E(ip.join(' | ')))});
+    if(d.memo)els.push({k:'memo',h:makeRow('메 모', E(d.memo))});
+    
     let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
     for(const e of els){const p=gp(e.k);s+=`<div class="el" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%)">${e.h}</div>`}
     s+='</div></div>';c.innerHTML=s;initDrag(c.querySelector('.first-label'))
@@ -127,20 +132,32 @@ function doPrint(){
     const flat=[];items.forEach(i=>{let lo={};try{lo=typeof i.label.layout==='string'?JSON.parse(i.label.layout||'{}'):(i.label.layout||{})}catch(e){}for(let n=0;n<i.qty;n++)flat.push({d:i.label,lo})});
     const lps=g.cols*g.rows,sheets=Math.ceil(flat.length/lps),fs=Math.max(6,Math.min(11,s.lw/7));
     let h='',idx=0;
+    const formatPrice = p => { if(!p)return''; let n=Number(p.replace(/,/g,'')); return isNaN(n)?E(p):n.toLocaleString()+'원'; };
+    const makeRow = (lbl, val, isPrc=false) => `<div style="display:flex;align-items:flex-start;text-align:left;line-height:1.3;white-space:nowrap;color:#000"><div style="width:2.8em;margin-right:1em;text-align-last:justify;font-weight:600">${lbl}</div><div style="font-weight:${isPrc?'800':'600'}">${isPrc?`${val}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span>`:val}</div></div>`;
+
     for(let sh=0;sh<sheets&&idx<flat.length;sh++){
         h+=`<div class="ps" style="width:${s.pw}mm;height:${s.ph}mm;position:relative;box-sizing:border-box">`;
         for(let r=0;r<g.rows&&idx<flat.length;r++)for(let c=0;c<g.cols&&idx<flat.length;c++,idx++){
             const{d,lo}=flat[idx],cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
             const gpp=k=>(lo&&lo[k])?lo[k]:dp()[k];
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
+            
+            // 컷팅 가이드 (네 모서리 십자 마크)
+            const cm = `width:3mm;height:3mm;position:absolute;border:0 solid #ccc;`;
+            h+=`<div style="${cm}left:0;top:0;border-left-width:1px;border-top-width:1px"></div>`;
+            h+=`<div style="${cm}right:0;top:0;border-right-width:1px;border-top-width:1px"></div>`;
+            h+=`<div style="${cm}left:0;bottom:0;border-left-width:1px;border-bottom-width:1px"></div>`;
+            h+=`<div style="${cm}right:0;bottom:0;border-right-width:1px;border-bottom-width:1px"></div>`;
+
             const els=[];
             if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:30%;max-width:60%;object-fit:contain">`});
-            if(d.productName)els.push({k:'product',v:`<div style="font-weight:700;text-align:center;line-height:1.2">${E(d.productName)}</div>`});
-            if(d.manufacturer)els.push({k:'mfr',v:`<div style="font-size:85%;color:#666;text-align:center">${E(d.manufacturer)}</div>`});
-            if(d.price)els.push({k:'price',v:`<div style="font-weight:800;text-align:center;color:#333">${E(d.price)}</div>`});
+            if(d.productName)els.push({k:'product',v:makeRow('품 명', E(d.productName))});
+            if(d.manufacturer)els.push({k:'mfr',v:makeRow('제조사', E(d.manufacturer))});
+            if(d.price)els.push({k:'price',v:makeRow('가 격', formatPrice(d.price), true)});
             const ip=[d.origin,d.spec,d.barcode].filter(Boolean);
-            if(ip.length)els.push({k:'info',v:`<div style="font-size:75%;color:#999;text-align:center">${E(ip.join(' | '))}</div>`});
-            if(d.memo)els.push({k:'memo',v:`<div style="font-size:70%;color:#aaa;text-align:center">${E(d.memo)}</div>`});
+            if(ip.length)els.push({k:'info',v:makeRow('정 보', E(ip.join(' | ')))});
+            if(d.memo)els.push({k:'memo',v:makeRow('메 모', E(d.memo))});
+            
             for(const e of els){const p=gpp(e.k);h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%)">${e.v}</div>`}
             h+='</div>'}
         h+='</div>'}
