@@ -28,7 +28,7 @@ function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selec
 
 // Layout
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false,groupId:l.groupId||null}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false,groupId:l.groupId||null,text:l.text||null}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -67,14 +67,15 @@ function updPv(){
         th += `</table>`;
         if(th.includes('<tr>')) els.push({k:'table', h:th});
     } else {
-        if(d.productName){ els.push({k:'product_lbl',h:'품 명'}); els.push({k:'product_val',h:E(d.productName)}); }
-        if(d.color){ els.push({k:'color_lbl',h:'컬 러'}); els.push({k:'color_val',h:E(d.color)}); }
-        if(d.size){ els.push({k:'size_lbl',h:'사이즈'}); els.push({k:'size_val',h:E(d.size)}); }
-        if(d.manufacturer){ els.push({k:'mfr_lbl',h:'제조사'}); els.push({k:'mfr_val',h:E(d.manufacturer)}); }
-        if(d.price){ els.push({k:'price_lbl',h:'가 격'}); els.push({k:'price_val',h:formatPrice(d.price)}); }
+        const t=k=>layout&&layout[k]&&layout[k].text?layout[k].text:dp()[k]?.defaultText||'';
+        if(d.productName){ els.push({k:'product_lbl',h:t('product_lbl')||'품 명'}); els.push({k:'product_val',h:E(d.productName)}); }
+        if(d.color){ els.push({k:'color_lbl',h:t('color_lbl')||'컬 러'}); els.push({k:'color_val',h:E(d.color)}); }
+        if(d.size){ els.push({k:'size_lbl',h:t('size_lbl')||'사이즈'}); els.push({k:'size_val',h:E(d.size)}); }
+        if(d.manufacturer){ els.push({k:'mfr_lbl',h:t('mfr_lbl')||'제조사'}); els.push({k:'mfr_val',h:E(d.manufacturer)}); }
+        if(d.price){ els.push({k:'price_lbl',h:t('price_lbl')||'가 격'}); els.push({k:'price_val',h:formatPrice(d.price)}); }
         const ip=[d.origin,d.spec].filter(Boolean);
-        if(ip.length){ els.push({k:'info_lbl',h:'정 보'}); els.push({k:'info_val',h:E(ip.join(' | '))}); }
-        if(d.memo){ els.push({k:'memo_lbl',h:'메 모'}); els.push({k:'memo_val',h:E(d.memo)}); }
+        if(ip.length){ els.push({k:'info_lbl',h:t('info_lbl')||'정 보'}); els.push({k:'info_val',h:E(ip.join(' | '))}); }
+        if(d.memo){ els.push({k:'memo_lbl',h:t('memo_lbl')||'메 모'}); els.push({k:'memo_val',h:E(d.memo)}); }
     }
     
     let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
@@ -175,6 +176,7 @@ function initInteraction(el){
         };
         // Move handle
         n.onmousedown=e=>{
+            if(n.isContentEditable) return;
             if(e.target.classList.contains('resizer'))return;
             e.preventDefault();
             const k=n.dataset.key, rect=el.getBoundingClientRect();
@@ -237,6 +239,65 @@ function initInteraction(el){
                 updPv();
             };
             document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+        };
+        
+        n.ondblclick = e => {
+            const k=n.dataset.key;
+            if(k==='logo' || k==='memoImg' || k==='table') return;
+            e.preventDefault(); e.stopPropagation();
+            n.contentEditable = 'true';
+            n.focus();
+            n.style.cursor = 'text';
+            const range = document.createRange();
+            range.selectNodeContents(n);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            let finished = false;
+            const finishEdit = () => {
+                if(finished) return; finished = true;
+                n.contentEditable = 'false';
+                n.style.cursor = 'move';
+                const newText = n.innerText.trim();
+                if(k.endsWith('_lbl')){
+                    saveHistory();
+                    if(!layout[k]) layout[k] = {...gp(k)};
+                    layout[k].text = newText;
+                    updPv();
+                } else if(k.endsWith('_val') || k==='info_val'){
+                    const propMap = {
+                        'product_val': 'productName',
+                        'color_val': 'color',
+                        'size_val': 'size',
+                        'mfr_val': 'manufacturer',
+                        'price_val': 'price',
+                        'memo_val': 'memo',
+                        'info_val': 'spec' // Simplification: we map info_val primarily to spec
+                    };
+                    const prop = propMap[k];
+                    if(prop) {
+                        const items = getChecked();
+                        if(items.length > 0) {
+                            items[0].label[prop] = newText;
+                            const tr = document.querySelector('.lbl-row.checked');
+                            if(tr) {
+                                const inputCls = {productName:'.f-pn', color:'.f-clr', size:'.f-sz', manufacturer:'.f-mfr', price:'.f-pr', memo:'.f-mo', spec:'.f-sp'}[prop];
+                                if(inputCls) {
+                                    const inp = tr.querySelector(inputCls);
+                                    if(inp) inp.value = newText;
+                                }
+                            }
+                        }
+                    }
+                    updPv();
+                } else {
+                    updPv();
+                }
+            };
+            
+            n.onblur = finishEdit;
+            n.onkeydown = ke => { if(ke.key === 'Enter') { ke.preventDefault(); n.blur(); } };
         };
     });
     // --- Click on empty space: deselect all or marquee ---
@@ -455,14 +516,15 @@ function renderSheet(items){
                     th+=`</table>`;
                     if(th.includes('<tr>'))els.push({k:'table',v:th});
                 } else {
-                    if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
-                    if(d.color){els.push({k:'color_lbl',v:'컬 러'});els.push({k:'color_val',v:E(d.color)});}
-                    if(d.size){els.push({k:'size_lbl',v:'사이즈'});els.push({k:'size_val',v:E(d.size)});}
-                    if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
-                    if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
+                    const t=k=>lo&&lo[k]&&lo[k].text?lo[k].text:dp()[k]?.defaultText||'';
+                    if(d.productName){els.push({k:'product_lbl',v:t('product_lbl')||'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                    if(d.color){els.push({k:'color_lbl',v:t('color_lbl')||'컬 러'});els.push({k:'color_val',v:E(d.color)});}
+                    if(d.size){els.push({k:'size_lbl',v:t('size_lbl')||'사이즈'});els.push({k:'size_val',v:E(d.size)});}
+                    if(d.manufacturer){els.push({k:'mfr_lbl',v:t('mfr_lbl')||'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
+                    if(d.price){els.push({k:'price_lbl',v:t('price_lbl')||'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                     const ip=[d.origin,d.spec].filter(Boolean);
-                    if(ip.length){els.push({k:'info_lbl',v:'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
-                    if(d.memo){els.push({k:'memo_lbl',v:'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
+                    if(ip.length){els.push({k:'info_lbl',v:t('info_lbl')||'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
+                    if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
                 }
                 
                 for(const e of els){
