@@ -31,13 +31,10 @@ function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor(
 // Preview (single label for editor)
 function updPv(){
     const d=coll(),c=$('pvC');
-    let lw=63.5, lh=38.1;
-    const pvSpId=$('pvSpec')?$('pvSpec').value:'';
-    if(pvSpId){
-        const s=specs.find(x=>x.id===pvSpId);
-        if(s){lw=s.labelWidth||63.5;lh=s.labelHeight||38.1;}
-    }
-    const w=380, h=w*(lh/lw);
+    const lw=parseFloat($('inLW')?$('inLW').value:63.5)||63.5;
+    const lh=parseFloat($('inLH')?$('inLH').value:38.1)||38.1;
+    const zoom=parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
+    const w=lw*3.78*zoom, h=lh*3.78*zoom;
     const fs=Math.max(10, Math.min(20, w/18));
     const els=[];
     if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:${h*0.35}px;max-width:${w*0.7}px;object-fit:contain" src="${d.logoBase64}">`});
@@ -115,9 +112,8 @@ function getPS(){
 // Specs
 async function fetchS(){try{const r=await af(API+'/label-specs');if(r.ok)specs=await r.json()}catch(e){}popSel()}
 function popSel(){
-    const s=$('selSpec'), pv=$('pvSpec');
+    const s=$('selSpec');
     if(s){const p=s.value;s.innerHTML='<option value="">직접 입력</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
-    if(pv){const pp=pv.value;pv.innerHTML='<option value="">기본 규격 (63.5×38.1)</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(pp&&specs.find(x=>x.id===pp))pv.value=pp;else if(specs.length)pv.value=specs.find(x=>x.isDefault)?specs.find(x=>x.isDefault).id:specs[0].id}
 }
 function renderSpecs(){$('specList').innerHTML=specs.map(s=>`<div class="sp-item"><div class="sp-hd"><div class="sp-nm">${E(s.name)} ${s.isDefault?'<span class="sp-badge">기본</span>':''}</div><div class="sp-act"><button class="ed" data-id="${s.id}"><i class='bx bx-edit'></i></button>${!s.isDefault?`<button class="dl" data-id="${s.id}"><i class='bx bx-trash'></i></button>`:''}</div></div><div class="sp-dt"><span>${s.labelWidth||'?'}×${s.labelHeight||'?'}mm</span><span>여백 ${s.marginTop}/${s.marginBottom}/${s.marginLeft}/${s.marginRight}</span></div></div>`).join('');$('specList').querySelectorAll('.ed').forEach(b=>b.onclick=()=>openSM(b.dataset.id));$('specList').querySelectorAll('.dl').forEach(b=>b.onclick=()=>delSp(b.dataset.id))}
 function openSM(id){esId=id||null;const s=id?specs.find(x=>x.id===id):null;$('mSpTitle').textContent=s?'규격 수정':'규격 추가';$('sName').value=s?s.name:'';$('sLW').value=s?s.labelWidth:63.5;$('sLH').value=s?s.labelHeight:38.1;$('sMT').value=s?s.marginTop:15;$('sMB').value=s?s.marginBottom:15;$('sML').value=s?s.marginLeft:7;$('sMR').value=s?s.marginRight:7;$('sGX').value=s?s.gapX:2.5;$('sGY').value=s?s.gapY:0;$('mSpec').style.display='flex'}
@@ -162,7 +158,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={};updPv();toast('초기화','info')};
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
-    if($('pvSpec'))$('pvSpec').onchange=updPv;
+    if($('pvZoom'))$('pvZoom').onchange=updPv;
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
     $('btnPrint').onclick=doPrint;
