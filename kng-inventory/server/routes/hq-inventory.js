@@ -99,14 +99,13 @@ function initHqTables(database) {
                     createdAt TEXT DEFAULT (datetime('now')),
                     updatedAt TEXT DEFAULT (datetime('now'))
                 )
-            `, () => {
-                // 기존 DB 호환 - 누락 컬럼 추가
-                database.run(`ALTER TABLE hq_labels ADD COLUMN layout TEXT DEFAULT '{}'`, () => {});
-                database.run(`ALTER TABLE hq_labels ADD COLUMN memoImageBase64 TEXT DEFAULT ''`, () => {});
-                database.run(`ALTER TABLE hq_labels ADD COLUMN color TEXT DEFAULT ''`, () => {});
-                database.run(`ALTER TABLE hq_labels ADD COLUMN size TEXT DEFAULT ''`, () => {});
-                database.run(`ALTER TABLE hq_labels ADD COLUMN labelSpecId TEXT DEFAULT ''`, () => {});
-            });
+            `);
+            // 기존 DB 호환 - 누락 컬럼 추가
+            database.run(`ALTER TABLE hq_labels ADD COLUMN layout TEXT DEFAULT '{}'`, () => {});
+            database.run(`ALTER TABLE hq_labels ADD COLUMN memoImageBase64 TEXT DEFAULT ''`, () => {});
+            database.run(`ALTER TABLE hq_labels ADD COLUMN color TEXT DEFAULT ''`, () => {});
+            database.run(`ALTER TABLE hq_labels ADD COLUMN size TEXT DEFAULT ''`, () => {});
+            database.run(`ALTER TABLE hq_labels ADD COLUMN labelSpecId TEXT DEFAULT ''`, () => {});
 
             // 로고 템플릿 테이블 (제조사별 로고 저장)
             database.run(`
@@ -140,23 +139,28 @@ function initHqTables(database) {
                     createdAt TEXT DEFAULT (datetime('now')),
                     updatedAt TEXT DEFAULT (datetime('now'))
                 )
-            `, () => {
-                // labelWidth/labelHeight 컬럼 추가 (기존 DB 호환)
-                database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelWidth REAL DEFAULT 63.5`, () => {});
-                database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelHeight REAL DEFAULT 38.1`, () => {});
-                // 기본 라벨 규격 시딩
-                const defaultSpecs = [
-                    { id: 'LS-21', name: '21칸 (63.5×38.1mm)', labelWidth: 63.5, labelHeight: 38.1, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
-                    { id: 'LS-24', name: '24칸 (63.5×33.9mm)', labelWidth: 63.5, labelHeight: 33.9, marginTop: 8.5, marginBottom: 8.5, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
-                    { id: 'LS-40', name: '40칸 (48.5×25.4mm)', labelWidth: 48.5, labelHeight: 25.4, marginTop: 22, marginBottom: 22, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
-                    { id: 'LS-65', name: '65칸 (38.1×21.2mm)', labelWidth: 38.1, labelHeight: 21.2, marginTop: 11, marginBottom: 11, marginLeft: 4.6, marginRight: 4.6, gapX: 2.5, gapY: 0 }
-                ];
-                const now = new Date().toISOString();
-                defaultSpecs.forEach(s => {
-                    database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
-                                  VALUES (?, ?, ?, ?, 210, 297, 0, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-                        [s.id, s.name, s.labelWidth, s.labelHeight, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
-                });
+            `);
+            
+            // labelWidth/labelHeight 컬럼 추가 (기존 DB 호환)
+            database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelWidth REAL DEFAULT 63.5`, () => {});
+            database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelHeight REAL DEFAULT 38.1`, () => {});
+            
+            // 기본 라벨 규격 시딩
+            const defaultSpecs = [
+                { id: 'LS-21', name: '21칸 (63.5×38.1mm)', labelWidth: 63.5, labelHeight: 38.1, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                { id: 'LS-24', name: '24칸 (63.5×33.9mm)', labelWidth: 63.5, labelHeight: 33.9, marginTop: 8.5, marginBottom: 8.5, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                { id: 'LS-40', name: '40칸 (48.5×25.4mm)', labelWidth: 48.5, labelHeight: 25.4, marginTop: 22, marginBottom: 22, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
+                { id: 'LS-65', name: '65칸 (38.1×21.2mm)', labelWidth: 38.1, labelHeight: 21.2, marginTop: 11, marginBottom: 11, marginLeft: 4.6, marginRight: 4.6, gapX: 2.5, gapY: 0 }
+            ];
+            const now = new Date().toISOString();
+            defaultSpecs.forEach(s => {
+                database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                              VALUES (?, ?, ?, ?, 210, 297, 0, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                    [s.id, s.name, s.labelWidth, s.labelHeight, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
+            });
+
+            // 모든 쿼리가 완료된 후 resolve() 호출
+            database.get("SELECT 1", () => {
                 console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
                 resolve();
             });
