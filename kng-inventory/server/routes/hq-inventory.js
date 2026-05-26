@@ -91,6 +91,21 @@ function initHqTables(database) {
                     memo TEXT DEFAULT '',
                     logoBase64 TEXT DEFAULT '',
                     extraFields TEXT DEFAULT '[]',
+                    layout TEXT DEFAULT '{}',
+                    createdAt TEXT DEFAULT (datetime('now')),
+                    updatedAt TEXT DEFAULT (datetime('now'))
+                )
+            `, () => {
+                // layout 컬럼 추가 (기존 DB 호환)
+                database.run(`ALTER TABLE hq_labels ADD COLUMN layout TEXT DEFAULT '{}'`, () => {});
+            });
+
+            // 로고 템플릿 테이블 (제조사별 로고 저장)
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_logo_templates (
+                    id TEXT PRIMARY KEY,
+                    manufacturer TEXT NOT NULL DEFAULT '',
+                    logoBase64 TEXT DEFAULT '',
                     createdAt TEXT DEFAULT (datetime('now')),
                     updatedAt TEXT DEFAULT (datetime('now'))
                 )
@@ -129,7 +144,7 @@ function initHqTables(database) {
                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
                         [s.id, s.name, s.paperWidth, s.paperHeight, s.cols, s.rows, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
                 });
-                console.log('hq_labels / hq_label_specs 테이블 확인 완료');
+                console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
                 resolve();
             });
         });
@@ -547,9 +562,9 @@ router.post('/labels', (req, res) => {
     const p = req.body;
     const id = p.id || ('LBL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO hq_labels (id, name, productName, manufacturer, price, origin, spec, barcode, memo, logoBase64, extraFields, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), now, now];
+    const sql = `INSERT INTO hq_labels (id, name, productName, manufacturer, price, origin, spec, barcode, memo, logoBase64, extraFields, layout, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '저장 성공', id });
@@ -561,8 +576,8 @@ router.put('/labels/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE hq_labels SET name=?, productName=?, manufacturer=?, price=?, origin=?, spec=?, barcode=?, memo=?, logoBase64=?, extraFields=?, updatedAt=? WHERE id=?`;
-    const params = [p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), now, id];
+    const sql = `UPDATE hq_labels SET name=?, productName=?, manufacturer=?, price=?, origin=?, spec=?, barcode=?, memo=?, logoBase64=?, extraFields=?, layout=?, updatedAt=? WHERE id=?`;
+    const params = [p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '라벨을 찾을 수 없습니다.' });
@@ -633,6 +648,36 @@ router.delete('/label-specs/:id', (req, res) => {
             if (err2) return res.status(500).json({ error: err2.message });
             res.json({ message: '삭제 성공' });
         });
+    });
+});
+
+// ==========================================
+// 로고 템플릿 API
+// ==========================================
+
+router.get('/logo-templates', (req, res) => {
+    db.all('SELECT * FROM hq_logo_templates ORDER BY manufacturer', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+router.post('/logo-templates', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('LT-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    db.run(`INSERT OR REPLACE INTO hq_logo_templates (id, manufacturer, logoBase64, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+        [id, p.manufacturer||'', p.logoBase64||'', now, now], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '저장 성공', id });
+    });
+});
+
+router.delete('/logo-templates/:id', (req, res) => {
+    db.run('DELETE FROM hq_logo_templates WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '템플릿을 찾을 수 없습니다.' });
+        res.json({ message: '삭제 성공' });
     });
 });
 

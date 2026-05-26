@@ -80,12 +80,19 @@
         .preview-title { font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
         .preview-title i { font-size: 15px; }
         .preview-sheet { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.1); position: relative; overflow: hidden; }
-        .preview-label { border: 1px dashed var(--gray-200); display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; padding: 2px; box-sizing: border-box; }
-        .preview-label .lbl-logo { max-height: 28%; max-width: 60%; object-fit: contain; margin-bottom: 2px; }
-        .preview-label .lbl-product { font-weight: 700; text-align: center; line-height: 1.2; color: var(--gray-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 95%; }
-        .preview-label .lbl-mfr { font-size: 85%; color: var(--gray-500); text-align: center; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 95%; }
+        .preview-label { border: 1px dashed var(--gray-200); position: relative; overflow: hidden; box-sizing: border-box; }
+        .preview-label .lbl-el { position: absolute; cursor: move; user-select: none; transition: box-shadow .15s; padding: 1px 2px; border-radius: 2px; }
+        .preview-label .lbl-el:hover { box-shadow: 0 0 0 1px #7c3aed; z-index: 10; }
+        .preview-label .lbl-el.dragging { box-shadow: 0 0 0 2px #7c3aed; opacity: .85; z-index: 20; }
+        .preview-label .lbl-logo { max-height: 28%; max-width: 60%; object-fit: contain; }
+        .preview-label .lbl-product { font-weight: 700; text-align: center; line-height: 1.2; color: var(--gray-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .preview-label .lbl-mfr { font-size: 85%; color: var(--gray-500); text-align: center; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .preview-label .lbl-price { font-weight: 800; color: #7c3aed; text-align: center; line-height: 1.2; }
-        .preview-label .lbl-info { font-size: 75%; color: var(--gray-400); text-align: center; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 95%; }
+        .preview-label .lbl-info { font-size: 75%; color: var(--gray-400); text-align: center; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .preview-hint { font-size: 10px; color: var(--gray-400); margin-top: 8px; text-align: center; display: flex; align-items: center; gap: 4px; justify-content: center; }
+        .preview-hint i { font-size: 13px; }
+        .btn-reset-layout { padding: 4px 10px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-weight: 600; color: var(--gray-500); cursor: pointer; transition: all .15s; margin-left: 8px; }
+        .btn-reset-layout:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-muted); }
 
         /* ── Saved Labels List ── */
         .saved-list { padding: 12px 20px; flex: 1; overflow-y: auto; }
@@ -177,6 +184,13 @@
                                     <input type="file" id="logoFileInput" accept="image/*" style="display:none;">
                                 </div>
                             </div>
+                            <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                                <select id="logoTemplateSelect" style="flex:1;min-width:0;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;">
+                                    <option value="">— 저장된 로고 불러오기 —</option>
+                                </select>
+                                <button type="button" id="btnSaveLogoTpl" style="padding:6px 10px;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;" title="현재 로고를 제조사명으로 저장"><i class='bx bx-save'></i> 템플릿 저장</button>
+                                <button type="button" id="btnDeleteLogoTpl" style="padding:6px 8px;background:transparent;color:var(--gray-400);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;cursor:pointer;" title="선택된 템플릿 삭제"><i class='bx bx-trash'></i></button>
+                            </div>
                         </div>
 
                         <div class="editor-section">
@@ -250,8 +264,9 @@
 
                 <!-- ═══ RIGHT PANEL: Preview ═══ -->
                 <div class="panel-right">
-                    <div class="preview-title"><i class='bx bx-show'></i> 미리보기</div>
-                    <div id="previewContainer"></div>
+                    <div class="preview-title"><i class='bx bx-show'></i> 미리보기 <button class="btn-reset-layout" id="btnResetLayout" title="요소 위치를 기본값으로 초기화"><i class='bx bx-reset'></i> 위치 초기화</button></div>
+                    <div class="preview-hint"><i class='bx bx-move'></i> 라벨 안의 요소를 마우스로 드래그하여 위치를 변경할 수 있습니다</div>
+                    <div id="previewContainer" style="margin-top:8px;"></div>
                 </div>
             </div>
         </main>
