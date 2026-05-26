@@ -3,7 +3,7 @@
 async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null;
+let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null,historyStack=[];
 const PP={A4:{w:210,h:297},A3:{w:297,h:420}};
 function toast(m,t='info'){const c=$('toastC');if(!c)return;const el=document.createElement('div');el.className='toast '+t;el.innerHTML=`<i class='bx bx-${t==='success'?'check-circle':t==='error'?'error-circle':t==='warning'?'error':'info-circle'}'></i> <span>${E(m)}</span>`;c.appendChild(el);setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),300)},3e3)}
 
@@ -16,14 +16,18 @@ function initLogo(){const fi=$('logoFI');$('btnUpLogo').onclick=()=>fi.click();$
 async function fetchLT(){try{const r=await af(API+'/logo-templates');if(r.ok)ltpls=await r.json()}catch(e){}$('logoTplSel').innerHTML='<option value="">— 로고 템플릿 —</option>'+ltpls.map(t=>`<option value="${t.id}">${E(t.manufacturer)}</option>`).join('')}
 function initLT(){$('logoTplSel').onchange=()=>{const t=ltpls.find(x=>x.id===$('logoTplSel').value);if(t&&t.logoBase64){$('logoImg').src=t.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none';updPv();toast(t.manufacturer+' 적용','success')}};$('btnSaveTpl').onclick=async()=>{const lg=$('logoImg').style.display!=='none'?$('logoImg').src:'';if(!lg){toast('로고 먼저 선택','warning');return}const m=$('fMfr').value.trim()||prompt('제조사명:');if(!m)return;try{await af(API+'/logo-templates',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({manufacturer:m,logoBase64:lg})});await fetchLT();toast('저장','success')}catch(e){toast('실패','error')}};$('btnDelTpl').onclick=async()=>{const id=$('logoTplSel').value;if(!id)return;if(!confirm('삭제?'))return;try{await af(API+'/logo-templates/'+id,{method:'DELETE'});await fetchLT();toast('삭제','success')}catch(e){toast('실패','error')}}}
 
+function saveHistory(){historyStack.push(JSON.stringify(layout));if(historyStack.length>30)historyStack.shift();}
+function undo(){if(historyStack.length>0){layout=JSON.parse(historyStack.pop());selectedKeys.clear();keyObjectKey=null;updPv();}}
+function deleteSelected(){if(!selectedKeys.size)return;saveHistory();selectedKeys.forEach(k=>{if(!layout[k])layout[k]={...gp(k)};layout[k].hidden=true;});selectedKeys.clear();keyObjectKey=null;updPv();}
+
 // Data
 function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
 function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
-function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;load({layout})}
+function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;historyStack=[];load({layout})}
 
 // Layout
 function dp(){return{logo:{x:50,y:15},product_lbl:{x:20,y:38},product_val:{x:60,y:38},mfr_lbl:{x:20,y:52},mfr_val:{x:60,y:52},price_lbl:{x:20,y:66},price_val:{x:60,y:66},info_lbl:{x:20,y:80},info_val:{x:60,y:80},memo_lbl:{x:20,y:92},memo_val:{x:60,y:92},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold||false}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold||false,hidden:l.hidden||false}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -68,6 +72,7 @@ function updPv(){
     let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
     for(const e of els){
         const p=gp(e.k);
+        if(p.hidden) continue;
         const sel=selectedKeys.has(e.k)?'selected':'';
         const ko=keyObjectKey===e.k?'key-object':'';
         const stFS=p.fs?`font-size:${p.fs}px;`:'';
@@ -94,6 +99,7 @@ function initInteraction(el){
         const rz=n.querySelector('.resizer');
         if(rz) rz.onmousedown=e=>{
             e.preventDefault();e.stopPropagation();
+            saveHistory();
             const k=n.dataset.key, rect=el.getBoundingClientRect();
             const startX=e.clientX, startY=e.clientY;
             const cur=gp(k); const sx0=cur.sx, sy0=cur.sy;
@@ -169,6 +175,7 @@ function initInteraction(el){
                 let dxPct=(v.clientX-startX)/rect.width*100;
                 let dyPct=(v.clientY-startY)/rect.height*100;
                 if(v.shiftKey){if(Math.abs(dxPct)>Math.abs(dyPct))dyPct=0;else dxPct=0;}
+                if(Math.abs(dxPct)>0.1 || Math.abs(dyPct)>0.1) saveHistory();
                 selectedKeys.forEach(sk=>{
                     if(!layout[sk])layout[sk]={...gp(sk)};
                     layout[sk].x=Math.round(Math.max(0,Math.min(100,initPos[sk].x+dxPct))*10)/10;
@@ -214,6 +221,7 @@ function initInteraction(el){
 }
 
     function alignElements(type) {
+        saveHistory();
         // Find all possible keys in the current UI
         const allKeys = Array.from(document.querySelectorAll('.pv-label .el')).map(n=>n.dataset.key);
         let activeKeys = selectedKeys.size > 0 ? [...selectedKeys] : allKeys;
@@ -231,14 +239,22 @@ function initInteraction(el){
             if(type==='left') targetX = Math.min(...xs);
             else if(type==='right') targetX = Math.max(...xs);
             else if(type==='center') targetX = xs.reduce((a,b)=>a+b,0)/xs.length;
+            if(type==='top') targetY = Math.min(...ys);
+            else if(type==='bottom') targetY = Math.max(...ys);
+            else if(type==='middle') targetY = ys.reduce((a,b)=>a+b,0)/ys.length;
         } else {
             if(type==='left') targetX = 10;
             else if(type==='right') targetX = 90;
             else if(type==='center') targetX = 50;
+            if(type==='top') targetY = 15;
+            else if(type==='bottom') targetY = 90;
+            else if(type==='middle') targetY = 50;
         }
 
         if(type === 'left' || type === 'center' || type === 'right') {
             activeKeys.forEach(k => layout[k].x = targetX);
+        } else if(type === 'top' || type === 'middle' || type === 'bottom') {
+            activeKeys.forEach(k => layout[k].y = targetY);
         } else if(type === 'distribute') {
             activeKeys.sort((a,b) => layout[a].y - layout[b].y);
             const startY = activeKeys.length > 1 ? layout[activeKeys[0]].y : 15;
@@ -317,7 +333,7 @@ function doPrint(){
             const{d,lo}=flat[idx],cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
             const gpp=k=>{
                 const dd=dp()[k]||{x:50,y:50}, ll=lo&&lo[k]?lo[k]:{};
-                return{x:ll.x??dd.x, y:ll.y??dd.y, sx:ll.sx??1, sy:ll.sy??1, fs:ll.fs||null, bold:ll.bold||false};
+                return{x:ll.x??dd.x, y:ll.y??dd.y, sx:ll.sx??1, sy:ll.sy??1, fs:ll.fs||null, bold:ll.bold||false, hidden:ll.hidden||false};
             };
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
             
@@ -354,6 +370,7 @@ function doPrint(){
             
             for(const e of els){
                 const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;
+                if(p.hidden) continue;
                 const stFS=p.fs?`font-size:${p.fs}px;`:'';
                 const stB=p.bold?`font-weight:bold;`:'';
                 h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}">${e.v}</div>`
@@ -403,13 +420,15 @@ document.addEventListener('DOMContentLoaded',async()=>{
     
     // Toolbar events
     if($('btnTBold')) $('btnTBold').onclick=()=>{
+        saveHistory();
         selectedKeys.forEach(k=>{
             if(!layout[k]) layout[k] = {...gp(k)};
             layout[k].bold = !layout[k].bold;
         });
         updPv();
     };
-    if($('inTSize')) $('inTSize').oninput=(e)=>{
+    if($('inTSize')) $('inTSize').onchange=(e)=>{
+        saveHistory();
         const val = parseInt(e.target.value) || null;
         selectedKeys.forEach(k=>{
             if(!layout[k]) layout[k] = {...gp(k)};
@@ -417,6 +436,20 @@ document.addEventListener('DOMContentLoaded',async()=>{
         });
         updPv();
     };
+    if($('btnUndo')) $('btnUndo').onclick=undo;
+    if($('btnTDel')) $('btnTDel').onclick=deleteSelected;
+    
+    document.addEventListener('keydown', e=>{
+        if(e.ctrlKey && e.key.toLowerCase()==='z'){
+            e.preventDefault();
+            undo();
+        }
+        if((e.key==='Delete' || e.key==='Backspace') && selectedKeys.size>0){
+            if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+            e.preventDefault();
+            deleteSelected();
+        }
+    });
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
     $('btnPrint').onclick=doPrint;
