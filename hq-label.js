@@ -3,7 +3,7 @@
 async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={};
+let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set();
 const PP={A4:{w:210,h:297},A3:{w:297,h:420}};
 function toast(m,t='info'){const c=$('toastC');if(!c)return;const el=document.createElement('div');el.className='toast '+t;el.innerHTML=`<i class='bx bx-${t==='success'?'check-circle':t==='error'?'error-circle':t==='warning'?'error':'info-circle'}'></i> <span>${E(m)}</span>`;c.appendChild(el);setTimeout(()=>{el.classList.add('fade-out');setTimeout(()=>el.remove(),300)},3e3)}
 
@@ -19,11 +19,11 @@ function initLT(){$('logoTplSel').onchange=()=>{const t=ltpls.find(x=>x.id===$('
 // Data
 function coll(){return{name:$('fName').value.trim(),productName:$('fProd').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',extraFields:[],layout}}
 function load(d){$('fName').value=d.name||'';$('fProd').value=d.productName||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}updPv()}
-function reset(){curId=null;layout={};load({})}
+function reset(){curId=null;layout={};selectedKeys.clear();load({})}
 
 // Layout
 function dp(){return{logo:{x:50,y:15},product:{x:50,y:38},mfr:{x:50,y:52},price:{x:50,y:66},info:{x:50,y:80},memo:{x:50,y:92}}}
-function gp(k){return(layout&&layout[k])?layout[k]:dp()[k]}
+function gp(k){const d=dp()[k],l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -50,22 +50,147 @@ function updPv(){
     if(d.memo)els.push({k:'memo',h:makeRow('메 모', E(d.memo))});
     
     let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
-    for(const e of els){const p=gp(e.k);s+=`<div class="el" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%)">${e.h}</div>`}
-    s+='</div></div>';c.innerHTML=s;initDrag(c.querySelector('.first-label'))
+    for(const e of els){
+        const p=gp(e.k);
+        const sel=selectedKeys.has(e.k)?'selected':'';
+        s+=`<div class="el ${sel}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy})">${e.h}<div class="resizer"></div></div>`;
+    }
+    s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
 }
-function initDrag(el){if(!el)return;el.querySelectorAll('.el').forEach(n=>{n.onmousedown=e=>{e.preventDefault();const k=n.dataset.key,r=el.getBoundingClientRect();n.classList.add('dragging');const mv=v=>{n.style.left=Math.max(0,Math.min(100,(v.clientX-r.left)/r.width*100))+'%';n.style.top=Math.max(0,Math.min(100,(v.clientY-r.top)/r.height*100))+'%'};const up=v=>{n.classList.remove('dragging');document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);layout[k]={x:Math.round(Math.max(0,Math.min(100,(v.clientX-r.left)/r.width*100))*10)/10,y:Math.round(Math.max(0,Math.min(100,(v.clientY-r.top)/r.height*100))*10)/10};updPv()};document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up)}})}
+
+function initInteraction(el){
+    if(!el) return;
+    // --- Click on element: select / shift-toggle ---
+    el.querySelectorAll('.el').forEach(n=>{
+        // Resize handle
+        const rz=n.querySelector('.resizer');
+        if(rz) rz.onmousedown=e=>{
+            e.preventDefault();e.stopPropagation();
+            const k=n.dataset.key, rect=el.getBoundingClientRect();
+            const startX=e.clientX, startY=e.clientY;
+            const cur=gp(k); const sx0=cur.sx, sy0=cur.sy;
+            const mv=v=>{
+                let dx=(v.clientX-startX)/rect.width*4;
+                let dy=(v.clientY-startY)/rect.height*4;
+                if(v.shiftKey){const d=Math.max(dx,dy);dx=d;dy=d;}
+                const nsx=Math.max(0.3,Math.min(4,sx0+dx));
+                const nsy=Math.max(0.3,Math.min(4,sy0+dy));
+                if(!layout[k])layout[k]={...gp(k)};
+                layout[k].sx=Math.round(nsx*100)/100;
+                layout[k].sy=Math.round(nsy*100)/100;
+                // Apply to all selected if multi-selected
+                if(selectedKeys.has(k)&&selectedKeys.size>1){
+                    const dsx=layout[k].sx-sx0, dsy=layout[k].sy-sy0;
+                    selectedKeys.forEach(sk=>{
+                        if(sk===k)return;
+                        if(!layout[sk])layout[sk]={...gp(sk)};
+                        const orig=gp(sk);
+                        layout[sk].sx=Math.max(0.3,Math.min(4,Math.round(((orig.sx||1)+dsx)*100)/100));
+                        layout[sk].sy=Math.max(0.3,Math.min(4,Math.round(((orig.sy||1)+dsy)*100)/100));
+                    });
+                }
+                updPv();
+            };
+            const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+            document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+            return;
+        };
+        // Move handle
+        n.onmousedown=e=>{
+            if(e.target.classList.contains('resizer'))return;
+            e.preventDefault();
+            const k=n.dataset.key, rect=el.getBoundingClientRect();
+            // Selection logic
+            if(e.shiftKey){
+                if(selectedKeys.has(k))selectedKeys.delete(k); else selectedKeys.add(k);
+                updPv(); return;
+            } else if(!selectedKeys.has(k)){
+                selectedKeys.clear(); selectedKeys.add(k); updPv();
+            }
+            // Collect initial positions of all selected
+            const startX=e.clientX, startY=e.clientY;
+            const initPos={};
+            selectedKeys.forEach(sk=>{
+                const p=gp(sk);
+                initPos[sk]={x:p.x,y:p.y};
+            });
+            n.classList.add('dragging');
+            const mv=v=>{
+                let dxPct=(v.clientX-startX)/rect.width*100;
+                let dyPct=(v.clientY-startY)/rect.height*100;
+                // Shift: constrain to single axis
+                if(v.shiftKey){if(Math.abs(dxPct)>Math.abs(dyPct))dyPct=0;else dxPct=0;}
+                selectedKeys.forEach(sk=>{
+                    const nd=el.querySelector(`.el[data-key="${sk}"]`);
+                    if(!nd)return;
+                    const nx=Math.max(0,Math.min(100,initPos[sk].x+dxPct));
+                    const ny=Math.max(0,Math.min(100,initPos[sk].y+dyPct));
+                    nd.style.left=nx+'%'; nd.style.top=ny+'%';
+                });
+            };
+            const up=v=>{
+                n.classList.remove('dragging');
+                document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+                let dxPct=(v.clientX-startX)/rect.width*100;
+                let dyPct=(v.clientY-startY)/rect.height*100;
+                if(v.shiftKey){if(Math.abs(dxPct)>Math.abs(dyPct))dyPct=0;else dxPct=0;}
+                selectedKeys.forEach(sk=>{
+                    if(!layout[sk])layout[sk]={...gp(sk)};
+                    layout[sk].x=Math.round(Math.max(0,Math.min(100,initPos[sk].x+dxPct))*10)/10;
+                    layout[sk].y=Math.round(Math.max(0,Math.min(100,initPos[sk].y+dyPct))*10)/10;
+                });
+                updPv();
+            };
+            document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+        };
+    });
+    // --- Click on empty space: deselect all or marquee ---
+    el.onmousedown=e=>{
+        if(e.target!==el)return;
+        e.preventDefault();
+        selectedKeys.clear();
+        // Marquee selection
+        const rect=el.getBoundingClientRect();
+        const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+        const mq=document.createElement('div');
+        mq.className='marquee';
+        mq.style.cssText=`left:${sx}px;top:${sy}px;width:0;height:0`;
+        el.appendChild(mq);
+        const mv=v=>{
+            const cx=v.clientX-rect.left, cy=v.clientY-rect.top;
+            mq.style.left=Math.min(sx,cx)+'px'; mq.style.top=Math.min(sy,cy)+'px';
+            mq.style.width=Math.abs(cx-sx)+'px'; mq.style.height=Math.abs(cy-sy)+'px';
+        };
+        const up=v=>{
+            document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+            const mr=mq.getBoundingClientRect();
+            el.querySelectorAll('.el').forEach(nd=>{
+                const er=nd.getBoundingClientRect();
+                if(er.left<mr.right&&er.right>mr.left&&er.top<mr.bottom&&er.bottom>mr.top){
+                    selectedKeys.add(nd.dataset.key);
+                }
+            });
+            mq.remove();
+            updPv();
+        };
+        document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    };
+}
 
 function alignElements(type) {
-    const keys = ['logo', 'product', 'mfr', 'price', 'info', 'memo'];
-    const activeKeys = keys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
+    const allKeys = ['logo', 'product', 'mfr', 'price', 'info', 'memo'];
+    // Use selected items if any, otherwise all visible items
+    let activeKeys = selectedKeys.size > 0
+        ? [...selectedKeys].filter(k => document.querySelector(`.el[data-key="${k}"]`))
+        : allKeys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
     if(!activeKeys.length) return;
-    activeKeys.forEach(k => { if(!layout[k]) layout[k] = gp(k); });
+    activeKeys.forEach(k => { if(!layout[k]) layout[k] = {...gp(k)}; });
     
     if(type === 'left') activeKeys.forEach(k => layout[k].x = 10);
     else if(type === 'center') activeKeys.forEach(k => layout[k].x = 50);
     else if(type === 'right') activeKeys.forEach(k => layout[k].x = 90);
     else if(type === 'distribute') {
-        activeKeys.sort((a,b) => layout[a].y - layout[b].y);
+        activeKeys.sort((a,b) => (layout[a]?.y??gp(a).y) - (layout[b]?.y??gp(b).y));
         const startY = 15, endY = 90;
         const step = activeKeys.length > 1 ? (endY - startY) / (activeKeys.length - 1) : 0;
         activeKeys.forEach((k, i) => layout[k].y = Math.round((startY + step * i)*10)/10);
@@ -158,7 +283,7 @@ function doPrint(){
             if(ip.length)els.push({k:'info',v:makeRow('정 보', E(ip.join(' | ')))});
             if(d.memo)els.push({k:'memo',v:makeRow('메 모', E(d.memo))});
             
-            for(const e of els){const p=gpp(e.k);h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%)">${e.v}</div>`}
+            for(const e of els){const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center">${e.v}</div>`}
             h+='</div>'}
         h+='</div>'}
     const pa=$('printArea');pa.innerHTML=h;pa.style.display='block';
@@ -173,7 +298,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     renderSpecs();
     ['fName','fProd','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>$(id).oninput=updPv);
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
-    $('btnRst').onclick=()=>{layout={};updPv();toast('초기화','info')};
+    $('btnRst').onclick=()=>{layout={};selectedKeys.clear();updPv();toast('초기화','info')};
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
     if($('pvZoom'))$('pvZoom').onchange=updPv;
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;

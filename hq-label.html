@@ -59,8 +59,13 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 .btn-align:hover{color:#7c3aed;border-color:#7c3aed;background:rgba(124,58,237,.05)}
 .pv-sheet{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);position:relative;overflow:hidden}
 .pv-label{border:1px dashed var(--gray-200);position:relative;overflow:hidden;box-sizing:border-box}
-.pv-label .el{position:absolute;cursor:move;user-select:none;transition:box-shadow .15s;padding:1px 2px;border-radius:2px}
-.pv-label .el:hover{box-shadow:0 0 0 1px #7c3aed;z-index:10}.pv-label .el.dragging{box-shadow:0 0 0 2px #7c3aed;opacity:.85;z-index:20}
+.pv-label .el{position:absolute;cursor:move;user-select:none;transition:box-shadow .15s;padding:1px 2px;border-radius:2px;transform-origin:center center}
+.pv-label .el:hover{box-shadow:0 0 0 1px #7c3aed;z-index:10}
+.pv-label .el.dragging{box-shadow:0 0 0 2px #7c3aed;opacity:.85;z-index:20}
+.pv-label .el.selected{box-shadow:0 0 0 2px #3b82f6;z-index:15}
+.pv-label .el .resizer{display:none;position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b82f6;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:30}
+.pv-label .el.selected .resizer{display:block}
+.pv-label .marquee{position:absolute;border:1px dashed #3b82f6;background:rgba(59,130,246,.08);z-index:50;pointer-events:none}
 .pv-label .p-nm{font-weight:700;text-align:center;line-height:1.2;color:var(--gray-800);white-space:nowrap}
 .pv-label .p-mfr{font-size:85%;color:var(--gray-500);text-align:center}
 .pv-label .p-prc{font-weight:800;color:#7c3aed;text-align:center}
@@ -162,5 +167,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </main></div>
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=2"></script>
+<script src="hq-label.js?v=3"></script>
 </body></html>
