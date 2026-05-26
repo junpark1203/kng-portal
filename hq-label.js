@@ -31,17 +31,23 @@ function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor(
 // Preview (single label for editor)
 function updPv(){
     const d=coll(),c=$('pvC');
-    const lw=parseFloat($('inLW')?$('inLW').value:63.5)||63.5,lh=parseFloat($('inLH')?$('inLH').value:38.1)||38.1;
-    const sc=2.8,w=lw*sc,h=lh*sc,fs=Math.max(7,Math.min(13,w/6));
+    let lw=63.5, lh=38.1;
+    const pvSpId=$('pvSpec')?$('pvSpec').value:'';
+    if(pvSpId){
+        const s=specs.find(x=>x.id===pvSpId);
+        if(s){lw=s.labelWidth||63.5;lh=s.labelHeight||38.1;}
+    }
+    const w=380, h=w*(lh/lw);
+    const fs=Math.max(10, Math.min(20, w/18));
     const els=[];
-    if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:${h*0.28}px;max-width:${w*0.6}px;object-fit:contain" src="${d.logoBase64}">`});
-    if(d.productName)els.push({k:'product',h:`<div class="p-nm" style="max-width:${w-4}px">${E(d.productName)}</div>`});
-    if(d.manufacturer)els.push({k:'mfr',h:`<div class="p-mfr" style="max-width:${w-4}px">${E(d.manufacturer)}</div>`});
-    if(d.price)els.push({k:'price',h:`<div class="p-prc">${E(d.price)}</div>`});
+    if(d.logoBase64)els.push({k:'logo',h:`<img style="max-height:${h*0.35}px;max-width:${w*0.7}px;object-fit:contain" src="${d.logoBase64}">`});
+    if(d.productName)els.push({k:'product',h:`<div class="p-nm" style="max-width:${w-10}px;font-size:110%">${E(d.productName)}</div>`});
+    if(d.manufacturer)els.push({k:'mfr',h:`<div class="p-mfr" style="max-width:${w-10}px;font-size:85%">${E(d.manufacturer)}</div>`});
+    if(d.price)els.push({k:'price',h:`<div class="p-prc" style="font-size:120%">${E(d.price)}</div>`});
     const ip=[d.origin,d.spec,d.barcode].filter(Boolean);
-    if(ip.length)els.push({k:'info',h:`<div class="p-info" style="max-width:${w-4}px">${E(ip.join(' | '))}</div>`});
-    if(d.memo)els.push({k:'memo',h:`<div class="p-info" style="max-width:${w-4}px">${E(d.memo)}</div>`});
-    let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px">`;
+    if(ip.length)els.push({k:'info',h:`<div class="p-info" style="max-width:${w-10}px;font-size:75%">${E(ip.join(' | '))}</div>`});
+    if(d.memo)els.push({k:'memo',h:`<div class="p-info" style="max-width:${w-10}px;font-size:70%">${E(d.memo)}</div>`});
+    let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
     for(const e of els){const p=gp(e.k);s+=`<div class="el" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%)">${e.h}</div>`}
     s+='</div></div>';c.innerHTML=s;initDrag(c.querySelector('.first-label'))
 }
@@ -90,7 +96,11 @@ function getPS(){
 
 // Specs
 async function fetchS(){try{const r=await af(API+'/label-specs');if(r.ok)specs=await r.json()}catch(e){}popSel()}
-function popSel(){const s=$('selSpec');if(!s)return;const p=s.value;s.innerHTML='<option value="">직접 입력</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
+function popSel(){
+    const s=$('selSpec'), pv=$('pvSpec');
+    if(s){const p=s.value;s.innerHTML='<option value="">직접 입력</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
+    if(pv){const pp=pv.value;pv.innerHTML='<option value="">기본 규격 (63.5×38.1)</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(pp&&specs.find(x=>x.id===pp))pv.value=pp;else if(specs.length)pv.value=specs.find(x=>x.isDefault)?specs.find(x=>x.isDefault).id:specs[0].id}
+}
 function renderSpecs(){$('specList').innerHTML=specs.map(s=>`<div class="sp-item"><div class="sp-hd"><div class="sp-nm">${E(s.name)} ${s.isDefault?'<span class="sp-badge">기본</span>':''}</div><div class="sp-act"><button class="ed" data-id="${s.id}"><i class='bx bx-edit'></i></button>${!s.isDefault?`<button class="dl" data-id="${s.id}"><i class='bx bx-trash'></i></button>`:''}</div></div><div class="sp-dt"><span>${s.labelWidth||'?'}×${s.labelHeight||'?'}mm</span><span>여백 ${s.marginTop}/${s.marginBottom}/${s.marginLeft}/${s.marginRight}</span></div></div>`).join('');$('specList').querySelectorAll('.ed').forEach(b=>b.onclick=()=>openSM(b.dataset.id));$('specList').querySelectorAll('.dl').forEach(b=>b.onclick=()=>delSp(b.dataset.id))}
 function openSM(id){esId=id||null;const s=id?specs.find(x=>x.id===id):null;$('mSpTitle').textContent=s?'규격 수정':'규격 추가';$('sName').value=s?s.name:'';$('sLW').value=s?s.labelWidth:63.5;$('sLH').value=s?s.labelHeight:38.1;$('sMT').value=s?s.marginTop:15;$('sMB').value=s?s.marginBottom:15;$('sML').value=s?s.marginLeft:7;$('sMR').value=s?s.marginRight:7;$('sGX').value=s?s.gapX:2.5;$('sGY').value=s?s.gapY:0;$('mSpec').style.display='flex'}
 async function saveSp(){const d={name:$('sName').value.trim(),labelWidth:parseFloat($('sLW').value)||63.5,labelHeight:parseFloat($('sLH').value)||38.1,marginTop:parseFloat($('sMT').value)||0,marginBottom:parseFloat($('sMB').value)||0,marginLeft:parseFloat($('sML').value)||0,marginRight:parseFloat($('sMR').value)||0,gapX:parseFloat($('sGX').value)||0,gapY:parseFloat($('sGY').value)||0};if(!d.name){toast('이름 입력','warning');return}try{const u=esId?`${API}/label-specs/${esId}`:`${API}/label-specs`;await af(u,{method:esId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});await fetchS();renderSpecs();$('mSpec').style.display='none';toast('저장','success')}catch(e){toast('실패','error')}}
@@ -131,6 +141,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     ['fName','fProd','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>$(id).oninput=updPv);
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={};updPv();toast('초기화','info')};
+    if($('pvSpec'))$('pvSpec').onchange=updPv;
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
     $('btnPrint').onclick=doPrint;
