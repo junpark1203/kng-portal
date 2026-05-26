@@ -156,6 +156,8 @@ function doPrint(){
 document.addEventListener('DOMContentLoaded',async()=>{
     initTabs();initLogo();initLT();
     await Promise.all([fetchL(),fetchS(),fetchLT()]);
+    renderList();
+    renderSpecs();
     ['fName','fProd','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>$(id).oninput=updPv);
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
     $('btnRst').onclick=()=>{layout={};updPv();toast('초기화','info')};
