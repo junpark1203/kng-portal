@@ -353,8 +353,15 @@ function updCalc(){
 function getPS(items){
     const p=PP[$('selPaper')?$('selPaper').value:'A4']||PP.A4;
     let sp = null;
+    let targetLabel = null;
     if(items && items.length > 0){
-        sp = specs.find(s=>s.id===(items[0].label.labelSpecId||''));
+        targetLabel = items[0].label;
+    } else if(typeof sheetSlots !== 'undefined' && sheetSlots.length > 0) {
+        const validSlot = sheetSlots.find(s=>s!==null);
+        if(validSlot) targetLabel = validSlot.d;
+    }
+    if(targetLabel){
+        sp = specs.find(s=>s.id===(targetLabel.labelSpecId||''));
     }
     return{pw:p.w,ph:p.h,lw:sp?sp.labelWidth:63.5,lh:sp?sp.labelHeight:38.1,mt:sp?sp.marginTop:15,mb:sp?sp.marginBottom:15,ml:sp?sp.marginLeft:7,mr:sp?sp.marginRight:7,gx:sp?sp.gapX:2.5,gy:sp?sp.gapY:0}
 }
