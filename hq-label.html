@@ -150,6 +150,7 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
   <div id="pvToolbar" style="display:none;align-items:center;gap:4px;margin-right:auto;margin-left:8px;padding-left:8px;border-left:1px solid var(--border)">
     <button class="btn-align" id="btnTBold" style="font-weight:bold" title="굵게(B)">B</button>
     <input type="number" id="inTSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
+    <input type="number" id="inTScale" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
     <button class="btn-align" id="btnTDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
   </div>
   <div style="display:flex;gap:4px">
@@ -179,7 +180,36 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div class="modal-ft"><button class="ba bo" id="mSpCancel">취소</button><button class="ba bp" id="mSpSave"><i class='bx bx-save'></i> 저장</button></div>
 </div></div>
 </main></div>
+<!-- Sheet Editor Overlay -->
+<div class="sp-modal-bg" id="sheetEditor" style="display:none;position:fixed;inset:0;background:#f1f5f9;z-index:10000;flex-direction:column">
+    <div style="height:50px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+        <h2 style="margin:0;font-size:16px;font-weight:700"><i class='bx bx-layer'></i> 인쇄 시트 에디터</h2>
+        <div style="font-size:12px;color:var(--gray-500);margin-right:auto">마우스 드래그로 빈 칸 이동, 요소 다중 선택 및 정렬 가능</div>
+        
+        <div id="shToolbar" style="display:none;align-items:center;gap:4px;border-right:1px solid var(--border);padding-right:12px;margin-right:4px">
+            <button class="btn-align" id="btnShBold" style="font-weight:bold" title="굵게(B)">B</button>
+            <input type="number" id="inShSize" style="width:50px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px" placeholder="크기" title="폰트 크기(px)">
+            <input type="number" id="inShScale" style="width:60px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;font-size:11px;display:none" placeholder="비율(%)" title="이미지 비율(%)">
+            <button class="btn-align" id="btnShDel" title="삭제 (Delete)" style="color:#ef4444;border-color:#fca5a5"><i class='bx bx-trash'></i></button>
+            <div style="width:1px;background:var(--border);margin:0 2px"></div>
+            <button class="btn-align" data-align="left" title="왼쪽 정렬"><i class='bx bx-align-left'></i></button>
+            <button class="btn-align" data-align="center" title="가운데 정렬"><i class='bx bx-align-middle'></i></button>
+            <button class="btn-align" data-align="right" title="오른쪽 정렬"><i class='bx bx-align-right'></i></button>
+            <button class="btn-align" data-align="top" title="상단 정렬"><i class='bx bx-align-top'></i></button>
+            <button class="btn-align" data-align="middle" title="수직 중앙 정렬"><i class='bx bx-vertical-center'></i></button>
+            <button class="btn-align" data-align="bottom" title="하단 정렬"><i class='bx bx-align-bottom'></i></button>
+        </div>
+        
+        <button class="btn-rst" id="btnShUndo" title="실행 취소 (Ctrl+Z)"><i class='bx bx-undo'></i> 되돌리기</button>
+        <button class="btn" id="btnShCancel" style="background:#fff;color:var(--text);border:1px solid var(--border)">취소</button>
+        <button class="btn btn-primary" id="btnShPrint"><i class='bx bx-printer'></i> 최종 인쇄</button>
+    </div>
+    <div id="sheetCanvasWrap" style="flex:1;overflow:auto;padding:30px;display:flex;flex-direction:column;align-items:center;gap:30px;position:relative">
+        <div id="sheetCanvas" style="position:relative"></div>
+    </div>
+</div>
+
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=8"></script>
+<script src="hq-label.js?v=9"></script>
 </body></html>

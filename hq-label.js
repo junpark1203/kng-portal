@@ -84,9 +84,16 @@ function updPv(){
     if($('pvToolbar')){
         $('pvToolbar').style.display=selectedKeys.size>0?'flex':'none';
         if(selectedKeys.size>0){
-            const lo=layout[[...selectedKeys][0]]||{};
-            $('inTSize').value=lo.fs||'';
-            $('btnTBold').style.background=lo.bold?'#e2e8f0':'';
+            const fKey = [...selectedKeys][0];
+            const p = gp(fKey);
+            $('inTSize').value=p.fs||'';
+            $('btnTBold').style.background=p.bold?'#e2e8f0':'';
+            
+            const hasImg = [...selectedKeys].some(k=>k==='logo'||k==='memoImg');
+            if($('inTScale')){
+                $('inTScale').style.display = hasImg ? 'inline-block' : 'none';
+                if(hasImg) $('inTScale').value = Math.round((p.sx||1)*100);
+            }
         }
     }
 }
@@ -317,28 +324,306 @@ function openSM(id){esId=id||null;const s=id?specs.find(x=>x.id===id):null;$('mS
 async function saveSp(){const d={name:$('sName').value.trim(),labelWidth:parseFloat($('sLW').value)||63.5,labelHeight:parseFloat($('sLH').value)||38.1,marginTop:parseFloat($('sMT').value)||0,marginBottom:parseFloat($('sMB').value)||0,marginLeft:parseFloat($('sML').value)||0,marginRight:parseFloat($('sMR').value)||0,gapX:parseFloat($('sGX').value)||0,gapY:parseFloat($('sGY').value)||0};if(!d.name){toast('이름 입력','warning');return}try{const u=esId?`${API}/label-specs/${esId}`:`${API}/label-specs`;await af(u,{method:esId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});await fetchS();renderSpecs();$('mSpec').style.display='none';toast('저장','success')}catch(e){toast('실패','error')}}
 async function delSp(id){if(!confirm('삭제?'))return;try{await af(`${API}/label-specs/${id}`,{method:'DELETE'});await fetchS();renderSpecs();toast('삭제','success')}catch(e){toast('실패','error')}}
 
-// Print
-function doPrint(){
+// Sheet Editor Print Flow
+function openSheetEditor(){
     const items=getChecked();if(!items.length){toast('라벨을 체크하세요','warning');return}
     const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
-    const flat=[];items.forEach(i=>{let lo={};try{lo=typeof i.label.layout==='string'?JSON.parse(i.label.layout||'{}'):(i.label.layout||{})}catch(e){}for(let n=0;n<i.qty;n++)flat.push({d:i.label,lo})});
-    const lps=g.cols*g.rows,sheets=Math.ceil(flat.length/lps),fs=Math.max(6,Math.min(11,s.lw/7));
-    let h='',idx=0;
-    const formatPrice = p => { if(!p)return''; let n=Number(p.replace(/,/g,'')); return isNaN(n)?E(p):n.toLocaleString()+'원'; };
-    const makeRow = (lbl, val, isPrc=false) => `<div style="display:flex;align-items:flex-start;text-align:left;line-height:1.3;white-space:nowrap;color:#000"><div style="width:2.8em;margin-right:1em;text-align-last:justify;font-weight:600">${lbl}</div><div style="font-weight:${isPrc?'800':'600'}">${isPrc?`${val}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span>`:val}</div></div>`;
+    const flat=[];items.forEach(i=>{let lo={};try{lo=typeof i.label.layout==='string'?JSON.parse(i.label.layout||'{}'):(i.label.layout||{})}catch(e){}for(let n=0;n<i.qty;n++)flat.push({d:i.label,lo:JSON.parse(JSON.stringify(lo))})});
+    const lps=g.cols*g.rows,sheets=Math.ceil(flat.length/lps)||1;
+    
+    sheetSlots=[]; sheetSelectedKeys.clear(); sheetKeyObjectKey=null; sheetHistoryStack=[];
+    for(let i=0;i<sheets*lps;i++) sheetSlots.push(i<flat.length?flat[i]:null);
+    
+    $('sheetEditor').style.display='flex';
+    renderSheet();
+}
+function renderSheet(){
+    const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
+    const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
+    const fs=Math.max(6,Math.min(11,s.lw/7));
+    
+    let h='';
+    const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
+    
+    for(let sh=0;sh<sheets;sh++){
+        h+=`<div class="sheet-page" style="width:${s.pw}mm;height:${s.ph}mm;background:#fff;position:relative;box-shadow:0 4px 12px rgba(0,0,0,0.1);flex-shrink:0;box-sizing:border-box">`;
+        for(let r=0;r<g.rows;r++)for(let c=0;c<g.cols;c++){
+            const idx=sh*lps+r*g.cols+c;
+            if(idx>=sheetSlots.length)break;
+            const slot=sheetSlots[idx], cx=s.ml+c*(s.lw+s.gx), cy=s.mt+r*(s.lh+s.gy);
+            
+            h+=`<div class="sh-slot" data-idx="${idx}" style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;border:1px dashed ${slot?'transparent':'var(--gray-300)'};box-sizing:border-box;font-size:${fs}pt;background:${slot?'none':'#fafafa'};cursor:${slot?'default':'pointer'};overflow:hidden">`;
+            if(slot){
+                const {d,lo}=slot;
+                const gpp=k=>{
+                    const dd=dp()[k]||{x:50,y:50},ll=lo&&lo[k]?lo[k]:{};
+                    return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,bold:ll.bold||false,hidden:ll.hidden||false};
+                };
+                const els=[];
+                if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:${s.lh*0.35}mm;max-width:${s.lw*0.7}mm;object-fit:contain" draggable="false">`});
+                if(d.memoImageBase64)els.push({k:'memoImg',v:`<img src="${d.memoImageBase64}" style="max-height:${s.lh*0.3}mm;max-width:${s.lw*0.7}mm;object-fit:contain" draggable="false">`});
+                
+                const isTableMode=lo&&lo.isTableMode;
+                if(isTableMode){
+                    let th=`<table class="lbl-table" style="pointer-events:none">`;
+                    if(d.productName)th+=`<tr><td style="width:3em;font-weight:600">품 명</td><td style="font-weight:600">${E(d.productName)}</td></tr>`;
+                    if(d.manufacturer)th+=`<tr><td style="font-weight:600">제조사</td><td style="font-weight:600">${E(d.manufacturer)}</td></tr>`;
+                    if(d.origin)th+=`<tr><td style="font-weight:600">브랜드</td><td style="font-weight:600">${E(d.origin)}</td></tr>`;
+                    if(d.spec)th+=`<tr><td style="font-weight:600">포장규격</td><td style="font-weight:600">${E(d.spec)}</td></tr>`;
+                    if(d.price)th+=`<tr><td style="font-weight:600">가 격</td><td style="font-weight:800">${formatPrice(d.price)}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span></td></tr>`;
+                    if(d.memo)th+=`<tr><td style="font-weight:600">비 고</td><td style="font-weight:600">${E(d.memo)}</td></tr>`;
+                    th+=`</table>`;
+                    if(th.includes('<tr>'))els.push({k:'table',v:th});
+                } else {
+                    if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                    if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
+                    if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
+                    const ip=[d.origin,d.spec].filter(Boolean);
+                    if(ip.length){els.push({k:'info_lbl',v:'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
+                    if(d.memo){els.push({k:'memo_lbl',v:'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
+                }
+                
+                for(const e of els){
+                    const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;
+                    if(p.hidden)continue;
+                    const fK=`${idx}_${e.k}`;
+                    const sel=sheetSelectedKeys.has(fK)?'sh-sel':'';
+                    const ko=sheetKeyObjectKey===fK?'sh-ko':'';
+                    const stFS=p.fs?`font-size:${p.fs}px;`:'';
+                    const stB=p.bold?`font-weight:bold;`:'';
+                    const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
+                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB};${bs}">${e.v}</div>`;
+                }
+            }
+            h+=`</div>`;
+        }
+        h+=`</div>`;
+    }
+    $('sheetCanvas').innerHTML=h;
+    initSheetInteraction();
+    updateShToolbar();
+}
 
-    for(let sh=0;sh<sheets&&idx<flat.length;sh++){
-        h+=`<div class="ps" style="width:${s.pw}mm;height:${s.ph}mm;position:relative;box-sizing:border-box">`;
-        for(let r=0;r<g.rows&&idx<flat.length;r++)for(let c=0;c<g.cols&&idx<flat.length;c++,idx++){
-            const{d,lo}=flat[idx],cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
-            const gpp=k=>{
-                const dd=dp()[k]||{x:50,y:50}, ll=lo&&lo[k]?lo[k]:{};
-                return{x:ll.x??dd.x, y:ll.y??dd.y, sx:ll.sx??1, sy:ll.sy??1, fs:ll.fs||null, bold:ll.bold||false, hidden:ll.hidden||false};
+function saveShHistory(){ sheetHistoryStack.push(JSON.stringify(sheetSlots)); if(sheetHistoryStack.length>30)sheetHistoryStack.shift(); }
+function undoSh(){ if(sheetHistoryStack.length>0){ sheetSlots=JSON.parse(sheetHistoryStack.pop()); sheetSelectedKeys.clear(); sheetKeyObjectKey=null; renderSheet(); } }
+
+function initSheetInteraction(){
+    const sc=$('sheetCanvas');
+    sc.onmousedown=e=>{
+        if(e.target.closest('.sh-el') || e.target.closest('.sh-slot')) return;
+        e.preventDefault();
+        sheetSelectedKeys.clear(); sheetKeyObjectKey=null;
+        const rect=sc.getBoundingClientRect();
+        const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+        const mq=document.createElement('div');
+        mq.className='marquee'; mq.style.cssText=`left:${sx}px;top:${sy}px;width:0;height:0`;
+        sc.appendChild(mq);
+        const mv=v=>{
+            const cx=v.clientX-rect.left, cy=v.clientY-rect.top;
+            mq.style.left=Math.min(sx,cx)+'px'; mq.style.top=Math.min(sy,cy)+'px';
+            mq.style.width=Math.abs(cx-sx)+'px'; mq.style.height=Math.abs(cy-sy)+'px';
+        };
+        const up=v=>{
+            document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+            const mr=mq.getBoundingClientRect();
+            sc.querySelectorAll('.sh-el').forEach(nd=>{
+                const er=nd.getBoundingClientRect();
+                if(er.left<mr.right&&er.right>mr.left&&er.top<mr.bottom&&er.bottom>mr.top) sheetSelectedKeys.add(nd.dataset.key);
+            });
+            mq.remove();
+            renderSheet();
+        };
+        document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+    };
+
+    sc.querySelectorAll('.sh-slot').forEach(sl=>{
+        sl.onmousedown=e=>{
+            if(e.target.closest('.sh-el')) return;
+            e.preventDefault();
+            const fromIdx = parseInt(sl.dataset.idx);
+            let dragged = false;
+            
+            const ghost = sl.cloneNode(true);
+            ghost.style.position = 'fixed'; ghost.style.pointerEvents = 'none'; ghost.style.opacity = '0.5'; ghost.style.zIndex = '99999';
+            
+            const mv=v=>{
+                if(!dragged){ dragged=true; document.body.appendChild(ghost); }
+                ghost.style.left = v.clientX + 5 + 'px'; ghost.style.top = v.clientY + 5 + 'px';
+                
+                sc.querySelectorAll('.sh-slot').forEach(t=>{ t.style.borderColor = t.dataset.idx===sl.dataset.idx?'':(sheetSlots[t.dataset.idx]?'transparent':'var(--gray-300)'); t.style.background = sheetSlots[t.dataset.idx]?'none':'#fafafa'; });
+                
+                const hover = document.elementFromPoint(v.clientX, v.clientY);
+                const hoverSlot = hover ? hover.closest('.sh-slot') : null;
+                if(hoverSlot && hoverSlot !== sl){
+                    hoverSlot.style.borderColor = 'var(--primary-color)';
+                    hoverSlot.style.background = 'var(--gray-200)';
+                }
             };
+            const up=v=>{
+                document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+                if(dragged){
+                    ghost.remove();
+                    sc.querySelectorAll('.sh-slot').forEach(t=>{ t.style.borderColor = sheetSlots[t.dataset.idx]?'transparent':'var(--gray-300)'; t.style.background = sheetSlots[t.dataset.idx]?'none':'#fafafa'; });
+                    const hover = document.elementFromPoint(v.clientX, v.clientY);
+                    const hoverSlot = hover ? hover.closest('.sh-slot') : null;
+                    if(hoverSlot && hoverSlot !== sl){
+                        const toIdx = parseInt(hoverSlot.dataset.idx);
+                        saveShHistory();
+                        const temp = sheetSlots[fromIdx]; sheetSlots[fromIdx] = sheetSlots[toIdx]; sheetSlots[toIdx] = temp;
+                        sheetSelectedKeys.clear(); sheetKeyObjectKey=null;
+                        renderSheet();
+                    }
+                } else {
+                    if(!sheetSlots[fromIdx]){
+                        const firstLabelIdx = sheetSlots.findIndex(x=>x!==null);
+                        if(firstLabelIdx !== -1 && firstLabelIdx !== fromIdx){
+                            saveShHistory();
+                            const diff = fromIdx - firstLabelIdx;
+                            const newSlots = new Array(sheetSlots.length).fill(null);
+                            for(let i=0; i<sheetSlots.length; i++){ if(sheetSlots[i] && i+diff >=0 && i+diff < newSlots.length) newSlots[i+diff] = sheetSlots[i]; }
+                            sheetSlots = newSlots;
+                            sheetSelectedKeys.clear(); sheetKeyObjectKey=null;
+                            renderSheet();
+                        }
+                    } else {
+                        sheetSelectedKeys.clear(); sheetKeyObjectKey=null; renderSheet();
+                    }
+                }
+            };
+            document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+        };
+    });
+
+    sc.querySelectorAll('.sh-el').forEach(n=>{
+        n.onmousedown=e=>{
+            e.preventDefault();e.stopPropagation();
+            const fK=n.dataset.key;
+            if(e.shiftKey){
+                if(sheetSelectedKeys.has(fK)){
+                    sheetSelectedKeys.delete(fK);
+                    if(sheetKeyObjectKey===fK)sheetKeyObjectKey=null;
+                } else sheetSelectedKeys.add(fK);
+                renderSheet(); return;
+            } else if(!sheetSelectedKeys.has(fK)){
+                sheetSelectedKeys.clear(); sheetSelectedKeys.add(fK); sheetKeyObjectKey=null; renderSheet();
+            } else {
+                sheetKeyObjectKey=fK;
+                sc.querySelectorAll('.sh-el').forEach(x=>{
+                    const k = x.dataset.key;
+                    x.style.boxShadow=sheetSelectedKeys.has(k)?(k===fK?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none';
+                });
+            }
+            
+            const startX=e.clientX, startY=e.clientY;
+            const initPos={};
+            sheetSelectedKeys.forEach(sk=>{
+                const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+                const sl=sheetSlots[idx];
+                const gpp = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{x:50,y:50};
+                initPos[sk] = {x:gpp.x??50, y:gpp.y??50};
+            });
+            const slNode = n.closest('.sh-slot');
+            const rect = slNode.getBoundingClientRect();
+            
+            const mv=v=>{
+                let dxPct=(v.clientX-startX)/rect.width*100;
+                let dyPct=(v.clientY-startY)/rect.height*100;
+                if(v.shiftKey){if(Math.abs(dxPct)>Math.abs(dyPct))dyPct=0;else dxPct=0;}
+                sheetSelectedKeys.forEach(sk=>{
+                    const nd=sc.querySelector(`.sh-el[data-key="${sk}"]`);
+                    if(nd){ nd.style.left=Math.max(0,Math.min(100,initPos[sk].x+dxPct))+'%'; nd.style.top=Math.max(0,Math.min(100,initPos[sk].y+dyPct))+'%'; }
+                });
+            };
+            const up=v=>{
+                document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);
+                let dxPct=(v.clientX-startX)/rect.width*100;
+                let dyPct=(v.clientY-startY)/rect.height*100;
+                if(v.shiftKey){if(Math.abs(dxPct)>Math.abs(dyPct))dyPct=0;else dxPct=0;}
+                if(Math.abs(dxPct)>0.1 || Math.abs(dyPct)>0.1) saveShHistory();
+                sheetSelectedKeys.forEach(sk=>{
+                    const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+                    const sl=sheetSlots[idx];
+                    if(!sl.lo) sl.lo={};
+                    if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+                    sl.lo[bk].x = Math.round(Math.max(0,Math.min(100,initPos[sk].x+dxPct))*10)/10;
+                    sl.lo[bk].y = Math.round(Math.max(0,Math.min(100,initPos[sk].y+dyPct))*10)/10;
+                });
+                renderSheet();
+            };
+            document.addEventListener('mousemove',mv);document.addEventListener('mouseup',up);
+        };
+    });
+}
+
+function updateShToolbar(){
+    const tb=$('shToolbar');if(!tb)return;
+    tb.style.display=sheetSelectedKeys.size>0?'flex':'none';
+    if(sheetSelectedKeys.size>0){
+        const fK=[...sheetSelectedKeys][0];
+        const [idx, ...b] = fK.split('_'); const bk = b.join('_');
+        const sl=sheetSlots[idx];
+        const gpp = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{};
+        $('inShSize').value=gpp.fs||'';
+        $('btnShBold').style.background=gpp.bold?'#e2e8f0':'';
+        const hasImg=[...sheetSelectedKeys].some(k=>k.endsWith('_logo')||k.endsWith('_memoImg'));
+        $('inShScale').style.display=hasImg?'inline-block':'none';
+        if(hasImg) $('inShScale').value=Math.round((gpp.sx||1)*100);
+    }
+}
+
+function alignSheetElements(type){
+    saveShHistory();
+    const activeKeys = [...sheetSelectedKeys];
+    if(!activeKeys.length)return;
+    const parsed = activeKeys.map(sk=>{ const [idxStr, ...b] = sk.split('_'); return {sk, idx:parseInt(idxStr), bk:b.join('_')}; });
+    
+    parsed.forEach(p=>{
+        const sl=sheetSlots[p.idx];
+        if(!sl.lo) sl.lo={};
+        if(!sl.lo[p.bk]){ const dd=dp()[p.bk]||{x:50,y:50}; sl.lo[p.bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+    });
+    
+    let targetX = 50, targetY = 50;
+    if(sheetKeyObjectKey && sheetSelectedKeys.has(sheetKeyObjectKey)){
+        const [idx, ...b] = sheetKeyObjectKey.split('_'); const bk = b.join('_');
+        const sl=sheetSlots[idx]; targetX = sl.lo[bk].x; targetY = sl.lo[bk].y;
+    } else {
+        const xs = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].x);
+        const ys = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].y);
+        if(type==='left') targetX=Math.min(...xs); else if(type==='right') targetX=Math.max(...xs); else if(type==='center') targetX=xs.reduce((a,b)=>a+b,0)/xs.length;
+        if(type==='top') targetY=Math.min(...ys); else if(type==='bottom') targetY=Math.max(...ys); else if(type==='middle') targetY=ys.reduce((a,b)=>a+b,0)/ys.length;
+    }
+    
+    if(type==='left'||type==='center'||type==='right') parsed.forEach(p=>sheetSlots[p.idx].lo[p.bk].x=targetX);
+    else if(type==='top'||type==='middle'||type==='bottom') parsed.forEach(p=>sheetSlots[p.idx].lo[p.bk].y=targetY);
+    renderSheet();
+}
+
+function executePrint(){
+    const s=getPS(),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
+    const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
+    const fs=Math.max(6,Math.min(11,s.lw/7));
+    let h='';
+    const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
+    
+    for(let sh=0;sh<sheets;sh++){
+        h+=`<div class="ps" style="width:${s.pw}mm;height:${s.ph}mm;position:relative;box-sizing:border-box">`;
+        for(let r=0;r<g.rows;r++)for(let c=0;c<g.cols;c++){
+            const idx=sh*lps+r*g.cols+c;
+            if(idx>=sheetSlots.length)break;
+            const slot=sheetSlots[idx];
+            if(!slot) continue;
+            
+            const cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
+            const {d,lo}=slot;
+            const gpp=k=>{
+                const dd=dp()[k]||{x:50,y:50},ll=lo&&lo[k]?lo[k]:{};
+                return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,bold:ll.bold||false,hidden:ll.hidden||false};
+            };
+            
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
             
-            // 컷팅 가이드 (네 모서리 십자 마크)
-            const cm = `width:3mm;height:3mm;position:absolute;border:0 solid #ccc;`;
+            const cm=`width:3mm;height:3mm;position:absolute;border:0 solid #ccc;`;
             h+=`<div style="${cm}left:0;top:0;border-left-width:1px;border-top-width:1px"></div>`;
             h+=`<div style="${cm}right:0;top:0;border-right-width:1px;border-top-width:1px"></div>`;
             h+=`<div style="${cm}left:0;bottom:0;border-left-width:1px;border-bottom-width:1px"></div>`;
@@ -348,35 +633,37 @@ function doPrint(){
             if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:${s.lh*0.35}mm;max-width:${s.lw*0.7}mm;object-fit:contain">`});
             if(d.memoImageBase64)els.push({k:'memoImg',v:`<img src="${d.memoImageBase64}" style="max-height:${s.lh*0.3}mm;max-width:${s.lw*0.7}mm;object-fit:contain">`});
             
-            const isTableMode = lo && lo.isTableMode;
+            const isTableMode=lo&&lo.isTableMode;
             if(isTableMode){
-                let th = `<table class="lbl-table">`;
+                let th=`<table class="lbl-table">`;
                 if(d.productName)th+=`<tr><td style="width:3em;font-weight:600">품 명</td><td style="font-weight:600">${E(d.productName)}</td></tr>`;
                 if(d.manufacturer)th+=`<tr><td style="font-weight:600">제조사</td><td style="font-weight:600">${E(d.manufacturer)}</td></tr>`;
                 if(d.origin)th+=`<tr><td style="font-weight:600">브랜드</td><td style="font-weight:600">${E(d.origin)}</td></tr>`;
                 if(d.spec)th+=`<tr><td style="font-weight:600">포장규격</td><td style="font-weight:600">${E(d.spec)}</td></tr>`;
                 if(d.price)th+=`<tr><td style="font-weight:600">가 격</td><td style="font-weight:800">${formatPrice(d.price)}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span></td></tr>`;
                 if(d.memo)th+=`<tr><td style="font-weight:600">비 고</td><td style="font-weight:600">${E(d.memo)}</td></tr>`;
-                th += `</table>`;
-                if(th.includes('<tr>')) els.push({k:'table', v:th});
+                th+=`</table>`;
+                if(th.includes('<tr>'))els.push({k:'table',v:th});
             } else {
-                if(d.productName){ els.push({k:'product_lbl',v:'품 명'}); els.push({k:'product_val',v:E(d.productName)}); }
-                if(d.manufacturer){ els.push({k:'mfr_lbl',v:'제조사'}); els.push({k:'mfr_val',v:E(d.manufacturer)}); }
-                if(d.price){ els.push({k:'price_lbl',v:'가 격'}); els.push({k:'price_val',v:formatPrice(d.price)}); }
+                if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
+                if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                 const ip=[d.origin,d.spec].filter(Boolean);
-                if(ip.length){ els.push({k:'info_lbl',v:'정 보'}); els.push({k:'info_val',v:E(ip.join(' | '))}); }
-                if(d.memo){ els.push({k:'memo_lbl',v:'메 모'}); els.push({k:'memo_val',v:E(d.memo)}); }
+                if(ip.length){els.push({k:'info_lbl',v:'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
+                if(d.memo){els.push({k:'memo_lbl',v:'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
             }
             
             for(const e of els){
                 const p=gpp(e.k);const psx=p.sx??1,psy=p.sy??1;
-                if(p.hidden) continue;
+                if(p.hidden)continue;
                 const stFS=p.fs?`font-size:${p.fs}px;`:'';
                 const stB=p.bold?`font-weight:bold;`:'';
                 h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}">${e.v}</div>`
             }
-            h+='</div>'}
-        h+='</div>'}
+            h+='</div>';
+        }
+        h+='</div>';
+    }
     const pa=$('printArea');pa.innerHTML=h;pa.style.display='block';
     setTimeout(()=>{window.print();setTimeout(()=>{pa.style.display='none'},500)},200)
 }
@@ -418,6 +705,64 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if($('pvZoom'))$('pvZoom').onchange=updPv;
     if($('chkTableMode'))$('chkTableMode').onchange=updPv;
     
+    // Sheet Editor Toolbar
+    $('btnShCancel').onclick = () => $('sheetEditor').style.display='none';
+    $('btnShPrint').onclick = executePrint;
+    $('btnShUndo').onclick = undoSh;
+    $('btnShDel').onclick = () => {
+        if(!sheetSelectedKeys.size) return;
+        saveShHistory();
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl = sheetSlots[idx];
+            if(!sl.lo) sl.lo={};
+            if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+            sl.lo[bk].hidden = true;
+        });
+        sheetSelectedKeys.clear(); sheetKeyObjectKey=null;
+        renderSheet();
+    };
+    $('btnShBold').onclick = () => {
+        saveShHistory();
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl = sheetSlots[idx];
+            if(!sl.lo) sl.lo={};
+            if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+            sl.lo[bk].bold = !sl.lo[bk].bold;
+        });
+        renderSheet();
+    };
+    $('inShSize').onchange = (e) => {
+        saveShHistory();
+        const val = parseInt(e.target.value) || null;
+        sheetSelectedKeys.forEach(sk=>{
+            const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+            const sl = sheetSlots[idx];
+            if(!sl.lo) sl.lo={};
+            if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+            sl.lo[bk].fs = val;
+        });
+        renderSheet();
+    };
+    $('inShScale').onchange = (e) => {
+        saveShHistory();
+        const val = parseInt(e.target.value) || null;
+        if(val){
+            sheetSelectedKeys.forEach(sk=>{
+                const [idx, ...b] = sk.split('_'); const bk = b.join('_');
+                if(bk==='logo'||bk==='memoImg'){
+                    const sl = sheetSlots[idx];
+                    if(!sl.lo) sl.lo={};
+                    if(!sl.lo[bk]){ const dd=dp()[bk]||{x:50,y:50}; sl.lo[bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
+                    sl.lo[bk].sx = val/100; sl.lo[bk].sy = val/100;
+                }
+            });
+            renderSheet();
+        }
+    };
+    document.querySelectorAll('#shToolbar .btn-align[data-align]').forEach(b=>b.onclick=()=>alignSheetElements(b.dataset.align));
+    
     // Toolbar events
     if($('btnTBold')) $('btnTBold').onclick=()=>{
         saveHistory();
@@ -436,23 +781,38 @@ document.addEventListener('DOMContentLoaded',async()=>{
         });
         updPv();
     };
+    if($('inTScale')) $('inTScale').onchange=(e)=>{
+        saveHistory();
+        const val = parseInt(e.target.value) || null;
+        if(val) {
+            selectedKeys.forEach(k=>{
+                if(k==='logo'||k==='memoImg'){
+                    if(!layout[k]) layout[k] = {...gp(k)};
+                    layout[k].sx = val / 100;
+                    layout[k].sy = val / 100;
+                }
+            });
+            updPv();
+        }
+    };
     if($('btnUndo')) $('btnUndo').onclick=undo;
     if($('btnTDel')) $('btnTDel').onclick=deleteSelected;
     
     document.addEventListener('keydown', e=>{
+        const isSheet = $('sheetEditor').style.display === 'flex';
         if(e.ctrlKey && e.key.toLowerCase()==='z'){
             e.preventDefault();
-            undo();
+            if(isSheet) undoSh(); else undo();
         }
-        if((e.key==='Delete' || e.key==='Backspace') && selectedKeys.size>0){
+        if((e.key==='Delete' || e.key==='Backspace') && (isSheet ? sheetSelectedKeys.size>0 : selectedKeys.size>0)){
             if(e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
             e.preventDefault();
-            deleteSelected();
+            if(isSheet) $('btnShDel').click(); else deleteSelected();
         }
     });
     $('selPaper').onchange=$('inLW').oninput=$('inLH').oninput=updCalc;
     $('selSpec').onchange=()=>{const s=specs.find(x=>x.id===$('selSpec').value);if(s){$('inLW').value=s.labelWidth||63.5;$('inLH').value=s.labelHeight||38.1}updCalc()};
-    $('btnPrint').onclick=doPrint;
+    $('btnPrint').onclick=openSheetEditor;
     $('btnAddSp').onclick=()=>openSM(null);
     $('mSpX').onclick=$('mSpCancel').onclick=()=>$('mSpec').style.display='none';
     $('mSpSave').onclick=saveSp;
