@@ -307,13 +307,14 @@ function initInteraction(el){
         keyObjectKey=null;
         // Marquee selection
         const rect=el.getBoundingClientRect();
-        const sx=e.clientX-rect.left, sy=e.clientY-rect.top;
+        const zoom=parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
+        const sx=(e.clientX-rect.left)/zoom, sy=(e.clientY-rect.top)/zoom;
         const mq=document.createElement('div');
         mq.className='marquee';
         mq.style.cssText=`left:${sx}px;top:${sy}px;width:0;height:0`;
         el.appendChild(mq);
         const mv=v=>{
-            const cx=v.clientX-rect.left, cy=v.clientY-rect.top;
+            const cx=(v.clientX-rect.left)/zoom, cy=(v.clientY-rect.top)/zoom;
             mq.style.left=Math.min(sx,cx)+'px'; mq.style.top=Math.min(sy,cy)+'px';
             mq.style.width=Math.abs(cx-sx)+'px'; mq.style.height=Math.abs(cy-sy)+'px';
         };
