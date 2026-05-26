@@ -852,14 +852,15 @@ function executePrint(){
                 th+=`</table>`;
                 if(th.includes('<tr>'))els.push({k:'table',v:th});
             } else {
-                if(d.productName){els.push({k:'product_lbl',v:'품 명'});els.push({k:'product_val',v:E(d.productName)});}
-                if(d.color){els.push({k:'color_lbl',v:'컬 러'});els.push({k:'color_val',v:E(d.color)});}
-                if(d.size){els.push({k:'size_lbl',v:'사이즈'});els.push({k:'size_val',v:E(d.size)});}
-                if(d.manufacturer){els.push({k:'mfr_lbl',v:'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
-                if(d.price){els.push({k:'price_lbl',v:'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
+                const t=k=>lo&&lo[k]&&lo[k].text?lo[k].text:dp()[k]?.defaultText||'';
+                if(d.productName){els.push({k:'product_lbl',v:t('product_lbl')||'품 명'});els.push({k:'product_val',v:E(d.productName)});}
+                if(d.color){els.push({k:'color_lbl',v:t('color_lbl')||'컬 러'});els.push({k:'color_val',v:E(d.color)});}
+                if(d.size){els.push({k:'size_lbl',v:t('size_lbl')||'사이즈'});els.push({k:'size_val',v:E(d.size)});}
+                if(d.manufacturer){els.push({k:'mfr_lbl',v:t('mfr_lbl')||'제조사'});els.push({k:'mfr_val',v:E(d.manufacturer)});}
+                if(d.price){els.push({k:'price_lbl',v:t('price_lbl')||'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                 const ip=[d.origin,d.spec].filter(Boolean);
-                if(ip.length){els.push({k:'info_lbl',v:'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
-                if(d.memo){els.push({k:'memo_lbl',v:'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
+                if(ip.length){els.push({k:'info_lbl',v:t('info_lbl')||'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
+                if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
             }
             
             for(const e of els){

@@ -82,7 +82,10 @@ function initHqTables(database) {
                 CREATE TABLE IF NOT EXISTS hq_labels (
                     id TEXT PRIMARY KEY,
                     name TEXT NOT NULL DEFAULT '',
+                    labelSpecId TEXT DEFAULT '',
                     productName TEXT DEFAULT '',
+                    color TEXT DEFAULT '',
+                    size TEXT DEFAULT '',
                     manufacturer TEXT DEFAULT '',
                     price TEXT DEFAULT '',
                     origin TEXT DEFAULT '',
@@ -97,9 +100,12 @@ function initHqTables(database) {
                     updatedAt TEXT DEFAULT (datetime('now'))
                 )
             `, () => {
-                // layout, memoImageBase64 컬럼 추가 (기존 DB 호환)
+                // 기존 DB 호환 - 누락 컬럼 추가
                 database.run(`ALTER TABLE hq_labels ADD COLUMN layout TEXT DEFAULT '{}'`, () => {});
                 database.run(`ALTER TABLE hq_labels ADD COLUMN memoImageBase64 TEXT DEFAULT ''`, () => {});
+                database.run(`ALTER TABLE hq_labels ADD COLUMN color TEXT DEFAULT ''`, () => {});
+                database.run(`ALTER TABLE hq_labels ADD COLUMN size TEXT DEFAULT ''`, () => {});
+                database.run(`ALTER TABLE hq_labels ADD COLUMN labelSpecId TEXT DEFAULT ''`, () => {});
             });
 
             // 로고 템플릿 테이블 (제조사별 로고 저장)
@@ -569,9 +575,9 @@ router.post('/labels', (req, res) => {
     const p = req.body;
     const id = p.id || ('LBL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO hq_labels (id, name, productName, manufacturer, price, origin, spec, barcode, memo, logoBase64, memoImageBase64, extraFields, layout, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', p.memoImageBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, now];
+    const sql = `INSERT INTO hq_labels (id, name, labelSpecId, productName, color, size, manufacturer, price, origin, spec, barcode, memo, logoBase64, memoImageBase64, extraFields, layout, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.name||'', p.labelSpecId||'', p.productName||'', p.color||'', p.size||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', p.memoImageBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '저장 성공', id });
@@ -583,8 +589,8 @@ router.put('/labels/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE hq_labels SET name=?, productName=?, manufacturer=?, price=?, origin=?, spec=?, barcode=?, memo=?, logoBase64=?, memoImageBase64=?, extraFields=?, layout=?, updatedAt=? WHERE id=?`;
-    const params = [p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', p.memoImageBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, id];
+    const sql = `UPDATE hq_labels SET name=?, labelSpecId=?, productName=?, color=?, size=?, manufacturer=?, price=?, origin=?, spec=?, barcode=?, memo=?, logoBase64=?, memoImageBase64=?, extraFields=?, layout=?, updatedAt=? WHERE id=?`;
+    const params = [p.name||'', p.labelSpecId||'', p.productName||'', p.color||'', p.size||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', p.memoImageBase64||'', JSON.stringify(p.extraFields||[]), JSON.stringify(p.layout||{}), now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '라벨을 찾을 수 없습니다.' });
