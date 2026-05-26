@@ -66,6 +66,8 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 .pv-label .el .resizer{display:none;position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b82f6;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:30}
 .pv-label .el.selected .resizer{display:block}
 .pv-label .marquee{position:absolute;border:1px dashed #3b82f6;background:rgba(59,130,246,.08);z-index:50;pointer-events:none}
+.pv-label .lbl-table{border-collapse:collapse;width:100%}
+.pv-label .lbl-table td{padding:2px 4px;vertical-align:top;border:1px solid rgba(0,0,0,0.1);line-height:1.3;white-space:nowrap}
 .pv-label .p-nm{font-weight:700;text-align:center;line-height:1.2;color:var(--gray-800);white-space:nowrap}
 .pv-label .p-mfr{font-size:85%;color:var(--gray-500);text-align:center}
 .pv-label .p-prc{font-weight:800;color:#7c3aed;text-align:center}
@@ -110,9 +112,9 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div class="fg"><label>라벨 이름 (저장용)</label><input id="fName" placeholder="예: K2 안전화 라벨"></div>
 <div class="fg"><label>품명</label><input id="fProd" placeholder="에어윈드베스트 선풍기조끼"></div>
 <div class="fr"><div class="fg"><label>제조사</label><input id="fMfr" placeholder="K2 세이프티"></div><div class="fg"><label>가격</label><input id="fPrice" placeholder="₩45,000"></div></div>
-<div class="fr"><div class="fg"><label>원산지</label><input id="fOrigin" placeholder="대한민국"></div><div class="fg"><label>규격</label><input id="fSpec" placeholder="FREE"></div></div>
-<div class="fg"><label>바코드</label><input id="fBarcode" placeholder="8801234567890"></div>
-<div class="fg"><label>비고</label><textarea id="fMemo" placeholder="메모"></textarea></div>
+<div class="fr"><div class="fg"><label>브랜드</label><input id="fOrigin" placeholder="K2"></div><div class="fg"><label>포장규격</label><input id="fSpec" placeholder="FREE"></div></div>
+<div class="fg" style="display:none"><label>바코드</label><input id="fBarcode" placeholder="8801234567890"></div>
+<div class="fg"><div style="display:flex;justify-content:space-between;align-items:center"><label>비고</label><button id="btnUpMemoImg" style="border:none;background:none;color:#7c3aed;font-size:11px;cursor:pointer;padding:0"><i class='bx bx-image-add'></i> 이미지 첨부</button></div><textarea id="fMemo" placeholder="메모"></textarea><div id="memoImgWrapper" style="display:none;margin-top:4px;position:relative"><img id="memoImg" src="" style="max-height:80px;border-radius:4px;border:1px solid #ddd"><button id="btnClrMemoImg" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;display:flex;align-items:center;justify-content:center"><i class='bx bx-x'></i></button></div><input type="file" id="memoFI" accept="image/*" style="display:none"></div>
 </div>
 <div class="actions">
 <button class="ba bp" id="btnSave"><i class='bx bx-save'></i> 저장</button>
@@ -140,7 +142,7 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </div>
 </div>
 <div class="right">
-<div class="pv-title"><i class='bx bx-show'></i> 미리보기 <select id="pvZoom" style="margin-left:auto; margin-right:8px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; font-size:11px; font-weight:normal; outline:none"><option value="1">100%</option><option value="1.2">120%</option><option value="1.5" selected>150%</option><option value="2">200%</option></select><button class="btn-rst" id="btnRst"><i class='bx bx-reset'></i> 위치 초기화</button></div>
+<div class="pv-title"><i class='bx bx-show'></i> 미리보기 <label style="margin-left:auto;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="checkbox" id="chkTableMode"> 테이블 모드</label><select id="pvZoom" style="margin-left:8px; margin-right:8px; padding:3px 6px; border:1px solid var(--border); border-radius:4px; font-size:11px; font-weight:normal; outline:none"><option value="1">100%</option><option value="1.2">120%</option><option value="1.5" selected>150%</option><option value="2">200%</option></select><button class="btn-rst" id="btnRst"><i class='bx bx-reset'></i> 위치 초기화</button></div>
 <div class="pv-hint">
   <div style="display:flex;align-items:center;gap:4px"><i class='bx bx-move'></i> 요소를 드래그하여 위치 변경</div>
   <div style="display:flex;gap:4px">
@@ -167,5 +169,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </main></div>
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=3"></script>
+<script src="hq-label.js?v=4"></script>
 </body></html>
