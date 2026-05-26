@@ -408,7 +408,7 @@ function renderSheet(items){
                 const {d,lo}=slot;
                 const gpp=k=>{
                     const dd=dp()[k]||{x:50,y:50},ll=lo&&lo[k]?lo[k]:{};
-                    return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,bold:ll.bold||false,hidden:ll.hidden||false};
+                    return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,w:ll.w||null,bold:ll.bold??dd.bold??false,nowrap:ll.nowrap||false,textAlign:ll.textAlign||'left',hidden:ll.hidden||false};
                 };
                 const els=[];
                 if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:${s.lh*0.35}mm;max-width:${s.lw*0.7}mm;object-fit:contain" draggable="false">`});
@@ -684,7 +684,7 @@ function executePrint(){
             const {d,lo}=slot;
             const gpp=k=>{
                 const dd=dp()[k]||{x:50,y:50},ll=lo&&lo[k]?lo[k]:{};
-                return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,bold:ll.bold||false,hidden:ll.hidden||false};
+                return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,w:ll.w||null,bold:ll.bold??dd.bold??false,nowrap:ll.nowrap||false,textAlign:ll.textAlign||'left',hidden:ll.hidden||false};
             };
             
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
