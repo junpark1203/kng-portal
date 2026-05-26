@@ -74,8 +74,63 @@ function initHqTables(database) {
                 database.run(`ALTER TABLE hq_transactions ADD COLUMN batchId TEXT`, (err) => {
                     // Ignore error if column already exists
                     console.log('hq_products / hq_transactions / hq_metrics 테이블 확인 완료');
-                    resolve();
                 });
+            });
+
+            // 라벨 데이터 테이블
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_labels (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL DEFAULT '',
+                    productName TEXT DEFAULT '',
+                    manufacturer TEXT DEFAULT '',
+                    price TEXT DEFAULT '',
+                    origin TEXT DEFAULT '',
+                    spec TEXT DEFAULT '',
+                    barcode TEXT DEFAULT '',
+                    memo TEXT DEFAULT '',
+                    logoBase64 TEXT DEFAULT '',
+                    extraFields TEXT DEFAULT '[]',
+                    createdAt TEXT DEFAULT (datetime('now')),
+                    updatedAt TEXT DEFAULT (datetime('now'))
+                )
+            `);
+
+            // 라벨 용지 규격 테이블
+            database.run(`
+                CREATE TABLE IF NOT EXISTS hq_label_specs (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL DEFAULT '',
+                    paperWidth REAL DEFAULT 210,
+                    paperHeight REAL DEFAULT 297,
+                    cols INTEGER DEFAULT 3,
+                    rows INTEGER DEFAULT 7,
+                    marginTop REAL DEFAULT 15,
+                    marginBottom REAL DEFAULT 15,
+                    marginLeft REAL DEFAULT 7,
+                    marginRight REAL DEFAULT 7,
+                    gapX REAL DEFAULT 2,
+                    gapY REAL DEFAULT 0,
+                    isDefault INTEGER DEFAULT 0,
+                    createdAt TEXT DEFAULT (datetime('now')),
+                    updatedAt TEXT DEFAULT (datetime('now'))
+                )
+            `, () => {
+                // 기본 용지 규격 시딩
+                const defaultSpecs = [
+                    { id: 'LS-A4-21', name: 'A4 21칸 (3×7)', paperWidth: 210, paperHeight: 297, cols: 3, rows: 7, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2, gapY: 0 },
+                    { id: 'LS-A4-24', name: 'A4 24칸 (3×8)', paperWidth: 210, paperHeight: 297, cols: 3, rows: 8, marginTop: 12, marginBottom: 12, marginLeft: 7, marginRight: 7, gapX: 2, gapY: 0 },
+                    { id: 'LS-A4-40', name: 'A4 40칸 (4×10)', paperWidth: 210, paperHeight: 297, cols: 4, rows: 10, marginTop: 12, marginBottom: 12, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
+                    { id: 'LS-A4-65', name: 'A4 65칸 (5×13)', paperWidth: 210, paperHeight: 297, cols: 5, rows: 13, marginTop: 11, marginBottom: 11, marginLeft: 4, marginRight: 4, gapX: 2, gapY: 0 }
+                ];
+                const now = new Date().toISOString();
+                defaultSpecs.forEach(s => {
+                    database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                        [s.id, s.name, s.paperWidth, s.paperHeight, s.cols, s.rows, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
+                });
+                console.log('hq_labels / hq_label_specs 테이블 확인 완료');
+                resolve();
             });
         });
     });
@@ -463,6 +518,121 @@ router.post('/migrate', (req, res) => {
                 metrics: metrics ? 'updated' : 'skipped'
             });
         }, 500);
+    });
+});
+
+// ==========================================
+// 라벨 API
+// ==========================================
+
+// 라벨 목록 조회
+router.get('/labels', (req, res) => {
+    db.all('SELECT * FROM hq_labels ORDER BY updatedAt DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 라벨 단일 조회
+router.get('/labels/:id', (req, res) => {
+    db.get('SELECT * FROM hq_labels WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '라벨을 찾을 수 없습니다.' });
+        res.json(row);
+    });
+});
+
+// 라벨 등록
+router.post('/labels', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('LBL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO hq_labels (id, name, productName, manufacturer, price, origin, spec, barcode, memo, logoBase64, extraFields, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '저장 성공', id });
+    });
+});
+
+// 라벨 수정
+router.put('/labels/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE hq_labels SET name=?, productName=?, manufacturer=?, price=?, origin=?, spec=?, barcode=?, memo=?, logoBase64=?, extraFields=?, updatedAt=? WHERE id=?`;
+    const params = [p.name||'', p.productName||'', p.manufacturer||'', p.price||'', p.origin||'', p.spec||'', p.barcode||'', p.memo||'', p.logoBase64||'', JSON.stringify(p.extraFields||[]), now, id];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '라벨을 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 라벨 삭제 (다중)
+router.post('/labels/delete', (req, res) => {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: '삭제할 ID 배열이 필요합니다.' });
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    db.run(`DELETE FROM hq_labels WHERE id IN (${placeholders})`, ids, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: '삭제 성공', deletedCount: this.changes });
+    });
+});
+
+// ==========================================
+// 라벨 용지 규격 API
+// ==========================================
+
+// 규격 목록 조회
+router.get('/label-specs', (req, res) => {
+    db.all('SELECT * FROM hq_label_specs ORDER BY isDefault DESC, name', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 규격 등록
+router.post('/label-specs', (req, res) => {
+    const p = req.body;
+    const id = p.id || ('LS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
+    const now = new Date().toISOString();
+    const sql = `INSERT INTO hq_label_specs (id, name, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`;
+    const params = [id, p.name||'', p.paperWidth||210, p.paperHeight||297, p.cols||3, p.rows||7, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, now];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '등록 성공', id });
+    });
+});
+
+// 규격 수정
+router.put('/label-specs/:id', (req, res) => {
+    const id = req.params.id;
+    const p = req.body;
+    const now = new Date().toISOString();
+    const sql = `UPDATE hq_label_specs SET name=?, paperWidth=?, paperHeight=?, cols=?, rows=?, marginTop=?, marginBottom=?, marginLeft=?, marginRight=?, gapX=?, gapY=?, updatedAt=? WHERE id=?`;
+    const params = [p.name||'', p.paperWidth||210, p.paperHeight||297, p.cols||3, p.rows||7, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, id];
+    db.run(sql, params, function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '규격을 찾을 수 없습니다.' });
+        res.json({ message: '수정 성공' });
+    });
+});
+
+// 규격 삭제 (기본 규격은 삭제 불가)
+router.delete('/label-specs/:id', (req, res) => {
+    db.get('SELECT isDefault FROM hq_label_specs WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '규격을 찾을 수 없습니다.' });
+        if (row.isDefault) return res.status(400).json({ error: '기본 규격은 삭제할 수 없습니다.' });
+        db.run('DELETE FROM hq_label_specs WHERE id = ?', [req.params.id], function(err2) {
+            if (err2) return res.status(500).json({ error: err2.message });
+            res.json({ message: '삭제 성공' });
+        });
     });
 });
 
