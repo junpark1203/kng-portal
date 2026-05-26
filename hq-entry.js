@@ -147,7 +147,7 @@
     //  Autocomplete (IN mode)
     // =============================================
     let activeDropdown = null;
-    function closeAutocomplete() { if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; } }
+    function closeAutocomplete() { if (activeDropdown) { activeDropdown.remove(); activeDropdown = null; document.body.style.paddingBottom = '0px'; } }
 
     // IN mode autocomplete
     function showAutocomplete(input, row) {
@@ -191,6 +191,7 @@
         });
         input.parentNode.appendChild(list);
         activeDropdown = list;
+        document.body.style.paddingBottom = '250px';
     }
 
     // OUT mode searchable dropdown — substring match on brand/name/color/size
@@ -214,6 +215,7 @@
             list.innerHTML = `<div class="autocomplete-item" style="color:var(--gray-400);cursor:default;justify-content:center;">검색 결과 없음</div>`;
             input.parentNode.appendChild(list);
             activeDropdown = list;
+            document.body.style.paddingBottom = '250px';
             return;
         }
 
@@ -248,6 +250,7 @@
         });
         input.parentNode.appendChild(list);
         activeDropdown = list;
+        document.body.style.paddingBottom = '250px';
     }
 
     document.addEventListener('click', e => {
