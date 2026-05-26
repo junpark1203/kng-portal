@@ -42,8 +42,7 @@ function updPv(){
         if(sp){ lw = sp.labelWidth||63.5; lh = sp.labelHeight||38.1; }
     }
     const zoom=parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
-    const w=lw*3.78*zoom, h=lh*3.78*zoom;
-    const fs=Math.max(10, Math.min(20, w/18));
+    const fs=Math.max(10, Math.min(20, (lw*3.78)/18));
     
     const formatPrice = p => { if(!p)return''; let n=Number(p.replace(/,/g,'')); return isNaN(n)?E(p):n.toLocaleString()+'원'; };
     const makeRow = (lbl, val, isPrc=false) => `<div style="display:flex;align-items:flex-start;text-align:left;line-height:1.3;white-space:nowrap;color:#000"><div style="width:2.8em;margin-right:1em;text-align-last:justify;font-weight:600">${lbl}</div><div style="font-weight:${isPrc?'800':'600'}">${isPrc?`${val}<br><span style="font-size:75%;font-weight:normal">(부가세 포함)</span>`:val}</div></div>`;
@@ -78,20 +77,20 @@ function updPv(){
         if(d.memo){ els.push({k:'memo_lbl',h:t('memo_lbl')||'메 모'}); els.push({k:'memo_val',h:E(d.memo)}); }
     }
     
-    let s=`<div class="pv-sheet" style="width:${w}px;height:${h}px;position:relative;background:#fff"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:${w}px;height:${h}px;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset">`;
+    let s=`<div style="width:${lw*3.78*zoom}px;height:${lh*3.78*zoom}px;display:flex;align-items:center;justify-content:center;"><div class="pv-sheet" style="width:${lw}mm;height:${lh}mm;position:relative;background:#fff;transform:scale(${zoom});transform-origin:center center;"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:100%;height:100%;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset;box-sizing:border-box;">`;
     for(const e of els){
         const p=gp(e.k);
         if(p.hidden) continue;
         const sel=selectedKeys.has(e.k)?'selected':'';
         const ko=keyObjectKey===e.k?'key-object':'';
-        const stFS=p.fs?`font-size:${Math.round(p.fs * zoom)}px;`:'';
+        const stFS=p.fs?`font-size:${p.fs}px;`:'';
         const stB=p.bold?`font-weight:bold;`:'';
         const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
         const stWd=p.w?`width:${p.w}%;`:'';
         const stAlign=p.textAlign?`text-align:${p.textAlign};`:'';
         s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}${stWd}${stAlign}">${e.h}<div class="resizer"></div></div>`;
     }
-    s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
+    s+='</div></div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
 
     if($('pvToolbar')){
         $('pvToolbar').style.display=selectedKeys.size>0?'flex':'none';
@@ -477,9 +476,7 @@ function openSheetEditor(){
 function renderSheet(items){
     const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
-    const zoom = parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
-    const pvFs = Math.max(10, Math.min(20, (s.lw*3.78*zoom)/18));
-    const fs = Math.round((pvFs / zoom)*10)/10;
+    const fs = Math.max(10, Math.min(20, (s.lw*3.78)/18));
     
     let h='';
     const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
@@ -791,9 +788,7 @@ function executePrint(){
     const items=getChecked();
     const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
-    const zoom = parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
-    const pvFs = Math.max(10, Math.min(20, (s.lw*3.78*zoom)/18));
-    const fs = Math.round((pvFs / zoom)*10)/10;
+    const fs = Math.max(10, Math.min(20, (s.lw*3.78)/18));
     
     let h='';
     const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
