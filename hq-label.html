@@ -3,319 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="K&G 본사 매입 현황 — 라벨 출력">
     <title>라벨 출력</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
-        body { background: #fff; margin: 0; padding: 0; }
-        .app-container { min-height: auto; align-items: flex-start; }
-        .main-content { margin-left: 0; padding: 0; display: flex; flex-direction: column; }
-
-        /* ── Header Bar ── */
-        .label-header-bar { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: #fff; }
-        .label-header-bar h2 { font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px; letter-spacing: -.3px; }
-        .label-header-bar h2 i { font-size: 22px; opacity: .85; }
-        .header-tabs { display: flex; gap: 2px; background: rgba(255,255,255,.15); padding: 3px; border-radius: 8px; backdrop-filter: blur(4px); }
-        .header-tab { padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; color: rgba(255,255,255,.7); transition: all .2s; display: flex; align-items: center; gap: 5px; background: none; border: none; }
-        .header-tab.active { background: #fff; color: #7c3aed; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
-        .header-tab:hover:not(.active) { color: #fff; background: rgba(255,255,255,.1); }
-
-        /* ── Layout ── */
-        .label-body { display: flex; flex: 1; overflow: hidden; }
-        .panel-left { width: 380px; min-width: 320px; border-right: 1px solid var(--border); overflow-y: auto; background: var(--gray-50); display: flex; flex-direction: column; }
-        .panel-right { flex: 1; overflow-y: auto; padding: 20px; background: #f1f5f9; display: flex; flex-direction: column; align-items: center; }
-
-        /* ── Tab Panels ── */
-        .tab-panel { display: none; }
-        .tab-panel.active { display: flex; flex-direction: column; flex: 1; }
-
-        /* ── Editor Form ── */
-        .editor-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-        .editor-section-title { font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .editor-section-title i { font-size: 14px; }
-        .field-group { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-        .field-group:last-child { margin-bottom: 0; }
-        .field-group label { font-size: 11px; font-weight: 600; color: var(--gray-500); letter-spacing: .3px; }
-        .field-group input, .field-group textarea, .field-group select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; background: var(--surface); outline: none; transition: all .15s; color: var(--gray-800); font-family: inherit; }
-        .field-group input:focus, .field-group textarea:focus, .field-group select:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
-        .field-group textarea { resize: vertical; min-height: 48px; }
-        .field-row { display: flex; gap: 10px; }
-        .field-row > .field-group { flex: 1; }
-
-        /* ── Logo Upload ── */
-        .logo-upload { display: flex; gap: 12px; align-items: center; }
-        .logo-preview { width: 80px; height: 80px; border: 2px dashed var(--gray-200); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; cursor: pointer; transition: all .2s; flex-shrink: 0; position: relative; }
-        .logo-preview:hover { border-color: #7c3aed; background: rgba(124,58,237,.03); }
-        .logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .logo-preview .placeholder { color: var(--gray-300); font-size: 28px; }
-        .logo-actions { display: flex; flex-direction: column; gap: 4px; flex: 1; }
-        .btn-upload { padding: 8px 14px; background: #7c3aed; color: white; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s; }
-        .btn-upload:hover { background: #6d28d9; transform: translateY(-1px); }
-        .btn-clear-logo { padding: 6px 14px; background: transparent; color: var(--gray-500); border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-weight: 600; cursor: pointer; transition: all .15s; }
-        .btn-clear-logo:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-muted); }
-
-        /* ── Action Buttons ── */
-        .editor-actions { padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; flex-wrap: wrap; }
-        .btn-action { padding: 9px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all .2s; border: none; }
-        .btn-save { background: #7c3aed; color: white; }
-        .btn-save:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,.25); }
-        .btn-print { background: #059669; color: white; }
-        .btn-print:hover { background: #047857; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,.25); }
-        .btn-new { background: var(--surface); color: var(--gray-600); border: 1px solid var(--border); }
-        .btn-new:hover { background: var(--gray-100); color: var(--gray-800); }
-
-        /* ── Print Quantity ── */
-        .print-qty-row { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--border); background: linear-gradient(135deg, rgba(124,58,237,.04) 0%, rgba(5,150,105,.04) 100%); }
-        .print-qty-row label { font-size: 12px; font-weight: 600; color: var(--gray-600); white-space: nowrap; }
-        .print-qty-row input[type="number"] { width: 70px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; text-align: center; outline: none; }
-        .print-qty-row input[type="number"]:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
-        .print-qty-row select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; outline: none; flex: 1; min-width: 0; }
-        .print-qty-row select:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
-
-        /* ── Preview Area ── */
-        .preview-title { font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-        .preview-title i { font-size: 15px; }
-        .preview-sheet { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.1); position: relative; overflow: hidden; }
-        .preview-label { border: 1px dashed var(--gray-200); position: relative; overflow: hidden; box-sizing: border-box; }
-        .preview-label .lbl-el { position: absolute; cursor: move; user-select: none; transition: box-shadow .15s; padding: 1px 2px; border-radius: 2px; }
-        .preview-label .lbl-el:hover { box-shadow: 0 0 0 1px #7c3aed; z-index: 10; }
-        .preview-label .lbl-el.dragging { box-shadow: 0 0 0 2px #7c3aed; opacity: .85; z-index: 20; }
-        .preview-label .lbl-logo { max-height: 28%; max-width: 60%; object-fit: contain; }
-        .preview-label .lbl-product { font-weight: 700; text-align: center; line-height: 1.2; color: var(--gray-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .preview-label .lbl-mfr { font-size: 85%; color: var(--gray-500); text-align: center; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .preview-label .lbl-price { font-weight: 800; color: #7c3aed; text-align: center; line-height: 1.2; }
-        .preview-label .lbl-info { font-size: 75%; color: var(--gray-400); text-align: center; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .preview-hint { font-size: 10px; color: var(--gray-400); margin-top: 8px; text-align: center; display: flex; align-items: center; gap: 4px; justify-content: center; }
-        .preview-hint i { font-size: 13px; }
-        .btn-reset-layout { padding: 4px 10px; background: transparent; border: 1px solid var(--border); border-radius: var(--radius); font-size: 11px; font-weight: 600; color: var(--gray-500); cursor: pointer; transition: all .15s; margin-left: 8px; }
-        .btn-reset-layout:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-muted); }
-
-        /* ── Saved Labels List ── */
-        .saved-list { padding: 12px 20px; flex: 1; overflow-y: auto; }
-        .saved-item { padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; cursor: pointer; transition: all .15s; display: flex; justify-content: space-between; align-items: center; }
-        .saved-item:hover { border-color: #7c3aed; box-shadow: 0 2px 8px rgba(124,58,237,.1); }
-        .saved-item.active { border-color: #7c3aed; background: rgba(124,58,237,.04); box-shadow: 0 2px 8px rgba(124,58,237,.12); }
-        .saved-item-info { min-width: 0; }
-        .saved-item-name { font-weight: 600; font-size: 13px; color: var(--gray-800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .saved-item-detail { font-size: 11px; color: var(--gray-400); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .saved-item-actions { display: flex; gap: 4px; flex-shrink: 0; }
-        .saved-item-actions button { background: transparent; border: none; color: var(--gray-400); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px; transition: all .15s; }
-        .saved-item-actions .btn-delete:hover { color: var(--danger); background: var(--danger-muted); }
-        .empty-state { text-align: center; padding: 40px 20px; color: var(--gray-400); }
-        .empty-state i { font-size: 40px; margin-bottom: 8px; display: block; }
-        .empty-state p { font-size: 13px; }
-
-        /* ── Spec Editor Tab ── */
-        .spec-list { padding: 12px 20px; flex: 1; overflow-y: auto; }
-        .spec-item { padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; transition: all .15s; }
-        .spec-item:hover { border-color: #7c3aed; }
-        .spec-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .spec-item-name { font-weight: 600; font-size: 13px; color: var(--gray-800); display: flex; align-items: center; gap: 6px; }
-        .spec-default-badge { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: rgba(124,58,237,.1); color: #7c3aed; font-weight: 700; }
-        .spec-item-detail { font-size: 11px; color: var(--gray-400); display: flex; gap: 12px; flex-wrap: wrap; }
-        .spec-actions { display: flex; gap: 4px; }
-        .spec-actions button { background: transparent; border: none; color: var(--gray-400); cursor: pointer; font-size: 16px; padding: 4px; border-radius: 4px; transition: all .15s; }
-        .spec-actions .btn-edit-spec:hover { color: #7c3aed; background: rgba(124,58,237,.1); }
-        .spec-actions .btn-delete-spec:hover { color: var(--danger); background: var(--danger-muted); }
-        .btn-add-spec { width: calc(100% - 40px); margin: 0 20px 12px; padding: 8px; background: transparent; color: var(--gray-500); border: 2px dashed var(--gray-200); border-radius: var(--radius); font-weight: 600; font-size: 13px; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .btn-add-spec:hover { border-color: #7c3aed; color: #7c3aed; background: rgba(124,58,237,.03); }
-
-        /* ── Spec Edit Modal ── */
-        .spec-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-        .spec-modal-overlay.active { display: flex; }
-        .spec-modal { background: var(--surface); border-radius: var(--radius-lg); width: 420px; max-width: 95vw; box-shadow: 0 20px 60px rgba(0,0,0,.2); overflow: hidden; }
-        .spec-modal-header { padding: 16px 20px; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: #fff; display: flex; justify-content: space-between; align-items: center; }
-        .spec-modal-header h3 { font-size: 15px; font-weight: 700; margin: 0; }
-        .spec-modal-header .btn-close { background: none; border: none; color: rgba(255,255,255,.7); font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; }
-        .spec-modal-header .btn-close:hover { color: #fff; background: rgba(255,255,255,.15); }
-        .spec-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .spec-modal-row { display: flex; gap: 10px; }
-        .spec-modal-row > .field-group { flex: 1; }
-        .spec-modal-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
-
-        /* ── Print Styles ── */
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: fixed; top: 0; left: 0; width: 100%; }
-            .print-sheet { page-break-after: always; margin: 0; padding: 0; box-shadow: none; }
-            .print-sheet:last-child { page-break-after: auto; }
-            .preview-label { border: none !important; }
-        }
-
-        @media (max-width: 768px) {
-            .label-body { flex-direction: column; }
-            .panel-left { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
-        }
+        body{background:#fff;margin:0;padding:0}
+        .app-container{min-height:auto}.main-content{margin-left:0;padding:0;display:flex;flex-direction:column}
+        .label-header-bar{padding:14px 24px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff}
+        .label-header-bar h2{font-size:17px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+        .header-tabs{display:flex;gap:2px;background:rgba(255,255,255,.15);padding:3px;border-radius:8px}
+        .header-tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;color:rgba(255,255,255,.7);transition:all .2s;display:flex;align-items:center;gap:4px;background:none;border:none}
+        .header-tab.active{background:#fff;color:#7c3aed;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+        .header-tab:hover:not(.active){color:#fff;background:rgba(255,255,255,.1)}
+        .label-body{display:flex;flex:1;overflow:hidden}
+        .panel-left{width:400px;min-width:320px;border-right:1px solid var(--border);overflow-y:auto;background:var(--gray-50);display:flex;flex-direction:column}
+        .panel-right{flex:1;overflow-y:auto;padding:20px;background:#f1f5f9;display:flex;flex-direction:column;align-items:center}
+        .tab-panel{display:none}.tab-panel.active{display:flex;flex-direction:column;flex:1}
+        .editor-section{padding:14px 20px;border-bottom:1px solid var(--border)}
+        .editor-section-title{font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+        .fg{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}.fg:last-child{margin-bottom:0}
+        .fg label{font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:.3px}
+        .fg input,.fg textarea,.fg select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);outline:none;transition:all .15s;color:var(--gray-800);font-family:inherit}
+        .fg input:focus,.fg textarea:focus,.fg select:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.12)}
+        .fg textarea{resize:vertical;min-height:40px}
+        .field-row{display:flex;gap:8px}.field-row>.fg{flex:1}
+        .logo-upload{display:flex;gap:10px;align-items:center}
+        .logo-preview{width:72px;height:72px;border:2px dashed var(--gray-200);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;cursor:pointer;transition:all .2s;flex-shrink:0}
+        .logo-preview:hover{border-color:#7c3aed}.logo-preview img{max-width:100%;max-height:100%;object-fit:contain}
+        .logo-preview .placeholder{color:var(--gray-300);font-size:26px}
+        .logo-actions{display:flex;flex-direction:column;gap:4px;flex:1}
+        .btn-sm{padding:6px 10px;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;border:none;display:flex;align-items:center;gap:4px;transition:all .15s}
+        .btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+        .btn-outline{background:transparent;color:var(--gray-500);border:1px solid var(--border)}.btn-outline:hover{border-color:var(--gray-400);color:var(--gray-700)}
+        .btn-danger-outline:hover{color:var(--danger);border-color:var(--danger);background:var(--danger-muted)}
+        .editor-actions{padding:14px 20px;border-top:1px solid var(--border);background:var(--surface);display:flex;gap:6px;flex-wrap:wrap}
+        .btn-action{padding:8px 16px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;border:none}
+        .btn-save{background:#7c3aed;color:#fff}.btn-save:hover{background:#6d28d9;transform:translateY(-1px)}
+        .btn-green{background:#059669;color:#fff}.btn-green:hover{background:#047857;transform:translateY(-1px)}
+        .btn-neutral{background:var(--surface);color:var(--gray-600);border:1px solid var(--border)}.btn-neutral:hover{background:var(--gray-100)}
+        /* Preview */
+        .preview-title{font-size:12px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+        .preview-hint{font-size:10px;color:var(--gray-400);margin-bottom:10px;text-align:center;display:flex;align-items:center;gap:4px;justify-content:center}
+        .preview-hint i{font-size:13px}
+        .btn-reset-layout{padding:3px 8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);font-size:10px;font-weight:600;color:var(--gray-500);cursor:pointer;margin-left:8px}
+        .btn-reset-layout:hover{color:var(--danger);border-color:var(--danger)}
+        .preview-sheet{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.1);position:relative;overflow:hidden}
+        .preview-label{border:1px dashed var(--gray-200);position:relative;overflow:hidden;box-sizing:border-box}
+        .preview-label .lbl-el{position:absolute;cursor:move;user-select:none;transition:box-shadow .15s;padding:1px 2px;border-radius:2px}
+        .preview-label .lbl-el:hover{box-shadow:0 0 0 1px #7c3aed;z-index:10}
+        .preview-label .lbl-el.dragging{box-shadow:0 0 0 2px #7c3aed;opacity:.85;z-index:20}
+        .preview-label .lbl-product{font-weight:700;text-align:center;line-height:1.2;color:var(--gray-800);white-space:nowrap}
+        .preview-label .lbl-mfr{font-size:85%;color:var(--gray-500);text-align:center}
+        .preview-label .lbl-price{font-weight:800;color:#7c3aed;text-align:center}
+        .preview-label .lbl-info{font-size:75%;color:var(--gray-400);text-align:center;white-space:nowrap}
+        /* Saved list */
+        .saved-list{padding:10px 20px;flex:1;overflow-y:auto}
+        .saved-item{padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center}
+        .saved-item:hover{border-color:#7c3aed;box-shadow:0 2px 8px rgba(124,58,237,.1)}
+        .saved-item.active{border-color:#7c3aed;background:rgba(124,58,237,.04)}
+        .saved-item-name{font-weight:600;font-size:13px;color:var(--gray-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .saved-item-detail{font-size:11px;color:var(--gray-400);margin-top:1px}
+        .saved-item-actions button{background:transparent;border:none;color:var(--gray-400);cursor:pointer;font-size:15px;padding:3px;border-radius:4px}.saved-item-actions .btn-delete:hover{color:var(--danger)}
+        .empty-state{text-align:center;padding:30px 20px;color:var(--gray-400)}.empty-state i{font-size:36px;margin-bottom:6px;display:block}.empty-state p{font-size:13px}
+        /* Print tab */
+        .print-config{padding:14px 20px;border-bottom:1px solid var(--border)}
+        .print-label-list{padding:10px 20px;flex:1;overflow-y:auto}
+        .print-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px}
+        .print-row .pr-name{flex:1;font-size:13px;font-weight:600;color:var(--gray-800);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+        .print-row .pr-detail{font-size:11px;color:var(--gray-400);margin-left:4px;white-space:nowrap}
+        .print-row input[type=number]{width:55px;padding:5px 6px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;text-align:center}
+        .print-row .btn-remove{background:none;border:none;color:var(--gray-400);cursor:pointer;font-size:16px;padding:2px}.print-row .btn-remove:hover{color:var(--danger)}
+        .print-summary{padding:12px 20px;border-top:1px solid var(--border);background:var(--surface);font-size:12px;color:var(--gray-600)}
+        /* Spec */
+        .spec-list{padding:10px 20px;flex:1;overflow-y:auto}
+        .spec-item{padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;transition:all .15s}
+        .spec-item:hover{border-color:#7c3aed}
+        .spec-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+        .spec-item-name{font-weight:600;font-size:13px;color:var(--gray-800);display:flex;align-items:center;gap:5px}
+        .spec-default-badge{font-size:9px;padding:1px 5px;border-radius:8px;background:rgba(124,58,237,.1);color:#7c3aed;font-weight:700}
+        .spec-item-detail{font-size:11px;color:var(--gray-400);display:flex;gap:10px;flex-wrap:wrap}
+        .spec-actions button{background:transparent;border:none;color:var(--gray-400);cursor:pointer;font-size:15px;padding:3px;border-radius:4px}
+        .btn-add-spec{width:calc(100% - 40px);margin:0 20px 10px;padding:7px;background:transparent;color:var(--gray-500);border:2px dashed var(--gray-200);border-radius:var(--radius);font-weight:600;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px}
+        .btn-add-spec:hover{border-color:#7c3aed;color:#7c3aed}
+        /* Modal */
+        .spec-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+        .spec-modal-overlay.active{display:flex}
+        .spec-modal{background:var(--surface);border-radius:var(--radius-lg);width:400px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden}
+        .spec-modal-header{padding:14px 20px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;display:flex;justify-content:space-between;align-items:center}
+        .spec-modal-header h3{font-size:14px;font-weight:700;margin:0}
+        .spec-modal-header .btn-close{background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;padding:4px;border-radius:4px}.spec-modal-header .btn-close:hover{color:#fff}
+        .spec-modal-body{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+        .spec-modal-row{display:flex;gap:8px}.spec-modal-row>.fg{flex:1}
+        .spec-modal-footer{padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:6px}
+        @media print{body *{visibility:hidden}#printArea,#printArea *{visibility:visible}#printArea{position:fixed;top:0;left:0;width:100%}.print-sheet{page-break-after:always;margin:0;padding:0;box-shadow:none}.print-sheet:last-child{page-break-after:auto}}
+        @media(max-width:768px){.label-body{flex-direction:column}.panel-left{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:50vh}}
     </style>
 </head>
 <body>
-    <div class="app-container" id="mainApp">
-        <main class="main-content">
-            <!-- Header -->
-            <div class="label-header-bar">
-                <h2><i class='bx bx-purchase-tag-alt'></i> 라벨 출력</h2>
-                <div class="header-tabs">
-                    <button class="header-tab active" data-tab="editor" id="tabEditor"><i class='bx bx-edit'></i> 편집</button>
-                    <button class="header-tab" data-tab="saved" id="tabSaved"><i class='bx bx-folder-open'></i> 저장 목록</button>
-                    <button class="header-tab" data-tab="specs" id="tabSpecs"><i class='bx bx-ruler'></i> 용지 규격</button>
-                </div>
-            </div>
-
-            <div class="label-body" style="height: calc(100vh - 56px);">
-                <!-- ═══ LEFT PANEL ═══ -->
-                <div class="panel-left">
-                    <!-- TAB: Editor -->
-                    <div class="tab-panel active" id="panelEditor">
-                        <div class="editor-section">
-                            <div class="editor-section-title"><i class='bx bx-image'></i> 로고 이미지</div>
-                            <div class="logo-upload">
-                                <div class="logo-preview" id="logoPreview" title="클릭하여 로고 업로드">
-                                    <i class='bx bx-image-add placeholder' id="logoPlaceholder"></i>
-                                    <img id="logoImg" src="" alt="로고" style="display:none;">
-                                </div>
-                                <div class="logo-actions">
-                                    <button type="button" class="btn-upload" id="btnUploadLogo"><i class='bx bx-upload'></i> 로고 선택</button>
-                                    <button type="button" class="btn-clear-logo" id="btnClearLogo">로고 제거</button>
-                                    <input type="file" id="logoFileInput" accept="image/*" style="display:none;">
-                                </div>
-                            </div>
-                            <div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-                                <select id="logoTemplateSelect" style="flex:1;min-width:0;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;">
-                                    <option value="">— 저장된 로고 불러오기 —</option>
-                                </select>
-                                <button type="button" id="btnSaveLogoTpl" style="padding:6px 10px;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;" title="현재 로고를 제조사명으로 저장"><i class='bx bx-save'></i> 템플릿 저장</button>
-                                <button type="button" id="btnDeleteLogoTpl" style="padding:6px 8px;background:transparent;color:var(--gray-400);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;cursor:pointer;" title="선택된 템플릿 삭제"><i class='bx bx-trash'></i></button>
-                            </div>
-                        </div>
-
-                        <div class="editor-section">
-                            <div class="editor-section-title"><i class='bx bx-detail'></i> 라벨 정보</div>
-                            <div class="field-group">
-                                <label>라벨 이름 (저장용)</label>
-                                <input type="text" id="lblName" placeholder="예: K2 안전화 라벨">
-                            </div>
-                            <div class="field-group">
-                                <label>품명</label>
-                                <input type="text" id="lblProductName" placeholder="에어윈드베스트 선풍기조끼">
-                            </div>
-                            <div class="field-row">
-                                <div class="field-group">
-                                    <label>제조사</label>
-                                    <input type="text" id="lblManufacturer" placeholder="K2 세이프티">
-                                </div>
-                                <div class="field-group">
-                                    <label>가격</label>
-                                    <input type="text" id="lblPrice" placeholder="₩45,000">
-                                </div>
-                            </div>
-                            <div class="field-row">
-                                <div class="field-group">
-                                    <label>원산지</label>
-                                    <input type="text" id="lblOrigin" placeholder="대한민국">
-                                </div>
-                                <div class="field-group">
-                                    <label>규격/사이즈</label>
-                                    <input type="text" id="lblSpec" placeholder="FREE / 230~285">
-                                </div>
-                            </div>
-                            <div class="field-group">
-                                <label>바코드 / 품번</label>
-                                <input type="text" id="lblBarcode" placeholder="8801234567890">
-                            </div>
-                            <div class="field-group">
-                                <label>비고</label>
-                                <textarea id="lblMemo" placeholder="추가 메모사항"></textarea>
-                            </div>
-                        </div>
-
-                        <div class="print-qty-row">
-                            <label><i class='bx bx-printer' style="font-size:15px;vertical-align:middle;"></i> 인쇄 매수</label>
-                            <input type="number" id="printQty" min="1" max="500" value="1">
-                            <select id="specSelect">
-                                <option value="">용지 규격 선택...</option>
-                            </select>
-                        </div>
-
-                        <div class="editor-actions">
-                            <button class="btn-action btn-save" id="btnSave"><i class='bx bx-save'></i> 저장</button>
-                            <button class="btn-action btn-print" id="btnPrint"><i class='bx bx-printer'></i> 인쇄</button>
-                            <button class="btn-action btn-new" id="btnNew"><i class='bx bx-plus'></i> 새 라벨</button>
-                        </div>
-                    </div>
-
-                    <!-- TAB: Saved Labels -->
-                    <div class="tab-panel" id="panelSaved">
-                        <div class="saved-list" id="savedList">
-                            <div class="empty-state"><i class='bx bx-folder-open'></i><p>저장된 라벨이 없습니다.</p></div>
-                        </div>
-                    </div>
-
-                    <!-- TAB: Paper Specs -->
-                    <div class="tab-panel" id="panelSpecs">
-                        <div class="spec-list" id="specList"></div>
-                        <button type="button" class="btn-add-spec" id="btnAddSpec"><i class='bx bx-plus'></i> 새 용지 규격 추가</button>
-                    </div>
-                </div>
-
-                <!-- ═══ RIGHT PANEL: Preview ═══ -->
-                <div class="panel-right">
-                    <div class="preview-title"><i class='bx bx-show'></i> 미리보기 <button class="btn-reset-layout" id="btnResetLayout" title="요소 위치를 기본값으로 초기화"><i class='bx bx-reset'></i> 위치 초기화</button></div>
-                    <div class="preview-hint"><i class='bx bx-move'></i> 라벨 안의 요소를 마우스로 드래그하여 위치를 변경할 수 있습니다</div>
-                    <div id="previewContainer" style="margin-top:8px;"></div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Spec Edit Modal -->
-    <div class="spec-modal-overlay" id="specModalOverlay">
-        <div class="spec-modal">
-            <div class="spec-modal-header">
-                <h3 id="specModalTitle">용지 규격 추가</h3>
-                <button class="btn-close" id="specModalClose"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="spec-modal-body">
-                <div class="field-group">
-                    <label>규격 이름</label>
-                    <input type="text" id="specName" placeholder="예: A4 21칸">
-                </div>
-                <div class="spec-modal-row">
-                    <div class="field-group"><label>용지 가로 (mm)</label><input type="number" id="specPaperWidth" value="210"></div>
-                    <div class="field-group"><label>용지 세로 (mm)</label><input type="number" id="specPaperHeight" value="297"></div>
-                </div>
-                <div class="spec-modal-row">
-                    <div class="field-group"><label>열 수</label><input type="number" id="specCols" value="3" min="1"></div>
-                    <div class="field-group"><label>행 수</label><input type="number" id="specRows" value="7" min="1"></div>
-                </div>
-                <div class="spec-modal-row">
-                    <div class="field-group"><label>상단 여백 (mm)</label><input type="number" id="specMarginTop" value="15" step="0.5"></div>
-                    <div class="field-group"><label>하단 여백 (mm)</label><input type="number" id="specMarginBottom" value="15" step="0.5"></div>
-                </div>
-                <div class="spec-modal-row">
-                    <div class="field-group"><label>좌측 여백 (mm)</label><input type="number" id="specMarginLeft" value="7" step="0.5"></div>
-                    <div class="field-group"><label>우측 여백 (mm)</label><input type="number" id="specMarginRight" value="7" step="0.5"></div>
-                </div>
-                <div class="spec-modal-row">
-                    <div class="field-group"><label>열 간격 (mm)</label><input type="number" id="specGapX" value="2" step="0.5"></div>
-                    <div class="field-group"><label>행 간격 (mm)</label><input type="number" id="specGapY" value="0" step="0.5"></div>
-                </div>
-            </div>
-            <div class="spec-modal-footer">
-                <button class="btn-action btn-new" id="specModalCancel">취소</button>
-                <button class="btn-action btn-save" id="specModalSave"><i class='bx bx-save'></i> 저장</button>
-            </div>
+<div class="app-container"><main class="main-content">
+    <div class="label-header-bar">
+        <h2><i class='bx bx-purchase-tag-alt'></i> 라벨 출력</h2>
+        <div class="header-tabs">
+            <button class="header-tab active" data-tab="editor"><i class='bx bx-edit'></i> 편집</button>
+            <button class="header-tab" data-tab="saved"><i class='bx bx-folder-open'></i> 저장 목록</button>
+            <button class="header-tab" data-tab="print"><i class='bx bx-printer'></i> 인쇄</button>
+            <button class="header-tab" data-tab="specs"><i class='bx bx-ruler'></i> 라벨 규격</button>
         </div>
     </div>
-
-    <!-- Hidden Print Area -->
-    <div id="printArea" style="display:none;"></div>
-
-    <div id="toastContainer" class="toast-container"></div>
-    <script src="hq-label.js"></script>
+    <div class="label-body" style="height:calc(100vh - 52px)">
+        <div class="panel-left">
+            <!-- TAB: Editor -->
+            <div class="tab-panel active" id="panelEditor">
+                <div class="editor-section">
+                    <div class="editor-section-title"><i class='bx bx-image'></i> 로고 이미지</div>
+                    <div class="logo-upload">
+                        <div class="logo-preview" id="logoPreview"><i class='bx bx-image-add placeholder' id="logoPlaceholder"></i><img id="logoImg" src="" alt="" style="display:none"></div>
+                        <div class="logo-actions">
+                            <button class="btn-sm btn-purple" id="btnUploadLogo"><i class='bx bx-upload'></i> 로고 선택</button>
+                            <button class="btn-sm btn-outline btn-danger-outline" id="btnClearLogo">로고 제거</button>
+                            <input type="file" id="logoFileInput" accept="image/*" style="display:none">
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;display:flex;gap:4px;align-items:center">
+                        <select id="logoTemplateSelect" style="flex:1;min-width:0;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:11px"><option value="">— 로고 템플릿 —</option></select>
+                        <button class="btn-sm btn-purple" id="btnSaveLogoTpl" title="현재 로고를 템플릿으로 저장"><i class='bx bx-save'></i></button>
+                        <button class="btn-sm btn-outline" id="btnDeleteLogoTpl" title="템플릿 삭제"><i class='bx bx-trash'></i></button>
+                    </div>
+                </div>
+                <div class="editor-section">
+                    <div class="editor-section-title"><i class='bx bx-detail'></i> 라벨 정보</div>
+                    <div class="fg"><label>라벨 이름 (저장용)</label><input type="text" id="lblName" placeholder="예: K2 안전화 라벨"></div>
+                    <div class="fg"><label>품명</label><input type="text" id="lblProductName" placeholder="에어윈드베스트 선풍기조끼"></div>
+                    <div class="field-row">
+                        <div class="fg"><label>제조사</label><input type="text" id="lblManufacturer" placeholder="K2 세이프티"></div>
+                        <div class="fg"><label>가격</label><input type="text" id="lblPrice" placeholder="₩45,000"></div>
+                    </div>
+                    <div class="field-row">
+                        <div class="fg"><label>원산지</label><input type="text" id="lblOrigin" placeholder="대한민국"></div>
+                        <div class="fg"><label>규격/사이즈</label><input type="text" id="lblSpec" placeholder="FREE / 230~285"></div>
+                    </div>
+                    <div class="fg"><label>바코드/품번</label><input type="text" id="lblBarcode" placeholder="8801234567890"></div>
+                    <div class="fg"><label>비고</label><textarea id="lblMemo" placeholder="추가 메모"></textarea></div>
+                </div>
+                <div class="editor-actions">
+                    <button class="btn-action btn-save" id="btnSave"><i class='bx bx-save'></i> 저장</button>
+                    <button class="btn-action btn-neutral" id="btnNew"><i class='bx bx-plus'></i> 새 라벨</button>
+                </div>
+            </div>
+            <!-- TAB: Saved -->
+            <div class="tab-panel" id="panelSaved">
+                <div class="saved-list" id="savedList"><div class="empty-state"><i class='bx bx-folder-open'></i><p>저장된 라벨이 없습니다.</p></div></div>
+            </div>
+            <!-- TAB: Print -->
+            <div class="tab-panel" id="panelPrint">
+                <div class="print-config">
+                    <div class="editor-section-title"><i class='bx bx-cog'></i> 인쇄 설정</div>
+                    <div class="field-row">
+                        <div class="fg"><label>용지</label>
+                            <select id="paperSize"><option value="A4">A4 (210×297mm)</option><option value="A3">A3 (297×420mm)</option></select>
+                        </div>
+                        <div class="fg"><label>라벨 규격</label>
+                            <select id="printSpecSelect"><option value="">선택...</option></select>
+                        </div>
+                    </div>
+                    <div class="field-row" style="margin-top:4px">
+                        <div class="fg"><label>라벨 가로 (mm)</label><input type="number" id="printLabelW" value="63.5" step="0.1"></div>
+                        <div class="fg"><label>라벨 세로 (mm)</label><input type="number" id="printLabelH" value="38.1" step="0.1"></div>
+                    </div>
+                    <div id="printCalcInfo" style="font-size:11px;color:var(--gray-500);margin-top:6px;padding:6px 8px;background:var(--gray-50);border-radius:var(--radius)"></div>
+                </div>
+                <div class="print-config" style="padding-bottom:8px">
+                    <div class="editor-section-title"><i class='bx bx-list-plus'></i> 라벨 선택 <button class="btn-sm btn-purple" id="btnAddToPrint" style="margin-left:auto;font-size:10px"><i class='bx bx-plus'></i> 라벨 추가</button></div>
+                    <div id="printLabelList"></div>
+                </div>
+                <div class="print-summary" id="printSummary">총 0개 라벨 · 0장 출력</div>
+                <div class="editor-actions">
+                    <button class="btn-action btn-green" id="btnDoPrint"><i class='bx bx-printer'></i> 인쇄</button>
+                </div>
+            </div>
+            <!-- TAB: Specs -->
+            <div class="tab-panel" id="panelSpecs">
+                <div class="spec-list" id="specList"></div>
+                <button class="btn-add-spec" id="btnAddSpec"><i class='bx bx-plus'></i> 새 라벨 규격 추가</button>
+            </div>
+        </div>
+        <div class="panel-right">
+            <div class="preview-title"><i class='bx bx-show'></i> 미리보기 <button class="btn-reset-layout" id="btnResetLayout"><i class='bx bx-reset'></i> 위치 초기화</button></div>
+            <div class="preview-hint"><i class='bx bx-move'></i> 첫 번째 라벨의 요소를 드래그하여 위치 변경</div>
+            <div id="previewContainer"></div>
+        </div>
+    </div>
+</main></div>
+<!-- Spec Modal -->
+<div class="spec-modal-overlay" id="specModalOverlay"><div class="spec-modal">
+    <div class="spec-modal-header"><h3 id="specModalTitle">라벨 규격</h3><button class="btn-close" id="specModalClose"><i class='bx bx-x'></i></button></div>
+    <div class="spec-modal-body">
+        <div class="fg"><label>규격 이름</label><input type="text" id="specName" placeholder="예: 21칸 라벨"></div>
+        <div class="spec-modal-row"><div class="fg"><label>라벨 가로 (mm)</label><input type="number" id="specLabelW" value="63.5" step="0.1"></div><div class="fg"><label>라벨 세로 (mm)</label><input type="number" id="specLabelH" value="38.1" step="0.1"></div></div>
+        <div class="spec-modal-row"><div class="fg"><label>상단 여백</label><input type="number" id="specMT" value="15" step="0.5"></div><div class="fg"><label>하단 여백</label><input type="number" id="specMB" value="15" step="0.5"></div></div>
+        <div class="spec-modal-row"><div class="fg"><label>좌측 여백</label><input type="number" id="specML" value="7" step="0.5"></div><div class="fg"><label>우측 여백</label><input type="number" id="specMR" value="7" step="0.5"></div></div>
+        <div class="spec-modal-row"><div class="fg"><label>열 간격</label><input type="number" id="specGX" value="2" step="0.5"></div><div class="fg"><label>행 간격</label><input type="number" id="specGY" value="0" step="0.5"></div></div>
+    </div>
+    <div class="spec-modal-footer"><button class="btn-action btn-neutral" id="specModalCancel">취소</button><button class="btn-action btn-save" id="specModalSave"><i class='bx bx-save'></i> 저장</button></div>
+</div></div>
+<!-- Label Picker Modal -->
+<div class="spec-modal-overlay" id="labelPickerOverlay"><div class="spec-modal" style="width:360px">
+    <div class="spec-modal-header"><h3>라벨 추가</h3><button class="btn-close" id="labelPickerClose"><i class='bx bx-x'></i></button></div>
+    <div class="spec-modal-body" style="max-height:50vh;overflow-y:auto" id="labelPickerList"></div>
+</div></div>
+<div id="printArea" style="display:none"></div>
+<div id="toastContainer" class="toast-container"></div>
+<script src="hq-label.js"></script>
 </body>
 </html>

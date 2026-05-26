@@ -118,6 +118,8 @@ function initHqTables(database) {
                     name TEXT NOT NULL DEFAULT '',
                     paperWidth REAL DEFAULT 210,
                     paperHeight REAL DEFAULT 297,
+                    labelWidth REAL DEFAULT 63.5,
+                    labelHeight REAL DEFAULT 38.1,
                     cols INTEGER DEFAULT 3,
                     rows INTEGER DEFAULT 7,
                     marginTop REAL DEFAULT 15,
@@ -131,18 +133,21 @@ function initHqTables(database) {
                     updatedAt TEXT DEFAULT (datetime('now'))
                 )
             `, () => {
-                // 기본 용지 규격 시딩
+                // labelWidth/labelHeight 컬럼 추가 (기존 DB 호환)
+                database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelWidth REAL DEFAULT 63.5`, () => {});
+                database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelHeight REAL DEFAULT 38.1`, () => {});
+                // 기본 라벨 규격 시딩
                 const defaultSpecs = [
-                    { id: 'LS-A4-21', name: 'A4 21칸 (3×7)', paperWidth: 210, paperHeight: 297, cols: 3, rows: 7, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2, gapY: 0 },
-                    { id: 'LS-A4-24', name: 'A4 24칸 (3×8)', paperWidth: 210, paperHeight: 297, cols: 3, rows: 8, marginTop: 12, marginBottom: 12, marginLeft: 7, marginRight: 7, gapX: 2, gapY: 0 },
-                    { id: 'LS-A4-40', name: 'A4 40칸 (4×10)', paperWidth: 210, paperHeight: 297, cols: 4, rows: 10, marginTop: 12, marginBottom: 12, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
-                    { id: 'LS-A4-65', name: 'A4 65칸 (5×13)', paperWidth: 210, paperHeight: 297, cols: 5, rows: 13, marginTop: 11, marginBottom: 11, marginLeft: 4, marginRight: 4, gapX: 2, gapY: 0 }
+                    { id: 'LS-21', name: '21칸 (63.5×38.1mm)', labelWidth: 63.5, labelHeight: 38.1, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                    { id: 'LS-24', name: '24칸 (63.5×33.9mm)', labelWidth: 63.5, labelHeight: 33.9, marginTop: 8.5, marginBottom: 8.5, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                    { id: 'LS-40', name: '40칸 (48.5×25.4mm)', labelWidth: 48.5, labelHeight: 25.4, marginTop: 22, marginBottom: 22, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
+                    { id: 'LS-65', name: '65칸 (38.1×21.2mm)', labelWidth: 38.1, labelHeight: 21.2, marginTop: 11, marginBottom: 11, marginLeft: 4.6, marginRight: 4.6, gapX: 2.5, gapY: 0 }
                 ];
                 const now = new Date().toISOString();
                 defaultSpecs.forEach(s => {
-                    database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
-                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-                        [s.id, s.name, s.paperWidth, s.paperHeight, s.cols, s.rows, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
+                    database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                                  VALUES (?, ?, ?, ?, 210, 297, 0, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                        [s.id, s.name, s.labelWidth, s.labelHeight, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
                 });
                 console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
                 resolve();
@@ -615,9 +620,9 @@ router.post('/label-specs', (req, res) => {
     const p = req.body;
     const id = p.id || ('LS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO hq_label_specs (id, name, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`;
-    const params = [id, p.name||'', p.paperWidth||210, p.paperHeight||297, p.cols||3, p.rows||7, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, now];
+    const sql = `INSERT INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, 0, ?, ?)`;
+    const params = [id, p.name||'', p.labelWidth||63.5, p.labelHeight||38.1, p.paperWidth||210, p.paperHeight||297, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id });
@@ -629,8 +634,8 @@ router.put('/label-specs/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE hq_label_specs SET name=?, paperWidth=?, paperHeight=?, cols=?, rows=?, marginTop=?, marginBottom=?, marginLeft=?, marginRight=?, gapX=?, gapY=?, updatedAt=? WHERE id=?`;
-    const params = [p.name||'', p.paperWidth||210, p.paperHeight||297, p.cols||3, p.rows||7, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, id];
+    const sql = `UPDATE hq_label_specs SET name=?, labelWidth=?, labelHeight=?, paperWidth=?, paperHeight=?, marginTop=?, marginBottom=?, marginLeft=?, marginRight=?, gapX=?, gapY=?, updatedAt=? WHERE id=?`;
+    const params = [p.name||'', p.labelWidth||63.5, p.labelHeight||38.1, p.paperWidth||210, p.paperHeight||297, p.marginTop||15, p.marginBottom||15, p.marginLeft||7, p.marginRight||7, p.gapX||2, p.gapY||0, now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '규격을 찾을 수 없습니다.' });
