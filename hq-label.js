@@ -83,7 +83,7 @@ function updPv(){
         if(p.hidden) continue;
         const sel=selectedKeys.has(e.k)?'selected':'';
         const ko=keyObjectKey===e.k?'key-object':'';
-        const stFS=p.fs?`font-size:${p.fs}px;`:'';
+        const stFS=p.fs?`font-size:${Math.round(p.fs * zoom)}px;`:'';
         const stB=p.bold?`font-weight:bold;`:'';
         const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
         const stWd=p.w?`width:${p.w}%;`:'';
@@ -416,7 +416,9 @@ function openSheetEditor(){
 function renderSheet(items){
     const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
-    const fs=Math.max(6,Math.min(11,s.lw/7));
+    const zoom = parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
+    const pvFs = Math.max(10, Math.min(20, (s.lw*3.78*zoom)/18));
+    const fs = Math.round((pvFs / zoom)*10)/10;
     
     let h='';
     const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
@@ -428,7 +430,7 @@ function renderSheet(items){
             if(idx>=sheetSlots.length)break;
             const slot=sheetSlots[idx], cx=s.ml+c*(s.lw+s.gx), cy=s.mt+r*(s.lh+s.gy);
             
-            h+=`<div class="sh-slot" data-idx="${idx}" style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;border:1px dashed ${slot?'transparent':'var(--gray-300)'};box-sizing:border-box;font-size:${fs}pt;background:${slot?'none':'#fafafa'};cursor:${slot?'default':'pointer'};overflow:hidden">`;
+            h+=`<div class="sh-slot" data-idx="${idx}" style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;border:1px dashed ${slot?'transparent':'var(--gray-300)'};box-sizing:border-box;font-size:${fs}px;background:${slot?'none':'#fafafa'};cursor:${slot?'default':'pointer'};overflow:hidden">`;
             if(slot){
                 const {d,lo}=slot;
                 const gpp=k=>{
@@ -707,7 +709,7 @@ function alignSheetElements(type){
     let targetX = 50, targetY = 50;
     if(sheetKeyObjectKey && sheetSelectedKeys.has(sheetKeyObjectKey)){
         const [idx, ...b] = sheetKeyObjectKey.split('_'); const bk = b.join('_');
-        const sl=sheetSlots[idx]; targetX = sl.lo[bk].x; targetY = sl.lo[bk].y;
+                const sl=sheetSlots[idx]; targetX = sl.lo[bk].x; targetY = sl.lo[bk].y;
     } else if (sheetSelectedKeys.size > 1) {
         const xs = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].x);
         const ys = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].y);
@@ -727,7 +729,10 @@ function executePrint(){
     const items=getChecked();
     const s=getPS(items),g=calcG(s.pw,s.ph,s.lw,s.lh,s.mt,s.mb,s.ml,s.mr,s.gx,s.gy);
     const lps=g.cols*g.rows,sheets=Math.ceil(sheetSlots.length/lps)||1;
-    const fs=Math.max(6,Math.min(11,s.lw/7));
+    const zoom = parseFloat($('pvZoom')?$('pvZoom').value:1.5)||1.5;
+    const pvFs = Math.max(10, Math.min(20, (s.lw*3.78*zoom)/18));
+    const fs = Math.round((pvFs / zoom)*10)/10;
+    
     let h='';
     const formatPrice=p=>{if(!p)return'';let n=Number(p.replace(/,/g,''));return isNaN(n)?E(p):n.toLocaleString()+'원'};
     
@@ -746,7 +751,7 @@ function executePrint(){
                 return{x:ll.x??dd.x,y:ll.y??dd.y,sx:ll.sx??1,sy:ll.sy??1,fs:ll.fs||null,w:ll.w||null,bold:ll.bold??dd.bold??false,nowrap:ll.nowrap||false,textAlign:ll.textAlign||'left',hidden:ll.hidden||false};
             };
             
-            h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
+            h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}px">`;
             
             const cm=`width:3mm;height:3mm;position:absolute;border:0 solid #ccc;`;
             h+=`<div style="${cm}left:0;top:0;border-left-width:1px;border-top-width:1px"></div>`;
