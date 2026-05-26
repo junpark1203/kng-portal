@@ -126,6 +126,11 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </div></div>
 <!-- List -->
 <div class="tp" id="pList">
+<div style="padding: 12px 20px 0 20px; display:flex; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px;">
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer; color:var(--gray-800)">
+        <input type="checkbox" id="chkAllLabels" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;"> 전체 선택
+    </label>
+</div>
 <div class="lbl-list" id="lblList"></div>
 <div class="print-bar">
 <div class="fg" style="margin-bottom:8px"><label>출력 용지</label><select id="selPaper"><option value="A4">A4</option><option value="A3">A3</option></select></div>
@@ -220,5 +225,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=17"></script>
+<script src="hq-label.js?v=18"></script>
 </body></html>

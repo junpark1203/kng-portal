@@ -405,8 +405,25 @@ function renderList(){
 </div>`).join('');
     el.querySelectorAll('.name').forEach(n=>n.onclick=()=>{const lb=labels.find(x=>x.id===n.dataset.id);if(lb){curId=lb.id;load(lb);goTab('editor')}});
     el.querySelectorAll('.del').forEach(b=>b.onclick=()=>delL(b.dataset.id));
-    el.querySelectorAll('.chk').forEach(c=>c.onchange=updCalc);
-    el.querySelectorAll('.qty').forEach(q=>q.onchange=updCalc)
+    
+    const chkAll = $('chkAllLabels');
+    const chks = el.querySelectorAll('.chk');
+    const updChkAll = () => {
+        if(chkAll && chks.length) {
+            chkAll.checked = Array.from(chks).every(c => c.checked);
+        }
+    };
+    if(chkAll) {
+        chkAll.checked = false;
+        chkAll.onchange = e => {
+            const isChecked = e.target.checked;
+            chks.forEach(c => c.checked = isChecked);
+            updCalc();
+        };
+    }
+    
+    chks.forEach(c=>c.onchange=()=>{ updChkAll(); updCalc(); });
+    el.querySelectorAll('.qty').forEach(q=>q.onchange=updCalc);
 }
 function getChecked(){
     const items=[];
