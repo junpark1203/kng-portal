@@ -27,7 +27,7 @@ function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selec
 
 // Layout
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
-function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};return{x:l.x??d.x,y:l.y??d.y,sx:l.sx??1,sy:l.sy??1,fs:l.fs||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,hidden:l.hidden||false}}
+function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,hidden:l.hidden||false}}
 
 // Calc
 function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
@@ -81,8 +81,9 @@ function updPv(){
         const ko=keyObjectKey===e.k?'key-object':'';
         const stFS=p.fs?`font-size:${p.fs}px;`:'';
         const stB=p.bold?`font-weight:bold;`:'';
-        const stW=p.nowrap?`white-space:nowrap;`:'';
-        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}">${e.h}<div class="resizer"></div></div>`;
+        const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
+        const stWd=p.w?`width:${p.w}%;`:'';
+        s+=`<div class="el ${sel} ${ko}" data-key="${e.k}" style="left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${p.sx},${p.sy});${stFS}${stB}${stW}${stWd}">${e.h}<div class="resizer"></div></div>`;
     }
     s+='</div></div>';c.innerHTML=s;initInteraction(c.querySelector('.first-label'))
 
@@ -116,25 +117,47 @@ function initInteraction(el){
             const k=n.dataset.key, rect=el.getBoundingClientRect();
             const startX=e.clientX, startY=e.clientY;
             const cur=gp(k); const sx0=cur.sx, sy0=cur.sy;
+            const isImg = k.includes('logo') || k.includes('memoImg');
+            const startW = n.getBoundingClientRect().width;
+            
             const mv=v=>{
-                let dx=(v.clientX-startX)/rect.width*4;
-                let dy=(v.clientY-startY)/rect.height*4;
-                if(v.shiftKey){const d=Math.max(dx,dy);dx=d;dy=d;}
-                const nsx=Math.max(0.3,Math.min(4,sx0+dx));
-                const nsy=Math.max(0.3,Math.min(4,sy0+dy));
-                if(!layout[k])layout[k]={...gp(k)};
-                layout[k].sx=Math.round(nsx*100)/100;
-                layout[k].sy=Math.round(nsy*100)/100;
+                if(isImg) {
+                    let dx=(v.clientX-startX)/rect.width*4;
+                    let dy=(v.clientY-startY)/rect.height*4;
+                    if(v.shiftKey){const d=Math.max(dx,dy);dx=d;dy=d;}
+                    const nsx=Math.max(0.3,Math.min(4,sx0+dx));
+                    const nsy=Math.max(0.3,Math.min(4,sy0+dy));
+                    if(!layout[k])layout[k]={...gp(k)};
+                    layout[k].sx=Math.round(nsx*100)/100;
+                    layout[k].sy=Math.round(nsy*100)/100;
+                } else {
+                    let dx=(v.clientX-startX);
+                    let newW_pct = ((startW + dx) / rect.width) * 100;
+                    if(!layout[k])layout[k]={...gp(k)};
+                    layout[k].w = Math.max(5, Math.round(newW_pct*10)/10);
+                }
                 // Apply to all selected if multi-selected
                 if(selectedKeys.has(k)&&selectedKeys.size>1){
-                    const dsx=layout[k].sx-sx0, dsy=layout[k].sy-sy0;
-                    selectedKeys.forEach(sk=>{
-                        if(sk===k)return;
-                        if(!layout[sk])layout[sk]={...gp(sk)};
-                        const orig=gp(sk);
-                        layout[sk].sx=Math.max(0.3,Math.min(4,Math.round(((orig.sx||1)+dsx)*100)/100));
-                        layout[sk].sy=Math.max(0.3,Math.min(4,Math.round(((orig.sy||1)+dsy)*100)/100));
-                    });
+                    if(isImg) {
+                        const dsx=layout[k].sx-sx0, dsy=layout[k].sy-sy0;
+                        selectedKeys.forEach(sk=>{
+                            if(sk===k || (!sk.includes('logo') && !sk.includes('memoImg'))) return;
+                            if(!layout[sk])layout[sk]={...gp(sk)};
+                            const orig=gp(sk);
+                            layout[sk].sx=Math.max(0.3,Math.min(4,Math.round(((orig.sx||1)+dsx)*100)/100));
+                            layout[sk].sy=Math.max(0.3,Math.min(4,Math.round(((orig.sy||1)+dsy)*100)/100));
+                        });
+                    } else {
+                        const dw = layout[k].w - (cur.w || ((startW/rect.width)*100));
+                        selectedKeys.forEach(sk=>{
+                            if(sk===k || sk.includes('logo') || sk.includes('memoImg')) return;
+                            if(!layout[sk])layout[sk]={...gp(sk)};
+                            const elNd = el.querySelector(`.el[data-key="${sk}"]`);
+                            const skStartW = elNd ? (elNd.getBoundingClientRect().width/rect.width*100) : 20;
+                            const origW = gp(sk).w || skStartW;
+                            layout[sk].w = Math.max(5, Math.round((origW + dw)*10)/10);
+                        });
+                    }
                 }
                 updPv();
             };
@@ -401,9 +424,10 @@ function renderSheet(){
                     const ko=sheetKeyObjectKey===fK?'sh-ko':'';
                     const stFS=p.fs?`font-size:${p.fs}px;`:'';
                     const stB=p.bold?`font-weight:bold;`:'';
-                    const stW=p.nowrap?`white-space:nowrap;`:'';
+                    const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
+                    const stWd=p.w?`width:${p.w}%;`:'';
                     const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
-                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW};${bs}">${e.v}</div>`;
+                    h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW}${stWd};${bs}">${e.v}</div>`;
                 }
             }
             h+=`</div>`;
@@ -674,8 +698,9 @@ function executePrint(){
                 if(p.hidden)continue;
                 const stFS=p.fs?`font-size:${p.fs}px;`:'';
                 const stB=p.bold?`font-weight:bold;`:'';
-                const stW=p.nowrap?`white-space:nowrap;`:'';
-                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}">${e.v}</div>`
+                const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
+                const stWd=p.w?`width:${p.w}%;`:'';
+                h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}${stWd}">${e.v}</div>`
             }
             h+='</div>';
         }
