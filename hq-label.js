@@ -315,7 +315,10 @@ function doPrint(){
         h+=`<div class="ps" style="width:${s.pw}mm;height:${s.ph}mm;position:relative;box-sizing:border-box">`;
         for(let r=0;r<g.rows&&idx<flat.length;r++)for(let c=0;c<g.cols&&idx<flat.length;c++,idx++){
             const{d,lo}=flat[idx],cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
-            const gpp=k=>(lo&&lo[k])?lo[k]:dp()[k];
+            const gpp=k=>{
+                const dd=dp()[k]||{x:50,y:50}, ll=lo&&lo[k]?lo[k]:{};
+                return{x:ll.x??dd.x, y:ll.y??dd.y, sx:ll.sx??1, sy:ll.sy??1, fs:ll.fs||null, bold:ll.bold||false};
+            };
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}pt">`;
             
             // 컷팅 가이드 (네 모서리 십자 마크)
@@ -326,8 +329,8 @@ function doPrint(){
             h+=`<div style="${cm}right:0;bottom:0;border-right-width:1px;border-bottom-width:1px"></div>`;
 
             const els=[];
-            if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:30%;max-width:60%;object-fit:contain">`});
-            if(d.memoImageBase64)els.push({k:'memoImg',v:`<img src="${d.memoImageBase64}" style="max-height:30%;max-width:60%;object-fit:contain">`});
+            if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:${s.lh*0.35}mm;max-width:${s.lw*0.7}mm;object-fit:contain">`});
+            if(d.memoImageBase64)els.push({k:'memoImg',v:`<img src="${d.memoImageBase64}" style="max-height:${s.lh*0.3}mm;max-width:${s.lw*0.7}mm;object-fit:contain">`});
             
             const isTableMode = lo && lo.isTableMode;
             if(isTableMode){
