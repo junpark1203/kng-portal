@@ -1,6 +1,8 @@
 (function(){
 'use strict';
-async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
+async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!t){try{t=await waitForAuth()}catch(e){}}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
+let _authReady=null;
+function waitForAuth(timeout=5000){if(_authReady)return _authReady;_authReady=new Promise((res,rej)=>{const s=Date.now();(function poll(){try{if(window.parent&&window.parent.getAuthToken){window.parent.getAuthToken().then(t=>{if(t){res(t)}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{res(null)}}).catch(()=>{if(Date.now()-s<timeout)setTimeout(poll,300);else res(null)})}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{res(null)}}catch(e){if(Date.now()-s<timeout)setTimeout(poll,300);else res(null)}})()});return _authReady}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null,historyStack=[];
