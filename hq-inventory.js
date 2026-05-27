@@ -263,6 +263,8 @@
                     $('editProdName').textContent = prod.name;
                     $('editProdDetails').textContent = `${prod.brand} | ${prod.color} | ${prod.size}`;
                     $('eStock').value = prod.stock;
+                    const sp = $('eSellPrice'); if (sp) sp.value = prod.sellPrice || 0;
+                    const dp = $('eDiscountPrice'); if (dp) dp.value = prod.discountPrice || 0;
                     $('editModal').classList.add('active');
                 }
             }
@@ -279,11 +281,13 @@
             if (!prod) return;
 
             const newStock = parseInt($('eStock').value, 10) || 0;
+            const newSellPrice = parseInt($('eSellPrice')?.value, 10) || 0;
+            const newDiscountPrice = parseInt($('eDiscountPrice')?.value, 10) || 0;
             try {
                 const res = await authFetch(API_BASE + '/products/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(Object.assign({}, prod, { stock: newStock }))
+                    body: JSON.stringify(Object.assign({}, prod, { stock: newStock, sellPrice: newSellPrice, discountPrice: newDiscountPrice }))
                 });
                 if (!res.ok) throw new Error('수정 실패');
                 showToast('수정 완료', 'success');
