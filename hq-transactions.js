@@ -92,9 +92,10 @@
             if (sort.col === 'txDate' || sort.col === 'timestamp') {
                 va = new Date(va).getTime() || 0;
                 vb = new Date(vb).getTime() || 0;
-            } else if (sort.col === 'qty' || sort.col === 'price') {
-                va = parseFloat(va) || 0;
-                vb = parseFloat(vb) || 0;
+            } else if (sort.col === 'qty' || sort.col === 'price' || sort.col === 'totalAmount') {
+                const getVal = (row) => sort.col === 'totalAmount' ? (row.qty || 0) * (row.price || 0) : row[sort.col];
+                va = parseFloat(getVal(a)) || 0;
+                vb = parseFloat(getVal(b)) || 0;
             } else if (typeof va === 'string') {
                 va = va.toLowerCase(); vb = (vb+'').toLowerCase();
             }
@@ -112,7 +113,7 @@
         const paged = filtered.slice(start, start + PER_PAGE);
 
         if (paged.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
         } else {
             paged.forEach(t => {
                 const tr = document.createElement('tr');
@@ -134,6 +135,7 @@
                     '<td>' + (t.type === 'IN' ? fmtCurrency(t.basePrice || 0) : '-') + '</td>' +
                     '<td>' + (t.type === 'IN' ? fmtCurrency(t.freight || 0) : '-') + '</td>' +
                     '<td>' + fmtCurrency(t.price) + '</td>' +
+                    '<td style="font-weight:600; color:var(--gray-800);">' + fmtCurrency(t.qty * t.price) + '</td>' +
                     '<td>' + escHtml(t.remarks || '') + '</td>' +
                     '<td><button class="btn-action" data-edit="' + escHtml(t.id) + '"><i class="bx bx-edit-alt"></i> 수정</button></td>';
                 tbody.appendChild(tr);
@@ -157,11 +159,20 @@
 
     // Edit Modal
     function updateEditCalcPrice() {
-        const base = parseInt($('eBasePrice').value, 10) || 0;
-        const freight = parseInt($('eFreight').value, 10) || 0;
-        const pureBase = $('eBaseVat').checked ? base : Math.round(base / 1.1);
-        const pureFreight = $('eFreightVat').checked ? freight : Math.round(freight / 1.1);
-        $('ePrice').value = pureBase + pureFreight;
+        const isOut = $('eTxType').value === '출고';
+        let finalPrice = 0;
+        if (!isOut) {
+            const base = parseInt($('eBasePrice').value, 10) || 0;
+            const freight = parseInt($('eFreight').value, 10) || 0;
+            const pureBase = $('eBaseVat').checked ? base : Math.round(base / 1.1);
+            const pureFreight = $('eFreightVat').checked ? freight : Math.round(freight / 1.1);
+            finalPrice = pureBase + pureFreight;
+            $('ePrice').value = finalPrice;
+        } else {
+            finalPrice = parseInt($('ePrice').value, 10) || 0;
+        }
+        const qty = parseInt($('eQty').value, 10) || 0;
+        $('eTotalAmount').value = fmtCurrency(qty * finalPrice);
     }
 
     function openEditModal(id) {
@@ -208,6 +219,7 @@
             $('eFreightVat').checked = true;
         }
 
+        updateEditCalcPrice();
         $('editModal').classList.add('active');
     }
 
@@ -342,6 +354,8 @@
         $('eFreight').addEventListener('input', updateEditCalcPrice);
         $('eBaseVat').addEventListener('change', updateEditCalcPrice);
         $('eFreightVat').addEventListener('change', updateEditCalcPrice);
+        $('ePrice').addEventListener('input', updateEditCalcPrice);
+        $('eQty').addEventListener('input', updateEditCalcPrice);
 
         // Delete
         $('deleteBtn').addEventListener('click', handleDelete);

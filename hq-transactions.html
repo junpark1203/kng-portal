@@ -78,12 +78,13 @@
                                         <th class="col-num sortable" data-sort="basePrice">상품가 <i class='bx bx-sort'></i></th>
                                         <th class="col-num sortable" data-sort="freight">운임 <i class='bx bx-sort'></i></th>
                                         <th class="col-num sortable" data-sort="price">단가 <br><span style="font-size:10px;color:var(--gray-400);font-weight:400">(공급가)</span> <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="totalAmount">총 금액 <br><span style="font-size:10px;color:var(--gray-400);font-weight:400">(공급가)</span> <i class='bx bx-sort'></i></th>
                                         <th>비고</th>
                                         <th class="col-action">관리</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tableBody">
-                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="12"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -115,7 +116,7 @@
                         <div class="fg"><label for="eColor">컬러</label><input type="text" id="eColor"></div>
                         <div class="fg"><label for="eSize">사이즈</label><input type="text" id="eSize"></div>
                     </div>
-                    <div class="form-row fr-row3" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="form-row fr-row3" style="grid-template-columns: repeat(5, 1fr);">
                         <div class="fg"><label for="eQty">수량</label><input type="number" id="eQty" min="1" required></div>
                         <div class="fg" id="eBasePriceCol"><label for="eBasePrice">상품가</label>
                             <div class="input-vat-group"><input type="number" id="eBasePrice" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eBaseVat" checked><span>VAT별도</span></label></div>
@@ -125,6 +126,9 @@
                         </div>
                         <div class="fg"><label id="eLblPrice" for="ePrice">단가 <span style="font-size:11px;color:var(--gray-400);font-weight:normal;">(공급가)</span></label>
                             <input type="number" id="ePrice" min="0" required placeholder="자동계산" class="readonly-input">
+                        </div>
+                        <div class="fg"><label for="eTotalAmount">총 금액</label>
+                            <input type="text" id="eTotalAmount" class="readonly-input" readonly style="font-weight:700; color:var(--primary); font-size:16px;">
                         </div>
                     </div>
                     <div class="form-row fr-row4">
