@@ -67,8 +67,8 @@
                 <th class="col-price">상품가<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="basePrice" checked>VAT별도</label></th>
                 <th class="col-price">운임<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="freight" checked>VAT별도</label></th>
                 <th class="col-price">매입단가</th>
-                <th class="col-price">일반판매가</th>
-                <th class="col-price">할인판매가</th>
+                <th class="col-price">일반판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
+                <th class="col-price">할인판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-action"></th>
             </tr>`;
         } else {
@@ -78,8 +78,8 @@
                 <th class="col-stock">재고</th>
                 <th class="col-qty">출고수량</th>
                 <th class="col-price">매출단가</th>
-                <th class="col-price" style="width:90px">일반판매가</th>
-                <th class="col-price" style="width:90px">할인판매가</th>
+                <th class="col-price" style="width:90px">일반판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
+                <th class="col-price" style="width:90px">할인판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-action"></th>
             </tr>`;
         }
