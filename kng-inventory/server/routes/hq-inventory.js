@@ -14,157 +14,166 @@ function setDb(database) {
     db = database;
 }
 
+/** 안전한 컬럼 추가 헬퍼 — 컬럼이 없을 때만 ALTER TABLE 실행 */
+function addColumnIfNotExists(database, table, column, colDef) {
+    return new Promise((resolve) => {
+        database.all(`PRAGMA table_info(${table})`, [], (err, cols) => {
+            if (err || !cols) { resolve(); return; }
+            const exists = cols.some(c => c.name === column);
+            if (exists) { resolve(); return; }
+            database.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${colDef}`, () => resolve());
+        });
+    });
+}
+
 /** DB 테이블 초기화 */
 function initHqTables(database) {
-    return new Promise((resolve, reject) => {
-        database.serialize(() => {
-            // 상품 마스터
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_products (
-                    id TEXT PRIMARY KEY,
-                    supplier TEXT DEFAULT '최가유통',
-                    brand TEXT NOT NULL DEFAULT '',
-                    name TEXT NOT NULL DEFAULT '',
-                    color TEXT NOT NULL DEFAULT '',
-                    size TEXT NOT NULL DEFAULT '',
-                    stock INTEGER DEFAULT 0,
-                    buyPrice INTEGER DEFAULT 0,
-                    sellPrice INTEGER DEFAULT 0,
-                    createdAt TEXT DEFAULT (datetime('now')),
-                    updatedAt TEXT DEFAULT (datetime('now'))
-                )
-            `);
+    return new Promise(async (resolve, reject) => {
+        // 1) 테이블 생성 (serialize로 순차 실행)
+        await new Promise((res) => {
+            database.serialize(() => {
+                // 상품 마스터
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_products (
+                        id TEXT PRIMARY KEY,
+                        supplier TEXT DEFAULT '최가유통',
+                        brand TEXT NOT NULL DEFAULT '',
+                        name TEXT NOT NULL DEFAULT '',
+                        color TEXT NOT NULL DEFAULT '',
+                        size TEXT NOT NULL DEFAULT '',
+                        stock INTEGER DEFAULT 0,
+                        buyPrice INTEGER DEFAULT 0,
+                        sellPrice INTEGER DEFAULT 0,
+                        createdAt TEXT DEFAULT (datetime('now')),
+                        updatedAt TEXT DEFAULT (datetime('now'))
+                    )
+                `);
 
-            // 입출고 내역
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_transactions (
-                    id TEXT PRIMARY KEY,
-                    type TEXT NOT NULL CHECK(type IN ('IN', 'OUT')),
-                    txDate TEXT NOT NULL,
-                    timestamp TEXT NOT NULL,
-                    productId TEXT,
-                    supplier TEXT,
-                    brand TEXT,
-                    productName TEXT,
-                    color TEXT,
-                    size TEXT,
-                    qty INTEGER NOT NULL DEFAULT 0,
-                    price INTEGER NOT NULL DEFAULT 0,
-                    buyPrice INTEGER DEFAULT 0,
-                    basePrice INTEGER DEFAULT 0,
-                    freight INTEGER DEFAULT 0,
-                    remarks TEXT,
-                    batchId TEXT,
-                    createdAt TEXT DEFAULT (datetime('now'))
-                )
-            `);
+                // 입출고 내역
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_transactions (
+                        id TEXT PRIMARY KEY,
+                        type TEXT NOT NULL CHECK(type IN ('IN', 'OUT')),
+                        txDate TEXT NOT NULL,
+                        timestamp TEXT NOT NULL,
+                        productId TEXT,
+                        supplier TEXT,
+                        brand TEXT,
+                        productName TEXT,
+                        color TEXT,
+                        size TEXT,
+                        qty INTEGER NOT NULL DEFAULT 0,
+                        price INTEGER NOT NULL DEFAULT 0,
+                        buyPrice INTEGER DEFAULT 0,
+                        basePrice INTEGER DEFAULT 0,
+                        freight INTEGER DEFAULT 0,
+                        remarks TEXT,
+                        batchId TEXT,
+                        createdAt TEXT DEFAULT (datetime('now'))
+                    )
+                `);
 
-            // 집계 메트릭 (KPI)
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_metrics (
-                    key TEXT PRIMARY KEY,
-                    value REAL DEFAULT 0
-                )
-            `);
+                // 집계 메트릭 (KPI)
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_metrics (
+                        key TEXT PRIMARY KEY,
+                        value REAL DEFAULT 0
+                    )
+                `);
+                database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalRevenue', 0)`);
+                database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalCost', 0)`);
 
-            // 기본 메트릭 삽입 (이미 있으면 무시)
-            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalRevenue', 0)`);
-            database.run(`INSERT OR IGNORE INTO hq_metrics (key, value) VALUES ('totalCost', 0)`, () => {
-                // ALTER TABLE to add batchId if missing
-                database.run(`ALTER TABLE hq_transactions ADD COLUMN batchId TEXT`, (err) => {
-                    // Ignore error if column already exists
+                // 라벨 데이터 테이블
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_labels (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL DEFAULT '',
+                        labelSpecId TEXT DEFAULT '',
+                        productName TEXT DEFAULT '',
+                        color TEXT DEFAULT '',
+                        size TEXT DEFAULT '',
+                        manufacturer TEXT DEFAULT '',
+                        price TEXT DEFAULT '',
+                        origin TEXT DEFAULT '',
+                        spec TEXT DEFAULT '',
+                        barcode TEXT DEFAULT '',
+                        memo TEXT DEFAULT '',
+                        logoBase64 TEXT DEFAULT '',
+                        memoImageBase64 TEXT DEFAULT '',
+                        extraFields TEXT DEFAULT '[]',
+                        layout TEXT DEFAULT '{}',
+                        createdAt TEXT DEFAULT (datetime('now')),
+                        updatedAt TEXT DEFAULT (datetime('now'))
+                    )
+                `);
+
+                // 로고 템플릿 테이블
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_logo_templates (
+                        id TEXT PRIMARY KEY,
+                        manufacturer TEXT NOT NULL DEFAULT '',
+                        logoBase64 TEXT DEFAULT '',
+                        createdAt TEXT DEFAULT (datetime('now')),
+                        updatedAt TEXT DEFAULT (datetime('now'))
+                    )
+                `);
+
+                // 라벨 용지 규격 테이블
+                database.run(`
+                    CREATE TABLE IF NOT EXISTS hq_label_specs (
+                        id TEXT PRIMARY KEY,
+                        name TEXT NOT NULL DEFAULT '',
+                        paperWidth REAL DEFAULT 210,
+                        paperHeight REAL DEFAULT 297,
+                        labelWidth REAL DEFAULT 63.5,
+                        labelHeight REAL DEFAULT 38.1,
+                        cols INTEGER DEFAULT 3,
+                        rows INTEGER DEFAULT 7,
+                        marginTop REAL DEFAULT 15,
+                        marginBottom REAL DEFAULT 15,
+                        marginLeft REAL DEFAULT 7,
+                        marginRight REAL DEFAULT 7,
+                        gapX REAL DEFAULT 2,
+                        gapY REAL DEFAULT 0,
+                        isDefault INTEGER DEFAULT 0,
+                        createdAt TEXT DEFAULT (datetime('now')),
+                        updatedAt TEXT DEFAULT (datetime('now'))
+                    )
+                `);
+
+                // 기본 라벨 규격 시딩
+                const now = new Date().toISOString();
+                const defaultSpecs = [
+                    { id: 'LS-21', name: '21칸 (63.5×38.1mm)', labelWidth: 63.5, labelHeight: 38.1, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                    { id: 'LS-24', name: '24칸 (63.5×33.9mm)', labelWidth: 63.5, labelHeight: 33.9, marginTop: 8.5, marginBottom: 8.5, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
+                    { id: 'LS-40', name: '40칸 (48.5×25.4mm)', labelWidth: 48.5, labelHeight: 25.4, marginTop: 22, marginBottom: 22, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
+                    { id: 'LS-65', name: '65칸 (38.1×21.2mm)', labelWidth: 38.1, labelHeight: 21.2, marginTop: 11, marginBottom: 11, marginLeft: 4.6, marginRight: 4.6, gapX: 2.5, gapY: 0 }
+                ];
+                defaultSpecs.forEach(s => {
+                    database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
+                                  VALUES (?, ?, ?, ?, 210, 297, 0, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+                        [s.id, s.name, s.labelWidth, s.labelHeight, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
+                });
+
+                database.get("SELECT 1", () => {
                     console.log('hq_products / hq_transactions / hq_metrics 테이블 확인 완료');
+                    res();
                 });
             });
-
-            // 라벨 데이터 테이블
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_labels (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL DEFAULT '',
-                    labelSpecId TEXT DEFAULT '',
-                    productName TEXT DEFAULT '',
-                    color TEXT DEFAULT '',
-                    size TEXT DEFAULT '',
-                    manufacturer TEXT DEFAULT '',
-                    price TEXT DEFAULT '',
-                    origin TEXT DEFAULT '',
-                    spec TEXT DEFAULT '',
-                    barcode TEXT DEFAULT '',
-                    memo TEXT DEFAULT '',
-                    logoBase64 TEXT DEFAULT '',
-                    memoImageBase64 TEXT DEFAULT '',
-                    extraFields TEXT DEFAULT '[]',
-                    layout TEXT DEFAULT '{}',
-                    createdAt TEXT DEFAULT (datetime('now')),
-                    updatedAt TEXT DEFAULT (datetime('now'))
-                )
-            `);
-            // 기존 DB 호환 - 누락 컬럼 추가
-            database.run(`ALTER TABLE hq_labels ADD COLUMN layout TEXT DEFAULT '{}'`, () => {});
-            database.run(`ALTER TABLE hq_labels ADD COLUMN memoImageBase64 TEXT DEFAULT ''`, () => {});
-            database.run(`ALTER TABLE hq_labels ADD COLUMN color TEXT DEFAULT ''`, () => {});
-            database.run(`ALTER TABLE hq_labels ADD COLUMN size TEXT DEFAULT ''`, () => {});
-            database.run(`ALTER TABLE hq_labels ADD COLUMN labelSpecId TEXT DEFAULT ''`, () => {});
-
-            // 로고 템플릿 테이블 (제조사별 로고 저장)
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_logo_templates (
-                    id TEXT PRIMARY KEY,
-                    manufacturer TEXT NOT NULL DEFAULT '',
-                    logoBase64 TEXT DEFAULT '',
-                    createdAt TEXT DEFAULT (datetime('now')),
-                    updatedAt TEXT DEFAULT (datetime('now'))
-                )
-            `);
-
-            // 라벨 용지 규격 테이블
-            database.run(`
-                CREATE TABLE IF NOT EXISTS hq_label_specs (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL DEFAULT '',
-                    paperWidth REAL DEFAULT 210,
-                    paperHeight REAL DEFAULT 297,
-                    labelWidth REAL DEFAULT 63.5,
-                    labelHeight REAL DEFAULT 38.1,
-                    cols INTEGER DEFAULT 3,
-                    rows INTEGER DEFAULT 7,
-                    marginTop REAL DEFAULT 15,
-                    marginBottom REAL DEFAULT 15,
-                    marginLeft REAL DEFAULT 7,
-                    marginRight REAL DEFAULT 7,
-                    gapX REAL DEFAULT 2,
-                    gapY REAL DEFAULT 0,
-                    isDefault INTEGER DEFAULT 0,
-                    createdAt TEXT DEFAULT (datetime('now')),
-                    updatedAt TEXT DEFAULT (datetime('now'))
-                )
-            `);
-            
-            // labelWidth/labelHeight 컬럼 추가 (기존 DB 호환)
-            database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelWidth REAL DEFAULT 63.5`, () => {});
-            database.run(`ALTER TABLE hq_label_specs ADD COLUMN labelHeight REAL DEFAULT 38.1`, () => {});
-            
-            // 기본 라벨 규격 시딩
-            const defaultSpecs = [
-                { id: 'LS-21', name: '21칸 (63.5×38.1mm)', labelWidth: 63.5, labelHeight: 38.1, marginTop: 15, marginBottom: 15, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
-                { id: 'LS-24', name: '24칸 (63.5×33.9mm)', labelWidth: 63.5, labelHeight: 33.9, marginTop: 8.5, marginBottom: 8.5, marginLeft: 7, marginRight: 7, gapX: 2.5, gapY: 0 },
-                { id: 'LS-40', name: '40칸 (48.5×25.4mm)', labelWidth: 48.5, labelHeight: 25.4, marginTop: 22, marginBottom: 22, marginLeft: 5, marginRight: 5, gapX: 2, gapY: 0 },
-                { id: 'LS-65', name: '65칸 (38.1×21.2mm)', labelWidth: 38.1, labelHeight: 21.2, marginTop: 11, marginBottom: 11, marginLeft: 4.6, marginRight: 4.6, gapX: 2.5, gapY: 0 }
-            ];
-            const now = new Date().toISOString();
-            defaultSpecs.forEach(s => {
-                database.run(`INSERT OR IGNORE INTO hq_label_specs (id, name, labelWidth, labelHeight, paperWidth, paperHeight, cols, rows, marginTop, marginBottom, marginLeft, marginRight, gapX, gapY, isDefault, createdAt, updatedAt)
-                              VALUES (?, ?, ?, ?, 210, 297, 0, 0, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-                    [s.id, s.name, s.labelWidth, s.labelHeight, s.marginTop, s.marginBottom, s.marginLeft, s.marginRight, s.gapX, s.gapY, now, now]);
-            });
-
-            // 모든 쿼리가 완료된 후 resolve() 호출
-            database.get("SELECT 1", () => {
-                console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
-                resolve();
-            });
         });
+
+        // 2) 기존 DB 호환 — 누락 컬럼을 안전하게 추가 (PRAGMA 확인 후 ALTER)
+        await addColumnIfNotExists(database, 'hq_transactions', 'batchId', 'TEXT');
+        await addColumnIfNotExists(database, 'hq_labels', 'layout', "TEXT DEFAULT '{}'");
+        await addColumnIfNotExists(database, 'hq_labels', 'memoImageBase64', "TEXT DEFAULT ''");
+        await addColumnIfNotExists(database, 'hq_labels', 'color', "TEXT DEFAULT ''");
+        await addColumnIfNotExists(database, 'hq_labels', 'size', "TEXT DEFAULT ''");
+        await addColumnIfNotExists(database, 'hq_labels', 'labelSpecId', "TEXT DEFAULT ''");
+        await addColumnIfNotExists(database, 'hq_label_specs', 'labelWidth', 'REAL DEFAULT 63.5');
+        await addColumnIfNotExists(database, 'hq_label_specs', 'labelHeight', 'REAL DEFAULT 38.1');
+
+        console.log('hq_labels / hq_label_specs / hq_logo_templates 테이블 확인 완료');
+        resolve();
     });
 }
 
