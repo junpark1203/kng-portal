@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -77,7 +77,7 @@
                                         <th class="col-num sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
                                         <th class="col-num sortable" data-sort="basePrice">상품가 <i class='bx bx-sort'></i></th>
                                         <th class="col-num sortable" data-sort="freight">운임 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="price">단가 <br><span style="font-size:10px;color:var(--gray-400);font-weight:400">(공급가)</span> <i class='bx bx-sort'></i></th>
                                         <th>비고</th>
                                         <th class="col-action">관리</th>
                                     </tr>
@@ -123,7 +123,7 @@
                         <div class="fg" id="eFreightCol"><label for="eFreight">운임</label>
                             <div class="input-vat-group"><input type="number" id="eFreight" min="0" placeholder="0"><label class="vat-chip"><input type="checkbox" id="eFreightVat" checked><span>VAT별도</span></label></div>
                         </div>
-                        <div class="fg"><label id="eLblPrice" for="ePrice">단가</label>
+                        <div class="fg"><label id="eLblPrice" for="ePrice">단가 <span style="font-size:11px;color:var(--gray-400);font-weight:normal;">(공급가)</span></label>
                             <input type="number" id="ePrice" min="0" required placeholder="자동계산" class="readonly-input">
                         </div>
                     </div>
