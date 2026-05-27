@@ -967,7 +967,7 @@ function executePrint(){
         
         if($('chkCutLines') && $('chkCutLines').checked){
             const cxSz = 2;
-            const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:0.3mm;height:${cxSz*2}mm;background:#888;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:0.3mm;background:#888;pointer-events:none;z-index:5;"></div>`;
+            const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:0;height:${cxSz*2}mm;border-left:0.3mm solid #999;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:0;border-top:0.3mm solid #999;pointer-events:none;z-index:5;"></div>`;
             for(let r=0;r<g.rows;r++){
                 for(let c=0;c<g.cols;c++){
                     const x1 = s.ml + c*(s.lw+s.gx), x2 = x1 + s.lw;
