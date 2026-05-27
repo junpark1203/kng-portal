@@ -699,21 +699,34 @@ function initSheetInteraction(){
             const slNode = n.closest('.sh-slot');
             const rect = slNode.getBoundingClientRect();
 
+            let shouldDrag = true;
             if(e.shiftKey){
                 if(sheetSelectedKeys.has(fK)){
                     groupKeys.forEach(gk => sheetSelectedKeys.delete(gk));
                     if(groupKeys.includes(sheetKeyObjectKey))sheetKeyObjectKey=null;
-                } else groupKeys.forEach(gk => sheetSelectedKeys.add(gk));
-                renderSheet(); return;
+                    shouldDrag = false;
+                } else {
+                    groupKeys.forEach(gk => sheetSelectedKeys.add(gk));
+                }
             } else if(!sheetSelectedKeys.has(fK)){
-                sheetSelectedKeys.clear(); groupKeys.forEach(gk => sheetSelectedKeys.add(gk)); sheetKeyObjectKey=null; renderSheet();
+                sheetSelectedKeys.clear(); groupKeys.forEach(gk => sheetSelectedKeys.add(gk)); sheetKeyObjectKey=null;
             } else {
                 sheetKeyObjectKey=fK;
-                sc.querySelectorAll('.sh-el').forEach(x=>{
-                    const k = x.dataset.key;
-                    x.style.boxShadow=sheetSelectedKeys.has(k)?(k===fK?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none';
-                });
             }
+            
+            sc.querySelectorAll('.sh-el').forEach(x=>{
+                const k = x.dataset.key;
+                if(sheetSelectedKeys.has(k)){
+                    x.classList.add('sh-sel');
+                    if(k===sheetKeyObjectKey) x.classList.add('sh-ko'); else x.classList.remove('sh-ko');
+                    x.style.boxShadow=(k===sheetKeyObjectKey)?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)';
+                } else {
+                    x.classList.remove('sh-sel', 'sh-ko');
+                    x.style.boxShadow='none';
+                }
+            });
+            updateShToolbar();
+            if(!shouldDrag) return;
             
             const startX=e.clientX, startY=e.clientY;
             const initPos={};
