@@ -77,7 +77,7 @@
                 <th style="min-width:280px">상품 선택</th>
                 <th class="col-stock">재고</th>
                 <th class="col-qty">출고수량</th>
-                <th class="col-price">매출단가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
+                <th class="col-price">매출단가<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="outPrice">VAT별도</label></th>
                 <th class="col-price" style="width:90px">일반판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-price" style="width:90px">할인판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-action"></th>
@@ -388,7 +388,7 @@
         for (const row of rows) {
             let brand, name, color, size, productId, buyPrice;
             const qty = parseInt(row.querySelector('.row-qty').value, 10) || 0;
-            const price = parseInt(row.querySelector('.row-price').value, 10) || 0;
+            let price = parseInt(row.querySelector('.row-price').value, 10) || 0;
             const basePrice = parseInt(row.querySelector('.row-base')?.value, 10) || 0;
             const freight = parseInt(row.querySelector('.row-freight')?.value, 10) || 0;
             const sellPrice = parseInt(row.querySelector('.row-sellPrice')?.value, 10) || 0;
@@ -397,6 +397,10 @@
             if (!qty || !price) continue;
 
             if (type === 'OUT') {
+                const outVatCheck = document.querySelector('th .col-vat-check[data-target="outPrice"]');
+                if (outVatCheck && !outVatCheck.checked) {
+                    price = Math.round(price / 1.1);
+                }
                 productId = row.dataset.productId;
                 if (!productId) {
                     showToast('상품이 선택되지 않은 행이 있습니다.', 'warning');
