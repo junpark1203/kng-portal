@@ -958,6 +958,49 @@ document.addEventListener('DOMContentLoaded',async()=>{
     $('btnShPrint').onclick = executePrint;
     $('btnShUndo').onclick = undoSh;
     if($('chkCutLines')) $('chkCutLines').onchange = () => renderSheet();
+    if($('btnShSaveLayout')) $('btnShSaveLayout').onclick = async () => {
+        const updates = new Map();
+        for(const sl of sheetSlots){
+            if(sl && sl.d && sl.d.id){
+                if(!updates.has(sl.d.id)){
+                    updates.set(sl.d.id, { d: sl.d, layout: sl.lo });
+                }
+            }
+        }
+        if(updates.size === 0) { toast('저장할 라벨이 없습니다.', 'warning'); return; }
+        
+        const btn = $('btnShSaveLayout');
+        const oldText = btn.innerHTML;
+        btn.innerHTML = '<i class="bx bx-loader bx-spin"></i> 저장 중...';
+        btn.disabled = true;
+        
+        try {
+            for(const [id, data] of updates){
+                const p = { ...data.d, layout: data.layout };
+                // Ensure extraFields is properly parsed if it's a string
+                if(typeof p.extraFields === 'string') {
+                    try { p.extraFields = JSON.parse(p.extraFields); } catch(e) { p.extraFields = []; }
+                }
+                const r = await af(`${API}/labels/${id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(p)
+                });
+                if(!r.ok) throw new Error('저장 실패');
+            }
+            toast(`${updates.size}개 라벨의 레이아웃이 저장되었습니다.`, 'success');
+            await fetchL();
+            if(curId) {
+                const lb = labels.find(x => x.id === curId);
+                if(lb) load(lb);
+            }
+        } catch(e) {
+            toast(e.message, 'error');
+        } finally {
+            btn.innerHTML = oldText;
+            btn.disabled = false;
+        }
+    };
     $('btnShDel').onclick = () => {
         if(!sheetSelectedKeys.size) return;
         saveShHistory();
