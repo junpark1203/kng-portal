@@ -77,7 +77,7 @@ app.use('/api/', apiLimiter);
 const { verifyToken } = require('./auth-middleware');
 // health check 등 인증이 필요 없는 라우트는 미들웨어 적용 이전에 선언
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v1.0.1' });
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v1.0.2' });
 });
 // 이미지 업로드 파일 — <img> 태그에서 직접 접근하므로 인증 제외
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
