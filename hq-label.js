@@ -2,7 +2,7 @@
 'use strict';
 async function af(u,o={}){let t=null;try{if(window.parent&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!t){try{t=await waitForAuth()}catch(e){}}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
 let _authReady=null;
-function waitForAuth(timeout=5000){if(_authReady)return _authReady;_authReady=new Promise((res,rej)=>{const s=Date.now();(function poll(){try{if(window.parent&&window.parent.getAuthToken){window.parent.getAuthToken().then(t=>{if(t){res(t)}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{res(null)}}).catch(()=>{if(Date.now()-s<timeout)setTimeout(poll,300);else res(null)})}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{res(null)}}catch(e){if(Date.now()-s<timeout)setTimeout(poll,300);else res(null)}})()});return _authReady}
+function waitForAuth(timeout=5000){if(_authReady)return _authReady;_authReady=new Promise((res)=>{const s=Date.now();(function poll(){try{if(window.parent&&window.parent.getAuthToken){window.parent.getAuthToken().then(t=>{if(t){res(t)}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{_authReady=null;res(null)}}).catch(()=>{if(Date.now()-s<timeout)setTimeout(poll,300);else{_authReady=null;res(null)}})}else if(Date.now()-s<timeout){setTimeout(poll,300)}else{_authReady=null;res(null)}}catch(e){if(Date.now()-s<timeout)setTimeout(poll,300);else{_authReady=null;res(null)}}})()});return _authReady}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null,historyStack=[];
@@ -396,7 +396,7 @@ function initInteraction(el){
     }
 
 // Labels CRUD
-async function fetchL(){try{const r=await af(API+'/labels');if(r.ok)labels=await r.json()}catch(e){}}
+async function fetchL(){try{const r=await af(API+'/labels');if(r.ok){labels=await r.json();return}if(r.status===401||r.status===403){console.warn('[hq-label] fetchL 401 — 토큰 재시도');_authReady=null;const r2=await af(API+'/labels');if(r2.ok){labels=await r2.json();return}console.error('[hq-label] fetchL 재시도 실패:',r2.status)}else{console.error('[hq-label] fetchL 실패:',r.status)}}catch(e){console.error('[hq-label] fetchL 에러:',e)}}
 async function saveL(){const d=coll();if(!d.name){toast('라벨 이름을 입력하세요','warning');return}try{const u=curId?`${API}/labels/${curId}`:`${API}/labels`;const r=await af(u,{method:curId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);if(!curId)curId=j.id;await fetchL();toast('저장 완료','success')}catch(e){toast(e.message,'error')}}
 async function delL(id){if(!confirm('삭제?'))return;try{await af(API+'/labels/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[id]})});if(curId===id)reset();await fetchL();renderList();toast('삭제','success')}catch(e){toast(e.message,'error')}}
 
@@ -470,7 +470,7 @@ function getPS(items){
 }
 
 // Specs
-async function fetchS(){try{const r=await af(API+'/label-specs');if(r.ok)specs=await r.json()}catch(e){}popSel()}
+async function fetchS(){try{const r=await af(API+'/label-specs');if(r.ok){specs=await r.json();popSel();return}if(r.status===401||r.status===403){_authReady=null;const r2=await af(API+'/label-specs');if(r2.ok){specs=await r2.json();popSel();return}}}catch(e){console.error('[hq-label] fetchS 에러:',e)}popSel()}
 function popSel(){
     const s=$('fLabelSpecId');
     if(s){const p=s.value;s.innerHTML='<option value="">기본 (63.5 x 38.1)</option>'+specs.map(x=>`<option value="${x.id}">${E(x.name)}</option>`).join('');if(p&&specs.find(x=>x.id===p))s.value=p}
@@ -955,6 +955,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
     initTabs();initLogo();initLT();initMemoImg();
     await Promise.all([fetchL(),fetchS(),fetchLT()]);
     renderList();
+    // 초기 로드에서 라벨 목록이 비어있으면 3초 후 한번 더 재시도 (auth 타이밍 문제 대응)
+    if(labels.length===0){setTimeout(async()=>{console.log('[hq-label] 라벨 목록 비어있음 — 재시도');_authReady=null;await Promise.all([fetchL(),fetchS(),fetchLT()]);renderList();renderSpecs()},3000)}
     renderSpecs();
     ['fName','fLabelSpecId','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).onchange=$(id).oninput=updPv;});
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
