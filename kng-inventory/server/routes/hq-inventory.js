@@ -44,10 +44,14 @@ function initHqTables(database) {
                         stock INTEGER DEFAULT 0,
                         buyPrice INTEGER DEFAULT 0,
                         sellPrice INTEGER DEFAULT 0,
+                        discountPrice INTEGER DEFAULT 0,
                         createdAt TEXT DEFAULT (datetime('now')),
                         updatedAt TEXT DEFAULT (datetime('now'))
                     )
                 `);
+                
+                // 마이그레이션: 기존 DB에 discountPrice 컬럼이 없을 경우 추가
+                database.run('ALTER TABLE hq_products ADD COLUMN discountPrice INTEGER DEFAULT 0', () => {});
 
                 // 입출고 내역
                 database.run(`
@@ -203,9 +207,9 @@ router.post('/products', (req, res) => {
     const p = req.body;
     const id = p.id || ('HQP-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
-    const sql = `INSERT INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, now];
+    const sql = `INSERT INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, discountPrice, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, p.discountPrice||0, now, now];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: '등록 성공', id });
@@ -217,8 +221,8 @@ router.put('/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
-    const sql = `UPDATE hq_products SET supplier=?, brand=?, name=?, color=?, size=?, stock=?, buyPrice=?, sellPrice=?, updatedAt=? WHERE id=?`;
-    const params = [p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, id];
+    const sql = `UPDATE hq_products SET supplier=?, brand=?, name=?, color=?, size=?, stock=?, buyPrice=?, sellPrice=?, discountPrice=?, updatedAt=? WHERE id=?`;
+    const params = [p.supplier||'', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, p.discountPrice||0, now, id];
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
@@ -517,10 +521,10 @@ router.post('/migrate', (req, res) => {
     db.serialize(() => {
         // 상품 마이그레이션
         if (products && Array.isArray(products)) {
-            const pStmt = db.prepare(`INSERT OR REPLACE INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, createdAt, updatedAt)
-                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+            const pStmt = db.prepare(`INSERT OR REPLACE INTO hq_products (id, supplier, brand, name, color, size, stock, buyPrice, sellPrice, discountPrice, createdAt, updatedAt)
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
             products.forEach(p => {
-                pStmt.run([p.id, p.supplier||'최가유통', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, now, now], function(err) {
+                pStmt.run([p.id, p.supplier||'최가유통', p.brand||'', p.name||'', p.color||'', p.size||'', p.stock||0, p.buyPrice||0, p.sellPrice||0, p.discountPrice||0, now, now], function(err) {
                     if (!err && this.changes > 0) pCount++;
                 });
             });

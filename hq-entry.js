@@ -67,6 +67,8 @@
                 <th class="col-price">상품가<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="basePrice" checked>VAT별도</label></th>
                 <th class="col-price">운임<label class="vat-toggle"><input type="checkbox" class="col-vat-check" data-target="freight" checked>VAT별도</label></th>
                 <th class="col-price">매입단가</th>
+                <th class="col-price">일반판매가</th>
+                <th class="col-price">할인판매가</th>
                 <th class="col-action"></th>
             </tr>`;
         } else {
@@ -76,6 +78,8 @@
                 <th class="col-stock">재고</th>
                 <th class="col-qty">출고수량</th>
                 <th class="col-price">매출단가</th>
+                <th class="col-price" style="width:90px">일반판매가</th>
+                <th class="col-price" style="width:90px">할인판매가</th>
                 <th class="col-action"></th>
             </tr>`;
         }
@@ -184,6 +188,10 @@
                 row.querySelector('.row-size').value = p.size;
                 row.querySelector('.row-base').value = p.basePrice || 0;
                 row.querySelector('.row-freight').value = p.freight || 0;
+                const sellPriceInput = row.querySelector('.row-sellPrice');
+                if (sellPriceInput) sellPriceInput.value = p.sellPrice || 0;
+                const discountPriceInput = row.querySelector('.row-discountPrice');
+                if (discountPriceInput) discountPriceInput.value = p.discountPrice || 0;
                 calcRowPrice(row);
                 closeAutocomplete();
             });
@@ -243,6 +251,10 @@
                 const stockBadge = row.querySelector('.stock-badge');
                 stockBadge.textContent = stock;
                 stockBadge.className = 'stock-badge ' + stockClass;
+                const sellText = row.querySelector('.row-sellPrice-text');
+                if (sellText) sellText.textContent = fmt(p.sellPrice || 0);
+                const discText = row.querySelector('.row-discountPrice-text');
+                if (discText) discText.textContent = fmt(p.discountPrice || 0);
                 closeAutocomplete();
                 updateSummary();
             });
@@ -280,6 +292,8 @@
                 <td><input type="number" class="row-base" min="0" placeholder="0"></td>
                 <td><input type="number" class="row-freight" min="0" placeholder="0"></td>
                 <td><input type="number" class="row-price readonly-input" readonly placeholder="자동계산" required></td>
+                <td><input type="number" class="row-sellPrice" min="0" placeholder="0"></td>
+                <td><input type="number" class="row-discountPrice" min="0" placeholder="0"></td>
                 <td><button type="button" class="btn-icon btn-remove-row"><i class='bx bx-trash'></i></button></td>
             `;
             // Event bindings
@@ -297,6 +311,8 @@
                 <td><div class="stock-badge zero" data-field="stock">—</div></td>
                 <td><input type="number" class="row-qty" min="1" placeholder="0" required></td>
                 <td><input type="number" class="row-price" min="0" placeholder="단가" required></td>
+                <td class="row-sellPrice-text text-center" style="color:var(--gray-500);font-size:12px">-</td>
+                <td class="row-discountPrice-text text-center" style="color:var(--gray-500);font-size:12px">-</td>
                 <td><button type="button" class="btn-icon btn-remove-row"><i class='bx bx-trash'></i></button></td>
             `;
 
@@ -375,6 +391,8 @@
             const price = parseInt(row.querySelector('.row-price').value, 10) || 0;
             const basePrice = parseInt(row.querySelector('.row-base')?.value, 10) || 0;
             const freight = parseInt(row.querySelector('.row-freight')?.value, 10) || 0;
+            const sellPrice = parseInt(row.querySelector('.row-sellPrice')?.value, 10) || 0;
+            const discountPrice = parseInt(row.querySelector('.row-discountPrice')?.value, 10) || 0;
 
             if (!qty || !price) continue;
 
@@ -416,17 +434,31 @@
                     data.productId = match.id;
                     data.buyPrice = match.buyPrice;
                     items.push(data);
+
+                    // Update prices if changed
+                    if (match.sellPrice !== sellPrice || match.discountPrice !== discountPrice || match.buyPrice !== price) {
+                        try {
+                            await authFetch(API_BASE + '/products/' + match.id, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(Object.assign({}, match, { buyPrice: price, sellPrice, discountPrice }))
+                            });
+                            match.buyPrice = price;
+                            match.sellPrice = sellPrice;
+                            match.discountPrice = discountPrice;
+                        } catch(e) { console.error('Product price update failed', e); }
+                    }
                 } else {
                     try {
                         const pRes = await authFetch(API_BASE + '/products', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ supplier, brand, name, color, size, stock: 0, buyPrice: price })
+                            body: JSON.stringify({ supplier, brand, name, color, size, stock: 0, buyPrice: price, sellPrice, discountPrice })
                         });
                         const pResult = await pRes.json();
                         data.productId = pResult.id;
                         data.buyPrice = price;
-                        products.push({ id: pResult.id, supplier, brand, name, color, size, stock: 0, buyPrice: price });
+                        products.push({ id: pResult.id, supplier, brand, name, color, size, stock: 0, buyPrice: price, sellPrice, discountPrice });
                         items.push(data);
                     } catch(err) {
                         showToast(`상품 등록 실패: ${name}`, 'error');

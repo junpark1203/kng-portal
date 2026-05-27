@@ -103,7 +103,7 @@
         // Sort
         filtered.sort((a, b) => {
             let va = a[sort.col] || '', vb = b[sort.col] || '';
-            if (sort.col === 'stock' || sort.col === 'buyPrice') {
+            if (sort.col === 'stock' || sort.col === 'buyPrice' || sort.col === 'sellPrice' || sort.col === 'discountPrice') {
                 va = parseFloat(va) || 0;
                 vb = parseFloat(vb) || 0;
             } else if (typeof va === 'string') {
@@ -126,7 +126,7 @@
         const paged = filtered.slice(start, start + PER_PAGE);
 
         if (paged.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:var(--gray-400);">데이터가 없습니다.</td></tr>';
         } else {
             paged.forEach(p => {
                 const tr = document.createElement('tr');
@@ -139,6 +139,8 @@
                     '<td>' + escHtml(p.color) + '</td>' +
                     '<td>' + escHtml(p.size) + '</td>' +
                     '<td>' + fmtCurrency(p.buyPrice) + '</td>' +
+                    '<td>' + fmtCurrency(p.sellPrice) + '</td>' +
+                    '<td>' + fmtCurrency(p.discountPrice) + '</td>' +
                     '<td><span class="' + badgeClass + '">' + p.stock + '</span></td>' +
                     '<td><button class="btn-action" data-edit="' + escHtml(p.id) + '"><i class="bx bx-edit-alt"></i> 수정</button></td>';
                 tbody.appendChild(tr);
