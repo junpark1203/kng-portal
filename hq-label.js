@@ -352,45 +352,52 @@ function initInteraction(el){
 
     function alignElements(type) {
         saveHistory();
-        // Find all possible keys in the current UI
         const allKeys = Array.from(document.querySelectorAll('.pv-label .el')).map(n=>n.dataset.key);
         let activeKeys = selectedKeys.size > 0 ? [...selectedKeys] : allKeys;
         activeKeys = activeKeys.filter(k => document.querySelector(`.el[data-key="${k}"]`));
         if(!activeKeys.length) return;
         activeKeys.forEach(k => { if(!layout[k]) layout[k] = {...gp(k)}; });
-        
-        let targetX = 50, targetY = 50;
-        if (keyObjectKey && selectedKeys.has(keyObjectKey)) {
-            targetX = layout[keyObjectKey].x;
-            targetY = layout[keyObjectKey].y;
-        } else if (selectedKeys.size > 1) {
-            const xs = activeKeys.map(k => layout[k].x);
-            const ys = activeKeys.map(k => layout[k].y);
-            if(type==='left') targetX = Math.min(...xs);
-            else if(type==='right') targetX = Math.max(...xs);
-            else if(type==='center') targetX = xs.reduce((a,b)=>a+b,0)/xs.length;
-            if(type==='top') targetY = Math.min(...ys);
-            else if(type==='bottom') targetY = Math.max(...ys);
-            else if(type==='middle') targetY = ys.reduce((a,b)=>a+b,0)/ys.length;
-        } else {
-            if(type==='left') targetX = 10;
-            else if(type==='right') targetX = 90;
-            else if(type==='center') targetX = 50;
-            if(type==='top') targetY = 15;
-            else if(type==='bottom') targetY = 90;
-            else if(type==='middle') targetY = 50;
+
+        // Group keys by groupId — ungrouped keys are individual units
+        const groupMap = new Map();
+        activeKeys.forEach(k => {
+            const gid = layout[k].groupId || ('__s_' + k);
+            if(!groupMap.has(gid)) groupMap.set(gid, []);
+            groupMap.get(gid).push(k);
+        });
+        const units = [];
+        for(const [gid, keys] of groupMap) {
+            const cx = keys.reduce((s,k) => s + layout[k].x, 0) / keys.length;
+            const cy = keys.reduce((s,k) => s + layout[k].y, 0) / keys.length;
+            units.push({ gid, keys, cx, cy });
         }
 
-        if(type === 'left' || type === 'center' || type === 'right') {
-            activeKeys.forEach(k => layout[k].x = targetX);
-        } else if(type === 'top' || type === 'middle' || type === 'bottom') {
-            activeKeys.forEach(k => layout[k].y = targetY);
-        } else if(type === 'distribute') {
-            activeKeys.sort((a,b) => layout[a].y - layout[b].y);
-            const startY = activeKeys.length > 1 ? layout[activeKeys[0]].y : 15;
-            const endY = activeKeys.length > 1 ? layout[activeKeys[activeKeys.length-1]].y : 90;
-            const step = activeKeys.length > 1 ? (endY - startY) / (activeKeys.length - 1) : 0;
-            activeKeys.forEach((k, i) => layout[k].y = Math.round((startY + step * i)*10)/10);
+        // Determine target based on key object's unit or all units
+        let targetX = 50, targetY = 50;
+        if (keyObjectKey && selectedKeys.has(keyObjectKey)) {
+            const koGid = layout[keyObjectKey].groupId || ('__s_' + keyObjectKey);
+            const koUnit = units.find(u => u.gid === koGid);
+            if(koUnit) { targetX = koUnit.cx; targetY = koUnit.cy; }
+        } else if (units.length > 1) {
+            const xs = units.map(u => u.cx), ys = units.map(u => u.cy);
+            if(type==='left') targetX=Math.min(...xs); else if(type==='right') targetX=Math.max(...xs); else if(type==='center') targetX=xs.reduce((a,b)=>a+b,0)/xs.length;
+            if(type==='top') targetY=Math.min(...ys); else if(type==='bottom') targetY=Math.max(...ys); else if(type==='middle') targetY=ys.reduce((a,b)=>a+b,0)/ys.length;
+        } else {
+            if(type==='left') targetX=10; else if(type==='right') targetX=90; else if(type==='center') targetX=50;
+            if(type==='top') targetY=15; else if(type==='bottom') targetY=90; else if(type==='middle') targetY=50;
+        }
+
+        if(type==='left'||type==='center'||type==='right') {
+            units.forEach(u => { const dx=targetX-u.cx; u.keys.forEach(k => layout[k].x=Math.round((layout[k].x+dx)*10)/10); });
+        } else if(type==='top'||type==='middle'||type==='bottom') {
+            units.forEach(u => { const dy=targetY-u.cy; u.keys.forEach(k => layout[k].y=Math.round((layout[k].y+dy)*10)/10); });
+        } else if(type==='distribute') {
+            if(units.length > 1) {
+                units.sort((a,b) => a.cy - b.cy);
+                const startY=units[0].cy, endY=units[units.length-1].cy;
+                const step=(endY-startY)/(units.length-1);
+                units.forEach((u,i) => { const dy=Math.round((startY+step*i)*10)/10 - u.cy; u.keys.forEach(k => layout[k].y=Math.round((layout[k].y+dy)*10)/10); });
+            }
         }
         updPv();
     }
@@ -838,19 +845,36 @@ function alignSheetElements(type){
     if(!activeKeys.length)return;
     const parsed = activeKeys.map(sk=>{ const [idxStr, ...b] = sk.split('_'); return {sk, idx:parseInt(idxStr), bk:b.join('_')}; });
     
+    // Ensure all keys have layout data
     parsed.forEach(p=>{
         const sl=sheetSlots[p.idx];
         if(!sl.lo) sl.lo={};
         if(!sl.lo[p.bk]){ const dd=dp()[p.bk]||{x:50,y:50}; sl.lo[p.bk]={x:dd.x,y:dd.y,sx:1,sy:1}; }
     });
     
+    // Group by groupId — ungrouped keys are individual units
+    const groupMap = new Map();
+    parsed.forEach(p=>{
+        const gid = sheetSlots[p.idx].lo[p.bk].groupId || ('__s_'+p.sk);
+        if(!groupMap.has(gid)) groupMap.set(gid, []);
+        groupMap.get(gid).push(p);
+    });
+    const units = [];
+    for(const [gid, members] of groupMap){
+        const cx = members.reduce((s,p)=>s+sheetSlots[p.idx].lo[p.bk].x, 0)/members.length;
+        const cy = members.reduce((s,p)=>s+sheetSlots[p.idx].lo[p.bk].y, 0)/members.length;
+        units.push({ gid, members, cx, cy });
+    }
+    
+    // Determine target based on key object's unit or all units
     let targetX = 50, targetY = 50;
     if(sheetKeyObjectKey && sheetSelectedKeys.has(sheetKeyObjectKey)){
         const [idx, ...b] = sheetKeyObjectKey.split('_'); const bk = b.join('_');
-                const sl=sheetSlots[idx]; targetX = sl.lo[bk].x; targetY = sl.lo[bk].y;
-    } else if (sheetSelectedKeys.size > 1) {
-        const xs = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].x);
-        const ys = parsed.map(p=>sheetSlots[p.idx].lo[p.bk].y);
+        const koGid = sheetSlots[idx].lo[bk].groupId || ('__s_'+sheetKeyObjectKey);
+        const koUnit = units.find(u=>u.gid===koGid);
+        if(koUnit){ targetX=koUnit.cx; targetY=koUnit.cy; }
+    } else if (units.length > 1) {
+        const xs=units.map(u=>u.cx), ys=units.map(u=>u.cy);
         if(type==='left') targetX=Math.min(...xs); else if(type==='right') targetX=Math.max(...xs); else if(type==='center') targetX=xs.reduce((a,b)=>a+b,0)/xs.length;
         if(type==='top') targetY=Math.min(...ys); else if(type==='bottom') targetY=Math.max(...ys); else if(type==='middle') targetY=ys.reduce((a,b)=>a+b,0)/ys.length;
     } else {
@@ -858,8 +882,18 @@ function alignSheetElements(type){
         if(type==='top') targetY=15; else if(type==='bottom') targetY=90; else if(type==='middle') targetY=50;
     }
     
-    if(type==='left'||type==='center'||type==='right') parsed.forEach(p=>sheetSlots[p.idx].lo[p.bk].x=targetX);
-    else if(type==='top'||type==='middle'||type==='bottom') parsed.forEach(p=>sheetSlots[p.idx].lo[p.bk].y=targetY);
+    if(type==='left'||type==='center'||type==='right'){
+        units.forEach(u=>{ const dx=targetX-u.cx; u.members.forEach(p=>sheetSlots[p.idx].lo[p.bk].x=Math.round((sheetSlots[p.idx].lo[p.bk].x+dx)*10)/10); });
+    } else if(type==='top'||type==='middle'||type==='bottom'){
+        units.forEach(u=>{ const dy=targetY-u.cy; u.members.forEach(p=>sheetSlots[p.idx].lo[p.bk].y=Math.round((sheetSlots[p.idx].lo[p.bk].y+dy)*10)/10); });
+    } else if(type==='distribute'){
+        if(units.length > 1){
+            units.sort((a,b)=>a.cy-b.cy);
+            const startY=units[0].cy, endY=units[units.length-1].cy;
+            const step=(endY-startY)/(units.length-1);
+            units.forEach((u,i)=>{ const dy=Math.round((startY+step*i)*10)/10-u.cy; u.members.forEach(p=>sheetSlots[p.idx].lo[p.bk].y=Math.round((sheetSlots[p.idx].lo[p.bk].y+dy)*10)/10); });
+        }
+    }
     renderSheet();
 }
 
