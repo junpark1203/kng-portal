@@ -96,6 +96,7 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 <div class="left">
 <!-- Editor -->
 <div class="tp active" id="pEditor">
+<div id="editIndicator" style="display:none;padding:8px 20px;background:linear-gradient(90deg,rgba(124,58,237,.08),transparent);border-bottom:1px solid rgba(124,58,237,.15);font-size:12px;color:#7c3aed;font-weight:600;display:flex;align-items:center;gap:6px"><i class='bx bx-edit-alt'></i> <span id="editIndicatorText"></span></div>
 <div class="sec">
 <div class="sec-title"><i class='bx bx-image'></i> 로고</div>
 <div class="logo-area">
@@ -122,14 +123,19 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 </div>
 <div class="actions">
 <button class="ba bp" id="btnSave"><i class='bx bx-save'></i> 저장</button>
+<button class="ba bo" id="btnDup" style="display:none"><i class='bx bx-copy'></i> 복제</button>
 <button class="ba bo" id="btnNew"><i class='bx bx-plus'></i> 새 라벨</button>
 </div></div>
 <!-- List -->
 <div class="tp" id="pList">
-<div style="padding: 12px 20px 0 20px; display:flex; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px;">
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer; color:var(--gray-800)">
-        <input type="checkbox" id="chkAllLabels" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;"> 전체 선택
+<div style="padding: 12px 20px 0 20px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; cursor:pointer; color:var(--gray-800); white-space:nowrap">
+        <input type="checkbox" id="chkAllLabels" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer;"> 전체
     </label>
+    <div style="flex:1;position:relative">
+        <i class='bx bx-search' style="position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--gray-400);font-size:14px"></i>
+        <input type="text" id="lblSearch" placeholder="라벨 검색..." style="width:100%;padding:5px 8px 5px 28px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;outline:none;box-sizing:border-box" autocomplete="off">
+    </div>
 </div>
 <div class="lbl-list" id="lblList"></div>
 <div class="print-bar">
@@ -229,5 +235,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=30"></script>
+<script src="hq-label.js?v=31"></script>
 </body></html>

@@ -26,7 +26,7 @@ function deleteSelected(){if(!selectedKeys.size)return;saveHistory();selectedKey
 // Data
 function coll(){layout.isTableMode=$('chkTableMode').checked;return{name:$('fName').value.trim(),labelSpecId:$('fLabelSpecId')?$('fLabelSpecId').value:'',productName:$('fProd').value.trim(),color:$('fColor').value.trim(),size:$('fSize').value.trim(),manufacturer:$('fMfr').value.trim(),price:$('fPrice').value.trim(),origin:$('fOrigin').value.trim(),spec:$('fSpec').value.trim(),barcode:$('fBarcode').value.trim(),memo:$('fMemo').value.trim(),logoBase64:$('logoImg').style.display!=='none'?$('logoImg').src:'',memoImageBase64:$('memoImgWrapper').style.display!=='none'?$('memoImg').src:'',extraFields:[],layout}}
 function load(d){$('fName').value=d.name||'';if($('fLabelSpecId'))$('fLabelSpecId').value=d.labelSpecId||'';$('fProd').value=d.productName||'';$('fColor').value=d.color||'';$('fSize').value=d.size||'';$('fMfr').value=d.manufacturer||'';$('fPrice').value=d.price||'';$('fOrigin').value=d.origin||'';$('fSpec').value=d.spec||'';$('fBarcode').value=d.barcode||'';$('fMemo').value=d.memo||'';if(d.logoBase64){$('logoImg').src=d.logoBase64;$('logoImg').style.display='';$('logoPh').style.display='none'}else{$('logoImg').src='';$('logoImg').style.display='none';$('logoPh').style.display=''}if(d.memoImageBase64){$('memoImg').src=d.memoImageBase64;$('memoImgWrapper').style.display=''}else{$('memoImg').src='';$('memoImgWrapper').style.display='none'}try{layout=typeof d.layout==='string'?JSON.parse(d.layout||'{}'):(d.layout||{})}catch(e){layout={}}$('chkTableMode').checked=!!layout.isTableMode;updPv()}
-function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;historyStack=[];load({layout})}
+function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();keyObjectKey=null;historyStack=[];load({layout});updEditIndicator()}
 
 // Layout
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
@@ -397,21 +397,43 @@ function initInteraction(el){
 
 // Labels CRUD
 async function fetchL(){try{const r=await af(API+'/labels');if(r.ok){labels=await r.json();return}if(r.status===401||r.status===403){_authReady=null;const r2=await af(API+'/labels');if(r2.ok){labels=await r2.json();return}}}catch(e){console.error('[hq-label] fetchL:',e)}}
-async function saveL(){const d=coll();if(!d.name){toast('라벨 이름을 입력하세요','warning');return}try{const u=curId?`${API}/labels/${curId}`:`${API}/labels`;const r=await af(u,{method:curId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);if(!curId)curId=j.id;await fetchL();toast('저장 완료','success')}catch(e){toast(e.message,'error')}}
+async function saveL(){const d=coll();if(!d.name){toast('라벨 이름을 입력하세요','warning');return}try{const u=curId?`${API}/labels/${curId}`:`${API}/labels`;const r=await af(u,{method:curId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);if(!curId)curId=j.id;await fetchL();updEditIndicator();toast('저장 완료','success')}catch(e){toast(e.message,'error')}}
 async function delL(id){if(!confirm('삭제?'))return;try{await af(API+'/labels/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[id]})});if(curId===id)reset();await fetchL();renderList();toast('삭제','success')}catch(e){toast(e.message,'error')}}
+async function dupL(){if(!curId){toast('복제할 라벨을 먼저 선택하세요','warning');return}const d=coll();d.name=(d.name||'라벨')+' (복사)';try{const r=await af(API+'/labels',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);curId=j.id;$('fName').value=d.name;await fetchL();updEditIndicator();renderList();toast('복제 완료','success')}catch(e){toast(e.message,'error')}}
+function updEditIndicator(){const ind=$('editIndicator'),txt=$('editIndicatorText'),dup=$('btnDup');if(!ind)return;if(curId){const lb=labels.find(x=>x.id===curId);ind.style.display='flex';txt.textContent='편집 중: '+(lb?lb.name||lb.productName||curId:curId);if(dup)dup.style.display=''}else{ind.style.display='none';txt.textContent='';if(dup)dup.style.display='none'}}
 
-// Label list with checkboxes + qty
+// Label list with checkboxes + qty + spec + search
 function renderList(){
     const el=$('lblList');
-    if(!labels.length){el.innerHTML='<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p></div>';return}
-    el.innerHTML=labels.map(l=>`<div class="lbl-row" data-id="${l.id}">
+    const searchVal=($('lblSearch')?$('lblSearch').value:'').trim().toLowerCase();
+    const filtered=searchVal?labels.filter(l=>{
+        const hay=`${l.name||''} ${l.productName||''} ${l.manufacturer||''} ${l.color||''} ${l.size||''}`.toLowerCase();
+        return hay.includes(searchVal);
+    }):labels;
+    if(!filtered.length){
+        el.innerHTML=labels.length
+            ?'<div class="empty"><i class="bx bx-search"></i><p>검색 결과가 없습니다</p></div>'
+            :'<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p></div>';
+        return
+    }
+    el.innerHTML=filtered.map(l=>{
+        const sp=l.labelSpecId?specs.find(s=>s.id===l.labelSpecId):null;
+        const specName=sp?sp.name:'기본';
+        const specShort=specName.length>10?specName.substring(0,10)+'…':specName;
+        return `<div class="lbl-row" data-id="${l.id}">
 <input type="checkbox" class="chk" data-id="${l.id}">
-<span class="name" data-id="${l.id}">${E(l.name||l.productName||'(이름없음)')}</span>
-<span class="detail">${E(l.manufacturer||'')}</span>
+<div style="flex:1;min-width:0;cursor:pointer" class="name-wrap" data-id="${l.id}">
+  <div class="name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:600;color:var(--gray-800)">${E(l.name||l.productName||'(이름없음)')}</div>
+  <div style="display:flex;gap:6px;align-items:center;margin-top:1px">
+    <span style="font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(124,58,237,.08);color:#7c3aed;font-weight:600;white-space:nowrap" title="${E(specName)}">${E(specShort)}</span>
+    ${l.manufacturer?`<span class="detail" style="font-size:10px;color:var(--gray-400);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${E(l.manufacturer)}</span>`:''}
+  </div>
+</div>
 <input type="number" class="qty" min="1" max="500" value="1" data-id="${l.id}">
 <button class="del" data-id="${l.id}"><i class='bx bx-trash'></i></button>
-</div>`).join('');
-    el.querySelectorAll('.name').forEach(n=>n.onclick=()=>{const lb=labels.find(x=>x.id===n.dataset.id);if(lb){curId=lb.id;load(lb);goTab('editor')}});
+</div>`
+    }).join('');
+    el.querySelectorAll('.name-wrap').forEach(n=>n.onclick=()=>{const lb=labels.find(x=>x.id===n.dataset.id);if(lb){curId=lb.id;load(lb);updEditIndicator();goTab('editor')}});
     el.querySelectorAll('.del').forEach(b=>b.onclick=()=>delL(b.dataset.id));
     
     const chkAll = $('chkAllLabels');
@@ -958,6 +980,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
     renderSpecs();
     ['fName','fLabelSpecId','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).onchange=$(id).oninput=updPv;});
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
+    if($('btnDup'))$('btnDup').onclick=dupL;
+    if($('lblSearch'))$('lblSearch').oninput=()=>renderList();
     $('btnRst').onclick=()=>{layout={isTableMode:$('chkTableMode').checked};selectedKeys.clear();updPv();toast('초기화','info')};
     document.querySelectorAll('.btn-align').forEach(b=>b.onclick=()=>alignElements(b.dataset.align));
     if($('pvZoom'))$('pvZoom').onchange=updPv;
