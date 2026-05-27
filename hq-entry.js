@@ -77,7 +77,7 @@
                 <th style="min-width:280px">상품 선택</th>
                 <th class="col-stock">재고</th>
                 <th class="col-qty">출고수량</th>
-                <th class="col-price">매출단가</th>
+                <th class="col-price">매출단가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-price" style="width:90px">일반판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-price" style="width:90px">할인판매가<br><span style="font-size:10px;font-weight:400;color:var(--gray-400)">(VAT포함)</span></th>
                 <th class="col-action"></th>
