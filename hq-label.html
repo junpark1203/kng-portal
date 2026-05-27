@@ -192,6 +192,9 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
     <div style="height:50px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
         <h2 style="margin:0;font-size:16px;font-weight:700"><i class='bx bx-layer'></i> 인쇄 시트 에디터</h2>
         <div style="font-size:12px;color:var(--gray-500);margin-right:auto">마우스 드래그로 빈 칸 이동, 요소 다중 선택 및 정렬 가능</div>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);cursor:pointer;margin-right:10px">
+            <input type="checkbox" id="chkCutLines" checked style="accent-color:#7c3aed"> 절취선(십자)
+        </label>
         
         <div id="shToolbar" style="display:none;align-items:center;gap:4px;border-right:1px solid var(--border);padding-right:12px;margin-right:4px">
             <button class="btn-align" id="btnShBold" style="font-weight:bold" title="굵게(B)">B</button>
@@ -225,5 +228,5 @@ body{background:#fff;margin:0;padding:0}.app-container{min-height:auto}.main-con
 
 <div id="printArea" style="display:none"></div>
 <div id="toastC" class="toast-container"></div>
-<script src="hq-label.js?v=22"></script>
+<script src="hq-label.js?v=23"></script>
 </body></html>

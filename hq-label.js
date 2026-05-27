@@ -561,6 +561,19 @@ function renderSheet(items){
             }
             h+=`</div>`;
         }
+        
+        if($('chkCutLines') && $('chkCutLines').checked){
+            const cxSz = 2;
+            const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:1px;height:${cxSz*2}mm;background:#94a3b8;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:1px;background:#94a3b8;pointer-events:none;z-index:5;"></div>`;
+            for(let r=0;r<g.rows;r++){
+                for(let c=0;c<g.cols;c++){
+                    const x1 = s.ml + c*(s.lw+s.gx), x2 = x1 + s.lw;
+                    const y1 = s.mt + r*(s.lh+s.gy), y2 = y1 + s.lh;
+                    h += dX(x1, y1) + dX(x2, y1) + dX(x1, y2) + dX(x2, y2);
+                }
+            }
+        }
+
         h+=`</div>`;
     }
     $('sheetCanvas').innerHTML=h;
@@ -843,12 +856,6 @@ function executePrint(){
             };
             
             h+=`<div style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;overflow:hidden;font-size:${fs}px">`;
-            
-            const cm=`width:3mm;height:3mm;position:absolute;border:0 solid #ccc;`;
-            h+=`<div style="${cm}left:0;top:0;border-left-width:1px;border-top-width:1px"></div>`;
-            h+=`<div style="${cm}right:0;top:0;border-right-width:1px;border-top-width:1px"></div>`;
-            h+=`<div style="${cm}left:0;bottom:0;border-left-width:1px;border-bottom-width:1px"></div>`;
-            h+=`<div style="${cm}right:0;bottom:0;border-right-width:1px;border-bottom-width:1px"></div>`;
 
             const els=[];
             if(d.logoBase64)els.push({k:'logo',v:`<img src="${d.logoBase64}" style="max-height:${s.lh*0.35}mm;max-width:${s.lw*0.7}mm;object-fit:contain">`});
@@ -890,6 +897,18 @@ function executePrint(){
                 h+=`<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;${stFS}${stB}${stW}${stWd}${stAlign}">${e.v}</div>`
             }
             h+='</div>';
+        }
+        
+        if($('chkCutLines') && $('chkCutLines').checked){
+            const cxSz = 2;
+            const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:1px;height:${cxSz*2}mm;background:#000;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:1px;background:#000;pointer-events:none;z-index:5;"></div>`;
+            for(let r=0;r<g.rows;r++){
+                for(let c=0;c<g.cols;c++){
+                    const x1 = s.ml + c*(s.lw+s.gx), x2 = x1 + s.lw;
+                    const y1 = s.mt + r*(s.lh+s.gy), y2 = y1 + s.lh;
+                    h += dX(x1, y1) + dX(x2, y1) + dX(x1, y2) + dX(x2, y2);
+                }
+            }
         }
         h+='</div>';
     }
@@ -938,6 +957,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     $('btnShCancel').onclick = () => $('sheetEditor').style.display='none';
     $('btnShPrint').onclick = executePrint;
     $('btnShUndo').onclick = undoSh;
+    if($('chkCutLines')) $('chkCutLines').onchange = () => renderSheet();
     $('btnShDel').onclick = () => {
         if(!sheetSelectedKeys.size) return;
         saveShHistory();
