@@ -444,7 +444,11 @@ async function delL(id){if(!confirm('삭제?'))return;try{await af(API+'/labels/
 // Label list with checkboxes + qty
 function renderList(){
     const el=$('lblList');
-    if(!labels.length){el.innerHTML='<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p></div>';return}
+    if(!labels.length){
+        const dbgHtml=_dbg.length?'<div style="margin-top:10px;padding:8px;background:#fee2e2;border-radius:6px;font-size:10px;text-align:left;max-height:150px;overflow:auto;word-break:break-all;color:#991b1b"><b>진단 로그:</b><br>'+_dbg.map(d=>'• '+d).join('<br>')+'</div>':'';
+        el.innerHTML='<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p>'+dbgHtml+'</div>';
+        return
+    }
     el.innerHTML=labels.map(l=>`<div class="lbl-row" data-id="${l.id}">
 <input type="checkbox" class="chk" data-id="${l.id}">
 <span class="name" data-id="${l.id}">${E(l.name||l.productName||'(이름없음)')}</span>
