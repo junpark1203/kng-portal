@@ -32,8 +32,13 @@ function reset(){curId=null;layout={isTableMode:$('chkTableMode').checked};selec
 function dp(){return{logo:{x:50,y:10},product_lbl:{x:20,y:25,bold:true},product_val:{x:60,y:25,bold:false},color_lbl:{x:20,y:35,bold:true},color_val:{x:60,y:35,bold:false},size_lbl:{x:20,y:45,bold:true},size_val:{x:60,y:45,bold:false},mfr_lbl:{x:20,y:55,bold:true},mfr_val:{x:60,y:55,bold:false},price_lbl:{x:20,y:65,bold:true},price_val:{x:60,y:65,bold:false},info_lbl:{x:20,y:75,bold:true},info_val:{x:60,y:75,bold:false},memo_lbl:{x:20,y:85,bold:true},memo_val:{x:60,y:85,bold:false},table:{x:50,y:50},memoImg:{x:50,y:80}}}
 function gp(k){const d=dp()[k]||{x:50,y:50},l=layout&&layout[k]?layout[k]:{};const isImg=k.includes('logo')||k.includes('memoImg');return{x:l.x??d.x,y:l.y??d.y,sx:isImg?(l.sx??1):1,sy:isImg?(l.sy??1):1,fs:l.fs||null,w:l.w||null,bold:l.bold??d.bold??false,nowrap:l.nowrap||false,textAlign:l.textAlign||'left',hidden:l.hidden||false,groupId:l.groupId||null,text:l.text||null}}
 
-// Calc
-function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){return{cols:Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx))),rows:Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)))}}
+// Calc — grid with centered offsets
+function calcG(pw,ph,lw,lh,mt,mb,ml,mr,gx,gy){
+    const cols=Math.max(1,Math.floor((pw-ml-mr+gx)/(lw+gx)));
+    const rows=Math.max(1,Math.floor((ph-mt-mb+gy)/(lh+gy)));
+    const gridW=cols*lw+(cols-1)*gx, gridH=rows*lh+(rows-1)*gy;
+    return{cols,rows,ox:(pw-gridW)/2,oy:(ph-gridH)/2}
+}
 
 // Preview (single label for editor)
 function updPv(){
@@ -540,7 +545,7 @@ function renderSheet(items){
         for(let r=0;r<g.rows;r++)for(let c=0;c<g.cols;c++){
             const idx=sh*lps+r*g.cols+c;
             if(idx>=sheetSlots.length)break;
-            const slot=sheetSlots[idx], cx=s.ml+c*(s.lw+s.gx), cy=s.mt+r*(s.lh+s.gy);
+            const slot=sheetSlots[idx], cx=g.ox+c*(s.lw+s.gx), cy=g.oy+r*(s.lh+s.gy);
             
             h+=`<div class="sh-slot" data-idx="${idx}" style="position:absolute;left:${cx}mm;top:${cy}mm;width:${s.lw}mm;height:${s.lh}mm;border:1px dashed ${slot?'transparent':'var(--gray-300)'};box-sizing:border-box;font-size:${fs}px;background:${slot?'none':'#fafafa'};cursor:${slot?'default':'pointer'};overflow:hidden">`;
             if(slot){
@@ -601,8 +606,8 @@ function renderSheet(items){
             const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:1px;height:${cxSz*2}mm;background:#94a3b8;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:1px;background:#94a3b8;pointer-events:none;z-index:5;"></div>`;
             for(let r=0;r<g.rows;r++){
                 for(let c=0;c<g.cols;c++){
-                    const x1 = s.ml + c*(s.lw+s.gx), x2 = x1 + s.lw;
-                    const y1 = s.mt + r*(s.lh+s.gy), y2 = y1 + s.lh;
+                    const x1 = g.ox + c*(s.lw+s.gx), x2 = x1 + s.lw;
+                    const y1 = g.oy + r*(s.lh+s.gy), y2 = y1 + s.lh;
                     h += dX(x1, y1) + dX(x2, y1) + dX(x1, y2) + dX(x2, y2);
                 }
             }
@@ -914,7 +919,7 @@ function executePrint(){
             const slot=sheetSlots[idx];
             if(!slot) continue;
             
-            const cx=s.ml+c*(s.lw+s.gx),cy=s.mt+r*(s.lh+s.gy);
+            const cx=g.ox+c*(s.lw+s.gx),cy=g.oy+r*(s.lh+s.gy);
             const {d,lo}=slot;
             const gpp=k=>{
                 const dd=dp()[k]||{x:50,y:50},ll=lo&&lo[k]?lo[k]:{};
@@ -970,8 +975,8 @@ function executePrint(){
             const dX = (x, y) => `<div style="position:absolute;left:${x}mm;top:${y-cxSz}mm;width:0;height:${cxSz*2}mm;border-left:0.3mm solid #999;pointer-events:none;z-index:5;"></div><div style="position:absolute;left:${x-cxSz}mm;top:${y}mm;width:${cxSz*2}mm;height:0;border-top:0.3mm solid #999;pointer-events:none;z-index:5;"></div>`;
             for(let r=0;r<g.rows;r++){
                 for(let c=0;c<g.cols;c++){
-                    const x1 = s.ml + c*(s.lw+s.gx), x2 = x1 + s.lw;
-                    const y1 = s.mt + r*(s.lh+s.gy), y2 = y1 + s.lh;
+                    const x1 = g.ox + c*(s.lw+s.gx), x2 = x1 + s.lw;
+                    const y1 = g.oy + r*(s.lh+s.gy), y2 = y1 + s.lh;
                     h += dX(x1, y1) + dX(x2, y1) + dX(x1, y2) + dX(x2, y2);
                 }
             }
