@@ -99,7 +99,12 @@ function updPv(){
         if(selectedKeys.size>0){
             const fKey = [...selectedKeys][0];
             const p = gp(fKey);
-            $('inTSize').value=p.fs||'';
+            let fsVal = p.fs;
+            if(!fsVal) {
+                const el = document.querySelector(`.pv-label .el[data-key="${fKey}"]`);
+                if(el) fsVal = Math.round(parseFloat(window.getComputedStyle(el).fontSize));
+            }
+            $('inTSize').value = fsVal || '';
             $('btnTBold').style.background=p.bold?'#e2e8f0':'';
             if($('btnTWrap')) $('btnTWrap').style.background=p.nowrap?'#e2e8f0':'';
             if($('btnTAlignL')) $('btnTAlignL').style.background=p.textAlign==='left'?'#e2e8f0':'';
@@ -788,7 +793,12 @@ function updateShToolbar(){
         const [idx, ...b] = fK.split('_'); const bk = b.join('_');
         const sl=sheetSlots[idx];
         const gpp = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{};
-        $('inShSize').value=gpp.fs||'';
+        let fsVal = gpp.fs;
+        if(!fsVal) {
+            const el = document.querySelector(`.sh-el[data-key="${fK}"]`);
+            if(el) fsVal = Math.round(parseFloat(window.getComputedStyle(el).fontSize));
+        }
+        $('inShSize').value=fsVal||'';
         $('btnShBold').style.background=gpp.bold?'#e2e8f0':'';
         if($('btnShWrap')) $('btnShWrap').style.background=gpp.nowrap?'#e2e8f0':'';
         if($('btnShAlignL')) $('btnShAlignL').style.background=gpp.textAlign==='left'?'#e2e8f0':'';
