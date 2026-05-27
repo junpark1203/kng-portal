@@ -1,29 +1,8 @@
 (function(){
 'use strict';
-let _dbg = []; // diagnostic buffer
-function _log(msg){_dbg.push(new Date().toISOString().slice(11,23)+' '+msg);console.log('[hq-label]',msg)}
-async function af(u,o={}){
-    let t=null;
-    try{
-        if(window.parent&&window.parent!==window&&window.parent.getAuthToken){
-            _log('af: parent.getAuthToken 존재 — 호출');
-            t=await window.parent.getAuthToken();
-            _log('af: parent 토큰='+(t?'OK(len='+t.length+')':'NULL'));
-        }else{
-            _log('af: parent.getAuthToken 없음 (self=parent:'+(window.parent===window)+')');
-        }
-    }catch(e){_log('af: parent 접근 에러='+e.message)}
-    if(!t){
-        _log('af: waitForAuth 시도 (10초)');
-        try{t=await waitForAuth(10000)}catch(e){_log('af: waitForAuth 에러='+e.message)}
-        _log('af: waitForAuth 결과='+(t?'OK':'NULL'));
-    }
-    if(!o.headers)o.headers={};
-    if(t)o.headers['Authorization']='Bearer '+t;
-    return fetch(u,o);
-}
+async function af(u,o={}){let t=null;try{if(window.parent&&window.parent!==window&&window.parent.getAuthToken)t=await window.parent.getAuthToken()}catch(e){}if(!t){try{t=await waitForAuth()}catch(e){}}if(!o.headers)o.headers={};if(t)o.headers['Authorization']='Bearer '+t;return fetch(u,o)}
 let _authReady=null;
-function waitForAuth(timeout=10000){if(_authReady)return _authReady;_authReady=new Promise((res)=>{const s=Date.now();(function poll(){try{if(window.parent&&window.parent.getAuthToken){window.parent.getAuthToken().then(t=>{if(t){_log('waitForAuth: 토큰 획득');res(t)}else if(Date.now()-s<timeout){setTimeout(poll,500)}else{_authReady=null;_log('waitForAuth: timeout (null)');res(null)}}).catch(e=>{_log('waitForAuth: poll에러='+e.message);if(Date.now()-s<timeout)setTimeout(poll,500);else{_authReady=null;res(null)}})}else if(Date.now()-s<timeout){setTimeout(poll,500)}else{_authReady=null;_log('waitForAuth: parent 없음 timeout');res(null)}}catch(e){_log('waitForAuth: catch='+e.message);if(Date.now()-s<timeout)setTimeout(poll,500);else{_authReady=null;res(null)}}})()});return _authReady}
+function waitForAuth(timeout=8000){if(_authReady)return _authReady;_authReady=new Promise((res)=>{const s=Date.now();(function poll(){try{if(window.parent&&window.parent.getAuthToken){window.parent.getAuthToken().then(t=>{if(t){res(t)}else if(Date.now()-s<timeout){setTimeout(poll,400)}else{_authReady=null;res(null)}}).catch(()=>{if(Date.now()-s<timeout)setTimeout(poll,400);else{_authReady=null;res(null)}})}else if(Date.now()-s<timeout){setTimeout(poll,400)}else{_authReady=null;res(null)}}catch(e){if(Date.now()-s<timeout)setTimeout(poll,400);else{_authReady=null;res(null)}}})()});return _authReady}
 const API=(location.hostname==='localhost'||location.hostname==='127.0.0.1')?'http://localhost:3000/api/hq':'https://kng.junparks.com/api/hq';
 const $=id=>document.getElementById(id),E=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let labels=[],specs=[],ltpls=[],curId=null,esId=null,layout={},selectedKeys=new Set(),keyObjectKey=null,historyStack=[];
@@ -417,38 +396,14 @@ function initInteraction(el){
     }
 
 // Labels CRUD
-async function fetchL(){
-    _log('fetchL: 시작 API='+API+'/labels');
-    try{
-        const r=await af(API+'/labels');
-        _log('fetchL: 응답 status='+r.status);
-        if(r.ok){labels=await r.json();_log('fetchL: 성공 count='+labels.length);return}
-        const body=await r.text();
-        _log('fetchL: 실패 body='+body.substring(0,200));
-        if(r.status===401||r.status===403){
-            _log('fetchL: 401 — _authReady 리셋 후 재시도');
-            _authReady=null;
-            const r2=await af(API+'/labels');
-            _log('fetchL: 재시도 status='+r2.status);
-            if(r2.ok){labels=await r2.json();_log('fetchL: 재시도 성공 count='+labels.length);return}
-            const b2=await r2.text();
-            _log('fetchL: 재시도도 실패='+b2.substring(0,200));
-        }
-    }catch(e){_log('fetchL: 에러='+e.message)}
-    // 로드 실패 시 진단 정보 toast로 표시
-    setTimeout(()=>{if(labels.length===0&&typeof toast==='function'){toast('⚠ 라벨 로드 실패: 진단 로그를 확인하세요\n'+_dbg.join('\n'),'error')}},500);
-}
+async function fetchL(){try{const r=await af(API+'/labels');if(r.ok){labels=await r.json();return}if(r.status===401||r.status===403){_authReady=null;const r2=await af(API+'/labels');if(r2.ok){labels=await r2.json();return}}}catch(e){console.error('[hq-label] fetchL:',e)}}
 async function saveL(){const d=coll();if(!d.name){toast('라벨 이름을 입력하세요','warning');return}try{const u=curId?`${API}/labels/${curId}`:`${API}/labels`;const r=await af(u,{method:curId?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});const j=await r.json();if(!r.ok)throw new Error(j.error);if(!curId)curId=j.id;await fetchL();toast('저장 완료','success')}catch(e){toast(e.message,'error')}}
 async function delL(id){if(!confirm('삭제?'))return;try{await af(API+'/labels/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids:[id]})});if(curId===id)reset();await fetchL();renderList();toast('삭제','success')}catch(e){toast(e.message,'error')}}
 
 // Label list with checkboxes + qty
 function renderList(){
     const el=$('lblList');
-    if(!labels.length){
-        const dbgHtml=_dbg.length?'<div style="margin-top:10px;padding:8px;background:#fee2e2;border-radius:6px;font-size:10px;text-align:left;max-height:150px;overflow:auto;word-break:break-all;color:#991b1b"><b>진단 로그:</b><br>'+_dbg.map(d=>'• '+d).join('<br>')+'</div>':'';
-        el.innerHTML='<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p>'+dbgHtml+'</div>';
-        return
-    }
+    if(!labels.length){el.innerHTML='<div class="empty"><i class="bx bx-folder-open"></i><p>편집 탭에서 라벨을 만들어 저장하세요</p></div>';return}
     el.innerHTML=labels.map(l=>`<div class="lbl-row" data-id="${l.id}">
 <input type="checkbox" class="chk" data-id="${l.id}">
 <span class="name" data-id="${l.id}">${E(l.name||l.productName||'(이름없음)')}</span>
@@ -997,19 +952,9 @@ function initMemoImg(){
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
-    _log('init: DOMContentLoaded 시작 href='+location.href);
-    _log('init: parent===self:'+(window.parent===window)+' hasGetAuthToken:'+(typeof (window.parent||{}).getAuthToken));
-    try{_log('init: parent.getAuthToken type='+(typeof window.parent.getAuthToken))}catch(e){_log('init: parent 접근 불가='+e.message)}
     initTabs();initLogo();initLT();initMemoImg();
-    _log('init: fetch 시작');
     await Promise.all([fetchL(),fetchS(),fetchLT()]);
-    _log('init: fetch 완료 labels='+labels.length+' specs='+specs.length);
     renderList();
-    // 초기 로드에서 라벨 목록이 비어있으면 5초 후 한번 더 재시도 (auth 타이밍 문제 대응)
-    if(labels.length===0){
-        _log('init: 라벨 비어있음 — 5초 후 재시도 예약');
-        setTimeout(async()=>{_log('init: 재시도 시작');_authReady=null;await Promise.all([fetchL(),fetchS(),fetchLT()]);renderList();renderSpecs();_log('init: 재시도 완료 labels='+labels.length)},5000)
-    }
     renderSpecs();
     ['fName','fLabelSpecId','fProd','fColor','fSize','fMfr','fPrice','fOrigin','fSpec','fBarcode','fMemo'].forEach(id=>{if($(id))$(id).onchange=$(id).oninput=updPv;});
     $('btnSave').onclick=saveL;$('btnNew').onclick=()=>{reset();updPv()};
