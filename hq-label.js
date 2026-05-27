@@ -696,6 +696,9 @@ function initSheetInteraction(){
             };
             const groupKeys = getGroupShKeys(fK);
 
+            const slNode = n.closest('.sh-slot');
+            const rect = slNode.getBoundingClientRect();
+
             if(e.shiftKey){
                 if(sheetSelectedKeys.has(fK)){
                     groupKeys.forEach(gk => sheetSelectedKeys.delete(gk));
@@ -720,8 +723,6 @@ function initSheetInteraction(){
                 const gpp = sl.lo&&sl.lo[bk]?sl.lo[bk]:dp()[bk]||{x:50,y:50};
                 initPos[sk] = {x:gpp.x??50, y:gpp.y??50};
             });
-            const slNode = n.closest('.sh-slot');
-            const rect = slNode.getBoundingClientRect();
             
             const mv=v=>{
                 let dxPct=(v.clientX-startX)/rect.width*100;
