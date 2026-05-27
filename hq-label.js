@@ -555,7 +555,7 @@ function renderSheet(items){
                     const stW=p.nowrap?`white-space:nowrap;`:'word-break:break-word;';
                     const stWd=p.w?`width:${p.w}%;`:'';
                     const stAlign=p.textAlign?`text-align:${p.textAlign};`:'';
-                    const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
+                    const bs=`box-shadow:${sel||ko?(ko?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary) inset, 0 0 0 1.5px rgba(255,255,255,0.5)'):'none'}`;
                     h+=`<div class="sh-el ${sel} ${ko}" data-idx="${idx}" data-basek="${e.k}" data-key="${fK}" style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%) scale(${psx},${psy});transform-origin:center center;padding:2px;cursor:move;user-select:none;${stFS}${stB}${stW}${stWd}${stAlign};${bs}">${e.v}</div>`;
                 }
             }
@@ -637,7 +637,7 @@ function initSheetInteraction(){
                 const hover = document.elementFromPoint(v.clientX, v.clientY);
                 const hoverSlot = hover ? hover.closest('.sh-slot') : null;
                 if(hoverSlot && hoverSlot !== sl){
-                    hoverSlot.style.borderColor = 'var(--primary-color)';
+                    hoverSlot.style.borderColor = 'var(--primary)';
                     hoverSlot.style.background = 'var(--gray-200)';
                 }
             };
@@ -719,7 +719,7 @@ function initSheetInteraction(){
                 if(sheetSelectedKeys.has(k)){
                     x.classList.add('sh-sel');
                     if(k===sheetKeyObjectKey) x.classList.add('sh-ko'); else x.classList.remove('sh-ko');
-                    x.style.boxShadow=(k===sheetKeyObjectKey)?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary-color) inset, 0 0 0 1.5px rgba(255,255,255,0.5)';
+                    x.style.boxShadow=(k===sheetKeyObjectKey)?'0 0 0 1.5px #ef4444 inset, 0 0 0 1.5px rgba(255,255,255,0.5)':'0 0 0 1.5px var(--primary) inset, 0 0 0 1.5px rgba(255,255,255,0.5)';
                 } else {
                     x.classList.remove('sh-sel', 'sh-ko');
                     x.style.boxShadow='none';
