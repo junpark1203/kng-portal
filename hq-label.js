@@ -76,7 +76,7 @@ function updPv(){
         if(d.price){ els.push({k:'price_lbl',h:t('price_lbl')||'가 격'}); els.push({k:'price_val',h:formatPrice(d.price)}); }
         const ip=[d.origin,d.spec].filter(Boolean);
         if(ip.length){ els.push({k:'info_lbl',h:t('info_lbl')||'정 보'}); els.push({k:'info_val',h:E(ip.join(' | '))}); }
-        if(d.memo){ els.push({k:'memo_lbl',h:t('memo_lbl')||'메 모'}); els.push({k:'memo_val',h:E(d.memo)}); }
+        if(d.memo){ els.push({k:'memo_lbl',h:t('memo_lbl')||'비 고'}); els.push({k:'memo_val',h:E(d.memo)}); }
     }
     
     let s=`<div style="width:${lw*3.78*zoom}px;height:${lh*3.78*zoom}px;display:flex;align-items:center;justify-content:center;"><div class="pv-sheet" style="width:${lw}mm;height:${lh}mm;position:relative;background:#fff;transform:scale(${zoom});transform-origin:center center;"><div class="pv-label first-label" style="position:absolute;left:0;top:0;width:100%;height:100%;font-size:${fs}px;box-shadow:0 0 0 1px var(--gray-200) inset;box-sizing:border-box;">`;
@@ -541,7 +541,7 @@ function renderSheet(items){
                     if(d.price){els.push({k:'price_lbl',v:t('price_lbl')||'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                     const ip=[d.origin,d.spec].filter(Boolean);
                     if(ip.length){els.push({k:'info_lbl',v:t('info_lbl')||'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
-                    if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
+                    if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'비 고'});els.push({k:'memo_val',v:E(d.memo)});}
                 }
                 
                 for(const e of els){
@@ -883,7 +883,7 @@ function executePrint(){
                 if(d.price){els.push({k:'price_lbl',v:t('price_lbl')||'가 격'});els.push({k:'price_val',v:formatPrice(d.price)});}
                 const ip=[d.origin,d.spec].filter(Boolean);
                 if(ip.length){els.push({k:'info_lbl',v:t('info_lbl')||'정 보'});els.push({k:'info_val',v:E(ip.join(' | '))});}
-                if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'메 모'});els.push({k:'memo_val',v:E(d.memo)});}
+                if(d.memo){els.push({k:'memo_lbl',v:t('memo_lbl')||'비 고'});els.push({k:'memo_val',v:E(d.memo)});}
             }
             
             for(const e of els){
