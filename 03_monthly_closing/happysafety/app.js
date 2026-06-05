@@ -85,43 +85,85 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- 수동 저장 슬롯 관리 ---
-  const SAVE_SLOTS_KEY = 'happySafety_saveSlots';
+  // --- 수동 저장 슬롯 관리 (NAS 서버) ---
+  const SAVE_API = 'https://kng.junparks.com/api/happysafety/saves';
+  const SAVE_SLOTS_KEY = 'happySafety_saveSlots'; // 마이그레이션용
 
-  function getSaveSlots() {
-    try { return JSON.parse(localStorage.getItem(SAVE_SLOTS_KEY) || '[]'); } catch(e) { return []; }
+  // 업로드 화면에 저장 목록 표시
+  async function renderSavedSlots() {
+    const section = document.getElementById('savedWorkSection');
+    const container = document.getElementById('savedSlotsContainer');
+    const countSpan = document.getElementById('savedWorkCount');
+    if(!section || !container) return;
+
+    try {
+      const res = await authFetch(SAVE_API);
+      if(!res.ok) throw new Error('fetch failed');
+      const slots = await res.json();
+      if(slots.length === 0) { section.style.display = 'none'; return; }
+
+      section.style.display = 'block';
+      countSpan.textContent = slots.length + '개';
+      container.innerHTML = slots.map(slot => {
+        const dt = new Date(slot.createdAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        const amt = (slot.totalAmount || 0).toLocaleString('ko-KR');
+        return `<div class="saved-slot-card" onclick="window.loadServerSlot('${slot.id}')">
+          <span class="saved-slot-icon">📋</span>
+          <div class="saved-slot-info">
+            <div class="saved-slot-name">${slot.name}</div>
+            <div class="saved-slot-meta">${dt} · ${slot.siteCount}현장 · ${slot.itemCount}건 · ₩${amt}</div>
+          </div>
+          <button class="saved-slot-delete" onclick="event.stopPropagation();window.deleteServerSlot('${slot.id}','${slot.name.replace(/'/g,"\\'")}')">✕</button>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      console.error('저장 목록 로드 실패:', e);
+      section.style.display = 'none';
+    }
   }
 
-  window.manualSave = function() {
+  window.manualSave = async function() {
     if(globalSitesData.length === 0) return alert('저장할 데이터가 없습니다.');
     const defaultName = new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\./g, '-').trim();
     const name = prompt('저장 이름을 입력하세요:', defaultName);
     if(!name) return;
-    const slots = getSaveSlots();
-    const payload = {
-      name,
-      savedAt: new Date().toISOString(),
-      globalSitesData,
-      categoryMemory: window.categoryMemory,
-      globalCategories: Array.from(window.globalCategories),
-      siteCount: globalSitesData.length,
-      itemCount: globalSitesData.reduce((s,site) => s + site.items.length, 0)
-    };
-    slots.unshift(payload);
-    // 최대 10개 슬롯 유지
-    if(slots.length > 10) slots.length = 10;
+
+    const totalAmount = globalSitesData.reduce((sum, site) => {
+      let siteTotal = 0;
+      site.items.forEach(it => { const pn = parseNum(it.purchase); if(!isNaN(pn)) siteTotal += pn; });
+      return sum + siteTotal;
+    }, 0);
+
     try {
-      localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
-      showToast(`"${name}" 저장 완료!`, 'success');
+      const res = await authFetch(SAVE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          data: {
+            globalSitesData,
+            categoryMemory: window.categoryMemory,
+            globalCategories: Array.from(window.globalCategories)
+          },
+          siteCount: globalSitesData.length,
+          itemCount: globalSitesData.reduce((s, site) => s + site.items.length, 0),
+          totalAmount: Math.round(totalAmount)
+        })
+      });
+      if(res.ok) {
+        showToast(`"${name}" 서버에 저장 완료!`, 'success');
+        renderSavedSlots();
+      } else {
+        const err = await res.json();
+        showToast('저장 실패: ' + (err.error || '서버 오류'), 'error');
+      }
     } catch(e) {
-      if(e.name === 'QuotaExceededError') {
-        alert('저장 공간이 부족합니다. 이전 저장 내역을 삭제해주세요.');
-      } else { alert('저장 실패: ' + e.message); }
+      console.error(e);
+      showToast('서버 연결 오류. 네트워크를 확인해주세요.', 'error');
     }
   };
 
-  window.openSaveManager = function() {
-    const slots = getSaveSlots();
+  window.openSaveManager = async function() {
     let modal = document.getElementById('saveManagerModal');
     if(!modal) {
       modal = document.createElement('div');
@@ -130,53 +172,82 @@ document.addEventListener('DOMContentLoaded', () => {
       modal.onclick = function(e) { if(e.target === modal) modal.style.display = 'none'; };
       document.body.appendChild(modal);
     }
-    let html = '<div class="site-modal" style="max-width:520px;">'
-      + '<div class="site-modal-header"><h3>💾 저장 관리</h3><button class="site-modal-close" onclick="document.getElementById(\'saveManagerModal\').style.display=\'none\'">&times;</button></div>'
-      + '<div class="site-modal-body" style="padding:1rem;">';
 
-    if(slots.length === 0) {
-      html += '<p style="text-align:center;color:var(--text-muted);padding:2rem;">저장된 내역이 없습니다.<br><small>작업 중 💾 저장 버튼을 눌러 저장하세요.</small></p>';
-    } else {
-      html += '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
-      slots.forEach((slot, idx) => {
-        const dt = new Date(slot.savedAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-        html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.7rem 1rem;border-radius:0.5rem;background:var(--surface-container-high);">`
-          + `<div style="flex:1;"><strong style="font-size:0.95rem;">${slot.name}</strong>`
-          + `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">${dt} · ${slot.siteCount||'?'}현장 · ${slot.itemCount||'?'}건</div></div>`
-          + `<button class="sort-btn" style="font-size:0.8rem;background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;" onclick="window.loadSaveSlot(${idx})">불러오기</button>`
-          + `<button class="sort-btn" style="font-size:0.8rem;background:#FFEBEE;border-color:#EF5350;color:#C62828;" onclick="window.deleteSaveSlot(${idx})">삭제</button>`
-          + `</div>`;
-      });
-      html += '</div>';
-    }
-    html += '</div></div>';
-    modal.innerHTML = html;
+    modal.innerHTML = '<div class="site-modal" style="max-width:520px;"><div class="site-modal-header"><h3>💾 저장 관리</h3><button class="site-modal-close" onclick="document.getElementById(\'saveManagerModal\').style.display=\'none\'">&times;</button></div><div class="site-modal-body" style="padding:1rem;"><p style="text-align:center;color:var(--text-muted);padding:2rem;">불러오는 중...</p></div></div>';
     modal.style.display = 'flex';
+
+    try {
+      const res = await authFetch(SAVE_API);
+      if(!res.ok) throw new Error('fetch failed');
+      const slots = await res.json();
+      
+      let html = '<div class="site-modal" style="max-width:520px;">'
+        + '<div class="site-modal-header"><h3>💾 저장 관리 (' + slots.length + '개)</h3><button class="site-modal-close" onclick="document.getElementById(\'saveManagerModal\').style.display=\'none\'">&times;</button></div>'
+        + '<div class="site-modal-body" style="padding:1rem;">';
+
+      if(slots.length === 0) {
+        html += '<p style="text-align:center;color:var(--text-muted);padding:2rem;">저장된 내역이 없습니다.<br><small>작업 중 💾 저장 버튼을 눌러 저장하세요.</small></p>';
+      } else {
+        html += '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+        slots.forEach(slot => {
+          const dt = new Date(slot.createdAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+          const amt = (slot.totalAmount || 0).toLocaleString('ko-KR');
+          html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.7rem 1rem;border-radius:0.5rem;background:var(--surface-container-high);">`
+            + `<div style="flex:1;"><strong style="font-size:0.95rem;">${slot.name}</strong>`
+            + `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">${dt} · ${slot.siteCount}현장 · ${slot.itemCount}건 · ₩${amt}</div></div>`
+            + `<button class="sort-btn" style="font-size:0.8rem;background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;" onclick="window.loadServerSlot('${slot.id}')">불러오기</button>`
+            + `<button class="sort-btn" style="font-size:0.8rem;background:#FFEBEE;border-color:#EF5350;color:#C62828;" onclick="window.deleteServerSlot('${slot.id}','${slot.name.replace(/'/g,"\\'")}')">삭제</button>`
+            + `</div>`;
+        });
+        html += '</div>';
+      }
+      html += '</div></div>';
+      modal.innerHTML = html;
+    } catch(e) {
+      console.error(e);
+      modal.innerHTML = '<div class="site-modal" style="max-width:520px;"><div class="site-modal-header"><h3>💾 저장 관리</h3><button class="site-modal-close" onclick="document.getElementById(\'saveManagerModal\').style.display=\'none\'">&times;</button></div><div class="site-modal-body" style="padding:1rem;"><p style="text-align:center;color:var(--error);padding:2rem;">서버 연결 오류</p></div></div>';
+    }
   };
 
-  window.loadSaveSlot = function(idx) {
-    const slots = getSaveSlots();
-    const slot = slots[idx];
-    if(!slot) return;
+  window.loadServerSlot = async function(id) {
     if(globalSitesData.length > 0 && !confirm('현재 작업을 덮어쓰게 됩니다. 계속하시겠습니까?')) return;
-    restorePayload(slot);
-    renderResults();
-    document.getElementById('saveManagerModal').style.display = 'none';
-    showToast(`"${slot.name}" 불러오기 완료!`, 'success');
+    try {
+      const res = await authFetch(SAVE_API + '/' + id);
+      if(!res.ok) throw new Error('fetch failed');
+      const slot = await res.json();
+      if(slot.data) {
+        restorePayload(slot.data);
+        renderResults();
+        const modal = document.getElementById('saveManagerModal');
+        if(modal) modal.style.display = 'none';
+        showToast(`"${slot.name}" 불러오기 완료!`, 'success');
+      }
+    } catch(e) {
+      console.error(e);
+      showToast('불러오기 실패. 서버를 확인해주세요.', 'error');
+    }
   };
 
-  window.deleteSaveSlot = function(idx) {
-    const slots = getSaveSlots();
-    if(!confirm(`"${slots[idx].name}" 저장을 삭제하시겠습니까?`)) return;
-    slots.splice(idx, 1);
-    localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
-    window.openSaveManager(); // 새로고침
-    showToast('저장 내역이 삭제되었습니다.', 'warning');
+  window.deleteServerSlot = async function(id, name) {
+    if(!confirm(`"${name}" 저장을 삭제하시겠습니까?`)) return;
+    try {
+      const res = await authFetch(SAVE_API + '/' + id, { method: 'DELETE' });
+      if(res.ok) {
+        showToast('저장 내역이 삭제되었습니다.', 'warning');
+        window.openSaveManager(); // 모달 새로고침
+        renderSavedSlots(); // 업로드 화면도 갱신
+      } else {
+        showToast('삭제 실패', 'error');
+      }
+    } catch(e) {
+      console.error(e);
+      showToast('서버 연결 오류', 'error');
+    }
   };
 
   window.resetWork = function() {
     if(globalSitesData.length === 0) return;
-    if(!confirm('현재 작업 내역을 모두 초기화하시겠습니까?\n(수동 저장 내역은 유지됩니다)')) return;
+    if(!confirm('현재 작업 내역을 모두 초기화하시겠습니까?\n(서버 저장 내역은 유지됩니다)')) return;
     globalSitesData = []; historyStack = []; window.selectedItemIds.clear(); expandedSiteIndex = -1; searchQuery = '';
     updateFloatingBar(); renderResults();
     showToast('작업이 초기화되었습니다.', 'info');
@@ -187,7 +258,52 @@ document.addEventListener('DOMContentLoaded', () => {
     return lastSaveTime.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
 
+  // --- localStorage → 서버 마이그레이션 ---
+  async function migrateLocalStorageToServer() {
+    const oldSlots = localStorage.getItem(SAVE_SLOTS_KEY);
+    if(!oldSlots) return;
+    try {
+      const slots = JSON.parse(oldSlots);
+      if(!Array.isArray(slots) || slots.length === 0) { localStorage.removeItem(SAVE_SLOTS_KEY); return; }
+      
+      let migrated = 0;
+      for(const slot of slots) {
+        try {
+          const totalAmount = (slot.globalSitesData || []).reduce((sum, site) => {
+            let siteTotal = 0;
+            (site.items || []).forEach(it => { const pn = parseNum(it.purchase); if(!isNaN(pn)) siteTotal += pn; });
+            return sum + siteTotal;
+          }, 0);
+
+          const res = await authFetch(SAVE_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: slot.name || '마이그레이션 데이터',
+              data: {
+                globalSitesData: slot.globalSitesData,
+                categoryMemory: slot.categoryMemory,
+                globalCategories: slot.globalCategories
+              },
+              siteCount: slot.siteCount || 0,
+              itemCount: slot.itemCount || 0,
+              totalAmount: Math.round(totalAmount)
+            })
+          });
+          if(res.ok) migrated++;
+        } catch(e) { console.error('마이그레이션 개별 실패:', e); }
+      }
+      if(migrated > 0) {
+        localStorage.removeItem(SAVE_SLOTS_KEY);
+        showToast(`기존 저장 ${migrated}건을 서버로 이전했습니다.`, 'success', 5000);
+        renderSavedSlots();
+      }
+    } catch(e) { console.error('마이그레이션 실패:', e); }
+  }
+
   loadFromLocalStorage();
+  renderSavedSlots();
+  migrateLocalStorageToServer();
   // -------------------------
 
   // #5 키보드 단축키

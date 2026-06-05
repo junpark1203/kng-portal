@@ -29,6 +29,17 @@
           <input type="file" id="fileInput" accept=".xlsx, .xls" hidden>
           <button class="btn-primary" onclick="document.getElementById('fileInput').click()">파일 선택</button>
         </div>
+
+        <!-- 저장된 작업 불러오기 영역 -->
+        <div id="savedWorkSection" class="saved-work-section" style="display:none;">
+          <div class="saved-work-header">
+            <h3>📂 저장된 작업</h3>
+            <span id="savedWorkCount" class="saved-work-count"></span>
+          </div>
+          <div id="savedSlotsContainer" class="saved-slots-container">
+            <!-- app.js에서 동적 생성 -->
+          </div>
+        </div>
       </section>
 
       <section class="results-section" id="resultsSection" style="display: none;">

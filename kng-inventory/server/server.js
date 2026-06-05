@@ -234,6 +234,22 @@ function initDb() {
         if (err) console.error('oil_supply_history 테이블 생성 오류:', err.message);
         else console.log('oil_supply_history 테이블 확인 완료');
     });
+
+    // 행복한안전 월마감 저장 슬롯 테이블
+    db.run(`
+        CREATE TABLE IF NOT EXISTS happysafety_saves (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            data TEXT,
+            siteCount INTEGER DEFAULT 0,
+            itemCount INTEGER DEFAULT 0,
+            totalAmount INTEGER DEFAULT 0,
+            createdAt TEXT
+        )
+    `, (err) => {
+        if (err) console.error('happysafety_saves 테이블 생성 오류:', err.message);
+        else console.log('happysafety_saves 테이블 확인 완료');
+    });
 }
 
 // ----------------------------------------------------
@@ -693,6 +709,52 @@ app.use('/api/mass-upload', massUploadRoutes);
 // HQ Inventory (본사 매입 현황) API 라우트 마운트
 // ==========================================
 app.use('/api/hq', hqInventoryRoutes);
+
+// ==========================================
+// 6. 행복한안전 월마감 저장 슬롯 API (/api/happysafety/saves)
+// ==========================================
+// 목록 조회 (데이터 제외 — 메타 정보만)
+app.get('/api/happysafety/saves', (req, res) => {
+    db.all('SELECT id, name, siteCount, itemCount, totalAmount, createdAt FROM happysafety_saves ORDER BY createdAt DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 상세 조회 (데이터 포함)
+app.get('/api/happysafety/saves/:id', (req, res) => {
+    db.get('SELECT * FROM happysafety_saves WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '저장 데이터를 찾을 수 없습니다.' });
+        // data 필드를 JSON 파싱하여 반환
+        try {
+            row.data = JSON.parse(row.data);
+        } catch(e) { /* 파싱 실패 시 원본 반환 */ }
+        res.json(row);
+    });
+});
+
+// 신규 저장
+app.post('/api/happysafety/saves', (req, res) => {
+    const p = req.body;
+    const id = 'HS-SAVE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const now = new Date().toISOString();
+    const dataStr = typeof p.data === 'string' ? p.data : JSON.stringify(p.data);
+    const sql = `INSERT INTO happysafety_saves (id, name, data, siteCount, itemCount, totalAmount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    db.run(sql, [id, p.name || '무제', dataStr, p.siteCount || 0, p.itemCount || 0, p.totalAmount || 0, now], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '저장 성공', id, createdAt: now });
+    });
+});
+
+// 삭제
+app.delete('/api/happysafety/saves/:id', (req, res) => {
+    db.run('DELETE FROM happysafety_saves WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+        res.json({ message: '삭제 성공' });
+    });
+});
 
 // 알 수 없는 경로 → 404
 app.use((req, res) => {
