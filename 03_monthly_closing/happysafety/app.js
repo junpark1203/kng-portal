@@ -589,6 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderResults() {
     saveToLocalStorage();
     if(!globalSitesData.length){sitesContainer.innerHTML='';resultsSection.style.display='none';return;}
+    resultsSection.style.display='block';
     let gTP=0,gTotal=0,gUncat=0;
     globalSitesData.forEach(site=>{
       let tP=0;
