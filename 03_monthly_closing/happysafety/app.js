@@ -129,6 +129,12 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('저장 목록 로드 실패:', e);
       countSpan.textContent = '';
       container.innerHTML = '<div class="saved-slot-empty"><p>⏳ 서버 연결 대기 중...</p><small>서버가 업데이트되면 저장된 작업 목록이 표시됩니다.</small></div>';
+      // 인증 초기화 전 실패 시 재시도 (최대 3회)
+      if(!renderSavedSlots._retries) renderSavedSlots._retries = 0;
+      if(renderSavedSlots._retries < 3) {
+        renderSavedSlots._retries++;
+        setTimeout(() => renderSavedSlots(), 2000);
+      }
     }
   }
 
