@@ -96,13 +96,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const countSpan = document.getElementById('savedWorkCount');
     if(!section || !container) return;
 
+    // 결과 영역이 보이면(작업 중이면) 업로드 화면의 저장 목록은 숨김
+    if(globalSitesData.length > 0) { section.style.display = 'none'; return; }
+
+    section.style.display = 'block';
+
     try {
       const res = await authFetch(SAVE_API);
       if(!res.ok) throw new Error('fetch failed');
       const slots = await res.json();
-      if(slots.length === 0) { section.style.display = 'none'; return; }
 
-      section.style.display = 'block';
+      if(slots.length === 0) {
+        countSpan.textContent = '';
+        container.innerHTML = '<div class="saved-slot-empty"><p>📭 저장된 작업이 없습니다.</p><small>작업 후 💾 저장 버튼이나 <kbd>Ctrl+S</kbd>를 눌러 서버에 저장하세요.</small></div>';
+        return;
+      }
+
       countSpan.textContent = slots.length + '개';
       container.innerHTML = slots.map(slot => {
         const dt = new Date(slot.createdAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -113,12 +122,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="saved-slot-name">${slot.name}</div>
             <div class="saved-slot-meta">${dt} · ${slot.siteCount}현장 · ${slot.itemCount}건 · ₩${amt}</div>
           </div>
-          <button class="saved-slot-delete" onclick="event.stopPropagation();window.deleteServerSlot('${slot.id}','${slot.name.replace(/'/g,"\\'")}')">✕</button>
+          <button class="saved-slot-delete" onclick="event.stopPropagation();window.deleteServerSlot('${slot.id}','${slot.name.replace(/'/g,"\\\'")}')">✕</button>
         </div>`;
       }).join('');
     } catch(e) {
       console.error('저장 목록 로드 실패:', e);
-      section.style.display = 'none';
+      countSpan.textContent = '';
+      container.innerHTML = '<div class="saved-slot-empty"><p>⏳ 서버 연결 대기 중...</p><small>서버가 업데이트되면 저장된 작업 목록이 표시됩니다.</small></div>';
     }
   }
 

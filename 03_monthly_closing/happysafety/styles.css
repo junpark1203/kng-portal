@@ -799,3 +799,26 @@ input[type="checkbox"]:checked::after {
   color: var(--error);
   background: var(--error-container);
 }
+.saved-slot-empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  grid-column: 1 / -1;
+}
+.saved-slot-empty p {
+  font-size: 0.95rem;
+  margin-bottom: 0.3rem;
+}
+.saved-slot-empty small {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.saved-slot-empty kbd {
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
