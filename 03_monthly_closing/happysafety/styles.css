@@ -711,6 +711,8 @@ input[type="checkbox"]:checked::after {
 
 /* ===== Saved Work Section (Upload Screen) ===== */
 .saved-work-section {
+  width: 100%;
+  text-align: left;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--outline-variant);
