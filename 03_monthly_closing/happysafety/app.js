@@ -23,39 +23,169 @@ document.addEventListener('DOMContentLoaded', () => {
     return fetch(url, options);
   }
 
-  // --- Auto Save & Load ---
+  // --- 토스트 알림 ---
+  function showToast(msg, type='info', duration=3000) {
+    let container = document.getElementById('toastContainer');
+    if(!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:99999;display:flex;flex-direction:column;gap:0.5rem;pointer-events:none;';
+      document.body.appendChild(container);
+    }
+    const colors = { info:'#1976D2', success:'#2E7D32', warning:'#E65100', error:'#C62828' };
+    const icons = { info:'💾', success:'✅', warning:'⚠️', error:'❌' };
+    const toast = document.createElement('div');
+    toast.style.cssText = `pointer-events:auto;background:${colors[type]||colors.info};color:#fff;padding:0.8rem 1.2rem;border-radius:0.6rem;font-size:0.9rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.2);opacity:0;transform:translateX(100%);transition:all 0.3s ease;display:flex;align-items:center;gap:0.5rem;max-width:360px;`;
+    toast.innerHTML = `<span>${icons[type]||icons.info}</span><span>${msg}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity='1'; toast.style.transform='translateX(0)'; });
+    setTimeout(() => { toast.style.opacity='0'; toast.style.transform='translateX(100%)'; setTimeout(() => toast.remove(), 300); }, duration);
+  }
+
+  // --- Auto Save & Load (개선) ---
+  let lastSaveTime = null;
+
   function saveToLocalStorage() {
-    if(globalSitesData.length === 0) { localStorage.removeItem('happySafety_autosave'); return; }
+    if(globalSitesData.length === 0) { localStorage.removeItem('happySafety_autosave'); lastSaveTime = null; return; }
     const payload = {
       globalSitesData,
       categoryMemory,
-      globalCategories: Array.from(window.globalCategories)
+      globalCategories: Array.from(window.globalCategories),
+      savedAt: new Date().toISOString()
     };
     localStorage.setItem('happySafety_autosave', JSON.stringify(payload));
+    lastSaveTime = new Date();
+  }
+
+  function restorePayload(parsed) {
+    globalSitesData = parsed.globalSitesData || [];
+    window.categoryMemory = parsed.categoryMemory || {};
+    if(parsed.globalCategories) window.globalCategories = new Set(parsed.globalCategories);
+    lastSaveTime = parsed.savedAt ? new Date(parsed.savedAt) : new Date();
   }
   
   function loadFromLocalStorage() {
     const saved = localStorage.getItem('happySafety_autosave');
     if(saved) {
-      if(confirm('저장된 이전 작업 내역이 있습니다. 불러오시겠습니까?')) {
-        try {
-          const parsed = JSON.parse(saved);
-          globalSitesData = parsed.globalSitesData || [];
-          window.categoryMemory = parsed.categoryMemory || {};
-          if(parsed.globalCategories) window.globalCategories = new Set(parsed.globalCategories);
-          renderResults();
-        } catch(e) { console.error('Failed to load autosave', e); }
-      } else {
-        localStorage.removeItem('happySafety_autosave');
-      }
+      try {
+        const parsed = JSON.parse(saved);
+        restorePayload(parsed);
+        renderResults();
+        const timeStr = parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        showToast(`이전 작업을 자동 복원했습니다. ${timeStr ? '(' + timeStr + ')' : ''}`, 'success', 4000);
+      } catch(e) { console.error('Failed to load autosave', e); }
     }
   }
 
   window.addEventListener('beforeunload', (e) => {
+    // 페이지 떠나기 전 마지막 저장 보장
     if (globalSitesData.length > 0) {
+      saveToLocalStorage();
       e.returnValue = '진행 중인 작업이 있습니다. 창을 닫으시겠습니까?';
     }
   });
+
+  // --- 수동 저장 슬롯 관리 ---
+  const SAVE_SLOTS_KEY = 'happySafety_saveSlots';
+
+  function getSaveSlots() {
+    try { return JSON.parse(localStorage.getItem(SAVE_SLOTS_KEY) || '[]'); } catch(e) { return []; }
+  }
+
+  window.manualSave = function() {
+    if(globalSitesData.length === 0) return alert('저장할 데이터가 없습니다.');
+    const defaultName = new Date().toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/\./g, '-').trim();
+    const name = prompt('저장 이름을 입력하세요:', defaultName);
+    if(!name) return;
+    const slots = getSaveSlots();
+    const payload = {
+      name,
+      savedAt: new Date().toISOString(),
+      globalSitesData,
+      categoryMemory: window.categoryMemory,
+      globalCategories: Array.from(window.globalCategories),
+      siteCount: globalSitesData.length,
+      itemCount: globalSitesData.reduce((s,site) => s + site.items.length, 0)
+    };
+    slots.unshift(payload);
+    // 최대 10개 슬롯 유지
+    if(slots.length > 10) slots.length = 10;
+    try {
+      localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
+      showToast(`"${name}" 저장 완료!`, 'success');
+    } catch(e) {
+      if(e.name === 'QuotaExceededError') {
+        alert('저장 공간이 부족합니다. 이전 저장 내역을 삭제해주세요.');
+      } else { alert('저장 실패: ' + e.message); }
+    }
+  };
+
+  window.openSaveManager = function() {
+    const slots = getSaveSlots();
+    let modal = document.getElementById('saveManagerModal');
+    if(!modal) {
+      modal = document.createElement('div');
+      modal.id = 'saveManagerModal';
+      modal.className = 'site-modal-overlay';
+      modal.onclick = function(e) { if(e.target === modal) modal.style.display = 'none'; };
+      document.body.appendChild(modal);
+    }
+    let html = '<div class="site-modal" style="max-width:520px;">'
+      + '<div class="site-modal-header"><h3>💾 저장 관리</h3><button class="site-modal-close" onclick="document.getElementById(\'saveManagerModal\').style.display=\'none\'">&times;</button></div>'
+      + '<div class="site-modal-body" style="padding:1rem;">';
+
+    if(slots.length === 0) {
+      html += '<p style="text-align:center;color:var(--text-muted);padding:2rem;">저장된 내역이 없습니다.<br><small>작업 중 💾 저장 버튼을 눌러 저장하세요.</small></p>';
+    } else {
+      html += '<div style="display:flex;flex-direction:column;gap:0.5rem;">';
+      slots.forEach((slot, idx) => {
+        const dt = new Date(slot.savedAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.7rem 1rem;border-radius:0.5rem;background:var(--surface-container-high);">`
+          + `<div style="flex:1;"><strong style="font-size:0.95rem;">${slot.name}</strong>`
+          + `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">${dt} · ${slot.siteCount||'?'}현장 · ${slot.itemCount||'?'}건</div></div>`
+          + `<button class="sort-btn" style="font-size:0.8rem;background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;" onclick="window.loadSaveSlot(${idx})">불러오기</button>`
+          + `<button class="sort-btn" style="font-size:0.8rem;background:#FFEBEE;border-color:#EF5350;color:#C62828;" onclick="window.deleteSaveSlot(${idx})">삭제</button>`
+          + `</div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div></div>';
+    modal.innerHTML = html;
+    modal.style.display = 'flex';
+  };
+
+  window.loadSaveSlot = function(idx) {
+    const slots = getSaveSlots();
+    const slot = slots[idx];
+    if(!slot) return;
+    if(globalSitesData.length > 0 && !confirm('현재 작업을 덮어쓰게 됩니다. 계속하시겠습니까?')) return;
+    restorePayload(slot);
+    renderResults();
+    document.getElementById('saveManagerModal').style.display = 'none';
+    showToast(`"${slot.name}" 불러오기 완료!`, 'success');
+  };
+
+  window.deleteSaveSlot = function(idx) {
+    const slots = getSaveSlots();
+    if(!confirm(`"${slots[idx].name}" 저장을 삭제하시겠습니까?`)) return;
+    slots.splice(idx, 1);
+    localStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(slots));
+    window.openSaveManager(); // 새로고침
+    showToast('저장 내역이 삭제되었습니다.', 'warning');
+  };
+
+  window.resetWork = function() {
+    if(globalSitesData.length === 0) return;
+    if(!confirm('현재 작업 내역을 모두 초기화하시겠습니까?\n(수동 저장 내역은 유지됩니다)')) return;
+    globalSitesData = []; historyStack = []; window.selectedItemIds.clear(); expandedSiteIndex = -1; searchQuery = '';
+    updateFloatingBar(); renderResults();
+    showToast('작업이 초기화되었습니다.', 'info');
+  };
+
+  function getSaveTimeLabel() {
+    if(!lastSaveTime) return '';
+    return lastSaveTime.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
 
   loadFromLocalStorage();
   // -------------------------
@@ -63,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // #5 키보드 단축키
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.key === 'z') { e.preventDefault(); window.undoAction(); }
-    if (e.key === 'Escape') { const m=document.getElementById('siteModal'); if(m&&m.style.display==='flex') window.closeSiteModal(); }
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); window.manualSave(); }
+    if (e.key === 'Escape') { const m=document.getElementById('siteModal'); if(m&&m.style.display==='flex') window.closeSiteModal(); const sm=document.getElementById('saveManagerModal'); if(sm&&sm.style.display==='flex') sm.style.display='none'; }
   });
 
   window.setFilterTab = function(tabName) { window.currentTab=tabName; window.selectedItemIds.clear(); updateFloatingBar(); renderResults(); };
@@ -350,9 +481,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const classified=gTotal-gUncat;
     const pct=gTotal>0?Math.round(classified/gTotal*100):0;
 
+    const saveTimeLabel = getSaveTimeLabel();
     let sh='<div class="summary-header">'
       +'<h3 style="margin:0;font-size:1.1rem;color:var(--primary);font-weight:800;">전체 현장 요약</h3>'
-      +'<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">'
+      +'<div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">'
+      +(saveTimeLabel ? '<span style="font-size:0.75rem;color:var(--text-muted);padding:0.3rem 0.6rem;background:var(--surface-container-highest);border-radius:0.4rem;">💾 자동저장 '+saveTimeLabel+'</span>' : '')
+      +'<button class="sort-btn" onclick="window.manualSave()" style="background:#E3F2FD;border-color:#1976D2;color:#0D47A1;font-weight:600;">💾 저장</button>'
+      +'<button class="sort-btn" onclick="window.openSaveManager()" style="background:#F3E5F5;border-color:#9C27B0;color:#6A1B9A;">📂 불러오기</button>'
+      +'<button class="sort-btn" onclick="window.resetWork()" style="background:#FFF3E0;border-color:#FF9800;color:#E65100;">🗑 초기화</button>'
+      +'<span style="width:1px;height:1.4rem;background:var(--outline-variant);"></span>'
       +'<button class="sort-btn" onclick="window.undoAction()" '+(historyStack.length===0?'disabled':'style="color:var(--primary);font-weight:800;border-color:var(--primary);"')+' title="Ctrl+Z">↩ 실행 취소</button>'
       +'<button class="sort-btn" onclick="window.sortByName()">가나다순 ↕</button>'
       +'<button class="sort-btn" onclick="window.sortByAmount()">금액순 ↕</button>'
