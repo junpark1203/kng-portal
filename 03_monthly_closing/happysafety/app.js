@@ -776,13 +776,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = parseNum(it.sales) || 0;
         if(qty === 0 && price === 0 && total === 0) return; // 빈 행 제외
 
-        // 일자 변환: 엑셀 원본은 "MMDD" 또는 "MDD" 형태
+        // 일자 변환: 엑셀 원본은 "MMDD" 또는 "MDD", 혹은 사용자가 "YYYY-MM-DD" 로 입력했을 수 있음
         let dateStr = (it.date || '').trim();
         let supplyDate = '';
-        if(dateStr.length >= 3 && dateStr.length <= 4) {
-          const mm = dateStr.length === 4 ? dateStr.substring(0, 2) : '0' + dateStr.substring(0, 1);
-          const dd = dateStr.length === 4 ? dateStr.substring(2, 4) : dateStr.substring(1, 3);
-          supplyDate = currentYear + '-' + mm + '-' + dd;
+        
+        if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // 이미 YYYY-MM-DD 형식
+          supplyDate = dateStr;
+        } else {
+          // 슬래시 등 특수문자 제거 후 숫자만 추출
+          const pureNum = dateStr.replace(/[^0-9]/g, '');
+          if(pureNum.length >= 3 && pureNum.length <= 4) {
+            const mm = pureNum.length === 4 ? pureNum.substring(0, 2) : '0' + pureNum.substring(0, 1);
+            const dd = pureNum.length === 4 ? pureNum.substring(2, 4) : pureNum.substring(1, 3);
+            supplyDate = currentYear + '-' + mm + '-' + dd;
+          }
         }
 
         bulkItems.push({

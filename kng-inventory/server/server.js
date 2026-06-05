@@ -241,6 +241,15 @@ function initDb() {
                 db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'");
             });
             db.run("ALTER TABLE supply_history ADD COLUMN manufacturer TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN supplyDate TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN site TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN item TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN qty INTEGER", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN price INTEGER", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN total INTEGER", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN category TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN createdAt TEXT", () => {});
+            db.run("ALTER TABLE supply_history ADD COLUMN updatedAt TEXT", () => {});
             // In case columns already exist but data is empty or has the old default
             db.run("UPDATE supply_history SET supplier = '행복한안전' WHERE supplier IS NULL OR supplier = '' OR supplier = '평생건산'");
         }
@@ -636,15 +645,17 @@ app.post('/api/supply-history/bulk', (req, res) => {
     const sql = `INSERT OR IGNORE INTO supply_history (id, supplyDate, site, supplier, manufacturer, item, qty, price, total, category, createdAt, updatedAt)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
+    let hasError = null;
     const stmt = db.prepare(sql);
     items.forEach((p, i) => {
         const id = p.id || ('SH-MIG-' + String(i).padStart(4, '0'));
         stmt.run([id, p.supplyDate||'', p.site||'', p.supplier||'', p.manufacturer||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now], function(err) {
-            if (!err && this.changes > 0) inserted++;
+            if (err) hasError = err;
+            else if (this.changes > 0) inserted++;
         });
     });
     stmt.finalize((err) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err || hasError) return res.status(500).json({ error: (err || hasError).message });
         res.json({ message: '일괄 등록 완료', insertedCount: inserted, totalCount: items.length });
     });
 });
