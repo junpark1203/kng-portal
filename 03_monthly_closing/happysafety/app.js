@@ -73,7 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResults();
         const timeStr = parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
         showToast(`이전 작업을 자동 복원했습니다. ${timeStr ? '(' + timeStr + ')' : ''}`, 'success', 4000);
-      } catch(e) { console.error('Failed to load autosave', e); }
+      } catch(e) {
+        console.error('Failed to load autosave', e);
+        localStorage.removeItem('happySafety_autosave');
+        globalSitesData = [];
+        renderResults();
+      }
     }
   }
 
@@ -593,12 +598,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let gTP=0,gTotal=0,gUncat=0;
     globalSitesData.forEach(site=>{
       let tP=0;
+      if (!site || !Array.isArray(site.items)) {
+        if(site) site.filteredItems = [];
+        return;
+      }
       site.filteredItems=site.items.filter(item=>{
         let match=false;
         if(window.currentTab==='전체')match=true;
         else if(window.currentTab==='직접입력')match=item.category&&!window.STANDARD_CATEGORIES.includes(item.category);
         else match=item.category===window.currentTab;
-        if(match&&searchQuery){const q=searchQuery;match=((item.itemName||'').toLowerCase().includes(q)||(item.date||'').includes(q)||(item.seqNo||'').includes(q));}
+        if(match&&searchQuery){const q=searchQuery;match=(String(item.itemName||'').toLowerCase().includes(q)||String(item.date||'').includes(q)||String(item.seqNo||'').includes(q));}
         if(match&&item.purchase){const num=parseNum(item.purchase);if(!isNaN(num))tP+=num;}
         return match;
       });
