@@ -73,12 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResults();
         const timeStr = parsed.savedAt ? new Date(parsed.savedAt).toLocaleString('ko-KR', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
         showToast(`이전 작업을 자동 복원했습니다. ${timeStr ? '(' + timeStr + ')' : ''}`, 'success', 4000);
-      } catch(e) { 
-        console.error('Failed to load autosave', e); 
-        localStorage.removeItem('happySafety_autosave');
-        globalSitesData = [];
-        renderResults();
-      }
+      } catch(e) { console.error('Failed to load autosave', e); }
     }
   }
 
@@ -595,6 +590,74 @@ document.addEventListener('DOMContentLoaded', () => {
     saveToLocalStorage();
     if(!globalSitesData.length){sitesContainer.innerHTML='';resultsSection.style.display='none';return;}
     resultsSection.style.display='block';
+    let gTP=0,gTotal=0,gUncat=0;
+    globalSitesData.forEach(site=>{
+      let tP=0;
+      site.filteredItems=site.items.filter(item=>{
+        let match=false;
+        if(window.currentTab==='전체')match=true;
+        else if(window.currentTab==='직접입력')match=item.category&&!window.STANDARD_CATEGORIES.includes(item.category);
+        else match=item.category===window.currentTab;
+        if(match&&searchQuery){const q=searchQuery;match=((item.itemName||'').toLowerCase().includes(q)||(item.date||'').includes(q)||(item.seqNo||'').includes(q));}
+        if(match&&item.purchase){const num=parseNum(item.purchase);if(!isNaN(num))tP+=num;}
+        return match;
+      });
+      site.filteredTotalPurchase=tP;
+      gTP+=tP;
+      const fitems=site.filteredItems;
+      gTotal+=fitems.length;
+      fitems.forEach(it=>{if(!it.category)gUncat++;});
+    });
+
+    sitesContainer.innerHTML='';
+    const sdiv=document.createElement('div');sdiv.className='summary-container';
+    const classified=gTotal-gUncat;
+    const pct=gTotal>0?Math.round(classified/gTotal*100):0;
+
+    const saveTimeLabel = getSaveTimeLabel();
+    let sh='<div class="summary-header">'
+      +'<h3 style="margin:0;font-size:1.1rem;color:var(--primary);font-weight:800;">전체 현장 요약</h3>'
+      +'<div style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">'
+      +(saveTimeLabel ? '<span style="font-size:0.75rem;color:var(--text-muted);padding:0.3rem 0.6rem;background:var(--surface-container-highest);border-radius:0.4rem;">💾 자동저장 '+saveTimeLabel+'</span>' : '')
+      +'<button class="sort-btn" onclick="window.manualSave()" style="background:#E3F2FD;border-color:#1976D2;color:#0D47A1;font-weight:600;">💾 저장</button>'
+      +'<button class="sort-btn" onclick="window.openSaveManager()" style="background:#F3E5F5;border-color:#9C27B0;color:#6A1B9A;">📂 불러오기</button>'
+      +'<button class="sort-btn" onclick="window.resetWork()" style="background:#FFF3E0;border-color:#FF9800;color:#E65100;">🗑 초기화</button>'
+      +'<span style="width:1px;height:1.4rem;background:var(--outline-variant);"></span>'
+      +'<button class="sort-btn" onclick="window.undoAction()" '+(historyStack.length===0?'disabled':'style="color:var(--primary);font-weight:800;border-color:var(--primary);"')+' title="Ctrl+Z">↩ 실행 취소</button>'
+      +'<button class="sort-btn" onclick="window.sortByName()">가나다순 ↕</button>'
+      +'<button class="sort-btn" onclick="window.sortByAmount()">금액순 ↕</button>'
+      +'<button class="sort-btn" onclick="window.selectAllUnclassified()" style="background:#FFF3E0;border-color:#FF9800;color:#E65100;">📋 미분류 일괄</button>'
+      +'<button class="sort-btn" onclick="window.downloadExcel()" style="background:var(--secondary-container);color:var(--on-secondary-container);">📥 엑셀</button>'
+      +'<button class="sort-btn" onclick="window.sendToSupplyHistory()" style="background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;">📤 공급내역 전송</button></div></div>';
+
+    // #8 대시보드 카드
+    sh+='<div class="stats-dashboard">'
+      +'<div class="stat-card"><div class="stat-card-label">현장 수</div><div class="stat-card-value">'+globalSitesData.length+'곳</div></div>'
+      +'<div class="stat-card"><div class="stat-card-label">매입 합계</div><div class="stat-card-value">'+Math.round(gTP).toLocaleString('ko-KR')+'</div></div>'
+      +'<div class="stat-card"><div class="stat-card-label">미분류</div><div class="stat-card-value">'+(gUncat>0?gUncat+'건':'완료 ✓')+'</div></div>'
+      +'<div class="stat-card"><div class="stat-card-label">분류 완료율</div><div class="stat-card-value success">'+pct+'%</div>'
+      +'<div class="progress-bar-container"><div class="progress-bar-fill" style="width:'+pct+'%"></div></div></div>'
+      +'</div>';
+
+    sh+='<div class="search-container"><span class="search-icon">🔍</span><input type="text" class="search-input" placeholder="품목명, 일자, No.로 검색..." value="'+searchQuery+'" oninput="window.handleSearch(this.value)"></div>';
+
+    const tabs=[['전체','전체보기'],['잡자재','잡자재'],['안전자재','안전자재'],['기타자재','기타자재'],['쇼핑몰','쇼핑몰'],['직접입력','직접입력 (기타)']];
+    sh+='<div class="tab-container">';
+    tabs.forEach(([k,l])=>{sh+='<button class="tab-btn'+(window.currentTab===k?' active':'')+'" onclick="window.setFilterTab(\''+k+'\')">'+l+'</button>';});
+    sh+='</div>'
+      +'<div style="margin-bottom: 0.8rem; font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; background: var(--surface-container-highest); padding: 0.6rem 1rem; border-radius: 0.5rem;">'
+      +'<span style="font-size: 1rem;">💡</span>'
+      +'<span>현장 칩을 <strong>드래그</strong>하여 순서를 변경하거나, <strong>Shift 키 + 드래그</strong>하여 현장을 병합할 수 있습니다.</span>'
+      +'</div>'
+      +'<div class="summary-list">';
+
+    sh+='<button class="summary-chip" style="background:var(--primary-fixed);border:2px solid var(--primary);" onclick="window.openSiteModal(-1)"><strong style="color:var(--primary);">📊 전체 현장</strong></button>';
+
+    globalSitesData.forEach((site,idx)=>{
+      if(window.currentTab!=='전체'&&site.filteredItems.length===0)return;
+      sh+='<button class="summary-chip" draggable="true" '
+        +'onclick="window.openSiteModal('+idx+')" '
+        +'ondragstart="window.handleChipDragStart(event,'+idx+')" ondragend="window.handleChipDragEnd(event)" '
         +'ondragover="window.handleChipDragOver(event)" ondragleave="window.handleChipDragLeave(event)" ondrop="window.handleChipDrop(event,'+idx+')">'
         +'<strong onclick="event.stopPropagation();" ondblclick="event.stopPropagation();window.editSiteName('+idx+',this)" class="editable-header" title="더블 클릭하여 현장명 수정">'+site.siteName+'</strong>'
         +'<span>'+(site.filteredTotalPurchase||0).toLocaleString('ko-KR')+'원</span></button>';
