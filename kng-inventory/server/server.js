@@ -77,11 +77,45 @@ app.use('/api/', apiLimiter);
 const { verifyToken } = require('./auth-middleware');
 // health check 등 인증이 필요 없는 라우트는 미들웨어 적용 이전에 선언
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v1.0.3' });
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), version: 'v1.0.4' });
 });
 // 이미지 업로드 파일 — <img> 태그에서 직접 접근하므로 인증 제외
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
 app.use('/api/mass-upload/uploads', express.static(UPLOAD_DIR, { fallthrough: false }));
+// 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
+// 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
+app.get('/api/happysafety/saves', (req, res) => {
+    db.all('SELECT id, name, siteCount, itemCount, totalAmount, createdAt FROM happysafety_saves ORDER BY createdAt DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+app.get('/api/happysafety/saves/:id', (req, res) => {
+    db.get('SELECT * FROM happysafety_saves WHERE id = ?', [req.params.id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: '저장 데이터를 찾을 수 없습니다.' });
+        try { row.data = JSON.parse(row.data); } catch(e) {}
+        res.json(row);
+    });
+});
+app.post('/api/happysafety/saves', (req, res) => {
+    const p = req.body;
+    const id = 'HS-SAVE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const now = new Date().toISOString();
+    const dataStr = typeof p.data === 'string' ? p.data : JSON.stringify(p.data);
+    const sql = `INSERT INTO happysafety_saves (id, name, data, siteCount, itemCount, totalAmount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    db.run(sql, [id, p.name || '무제', dataStr, p.siteCount || 0, p.itemCount || 0, p.totalAmount || 0, now], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: '저장 성공', id, createdAt: now });
+    });
+});
+app.delete('/api/happysafety/saves/:id', (req, res) => {
+    db.run('DELETE FROM happysafety_saves WHERE id = ?', [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
+        res.json({ message: '삭제 성공' });
+    });
+});
 app.use('/api/', verifyToken);
 
 // 데이터 디렉터리 확인 및 생성
@@ -710,51 +744,7 @@ app.use('/api/mass-upload', massUploadRoutes);
 // ==========================================
 app.use('/api/hq', hqInventoryRoutes);
 
-// ==========================================
-// 6. 행복한안전 월마감 저장 슬롯 API (/api/happysafety/saves)
-// ==========================================
-// 목록 조회 (데이터 제외 — 메타 정보만)
-app.get('/api/happysafety/saves', (req, res) => {
-    db.all('SELECT id, name, siteCount, itemCount, totalAmount, createdAt FROM happysafety_saves ORDER BY createdAt DESC', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
-
-// 상세 조회 (데이터 포함)
-app.get('/api/happysafety/saves/:id', (req, res) => {
-    db.get('SELECT * FROM happysafety_saves WHERE id = ?', [req.params.id], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!row) return res.status(404).json({ error: '저장 데이터를 찾을 수 없습니다.' });
-        // data 필드를 JSON 파싱하여 반환
-        try {
-            row.data = JSON.parse(row.data);
-        } catch(e) { /* 파싱 실패 시 원본 반환 */ }
-        res.json(row);
-    });
-});
-
-// 신규 저장
-app.post('/api/happysafety/saves', (req, res) => {
-    const p = req.body;
-    const id = 'HS-SAVE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-    const now = new Date().toISOString();
-    const dataStr = typeof p.data === 'string' ? p.data : JSON.stringify(p.data);
-    const sql = `INSERT INTO happysafety_saves (id, name, data, siteCount, itemCount, totalAmount, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.run(sql, [id, p.name || '무제', dataStr, p.siteCount || 0, p.itemCount || 0, p.totalAmount || 0, now], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ message: '저장 성공', id, createdAt: now });
-    });
-});
-
-// 삭제
-app.delete('/api/happysafety/saves/:id', (req, res) => {
-    db.run('DELETE FROM happysafety_saves WHERE id = ?', [req.params.id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        if (this.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
-        res.json({ message: '삭제 성공' });
-    });
-});
+// (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
 // 알 수 없는 경로 → 404
 app.use((req, res) => {

@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     section.style.display = 'block';
 
     try {
-      const res = await authFetch(SAVE_API);
+      const res = await fetch(SAVE_API);
       if(!res.ok) throw new Error('fetch failed');
       const slots = await res.json();
 
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 0);
 
     try {
-      const res = await authFetch(SAVE_API, {
+      const res = await fetch(SAVE_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.style.display = 'flex';
 
     try {
-      const res = await authFetch(SAVE_API);
+      const res = await fetch(SAVE_API);
       if(!res.ok) throw new Error('fetch failed');
       const slots = await res.json();
       
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.loadServerSlot = async function(id) {
     if(globalSitesData.length > 0 && !confirm('현재 작업을 덮어쓰게 됩니다. 계속하시겠습니까?')) return;
     try {
-      const res = await authFetch(SAVE_API + '/' + id);
+      const res = await fetch(SAVE_API + '/' + id);
       if(!res.ok) throw new Error('fetch failed');
       const slot = await res.json();
       if(slot.data) {
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.deleteServerSlot = async function(id, name) {
     if(!confirm(`"${name}" 저장을 삭제하시겠습니까?`)) return;
     try {
-      const res = await authFetch(SAVE_API + '/' + id, { method: 'DELETE' });
+      const res = await fetch(SAVE_API + '/' + id, { method: 'DELETE' });
       if(res.ok) {
         showToast('저장 내역이 삭제되었습니다.', 'warning');
         window.openSaveManager(); // 모달 새로고침
@@ -285,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return sum + siteTotal;
           }, 0);
 
-          const res = await authFetch(SAVE_API, {
+          const res = await fetch(SAVE_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
