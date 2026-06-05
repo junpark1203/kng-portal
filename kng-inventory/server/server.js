@@ -578,18 +578,18 @@ app.post('/api/supply-history/update-category', (req, res) => {
     });
 });
 
-// 일괄 등록 (마이그레이션용)
+// 일괄 등록 (마이그레이션 및 행복한안전 월마감 전송용)
 app.post('/api/supply-history/bulk', (req, res) => {
     const items = req.body;
     if (!Array.isArray(items)) return res.status(400).json({ error: '배열이 필요합니다.' });
     const now = new Date().toISOString();
-    const sql = `INSERT OR IGNORE INTO supply_history (id, supplyDate, site, item, qty, price, total, category, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT OR IGNORE INTO supply_history (id, supplyDate, site, supplier, manufacturer, item, qty, price, total, category, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
     const stmt = db.prepare(sql);
     items.forEach((p, i) => {
         const id = p.id || ('SH-MIG-' + String(i).padStart(4, '0'));
-        stmt.run([id, p.supplyDate||'', p.site||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now], function(err) {
+        stmt.run([id, p.supplyDate||'', p.site||'', p.supplier||'', p.manufacturer||'', p.item||'', p.qty||0, p.price||0, p.total||0, p.category||'미분류', now, now], function(err) {
             if (!err && this.changes > 0) inserted++;
         });
     });
