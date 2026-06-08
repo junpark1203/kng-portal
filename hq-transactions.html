@@ -12,6 +12,242 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="./Common/css/search-engine.css">
     <style>.main-content { margin-left: 0; }</style>
+    <style>
+        /* ═══════════════════════════════════════
+           Drawer Styles
+           ═══════════════════════════════════════ */
+        .drawer-backdrop {
+            position: fixed; inset: 0; background: rgba(0,0,0,.3);
+            backdrop-filter: blur(2px); z-index: 499;
+            opacity: 0; visibility: hidden; transition: all .3s ease;
+        }
+        .drawer-backdrop.active { opacity: 1; visibility: visible; }
+
+        .drawer-panel {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: 500px; max-width: 100vw;
+            background: var(--surface); z-index: 500;
+            display: flex; flex-direction: column;
+            box-shadow: -8px 0 32px rgba(0,0,0,.12);
+            transform: translateX(100%);
+            transition: transform .3s cubic-bezier(.4,0,.2,1);
+        }
+        .drawer-panel.active { transform: translateX(0); }
+
+        /* Drawer Header */
+        .drawer-header {
+            padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, var(--primary) 0%, #1a2d7a 100%); color: #fff;
+            flex-shrink: 0;
+        }
+        .drawer-header.out-mode { background: linear-gradient(135deg, #b45309 0%, #92400e 100%); }
+        .drawer-header h3 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .drawer-close {
+            background: rgba(255,255,255,.15); border: none; color: #fff; width: 32px; height: 32px;
+            border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; transition: background .2s;
+        }
+        .drawer-close:hover { background: rgba(255,255,255,.3); }
+
+        /* Mode Toggle in Drawer */
+        .drawer-toggle-group {
+            display: flex; gap: 2px; background: rgba(255,255,255,.15);
+            padding: 3px; border-radius: 8px; backdrop-filter: blur(4px);
+        }
+        .drawer-toggle-label {
+            padding: 6px 14px; border-radius: 6px; cursor: pointer;
+            font-weight: 600; font-size: 12px; color: rgba(255,255,255,.7);
+            transition: all .2s; display: flex; align-items: center; gap: 4px;
+        }
+        .drawer-toggle-group input[type="radio"] { display: none; }
+        .drawer-toggle-group input[type="radio"]:checked + .drawer-toggle-label {
+            background: #fff; color: var(--primary); box-shadow: 0 2px 6px rgba(0,0,0,.15);
+        }
+        .drawer-header.out-mode .drawer-toggle-group input[type="radio"]:checked + .drawer-toggle-label {
+            color: #92400e;
+        }
+
+        /* Drawer Step Bar */
+        .drawer-step-bar {
+            padding: 12px 16px; display: flex; gap: 10px;
+            border-bottom: 1px solid var(--border); background: var(--gray-50);
+            flex-wrap: wrap; align-items: flex-end; flex-shrink: 0;
+        }
+        .drawer-fg {
+            display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 100px;
+        }
+        .drawer-fg label {
+            font-size: 10px; font-weight: 700; color: var(--gray-500);
+            text-transform: uppercase; letter-spacing: .5px;
+        }
+        .drawer-fg input {
+            padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+            font-size: 12px; background: var(--surface); outline: none; transition: all .15s; color: var(--gray-800);
+        }
+        .drawer-fg input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-muted); }
+
+        /* Drawer Body (scrollable) */
+        .drawer-body {
+            flex: 1; overflow-y: auto; padding: 0;
+        }
+
+        /* Invoice Table inside Drawer */
+        .drawer-table-wrap { padding: 0 12px 8px; }
+        .drawer-invoice-table {
+            width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 12px;
+        }
+        .drawer-invoice-table thead th {
+            position: sticky; top: 0; background: var(--gray-50); font-weight: 700;
+            font-size: 10px; color: var(--gray-500); text-align: center;
+            text-transform: uppercase; letter-spacing: .3px; padding: 8px 4px;
+            border-bottom: 2px solid var(--border); white-space: nowrap;
+        }
+        .drawer-invoice-table tbody tr { transition: background .1s; }
+        .drawer-invoice-table tbody tr:hover { background: var(--gray-50); }
+        .drawer-invoice-table tbody td {
+            padding: 3px 4px; border-bottom: 1px solid var(--border); vertical-align: middle;
+        }
+        .drawer-invoice-table tbody td input,
+        .drawer-invoice-table tbody td select {
+            width: 100%; padding: 7px 6px; border: 1px solid transparent;
+            border-radius: var(--radius); font-size: 12px; outline: none;
+            background: transparent; text-align: center; transition: all .15s;
+            color: var(--gray-800);
+        }
+        .drawer-invoice-table tbody td input.text-left { text-align: left; }
+        .drawer-invoice-table tbody td input:focus {
+            border-color: var(--primary); background: #fff;
+            box-shadow: 0 0 0 3px var(--primary-muted);
+        }
+        .drawer-invoice-table tbody td input:hover { border-color: var(--gray-300); }
+        .drawer-invoice-table tbody td input.readonly-input {
+            color: var(--gray-500); cursor: not-allowed; background: var(--gray-50);
+        }
+
+        .drawer-row-num { width: 28px; text-align: center; font-weight: 700; font-size: 11px; color: var(--gray-400); }
+        .drawer-col-qty { width: 60px; }
+        .drawer-col-price { width: 85px; }
+        .drawer-col-action { width: 36px; }
+        .drawer-col-stock { width: 50px; }
+
+        .drawer-btn-icon {
+            background: transparent; border: none; color: var(--gray-400); cursor: pointer;
+            font-size: 16px; display: flex; align-items: center; justify-content: center;
+            padding: 3px; border-radius: 4px; transition: all .15s;
+        }
+        .drawer-btn-icon:hover { color: var(--danger); background: var(--danger-muted); }
+
+        /* VAT Toggle in Drawer */
+        .drawer-vat-toggle {
+            font-size: 9px; font-weight: 600; display: flex; align-items: center;
+            justify-content: center; gap: 2px; color: var(--gray-400); cursor: pointer; margin-top: 1px;
+        }
+        .drawer-vat-toggle input {
+            margin: 0; width: 10px; height: 10px; accent-color: var(--primary); cursor: pointer;
+        }
+
+        /* Add Row Button */
+        .drawer-btn-add-row {
+            width: calc(100% - 24px); margin: 0 12px 8px; padding: 7px;
+            background: transparent; color: var(--gray-500);
+            border: 2px dashed var(--gray-200); border-radius: var(--radius);
+            font-weight: 600; font-size: 12px; cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+        .drawer-btn-add-row:hover {
+            border-color: var(--primary); color: var(--primary); background: var(--primary-muted);
+        }
+
+        /* Drawer Footer */
+        .drawer-footer {
+            padding: 12px 16px; border-top: 1px solid var(--border);
+            background: var(--gray-50); display: flex; justify-content: space-between;
+            align-items: center; flex-shrink: 0;
+        }
+        .drawer-summary {
+            display: flex; gap: 16px; align-items: center;
+        }
+        .drawer-summary-chip {
+            font-size: 12px; color: var(--gray-600); display: flex; align-items: center; gap: 4px;
+        }
+        .drawer-summary-chip strong {
+            font-size: 14px; font-weight: 800; color: var(--primary);
+        }
+        .drawer-footer-actions { display: flex; gap: 8px; }
+        .drawer-btn-reset {
+            padding: 8px 14px; background: var(--surface); color: var(--gray-600);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all .15s;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .drawer-btn-reset:hover { background: var(--gray-100); color: var(--gray-800); }
+        .drawer-btn-submit {
+            padding: 8px 20px; background: var(--primary); color: white; border: none;
+            border-radius: var(--radius); font-size: 13px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; gap: 5px;
+            transition: all .2s; letter-spacing: -.2px;
+        }
+        .drawer-btn-submit:hover {
+            background: var(--primary-hover); transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(44,62,143,.25);
+        }
+        .drawer-btn-submit.out-mode { background: #b45309; }
+        .drawer-btn-submit.out-mode:hover {
+            background: #92400e; box-shadow: 0 4px 12px rgba(180,83,9,.25);
+        }
+
+        /* Autocomplete inside Drawer */
+        .drawer-autocomplete-wrapper { position: relative; }
+        .drawer-autocomplete-list {
+            position: absolute; top: 100%; left: 0; right: 0;
+            min-width: 260px; background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 600;
+            max-height: 200px; overflow-y: auto; display: none;
+        }
+        .drawer-autocomplete-item {
+            padding: 8px 12px; cursor: pointer; font-size: 11px;
+            border-bottom: 1px solid var(--gray-100); text-align: left;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background .1s;
+        }
+        .drawer-autocomplete-item:last-child { border-bottom: none; }
+        .drawer-autocomplete-item:hover,
+        .drawer-autocomplete-item.active { background: var(--primary-muted); }
+        .drawer-ac-name { font-weight: 600; color: var(--gray-800); }
+        .drawer-ac-detail { font-size: 10px; color: var(--gray-500); }
+        .drawer-ac-stock {
+            font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px;
+            background: var(--success-muted); color: var(--success);
+        }
+
+        /* Stock Badge in drawer */
+        .drawer-stock-badge {
+            font-size: 11px; font-weight: 700; text-align: center;
+            padding: 3px; border-radius: 4px;
+        }
+        .drawer-stock-badge.ok { color: var(--success); background: var(--success-muted); }
+        .drawer-stock-badge.low { color: var(--warning); background: var(--warning-muted); }
+        .drawer-stock-badge.zero { color: var(--danger); background: var(--danger-muted); }
+
+        /* New Entry Button */
+        .btn-new-entry {
+            padding: 8px 16px; background: var(--primary); color: white; border: none;
+            border-radius: var(--radius); font-size: 13px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: all .2s; letter-spacing: -.2px;
+        }
+        .btn-new-entry:hover {
+            background: var(--primary-hover); transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(44,62,143,.25);
+        }
+        .btn-new-entry i { font-size: 16px; }
+
+        @media (max-width: 640px) {
+            .drawer-panel { width: 100vw; }
+            .drawer-invoice-table { display: block; overflow-x: auto; white-space: nowrap; }
+        }
+    </style>
 </head>
 <body>
     <div class="app-container" id="mainApp">
@@ -28,6 +264,7 @@
                                         <button class="source-tab" data-filter="IN">매입</button>
                                         <button class="source-tab" data-filter="OUT">출고</button>
                                     </div>
+                                    <button id="newEntryBtn" class="btn-new-entry"><i class='bx bx-plus-circle'></i> 신규 내역 입력</button>
                                     <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
                                 </div>
                             </div>
@@ -143,8 +380,56 @@
         </div>
     </div>
 
+    <!-- ═══ Entry Drawer ═══ -->
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <div class="drawer-panel" id="drawerPanel">
+        <div class="drawer-header" id="drawerHeader">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <h3><i class='bx bx-package'></i> 입출고 등록</h3>
+                <div class="drawer-toggle-group">
+                    <input type="radio" id="dTypeIn" name="dTxType" value="IN" checked>
+                    <label for="dTypeIn" class="drawer-toggle-label"><i class='bx bx-down-arrow-circle'></i> 매입</label>
+                    <input type="radio" id="dTypeOut" name="dTxType" value="OUT">
+                    <label for="dTypeOut" class="drawer-toggle-label"><i class='bx bx-up-arrow-circle'></i> 출고</label>
+                </div>
+            </div>
+            <button class="drawer-close" id="drawerCloseBtn"><i class='bx bx-x'></i></button>
+        </div>
+
+        <div class="drawer-step-bar">
+            <div class="drawer-fg" style="flex:0 0 120px;"><label>일자</label><input type="date" id="dTxDate"></div>
+            <div class="drawer-fg" style="flex:0 0 140px;"><label>공급사 / 출고처</label><input type="text" id="dSupplier" placeholder="공급사명 입력"></div>
+            <div class="drawer-fg" style="flex:2;"><label>비고</label><input type="text" id="dRemarks" placeholder="전체 항목에 적용될 메모 (선택)"></div>
+        </div>
+
+        <div class="drawer-body">
+            <div class="drawer-table-wrap">
+                <table class="drawer-invoice-table" id="dItemsTable">
+                    <thead id="dTableHead">
+                        <!-- populated by JS -->
+                    </thead>
+                    <tbody id="dItemsBody">
+                        <!-- Rows will be added dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="drawer-btn-add-row" id="dBtnAddRow"><i class='bx bx-plus'></i> 상품 행 추가</button>
+        </div>
+
+        <div class="drawer-footer">
+            <div class="drawer-summary">
+                <div class="drawer-summary-chip"><i class='bx bx-box' style="font-size:16px;color:var(--gray-400)"></i> 등록 대기 <strong id="dSummaryRows">0</strong> 건</div>
+                <div class="drawer-summary-chip" id="dSummaryTotalWrap" style="display:none;">총액 <strong id="dSummaryTotal">0</strong> 원</div>
+            </div>
+            <div class="drawer-footer-actions">
+                <button type="button" class="drawer-btn-reset" id="dResetBtn"><i class='bx bx-reset'></i> 초기화</button>
+                <button type="button" class="drawer-btn-submit" id="dSubmitBtn"><i class='bx bx-check'></i> 일괄 등록</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toastContainer" class="toast-container"></div>
     <script src="hq-transactions.js"></script>
+    <script src="hq-entry-drawer.js"></script>
 </body>
 </html>
-

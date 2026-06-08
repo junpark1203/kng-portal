@@ -40,6 +40,9 @@
         setTimeout(() => { t.classList.add('fade-out'); setTimeout(() => t.remove(), 300); }, 3000);
     }
 
+    // Expose refresh for drawer integration
+    window._refreshTransactions = () => fetchTransactions();
+
     async function fetchTransactions() {
         try {
             let url = API_BASE + '/transactions';
