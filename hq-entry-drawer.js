@@ -58,33 +58,19 @@
         document.body.style.overflow = '';
     }
 
-    // ── Build Table Head ──
-    function buildDrawerTableHead() {
+    // ── Setup VAT bar ──
+    function setupVatBar() {
         const type = getDrawerType();
-        const head = $('dTableHead');
+        const vatBar = $('dVatBar');
         if (type === 'IN') {
-            head.innerHTML = `<tr>
-                <th style="width:28px">#</th>
-                <th>브랜드</th><th>상품명</th><th>컬러</th><th>사이즈</th>
-                <th class="drawer-col-qty">수량</th>
-                <th class="drawer-col-price">상품가<label class="drawer-vat-toggle"><input type="checkbox" class="d-col-vat" data-target="basePrice" checked>VAT별도</label></th>
-                <th class="drawer-col-price">운임<label class="drawer-vat-toggle"><input type="checkbox" class="d-col-vat" data-target="freight" checked>VAT별도</label></th>
-                <th class="drawer-col-price">매입단가</th>
-                <th class="drawer-col-price">판매가</th>
-                <th class="drawer-col-price">할인가</th>
-                <th class="drawer-col-action"></th>
-            </tr>`;
+            vatBar.style.display = '';
+            vatBar.innerHTML = `
+                <label class="drawer-vat-chip"><input type="checkbox" class="d-col-vat" data-target="basePrice" checked> 상품가 VAT별도</label>
+                <label class="drawer-vat-chip"><input type="checkbox" class="d-col-vat" data-target="freight" checked> 운임 VAT별도</label>`;
         } else {
-            head.innerHTML = `<tr>
-                <th style="width:28px">#</th>
-                <th style="min-width:200px">상품 선택</th>
-                <th class="drawer-col-stock">재고</th>
-                <th class="drawer-col-qty">출고수량</th>
-                <th class="drawer-col-price">매출단가<label class="drawer-vat-toggle"><input type="checkbox" class="d-col-vat" data-target="outPrice">VAT별도</label></th>
-                <th class="drawer-col-price">판매가</th>
-                <th class="drawer-col-price">할인가</th>
-                <th class="drawer-col-action"></th>
-            </tr>`;
+            vatBar.style.display = '';
+            vatBar.innerHTML = `
+                <label class="drawer-vat-chip"><input type="checkbox" class="d-col-vat" data-target="outPrice"> 매출단가 VAT별도</label>`;
         }
         document.querySelectorAll('.d-col-vat').forEach(chk => {
             chk.addEventListener('change', calcAllDrawerRows);
@@ -107,7 +93,7 @@
             submitBtn.classList.add('out-mode');
             submitBtn.innerHTML = "<i class='bx bx-check'></i> 일괄 출고";
         }
-        buildDrawerTableHead();
+        setupVatBar();
         addDrawerRow();
         updateDrawerSummary();
     }
@@ -129,7 +115,7 @@
     }
 
     function calcAllDrawerRows() {
-        document.querySelectorAll('#dItemsBody tr').forEach(calcDrawerRowPrice);
+        document.querySelectorAll('#dItemsBody .drawer-card').forEach(calcDrawerRowPrice);
     }
 
     // ── Autocomplete ──
@@ -209,72 +195,81 @@
         activeDrawerDropdown = list;
     }
 
-    // ── Add Row ──
+    // ── Add Row (Card-based) ──
     function addDrawerRow() {
         drawerRowCounter++;
         const type = getDrawerType();
-        const tbody = $('dItemsBody');
-        const tr = document.createElement('tr');
-        const rowNum = tbody.children.length + 1;
+        const container = $('dItemsBody');
+        const card = document.createElement('div');
+        card.className = 'drawer-card';
+        const rowNum = container.children.length + 1;
 
         if (type === 'IN') {
-            tr.innerHTML = `
-                <td class="drawer-row-num">${rowNum}</td>
-                <td><input type="text" class="d-row-brand text-left" placeholder="브랜드"></td>
-                <td class="drawer-autocomplete-wrapper"><input type="text" class="d-row-name text-left" placeholder="상품명 검색..." autocomplete="off"></td>
-                <td><input type="text" class="d-row-color" placeholder="컬러"></td>
-                <td><input type="text" class="d-row-size" placeholder="사이즈"></td>
-                <td><input type="number" class="d-row-qty" min="1" placeholder="0"></td>
-                <td><input type="number" class="d-row-base" min="0" placeholder="0"></td>
-                <td><input type="number" class="d-row-freight" min="0" placeholder="0"></td>
-                <td><input type="number" class="d-row-price readonly-input" readonly placeholder="자동"></td>
-                <td><input type="number" class="d-row-sellPrice" min="0" placeholder="0"></td>
-                <td><input type="number" class="d-row-discountPrice" min="0" placeholder="0"></td>
-                <td><button type="button" class="drawer-btn-icon d-btn-remove"><i class='bx bx-trash'></i></button></td>`;
-            tr.querySelector('.d-row-base').addEventListener('input', () => calcDrawerRowPrice(tr));
-            tr.querySelector('.d-row-freight').addEventListener('input', () => calcDrawerRowPrice(tr));
-            tr.querySelector('.d-row-qty').addEventListener('input', () => updateDrawerSummary());
-            const nameInput = tr.querySelector('.d-row-name');
-            nameInput.addEventListener('input', () => showDrawerAutocomplete(nameInput, tr));
-            nameInput.addEventListener('focus', () => { if (nameInput.value.trim()) showDrawerAutocomplete(nameInput, tr); });
+            card.innerHTML = `
+                <span class="drawer-card-num">#${rowNum}</span>
+                <button type="button" class="drawer-card-remove d-btn-remove"><i class='bx bx-trash'></i></button>
+                <div class="drawer-card-grid in-mode">
+                    <div class="drawer-card-field"><label>브랜드</label><input type="text" class="d-row-brand" placeholder="브랜드"></div>
+                    <div class="drawer-card-field drawer-autocomplete-wrapper"><label>상품명</label><input type="text" class="d-row-name" placeholder="상품명 검색..." autocomplete="off"></div>
+                    <div class="drawer-card-field"><label>컬러</label><input type="text" class="d-row-color" placeholder="컬러"></div>
+                    <div class="drawer-card-field"><label>사이즈</label><input type="text" class="d-row-size" placeholder="사이즈"></div>
+                </div>
+                <div class="drawer-card-prices in-mode">
+                    <div class="drawer-card-field"><label>수량</label><input type="number" class="d-row-qty" min="1" placeholder="0"></div>
+                    <div class="drawer-card-field"><label>상품가</label><input type="number" class="d-row-base" min="0" placeholder="0"></div>
+                    <div class="drawer-card-field"><label>운임</label><input type="number" class="d-row-freight" min="0" placeholder="0"></div>
+                    <div class="drawer-card-field"><label>매입단가</label><input type="number" class="d-row-price readonly-input" readonly placeholder="자동계산"></div>
+                    <div class="drawer-card-field"><label>판매가</label><input type="number" class="d-row-sellPrice" min="0" placeholder="0"></div>
+                    <div class="drawer-card-field"><label>할인가</label><input type="number" class="d-row-discountPrice" min="0" placeholder="0"></div>
+                </div>`;
+            card.querySelector('.d-row-base').addEventListener('input', () => calcDrawerRowPrice(card));
+            card.querySelector('.d-row-freight').addEventListener('input', () => calcDrawerRowPrice(card));
+            card.querySelector('.d-row-qty').addEventListener('input', () => updateDrawerSummary());
+            const nameInput = card.querySelector('.d-row-name');
+            nameInput.addEventListener('input', () => showDrawerAutocomplete(nameInput, card));
+            nameInput.addEventListener('focus', () => { if (nameInput.value.trim()) showDrawerAutocomplete(nameInput, card); });
         } else {
-            tr.innerHTML = `
-                <td class="drawer-row-num">${rowNum}</td>
-                <td class="drawer-autocomplete-wrapper"><input type="text" class="d-out-search text-left" placeholder="상품 검색..." autocomplete="off"></td>
-                <td><div class="drawer-stock-badge zero">—</div></td>
-                <td><input type="number" class="d-row-qty" min="1" placeholder="0"></td>
-                <td><input type="number" class="d-row-price" min="0" placeholder="단가"></td>
-                <td class="d-row-sell-text" style="color:var(--gray-500);font-size:11px;text-align:center">-</td>
-                <td class="d-row-disc-text" style="color:var(--gray-500);font-size:11px;text-align:center">-</td>
-                <td><button type="button" class="drawer-btn-icon d-btn-remove"><i class='bx bx-trash'></i></button></td>`;
-            const si = tr.querySelector('.d-out-search');
-            si.addEventListener('input', () => showDrawerOutAutocomplete(si, tr));
-            si.addEventListener('focus', () => showDrawerOutAutocomplete(si, tr));
-            tr.querySelector('.d-row-qty').addEventListener('input', () => updateDrawerSummary());
-            tr.querySelector('.d-row-price').addEventListener('input', () => updateDrawerSummary());
+            card.innerHTML = `
+                <span class="drawer-card-num">#${rowNum}</span>
+                <button type="button" class="drawer-card-remove d-btn-remove"><i class='bx bx-trash'></i></button>
+                <div class="drawer-card-grid out-mode">
+                    <div class="drawer-card-field full drawer-autocomplete-wrapper"><label>상품 선택</label><input type="text" class="d-out-search" placeholder="상품명, 브랜드, 컬러 등 검색..." autocomplete="off"></div>
+                </div>
+                <div class="drawer-card-prices out-mode">
+                    <div class="drawer-card-field"><label>재고</label><div class="drawer-stock-badge zero">—</div></div>
+                    <div class="drawer-card-field"><label>출고수량</label><input type="number" class="d-row-qty" min="1" placeholder="0"></div>
+                    <div class="drawer-card-field"><label>매출단가</label><input type="number" class="d-row-price" min="0" placeholder="단가"></div>
+                    <div class="drawer-card-field"><label>판매가</label><span class="d-row-sell-text" style="font-size:12px;color:var(--gray-500)">-</span></div>
+                    <div class="drawer-card-field"><label>할인가</label><span class="d-row-disc-text" style="font-size:12px;color:var(--gray-500)">-</span></div>
+                </div>`;
+            const si = card.querySelector('.d-out-search');
+            si.addEventListener('input', () => showDrawerOutAutocomplete(si, card));
+            si.addEventListener('focus', () => showDrawerOutAutocomplete(si, card));
+            card.querySelector('.d-row-qty').addEventListener('input', () => updateDrawerSummary());
+            card.querySelector('.d-row-price').addEventListener('input', () => updateDrawerSummary());
         }
 
-        tr.querySelector('.d-btn-remove').addEventListener('click', () => {
-            tr.remove(); renumberDrawerRows(); updateDrawerSummary();
+        card.querySelector('.d-btn-remove').addEventListener('click', () => {
+            card.remove(); renumberDrawerRows(); updateDrawerSummary();
             if ($('dItemsBody').children.length === 0) addDrawerRow();
         });
-        tbody.appendChild(tr);
+        container.appendChild(card);
         updateDrawerSummary();
     }
 
     function renumberDrawerRows() {
-        document.querySelectorAll('#dItemsBody tr').forEach((tr, i) => {
-            const n = tr.querySelector('.drawer-row-num'); if (n) n.textContent = i + 1;
+        document.querySelectorAll('#dItemsBody .drawer-card').forEach((card, i) => {
+            const n = card.querySelector('.drawer-card-num'); if (n) n.textContent = '#' + (i + 1);
         });
     }
 
     function updateDrawerSummary() {
-        const rows = document.querySelectorAll('#dItemsBody tr');
-        $('dSummaryRows').textContent = rows.length;
+        const cards = document.querySelectorAll('#dItemsBody .drawer-card');
+        $('dSummaryRows').textContent = cards.length;
         let total = 0;
-        rows.forEach(r => {
-            const qty = parseInt(r.querySelector('.d-row-qty')?.value, 10) || 0;
-            const price = parseInt(r.querySelector('.d-row-price')?.value, 10) || 0;
+        cards.forEach(c => {
+            const qty = parseInt(c.querySelector('.d-row-qty')?.value, 10) || 0;
+            const price = parseInt(c.querySelector('.d-row-price')?.value, 10) || 0;
             total += qty * price;
         });
         if (total > 0) { $('dSummaryTotalWrap').style.display = ''; $('dSummaryTotal').textContent = fmt(total); }
@@ -287,7 +282,7 @@
         const txDate = $('dTxDate').value;
         const supplier = $('dSupplier').value.trim();
         const commonRemarks = $('dRemarks').value.trim();
-        const rows = document.querySelectorAll('#dItemsBody tr');
+        const rows = document.querySelectorAll('#dItemsBody .drawer-card');
         if (!txDate) { showToast('일자를 선택해 주세요.', 'warning'); return; }
         if (rows.length === 0) { showToast('등록할 상품을 추가해 주세요.', 'warning'); return; }
 
