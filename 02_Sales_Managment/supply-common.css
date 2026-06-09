@@ -665,8 +665,14 @@ td.amount-col {
     /* ── Data Table — horizontal scroll ── */
     .table-responsive {
         overflow-x: auto !important; -webkit-overflow-scrolling: touch;
+        width: 100%; max-width: 100%;
     }
-    .supply-table { font-size: 9px !important; min-width: 700px; }
+    .supply-table {
+        font-size: 9px !important;
+        table-layout: auto !important;
+        width: auto !important;
+        min-width: 100%;
+    }
 
     /* ── Modal — fullscreen on mobile ── */
     .modal-content {

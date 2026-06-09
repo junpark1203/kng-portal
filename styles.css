@@ -2216,13 +2216,24 @@ th.sortable.active.asc i {
 
     /* ── Page Body — grow with content, don't constrain ── */
     .page-body {
-        padding: 10px 12px; gap: 10px;
+        padding: 10px 8px; gap: 10px;
         overflow-y: visible !important;
         flex: none !important;
     }
 
-    /* ── Panel — allow content to flow ── */
-    .panel { overflow: visible !important; }
+    /* ── Panel — vertical flow, horizontal contained ── */
+    .panel {
+        overflow-x: hidden !important;
+        overflow-y: visible !important;
+    }
+
+    /* ── Table scroll container ── */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        width: 100%;
+        max-width: 100%;
+    }
 
     /* ── KPI Strip ── */
     .kpi-strip { grid-template-columns: 1fr; gap: 8px; }

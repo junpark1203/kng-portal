@@ -367,8 +367,14 @@ td.margin-col { background: rgba(245, 158, 11, 0.025); }
     /* ── Table — horizontal scroll ── */
     .table-responsive {
         overflow-x: auto !important; -webkit-overflow-scrolling: touch;
+        width: 100%; max-width: 100%;
     }
-    .up-table { font-size: 9px !important; min-width: 800px; }
+    .up-table {
+        font-size: 9px !important;
+        table-layout: auto !important;
+        width: auto !important;
+        min-width: 100%;
+    }
 
     /* ── Hide less important columns ── */
     .up-table .col-date { display: none; }
