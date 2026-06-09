@@ -2195,18 +2195,15 @@ th.sortable.active.asc i {
     .sidebar.open { transform: translateX(0); }
     .hamburger-btn { display: flex; }
 
-    /* ── Main Content — full width, allow natural scroll ── */
+    /* ── Main Content — keep as scroll container for iframe ── */
     .main-content {
         margin-left: 0 !important;
-        overflow-y: visible !important;
-        display: block !important;
-        min-height: 0 !important;
+        /* overflow-y: auto stays — this is the scroll container inside iframe */
     }
 
-    /* ── App Container — block flow on mobile ── */
+    /* ── App Container — keep flex but remove min-height constraint ── */
     .app-container {
-        display: block !important;
-        min-height: auto !important;
+        min-height: 100vh;
     }
 
     /* ── Topbar ── */
@@ -2216,16 +2213,15 @@ th.sortable.active.asc i {
     .topbar-page-title { font-size: 12px; }
     .vat-toggle-btn { font-size: 10px; padding: 4px 8px; }
 
-    /* ── Page Body — natural flow, no flex constraint ── */
+    /* ── Page Body — grow with content, don't constrain ── */
     .page-body {
         padding: 10px 12px; gap: 10px;
         overflow-y: visible !important;
         flex: none !important;
-        min-height: auto !important;
     }
 
-    /* ── Panel — CRITICAL: allow content to flow on mobile ── */
-    .panel { overflow: visible; }
+    /* ── Panel — allow content to flow ── */
+    .panel { overflow: visible !important; }
 
     /* ── KPI Strip ── */
     .kpi-strip { grid-template-columns: 1fr; gap: 8px; }
