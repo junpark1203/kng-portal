@@ -639,27 +639,76 @@
     background: rgba(79, 110, 247, 0.15);
 }
 
-/* Responsive */
+/* ══════════════════════════════════════════
+   Responsive
+   ══════════════════════════════════════════ */
 @media (max-width: 1200px) {
-    .kpi-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
 @media (max-width: 768px) {
-    .chart-grid, .chart-grid:last-of-type {
-        grid-template-columns: 1fr;
+    /* ── Dashboard Header ── */
+    .dash-header { flex-direction: column; gap: 8px; }
+    .dash-header-left h1 { font-size: 1.1rem; }
+
+    /* ── Source & Metric Tabs ── */
+    .source-filter-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .source-tabs {
+        width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
     }
-    .kpi-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .source-tabs::-webkit-scrollbar { display: none; }
+    .source-tab { font-size: 0.72rem; padding: 6px 12px; white-space: nowrap; }
+    .metric-toggle { align-self: flex-start; }
+
+    /* ── Period Chips ── */
+    .dash-period-chips {
+        overflow-x: auto; -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; flex-wrap: nowrap;
     }
-    .dash-header {
-        flex-direction: column;
-    }
-    .kpi-value {
-        font-size: 0.95rem;
-    }
-    .cf-combo {
-        min-width: 100%;
-        max-width: 100%;
-    }
+    .dash-period-chips::-webkit-scrollbar { display: none; }
+    .period-chip { font-size: 0.68rem; padding: 4px 10px; white-space: nowrap; }
+
+    /* ── Cross-Filter Combos ── */
+    .cf-dropdowns { flex-direction: column; gap: 8px; }
+    .cf-combo { min-width: 100%; max-width: 100%; }
+    .cf-select-wrap { padding: 10px 12px; }
+    .cf-reset-btn { width: 100%; justify-content: center; }
+    .date-range-wrap { width: 100%; }
+
+    /* ── KPI Grid ── */
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .kpi-card-lg { padding: 12px 14px; gap: 10px; }
+    .kpi-icon { width: 36px; height: 36px; font-size: 1rem; border-radius: 8px; }
+    .kpi-value { font-size: 0.95rem; }
+    .kpi-label { font-size: 0.65rem; }
+    .kpi-sub { font-size: 0.6rem; }
+
+    /* ── Chart Grid ── */
+    .chart-grid,
+    .chart-grid:last-of-type { grid-template-columns: 1fr; gap: 10px; }
+    .chart-card { padding: 12px; }
+    .chart-header h3 { font-size: 0.78rem; }
+    .chart-body { height: 220px; }
+    .chart-body-sq { height: 200px; }
+    .chart-body-tall { height: 260px; }
+
+    /* ── Aggregate Section ── */
+    .agg-section { padding: 12px; }
+    .agg-header { flex-direction: column; align-items: stretch; gap: 8px; }
+    .agg-search-wrap { min-width: 100%; }
+    .agg-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .agg-table { min-width: 500px; }
+    .agg-name { min-width: 120px; }
+}
+
+@media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .kpi-card-lg { padding: 10px 12px; }
+    .kpi-icon { width: 30px; height: 30px; font-size: 0.85rem; }
+    .kpi-value { font-size: 0.85rem; }
+    .chart-body { height: 180px; }
+    .chart-body-tall { height: 220px; }
+    .source-tab { padding: 5px 10px; font-size: 0.68rem; }
+    .source-tab i { display: none; }
 }
