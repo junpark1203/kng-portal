@@ -106,6 +106,17 @@
         .preset-field-row .field-remove-btn:hover {
             border-color: #dc2626; color: #dc2626; background: #fef2f2;
         }
+        .preset-field-row.is-section {
+            background: linear-gradient(135deg, rgba(79,110,247,0.06), rgba(79,110,247,0.02));
+            border-left: 3px solid var(--primary);
+            border-radius: 4px; margin: 6px 0 2px; padding: 6px 8px;
+        }
+        .preset-field-row.is-section .field-order {
+            color: var(--primary); font-weight: 700; font-size: 9px;
+        }
+        .preset-field-row.is-section textarea {
+            font-weight: 600; color: var(--primary);
+        }
         .preset-no-selection {
             flex: 1; display: flex; align-items: center; justify-content: center;
             color: var(--gray-400); font-size: 13px;
@@ -161,6 +172,15 @@
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 10px; margin-top: 10px;
         }
+        .cf-section-divider {
+            grid-column: 1 / -1;
+            font-size: 11px; font-weight: 700; color: var(--primary);
+            padding: 8px 0 4px; margin-top: 6px;
+            border-bottom: 1px dashed var(--primary-muted);
+            display: flex; align-items: center; gap: 6px;
+            white-space: pre-line;
+        }
+        .cf-section-divider i { font-size: 13px; }
 
         /* ── Attachment Badge ── */
         .attach-badge {
@@ -438,9 +458,14 @@
                                 </button>
                             </div>
                             <div class="preset-field-list" id="presetFieldList"></div>
-                            <button type="button" class="add-line-btn" id="addPresetFieldBtn" style="margin-top:8px;">
-                                <i class='bx bx-plus'></i> 필드 추가
-                            </button>
+                            <div style="display:flex; gap:6px; margin-top:8px;">
+                                <button type="button" class="add-line-btn" id="addPresetFieldBtn" style="flex:1;">
+                                    <i class='bx bx-plus'></i> 필드 추가
+                                </button>
+                                <button type="button" class="add-line-btn" id="addPresetSectionBtn" style="flex:1; border-color:var(--primary); color:var(--primary);">
+                                    <i class='bx bx-layout'></i> 섹션 추가
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

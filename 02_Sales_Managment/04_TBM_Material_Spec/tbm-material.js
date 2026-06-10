@@ -48,6 +48,7 @@ function initEvents() {
     // Preset modal
     $('addPresetCatBtn').addEventListener('click', addPresetCategory);
     $('addPresetFieldBtn').addEventListener('click', addPresetField);
+    $('addPresetSectionBtn')?.addEventListener('click', () => addPresetFieldRow({ type: 'section', label: '' }));
     $('savePresetBtn').addEventListener('click', saveCurrentPreset);
     // Sort
     document.querySelectorAll('th.sortable').forEach(th => {
@@ -253,10 +254,20 @@ function onCategoryChange(e, existingValues) {
     grid.innerHTML = '';
     const vals = existingValues || {};
     preset.fields.forEach(f => {
+        if (f.type === 'section') {
+            // 섹션 구분선 렌더링
+            const divider = document.createElement('div');
+            divider.className = 'cf-section-divider';
+            divider.innerHTML = `<i class='bx bx-chevrons-right'></i> ${(f.label || '').replace(/\n/g, '<br>')}`;
+            grid.appendChild(divider);
+            return;
+        }
         const div = document.createElement('div'); div.className = 'fg';
-        const lbl = document.createElement('label'); lbl.textContent = f.label; lbl.setAttribute('for', 'cf-'+f.key);
+        const lbl = document.createElement('label');
+        lbl.innerHTML = (f.label || '').replace(/\n/g, '<br>');
+        lbl.setAttribute('for', 'cf-'+f.key);
         const inp = document.createElement('input'); inp.type = f.type || 'text'; inp.id = 'cf-'+f.key;
-        inp.dataset.cfKey = f.key; inp.placeholder = f.label; inp.value = vals[f.key] || '';
+        inp.dataset.cfKey = f.key; inp.placeholder = (f.label || '').replace(/\n/g, ' '); inp.value = vals[f.key] || '';
         if (f.required) inp.required = true;
         div.appendChild(lbl); div.appendChild(inp); grid.appendChild(div);
     });
@@ -351,10 +362,15 @@ function selectPreset(id) {
 function addPresetFieldRow(fieldData, idx) {
     const list = $('presetFieldList');
     const row = document.createElement('div'); row.className = 'preset-field-row';
+    const isSection = fieldData?.type === 'section';
+    if (isSection) row.classList.add('is-section');
     const order = idx !== undefined ? idx + 1 : list.children.length + 1;
-    row.innerHTML = `<span class="field-order">${order}</span>
-        <textarea class="pf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="2">${fieldData?.label||''}</textarea>
-        <select class="pf-type"><option value="text"${fieldData?.type==='text'?' selected':''}>텍스트</option><option value="number"${fieldData?.type==='number'?' selected':''}>숫자</option></select>
+    const orderLabel = isSection ? '§' : order;
+    const placeholder = isSection ? '섹션명 (예: 물리적 특성&#10;Physical Properties)' : '필드명 (예: 치수&#10;Dimension)';
+    row.innerHTML = `<span class="field-order">${orderLabel}</span>
+        <textarea class="pf-label" placeholder="${placeholder}" rows="2">${fieldData?.label||''}</textarea>
+        <select class="pf-type" ${isSection ? 'style="display:none"' : ''}><option value="text"${fieldData?.type==='text'||isSection?' selected':''}>텍스트</option><option value="number"${fieldData?.type==='number'?' selected':''}>숫자</option><option value="section"${isSection?' selected':''}>섹션</option></select>
+        <input type="hidden" class="pf-is-section" value="${isSection ? '1' : '0'}">
         <button type="button" class="field-remove-btn"><i class='bx bx-x'></i></button>`;
     row.querySelector('.field-remove-btn').addEventListener('click', () => { row.remove(); reorderFields(); });
     list.appendChild(row);
@@ -371,8 +387,12 @@ async function saveCurrentPreset() {
     const fields = [];
     $('presetFieldList').querySelectorAll('.preset-field-row').forEach(row => {
         const label = row.querySelector('.pf-label').value.trim();
-        const type = row.querySelector('.pf-type').value;
-        if (label) { const key = label.replace(/[^a-zA-Z0-9가-힣]/g,'_').toLowerCase() || 'field_'+fields.length; fields.push({key, label, type}); }
+        const isSection = row.querySelector('.pf-is-section')?.value === '1';
+        const type = isSection ? 'section' : row.querySelector('.pf-type').value;
+        if (label) {
+            if (isSection) { fields.push({ key: '_section_' + fields.length, label, type: 'section' }); }
+            else { const key = label.replace(/[^a-zA-Z0-9가-힣]/g,'_').toLowerCase() || 'field_'+fields.length; fields.push({key, label, type}); }
+        }
     });
     const payload = { id: p.id, category: p.category, fields };
     try {
