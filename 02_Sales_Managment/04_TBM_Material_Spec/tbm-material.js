@@ -353,7 +353,7 @@ function addPresetFieldRow(fieldData, idx) {
     const row = document.createElement('div'); row.className = 'preset-field-row';
     const order = idx !== undefined ? idx + 1 : list.children.length + 1;
     row.innerHTML = `<span class="field-order">${order}</span>
-        <input type="text" class="pf-label" placeholder="필드명 (예: 치수)" value="${fieldData?.label||''}">
+        <textarea class="pf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="2">${fieldData?.label||''}</textarea>
         <select class="pf-type"><option value="text"${fieldData?.type==='text'?' selected':''}>텍스트</option><option value="number"${fieldData?.type==='number'?' selected':''}>숫자</option></select>
         <button type="button" class="field-remove-btn"><i class='bx bx-x'></i></button>`;
     row.querySelector('.field-remove-btn').addEventListener('click', () => { row.remove(); reorderFields(); });

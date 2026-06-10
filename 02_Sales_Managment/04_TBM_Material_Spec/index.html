@@ -76,12 +76,18 @@
             width: 20px; text-align: center;
             font-size: 10px; font-weight: 600; color: var(--gray-400);
         }
-        .preset-field-row input {
-            flex: 1; height: 32px; padding: 0 10px;
+        .preset-field-row input,
+        .preset-field-row textarea {
+            flex: 1; height: 32px; padding: 4px 10px;
             border: 1px solid var(--border); border-radius: 5px;
-            font-size: 12px; outline: none;
+            font-size: 12px; outline: none; font-family: 'Inter', sans-serif;
         }
-        .preset-field-row input:focus {
+        .preset-field-row textarea.pf-label {
+            height: 48px; min-height: 48px; resize: vertical;
+            line-height: 1.5;
+        }
+        .preset-field-row input:focus,
+        .preset-field-row textarea:focus {
             border-color: var(--primary);
             box-shadow: 0 0 0 2.5px var(--primary-muted);
         }
