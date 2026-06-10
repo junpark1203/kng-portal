@@ -14,6 +14,10 @@ const { initMassUploadTables } = require('./db-mass-upload');
 const hqInventoryRoutes = require('./routes/hq-inventory');
 const { initHqTables } = hqInventoryRoutes;
 
+// TBM 자재 규격 모듈
+const tbmRoutes = require('./routes/tbm-materials');
+const { initTbmTables } = tbmRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -82,6 +86,10 @@ app.get('/api/health', (req, res) => {
 // 이미지 업로드 파일 — <img> 태그에서 직접 접근하므로 인증 제외
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
 app.use('/api/mass-upload/uploads', express.static(UPLOAD_DIR, { fallthrough: false }));
+// TBM 자재 첨부파일 — 인증 없이 다운로드 허용
+const TBM_UPLOAD_DIR = path.join(UPLOAD_DIR, 'tbm');
+if (!fs.existsSync(TBM_UPLOAD_DIR)) fs.mkdirSync(TBM_UPLOAD_DIR, { recursive: true });
+app.use('/api/tbm/uploads', express.static(TBM_UPLOAD_DIR, { fallthrough: false }));
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -142,6 +150,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initHqTables(db).then(() => {
             hqInventoryRoutes.setDb(db);
             console.log('hq_inventory API 준비 완료');
+        });
+        // TBM 자재 규격 테이블 초기화 + 라우트에 DB 주입
+        initTbmTables(db).then(() => {
+            tbmRoutes.setDb(db);
+            console.log('tbm_materials API 준비 완료');
         });
     }
 });
@@ -754,6 +767,11 @@ app.use('/api/mass-upload', massUploadRoutes);
 // HQ Inventory (본사 매입 현황) API 라우트 마운트
 // ==========================================
 app.use('/api/hq', hqInventoryRoutes);
+
+// ==========================================
+// TBM 자재 규격 API 라우트 마운트
+// ==========================================
+app.use('/api/tbm', tbmRoutes);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

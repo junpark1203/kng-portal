@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="K&G TBM 자재 규격 관리">
+    <title>TBM 자재 규격</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <link rel="stylesheet" href="../../Common/css/search-engine.css">
+    <style>
+        .main-content { margin-left: 0; }
+
+        /* ── Preset Manager Modal ── */
+        .preset-modal-body { display: flex; gap: 0; min-height: 400px; }
+        .preset-sidebar {
+            width: 200px; min-width: 160px;
+            border-right: 1px solid var(--gray-200);
+            display: flex; flex-direction: column;
+            background: var(--gray-50);
+        }
+        .preset-sidebar-header {
+            padding: 12px; font-size: 11px; font-weight: 700;
+            color: var(--gray-500); text-transform: uppercase;
+            letter-spacing: 0.5px; border-bottom: 1px solid var(--gray-200);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .preset-sidebar-header button {
+            background: none; border: none; cursor: pointer;
+            color: var(--primary); font-size: 18px; padding: 0; line-height: 1;
+        }
+        .preset-sidebar-header button:hover { color: var(--primary-dark, #3b5de7); }
+        .preset-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+        .preset-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; cursor: pointer; font-size: 12px;
+            color: var(--gray-600); transition: all 0.1s;
+            border-left: 3px solid transparent;
+        }
+        .preset-item:hover { background: var(--gray-100); }
+        .preset-item.active {
+            background: rgba(79, 110, 247, 0.08);
+            color: var(--primary); font-weight: 600;
+            border-left-color: var(--primary);
+        }
+        .preset-item .preset-delete-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--gray-400); font-size: 14px; padding: 0;
+            opacity: 0; transition: opacity 0.15s;
+        }
+        .preset-item:hover .preset-delete-btn { opacity: 1; }
+        .preset-item .preset-delete-btn:hover { color: #dc2626; }
+        .preset-editor {
+            flex: 1; padding: 16px;
+            display: flex; flex-direction: column;
+        }
+        .preset-editor-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; padding-bottom: 8px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .preset-editor-header h3 {
+            font-size: 14px; font-weight: 600; color: var(--gray-700);
+        }
+        .preset-field-list { flex: 1; overflow-y: auto; }
+        .preset-field-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 0; border-bottom: 1px solid var(--gray-100);
+        }
+        .preset-field-row .field-order {
+            width: 20px; text-align: center;
+            font-size: 10px; font-weight: 600; color: var(--gray-400);
+        }
+        .preset-field-row input {
+            flex: 1; height: 32px; padding: 0 10px;
+            border: 1px solid var(--border); border-radius: 5px;
+            font-size: 12px; outline: none;
+        }
+        .preset-field-row input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2.5px var(--primary-muted);
+        }
+        .preset-field-row select {
+            width: 90px; height: 32px; padding: 0 6px;
+            border: 1px solid var(--border); border-radius: 5px;
+            font-size: 11px; outline: none; background: var(--surface);
+        }
+        .preset-field-row .field-remove-btn {
+            width: 28px; height: 28px; border: 1px solid var(--gray-200);
+            border-radius: 5px; background: var(--surface);
+            color: var(--gray-400); cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 14px; padding: 0; transition: all 0.15s;
+        }
+        .preset-field-row .field-remove-btn:hover {
+            border-color: #dc2626; color: #dc2626; background: #fef2f2;
+        }
+        .preset-no-selection {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            color: var(--gray-400); font-size: 13px;
+        }
+
+        /* ── File Upload Area ── */
+        .file-upload-area {
+            border: 2px dashed var(--gray-300); border-radius: 8px;
+            padding: 16px; text-align: center; cursor: pointer;
+            transition: all 0.2s; color: var(--gray-500);
+            font-size: 12px; margin-bottom: 8px;
+        }
+        .file-upload-area:hover, .file-upload-area.dragover {
+            border-color: var(--primary); color: var(--primary);
+            background: rgba(79, 110, 247, 0.04);
+        }
+        .file-upload-area i { font-size: 24px; display: block; margin-bottom: 4px; }
+        .file-list { display: flex; flex-direction: column; gap: 4px; }
+        .file-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px; background: var(--gray-50);
+            border: 1px solid var(--gray-100); border-radius: 6px;
+            font-size: 11px; color: var(--gray-700);
+        }
+        .file-item .file-icon {
+            font-size: 16px; color: var(--gray-500); flex-shrink: 0;
+        }
+        .file-item .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-item .file-size { color: var(--gray-400); font-size: 10px; white-space: nowrap; }
+        .file-item .file-actions { display: flex; gap: 2px; }
+        .file-item .file-actions button {
+            width: 24px; height: 24px; border: none; background: none;
+            cursor: pointer; color: var(--gray-400); font-size: 14px;
+            border-radius: 4px; display: inline-flex;
+            align-items: center; justify-content: center; padding: 0;
+        }
+        .file-item .file-actions button:hover { background: var(--gray-100); color: var(--gray-700); }
+        .file-item .file-actions button.file-delete-btn:hover { color: #dc2626; background: #fef2f2; }
+
+        /* ── Custom Fields Section ── */
+        .custom-fields-section {
+            grid-column: 1 / -1;
+            padding: 10px 0 0;
+        }
+        .custom-fields-title {
+            font-size: 11px; font-weight: 700; color: var(--primary);
+            text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 4px 0 8px; border-bottom: 1px dashed var(--primary-muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .custom-fields-title i { font-size: 14px; }
+        .custom-fields-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 10px; margin-top: 10px;
+        }
+
+        /* ── Attachment Badge ── */
+        .attach-badge {
+            display: inline-flex; align-items: center; gap: 2px;
+            font-size: 10px; color: var(--gray-500);
+        }
+        .attach-badge i { font-size: 13px; }
+        .attach-badge.has-files { color: var(--primary); }
+
+        /* ── Header Toolbar (Preset + Export Buttons) ── */
+        .header-toolbar {
+            display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .preset-modal-body { flex-direction: column; }
+            .preset-sidebar {
+                width: 100%; min-width: unset; flex: none; height: 150px;
+                border-right: none; border-bottom: 1px solid var(--gray-200);
+            }
+            .custom-fields-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="page-body">
+                <section class="section-block">
+                    <div class="panel">
+                        <!-- Panel Header -->
+                        <div class="panel-header complex-header">
+                            <div class="header-top">
+                                <h2><i class='bx bx-cog'></i> TBM 자재 규격 <span class="product-count-text" id="totalCount">0건</span></h2>
+                                <div class="header-controls">
+                                    <div class="header-toolbar">
+                                        <button id="presetBtn" class="btn-outline"><i class='bx bx-slider-alt'></i> 프리셋 관리</button>
+                                        <button id="exportBtn" class="btn-outline btn-outline-success"><i class='bx bx-download'></i> 엑셀</button>
+                                        <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
+                                        <button id="addBtn" class="btn-primary"><i class='bx bx-plus-circle'></i> 신규 등록</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="header-bottom">
+                                <div class="category-filter-wrap" id="categoryChips">
+                                    <button class="cat-chip active" data-cat="all">전체</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Strip -->
+                        <div class="search-strip" style="padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface-container-lowest);">
+                            <div class="si-search-container">
+                                <div class="si-search-bar" id="search-conditions" style="margin-bottom: 0;">
+                                    <div class="si-condition-row">
+                                        <select class="si-field-select" data-role="field">
+                                            <option value="all">통합검색</option>
+                                            <option value="site">현장명</option>
+                                            <option value="equipment">장비명</option>
+                                            <option value="category">분류</option>
+                                            <option value="itemName">품목명</option>
+                                            <option value="spec">규격/모델</option>
+                                            <option value="manufacturer">제조사</option>
+                                        </select>
+                                        <input type="text" class="si-search-input" data-role="query" placeholder="검색어 입력...">
+                                    </div>
+                                </div>
+                                <div class="si-search-actions" style="margin-top: 8px;">
+                                    <button type="button" class="si-btn-add" id="btn-add-condition"><i class="bx bx-plus"></i> 조건추가</button>
+                                    <button type="button" class="si-btn-reset" id="btn-clear-search"><i class="bx bx-reset"></i> 초기화</button>
+                                    <button type="button" class="si-btn-search" id="btn-do-search"><i class="bx bx-search"></i> 검색</button>
+                                </div>
+                            </div>
+                            <div class="si-filter-chips" id="filter-chips" style="margin-top: 12px;"></div>
+                        </div>
+
+                        <!-- KPI Bar -->
+                        <div class="kpi-bar" id="kpiBar">
+                            <div class="kpi-card">
+                                <div class="kpi-label">조회 건수</div>
+                                <div class="kpi-value" id="kpiCount">0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">총 수량</div>
+                                <div class="kpi-value" id="kpiQty">0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">총 금액</div>
+                                <div class="kpi-value" id="kpiTotal">₩0</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">장비 수</div>
+                                <div class="kpi-value" id="kpiEquipments">0</div>
+                            </div>
+                        </div>
+
+                        <!-- Data Table -->
+                        <div class="table-responsive">
+                            <table class="data-table supply-table" id="dataTable">
+                                <colgroup>
+                                    <col class="col-check">
+                                    <col class="col-site">
+                                    <col style="width:80px">
+                                    <col class="col-cat">
+                                    <col class="col-item">
+                                    <col style="width:100px">
+                                    <col style="width:48px">
+                                    <col class="col-num-sm">
+                                    <col class="col-num">
+                                    <col class="col-num">
+                                    <col style="width:40px">
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th colspan="3" class="th-group-label th-group-supply">장비 정보</th>
+                                        <th colspan="2" class="th-group-label th-group-product">품목</th>
+                                        <th colspan="4" class="th-group-label th-group-amount">수량/금액</th>
+                                        <th rowspan="2" class="th-group-label" style="font-size:10px">📎</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="equipment">장비명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="category">분류 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="itemName">품목명 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="spec">규격/모델 <i class='bx bx-sort'></i></th>
+                                        <th class="sortable" data-sort="unit">단위 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num-sm sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
+                                        <th class="col-num sortable" data-sort="total">합계 <i class='bx bx-sort'></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="pagination" id="pagination"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ═══ Add/Edit Modal ═══ -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content" style="max-width:640px;">
+            <div class="modal-header">
+                <h2 id="modalTitle">신규 자재 등록</h2>
+                <button type="button" class="btn-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    <div class="modal-form-grid">
+                        <div class="modal-section-title section-supply fg-full">장비 정보</div>
+                        <div class="fg">
+                            <label for="inpSite">현장명</label>
+                            <input type="text" id="inpSite" list="listSite" placeholder="현장 선택 또는 입력" required>
+                            <datalist id="listSite"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpEquipment">장비명</label>
+                            <input type="text" id="inpEquipment" list="listEquipment" placeholder="TBM #1" required>
+                            <datalist id="listEquipment"></datalist>
+                        </div>
+                        <div class="fg fg-full">
+                            <label for="inpCategory">자재 분류</label>
+                            <select id="inpCategory" required>
+                                <option value="">— 분류 선택 —</option>
+                            </select>
+                        </div>
+
+                        <div class="modal-section-title section-product fg-full">품목</div>
+                        <div class="fg">
+                            <label for="inpItemName">품목명</label>
+                            <input type="text" id="inpItemName" list="listItemName" placeholder="품목명 입력" required>
+                            <datalist id="listItemName"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpSpec">규격/모델</label>
+                            <input type="text" id="inpSpec" placeholder="규격 또는 모델번호" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpManufacturer">제조사</label>
+                            <input type="text" id="inpManufacturer" list="listManufacturer" placeholder="제조사명">
+                            <datalist id="listManufacturer"></datalist>
+                        </div>
+                        <div class="fg">
+                            <label for="inpUnit">단위</label>
+                            <select id="inpUnit">
+                                <option value="EA">EA</option>
+                                <option value="SET">SET</option>
+                                <option value="BOX">BOX</option>
+                                <option value="M">M</option>
+                                <option value="KG">KG</option>
+                                <option value="L">L</option>
+                                <option value="TON">TON</option>
+                                <option value="ROLL">ROLL</option>
+                            </select>
+                        </div>
+
+                        <div class="modal-section-title section-amount fg-full">수량/금액</div>
+                        <div class="fg">
+                            <label for="inpQty">수량</label>
+                            <input type="number" id="inpQty" placeholder="0" min="0" required>
+                        </div>
+                        <div class="fg">
+                            <label for="inpPrice">단가</label>
+                            <input type="number" id="inpPrice" placeholder="0" min="0" required>
+                        </div>
+                        <div class="fg fg-full">
+                            <label>합계 (자동계산)</label>
+                            <input type="text" id="inpTotal" class="calc-preview" readonly placeholder="수량 × 단가">
+                        </div>
+
+                        <!-- Dynamic Custom Fields (populated by preset selection) -->
+                        <div class="custom-fields-section" id="customFieldsSection" style="display:none;">
+                            <div class="custom-fields-title"><i class='bx bx-customize'></i> <span id="customFieldsSectionTitle">커스텀 필드</span></div>
+                            <div class="custom-fields-grid" id="customFieldsGrid"></div>
+                        </div>
+
+                        <div class="fg fg-full">
+                            <label for="inpRemarks">비고</label>
+                            <input type="text" id="inpRemarks" placeholder="메모 입력">
+                        </div>
+
+                        <!-- File Upload -->
+                        <div class="fg fg-full">
+                            <label>첨부파일</label>
+                            <div class="file-upload-area" id="fileUploadArea">
+                                <i class='bx bx-cloud-upload'></i>
+                                파일을 드래그하거나 클릭하여 업로드<br>
+                                <small style="color:var(--gray-400);">PDF, Excel, 이미지, CAD 등 (최대 30MB)</small>
+                            </div>
+                            <input type="file" id="fileInput" multiple hidden>
+                            <div class="file-list" id="fileList"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn-outline" id="cancelBtn">취소</button>
+                        <button type="submit" class="btn-primary"><i class='bx bx-save'></i> 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Preset Manager Modal ═══ -->
+    <div id="presetModal" class="modal">
+        <div class="modal-content" style="max-width:700px;">
+            <div class="modal-header">
+                <h2><i class='bx bx-slider-alt'></i> 필드 프리셋 관리</h2>
+                <button type="button" class="btn-close" id="closePresetBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div class="preset-modal-body">
+                    <div class="preset-sidebar">
+                        <div class="preset-sidebar-header">
+                            <span>분류 목록</span>
+                            <button id="addPresetCatBtn" title="분류 추가"><i class='bx bx-plus'></i></button>
+                        </div>
+                        <div class="preset-list" id="presetList"></div>
+                    </div>
+                    <div class="preset-editor" id="presetEditor">
+                        <div class="preset-no-selection" id="presetNoSelection">
+                            <span>좌측에서 분류를 선택하세요</span>
+                        </div>
+                        <div id="presetEditorContent" style="display:none;">
+                            <div class="preset-editor-header">
+                                <h3 id="presetEditorTitle">필드 설정</h3>
+                                <button class="btn-primary" id="savePresetBtn" style="font-size:11px; padding:6px 14px;">
+                                    <i class='bx bx-save'></i> 저장
+                                </button>
+                            </div>
+                            <div class="preset-field-list" id="presetFieldList"></div>
+                            <button type="button" class="add-line-btn" id="addPresetFieldBtn" style="margin-top:8px;">
+                                <i class='bx bx-plus'></i> 필드 추가
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="../../common/js/kng-table-utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="../../Common/js/search-engine.js"></script>
+    <script src="tbm-material.js"></script>
+</body>
+</html>
