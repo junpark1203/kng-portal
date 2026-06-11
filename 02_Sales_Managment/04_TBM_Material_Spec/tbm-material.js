@@ -12,9 +12,10 @@ async function authFetch(url, opts = {}) {
 const API = 'https://kng.junparks.com/api/tbm';
 let allData = [], filteredData = [], presetsData = [];
 let currentSort = { column: 'updatedAt', asc: false };
-let currentPage = 1, pageSize = 50;
+let currentPage = 1, pageSize = 30;
 let activeFilters = [], activeCategoryFilter = 'all';
-let currentFiles = []; // files for modal
+let currentFiles = [];
+let activeFieldFilters = {}; // {fieldKey: searchValue}
 const fieldOptions = [['all','통합검색'],['site','현장명'],['equipment','장비명'],['category','분류'],['itemName','품목명'],['spec','규격/모델'],['manufacturer','제조사']];
 const fieldLabels = { all:'통합검색', site:'현장명', equipment:'장비명', category:'분류', itemName:'품목명', spec:'규격/모델', manufacturer:'제조사' };
 const $ = id => document.getElementById(id);
@@ -30,14 +31,20 @@ function initEvents() {
     $('addBtn').addEventListener('click', () => openModal());
     $('deleteBtn').addEventListener('click', deleteSelected);
     $('exportBtn').addEventListener('click', exportExcel);
+    $('compareBtn').addEventListener('click', openCompare);
     $('presetBtn').addEventListener('click', openPresetModal);
     $('closeModalBtn').addEventListener('click', closeModal);
     $('cancelBtn').addEventListener('click', closeModal);
     $('closePresetBtn').addEventListener('click', () => $('presetModal').classList.remove('active'));
-    window.addEventListener('click', e => { if (e.target === $('itemModal')) closeModal(); if (e.target === $('presetModal')) $('presetModal').classList.remove('active'); });
+    $('closeCompareBtn').addEventListener('click', () => $('compareModal').classList.remove('active'));
+    $('closeCompareBtn2').addEventListener('click', () => $('compareModal').classList.remove('active'));
+    $('compareExportBtn').addEventListener('click', exportCompare);
+    window.addEventListener('click', e => { if (e.target===$('itemModal')) closeModal(); if (e.target===$('presetModal')) $('presetModal').classList.remove('active'); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
     $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
     ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory').addEventListener('change', onCategoryChange);
+    // Sort dropdown
+    $('sortSelect').addEventListener('change', () => { const [col,dir] = $('sortSelect').value.split('-'); currentSort = {column:col, asc:dir==='asc'}; applyFiltersAndSort(); });
     // File upload
     const area = $('fileUploadArea'), inp = $('fileInput');
     area.addEventListener('click', () => inp.click());
@@ -50,16 +57,10 @@ function initEvents() {
     $('addPresetFieldBtn').addEventListener('click', addPresetField);
     $('addPresetSectionBtn')?.addEventListener('click', () => addPresetFieldRow({ type: 'section', label: '' }));
     $('savePresetBtn').addEventListener('click', saveCurrentPreset);
-    // Sort
-    document.querySelectorAll('th.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-            const key = th.getAttribute('data-sort');
-            currentSort.asc = currentSort.column === key ? !currentSort.asc : true;
-            currentSort.column = key;
-            updateSortUI(currentSort.column, currentSort.asc);
-            applyFiltersAndSort();
-        });
-    });
+    // Sidebar field search
+    $('sidebarFieldSearchBtn').addEventListener('click', doFieldSearch);
+    $('sidebarFieldResetBtn').addEventListener('click', () => { activeFieldFilters={}; $('sidebarFieldInput').value=''; applyFiltersAndSort(); });
+    $('sidebarFieldInput').addEventListener('keydown', e => { if(e.key==='Enter') doFieldSearch(); });
 }
 
 function clearSearch() {
@@ -79,8 +80,8 @@ async function loadData() {
         const res = await authFetch(API + '/materials');
         if (!res.ok) throw new Error('fetch failed');
         allData = await res.json();
-        buildCategoryChips(); updateDatalists(); applyFiltersAndSort();
-    } catch(e) { console.error(e); $('tableBody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:red;padding:30px;">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>'; }
+        renderSidebar(); updateDatalists(); applyFiltersAndSort();
+    } catch(e) { console.error(e); $('cardList').innerHTML = '<div class="tbm-empty-cards" style="color:red;"><i class="bx bx-error-circle"></i>데이터를 불러오는 중 오류가 발생했습니다.</div>'; }
 }
 
 async function loadPresets() {
@@ -102,19 +103,54 @@ function updateCategorySelect() {
     sel.value = cur;
 }
 
-function buildCategoryChips() {
-    const cats = new Set();
-    allData.forEach(d => { if (d.category) cats.add(d.category); });
-    presetsData.forEach(p => { if (p.category) cats.add(p.category); });
-    const wrap = $('categoryChips');
-    wrap.innerHTML = '<button class="cat-chip active" data-cat="all">전체</button>';
-    [...cats].sort().forEach(cat => { wrap.innerHTML += `<button class="cat-chip" data-cat="${cat}">${cat}</button>`; });
-    wrap.querySelectorAll('.cat-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            wrap.querySelectorAll('.cat-chip').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active'); activeCategoryFilter = btn.dataset.cat; currentPage = 1; applyFiltersAndSort();
+function renderSidebar() {
+    const cats = new Map(); // cat -> count
+    allData.forEach(d => { if(d.category) cats.set(d.category, (cats.get(d.category)||0)+1); });
+    presetsData.forEach(p => { if(p.category && !cats.has(p.category)) cats.set(p.category,0); });
+    const totalCount = allData.length;
+    const el = $('sidebarCatList');
+    let html = `<div class="sidebar-cat-item${activeCategoryFilter==='all'?' active':''}" data-cat="all"><span>전체</span><span class="sidebar-cat-count">${totalCount}</span></div>`;
+    [...cats.keys()].sort().forEach(cat => {
+        html += `<div class="sidebar-cat-item${activeCategoryFilter===cat?' active':''}" data-cat="${cat}"><span>${cat}</span><span class="sidebar-cat-count">${cats.get(cat)}</span></div>`;
+    });
+    el.innerHTML = html;
+    el.querySelectorAll('.sidebar-cat-item').forEach(item => {
+        item.addEventListener('click', () => {
+            activeCategoryFilter = item.dataset.cat;
+            activeFieldFilters = {};
+            currentPage = 1;
+            renderSidebar();
+            renderSidebarFields();
+            applyFiltersAndSort();
         });
     });
+    renderSidebarFields();
+}
+
+function renderSidebarFields() {
+    const section = $('sidebarFieldSection');
+    const list = $('sidebarFieldList');
+    if (activeCategoryFilter === 'all') { section.style.display = 'none'; return; }
+    const preset = presetsData.find(p => p.category === activeCategoryFilter);
+    if (!preset || !preset.fields || !preset.fields.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    let html = '';
+    preset.fields.forEach(f => {
+        if (f.type === 'section') return;
+        const lbl = (f.label||'').replace(/\n/g,' / ');
+        html += `<div class="sidebar-field-row"><input type="checkbox" data-field-key="${f.key}" ${activeFieldFilters[f.key]?'checked':''}><label>${lbl}</label></div>`;
+    });
+    list.innerHTML = html;
+}
+
+function doFieldSearch() {
+    activeFieldFilters = {};
+    const val = $('sidebarFieldInput').value.trim();
+    $('sidebarFieldList').querySelectorAll('input[type=checkbox]:checked').forEach(cb => {
+        activeFieldFilters[cb.dataset.fieldKey] = val;
+    });
+    currentPage = 1;
+    applyFiltersAndSort();
 }
 
 function updateDatalists() {
@@ -131,12 +167,19 @@ function applyFiltersAndSort() {
     filteredData = allData.filter(item => {
         if (activeCategoryFilter !== 'all' && item.category !== activeCategoryFilter) return false;
         if (activeFilters.length > 0 && !KngSearchEngine.matchesGroupConditions(item, activeFilters, false, ['site','equipment','category','itemName','spec','manufacturer'])) return false;
+        // Field search filters
+        for (const [key, val] of Object.entries(activeFieldFilters)) {
+            if (!val) continue;
+            const cf = item.customFields || {};
+            const cfVal = String(cf[key] || '').toLowerCase();
+            if (!cfVal.includes(val.toLowerCase())) return false;
+        }
         return true;
     });
     const numCols = ['qty','price','total'];
     applySorting(filteredData, currentSort.column, currentSort.asc, [], numCols);
     KngSearchEngine.renderFilterChips('filter-chips', activeFilters, fieldLabels, idx => { activeFilters.splice(idx, 1); currentPage = 1; applyFiltersAndSort(); });
-    updateKPI(); renderTable();
+    updateKPI(); renderCards();
 }
 
 function updateKPI() {
@@ -148,38 +191,82 @@ function updateKPI() {
     $('kpiEquipments').textContent = eqSet.size;
 }
 
-// --- Render Table ---
-function renderTable() {
-    const el = $('tableBody');
+// --- Render Cards ---
+function renderCards() {
+    const el = $('cardList');
     $('totalCount').textContent = `${filteredData.length}건`;
     $('selectAll').checked = false;
-    if (!filteredData.length) { el.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--gray-400);">데이터가 없습니다.</td></tr>'; $('pagination').innerHTML = ''; return; }
+    if (!filteredData.length) { el.innerHTML = '<div class="tbm-empty-cards"><i class="bx bx-package"></i>데이터가 없습니다.</div>'; $('pagination').innerHTML=''; return; }
     const pg = calcPagination(filteredData.length, currentPage, pageSize);
     currentPage = pg.page;
     const rows = filteredData.slice(pg.startIdx, pg.endIdx);
+    const imgExts = ['jpg','jpeg','png','gif','webp','bmp'];
     let html = '';
-    rows.forEach(d => {
-        const catTag = d.category ? `<span class="cat-tag">${d.category}</span>` : '-';
+    rows.forEach((d, idx) => {
+        const num = pg.startIdx + idx + 1;
         const filesArr = Array.isArray(d.files) ? d.files : [];
-        const attachHtml = filesArr.length ? `<span class="attach-badge has-files"><i class='bx bx-paperclip'></i>${filesArr.length}</span>` : `<span class="attach-badge"><i class='bx bx-minus'></i></span>`;
-        html += `<tr data-id="${d.id}">
-            <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
-            <td class="supply-col" onclick="openModal('${d.id}')">${d.site||'-'}</td>
-            <td class="supply-col" onclick="openModal('${d.id}')">${d.equipment||'-'}</td>
-            <td class="supply-col" onclick="openModal('${d.id}')">${catTag}</td>
-            <td class="col-item product-col" onclick="openModal('${d.id}')">${d.itemName||'-'}</td>
-            <td class="supply-col" onclick="openModal('${d.id}')">${d.spec||'-'}</td>
-            <td class="supply-col" onclick="openModal('${d.id}')" style="text-align:center">${d.unit||'-'}</td>
-            <td class="col-num-sm amount-col" onclick="openModal('${d.id}')">${fmtN(d.qty)}</td>
-            <td class="col-num amount-col" onclick="openModal('${d.id}')">₩${fmtN(d.price)}</td>
-            <td class="col-num amount-col total-highlight" onclick="openModal('${d.id}')">₩${fmtN(d.total)}</td>
-            <td style="text-align:center" onclick="openModal('${d.id}')">${attachHtml}</td>
-        </tr>`;
+        const thumbFile = filesArr.find(f => { const ext = (f.originalName||f.filename||'').split('.').pop().toLowerCase(); return imgExts.includes(ext); });
+        const thumbHtml = thumbFile ? `<img src="${thumbFile.url||API+'/uploads/'+thumbFile.filename}" alt="${d.itemName||''}">` : `<div class="no-image"><i class='bx bx-image'></i><br>이미지 없음</div>`;
+        // Custom fields rendering
+        let fieldsHtml = '';
+        const preset = presetsData.find(p => p.category === d.category);
+        if (preset && preset.fields && d.customFields) {
+            preset.fields.forEach(f => {
+                if (f.type === 'section') {
+                    fieldsHtml += `<div class="tbm-cf-section-label">【${(f.label||'').replace(/\n/g,' / ')}】</div>`;
+                } else {
+                    const v = d.customFields[f.key];
+                    if (v) fieldsHtml += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}</span> `;
+                }
+            });
+            if (fieldsHtml) fieldsHtml = `<div class="tbm-card-fields"><div class="tbm-cf-values">${fieldsHtml}</div></div>`;
+        }
+        const dateStr = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}) : '';
+        const fileCount = filesArr.length;
+        const attachHtml = fileCount ? `<span class="attach-badge has-files"><i class='bx bx-paperclip'></i> ${fileCount}개 파일</span>` : '';
+        html += `<div class="tbm-card" data-id="${d.id}">
+            <div class="tbm-card-header" onclick="openModal('${d.id}')">
+                <div class="tbm-card-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></div>
+                <span class="tbm-card-rank">${num}</span>
+                <div class="tbm-card-title-area">
+                    <span class="tbm-card-name">${d.itemName||'-'}</span>
+                    <span class="tbm-card-spec-brief">${d.spec||''}</span>
+                </div>
+                <button class="tbm-card-toggle" onclick="event.stopPropagation(); toggleCard(this)">닫기 <i class='bx bx-chevron-up'></i></button>
+            </div>
+            <div class="tbm-card-body">
+                <div class="tbm-card-thumb" onclick="openModal('${d.id}')">${thumbHtml}</div>
+                <div class="tbm-card-detail" onclick="openModal('${d.id}')">
+                    <div class="tbm-card-basic">
+                        ${d.category?`<span class="cat-tag">${d.category}</span>`:''}
+                        ${d.manufacturer?`<span>제조사: ${d.manufacturer}</span>`:''}
+                        ${d.spec?`<span>규격: ${d.spec}</span>`:''}
+                    </div>
+                    ${fieldsHtml}
+                    <div class="tbm-card-meta">
+                        ${d.site?`<span>🏗️ ${d.site}</span>`:''}
+                        ${d.equipment?`<span>🔧 ${d.equipment}</span>`:''}
+                        <span>${d.qty||0} ${d.unit||'EA'}</span>
+                        <span>단가: ₩${fmtN(d.price)}</span>
+                        <span class="tbm-card-total">합계: ₩${fmtN(d.total)}</span>
+                    </div>
+                    <div class="tbm-card-footer">
+                        ${attachHtml}
+                        <span class="tbm-card-date">등록: ${dateStr}</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
     });
     el.innerHTML = html;
-    if (activeFilters.length) { const qs = activeFilters.map(f=>f.query).filter(Boolean); el.querySelectorAll('.supply-col,.product-col').forEach(el2 => { el2.innerHTML = KngSearchEngine.highlightText(el2.textContent, qs); }); }
-    renderPagination({ container: $('pagination'), totalFiltered: filteredData.length, totalAll: allData.length, totalPages: pg.totalPages, currentPage, pageSize, startIdx: pg.startIdx, endIdx: pg.endIdx, onPageChange: p => { currentPage = p; renderTable(); }, onPageSizeChange: s => { pageSize = s; currentPage = 1; renderTable(); } });
+    renderPagination({container:$('pagination'),totalFiltered:filteredData.length,totalAll:allData.length,totalPages:pg.totalPages,currentPage,pageSize,startIdx:pg.startIdx,endIdx:pg.endIdx,onPageChange:p=>{currentPage=p;renderCards();},onPageSizeChange:s=>{pageSize=s;currentPage=1;renderCards();}});
 }
+
+window.toggleCard = function(btn) {
+    const card = btn.closest('.tbm-card');
+    card.classList.toggle('collapsed');
+    btn.innerHTML = card.classList.contains('collapsed') ? '열기 <i class="bx bx-chevron-down"></i>' : '닫기 <i class="bx bx-chevron-up"></i>';
+};
 
 function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
@@ -426,4 +513,87 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, ws, 'TBM 자재 규격');
     XLSX.writeFile(wb, `TBM_자재규격_${new Date().toISOString().split('T')[0]}.xlsx`);
     showToast('엑셀 파일이 다운로드됩니다.', 'success');
+}
+
+// --- Compare ---
+let compareItems = [];
+
+function openCompare() {
+    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+    if (ids.length < 2) return showToast('비교할 항목을 2개 이상 선택해주세요.', 'warning');
+    const items = ids.map(id => allData.find(d => d.id === id)).filter(Boolean);
+    const cats = new Set(items.map(d => d.category));
+    if (cats.size > 1) return showToast('같은 분류의 자재만 비교할 수 있습니다.', 'warning');
+    compareItems = items;
+    renderCompareTable();
+    $('compareModal').classList.add('active');
+}
+
+function renderCompareTable() {
+    if (!compareItems.length) return;
+    const cat = compareItems[0].category;
+    const preset = presetsData.find(p => p.category === cat);
+    const fields = preset?.fields || [];
+    const n = compareItems.length;
+    // Basic rows
+    const basicRows = [
+        ['품목명', d => d.itemName||'-'],
+        ['규격/모델', d => d.spec||'-'],
+        ['제조사', d => d.manufacturer||'-'],
+        ['현장명', d => d.site||'-'],
+        ['장비명', d => d.equipment||'-'],
+        ['수량', d => `${d.qty||0} ${d.unit||'EA'}`],
+        ['단가', d => '₩'+fmtN(d.price)],
+        ['합계', d => '₩'+fmtN(d.total)],
+    ];
+    let html = `<table class="compare-table"><thead><tr><th style="width:140px;">${cat} 비교 (${n}개)</th>`;
+    compareItems.forEach(d => { html += `<th>${d.itemName||d.spec||'-'}</th>`; });
+    html += '</tr></thead><tbody>';
+    // Basic info rows
+    basicRows.forEach(([label, fn]) => {
+        const vals = compareItems.map(fn);
+        const allSame = vals.every(v => v === vals[0]);
+        html += `<tr><td class="compare-label">${label}</td>`;
+        vals.forEach(v => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
+        html += '</tr>';
+    });
+    // Custom field rows with sections
+    if (fields.length) {
+        fields.forEach(f => {
+            if (f.type === 'section') {
+                html += `<tr class="compare-section-row"><td colspan="${n+1}">▸ ${(f.label||'').replace(/\n/g,' / ')}</td></tr>`;
+            } else {
+                const lbl = (f.label||'').replace(/\n/g,' / ');
+                const vals = compareItems.map(d => (d.customFields||{})[f.key]||'-');
+                const allSame = vals.every(v => v === vals[0]);
+                html += `<tr><td class="compare-label">${lbl}</td>`;
+                vals.forEach(v => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
+                html += '</tr>';
+            }
+        });
+    }
+    html += '</tbody></table>';
+    $('compareTableWrap').innerHTML = html;
+}
+
+function exportCompare() {
+    if (!compareItems.length) return;
+    const cat = compareItems[0].category;
+    const preset = presetsData.find(p => p.category === cat);
+    const fields = preset?.fields || [];
+    const rows = [];
+    const header = ['항목', ...compareItems.map(d => d.itemName||d.spec||'-')];
+    rows.push(header);
+    [['품목명','itemName'],['규격/모델','spec'],['제조사','manufacturer'],['현장명','site'],['장비명','equipment'],['수량','qty'],['단가','price'],['합계','total']].forEach(([lbl,key]) => {
+        rows.push([lbl, ...compareItems.map(d => key==='price'||key==='total' ? d[key]||0 : d[key]||'-')]);
+    });
+    fields.forEach(f => {
+        if (f.type === 'section') { rows.push([`[${(f.label||'').replace(/\n/g,' ')}]`]); }
+        else { rows.push([(f.label||'').replace(/\n/g,' '), ...compareItems.map(d => (d.customFields||{})[f.key]||'-')]); }
+    });
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '자재 비교');
+    XLSX.writeFile(wb, `TBM_자재비교_${cat}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    showToast('비교표 엑셀 다운로드', 'success');
 }

@@ -190,11 +190,179 @@
         .attach-badge i { font-size: 13px; }
         .attach-badge.has-files { color: var(--primary); }
 
-        /* ── Header Toolbar (Preset + Export Buttons) ── */
+        /* ── Header Toolbar ── */
         .header-toolbar {
             display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
         }
 
+        /* ════════════════════════════════════════
+           CARD VIEW LAYOUT
+           ════════════════════════════════════════ */
+        .tbm-content-layout { display: flex; border-top: 1px solid var(--gray-200); min-height: 500px; }
+
+        /* ── Sidebar ── */
+        .tbm-sidebar {
+            width: 220px; min-width: 200px; border-right: 1px solid var(--gray-200);
+            background: var(--surface-container-lowest, #fafbfc);
+            display: flex; flex-direction: column; overflow-y: auto;
+        }
+        .sidebar-section-title {
+            padding: 12px 16px 8px; font-size: 10px; font-weight: 700;
+            color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.8px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .sidebar-cat-list { padding: 4px 0; }
+        .sidebar-cat-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 9px 16px; cursor: pointer; font-size: 12px; font-weight: 500;
+            color: var(--gray-600); border-left: 3px solid transparent;
+            transition: all 0.12s;
+        }
+        .sidebar-cat-item:hover { background: var(--gray-100); }
+        .sidebar-cat-item.active {
+            background: rgba(79,110,247,0.07); color: var(--primary);
+            font-weight: 700; border-left-color: var(--primary);
+        }
+        .sidebar-cat-count {
+            font-size: 10px; font-weight: 700; color: var(--gray-400);
+            background: var(--gray-100); padding: 1px 7px; border-radius: 10px;
+        }
+        .sidebar-cat-item.active .sidebar-cat-count { background: rgba(79,110,247,0.15); color: var(--primary); }
+        .sidebar-divider { height: 1px; background: var(--gray-200); margin: 4px 12px; }
+        .sidebar-field-section { padding: 8px 12px 12px; }
+        .sidebar-field-row {
+            display: flex; align-items: center; gap: 6px; padding: 4px 0;
+        }
+        .sidebar-field-row label {
+            font-size: 11px; color: var(--gray-600); cursor: pointer;
+            flex: 1; white-space: pre-line; line-height: 1.3;
+        }
+        .sidebar-field-row input[type="checkbox"] { accent-color: var(--primary); }
+        .sidebar-field-input {
+            margin-top: 6px; display: flex; gap: 4px;
+        }
+        .sidebar-field-input input {
+            flex: 1; height: 30px; padding: 0 8px; border: 1px solid var(--border);
+            border-radius: 5px; font-size: 11px; outline: none;
+        }
+        .sidebar-field-input input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted); }
+        .sidebar-field-input button {
+            height: 30px; padding: 0 10px; border: none; border-radius: 5px;
+            background: var(--primary); color: #fff; font-size: 11px; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+        }
+        .sidebar-field-input button:hover { opacity: 0.9; }
+        .sidebar-field-reset {
+            margin-top: 4px; border: none; background: none; color: var(--gray-400);
+            font-size: 10px; cursor: pointer; padding: 2px 0;
+        }
+        .sidebar-field-reset:hover { color: var(--primary); }
+
+        /* ── Card List ── */
+        .tbm-card-list-area { flex: 1; padding: 16px; overflow-y: auto; }
+        .tbm-card {
+            border: 1px solid var(--gray-200); border-radius: 10px;
+            margin-bottom: 14px; background: var(--surface);
+            overflow: hidden; transition: box-shadow 0.2s;
+        }
+        .tbm-card:hover { box-shadow: 0 3px 14px rgba(0,0,0,0.06); }
+        .tbm-card-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px; background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-100); cursor: pointer;
+        }
+        .tbm-card-check { flex-shrink: 0; }
+        .tbm-card-rank {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--primary); color: #fff; font-size: 10px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .tbm-card-name {
+            font-size: 14px; font-weight: 700; color: var(--gray-800); margin-right: 6px;
+        }
+        .tbm-card-spec-brief {
+            font-size: 12px; color: var(--gray-500); font-weight: 500;
+        }
+        .tbm-card-title-area { flex: 1; min-width: 0; }
+        .tbm-card-toggle {
+            border: 1px solid var(--gray-200); background: var(--surface);
+            border-radius: 5px; padding: 4px 10px; font-size: 10px;
+            color: var(--gray-500); cursor: pointer; white-space: nowrap;
+            display: flex; align-items: center; gap: 3px;
+        }
+        .tbm-card-toggle:hover { border-color: var(--primary); color: var(--primary); }
+        .tbm-card-body {
+            display: flex; gap: 16px; padding: 14px 16px 16px;
+            transition: all 0.2s;
+        }
+        .tbm-card.collapsed .tbm-card-body { display: none; }
+        .tbm-card-thumb {
+            width: 130px; height: 130px; flex-shrink: 0; border-radius: 8px;
+            overflow: hidden; background: var(--gray-100);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .tbm-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .tbm-card-thumb .no-image {
+            color: var(--gray-400); font-size: 10px; text-align: center; line-height: 1.5;
+        }
+        .tbm-card-thumb .no-image i { font-size: 28px; display: block; margin-bottom: 2px; color: var(--gray-300); }
+        .tbm-card-detail { flex: 1; min-width: 0; cursor: pointer; }
+        .tbm-card-basic {
+            font-size: 12px; color: var(--gray-600); margin-bottom: 8px;
+            display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center;
+        }
+        .tbm-card-fields { margin-bottom: 8px; }
+        .tbm-cf-section-label {
+            font-size: 11px; font-weight: 700; color: var(--primary);
+            margin-top: 6px; margin-bottom: 2px;
+        }
+        .tbm-cf-values {
+            font-size: 11.5px; color: var(--gray-700); line-height: 1.6;
+            display: flex; flex-wrap: wrap; gap: 2px 14px;
+        }
+        .tbm-cf-values b { color: var(--gray-500); font-weight: 600; }
+        .tbm-card-meta {
+            font-size: 11px; color: var(--gray-500); display: flex;
+            flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px;
+        }
+        .tbm-card-total { font-weight: 700; color: var(--primary); }
+        .tbm-card-footer {
+            font-size: 10px; color: var(--gray-400);
+            display: flex; gap: 12px; align-items: center;
+            padding-top: 6px; border-top: 1px dashed var(--gray-100);
+        }
+        .tbm-card-footer .attach-badge { font-size: 10px; }
+        .tbm-empty-cards {
+            text-align: center; padding: 60px 20px; color: var(--gray-400); font-size: 13px;
+        }
+        .tbm-empty-cards i { font-size: 40px; display: block; margin-bottom: 8px; }
+
+        /* ── Compare Modal ── */
+        .compare-table-wrap { overflow-x: auto; }
+        .compare-table {
+            width: 100%; border-collapse: collapse; font-size: 12px;
+        }
+        .compare-table th, .compare-table td {
+            padding: 8px 12px; border: 1px solid var(--gray-200);
+            text-align: left; vertical-align: top;
+        }
+        .compare-table thead th {
+            background: var(--gray-50); font-weight: 700; text-align: center;
+            position: sticky; top: 0;
+        }
+        .compare-table .compare-label {
+            background: var(--gray-50); font-weight: 600; color: var(--gray-600);
+            width: 140px; min-width: 120px;
+        }
+        .compare-table .compare-section-row td {
+            background: linear-gradient(135deg, rgba(79,110,247,0.06), rgba(79,110,247,0.02));
+            font-weight: 700; color: var(--primary); font-size: 11px;
+            border-left: 3px solid var(--primary);
+        }
+        .compare-diff { background: #fef6e0; }
+
+        /* ── Responsive ── */
         @media (max-width: 768px) {
             .preset-modal-body { flex-direction: column; }
             .preset-sidebar {
@@ -202,6 +370,18 @@
                 border-right: none; border-bottom: 1px solid var(--gray-200);
             }
             .custom-fields-grid { grid-template-columns: 1fr; }
+            .tbm-content-layout { flex-direction: column; }
+            .tbm-sidebar {
+                width: 100%; min-width: unset; border-right: none;
+                border-bottom: 1px solid var(--gray-200);
+                max-height: 200px; flex-direction: row; flex-wrap: wrap;
+            }
+            .sidebar-cat-list { display: flex; flex-wrap: wrap; gap: 0; }
+            .sidebar-cat-item { padding: 6px 12px; font-size: 11px; border-left: none; border-bottom: 2px solid transparent; }
+            .sidebar-cat-item.active { border-bottom-color: var(--primary); border-left: none; }
+            .sidebar-field-section { width: 100%; }
+            .tbm-card-body { flex-direction: column; }
+            .tbm-card-thumb { width: 100%; height: 160px; }
         }
     </style>
 </head>
@@ -220,16 +400,13 @@
                                     <div class="header-toolbar">
                                         <button id="presetBtn" class="btn-outline"><i class='bx bx-slider-alt'></i> 프리셋 관리</button>
                                         <button id="exportBtn" class="btn-outline btn-outline-success"><i class='bx bx-download'></i> 엑셀</button>
+                                        <button id="compareBtn" class="btn-outline" style="border-color:#8b5cf6;color:#8b5cf6;"><i class='bx bx-transfer'></i> 비교</button>
                                         <button id="deleteBtn" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 삭제</button>
                                         <button id="addBtn" class="btn-primary"><i class='bx bx-plus-circle'></i> 신규 등록</button>
                                     </div>
                                 </div>
                             </div>
-                            <div class="header-bottom">
-                                <div class="category-filter-wrap" id="categoryChips">
-                                    <button class="cat-chip active" data-cat="all">전체</button>
-                                </div>
-                            </div>
+                            <div class="header-bottom" style="display:none;"></div>
                         </div>
 
                         <!-- Search Strip -->
@@ -278,48 +455,44 @@
                             </div>
                         </div>
 
-                        <!-- Data Table -->
-                        <div class="table-responsive">
-                            <table class="data-table supply-table" id="dataTable">
-                                <colgroup>
-                                    <col class="col-check">
-                                    <col class="col-site">
-                                    <col style="width:80px">
-                                    <col class="col-cat">
-                                    <col class="col-item">
-                                    <col style="width:100px">
-                                    <col style="width:48px">
-                                    <col class="col-num-sm">
-                                    <col class="col-num">
-                                    <col class="col-num">
-                                    <col style="width:40px">
-                                </colgroup>
-                                <thead>
-                                    <tr>
-                                        <th rowspan="2" class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th colspan="3" class="th-group-label th-group-supply">장비 정보</th>
-                                        <th colspan="2" class="th-group-label th-group-product">품목</th>
-                                        <th colspan="4" class="th-group-label th-group-amount">수량/금액</th>
-                                        <th rowspan="2" class="th-group-label" style="font-size:10px">📎</th>
-                                    </tr>
-                                    <tr>
-                                        <th class="sortable" data-sort="site">현장명 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="equipment">장비명 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="category">분류 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="itemName">품목명 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="spec">규격/모델 <i class='bx bx-sort'></i></th>
-                                        <th class="sortable" data-sort="unit">단위 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num-sm sortable" data-sort="qty">수량 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="price">단가 <i class='bx bx-sort'></i></th>
-                                        <th class="col-num sortable" data-sort="total">합계 <i class='bx bx-sort'></i></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tableBody">
-                                    <tr class="loading-row"><td colspan="11"><div class="skeleton"></div></td></tr>
-                                </tbody>
-                            </table>
+                        <!-- Card View Layout -->
+                        <div class="tbm-content-layout">
+                            <aside class="tbm-sidebar" id="tbmSidebar">
+                                <div class="sidebar-section">
+                                    <div class="sidebar-section-title">분류 목록</div>
+                                    <div class="sidebar-cat-list" id="sidebarCatList"></div>
+                                </div>
+                                <div id="sidebarFieldSection" style="display:none;">
+                                    <div class="sidebar-divider"></div>
+                                    <div class="sidebar-section-title">필드 검색</div>
+                                    <div class="sidebar-field-section">
+                                        <div id="sidebarFieldList"></div>
+                                        <div class="sidebar-field-input">
+                                            <input type="text" id="sidebarFieldInput" placeholder="검색값 입력...">
+                                            <button type="button" id="sidebarFieldSearchBtn"><i class='bx bx-search'></i></button>
+                                        </div>
+                                        <button type="button" class="sidebar-field-reset" id="sidebarFieldResetBtn">초기화</button>
+                                    </div>
+                                </div>
+                            </aside>
+                            <div class="tbm-card-list-area">
+                                <div class="tbm-sort-bar" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;font-size:11px;color:var(--gray-500);">
+                                    <label><input type="checkbox" id="selectAll" style="accent-color:var(--primary);"> 전체선택</label>
+                                    <span style="flex:1;"></span>
+                                    <span>정렬:</span>
+                                    <select id="sortSelect" style="height:28px;border:1px solid var(--border);border-radius:5px;font-size:11px;padding:0 6px;">
+                                        <option value="updatedAt-desc">최신순</option>
+                                        <option value="updatedAt-asc">오래된순</option>
+                                        <option value="itemName-asc">품목명 ↑</option>
+                                        <option value="itemName-desc">품목명 ↓</option>
+                                        <option value="total-desc">금액 높은순</option>
+                                        <option value="total-asc">금액 낮은순</option>
+                                    </select>
+                                </div>
+                                <div id="cardList"></div>
+                                <div class="pagination" id="pagination"></div>
+                            </div>
                         </div>
-                        <div class="pagination" id="pagination"></div>
                     </div>
                 </section>
             </div>
@@ -469,6 +642,23 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Compare Modal ═══ -->
+    <div id="compareModal" class="modal">
+        <div class="modal-content" style="max-width:900px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">
+                <h2 style="color:#fff;"><i class='bx bx-transfer'></i> 자재 비교</h2>
+                <button type="button" class="btn-close" id="closeCompareBtn" style="color:#fff;"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding:0;">
+                <div class="compare-table-wrap" id="compareTableWrap" style="max-height:65vh;overflow:auto;padding:16px;"></div>
+            </div>
+            <div class="modal-footer" style="padding:12px 16px;">
+                <button type="button" class="btn-outline" id="closeCompareBtn2">닫기</button>
+                <button type="button" class="btn-outline btn-outline-success" id="compareExportBtn"><i class='bx bx-download'></i> 엑셀 내보내기</button>
             </div>
         </div>
     </div>
