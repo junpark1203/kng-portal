@@ -33,14 +33,14 @@ function initEvents() {
     $('exportBtn').addEventListener('click', exportExcel);
     $('compareBtn').addEventListener('click', openCompare);
     $('presetBtn').addEventListener('click', openPresetDrawer);
-    $('closeModalBtn').addEventListener('click', closeModal);
-    $('cancelBtn').addEventListener('click', closeModal);
+    $('closeModalBtn').addEventListener('click', confirmCloseModal);
+    $('cancelBtn').addEventListener('click', confirmCloseModal);
     $('closeDrawerBtn').addEventListener('click', closePresetDrawer);
     $('closeDrawerBtn2').addEventListener('click', closePresetDrawer);
     $('closeCompareBtn').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('closeCompareBtn2').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('compareExportBtn').addEventListener('click', exportCompare);
-    window.addEventListener('click', e => { if (e.target===$('itemModal')) closeModal(); if (e.target===$('drawerOverlay')) closePresetDrawer(); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
+    window.addEventListener('click', e => { if (e.target===$('itemModal')) confirmCloseModal(); if (e.target===$('drawerOverlay')) closePresetDrawer(); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
     $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
     ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory').addEventListener('change', onCategoryChange);
@@ -295,6 +295,21 @@ window.openModal = function(id = null) {
     }
     $('itemModal').classList.add('active');
 };
+
+function isModalDirty() {
+    const fields = ['inpSite','inpEquipment','inpItemName','inpSpec','inpManufacturer','inpRemarks'];
+    if (fields.some(id => $(id)?.value?.trim())) return true;
+    if (parseInt($('inpQty')?.value) > 0 || parseInt($('inpPrice')?.value) > 0) return true;
+    if ($('inpCategory')?.value) return true;
+    if (currentFiles.length > 0) return true;
+    return false;
+}
+
+function confirmCloseModal() {
+    if ($('editId').value || !isModalDirty() || confirm('입력한 내용이 있습니다. 정말 닫으시겠습니까?')) {
+        closeModal();
+    }
+}
 
 function closeModal() { $('itemModal').classList.remove('active'); }
 
