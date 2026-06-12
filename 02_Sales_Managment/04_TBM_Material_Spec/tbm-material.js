@@ -246,7 +246,7 @@ function renderCards() {
                 <span class="tbm-card-rank">${num}</span>
                 <div class="tbm-card-title-area">
                     <span class="tbm-card-name">${d.itemName||'-'}</span>
-                    <span class="tbm-card-spec-brief">${d.spec||''}</span>
+                    ${d.manufacturer?`<span class="tbm-card-mfr">| ${d.manufacturer}</span>`:''}
                 </div>
                 <button class="tbm-card-toggle" onclick="event.stopPropagation(); toggleCard(this)">닫기 <i class='bx bx-chevron-up'></i></button>
             </div>
@@ -255,16 +255,17 @@ function renderCards() {
                 <div class="tbm-card-detail" onclick="openModal('${d.id}')">
                     <div class="tbm-card-basic">
                         ${d.category?`<span class="cat-tag">${d.category}</span>`:''}
-                        ${d.manufacturer?`<span>제조사: ${d.manufacturer}</span>`:''}
                         ${d.spec?`<span>규격: ${d.spec}</span>`:''}
                     </div>
                     ${fieldsHtml}
                     <div class="tbm-card-meta">
-                        ${d.site?`<span>🏗️ ${d.site}</span>`:''}
-                        ${d.equipment?`<span>🔧 ${d.equipment}</span>`:''}
-                        <span>${d.qty||0} ${d.unit||'EA'}</span>
-                        <span>단가: ₩${fmtN(d.price)}</span>
-                        <span class="tbm-card-total">합계: ₩${fmtN(d.total)}</span>
+                        ${d.site?`<span>현장: ${d.site}</span>`:''}
+                        ${d.equipment?`<span>장비: ${d.equipment}</span>`:''}
+                        <span>수량: ${d.qty||0} ${d.unit||'EA'}</span>
+                    </div>
+                    <div class="tbm-card-meta">
+                        ${d.sourceType === 'import' ? buildImportPriceHtml(d) : `<span class="tbm-card-total">단가: ₩${fmtN(d.price)}${d.price > 0 ? ' <em style="font-size:10px;color:var(--gray-400);font-style:normal">(국내)</em>':''}</span><span>합계: ₩${fmtN(d.total)}</span>`}
+                        ${d.quoteDate?`<span>견적일: ${d.quoteDate}</span>`:''}
                     </div>
                     <div class="tbm-card-footer">
                         ${attachHtml}
@@ -285,6 +286,13 @@ window.toggleCard = function(btn) {
 };
 
 function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
+
+function buildImportPriceHtml(d) {
+    const its = Array.isArray(d.incoterms) ? d.incoterms : [];
+    if (!its.length) return '<span class="tbm-card-total">가격 미입력 <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em></span>';
+    const basis = d.perUnitBasis ? ` (${d.perUnitBasis}개 기준)` : '';
+    return its.map(it => `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ₩${fmtN(it.price)}${basis}</span>`).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
+}
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
 
 const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
