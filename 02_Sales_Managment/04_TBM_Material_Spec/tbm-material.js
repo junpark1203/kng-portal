@@ -567,7 +567,7 @@ async function saveCurrentPreset() {
     const payload = { id: p.id, category: p.category, fields };
     try {
         const res = await authFetch(`${API}/presets`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); selectDrawerPreset(selectedPresetId); }
+        if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); closePresetDrawer(); renderSidebar(); }
         else { showToast('저장 실패', 'error'); }
     } catch(e) { showToast('서버 오류', 'error'); }
 }
