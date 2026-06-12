@@ -272,6 +272,15 @@ function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleStrin
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
 
 // --- Modal CRUD ---
+let modalSnapshot = '';
+
+function getFormSnapshot() {
+    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks'].map(id => $(id)?.value || '');
+    const cfVals = [];
+    $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => cfVals.push(inp.value || ''));
+    return JSON.stringify([...vals, ...cfVals, currentFiles.length]);
+}
+
 window.openModal = function(id = null) {
     $('itemForm').reset(); $('inpTotal').value = ''; currentFiles = [];
     $('customFieldsSection').style.display = 'none'; $('customFieldsGrid').innerHTML = '';
@@ -294,19 +303,13 @@ window.openModal = function(id = null) {
         $('modalTitle').textContent = '신규 자재 등록'; $('editId').value = '';
     }
     $('itemModal').classList.add('active');
+    // Save snapshot after DOM settles
+    requestAnimationFrame(() => { modalSnapshot = getFormSnapshot(); });
 };
 
-function isModalDirty() {
-    const fields = ['inpSite','inpEquipment','inpItemName','inpSpec','inpManufacturer','inpRemarks'];
-    if (fields.some(id => $(id)?.value?.trim())) return true;
-    if (parseInt($('inpQty')?.value) > 0 || parseInt($('inpPrice')?.value) > 0) return true;
-    if ($('inpCategory')?.value) return true;
-    if (currentFiles.length > 0) return true;
-    return false;
-}
-
 function confirmCloseModal() {
-    if ($('editId').value || !isModalDirty() || confirm('입력한 내용이 있습니다. 정말 닫으시겠습니까?')) {
+    const changed = getFormSnapshot() !== modalSnapshot;
+    if (!changed || confirm('변경된 내용이 있습니다. 정말 닫으시겠습니까?')) {
         closeModal();
     }
 }
