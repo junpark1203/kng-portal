@@ -45,7 +45,16 @@ function initEvents() {
     $('closeCompareBtn').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('closeCompareBtn2').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('compareExportBtn').addEventListener('click', exportCompare);
-    window.addEventListener('click', e => { if (e.target===$('itemModal')) confirmCloseModal(); if (e.target===$('drawerOverlay')) closePresetDrawer(); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
+    // Track mousedown to prevent close when dragging text outside modal
+    let mouseDownTarget = null;
+    window.addEventListener('mousedown', e => { mouseDownTarget = e.target; });
+    window.addEventListener('click', e => {
+        if (mouseDownTarget !== e.target) { mouseDownTarget = null; return; }
+        if (e.target===$('itemModal')) confirmCloseModal();
+        if (e.target===$('drawerOverlay')) closePresetDrawer();
+        if (e.target===$('compareModal')) $('compareModal').classList.remove('active');
+        mouseDownTarget = null;
+    });
     $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
     ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory').addEventListener('change', onCategoryChange);
