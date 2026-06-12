@@ -173,6 +173,47 @@
             border-color: var(--primary); color: var(--primary);
             background: rgba(79, 110, 247, 0.04);
         }
+
+        /* ── Source Type & Incoterms ── */
+        .source-toggle { display: flex; gap: 0; border: 1px solid var(--gray-200); border-radius: 6px; overflow: hidden; }
+        .source-toggle label {
+            flex: 1; padding: 7px 12px; text-align: center;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            color: var(--gray-500); background: var(--surface);
+            transition: all 0.15s; border-right: 1px solid var(--gray-200);
+        }
+        .source-toggle label:last-child { border-right: none; }
+        .source-toggle input { display: none; }
+        .source-toggle input:checked + span {
+            color: #fff;
+        }
+        .source-toggle label.st-domestic:has(input:checked) { background: #3b82f6; color: #fff; }
+        .source-toggle label.st-import:has(input:checked) { background: #f59e0b; color: #fff; }
+        .incoterms-section { margin-top: 6px; }
+        .incoterm-row {
+            display: flex; align-items: center; gap: 6px;
+            padding: 5px 0; border-bottom: 1px solid var(--gray-50);
+        }
+        .incoterm-row:last-of-type { border-bottom: none; }
+        .incoterm-row select { width: 90px; height: 30px; padding: 0 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+        .incoterm-row input { flex: 1; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; }
+        .incoterm-row .it-del {
+            width: 24px; height: 24px; border: none; background: none;
+            color: var(--gray-400); cursor: pointer; font-size: 14px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 4px; transition: all 0.15s;
+        }
+        .incoterm-row .it-del:hover { color: #dc2626; background: #fef2f2; }
+        .add-incoterm-btn {
+            display: flex; align-items: center; gap: 4px; justify-content: center;
+            width: 100%; padding: 5px; margin-top: 4px;
+            border: 1px dashed var(--gray-200); border-radius: 5px;
+            background: none; color: var(--gray-400); font-size: 11px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .add-incoterm-btn:hover { border-color: #f59e0b; color: #f59e0b; }
+        .import-fields { border: 1px solid #fde68a; border-radius: 8px; padding: 10px; background: #fffbeb; }
+        .import-fields-title { font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
         .file-upload-area i { font-size: 24px; display: block; margin-bottom: 4px; }
         .file-list { display: flex; flex-direction: column; gap: 4px; }
         .file-item {
@@ -486,10 +527,6 @@
                                 <div class="kpi-value" id="kpiQty">0</div>
                             </div>
                             <div class="kpi-card">
-                                <div class="kpi-label">총 금액</div>
-                                <div class="kpi-value" id="kpiTotal">₩0</div>
-                            </div>
-                            <div class="kpi-card">
                                 <div class="kpi-label">장비 수</div>
                                 <div class="kpi-value" id="kpiEquipments">0</div>
                             </div>
@@ -598,17 +635,55 @@
                         </div>
 
                         <div class="modal-section-title section-amount fg-full">수량/금액</div>
+
+                        <!-- Source Type Toggle + Quote Date -->
                         <div class="fg">
-                            <label for="inpQty">수량</label>
-                            <input type="number" id="inpQty" placeholder="0" min="0">
+                            <label>구분</label>
+                            <div class="source-toggle">
+                                <label class="st-domestic"><input type="radio" name="sourceType" value="domestic" id="srcDomestic" checked><span>🇰🇷 국내</span></label>
+                                <label class="st-import"><input type="radio" name="sourceType" value="import" id="srcImport"><span>🚢 수입</span></label>
+                            </div>
                         </div>
                         <div class="fg">
-                            <label for="inpPrice">단가</label>
-                            <input type="number" id="inpPrice" placeholder="0" min="0">
+                            <label for="inpQuoteDate">견적일</label>
+                            <input type="date" id="inpQuoteDate">
                         </div>
-                        <div class="fg fg-full">
-                            <label>합계 (자동계산)</label>
-                            <input type="text" id="inpTotal" class="calc-preview" readonly placeholder="수량 × 단가">
+
+                        <!-- Domestic Fields -->
+                        <div id="domesticFields">
+                            <div class="fg">
+                                <label for="inpQty">수량</label>
+                                <input type="number" id="inpQty" placeholder="0" min="0">
+                            </div>
+                            <div class="fg">
+                                <label for="inpPrice">단가</label>
+                                <input type="number" id="inpPrice" placeholder="0" min="0">
+                            </div>
+                            <div class="fg fg-full">
+                                <label>합계 (자동계산)</label>
+                                <input type="text" id="inpTotal" class="calc-preview" readonly placeholder="수량 × 단가">
+                            </div>
+                        </div>
+
+                        <!-- Import Fields -->
+                        <div id="importFields" style="display:none;" class="fg-full">
+                            <div class="import-fields">
+                                <div class="import-fields-title"><i class='bx bx-globe'></i> Incoterms 견적 입력</div>
+                                <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                    <div class="fg" style="flex:1;margin:0;">
+                                        <label for="inpQtyImport">수량</label>
+                                        <input type="number" id="inpQtyImport" placeholder="0" min="0">
+                                    </div>
+                                    <div class="fg" style="flex:1;margin:0;">
+                                        <label for="inpPerUnit">기준수량 (몇개 기준)</label>
+                                        <input type="number" id="inpPerUnit" placeholder="예: 100" min="1">
+                                    </div>
+                                </div>
+                                <div id="incotermsRows"></div>
+                                <button type="button" class="add-incoterm-btn" id="addIncotermBtn">
+                                    <i class='bx bx-plus'></i> Incoterms 추가
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Dynamic Custom Fields (populated by preset selection) -->

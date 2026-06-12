@@ -58,6 +58,9 @@ function initEvents() {
     $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
     ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory').addEventListener('change', onCategoryChange);
+    // Source type toggle
+    document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
+    $('addIncotermBtn').addEventListener('click', () => addIncotermRow());
     // Sort dropdown
     $('sortSelect').addEventListener('change', () => { const [col,dir] = $('sortSelect').value.split('-'); currentSort = {column:col, asc:dir==='asc'}; applyFiltersAndSort(); });
     // File upload
@@ -197,11 +200,10 @@ function applyFiltersAndSort() {
 }
 
 function updateKPI() {
-    let tQty = 0, tAmt = 0; const eqSet = new Set();
-    filteredData.forEach(d => { tQty += d.qty || 0; tAmt += d.total || 0; if (d.equipment) eqSet.add(d.equipment); });
+    let tQty = 0; const eqSet = new Set();
+    filteredData.forEach(d => { tQty += d.qty || 0; if (d.equipment) eqSet.add(d.equipment); });
     $('kpiCount').textContent = filteredData.length.toLocaleString();
     $('kpiQty').textContent = tQty.toLocaleString();
-    $('kpiTotal').textContent = '₩' + tAmt.toLocaleString();
     $('kpiEquipments').textContent = eqSet.size;
 }
 
@@ -285,19 +287,46 @@ window.toggleCard = function(btn) {
 function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
 
+const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+
+function toggleSourceType() {
+    const isImport = $('srcImport').checked;
+    $('domesticFields').style.display = isImport ? 'none' : '';
+    $('importFields').style.display = isImport ? '' : 'none';
+}
+
+function addIncotermRow(term, price) {
+    const container = $('incotermsRows');
+    const row = document.createElement('div');
+    row.className = 'incoterm-row';
+    row.innerHTML = `
+        <select class="it-term">${INCOTERMS_LIST.map(t => `<option value="${t}"${t===term?' selected':''}>${t}</option>`).join('')}</select>
+        <input type="number" class="it-price" placeholder="가격" min="0" value="${price||''}">
+        <button type="button" class="it-del" title="삭제"><i class='bx bx-x'></i></button>`;
+    row.querySelector('.it-del').addEventListener('click', () => row.remove());
+    container.appendChild(row);
+}
+
 // --- Modal CRUD ---
 let modalSnapshot = '';
 
 function getFormSnapshot() {
-    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks'].map(id => $(id)?.value || '');
+    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate','inpQtyImport','inpPerUnit'].map(id => $(id)?.value || '');
+    const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const cfVals = [];
     $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => cfVals.push(inp.value || ''));
-    return JSON.stringify([...vals, ...cfVals, currentFiles.length]);
+    const itVals = [];
+    $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
+        itVals.push(r.querySelector('.it-term').value + ':' + r.querySelector('.it-price').value);
+    });
+    return JSON.stringify([...vals, src, ...cfVals, ...itVals, currentFiles.length]);
 }
 
 window.openModal = function(id = null) {
     $('itemForm').reset(); $('inpTotal').value = ''; currentFiles = [];
     $('customFieldsSection').style.display = 'none'; $('customFieldsGrid').innerHTML = '';
+    $('incotermsRows').innerHTML = '';
+    $('srcDomestic').checked = true; toggleSourceType();
     renderFileList();
     if (id) {
         const d = allData.find(x => x.id === id);
@@ -309,15 +338,21 @@ window.openModal = function(id = null) {
         $('inpSpec').value = d.spec||''; $('inpUnit').value = d.unit||'EA';
         $('inpQty').value = d.qty||0; $('inpPrice').value = d.price||0;
         $('inpManufacturer').value = d.manufacturer||''; $('inpRemarks').value = d.remarks||'';
+        $('inpQuoteDate').value = d.quoteDate || '';
         currentFiles = Array.isArray(d.files) ? [...d.files] : [];
+        // Source type
+        if (d.sourceType === 'import') {
+            $('srcImport').checked = true; toggleSourceType();
+            $('inpQtyImport').value = d.qty || 0;
+            $('inpPerUnit').value = d.perUnitBasis || '';
+            (d.incoterms || []).forEach(it => addIncotermRow(it.term, it.price));
+        }
         updateCalc(); renderFileList();
-        // Load custom fields
         if (d.category) { onCategoryChange(null, d.customFields || {}); }
     } else {
         $('modalTitle').textContent = '신규 자재 등록'; $('editId').value = '';
     }
     $('itemModal').classList.add('active');
-    // Save snapshot after DOM settles
     requestAnimationFrame(() => { modalSnapshot = getFormSnapshot(); });
 };
 
@@ -334,13 +369,30 @@ async function saveItem() {
     const id = $('editId').value;
     const customFields = {};
     $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => { customFields[inp.dataset.cfKey] = inp.value; });
+    const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
+    const isImport = sourceType === 'import';
+    const qty = isImport ? (parseInt($('inpQtyImport').value)||0) : (parseInt($('inpQty').value)||0);
+    const price = isImport ? 0 : (parseInt($('inpPrice').value)||0);
+    // Collect incoterms
+    const incoterms = [];
+    if (isImport) {
+        $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
+            const term = r.querySelector('.it-term').value;
+            const p = parseInt(r.querySelector('.it-price').value) || 0;
+            if (term && p > 0) incoterms.push({ term, price: p });
+        });
+    }
     const payload = {
         site: $('inpSite').value.trim(), equipment: $('inpEquipment').value.trim(),
         category: $('inpCategory').value.trim(), itemName: $('inpItemName').value.trim(),
         spec: $('inpSpec').value.trim(), unit: $('inpUnit').value,
-        qty: parseInt($('inpQty').value)||0, price: parseInt($('inpPrice').value)||0,
+        qty, price,
         manufacturer: $('inpManufacturer').value.trim(), remarks: $('inpRemarks').value.trim(),
-        customFields, files: currentFiles
+        customFields, files: currentFiles,
+        sourceType,
+        quoteDate: $('inpQuoteDate').value || '',
+        perUnitBasis: isImport ? (parseInt($('inpPerUnit').value)||0) : 0,
+        incoterms
     };
     try {
         const url = id ? `${API}/materials/${id}` : `${API}/materials`;
