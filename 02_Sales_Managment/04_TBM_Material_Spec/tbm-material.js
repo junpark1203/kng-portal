@@ -540,7 +540,7 @@ function addFieldToSection(card, fieldData) {
     row.className = 'sec-field-row';
     row.innerHTML = `
         <span class="f-order">${order}</span>
-        <textarea class="sf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="1">${fieldData?.label || ''}</textarea>
+        <textarea class="sf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="2">${fieldData?.label || ''}</textarea>
         <select class="sf-type">
             <option value="text"${(!fieldData || fieldData.type === 'text') ? ' selected' : ''}>텍스트</option>
             <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
