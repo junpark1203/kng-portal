@@ -223,19 +223,25 @@ function renderCards() {
         const filesArr = Array.isArray(d.files) ? d.files : [];
         const thumbFile = filesArr.find(f => { const ext = (f.originalName||f.filename||'').split('.').pop().toLowerCase(); return imgExts.includes(ext); });
         const thumbHtml = thumbFile ? `<img src="${thumbFile.url||API+'/uploads/'+thumbFile.filename}" alt="${d.itemName||''}">` : `<div class="no-image"><i class='bx bx-image'></i><br>이미지 없음</div>`;
-        // Custom fields rendering
+        // Custom fields rendering — group by section
         let fieldsHtml = '';
         const preset = presetsData.find(p => p.category === d.category);
         if (preset && preset.fields && d.customFields) {
+            let currentGroup = '';
             preset.fields.forEach(f => {
                 if (f.type === 'section') {
-                    fieldsHtml += `<div class="tbm-cf-section-label">【${(f.label||'').replace(/\n/g,' / ')}】</div>`;
+                    if (currentGroup) currentGroup += '</div></div>';
+                    currentGroup += `<div class="tbm-cf-group"><div class="tbm-cf-section-label">【${(f.label||'').replace(/\n/g,' / ')}】</div><div class="tbm-cf-values">`;
                 } else {
                     const v = d.customFields[f.key];
-                    if (v) fieldsHtml += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}</span> `;
+                    if (v) {
+                        if (!currentGroup) currentGroup = '<div class="tbm-cf-group"><div class="tbm-cf-values">';
+                        currentGroup += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}</span> `;
+                    }
                 }
             });
-            if (fieldsHtml) fieldsHtml = `<div class="tbm-card-fields"><div class="tbm-cf-values">${fieldsHtml}</div></div>`;
+            if (currentGroup) currentGroup += '</div></div>';
+            if (currentGroup) fieldsHtml = `<div class="tbm-card-fields">${currentGroup}</div>`;
         }
         const dateStr = d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}) : '';
         const fileCount = filesArr.length;

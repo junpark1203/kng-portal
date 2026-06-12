@@ -398,14 +398,18 @@
             display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center;
         }
         .tbm-card-fields { margin-bottom: 8px; }
+        .tbm-cf-group { margin-bottom: 4px; }
         .tbm-cf-section-label {
             font-size: 11px; font-weight: 700; color: var(--primary);
-            margin-top: 6px; margin-bottom: 2px;
+            margin-bottom: 2px; padding: 2px 6px;
+            background: rgba(79,110,247,0.06); border-radius: 3px;
+            display: inline-block;
         }
         .tbm-cf-values {
-            font-size: 11.5px; color: var(--gray-700); line-height: 1.6;
-            display: flex; flex-wrap: wrap; gap: 2px 14px;
+            font-size: 11.5px; color: var(--gray-700); line-height: 1.7;
+            padding-left: 6px;
         }
+        .tbm-cf-values span { margin-right: 12px; white-space: nowrap; }
         .tbm-cf-values b { color: var(--gray-500); font-weight: 600; }
         .tbm-card-meta {
             font-size: 11px; color: var(--gray-500); display: flex;
