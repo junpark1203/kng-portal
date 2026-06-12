@@ -32,14 +32,15 @@ function initEvents() {
     $('deleteBtn').addEventListener('click', deleteSelected);
     $('exportBtn').addEventListener('click', exportExcel);
     $('compareBtn').addEventListener('click', openCompare);
-    $('presetBtn').addEventListener('click', openPresetModal);
+    $('presetBtn').addEventListener('click', openPresetDrawer);
     $('closeModalBtn').addEventListener('click', closeModal);
     $('cancelBtn').addEventListener('click', closeModal);
-    $('closePresetBtn').addEventListener('click', () => $('presetModal').classList.remove('active'));
+    $('closeDrawerBtn').addEventListener('click', closePresetDrawer);
+    $('closeDrawerBtn2').addEventListener('click', closePresetDrawer);
     $('closeCompareBtn').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('closeCompareBtn2').addEventListener('click', () => $('compareModal').classList.remove('active'));
     $('compareExportBtn').addEventListener('click', exportCompare);
-    window.addEventListener('click', e => { if (e.target===$('itemModal')) closeModal(); if (e.target===$('presetModal')) $('presetModal').classList.remove('active'); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
+    window.addEventListener('click', e => { if (e.target===$('itemModal')) closeModal(); if (e.target===$('drawerOverlay')) closePresetDrawer(); if (e.target===$('compareModal')) $('compareModal').classList.remove('active'); });
     $('itemForm').addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
     ['inpQty','inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory').addEventListener('change', onCategoryChange);
@@ -52,11 +53,10 @@ function initEvents() {
     area.addEventListener('dragleave', () => area.classList.remove('dragover'));
     area.addEventListener('drop', e => { e.preventDefault(); area.classList.remove('dragover'); uploadFiles(e.dataTransfer.files); });
     inp.addEventListener('change', () => { if (inp.files.length) uploadFiles(inp.files); inp.value = ''; });
-    // Preset modal
-    $('addPresetCatBtn').addEventListener('click', addPresetCategory);
-    $('addPresetFieldBtn').addEventListener('click', addPresetField);
-    $('addPresetSectionBtn')?.addEventListener('click', () => addPresetFieldRow({ type: 'section', label: '' }));
-    $('savePresetBtn').addEventListener('click', saveCurrentPreset);
+    // Preset drawer
+    $('addDrawerCatBtn').addEventListener('click', addPresetCategory);
+    $('addDrawerSectionBtn').addEventListener('click', addSectionCard);
+    $('saveDrawerBtn').addEventListener('click', saveCurrentPreset);
     // Sidebar field search
     $('sidebarFieldSearchBtn').addEventListener('click', doFieldSearch);
     $('sidebarFieldResetBtn').addEventListener('click', () => { activeFieldFilters={}; $('sidebarFieldInput').value=''; applyFiltersAndSort(); });
@@ -408,83 +408,166 @@ window.removeFile = function(idx) {
     }
 };
 
-// --- Preset Modal ---
+// --- Preset Drawer ---
 let selectedPresetId = null;
 
-function openPresetModal() {
-    $('presetModal').classList.add('active');
-    renderPresetList(); selectedPresetId = null;
-    $('presetNoSelection').style.display = ''; $('presetEditorContent').style.display = 'none';
+function openPresetDrawer() {
+    $('drawerOverlay').classList.add('active');
+    $('presetDrawer').classList.add('open');
+    renderDrawerCategories();
+    selectedPresetId = null;
+    $('drawerNoSelection').style.display = '';
+    $('drawerEditorContent').style.display = 'none';
 }
 
-function renderPresetList() {
-    const el = $('presetList'); el.innerHTML = '';
+function closePresetDrawer() {
+    $('drawerOverlay').classList.remove('active');
+    $('presetDrawer').classList.remove('open');
+}
+
+function renderDrawerCategories() {
+    const el = $('drawerCatList'); el.innerHTML = '';
     presetsData.forEach(p => {
-        const div = document.createElement('div'); div.className = 'preset-item' + (p.id === selectedPresetId ? ' active' : '');
-        div.innerHTML = `<span>${p.category}</span><button class="preset-delete-btn" title="삭제"><i class='bx bx-trash'></i></button>`;
-        div.querySelector('span').addEventListener('click', () => selectPreset(p.id));
-        div.querySelector('.preset-delete-btn').addEventListener('click', async (e) => {
+        const chip = document.createElement('button');
+        chip.className = 'drawer-cat-chip' + (p.id === selectedPresetId ? ' active' : '');
+        chip.innerHTML = `<span>${p.category}</span><i class='bx bx-x cat-del'></i>`;
+        chip.querySelector('span').addEventListener('click', () => selectDrawerPreset(p.id));
+        chip.querySelector('.cat-del').addEventListener('click', async (e) => {
             e.stopPropagation();
             if (!confirm(`"${p.category}" 분류를 삭제하시겠습니까?`)) return;
-            try { await authFetch(`${API}/presets/${p.id}`, {method:'DELETE'}); await loadPresets(); renderPresetList();
-                if (selectedPresetId === p.id) { selectedPresetId = null; $('presetNoSelection').style.display = ''; $('presetEditorContent').style.display = 'none'; }
+            try {
+                await authFetch(`${API}/presets/${p.id}`, {method:'DELETE'});
+                await loadPresets();
+                if (selectedPresetId === p.id) { selectedPresetId = null; $('drawerNoSelection').style.display = ''; $('drawerEditorContent').style.display = 'none'; }
+                renderDrawerCategories();
                 showToast('삭제되었습니다.', 'success');
             } catch(e2) { showToast('삭제 실패', 'error'); }
         });
-        el.appendChild(div);
+        el.appendChild(chip);
     });
 }
 
-function selectPreset(id) {
+/* Group flat fields array into sections for visual editing */
+function groupFieldsIntoSections(fields) {
+    const sections = [];
+    let cur = null;
+    (fields || []).forEach(f => {
+        if (f.type === 'section') {
+            cur = { label: f.label || '', fields: [] };
+            sections.push(cur);
+        } else {
+            if (!cur) { cur = { label: '기본 필드', fields: [] }; sections.push(cur); }
+            cur.fields.push({ key: f.key, label: f.label || '', type: f.type || 'text' });
+        }
+    });
+    return sections;
+}
+
+/* Flatten section cards back to flat array for storage */
+function flattenSections() {
+    const fields = [];
+    $('drawerSectionList').querySelectorAll('.section-card').forEach(card => {
+        const secLabel = card.querySelector('.sec-label').value.trim();
+        fields.push({ key: '_section_' + fields.length, label: secLabel || '섹션', type: 'section' });
+        card.querySelectorAll('.sec-field-row').forEach(row => {
+            const label = row.querySelector('.sf-label').value.trim();
+            const type = row.querySelector('.sf-type').value;
+            if (label) {
+                const key = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + fields.length;
+                fields.push({ key, label, type });
+            }
+        });
+    });
+    return fields;
+}
+
+function selectDrawerPreset(id) {
     selectedPresetId = id;
     const p = presetsData.find(x => x.id === id);
     if (!p) return;
-    $('presetNoSelection').style.display = 'none'; $('presetEditorContent').style.display = '';
-    $('presetEditorTitle').textContent = `"${p.category}" 필드 설정`;
-    renderPresetList();
-    const list = $('presetFieldList'); list.innerHTML = '';
-    (p.fields || []).forEach((f, i) => addPresetFieldRow(f, i));
+    $('drawerNoSelection').style.display = 'none';
+    $('drawerEditorContent').style.display = '';
+    $('drawerEditorTitle').textContent = `"${p.category}" 필드 설정`;
+    renderDrawerCategories();
+    // Render section cards
+    const sections = groupFieldsIntoSections(p.fields);
+    const list = $('drawerSectionList'); list.innerHTML = '';
+    if (sections.length === 0) {
+        // Auto-create one empty section
+        addSectionCard();
+    } else {
+        sections.forEach(sec => renderSectionCard(sec));
+    }
 }
 
-function addPresetFieldRow(fieldData, idx) {
-    const list = $('presetFieldList');
-    const row = document.createElement('div'); row.className = 'preset-field-row';
-    const isSection = fieldData?.type === 'section';
-    if (isSection) row.classList.add('is-section');
-    const order = idx !== undefined ? idx + 1 : list.children.length + 1;
-    const orderLabel = isSection ? '§' : order;
-    const placeholder = isSection ? '섹션명 (예: 물리적 특성&#10;Physical Properties)' : '필드명 (예: 치수&#10;Dimension)';
-    row.innerHTML = `<span class="field-order">${orderLabel}</span>
-        <textarea class="pf-label" placeholder="${placeholder}" rows="2">${fieldData?.label||''}</textarea>
-        <select class="pf-type" ${isSection ? 'style="display:none"' : ''}><option value="text"${fieldData?.type==='text'||isSection?' selected':''}>텍스트</option><option value="number"${fieldData?.type==='number'?' selected':''}>숫자</option><option value="section"${isSection?' selected':''}>섹션</option></select>
-        <input type="hidden" class="pf-is-section" value="${isSection ? '1' : '0'}">
-        <button type="button" class="field-remove-btn"><i class='bx bx-x'></i></button>`;
-    row.querySelector('.field-remove-btn').addEventListener('click', () => { row.remove(); reorderFields(); });
-    list.appendChild(row);
+function renderSectionCard(sectionData) {
+    const list = $('drawerSectionList');
+    const card = document.createElement('div');
+    card.className = 'section-card';
+    card.innerHTML = `
+        <div class="section-card-header">
+            <i class='bx bx-category sec-icon'></i>
+            <textarea class="sec-label" placeholder="섹션명 입력 (예: 물리적 특성)" rows="1">${sectionData?.label || ''}</textarea>
+            <button type="button" class="sec-del" title="섹션 삭제"><i class='bx bx-trash'></i></button>
+        </div>
+        <div class="section-card-body">
+            <div class="sec-fields"></div>
+            <button type="button" class="sec-add-field"><i class='bx bx-plus'></i> 필드 추가</button>
+        </div>`;
+    // Delete section
+    card.querySelector('.sec-del').addEventListener('click', () => {
+        if (card.querySelectorAll('.sec-field-row').length > 0 && !confirm('이 섹션과 포함된 필드를 모두 삭제하시겠습니까?')) return;
+        card.remove();
+    });
+    // Add field button inside section
+    card.querySelector('.sec-add-field').addEventListener('click', () => addFieldToSection(card));
+    // Populate existing fields
+    if (sectionData?.fields) {
+        sectionData.fields.forEach(f => addFieldToSection(card, f));
+    }
+    list.appendChild(card);
+    return card;
 }
 
-function addPresetField() { addPresetFieldRow(null); }
+function addSectionCard() {
+    renderSectionCard({ label: '', fields: [] });
+}
 
-function reorderFields() { $('presetFieldList').querySelectorAll('.preset-field-row').forEach((r,i) => r.querySelector('.field-order').textContent = i+1); }
+function addFieldToSection(card, fieldData) {
+    const container = card.querySelector('.sec-fields');
+    const order = container.children.length + 1;
+    const row = document.createElement('div');
+    row.className = 'sec-field-row';
+    row.innerHTML = `
+        <span class="f-order">${order}</span>
+        <textarea class="sf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="1">${fieldData?.label || ''}</textarea>
+        <select class="sf-type">
+            <option value="text"${(!fieldData || fieldData.type === 'text') ? ' selected' : ''}>텍스트</option>
+            <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
+        </select>
+        <button type="button" class="f-del" title="삭제"><i class='bx bx-x'></i></button>`;
+    row.querySelector('.f-del').addEventListener('click', () => {
+        row.remove();
+        reorderSectionFields(container);
+    });
+    container.appendChild(row);
+}
+
+function reorderSectionFields(container) {
+    container.querySelectorAll('.sec-field-row').forEach((r, i) => {
+        r.querySelector('.f-order').textContent = i + 1;
+    });
+}
 
 async function saveCurrentPreset() {
     if (!selectedPresetId) return;
     const p = presetsData.find(x => x.id === selectedPresetId);
     if (!p) return;
-    const fields = [];
-    $('presetFieldList').querySelectorAll('.preset-field-row').forEach(row => {
-        const label = row.querySelector('.pf-label').value.trim();
-        const isSection = row.querySelector('.pf-is-section')?.value === '1';
-        const type = isSection ? 'section' : row.querySelector('.pf-type').value;
-        if (label) {
-            if (isSection) { fields.push({ key: '_section_' + fields.length, label, type: 'section' }); }
-            else { const key = label.replace(/[^a-zA-Z0-9가-힣]/g,'_').toLowerCase() || 'field_'+fields.length; fields.push({key, label, type}); }
-        }
-    });
+    const fields = flattenSections();
     const payload = { id: p.id, category: p.category, fields };
     try {
         const res = await authFetch(`${API}/presets`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); selectPreset(selectedPresetId); }
+        if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); selectDrawerPreset(selectedPresetId); }
         else { showToast('저장 실패', 'error'); }
     } catch(e) { showToast('서버 오류', 'error'); }
 }
@@ -495,7 +578,7 @@ function addPresetCategory() {
     const id = 'TBMFP-' + Date.now() + '-' + Math.random().toString(36).substring(2,6);
     const payload = { id, category: name.trim(), fields: [] };
     authFetch(`${API}/presets`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
-        .then(async res => { if (res.ok) { showToast('분류 추가 완료', 'success'); await loadPresets(); renderPresetList(); selectPreset(id); } else showToast('추가 실패', 'error'); })
+        .then(async res => { if (res.ok) { showToast('분류 추가 완료', 'success'); await loadPresets(); renderDrawerCategories(); selectDrawerPreset(id); } else showToast('추가 실패', 'error'); })
         .catch(() => showToast('서버 오류', 'error'));
 }
 
