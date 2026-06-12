@@ -1,12 +1,17 @@
 /* TBM 자재 규격 관리 (tbm-material.js) */
 
-// --- Auth Fetch ---
-async function authFetch(url, opts = {}) {
+// --- Auth Fetch (with retry for iframe auth race condition) ---
+async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
     try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-    return fetch(url, opts);
+    const res = await fetch(url, opts);
+    if (res.status === 401 && _retries > 0) {
+        await new Promise(r => setTimeout(r, 800));
+        return authFetch(url, opts, _retries - 1);
+    }
+    return res;
 }
 
 const API = 'https://kng.junparks.com/api/tbm';
