@@ -555,7 +555,7 @@ function groupFieldsIntoSections(fields) {
             sections.push(cur);
         } else {
             if (!cur) { cur = { label: '기본 필드', fields: [] }; sections.push(cur); }
-            cur.fields.push({ key: f.key, label: f.label || '', type: f.type || 'text' });
+            cur.fields.push({ key: f.key, label: f.label || '', type: f.type || 'text', note: f.note || '' });
         }
     });
     return sections;
@@ -570,9 +570,10 @@ function flattenSections() {
         card.querySelectorAll('.sec-field-row').forEach(row => {
             const label = row.querySelector('.sf-label').value.trim();
             const type = row.querySelector('.sf-type').value;
+            const note = row.querySelector('.sf-note')?.value.trim() || '';
             if (label) {
                 const key = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + fields.length;
-                fields.push({ key, label, type });
+                fields.push({ key, label, type, note });
             }
         });
     });
@@ -643,6 +644,7 @@ function addFieldToSection(card, fieldData) {
             <option value="text"${(!fieldData || fieldData.type === 'text') ? ' selected' : ''}>텍스트</option>
             <option value="number"${fieldData?.type === 'number' ? ' selected' : ''}>숫자</option>
         </select>
+        <input type="text" class="sf-note" placeholder="비고" value="${fieldData?.note || ''}">
         <button type="button" class="f-del" title="삭제"><i class='bx bx-x'></i></button>`;
     row.querySelector('.f-del').addEventListener('click', () => {
         row.remove();

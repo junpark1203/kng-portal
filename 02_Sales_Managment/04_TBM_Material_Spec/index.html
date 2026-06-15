@@ -137,6 +137,16 @@
             border: 1px solid var(--border); border-radius: 5px;
             font-size: 11px; outline: none; background: var(--surface);
         }
+        .sec-field-row .sf-note {
+            width: 100px; height: 32px; padding: 0 8px;
+            border: 1px solid var(--border); border-radius: 5px;
+            font-size: 11px; outline: none; color: var(--gray-600);
+            background: var(--surface);
+        }
+        .sec-field-row .sf-note::placeholder { color: var(--gray-300); }
+        .sec-field-row .sf-note:focus {
+            border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted);
+        }
         .sec-field-row .f-del {
             width: 26px; height: 26px; border: 1px solid var(--gray-200);
             border-radius: 5px; background: var(--surface);
