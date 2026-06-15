@@ -226,6 +226,7 @@ function renderCards() {
         // Custom fields rendering — group by section
         let fieldsHtml = '';
         const preset = presetsData.find(p => p.category === d.category);
+        const cfNotes = d.customFieldNotes || {};
         if (preset && preset.fields && d.customFields) {
             let currentGroup = '';
             preset.fields.forEach(f => {
@@ -236,7 +237,8 @@ function renderCards() {
                     const v = d.customFields[f.key];
                     if (v) {
                         if (!currentGroup) currentGroup = '<div class="tbm-cf-group"><div class="tbm-cf-values">';
-                        currentGroup += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}</span> `;
+                        const noteStr = cfNotes[f.key] ? `<em class="cf-note-badge" title="${cfNotes[f.key]}">${cfNotes[f.key]}</em>` : '';
+                        currentGroup += `<span><b>${(f.label||'').replace(/\n/g,' ')}:</b> ${v}${noteStr}</span> `;
                     }
                 }
             });
@@ -297,11 +299,25 @@ function buildImportPriceHtml(d) {
     const its = Array.isArray(d.incoterms) ? d.incoterms : [];
     if (!its.length) return '<span class="tbm-card-total">가격 미입력 <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em></span>';
     const basis = d.perUnitBasis ? ` (${d.perUnitBasis}개 기준)` : '';
-    return its.map(it => `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ₩${fmtN(it.price)}${basis}</span>`).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
+    return its.map(it => {
+        const sym = currencySymbol(it.currency || 'KRW');
+        const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
+        return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${basis}</span>`;
+    }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
 }
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
 
 const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+const CURRENCY_LIST = [
+    { code: 'USD', symbol: '$', label: 'USD ($)' },
+    { code: 'CNY', symbol: '¥', label: 'CNY (¥)' },
+    { code: 'EUR', symbol: '€', label: 'EUR (€)' },
+    { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
+    { code: 'KRW', symbol: '₩', label: 'KRW (₩)' },
+    { code: 'GBP', symbol: '£', label: 'GBP (£)' },
+];
+function currencySymbol(code) { return (CURRENCY_LIST.find(c => c.code === code) || {}).symbol || code + ' '; }
+function fmtDec(n) { if (n == null || n === 0) return '0'; return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }); }
 
 function toggleSourceType() {
     const isImport = $('srcImport').checked;
@@ -309,13 +325,14 @@ function toggleSourceType() {
     $('importFields').style.display = isImport ? '' : 'none';
 }
 
-function addIncotermRow(term, price) {
+function addIncotermRow(term, price, currency) {
     const container = $('incotermsRows');
     const row = document.createElement('div');
     row.className = 'incoterm-row';
     row.innerHTML = `
         <select class="it-term">${INCOTERMS_LIST.map(t => `<option value="${t}"${t===term?' selected':''}>${t}</option>`).join('')}</select>
-        <input type="number" class="it-price" placeholder="가격" min="0" value="${price||''}">
+        <select class="it-currency">${CURRENCY_LIST.map(c => `<option value="${c.code}"${c.code===(currency||'USD')?' selected':''}>${c.label}</option>`).join('')}</select>
+        <input type="number" class="it-price" placeholder="가격" min="0" step="any" value="${price||''}">
         <button type="button" class="it-del" title="삭제"><i class='bx bx-x'></i></button>`;
     row.querySelector('.it-del').addEventListener('click', () => row.remove());
     container.appendChild(row);
@@ -329,11 +346,13 @@ function getFormSnapshot() {
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const cfVals = [];
     $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => cfVals.push(inp.value || ''));
+    const cfNoteVals = [];
+    $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => cfNoteVals.push(inp.value || ''));
     const itVals = [];
     $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
-        itVals.push(r.querySelector('.it-term').value + ':' + r.querySelector('.it-price').value);
+        itVals.push(r.querySelector('.it-term').value + ':' + r.querySelector('.it-currency').value + ':' + r.querySelector('.it-price').value);
     });
-    return JSON.stringify([...vals, src, ...cfVals, ...itVals, currentFiles.length]);
+    return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, ...itVals, currentFiles.length]);
 }
 
 window.openModal = function(id = null) {
@@ -359,10 +378,10 @@ window.openModal = function(id = null) {
             $('srcImport').checked = true; toggleSourceType();
             $('inpQtyImport').value = d.qty || 0;
             $('inpPerUnit').value = d.perUnitBasis || '';
-            (d.incoterms || []).forEach(it => addIncotermRow(it.term, it.price));
+            (d.incoterms || []).forEach(it => addIncotermRow(it.term, it.price, it.currency));
         }
         updateCalc(); renderFileList();
-        if (d.category) { onCategoryChange(null, d.customFields || {}); }
+        if (d.category) { onCategoryChange(null, d.customFields || {}, d.customFieldNotes || {}); }
     } else {
         $('modalTitle').textContent = '신규 자재 등록'; $('editId').value = '';
     }
@@ -383,17 +402,20 @@ async function saveItem() {
     const id = $('editId').value;
     const customFields = {};
     $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => { customFields[inp.dataset.cfKey] = inp.value; });
+    const customFieldNotes = {};
+    $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
     const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const isImport = sourceType === 'import';
-    const qty = isImport ? (parseInt($('inpQtyImport').value)||0) : (parseInt($('inpQty').value)||0);
+    const qty = isImport ? (parseFloat($('inpQtyImport').value)||0) : (parseInt($('inpQty').value)||0);
     const price = isImport ? 0 : (parseInt($('inpPrice').value)||0);
     // Collect incoterms
     const incoterms = [];
     if (isImport) {
         $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
             const term = r.querySelector('.it-term').value;
-            const p = parseInt(r.querySelector('.it-price').value) || 0;
-            if (term && p > 0) incoterms.push({ term, price: p });
+            const currency = r.querySelector('.it-currency').value;
+            const p = parseFloat(r.querySelector('.it-price').value) || 0;
+            if (term && p > 0) incoterms.push({ term, price: p, currency });
         });
     }
     const payload = {
@@ -402,10 +424,10 @@ async function saveItem() {
         spec: $('inpSpec').value.trim(), unit: $('inpUnit').value,
         qty, price,
         manufacturer: $('inpManufacturer').value.trim(), remarks: $('inpRemarks').value.trim(),
-        customFields, files: currentFiles,
+        customFields, customFieldNotes, files: currentFiles,
         sourceType,
         quoteDate: $('inpQuoteDate').value || '',
-        perUnitBasis: isImport ? (parseInt($('inpPerUnit').value)||0) : 0,
+        perUnitBasis: isImport ? (parseFloat($('inpPerUnit').value)||0) : 0,
         incoterms
     };
     try {
@@ -429,7 +451,7 @@ async function deleteSelected() {
 }
 
 // --- Custom Fields (Dynamic by Category) ---
-function onCategoryChange(e, existingValues) {
+function onCategoryChange(e, existingValues, existingNotes) {
     const cat = $('inpCategory').value;
     const section = $('customFieldsSection'), grid = $('customFieldsGrid');
     const preset = presetsData.find(p => p.category === cat);
@@ -438,23 +460,30 @@ function onCategoryChange(e, existingValues) {
     $('customFieldsSectionTitle').textContent = `${cat} — 커스텀 필드`;
     grid.innerHTML = '';
     const vals = existingValues || {};
+    const notes = existingNotes || {};
     preset.fields.forEach(f => {
         if (f.type === 'section') {
-            // 섹션 구분선 렌더링
             const divider = document.createElement('div');
             divider.className = 'cf-section-divider';
             divider.innerHTML = `<i class='bx bx-chevrons-right'></i> ${(f.label || '').replace(/\n/g, '<br>')}`;
             grid.appendChild(divider);
             return;
         }
-        const div = document.createElement('div'); div.className = 'fg';
+        const div = document.createElement('div'); div.className = 'fg cf-with-note';
         const lbl = document.createElement('label');
         lbl.innerHTML = (f.label || '').replace(/\n/g, '<br>');
         lbl.setAttribute('for', 'cf-'+f.key);
+        // Preset note hint (from preset manager)
+        const presetNote = f.note ? `<span class="cf-preset-hint" title="${f.note}">${f.note}</span>` : '';
+        if (presetNote) { const hint = document.createElement('span'); hint.className = 'cf-preset-hint'; hint.title = f.note; hint.textContent = f.note; lbl.appendChild(hint); }
         const inp = document.createElement('input'); inp.type = f.type || 'text'; inp.id = 'cf-'+f.key;
         inp.dataset.cfKey = f.key; inp.placeholder = (f.label || '').replace(/\n/g, ' '); inp.value = vals[f.key] || '';
         if (f.required) inp.required = true;
-        div.appendChild(lbl); div.appendChild(inp); grid.appendChild(div);
+        // Per-material note input
+        const noteInp = document.createElement('input'); noteInp.type = 'text';
+        noteInp.className = 'cf-note-input'; noteInp.placeholder = '비고 (Testing method 등)';
+        noteInp.dataset.cfNoteKey = f.key; noteInp.value = notes[f.key] || '';
+        div.appendChild(lbl); div.appendChild(inp); div.appendChild(noteInp); grid.appendChild(div);
     });
 }
 
@@ -747,10 +776,15 @@ function renderCompareTable() {
                 html += `<tr class="compare-section-row"><td colspan="${n+1}">▸ ${(f.label||'').replace(/\n/g,' / ')}</td></tr>`;
             } else {
                 const lbl = (f.label||'').replace(/\n/g,' / ');
-                const vals = compareItems.map(d => (d.customFields||{})[f.key]||'-');
-                const allSame = vals.every(v => v === vals[0]);
+                const vals = compareItems.map(d => {
+                    const v = (d.customFields||{})[f.key]||'-';
+                    const note = (d.customFieldNotes||{})[f.key];
+                    return note ? `${v} <em class="cf-note-badge">${note}</em>` : v;
+                });
+                const rawVals = compareItems.map(d => (d.customFields||{})[f.key]||'-');
+                const allSame = rawVals.every(v => v === rawVals[0]);
                 html += `<tr><td class="compare-label">${lbl}</td>`;
-                vals.forEach(v => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
+                vals.forEach((v, i) => { html += `<td class="${allSame?'':'compare-diff'}">${v}</td>`; });
                 html += '</tr>';
             }
         });

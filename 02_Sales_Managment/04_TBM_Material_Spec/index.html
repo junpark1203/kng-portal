@@ -205,7 +205,9 @@
             padding: 5px 0; border-bottom: 1px solid var(--gray-50);
         }
         .incoterm-row:last-of-type { border-bottom: none; }
-        .incoterm-row select { width: 90px; height: 30px; padding: 0 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+        .incoterm-row select { height: 30px; padding: 0 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; }
+        .incoterm-row select.it-term { width: 80px; }
+        .incoterm-row select.it-currency { width: 90px; font-size: 10px; }
         .incoterm-row input { flex: 1; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; }
         .incoterm-row .it-del {
             width: 24px; height: 24px; border: none; background: none;
@@ -272,6 +274,35 @@
             white-space: pre-line;
         }
         .cf-section-divider i { font-size: 13px; }
+
+        /* ── Per-field Note Input ── */
+        .cf-with-note {
+            display: flex; flex-direction: column;
+        }
+        .cf-note-input {
+            margin-top: 4px; height: 26px; padding: 0 8px;
+            border: 1px dashed var(--gray-200); border-radius: 4px;
+            font-size: 10px; color: var(--gray-500); outline: none;
+            background: var(--gray-50); transition: all 0.15s;
+        }
+        .cf-note-input::placeholder { color: var(--gray-300); font-style: italic; }
+        .cf-note-input:focus {
+            border-color: var(--primary); border-style: solid;
+            background: #fff; box-shadow: 0 0 0 2px var(--primary-muted);
+        }
+        .cf-preset-hint {
+            display: block; font-size: 9px; font-weight: 400;
+            color: var(--gray-400); font-style: italic;
+            margin-top: 1px;
+        }
+        .cf-note-badge {
+            display: inline;
+            font-size: 9px; font-style: italic; font-weight: 400;
+            color: var(--gray-400); margin-left: 3px;
+            cursor: help;
+        }
+        .cf-note-badge::before { content: '('; }
+        .cf-note-badge::after { content: ')'; }
 
         /* ── Attachment Badge ── */
         .attach-badge {
@@ -690,11 +721,11 @@
                                 <div style="display:flex;gap:8px;margin-bottom:8px;">
                                     <div class="fg" style="flex:1;margin:0;">
                                         <label for="inpQtyImport">수량</label>
-                                        <input type="number" id="inpQtyImport" placeholder="0" min="0">
+                                        <input type="number" id="inpQtyImport" placeholder="0" min="0" step="any">
                                     </div>
                                     <div class="fg" style="flex:1;margin:0;">
                                         <label for="inpPerUnit">기준수량 (몇개 기준)</label>
-                                        <input type="number" id="inpPerUnit" placeholder="예: 100" min="1">
+                                        <input type="number" id="inpPerUnit" placeholder="예: 100" min="1" step="any">
                                     </div>
                                 </div>
                                 <div id="incotermsRows"></div>
