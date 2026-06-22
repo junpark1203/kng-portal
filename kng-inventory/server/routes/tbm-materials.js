@@ -107,6 +107,7 @@ function initTbmTables(database) {
             database.run('ALTER TABLE tbm_materials ADD COLUMN quoteDate TEXT DEFAULT ""', () => {});
             database.run('ALTER TABLE tbm_materials ADD COLUMN perUnitBasis INTEGER DEFAULT 0', () => {});
             database.run('ALTER TABLE tbm_materials ADD COLUMN incoterms TEXT DEFAULT "[]"', () => {});
+            database.run('ALTER TABLE tbm_materials ADD COLUMN customFieldNotes TEXT DEFAULT "{}"', () => {});
 
             // 필드 프리셋 테이블 (분류별 커스텀 필드 정의)
             database.run(`
@@ -139,6 +140,7 @@ router.get('/materials', async (req, res) => {
         // JSON 파싱
         const result = rows.map(r => {
             try { r.customFields = JSON.parse(r.customFields || '{}'); } catch(e) { r.customFields = {}; }
+            try { r.customFieldNotes = JSON.parse(r.customFieldNotes || '{}'); } catch(e) { r.customFieldNotes = {}; }
             try { r.files = JSON.parse(r.files || '[]'); } catch(e) { r.files = []; }
             try { r.incoterms = JSON.parse(r.incoterms || '[]'); } catch(e) { r.incoterms = []; }
             return r;
@@ -155,6 +157,7 @@ router.get('/materials/:id', async (req, res) => {
         const row = await dbGet('SELECT * FROM tbm_materials WHERE id = ?', [req.params.id]);
         if (!row) return res.status(404).json({ error: '자재를 찾을 수 없습니다.' });
         try { row.customFields = JSON.parse(row.customFields || '{}'); } catch(e) { row.customFields = {}; }
+        try { row.customFieldNotes = JSON.parse(row.customFieldNotes || '{}'); } catch(e) { row.customFieldNotes = {}; }
         try { row.files = JSON.parse(row.files || '[]'); } catch(e) { row.files = []; }
         try { row.incoterms = JSON.parse(row.incoterms || '[]'); } catch(e) { row.incoterms = []; }
         res.json(row);
@@ -172,13 +175,14 @@ router.post('/materials', async (req, res) => {
         const qty = p.qty || 0;
         const price = p.price || 0;
         const total = qty * price;
-        const sql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, files, sourceType, quoteDate, perUnitBasis, incoterms, createdAt, updatedAt)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, customFieldNotes, files, sourceType, quoteDate, perUnitBasis, incoterms, createdAt, updatedAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id, p.site||'', p.equipment||'', p.category||'', p.itemName||'',
             p.spec||'', p.unit||'EA', qty, price, total,
             p.manufacturer||'', p.remarks||'',
             JSON.stringify(p.customFields || {}),
+            JSON.stringify(p.customFieldNotes || {}),
             JSON.stringify(p.files || []),
             p.sourceType || 'domestic',
             p.quoteDate || '',
@@ -202,12 +206,13 @@ router.put('/materials/:id', async (req, res) => {
         const qty = p.qty || 0;
         const price = p.price || 0;
         const total = qty * price;
-        const sql = `UPDATE tbm_materials SET site=?, equipment=?, category=?, itemName=?, spec=?, unit=?, qty=?, price=?, total=?, manufacturer=?, remarks=?, customFields=?, files=?, sourceType=?, quoteDate=?, perUnitBasis=?, incoterms=?, updatedAt=? WHERE id=?`;
+        const sql = `UPDATE tbm_materials SET site=?, equipment=?, category=?, itemName=?, spec=?, unit=?, qty=?, price=?, total=?, manufacturer=?, remarks=?, customFields=?, customFieldNotes=?, files=?, sourceType=?, quoteDate=?, perUnitBasis=?, incoterms=?, updatedAt=? WHERE id=?`;
         const params = [
             p.site||'', p.equipment||'', p.category||'', p.itemName||'',
             p.spec||'', p.unit||'EA', qty, price, total,
             p.manufacturer||'', p.remarks||'',
             JSON.stringify(p.customFields || {}),
+            JSON.stringify(p.customFieldNotes || {}),
             JSON.stringify(p.files || []),
             p.sourceType || 'domestic',
             p.quoteDate || '',

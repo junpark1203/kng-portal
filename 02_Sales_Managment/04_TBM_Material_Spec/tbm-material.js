@@ -634,6 +634,7 @@ function renderSectionCard(sectionData) {
     card.className = 'section-card';
     card.innerHTML = `
         <div class="section-card-header">
+            <button type="button" class="sec-drag" draggable="false" title="드래그하여 순서 변경"><i class='bx bx-grid-vertical'></i></button>
             <i class='bx bx-category sec-icon'></i>
             <textarea class="sec-label" placeholder="섹션명 입력 (예: 물리적 특성)" rows="1">${sectionData?.label || ''}</textarea>
             <button type="button" class="sec-del" title="섹션 삭제"><i class='bx bx-trash'></i></button>
@@ -654,6 +655,8 @@ function renderSectionCard(sectionData) {
         sectionData.fields.forEach(f => addFieldToSection(card, f));
     }
     list.appendChild(card);
+    // Section-level drag-and-drop
+    initSectionDrag(card);
     return card;
 }
 
@@ -667,6 +670,7 @@ function addFieldToSection(card, fieldData) {
     const row = document.createElement('div');
     row.className = 'sec-field-row';
     row.innerHTML = `
+        <button type="button" class="f-drag" draggable="false" title="드래그하여 순서 변경"><i class='bx bx-grid-vertical'></i></button>
         <span class="f-order">${order}</span>
         <textarea class="sf-label" placeholder="필드명 (예: 치수&#10;Dimension)" rows="2">${fieldData?.label || ''}</textarea>
         <select class="sf-type">
@@ -680,6 +684,8 @@ function addFieldToSection(card, fieldData) {
         reorderSectionFields(container);
     });
     container.appendChild(row);
+    // Field-level drag-and-drop
+    initFieldDrag(row, container);
 }
 
 function reorderSectionFields(container) {
@@ -699,6 +705,98 @@ async function saveCurrentPreset() {
         if (res.ok) { showToast('프리셋 저장 완료', 'success'); await loadPresets(); closePresetDrawer(); renderSidebar(); }
         else { showToast('저장 실패', 'error'); }
     } catch(e) { showToast('서버 오류', 'error'); }
+}
+
+// ── Drag & Drop: Field Rows within a section ──
+function initFieldDrag(row, container) {
+    const handle = row.querySelector('.f-drag');
+    handle.addEventListener('mousedown', () => { row.setAttribute('draggable', 'true'); });
+    row.addEventListener('dragstart', e => {
+        if (!row.getAttribute('draggable')) { e.preventDefault(); return; }
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'field');
+    });
+    row.addEventListener('dragend', () => {
+        row.classList.remove('dragging');
+        row.removeAttribute('draggable');
+        container.querySelectorAll('.sec-field-row').forEach(r => r.classList.remove('drag-over'));
+        reorderSectionFields(container);
+    });
+    row.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const dragging = container.querySelector('.sec-field-row.dragging');
+        if (dragging && dragging !== row) {
+            container.querySelectorAll('.sec-field-row').forEach(r => r.classList.remove('drag-over'));
+            row.classList.add('drag-over');
+        }
+    });
+    row.addEventListener('dragleave', () => { row.classList.remove('drag-over'); });
+    row.addEventListener('drop', e => {
+        e.preventDefault();
+        row.classList.remove('drag-over');
+        const dragging = container.querySelector('.sec-field-row.dragging');
+        if (dragging && dragging !== row) {
+            // Insert before or after based on position
+            const allRows = [...container.querySelectorAll('.sec-field-row')];
+            const dragIdx = allRows.indexOf(dragging);
+            const dropIdx = allRows.indexOf(row);
+            if (dragIdx < dropIdx) {
+                row.after(dragging);
+            } else {
+                row.before(dragging);
+            }
+            reorderSectionFields(container);
+        }
+    });
+}
+
+// ── Drag & Drop: Section Cards ──
+function initSectionDrag(card) {
+    const list = $('drawerSectionList');
+    const handle = card.querySelector('.sec-drag');
+    handle.addEventListener('mousedown', () => { card.setAttribute('draggable', 'true'); });
+    card.addEventListener('dragstart', e => {
+        if (!card.getAttribute('draggable')) { e.preventDefault(); return; }
+        // Only if drag started from section handle (not field handle)
+        if (e.target.closest('.sec-field-row')) { e.preventDefault(); return; }
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'section');
+    });
+    card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        card.removeAttribute('draggable');
+        list.querySelectorAll('.section-card').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', e => {
+        // Only handle section-level drag (not field drag)
+        const dragging = list.querySelector('.section-card.dragging');
+        if (!dragging || dragging === card) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        list.querySelectorAll('.section-card').forEach(c => c.classList.remove('drag-over'));
+        card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', e => {
+        if (!card.contains(e.relatedTarget)) card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', e => {
+        const dragging = list.querySelector('.section-card.dragging');
+        if (!dragging || dragging === card) return;
+        e.preventDefault();
+        e.stopPropagation();
+        card.classList.remove('drag-over');
+        const allCards = [...list.querySelectorAll('.section-card')];
+        const dragIdx = allCards.indexOf(dragging);
+        const dropIdx = allCards.indexOf(card);
+        if (dragIdx < dropIdx) {
+            card.after(dragging);
+        } else {
+            card.before(dragging);
+        }
+    });
 }
 
 function addPresetCategory() {

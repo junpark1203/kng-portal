@@ -163,6 +163,33 @@
             cursor: pointer; transition: all 0.15s;
         }
         .sec-add-field:hover { border-color: var(--primary); color: var(--primary); background: rgba(79,110,247,0.03); }
+
+        /* ── Drag & Drop for Field Rows ── */
+        .sec-field-row .f-drag {
+            width: 20px; height: 26px; border: none; background: none;
+            color: var(--gray-300); cursor: grab; font-size: 15px;
+            display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0; padding: 0; transition: color 0.15s;
+        }
+        .sec-field-row .f-drag:hover { color: var(--gray-600); }
+        .sec-field-row .f-drag:active { cursor: grabbing; }
+        .sec-field-row.dragging { opacity: 0.4; background: var(--gray-100); }
+        .sec-field-row.drag-over {
+            border-top: 2px solid var(--primary);
+            margin-top: -1px;
+        }
+        /* Section card drag */
+        .section-card .sec-drag {
+            width: 22px; height: 22px; border: none; background: none;
+            color: var(--gray-300); cursor: grab; font-size: 16px;
+            display: inline-flex; align-items: center; justify-content: center;
+            flex-shrink: 0; padding: 0; transition: color 0.15s;
+        }
+        .section-card .sec-drag:hover { color: var(--primary); }
+        .section-card .sec-drag:active { cursor: grabbing; }
+        .section-card.dragging { opacity: 0.4; }
+        .section-card.drag-over { border-top: 2px solid var(--primary); margin-top: -2px; }
+
         .drawer-add-section {
             display: flex; align-items: center; gap: 6px; justify-content: center;
             width: 100%; padding: 14px; margin-top: 4px;
