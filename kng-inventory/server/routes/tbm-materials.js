@@ -136,7 +136,7 @@ function initTbmTables(database) {
 // 전체 목록 조회
 router.get('/materials', async (req, res) => {
     try {
-        const rows = await dbAll('SELECT * FROM tbm_materials ORDER BY updatedAt DESC');
+        const rows = await dbAll('SELECT * FROM tbm_materials ORDER BY createdAt DESC');
         // JSON 파싱
         const result = rows.map(r => {
             try { r.customFields = JSON.parse(r.customFields || '{}'); } catch(e) { r.customFields = {}; }

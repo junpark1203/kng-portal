@@ -16,7 +16,7 @@ async function authFetch(url, opts = {}, _retries = 3) {
 
 const API = 'https://kng.junparks.com/api/tbm';
 let allData = [], filteredData = [], presetsData = [];
-let currentSort = { column: 'updatedAt', asc: false };
+let currentSort = { column: 'createdAt', asc: false };
 let currentPage = 1, pageSize = 30;
 let activeFilters = [], activeCategoryFilter = 'all';
 let currentFiles = [];
