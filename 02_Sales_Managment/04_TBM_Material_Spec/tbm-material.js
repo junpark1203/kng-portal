@@ -15,6 +15,7 @@ async function authFetch(url, opts = {}, _retries = 3) {
 }
 
 const API = 'https://kng.junparks.com/api/tbm';
+window.exchangeRates = {};
 let allData = [], filteredData = [], presetsData = [];
 let currentSort = { column: 'createdAt', asc: false };
 let currentPage = 1, pageSize = 30;
@@ -94,11 +95,29 @@ function doSearch() { activeFilters = KngSearchEngine.getConditionsFromBar('sear
 // --- Data Loading ---
 async function loadData() {
     try {
-        const res = await authFetch(API + '/materials');
+        const [res, rateRes] = await Promise.all([
+            authFetch(API + '/materials'),
+            authFetch('https://kng.junparks.com/api/exchange-rates').catch(() => ({ok: false}))
+        ]);
         if (!res.ok) throw new Error('fetch failed');
         allData = await res.json();
+        if (rateRes.ok) {
+            window.exchangeRates = await rateRes.json();
+            updateExchangeRateUI();
+        }
         renderSidebar(); updateDatalists(); applyFiltersAndSort();
     } catch(e) { console.error(e); $('cardList').innerHTML = '<div class="tbm-empty-cards" style="color:red;"><i class="bx bx-error-circle"></i>데이터를 불러오는 중 오류가 발생했습니다.</div>'; }
+}
+
+function updateExchangeRateUI() {
+    const el = $('exchangeRateDisplay');
+    if (!el) return;
+    if (window.exchangeRates && window.exchangeRates['USD']) {
+        const usdKrw = Math.round(1 / window.exchangeRates['USD']);
+        el.innerHTML = `<i class='bx bx-money'></i> 오늘 환율: 1 USD = ${usdKrw.toLocaleString()} 원`;
+    } else {
+        el.innerHTML = `<i class='bx bx-money'></i> 환율 정보 없음`;
+    }
 }
 
 async function loadPresets() {
@@ -295,6 +314,12 @@ window.toggleCard = function(btn) {
 
 function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
 
+function formatKrwApprox(price, currency) {
+    if (currency === 'KRW' || !window.exchangeRates || !window.exchangeRates[currency]) return '';
+    const krwValue = price * (1 / window.exchangeRates[currency]);
+    return ` <em style="font-size:10px;color:#9ca3af;font-style:normal">(약 ₩${fmtN(Math.round(krwValue))})</em>`;
+}
+
 function buildImportPriceHtml(d) {
     const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
     // Backward compat: fallback to old flat incoterms
@@ -305,7 +330,8 @@ function buildImportPriceHtml(d) {
         return its.map(it => {
             const sym = currencySymbol(it.currency || 'KRW');
             const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${basis}</span>`;
+            const approxKrw = formatKrwApprox(it.price, it.currency || 'KRW');
+            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${approxKrw}${basis}</span>`;
         }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
     }
     return groups.map(g => {
@@ -315,7 +341,8 @@ function buildImportPriceHtml(d) {
         const itsHtml = (g.incoterms || []).map(it => {
             const sym = currencySymbol(it.currency || 'KRW');
             const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}</span>`;
+            const approxKrw = formatKrwApprox(it.price, it.currency || 'KRW');
+            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${approxKrw}</span>`;
         }).join('');
         return `<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:600;color:#92400e;">📦 ${label}${qtyStr}</span><br>${itsHtml || '<span style="font-size:10px;color:var(--gray-400);">가격 미입력</span>'}</div>`;
     }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
@@ -916,9 +943,30 @@ function renderCompareTable() {
         ['제조사', d => d.manufacturer||'-'],
         ['현장명', d => d.site||'-'],
         ['장비명', d => d.equipment||'-'],
-        ['수량', d => `${d.qty||0} ${d.unit||'EA'}`],
-        ['단가', d => '₩'+fmtN(d.price)],
-        ['합계', d => '₩'+fmtN(d.total)],
+        ['수량 (국내)', d => d.sourceType === 'import' ? '-' : `${d.qty||0} ${d.unit||'EA'}`],
+        ['단가 (국내)', d => d.sourceType === 'import' ? '-' : '₩'+fmtN(d.price)],
+        ['합계 (국내)', d => d.sourceType === 'import' ? '-' : '₩'+fmtN(d.total)],
+        ['수입 견적<br><span style="font-size:10px;font-weight:normal">(포장 및 조건별)</span>', d => {
+            if (d.sourceType !== 'import') return '-';
+            const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
+            if (!groups.length) {
+                const its = Array.isArray(d.incoterms) ? d.incoterms : [];
+                if (!its.length) return '<span style="color:var(--gray-400);">가격 미입력</span>';
+                return its.map(it => {
+                    const priceStr = (it.currency && it.currency !== 'KRW') ? `${currencySymbol(it.currency)}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
+                    return `<div style="color:#92400e;">${it.term}: ${priceStr}${formatKrwApprox(it.price, it.currency)}</div>`;
+                }).join('');
+            }
+            return groups.map(g => {
+                const label = g.packaging || '미지정';
+                const qtyStr = g.qty ? `(${fmtDec(g.qty)} ${g.unit||''})` : '';
+                const itsHtml = (g.incoterms || []).map(it => {
+                    const priceStr = (it.currency && it.currency !== 'KRW') ? `${currencySymbol(it.currency)}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
+                    return `<div style="padding-left:12px;color:#92400e;font-size:12px;">- ${it.term}: ${priceStr}${formatKrwApprox(it.price, it.currency)}</div>`;
+                }).join('');
+                return `<div style="margin-bottom:8px;"><strong style="color:#111827;">📦 ${label} ${qtyStr}</strong>${itsHtml || '<div style="color:var(--gray-400);font-size:12px;padding-left:12px;">가격 미입력</div>'}</div>`;
+            }).join('');
+        }]
     ];
     let html = `<table class="compare-table"><thead><tr><th style="width:140px;">${cat} 비교 (${n}개)</th>`;
     compareItems.forEach(d => { html += `<th>${d.itemName||d.spec||'-'}</th>`; });

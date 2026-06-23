@@ -775,6 +775,48 @@ app.use('/api/tbm', tbmRoutes);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
+// ==========================================
+// Exchange Rate Scheduler
+// ==========================================
+let cachedExchangeRates = {};
+
+function fetchExchangeRates() {
+    console.log('[KNG-Cron] Fetching latest exchange rates (Base: KRW)...');
+    const https = require('https');
+    https.get('https://open.er-api.com/v6/latest/KRW', (res) => {
+        let body = '';
+        res.on('data', chunk => { body += chunk; });
+        res.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                if (data && data.rates) {
+                    const newRates = {};
+                    // Store rates (KRW to Local)
+                    for (const [currency, rate] of Object.entries(data.rates)) {
+                        newRates[currency] = rate;
+                    }
+                    cachedExchangeRates = newRates;
+                    console.log('[KNG-Cron] Exchange rates updated successfully.');
+                }
+            } catch (err) {
+                console.error('[KNG-Cron] Failed to parse exchange rate data:', err.message);
+            }
+        });
+    }).on('error', (err) => {
+        console.error('[KNG-Cron] Failed to fetch exchange rates:', err.message);
+    });
+}
+
+// Fetch immediately on startup
+fetchExchangeRates();
+
+// Schedule to run every 6 hours
+setInterval(fetchExchangeRates, 6 * 60 * 60 * 1000);
+
+app.get('/api/exchange-rates', (req, res) => {
+    res.json(cachedExchangeRates);
+});
+
 // 알 수 없는 경로 → 404
 app.use((req, res) => {
     res.status(404).json({ error: 'API 엔드포인트를 찾을 수 없습니다.' });
