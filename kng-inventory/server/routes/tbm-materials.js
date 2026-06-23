@@ -108,6 +108,7 @@ function initTbmTables(database) {
             database.run('ALTER TABLE tbm_materials ADD COLUMN perUnitBasis INTEGER DEFAULT 0', () => {});
             database.run('ALTER TABLE tbm_materials ADD COLUMN incoterms TEXT DEFAULT "[]"', () => {});
             database.run('ALTER TABLE tbm_materials ADD COLUMN customFieldNotes TEXT DEFAULT "{}"', () => {});
+            database.run('ALTER TABLE tbm_materials ADD COLUMN packagingGroups TEXT DEFAULT "[]"', () => {});
 
             // 필드 프리셋 테이블 (분류별 커스텀 필드 정의)
             database.run(`
@@ -143,6 +144,7 @@ router.get('/materials', async (req, res) => {
             try { r.customFieldNotes = JSON.parse(r.customFieldNotes || '{}'); } catch(e) { r.customFieldNotes = {}; }
             try { r.files = JSON.parse(r.files || '[]'); } catch(e) { r.files = []; }
             try { r.incoterms = JSON.parse(r.incoterms || '[]'); } catch(e) { r.incoterms = []; }
+            try { r.packagingGroups = JSON.parse(r.packagingGroups || '[]'); } catch(e) { r.packagingGroups = []; }
             return r;
         });
         res.json(result);
@@ -160,6 +162,7 @@ router.get('/materials/:id', async (req, res) => {
         try { row.customFieldNotes = JSON.parse(row.customFieldNotes || '{}'); } catch(e) { row.customFieldNotes = {}; }
         try { row.files = JSON.parse(row.files || '[]'); } catch(e) { row.files = []; }
         try { row.incoterms = JSON.parse(row.incoterms || '[]'); } catch(e) { row.incoterms = []; }
+        try { row.packagingGroups = JSON.parse(row.packagingGroups || '[]'); } catch(e) { row.packagingGroups = []; }
         res.json(row);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -175,8 +178,8 @@ router.post('/materials', async (req, res) => {
         const qty = p.qty || 0;
         const price = p.price || 0;
         const total = qty * price;
-        const sql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, customFieldNotes, files, sourceType, quoteDate, perUnitBasis, incoterms, createdAt, updatedAt)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, customFieldNotes, files, sourceType, quoteDate, perUnitBasis, incoterms, packagingGroups, createdAt, updatedAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id, p.site||'', p.equipment||'', p.category||'', p.itemName||'',
             p.spec||'', p.unit||'EA', qty, price, total,
@@ -188,6 +191,7 @@ router.post('/materials', async (req, res) => {
             p.quoteDate || '',
             p.perUnitBasis || 0,
             JSON.stringify(p.incoterms || []),
+            JSON.stringify(p.packagingGroups || []),
             now, now
         ];
         await dbRun(sql, params);
@@ -206,7 +210,7 @@ router.put('/materials/:id', async (req, res) => {
         const qty = p.qty || 0;
         const price = p.price || 0;
         const total = qty * price;
-        const sql = `UPDATE tbm_materials SET site=?, equipment=?, category=?, itemName=?, spec=?, unit=?, qty=?, price=?, total=?, manufacturer=?, remarks=?, customFields=?, customFieldNotes=?, files=?, sourceType=?, quoteDate=?, perUnitBasis=?, incoterms=?, updatedAt=? WHERE id=?`;
+        const sql = `UPDATE tbm_materials SET site=?, equipment=?, category=?, itemName=?, spec=?, unit=?, qty=?, price=?, total=?, manufacturer=?, remarks=?, customFields=?, customFieldNotes=?, files=?, sourceType=?, quoteDate=?, perUnitBasis=?, incoterms=?, packagingGroups=?, updatedAt=? WHERE id=?`;
         const params = [
             p.site||'', p.equipment||'', p.category||'', p.itemName||'',
             p.spec||'', p.unit||'EA', qty, price, total,
@@ -218,6 +222,7 @@ router.put('/materials/:id', async (req, res) => {
             p.quoteDate || '',
             p.perUnitBasis || 0,
             JSON.stringify(p.incoterms || []),
+            JSON.stringify(p.packagingGroups || []),
             now, id
         ];
         const result = await dbRun(sql, params);

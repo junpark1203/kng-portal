@@ -60,7 +60,7 @@ function initEvents() {
     $('inpCategory').addEventListener('change', onCategoryChange);
     // Source type toggle
     document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
-    $('addIncotermBtn').addEventListener('click', () => addIncotermRow());
+    $('addPkgGroupBtn').addEventListener('click', () => addPackagingGroup());
     // Sort dropdown
     $('sortSelect').addEventListener('change', () => { const [col,dir] = $('sortSelect').value.split('-'); currentSort = {column:col, asc:dir==='asc'}; applyFiltersAndSort(); });
     // File upload
@@ -296,13 +296,28 @@ window.toggleCard = function(btn) {
 function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
 
 function buildImportPriceHtml(d) {
-    const its = Array.isArray(d.incoterms) ? d.incoterms : [];
-    if (!its.length) return '<span class="tbm-card-total">가격 미입력 <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em></span>';
-    const basis = d.perUnitBasis ? ` (${d.perUnitBasis}개 기준)` : '';
-    return its.map(it => {
-        const sym = currencySymbol(it.currency || 'KRW');
-        const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
-        return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${basis}</span>`;
+    const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
+    // Backward compat: fallback to old flat incoterms
+    if (!groups.length) {
+        const its = Array.isArray(d.incoterms) ? d.incoterms : [];
+        if (!its.length) return '<span class="tbm-card-total">가격 미입력 <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em></span>';
+        const basis = d.perUnitBasis ? ` (${d.perUnitBasis}개 기준)` : '';
+        return its.map(it => {
+            const sym = currencySymbol(it.currency || 'KRW');
+            const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
+            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}${basis}</span>`;
+        }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
+    }
+    return groups.map(g => {
+        const label = g.packaging || '미지정';
+        const basis = g.perUnitBasis ? ` (${g.perUnitBasis}개 기준)` : '';
+        const qtyStr = g.qty ? ` · 수량: ${fmtDec(g.qty)}` : '';
+        const itsHtml = (g.incoterms || []).map(it => {
+            const sym = currencySymbol(it.currency || 'KRW');
+            const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
+            return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}</span>`;
+        }).join('');
+        return `<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:600;color:#92400e;">📦 ${label}${qtyStr}${basis}</span><br>${itsHtml || '<span style="font-size:10px;color:var(--gray-400);">가격 미입력</span>'}</div>`;
     }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
 }
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
@@ -325,8 +340,51 @@ function toggleSourceType() {
     $('importFields').style.display = isImport ? '' : 'none';
 }
 
-function addIncotermRow(term, price, currency) {
-    const container = $('incotermsRows');
+// ── Packaging Group Functions ──
+function addPackagingGroup(data) {
+    const container = $('packagingGroupsContainer');
+    const group = document.createElement('div');
+    group.className = 'pkg-group';
+    group.innerHTML = `
+        <div class="pkg-group-header">
+            <i class='bx bx-package pkg-icon'></i>
+            <input type="text" class="pkg-name" placeholder="포장단위 입력 (예: Drum 200L, Bulk, IBC 등)" value="${data?.packaging || ''}">
+            <button type="button" class="pkg-del" title="삭제"><i class='bx bx-trash'></i></button>
+        </div>
+        <div class="pkg-group-body">
+            <div class="pkg-meta">
+                <div class="fg">
+                    <label>수량</label>
+                    <input type="number" class="pkg-qty" placeholder="0" min="0" step="any" value="${data?.qty || ''}">
+                </div>
+                <div class="fg">
+                    <label>기준수량 (몇개 기준)</label>
+                    <input type="number" class="pkg-per-unit" placeholder="예: 100" min="1" step="any" value="${data?.perUnitBasis || ''}">
+                </div>
+            </div>
+            <div class="pkg-incoterms"></div>
+            <button type="button" class="add-incoterm-btn pkg-add-it">
+                <i class='bx bx-plus'></i> Incoterms 추가
+            </button>
+        </div>`;
+    // Delete
+    group.querySelector('.pkg-del').addEventListener('click', () => {
+        if (confirm('이 포장단위 그룹을 삭제하시겠습니까?')) group.remove();
+    });
+    // Add incoterm
+    group.querySelector('.pkg-add-it').addEventListener('click', () => {
+        addIncotermToGroup(group);
+    });
+    container.appendChild(group);
+    // Populate existing incoterms
+    if (data?.incoterms?.length) {
+        data.incoterms.forEach(it => addIncotermToGroup(group, it.term, it.price, it.currency));
+    }
+    return group;
+}
+
+function addIncotermToGroup(groupEl, term, price, currency) {
+    const container = groupEl.querySelector('.pkg-incoterms');
     const row = document.createElement('div');
     row.className = 'incoterm-row';
     row.innerHTML = `
@@ -338,27 +396,43 @@ function addIncotermRow(term, price, currency) {
     container.appendChild(row);
 }
 
+function collectPackagingGroups() {
+    const groups = [];
+    $('packagingGroupsContainer').querySelectorAll('.pkg-group').forEach(g => {
+        const packaging = g.querySelector('.pkg-name').value.trim();
+        const qty = parseFloat(g.querySelector('.pkg-qty').value) || 0;
+        const perUnitBasis = parseFloat(g.querySelector('.pkg-per-unit').value) || 0;
+        const incoterms = [];
+        g.querySelectorAll('.incoterm-row').forEach(r => {
+            const term = r.querySelector('.it-term').value;
+            const currency = r.querySelector('.it-currency').value;
+            const p = parseFloat(r.querySelector('.it-price').value) || 0;
+            if (term && p > 0) incoterms.push({ term, price: p, currency });
+        });
+        groups.push({ packaging, qty, perUnitBasis, incoterms });
+    });
+    return groups;
+}
+
 // --- Modal CRUD ---
 let modalSnapshot = '';
 
 function getFormSnapshot() {
-    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate','inpQtyImport','inpPerUnit'].map(id => $(id)?.value || '');
+    const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'].map(id => $(id)?.value || '');
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const cfVals = [];
     $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => cfVals.push(inp.value || ''));
     const cfNoteVals = [];
     $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => cfNoteVals.push(inp.value || ''));
-    const itVals = [];
-    $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
-        itVals.push(r.querySelector('.it-term').value + ':' + r.querySelector('.it-currency').value + ':' + r.querySelector('.it-price').value);
-    });
-    return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, ...itVals, currentFiles.length]);
+    // Packaging groups snapshot
+    const pkgSnap = JSON.stringify(collectPackagingGroups());
+    return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, pkgSnap, currentFiles.length]);
 }
 
 window.openModal = function(id = null) {
     $('itemForm').reset(); $('inpTotal').value = ''; currentFiles = [];
     $('customFieldsSection').style.display = 'none'; $('customFieldsGrid').innerHTML = '';
-    $('incotermsRows').innerHTML = '';
+    $('packagingGroupsContainer').innerHTML = '';
     $('srcDomestic').checked = true; toggleSourceType();
     renderFileList();
     if (id) {
@@ -376,9 +450,17 @@ window.openModal = function(id = null) {
         // Source type
         if (d.sourceType === 'import') {
             $('srcImport').checked = true; toggleSourceType();
-            $('inpQtyImport').value = d.qty || 0;
-            $('inpPerUnit').value = d.perUnitBasis || '';
-            (d.incoterms || []).forEach(it => addIncotermRow(it.term, it.price, it.currency));
+            // Load packaging groups (with backward compat for old flat incoterms)
+            const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
+            if (groups.length) {
+                groups.forEach(g => addPackagingGroup(g));
+            } else {
+                // Migrate old flat incoterms to a single default packaging group
+                const oldIts = Array.isArray(d.incoterms) ? d.incoterms : [];
+                if (oldIts.length || d.qty || d.perUnitBasis) {
+                    addPackagingGroup({ packaging: '', qty: d.qty || 0, perUnitBasis: d.perUnitBasis || 0, incoterms: oldIts });
+                }
+            }
         }
         updateCalc(); renderFileList();
         if (d.category) { onCategoryChange(null, d.customFields || {}, d.customFieldNotes || {}); }
@@ -406,18 +488,13 @@ async function saveItem() {
     $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
     const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const isImport = sourceType === 'import';
-    const qty = isImport ? (parseFloat($('inpQtyImport').value)||0) : (parseInt($('inpQty').value)||0);
+    const qty = isImport ? 0 : (parseInt($('inpQty').value)||0);
     const price = isImport ? 0 : (parseInt($('inpPrice').value)||0);
-    // Collect incoterms
-    const incoterms = [];
-    if (isImport) {
-        $('incotermsRows').querySelectorAll('.incoterm-row').forEach(r => {
-            const term = r.querySelector('.it-term').value;
-            const currency = r.querySelector('.it-currency').value;
-            const p = parseFloat(r.querySelector('.it-price').value) || 0;
-            if (term && p > 0) incoterms.push({ term, price: p, currency });
-        });
-    }
+    // Collect packaging groups
+    const packagingGroups = isImport ? collectPackagingGroups() : [];
+    // For backward compat, also flatten incoterms from first group
+    const incoterms = packagingGroups.length ? packagingGroups[0].incoterms || [] : [];
+    const perUnitBasis = packagingGroups.length ? packagingGroups[0].perUnitBasis || 0 : 0;
     const payload = {
         site: $('inpSite').value.trim(), equipment: $('inpEquipment').value.trim(),
         category: $('inpCategory').value.trim(), itemName: $('inpItemName').value.trim(),
@@ -427,8 +504,9 @@ async function saveItem() {
         customFields, customFieldNotes, files: currentFiles,
         sourceType,
         quoteDate: $('inpQuoteDate').value || '',
-        perUnitBasis: isImport ? (parseFloat($('inpPerUnit').value)||0) : 0,
-        incoterms
+        perUnitBasis,
+        incoterms,
+        packagingGroups
     };
     try {
         const url = id ? `${API}/materials/${id}` : `${API}/materials`;
