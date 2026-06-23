@@ -288,7 +288,7 @@ function renderCards() {
                     <div class="tbm-card-meta">
                         ${d.site?`<span>현장: ${d.site}</span>`:''}
                         ${d.equipment?`<span>장비: ${d.equipment}</span>`:''}
-                        <span>수량: ${d.qty||0} ${d.unit||'EA'}</span>
+                        ${d.sourceType === 'import' ? '' : `<span>수량: ${d.qty||0} ${d.unit||'EA'}</span>`}
                     </div>
                     <div class="tbm-card-meta">
                         ${d.sourceType === 'import' ? buildImportPriceHtml(d) : `<span class="tbm-card-total">단가: ₩${fmtN(d.price)}${d.price > 0 ? ' <em style="font-size:10px;color:var(--gray-400);font-style:normal">(국내)</em>':''}</span><span>합계: ₩${fmtN(d.total)}</span>`}
