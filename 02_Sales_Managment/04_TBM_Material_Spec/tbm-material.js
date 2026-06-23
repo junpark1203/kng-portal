@@ -310,14 +310,14 @@ function buildImportPriceHtml(d) {
     }
     return groups.map(g => {
         const label = g.packaging || '미지정';
-        const basis = g.perUnitBasis ? ` (${g.perUnitBasis}개 기준)` : '';
-        const qtyStr = g.qty ? ` · 수량: ${fmtDec(g.qty)}` : '';
+        const unitStr = g.unit ? ` ${g.unit}` : '';
+        const qtyStr = g.qty ? ` · 수량: ${fmtDec(g.qty)}${unitStr}` : '';
         const itsHtml = (g.incoterms || []).map(it => {
             const sym = currencySymbol(it.currency || 'KRW');
             const priceStr = (it.currency && it.currency !== 'KRW') ? `${sym}${fmtDec(it.price)}` : `₩${fmtN(it.price)}`;
             return `<span class="tbm-card-total" style="color:#f59e0b">${it.term}: ${priceStr}</span>`;
         }).join('');
-        return `<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:600;color:#92400e;">📦 ${label}${qtyStr}${basis}</span><br>${itsHtml || '<span style="font-size:10px;color:var(--gray-400);">가격 미입력</span>'}</div>`;
+        return `<div style="margin-bottom:4px;"><span style="font-size:10px;font-weight:600;color:#92400e;">📦 ${label}${qtyStr}</span><br>${itsHtml || '<span style="font-size:10px;color:var(--gray-400);">가격 미입력</span>'}</div>`;
     }).join('') + ' <em style="font-size:10px;color:#f59e0b;font-style:normal">(수입)</em>';
 }
 function updateCalc() { const q = parseInt($('inpQty')?.value)||0, p = parseInt($('inpPrice')?.value)||0; $('inpTotal').value = (q*p) > 0 ? '₩'+(q*p).toLocaleString() : ''; }
@@ -358,8 +358,10 @@ function addPackagingGroup(data) {
                     <input type="number" class="pkg-qty" placeholder="0" min="0" step="any" value="${data?.qty || ''}">
                 </div>
                 <div class="fg">
-                    <label>기준수량 (몇개 기준)</label>
-                    <input type="number" class="pkg-per-unit" placeholder="예: 100" min="1" step="any" value="${data?.perUnitBasis || ''}">
+                    <label>단위</label>
+                    <select class="pkg-unit">
+                        ${['EA','SET','BOX','M','KG','L','TON','ROLL','DRUM','IBC','BAG','PAIL'].map(u => `<option value="${u}"${u===(data?.unit||'EA')?' selected':''}>${u}</option>`).join('')}
+                    </select>
                 </div>
             </div>
             <div class="pkg-incoterms"></div>
@@ -401,7 +403,7 @@ function collectPackagingGroups() {
     $('packagingGroupsContainer').querySelectorAll('.pkg-group').forEach(g => {
         const packaging = g.querySelector('.pkg-name').value.trim();
         const qty = parseFloat(g.querySelector('.pkg-qty').value) || 0;
-        const perUnitBasis = parseFloat(g.querySelector('.pkg-per-unit').value) || 0;
+        const unit = g.querySelector('.pkg-unit').value || 'EA';
         const incoterms = [];
         g.querySelectorAll('.incoterm-row').forEach(r => {
             const term = r.querySelector('.it-term').value;
@@ -409,7 +411,7 @@ function collectPackagingGroups() {
             const p = parseFloat(r.querySelector('.it-price').value) || 0;
             if (term && p > 0) incoterms.push({ term, price: p, currency });
         });
-        groups.push({ packaging, qty, perUnitBasis, incoterms });
+        groups.push({ packaging, qty, unit, incoterms });
     });
     return groups;
 }
@@ -457,8 +459,8 @@ window.openModal = function(id = null) {
             } else {
                 // Migrate old flat incoterms to a single default packaging group
                 const oldIts = Array.isArray(d.incoterms) ? d.incoterms : [];
-                if (oldIts.length || d.qty || d.perUnitBasis) {
-                    addPackagingGroup({ packaging: '', qty: d.qty || 0, perUnitBasis: d.perUnitBasis || 0, incoterms: oldIts });
+                if (oldIts.length || d.qty) {
+                    addPackagingGroup({ packaging: '', qty: d.qty || 0, unit: d.unit || 'EA', incoterms: oldIts });
                 }
             }
         }
@@ -494,7 +496,7 @@ async function saveItem() {
     const packagingGroups = isImport ? collectPackagingGroups() : [];
     // For backward compat, also flatten incoterms from first group
     const incoterms = packagingGroups.length ? packagingGroups[0].incoterms || [] : [];
-    const perUnitBasis = packagingGroups.length ? packagingGroups[0].perUnitBasis || 0 : 0;
+    const perUnitBasis = 0;
     const payload = {
         site: $('inpSite').value.trim(), equipment: $('inpEquipment').value.trim(),
         category: $('inpCategory').value.trim(), itemName: $('inpItemName').value.trim(),
