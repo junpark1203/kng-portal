@@ -96,8 +96,8 @@ function doSearch() { activeFilters = KngSearchEngine.getConditionsFromBar('sear
 async function loadData() {
     try {
         const [res, rateRes] = await Promise.all([
-            authFetch(API + '/materials'),
-            authFetch('https://kng.junparks.com/api/exchange-rates').catch(() => ({ok: false}))
+            authFetch(`${API}/materials?t=${Date.now()}`),
+            authFetch(`https://kng.junparks.com/api/exchange-rates?t=${Date.now()}`).catch(() => ({ok: false}))
         ]);
         if (!res.ok) throw new Error('fetch failed');
         allData = await res.json();
@@ -541,7 +541,12 @@ async function saveItem() {
         const url = id ? `${API}/materials/${id}` : `${API}/materials`;
         const method = id ? 'PUT' : 'POST';
         const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        if (res.ok) { showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success'); closeModal(); loadData(); }
+        if (res.ok) { 
+            showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success'); 
+            closeModal(); 
+            if (!id) currentPage = 1; // 신규 등록 시 1페이지로 이동
+            loadData(); 
+        }
         else { const err = await res.json(); showToast('저장 실패: '+err.error, 'error'); }
     } catch(e) { console.error(e); showToast('서버 연결 오류', 'error'); }
 }
