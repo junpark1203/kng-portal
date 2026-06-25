@@ -769,7 +769,7 @@ els.selectAll.addEventListener('change', (e) => {
 els.deleteBtn.addEventListener('click', async () => {
     const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
     if (checked.length === 0) return showToast('삭제할 항목을 선택하세요.', 'error');
-    if (!confirm(\`선택한 \${checked.length}개의 거래를 삭제하시겠습니까?\`)) return;
+    if (!confirm('선택한 ' + checked.length + '개의 거래를 삭제하시겠습니까?')) return;
     
     try {
         await authFetch('/api/invoice-packing/documents/delete', { method: 'POST', body: JSON.stringify({ ids: checked }) });
