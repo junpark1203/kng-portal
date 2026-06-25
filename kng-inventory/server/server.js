@@ -18,6 +18,10 @@ const { initHqTables } = hqInventoryRoutes;
 const tbmRoutes = require('./routes/tbm-materials');
 const { initTbmTables } = tbmRoutes;
 
+// Invoice / Packing List 모듈
+const invoicePackingRoutes = require('./routes/invoice-packing');
+const { initInvoicePackingTables } = invoicePackingRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -155,6 +159,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initTbmTables(db).then(() => {
             tbmRoutes.setDb(db);
             console.log('tbm_materials API 준비 완료');
+        });
+        // Invoice / Packing List 테이블 초기화 + 라우트에 DB 주입
+        initInvoicePackingTables(db).then(() => {
+            invoicePackingRoutes.setDb(db);
+            console.log('invoice_packing API 준비 완료');
         });
     }
 });
@@ -772,6 +781,11 @@ app.use('/api/hq', hqInventoryRoutes);
 // TBM 자재 규격 API 라우트 마운트
 // ==========================================
 app.use('/api/tbm', tbmRoutes);
+
+// ==========================================
+// Invoice / Packing List API 라우트 마운트
+// ==========================================
+app.use('/api/invoice-packing', invoicePackingRoutes);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

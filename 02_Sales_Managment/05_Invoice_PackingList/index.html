@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="K&G 인보이스 / 팩킹리스트 생성기">
+    <title>인보이스 / 팩킹리스트</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="invoice-packing.css">
+</head>
+
+<body>
+    <div class="app-container" id="mainApp">
+        <main class="main-content">
+            <div class="page-body">
+                <section class="section-block">
+                    <div class="panel">
+                        <!-- Header -->
+                        <div class="panel-header complex-header">
+                            <div class="header-top">
+                                <h2><i class='bx bx-file'></i> 인보이스 / 팩킹리스트 <span class="product-count-text" id="totalCount">0건</span></h2>
+                                <div class="header-controls">
+                                    <button class="btn-outline" id="partnerBtn"><i class='bx bx-user-circle'></i> 거래처 관리</button>
+                                    <button class="btn-outline btn-outline-danger" id="deleteBtn"><i class='bx bx-trash'></i> 삭제</button>
+                                    <button class="btn-primary" id="addBtn"><i class='bx bx-plus-circle'></i> 신규 거래 생성</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- KPI Bar -->
+                        <div style="padding: 16px 20px;">
+                            <div class="inv-kpi-bar">
+                                <div class="inv-kpi-card">
+                                    <div class="inv-kpi-icon i1"><i class='bx bx-file'></i></div>
+                                    <div class="inv-kpi-data">
+                                        <span class="inv-kpi-label">총 거래 건수</span>
+                                        <span class="inv-kpi-value" id="kpiTotal">0</span>
+                                    </div>
+                                </div>
+                                <div class="inv-kpi-card">
+                                    <div class="inv-kpi-icon i2"><i class='bx bx-calendar'></i></div>
+                                    <div class="inv-kpi-data">
+                                        <span class="inv-kpi-label">이번 달</span>
+                                        <span class="inv-kpi-value" id="kpiMonth">0</span>
+                                    </div>
+                                </div>
+                                <div class="inv-kpi-card">
+                                    <div class="inv-kpi-icon i3"><i class='bx bx-dollar-circle'></i></div>
+                                    <div class="inv-kpi-data">
+                                        <span class="inv-kpi-label">이번 달 총액</span>
+                                        <span class="inv-kpi-value" id="kpiAmount">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search Bar -->
+                            <div class="inv-header-bar">
+                                <div class="inv-header-left">
+                                    <div class="inv-search-wrap">
+                                        <i class='bx bx-search'></i>
+                                        <input type="text" id="searchInput" placeholder="문서번호, 업체명, 선적항 검색...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="inv-table-wrap">
+                                <table class="inv-table" id="docTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                                            <th>문서번호</th>
+                                            <th>문서일자</th>
+                                            <th>Consignee</th>
+                                            <th>선적항</th>
+                                            <th>통화</th>
+                                            <th>총액</th>
+                                            <th>생성일</th>
+                                            <th class="col-actions">관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="docTableBody">
+                                        <tr><td colspan="9" class="inv-table-empty">
+                                            <i class='bx bx-file'></i>
+                                            등록된 거래가 없습니다.<br>상단의 <b>신규 거래 생성</b> 버튼을 클릭하세요.
+                                        </td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- ═══ Create/Edit Modal ═══ -->
+    <div class="inv-modal-overlay" id="docModal">
+        <div class="inv-modal">
+            <div class="inv-modal-header">
+                <h2><i class='bx bx-edit-alt'></i> <span id="modalTitle">신규 거래 생성</span></h2>
+                <button class="inv-modal-close" id="closeModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="inv-modal-body">
+                <form id="docForm" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    <div class="inv-form-grid">
+                        <!-- Document Info -->
+                        <div class="inv-section-title">문서 정보</div>
+                        <div class="inv-fg">
+                            <label for="inpInvoiceNo">Invoice No.</label>
+                            <input type="text" id="inpInvoiceNo" placeholder="예: KNG-2026-001">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpPackingListNo">Packing List No.</label>
+                            <input type="text" id="inpPackingListNo" placeholder="예: PL-2026-001">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpDocDate">Date</label>
+                            <input type="date" id="inpDocDate">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpCurrency">Currency</label>
+                            <select id="inpCurrency">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="KRW">KRW (₩)</option>
+                                <option value="CNY">CNY (¥)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="GBP">GBP (£)</option>
+                            </select>
+                        </div>
+
+                        <!-- Shipper -->
+                        <div class="inv-section-title">
+                            Shipper (판매자)
+                            <button type="button" class="load-tpl-btn" data-role="shipper"><i class='bx bx-import'></i> 템플릿 불러오기</button>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperName">Company Name</label>
+                            <input type="text" id="inpShipperName" placeholder="판매자 회사명">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperTel">Tel</label>
+                            <input type="text" id="inpShipperTel" placeholder="+82-XX-XXXX-XXXX">
+                        </div>
+                        <div class="inv-fg fg-full">
+                            <label for="inpShipperAddress">Address</label>
+                            <textarea id="inpShipperAddress" placeholder="판매자 주소"></textarea>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperFax">Fax</label>
+                            <input type="text" id="inpShipperFax" placeholder="+82-XX-XXXX-XXXX">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperEmail">Email</label>
+                            <input type="text" id="inpShipperEmail" placeholder="email@example.com">
+                        </div>
+                        <!-- Bank Info -->
+                        <div class="inv-fg">
+                            <label for="inpShipperBank">Bank Name</label>
+                            <input type="text" id="inpShipperBank" placeholder="은행명">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperAccountNo">Account No.</label>
+                            <input type="text" id="inpShipperAccountNo" placeholder="계좌번호">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperSwift">SWIFT Code</label>
+                            <input type="text" id="inpShipperSwift" placeholder="SWIFT Code">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpShipperBankAddress">Bank Address</label>
+                            <input type="text" id="inpShipperBankAddress" placeholder="은행 주소">
+                        </div>
+
+                        <!-- Consignee -->
+                        <div class="inv-section-title">
+                            Consignee (구매자)
+                            <button type="button" class="load-tpl-btn" data-role="consignee"><i class='bx bx-import'></i> 템플릿 불러오기</button>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpConsigneeName">Company Name</label>
+                            <input type="text" id="inpConsigneeName" placeholder="구매자 회사명">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpConsigneeTel">Tel</label>
+                            <input type="text" id="inpConsigneeTel" placeholder="연락처">
+                        </div>
+                        <div class="inv-fg fg-full">
+                            <label for="inpConsigneeAddress">Address</label>
+                            <textarea id="inpConsigneeAddress" placeholder="구매자 주소"></textarea>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpConsigneeFax">Fax</label>
+                            <input type="text" id="inpConsigneeFax" placeholder="팩스">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpConsigneeEmail">Email</label>
+                            <input type="text" id="inpConsigneeEmail" placeholder="email@example.com">
+                        </div>
+
+                        <!-- Notify Party -->
+                        <div class="inv-section-title">
+                            Notify Party
+                            <button type="button" class="load-tpl-btn" data-role="notify"><i class='bx bx-import'></i> 템플릿 불러오기</button>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpNotifyName">Company Name</label>
+                            <input type="text" id="inpNotifyName" placeholder="통지처 회사명 (선택사항)">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpNotifyTel">Tel</label>
+                            <input type="text" id="inpNotifyTel" placeholder="연락처">
+                        </div>
+                        <div class="inv-fg fg-full">
+                            <label for="inpNotifyAddress">Address</label>
+                            <textarea id="inpNotifyAddress" placeholder="통지처 주소"></textarea>
+                        </div>
+
+                        <!-- Shipping Details -->
+                        <div class="inv-section-title">Shipping Details</div>
+                        <div class="inv-fg">
+                            <label for="inpVessel">Vessel / Flight</label>
+                            <input type="text" id="inpVessel" placeholder="선박/항공편명">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpIncoterms">Incoterms</label>
+                            <select id="inpIncoterms">
+                                <option value="">— 선택 —</option>
+                                <option value="FOB">FOB</option>
+                                <option value="CIF">CIF</option>
+                                <option value="CFR">CFR</option>
+                                <option value="EXW">EXW</option>
+                                <option value="FCA">FCA</option>
+                                <option value="CPT">CPT</option>
+                                <option value="CIP">CIP</option>
+                                <option value="DAP">DAP</option>
+                                <option value="DPU">DPU</option>
+                                <option value="DDP">DDP</option>
+                            </select>
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpPortOfLoading">Port of Loading</label>
+                            <input type="text" id="inpPortOfLoading" placeholder="선적항">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpPortOfDischarge">Port of Discharge</label>
+                            <input type="text" id="inpPortOfDischarge" placeholder="양하항">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpFinalDestination">Final Destination</label>
+                            <input type="text" id="inpFinalDestination" placeholder="최종 목적지">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpPaymentTerms">Payment Terms</label>
+                            <input type="text" id="inpPaymentTerms" placeholder="예: T/T in advance">
+                        </div>
+
+                        <!-- Items -->
+                        <div class="inv-section-title">품목 (Items)</div>
+                        <div class="inv-items-section">
+                            <div class="inv-items-header">
+                                <span>Description</span>
+                                <span>HS Code</span>
+                                <span>Qty</span>
+                                <span>Unit</span>
+                                <span>Unit Price</span>
+                                <span>Amount</span>
+                                <span>N.W (kg)</span>
+                                <span>G.W (kg)</span>
+                                <span>CBM</span>
+                                <span></span>
+                            </div>
+                            <div id="itemLines"></div>
+                            <button type="button" class="inv-add-item" id="addItemBtn">
+                                <i class='bx bx-plus'></i> 품목 추가
+                            </button>
+                            <div class="inv-totals-bar" id="totalsBar">
+                                <div class="tot-item"><span class="tot-label">Total Qty:</span><span class="tot-value" id="totQty">0</span></div>
+                                <div class="tot-item"><span class="tot-label">Total Amount:</span><span class="tot-value" id="totAmount">0.00</span></div>
+                                <div class="tot-item"><span class="tot-label">Total N.W:</span><span class="tot-value" id="totNW">0.00</span></div>
+                                <div class="tot-item"><span class="tot-label">Total G.W:</span><span class="tot-value" id="totGW">0.00</span></div>
+                                <div class="tot-item"><span class="tot-label">Total CBM:</span><span class="tot-value" id="totCBM">0.000</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Remarks -->
+                        <div class="inv-section-title">비고 (Remarks)</div>
+                        <div class="inv-fg fg-full">
+                            <label for="inpRemarks">Remarks</label>
+                            <textarea id="inpRemarks" placeholder="추가 기재사항..." style="height:60px;"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="inv-modal-footer">
+                <button type="button" class="btn-outline" id="cancelModalBtn">취소</button>
+                <button type="button" class="btn-primary" id="saveDocBtn"><i class='bx bx-save'></i> 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Partner Template Drawer ═══ -->
+    <div class="inv-drawer-overlay" id="drawerOverlay"></div>
+    <div class="inv-drawer" id="partnerDrawer">
+        <div class="inv-drawer-header">
+            <h2><i class='bx bx-user-circle'></i> 거래처 템플릿</h2>
+            <button class="inv-modal-close" id="closeDrawerBtn"><i class='bx bx-x'></i></button>
+        </div>
+        <div class="inv-drawer-body">
+            <!-- Add Form -->
+            <div class="ptr-form-grid" id="partnerForm">
+                <div class="inv-fg fg-full">
+                    <label>구분</label>
+                    <select id="ptrRole">
+                        <option value="shipper">Shipper (판매자)</option>
+                        <option value="consignee">Consignee (구매자)</option>
+                        <option value="notify">Notify Party</option>
+                    </select>
+                </div>
+                <div class="inv-fg fg-full">
+                    <label>회사명</label>
+                    <input type="text" id="ptrName" placeholder="회사명">
+                </div>
+                <div class="inv-fg fg-full">
+                    <label>주소</label>
+                    <textarea id="ptrAddress" placeholder="주소" style="height:50px;"></textarea>
+                </div>
+                <div class="inv-fg">
+                    <label>Tel</label>
+                    <input type="text" id="ptrTel" placeholder="연락처">
+                </div>
+                <div class="inv-fg">
+                    <label>Fax</label>
+                    <input type="text" id="ptrFax" placeholder="팩스">
+                </div>
+                <div class="inv-fg fg-full">
+                    <label>Email</label>
+                    <input type="text" id="ptrEmail" placeholder="이메일">
+                </div>
+                <div class="inv-fg">
+                    <label>Bank Name</label>
+                    <input type="text" id="ptrBank" placeholder="은행명">
+                </div>
+                <div class="inv-fg">
+                    <label>Account No.</label>
+                    <input type="text" id="ptrAccount" placeholder="계좌번호">
+                </div>
+                <div class="inv-fg">
+                    <label>SWIFT Code</label>
+                    <input type="text" id="ptrSwift" placeholder="SWIFT">
+                </div>
+                <div class="inv-fg">
+                    <label>Bank Address</label>
+                    <input type="text" id="ptrBankAddr" placeholder="은행 주소">
+                </div>
+                <div class="fg-full" style="display:flex;gap:8px;justify-content:flex-end;">
+                    <input type="hidden" id="ptrEditId">
+                    <button type="button" class="btn-outline" id="ptrCancelBtn" style="display:none;">취소</button>
+                    <button type="button" class="btn-primary" id="ptrSaveBtn"><i class='bx bx-save'></i> 저장</button>
+                </div>
+            </div>
+            <!-- List -->
+            <div id="partnerList"></div>
+        </div>
+    </div>
+
+    <!-- ═══ Template Picker Modal (for load-from-template) ═══ -->
+    <div class="inv-modal-overlay" id="tplPickerModal" style="z-index:1200;">
+        <div class="inv-modal" style="width:460px;">
+            <div class="inv-modal-header">
+                <h2><i class='bx bx-user-check'></i> <span id="tplPickerTitle">거래처 선택</span></h2>
+                <button class="inv-modal-close" id="closeTplPickerBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="inv-modal-body" style="max-height:50vh;">
+                <div id="tplPickerList"></div>
+                <div id="tplPickerEmpty" style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">
+                    <i class='bx bx-user-x' style="font-size:32px;display:block;margin-bottom:6px;"></i>
+                    등록된 거래처가 없습니다.<br>먼저 거래처를 등록해주세요.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Preview Overlay ═══ -->
+    <div class="inv-preview-overlay" id="previewOverlay">
+        <div class="inv-preview-container" id="previewContainer"></div>
+        <div class="inv-preview-toolbar" id="previewToolbar">
+            <button class="btn-switch-doc" id="switchDocBtn"><i class='bx bx-transfer'></i> <span id="switchLabel">Packing List 보기</span></button>
+            <button class="btn-print" id="printBtn"><i class='bx bx-printer'></i> 인쇄 / PDF</button>
+            <button class="btn-close-preview" id="closePreviewBtn"><i class='bx bx-x'></i> 닫기</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="invoice-packing.js"></script>
+</body>
+
+</html>
