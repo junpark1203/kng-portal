@@ -184,6 +184,10 @@ function setupAutocomplete(inputId, dropdownId, poolKey) {
         renderAcDropdown(input, dropdown, poolKey, highlightIdx);
     });
 
+    input.addEventListener('blur', () => {
+        setTimeout(() => closeAcDropdown(dropdown), 150);
+    });
+
     input.addEventListener('keydown', e => {
         if (!dropdown.classList.contains('open')) {
             if (e.key === 'ArrowDown') {
@@ -236,6 +240,10 @@ function setupLineAutocomplete(input, poolKey) {
     input.addEventListener('focus', () => {
         highlightIdx = -1;
         renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(() => closeAcDropdown(dropdown), 150);
     });
     input.addEventListener('keydown', e => {
         if (!dropdown.classList.contains('open')) {
