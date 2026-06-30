@@ -421,6 +421,46 @@ td.amount-col {
 .ac-wrapper {
     position: relative;
 }
+
+/* Input + toggle button wrapper */
+.ac-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.ac-input-wrap > input {
+    padding-right: 30px !important;
+    flex: 1;
+    min-width: 0;
+}
+.ac-toggle-btn {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    bottom: 1px;
+    width: 28px;
+    border: none;
+    background: transparent;
+    color: var(--gray-400);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border-radius: 0 4px 4px 0;
+    transition: all 0.15s;
+}
+.ac-toggle-btn:hover {
+    color: var(--gray-600);
+    background: var(--gray-50);
+}
+.ac-toggle-btn.open i {
+    transform: rotate(180deg);
+}
+.ac-toggle-btn i {
+    transition: transform 0.2s ease;
+}
+
 .ac-dropdown {
     position: absolute;
     top: 100%;
@@ -434,10 +474,16 @@ td.amount-col {
     border-radius: 0 0 6px 6px;
     box-shadow: 0 6px 16px rgba(0,0,0,0.08);
     z-index: 1000;
-    display: none;
+    /* Animation */
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
 }
 .ac-dropdown.open {
-    display: block;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 .ac-option {
     padding: 6px 10px;

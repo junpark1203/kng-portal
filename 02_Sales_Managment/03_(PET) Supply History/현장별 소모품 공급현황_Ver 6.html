@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 
 <head>
@@ -162,22 +162,34 @@
                         </div>
                         <div class="fg ac-wrapper">
                             <label for="inpSite">현장명</label>
-                            <input type="text" id="inpSite" placeholder="선택 또는 직접 입력" required autocomplete="off">
+                            <div class="ac-input-wrap">
+                                <input type="text" id="inpSite" placeholder="선택 또는 직접 입력" required autocomplete="off">
+                                <button type="button" class="ac-toggle-btn" data-ac-target="acSite" tabindex="-1"><i class='bx bx-chevron-down'></i></button>
+                            </div>
                             <div class="ac-dropdown" id="acSite"></div>
                         </div>
                         <div class="fg ac-wrapper">
                             <label for="inpSupplier">공급사</label>
-                            <input type="text" id="inpSupplier" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-input-wrap">
+                                <input type="text" id="inpSupplier" placeholder="선택 또는 직접 입력" autocomplete="off">
+                                <button type="button" class="ac-toggle-btn" data-ac-target="acSupplier" tabindex="-1"><i class='bx bx-chevron-down'></i></button>
+                            </div>
                             <div class="ac-dropdown" id="acSupplier"></div>
                         </div>
                         <div class="fg ac-wrapper">
                             <label for="inpManufacturer">제조사</label>
-                            <input type="text" id="inpManufacturer" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-input-wrap">
+                                <input type="text" id="inpManufacturer" placeholder="선택 또는 직접 입력" autocomplete="off">
+                                <button type="button" class="ac-toggle-btn" data-ac-target="acMfr" tabindex="-1"><i class='bx bx-chevron-down'></i></button>
+                            </div>
                             <div class="ac-dropdown" id="acMfr"></div>
                         </div>
                         <div class="fg fg-full ac-wrapper">
                             <label for="inpCategory">구분</label>
-                            <input type="text" id="inpCategory" placeholder="선택 또는 직접 입력" autocomplete="off">
+                            <div class="ac-input-wrap">
+                                <input type="text" id="inpCategory" placeholder="선택 또는 직접 입력" autocomplete="off">
+                                <button type="button" class="ac-toggle-btn" data-ac-target="acCategory" tabindex="-1"><i class='bx bx-chevron-down'></i></button>
+                            </div>
                             <div class="ac-dropdown" id="acCategory"></div>
                         </div>
 

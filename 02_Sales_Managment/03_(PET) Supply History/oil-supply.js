@@ -172,6 +172,9 @@ function setupAutocomplete(inputId, dropdownId, poolKey) {
     const dropdown = $(dropdownId);
     if (!input || !dropdown) return;
 
+    // Find toggle button (if exists)
+    const toggleBtn = input.closest('.ac-input-wrap')?.querySelector('.ac-toggle-btn');
+
     let highlightIdx = -1;
 
     input.addEventListener('input', () => {
@@ -179,13 +182,14 @@ function setupAutocomplete(inputId, dropdownId, poolKey) {
         renderAcDropdown(input, dropdown, poolKey, highlightIdx);
     });
 
-    input.addEventListener('focus', () => {
-        highlightIdx = -1;
-        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
-    });
+    // Don't open on focus — only typing or toggle button opens it
 
-    input.addEventListener('blur', () => {
-        setTimeout(() => closeAcDropdown(dropdown), 150);
+    input.addEventListener('blur', (e) => {
+        // If focus moved to dropdown or toggle button, don't close
+        const related = e.relatedTarget;
+        if (related && (dropdown.contains(related) || (toggleBtn && toggleBtn.contains(related)))) return;
+        closeAcDropdown(dropdown);
+        if (toggleBtn) toggleBtn.classList.remove('open');
     });
 
     input.addEventListener('keydown', e => {
@@ -209,42 +213,95 @@ function setupAutocomplete(inputId, dropdownId, poolKey) {
         } else if (e.key === 'Enter' && highlightIdx >= 0) {
             e.preventDefault();
             const opt = options[highlightIdx];
-            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); }
+            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); if (toggleBtn) toggleBtn.classList.remove('open'); }
         } else if (e.key === 'Escape') {
             closeAcDropdown(dropdown);
+            if (toggleBtn) toggleBtn.classList.remove('open');
+        } else if (e.key === 'Tab') {
+            closeAcDropdown(dropdown);
+            if (toggleBtn) toggleBtn.classList.remove('open');
         }
     });
 
+    // Toggle button click
+    if (toggleBtn) {
+        toggleBtn.addEventListener('mousedown', e => {
+            e.preventDefault(); // prevent blur on input
+        });
+        toggleBtn.addEventListener('click', () => {
+            if (dropdown.classList.contains('open')) {
+                closeAcDropdown(dropdown);
+                toggleBtn.classList.remove('open');
+            } else {
+                highlightIdx = -1;
+                // Show all items (ignore current input filter)
+                const pool = acPools[poolKey] || [];
+                const matches = pool.slice(0, 30);
+                if (matches.length === 0) return;
+                let html = '';
+                matches.forEach((val, idx) => {
+                    html += `<div class="ac-option" data-value="${val}" data-idx="${idx}" tabindex="-1">${val}</div>`;
+                });
+                dropdown.innerHTML = html;
+                dropdown.classList.add('open');
+                toggleBtn.classList.add('open');
+                bindAcOptionEvents(input, dropdown, toggleBtn);
+            }
+            input.focus();
+        });
+    }
+
     document.addEventListener('click', e => {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target) && !(toggleBtn && toggleBtn.contains(e.target))) {
             closeAcDropdown(dropdown);
+            if (toggleBtn) toggleBtn.classList.remove('open');
         }
     });
 }
 
 function setupLineAutocomplete(input, poolKey) {
     // Create dropdown element
-    let dropdown = input.parentElement.querySelector('.ac-dropdown');
+    const wrapper = input.parentElement;
+    let dropdown = wrapper.querySelector('.ac-dropdown');
     if (!dropdown) {
         dropdown = document.createElement('div');
         dropdown.className = 'ac-dropdown';
-        input.parentElement.classList.add('ac-wrapper');
-        input.parentElement.appendChild(dropdown);
+        wrapper.classList.add('ac-wrapper');
+        wrapper.appendChild(dropdown);
     }
+
+    // Create inline toggle button for line items
+    let toggleBtn = wrapper.querySelector('.ac-toggle-btn');
+    if (!toggleBtn) {
+        // Wrap input in ac-input-wrap
+        const inputWrap = document.createElement('div');
+        inputWrap.className = 'ac-input-wrap';
+        input.parentNode.insertBefore(inputWrap, input);
+        inputWrap.appendChild(input);
+        toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'ac-toggle-btn';
+        toggleBtn.tabIndex = -1;
+        toggleBtn.innerHTML = "<i class='bx bx-chevron-down'></i>";
+        inputWrap.appendChild(toggleBtn);
+    }
+
     let highlightIdx = -1;
 
     input.addEventListener('input', () => {
         highlightIdx = -1;
         renderAcDropdown(input, dropdown, poolKey, highlightIdx);
     });
-    input.addEventListener('focus', () => {
-        highlightIdx = -1;
-        renderAcDropdown(input, dropdown, poolKey, highlightIdx);
+
+    // Don't open on focus
+
+    input.addEventListener('blur', (e) => {
+        const related = e.relatedTarget;
+        if (related && (dropdown.contains(related) || toggleBtn.contains(related))) return;
+        closeAcDropdown(dropdown);
+        toggleBtn.classList.remove('open');
     });
 
-    input.addEventListener('blur', () => {
-        setTimeout(() => closeAcDropdown(dropdown), 150);
-    });
     input.addEventListener('keydown', e => {
         if (!dropdown.classList.contains('open')) {
             if (e.key === 'ArrowDown') {
@@ -266,14 +323,42 @@ function setupLineAutocomplete(input, poolKey) {
         } else if (e.key === 'Enter' && highlightIdx >= 0) {
             e.preventDefault();
             const opt = options[highlightIdx];
-            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); }
-        } else if (e.key === 'Escape') {
+            if (opt) { input.value = opt.dataset.value; closeAcDropdown(dropdown); toggleBtn.classList.remove('open'); }
+        } else if (e.key === 'Escape' || e.key === 'Tab') {
             closeAcDropdown(dropdown);
+            toggleBtn.classList.remove('open');
         }
     });
-    document.addEventListener('click', e => {
-        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+
+    // Toggle button
+    toggleBtn.addEventListener('mousedown', e => {
+        e.preventDefault();
+    });
+    toggleBtn.addEventListener('click', () => {
+        if (dropdown.classList.contains('open')) {
             closeAcDropdown(dropdown);
+            toggleBtn.classList.remove('open');
+        } else {
+            highlightIdx = -1;
+            const pool = acPools[poolKey] || [];
+            const matches = pool.slice(0, 30);
+            if (matches.length === 0) return;
+            let html = '';
+            matches.forEach((val, idx) => {
+                html += `<div class="ac-option" data-value="${val}" data-idx="${idx}" tabindex="-1">${val}</div>`;
+            });
+            dropdown.innerHTML = html;
+            dropdown.classList.add('open');
+            toggleBtn.classList.add('open');
+            bindAcOptionEvents(input, dropdown, toggleBtn);
+        }
+        input.focus();
+    });
+
+    document.addEventListener('click', e => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target) && !toggleBtn.contains(e.target)) {
+            closeAcDropdown(dropdown);
+            toggleBtn.classList.remove('open');
         }
     });
 }
@@ -281,6 +366,7 @@ function setupLineAutocomplete(input, poolKey) {
 function renderAcDropdown(input, dropdown, poolKey, highlightIdx) {
     const query = input.value.trim();
     const pool = acPools[poolKey] || [];
+    const toggleBtn = input.closest('.ac-input-wrap')?.querySelector('.ac-toggle-btn');
 
     let matches;
     if (!query) {
@@ -292,27 +378,35 @@ function renderAcDropdown(input, dropdown, poolKey, highlightIdx) {
     if (matches.length === 0 && query) {
         dropdown.innerHTML = '<div class="ac-no-result">일치하는 항목 없음</div>';
         dropdown.classList.add('open');
+        if (toggleBtn) toggleBtn.classList.add('open');
         return;
     }
     if (matches.length === 0) {
         closeAcDropdown(dropdown);
+        if (toggleBtn) toggleBtn.classList.remove('open');
         return;
     }
 
     let html = '';
     matches.forEach((val, idx) => {
         const cls = idx === highlightIdx ? 'ac-option ac-highlighted' : 'ac-option';
-        html += `<div class="${cls}" data-value="${val}" data-idx="${idx}">${val}</div>`;
+        html += `<div class="${cls}" data-value="${val}" data-idx="${idx}" tabindex="-1">${val}</div>`;
     });
     dropdown.innerHTML = html;
     dropdown.classList.add('open');
+    if (toggleBtn) toggleBtn.classList.add('open');
 
+    bindAcOptionEvents(input, dropdown, toggleBtn);
+}
+
+// Shared helper: bind click events on dropdown options
+function bindAcOptionEvents(input, dropdown, toggleBtn) {
     dropdown.querySelectorAll('.ac-option').forEach(opt => {
         opt.addEventListener('mousedown', e => {
             e.preventDefault();
             input.value = opt.dataset.value;
             closeAcDropdown(dropdown);
-            // Trigger input event for any dependent logic
+            if (toggleBtn) toggleBtn.classList.remove('open');
             input.dispatchEvent(new Event('input', { bubbles: true }));
         });
     });
@@ -327,7 +421,6 @@ function updateAcHighlight(dropdown, idx) {
 
 function closeAcDropdown(dropdown) {
     dropdown.classList.remove('open');
-    dropdown.innerHTML = '';
 }
 
 // ==========================================
