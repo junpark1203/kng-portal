@@ -109,7 +109,7 @@ const DEFAULT_COSTS = [
     { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: false } }
 ];
 
-const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per TON', 'per Unit', '자동계산'];
+const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per TON', 'per Unit'];
 
 // ─────────────────────────────────────────────────────────────
 // 초기화 및 이벤트 바인딩
@@ -337,6 +337,18 @@ async function deleteSelected() {
 async function editQuote(id) {
     try {
         const data = await authFetch(`${API_BASE}/${id}`);
+        
+        // 구버전 호환: '자동계산' 단위가 저장된 경우 'Lump Sum'으로 변환
+        if (data.forwarders) {
+            data.forwarders.forEach(fw => {
+                if (fw.costs) {
+                    fw.costs.forEach(c => {
+                        if (c.unit === '자동계산') c.unit = 'Lump Sum';
+                    });
+                }
+            });
+        }
+        
         state.doc = data;
         state.activeForwarderIdx = 0;
         
@@ -678,7 +690,7 @@ function renderForwarderContent() {
             <tbody>`;
             
     fw.costs.forEach((c, idx) => {
-        const isAuto = c.unit === '자동계산';
+        const isAuto = false; // 자동계산 기능 완전히 제거됨
         let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
         if (c.key === 'INS') {
             labelHtml = `<div style="display:flex; align-items:center;">
