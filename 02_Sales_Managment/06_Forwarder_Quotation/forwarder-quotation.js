@@ -189,11 +189,11 @@ function initEvents() {
     // 포워더 추가 모달
     document.getElementById('btnAddForwarder').addEventListener('click', () => {
         document.getElementById('fwNameInput').value = '';
-        document.getElementById('forwarderModal').classList.add('open');
+        document.getElementById('forwarderModal').classList.add('active');
         document.getElementById('fwNameInput').focus();
     });
     document.getElementById('btnCloseFwModal').addEventListener('click', () => {
-        document.getElementById('forwarderModal').classList.remove('open');
+        document.getElementById('forwarderModal').classList.remove('active');
     });
     document.getElementById('btnConfirmFw').addEventListener('click', () => {
         const name = document.getElementById('fwNameInput').value.trim();
@@ -226,7 +226,7 @@ function initEvents() {
         });
         
         state.activeForwarderIdx = state.doc.forwarders.length - 1;
-        document.getElementById('forwarderModal').classList.remove('open');
+        document.getElementById('forwarderModal').classList.remove('active');
         renderForwarderTabs();
         renderForwarderContent();
     });
