@@ -159,6 +159,7 @@
                                     <th class="col-num">수량</th>
                                     <th>단위</th>
                                     <th class="col-num">총중량(kg)</th>
+                                    <th class="col-num" style="width: 110px;">최대적재량<br><span style="font-weight:normal;font-size:10px;">(Max/CNTR)</span></th>
                                     <!-- 인코텀즈 단가 컬럼들이 여기에 동적으로 추가됨 -->
                                     <th class="col-action">삭제</th>
                                 </tr>
@@ -208,12 +209,7 @@
                 <!-- SECTION 5: 실수입원가 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
-                        <h3>
-                            5. 대상 품목 실제 수입원가 산출 
-                            <i class='bx bx-info-circle tooltip-icon'>
-                                <span class="tooltip-text">가치비례 배분법: 품목의 단가 비율에 따라 부대비용을 배분합니다. FCL(Full Container Load)의 경우 부피나 무게의 영향이 적어 이 방식이 합리적입니다.</span>
-                            </i>
-                        </h3>
+                        <h3>5. 대상 품목 실제 수입원가 산출</h3>
                         <div class="cost-selector">
                             <label>기준 선택:</label>
                             <select id="costResultSelector">
@@ -222,8 +218,14 @@
                         </div>
                     </div>
                     
+                    <h4 style="margin-top:15px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
+                        5-1. 실수입원가 (가치비례 배분법)
+                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
+                            <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
+                        </i>
+                    </h4>
                     <div class="table-responsive">
-                        <table class="cost-table" id="costTable">
+                        <table class="cost-table" id="costTableValue">
                             <thead>
                                 <tr>
                                     <th>품명</th>
@@ -234,7 +236,31 @@
                                     <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
                                 </tr>
                             </thead>
-                            <tbody id="costTableBody">
+                            <tbody id="costTableBodyValue">
+                                <!-- 결과 동적 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 style="margin-top:30px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
+                        5-2. 실수입원가 (컨테이너 적재비율 배분법)
+                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
+                            <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.<br>FCL 화물의 부피/중량 편차를 보정할 때 유리합니다.</span>
+                        </i>
+                    </h4>
+                    <div class="table-responsive">
+                        <table class="cost-table" id="costTableVolume">
+                            <thead>
+                                <tr>
+                                    <th>품명</th>
+                                    <th class="col-num">수량 / 점유율</th>
+                                    <th class="col-num">단위당 단가 (외화)</th>
+                                    <th class="col-num">배분된 부대비용 (외화)</th>
+                                    <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costTableBodyVolume">
                                 <!-- 결과 동적 렌더링 -->
                             </tbody>
                         </table>

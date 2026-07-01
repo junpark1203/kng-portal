@@ -182,7 +182,7 @@ function initEvents() {
     document.getElementById('btnAddItem').addEventListener('click', () => {
         const prices = {};
         state.doc.incoterms.forEach(term => prices[term] = { unitPrice: 0, currency: 'USD' });
-        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, prices });
+        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, maxLoad: 0, prices });
         renderItems();
     });
 
@@ -510,6 +510,7 @@ function renderItems() {
         <th class="col-num" style="width: 80px;">수량</th>
         <th style="width: 80px;">단위</th>
         <th class="col-num" style="width: 100px;">총중량(kg)</th>
+        <th class="col-num" style="width: 110px;">최대적재량<br><span style="font-weight:normal;font-size:10px;">(Max/CNTR)</span></th>
     `;
     state.doc.incoterms.forEach(term => {
         thHtml += `<th class="col-num" style="width: 150px;">${term} 단가</th>`;
@@ -535,6 +536,7 @@ function renderItems() {
                 <td><input type="number" value="${item.qty}" min="1" class="col-num" oninput="updateItem(${idx}, 'qty', this.value)"></td>
                 <td><input type="text" value="${item.unit}" onchange="updateItem(${idx}, 'unit', this.value)"></td>
                 <td><input type="number" value="${item.weight}" min="0" class="col-num" oninput="updateItem(${idx}, 'weight', this.value)"></td>
+                <td><input type="number" value="${item.maxLoad || 0}" min="0" class="col-num" oninput="updateItem(${idx}, 'maxLoad', this.value)"></td>
         `;
         
         state.doc.incoterms.forEach(term => {
@@ -569,9 +571,9 @@ function renderItems() {
 }
 
 window.updateItem = function(idx, field, val) {
-    if (field === 'qty' || field === 'weight') state.doc.items[idx][field] = parseFloat(val) || 0;
+    if (field === 'qty' || field === 'weight' || field === 'maxLoad') state.doc.items[idx][field] = parseFloat(val) || 0;
     else state.doc.items[idx][field] = val;
-    if (field === 'qty') {
+    if (field === 'qty' || field === 'maxLoad') {
         renderItemFooter();
         renderAllCalculations();
     }
@@ -619,6 +621,7 @@ function renderItemFooter() {
             <td class="col-num">${formatNum(totalQty)}</td>
             <td></td>
             <td class="col-num">${formatNum(totalWeight)} kg</td>
+            <td></td>
     `;
     
     state.doc.incoterms.forEach(term => {
@@ -946,11 +949,13 @@ function populateCostResultSelector() {
 }
 
 function renderCostResultTable() {
-    const tbody = document.getElementById('costTableBody');
+    const tbodyValue = document.getElementById('costTableBodyValue');
+    const tbodyVolume = document.getElementById('costTableBodyVolume');
     const selVal = document.getElementById('costResultSelector').value;
     
     if (!selVal || state.doc.items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        tbodyValue.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        tbodyVolume.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
         return;
     }
     
@@ -963,42 +968,78 @@ function renderCostResultTable() {
     const totalAncillaryKrw = calc.ancillaryKrw;
     const totalInvoiceKrw = calc.invoiceKrw;
     
-    // 배분 비율 (전체 부대비용 / 전체 인보이스)
-    // 만약 인보이스 총액이 0이면 배분 불가
+    // --- 5-1. 가치비례 배분법 렌더링 ---
     const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+    let htmlValue = '';
     
-    let html = '';
+    // --- 5-2. 컨테이너 적재비율 배분법 사전 계산 ---
+    let totalContainers = 0;
+    state.doc.items.forEach(item => {
+        if (item.maxLoad > 0) {
+            totalContainers += (item.qty / item.maxLoad);
+        }
+    });
+    let htmlVolume = '';
+
     state.doc.items.forEach(item => {
         const p = item.prices[term];
         if (!p || !p.unitPrice || p.unitPrice === 0) {
-            html += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
             return;
         }
         
-        // 외화 기준 단가
         const unitPriceFC = p.unitPrice;
-        // 배분된 부대비용 (단위당, 외화 기준) = 단가 * 배분비율
-        const allocatedFC = unitPriceFC * allocationRatio;
-        // 실수입원가 (단위당, 외화 기준)
-        const realCostFC = unitPriceFC + allocatedFC;
-        
-        // 원화 환산
         const exRate = state.doc.exchangeRates[p.currency] || 1;
-        const realCostKrw = realCostFC * exRate;
         
-        html += `
+        // --- 5-1 로직 ---
+        const allocatedFC_Value = unitPriceFC * allocationRatio;
+        const realCostFC_Value = unitPriceFC + allocatedFC_Value;
+        const realCostKrw_Value = realCostFC_Value * exRate;
+        
+        htmlValue += `
             <tr>
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(allocatedFC, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC, 2)}</td>
-                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
+            </tr>
+        `;
+        
+        // --- 5-2 로직 ---
+        let allocatedFC_Volume = 0;
+        let volumeShareRatio = 0;
+        
+        if (item.maxLoad > 0 && totalContainers > 0) {
+            const itemContainerUsage = item.qty / item.maxLoad;
+            volumeShareRatio = itemContainerUsage / totalContainers; // 전체 컨테이너 사용량 중 해당 품목의 점유율
+            
+            // 해당 품목이 부담해야 할 총 부대비용(원화)
+            const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+            
+            // 단위당 부담 부대비용(외화) = (품목 총 부대비용 / 환율) / 수량
+            allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
+        }
+        
+        const realCostFC_Volume = unitPriceFC + allocatedFC_Volume;
+        const realCostKrw_Volume = realCostFC_Volume * exRate;
+        
+        htmlVolume += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>'}</td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
             </tr>
         `;
     });
     
-    tbody.innerHTML = html;
+    tbodyValue.innerHTML = htmlValue;
+    tbodyVolume.innerHTML = htmlVolume;
 }
 
 // 전역 노출
