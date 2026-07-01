@@ -106,7 +106,7 @@ const DEFAULT_COSTS = [
     { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'CUST_I', label: '통관수수료 (Customs I)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: '자동계산', applyTo: { EXW: true, FOB: true, CIF: false } }
+    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: false } }
 ];
 
 const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per TON', 'per Unit', '자동계산'];
@@ -678,10 +678,18 @@ function renderForwarderContent() {
             <tbody>`;
             
     fw.costs.forEach((c, idx) => {
-        const isAuto = c.key === 'INS' || c.unit === '자동계산';
+        const isAuto = c.unit === '자동계산';
+        let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
+        if (c.key === 'INS') {
+            labelHtml = `<div style="display:flex; align-items:center;">
+                ${labelHtml}
+                <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
+            </div>`;
+        }
+        
         html += `
             <tr>
-                <td><input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}></td>
+                <td>${labelHtml}</td>
                 <td><input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)" ${isAuto?'readonly':''}></td>
                 <td>
                     <select onchange="updateCost(${idx}, 'currency', this.value)" ${isAuto?'disabled':''}>
@@ -767,47 +775,7 @@ window.addCustomCost = function() {
 // 자동 계산 (적하보험 등)
 // ─────────────────────────────────────────────────────────────
 function calculateAutoCosts() {
-    if (!state.doc.forwarders[state.activeForwarderIdx]) return;
-    const fw = state.doc.forwarders[state.activeForwarderIdx];
-    
-    // 1. CIF 금액 찾기 (인보이스 총액 기준)
-    let totalCifUsd = 0; // 기준 통화를 통일하기 위해 일단 USD 환산? 
-    // 여기서는 간단히 각 아이템의 해당 인코텀즈 단가 * 수량 * 해당통화환율을 원화로 바꿔서 합산
-    
-    // 하지만 각 포워더 탭 안에서는 해당 인코텀즈별 총액을 알아야함.
-    // 적하보험은 관행상 인보이스 금액(주로 FOB나 CIF) * 110% * 0.1% (원화)
-    // 인코텀즈 중 가장 높은 금액을 기준으로 산정하거나, 특정 인코텀즈를 기준으로.
-    // 여기서는 단순화를 위해 전체 품목의 FOB 혹은 제일 금액이 큰 조건의 원화 총액을 기준으로 함.
-    
-    let maxInvoiceKrw = 0;
-    state.doc.incoterms.forEach(term => {
-        let termSumKrw = 0;
-        state.doc.items.forEach(item => {
-            const p = item.prices[term];
-            if (p && p.currency && p.unitPrice) {
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                termSumKrw += (p.unitPrice * item.qty * exRate);
-            }
-        });
-        if (termSumKrw > maxInvoiceKrw) maxInvoiceKrw = termSumKrw;
-    });
-
-    const insAmount = Math.round(maxInvoiceKrw * 1.1 * 0.001); // 110% * 0.1%
-
-    fw.costs.forEach((c, idx) => {
-        if (c.key === 'INS') {
-            c.amount = insAmount;
-            c.unitQty = 1;
-            c.currency = 'KRW';
-            const el = document.getElementById(`fwCostSum_${idx}`);
-            if (el) el.innerText = formatNum(insAmount);
-            
-            // 입력창도 업데이트
-            const inputs = document.querySelectorAll('#forwarderContentArea tbody tr')[idx].querySelectorAll('input[type="number"]');
-            if (inputs[0]) inputs[0].value = insAmount;
-            if (inputs[1]) inputs[1].value = 1;
-        }
-    });
+    // 자동계산 항목이 추가되면 이곳에 로직 구현
 }
 
 
