@@ -63,7 +63,15 @@ const els = {
 async function getToken() {
     try {
         if (window.parent && typeof window.parent.getAuthToken === 'function') {
-            return await window.parent.getAuthToken();
+            let token = await window.parent.getAuthToken();
+            let retries = 0;
+            // 부모 창의 Firebase 초기화가 늦어질 경우를 대비해 최대 5초 대기
+            while (!token && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
+            return token || '';
         }
     } catch(e) {
         console.warn('Failed to get token from parent:', e);
