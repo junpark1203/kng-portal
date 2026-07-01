@@ -188,6 +188,8 @@ function initEvents() {
 
     // 포워더 추가 모달
     document.getElementById('btnAddForwarder').addEventListener('click', () => {
+        state.editingForwarderIdx = null;
+        document.getElementById('fwModalTitle').innerText = '포워더 추가';
         document.getElementById('fwNameInput').value = '';
         document.getElementById('forwarderModal').classList.add('active');
         document.getElementById('fwNameInput').focus();
@@ -198,6 +200,14 @@ function initEvents() {
     document.getElementById('btnConfirmFw').addEventListener('click', () => {
         const name = document.getElementById('fwNameInput').value.trim();
         if (!name) return showToast('포워더 이름을 입력하세요.', true);
+        
+        if (state.editingForwarderIdx !== null && state.editingForwarderIdx !== undefined) {
+            state.doc.forwarders[state.editingForwarderIdx].name = name;
+            state.editingForwarderIdx = null;
+            document.getElementById('forwarderModal').classList.remove('active');
+            renderForwarderTabs();
+            return;
+        }
         
         // 기본 부대비용 생성
         const costs = DEFAULT_COSTS.map(c => {
@@ -639,7 +649,8 @@ function renderForwarderTabs() {
         btn.className = `tab-btn ${idx === state.activeForwarderIdx ? 'active' : ''}`;
         btn.innerHTML = `
             ${fw.name} 
-            <i class='bx bx-x' style="margin-left:4px; font-size:1.1em;" onclick="event.stopPropagation(); removeForwarder(${idx})"></i>
+            <i class='bx bx-edit-alt' style="margin-left:4px; font-size:1.1em; color: inherit; opacity: 0.8;" onclick="event.stopPropagation(); editForwarderName(${idx})"></i>
+            <i class='bx bx-x' style="margin-left:2px; font-size:1.1em; color: inherit; opacity: 0.8;" onclick="event.stopPropagation(); removeForwarder(${idx})"></i>
         `;
         btn.onclick = () => {
             state.activeForwarderIdx = idx;
@@ -649,6 +660,14 @@ function renderForwarderTabs() {
         container.insertBefore(btn, addBtn);
     });
 }
+
+window.editForwarderName = function(idx) {
+    state.editingForwarderIdx = idx;
+    document.getElementById('fwModalTitle').innerText = '포워더 이름 변경';
+    document.getElementById('fwNameInput').value = state.doc.forwarders[idx].name;
+    document.getElementById('forwarderModal').classList.add('active');
+    document.getElementById('fwNameInput').focus();
+};
 
 window.removeForwarder = function(idx) {
     if (!confirm('해당 포워더 견적을 삭제하시겠습니까?')) return;
