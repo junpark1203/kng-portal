@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포워더 견적목록</title>
+    <!-- 공통 리소스 (상위 경로에서 가져옴) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <!-- 전용 CSS -->
+    <link rel="stylesheet" href="forwarder-quotation.css">
+</head>
+<body>
+    <div class="fq-container">
+        <!-- 뷰 1: 견적 목록 -->
+        <div id="listView" class="view-panel active">
+            <div class="panel-header">
+                <h2><i class='bx bx-ship'></i> 포워더 견적목록</h2>
+                <div class="header-actions">
+                    <button id="btnNewQuote" class="btn-primary"><i class='bx bx-plus'></i> 신규 견적</button>
+                    <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                            <th>상태</th>
+                            <th>견적명 / 제목</th>
+                            <th>견적일자</th>
+                            <th>등록 포워더 수</th>
+                            <th>컨테이너</th>
+                            <th>등록일시</th>
+                            <th class="col-action">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteListBody">
+                        <tr><td colspan="8" style="text-align: center; padding: 2rem;">데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 뷰 2: 견적 편집기 -->
+        <div id="editView" class="view-panel">
+            <div class="panel-header">
+                <h2 id="editTitle"><i class='bx bx-edit-alt'></i> 견적 입력/수정</h2>
+                <div class="header-actions">
+                    <button id="btnCancelEdit" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                    <button id="btnSaveQuote" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
+                </div>
+            </div>
+
+            <div class="editor-body">
+                <!-- SECTION 1: 기본 정보 및 환율 -->
+                <section class="edit-section">
+                    <h3>1. 기본 정보 및 환율</h3>
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>견적명 / 프로젝트명 <span class="req">*</span></label>
+                            <input type="text" id="docTitle" placeholder="예: 26년 7월 TBM 장비 수입">
+                        </div>
+                        <div class="fg">
+                            <label>견적일자 <span class="req">*</span></label>
+                            <input type="date" id="docDate">
+                        </div>
+                        <div class="fg">
+                            <label>진행 상태</label>
+                            <select id="docStatus">
+                                <option value="draft">초안 (Draft)</option>
+                                <option value="confirmed">확정 (Confirmed)</option>
+                                <option value="expired">만료 (Expired)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid" style="margin-top: 15px;">
+                        <div class="fg">
+                            <label>컨테이너 규격</label>
+                            <select id="docContainerType">
+                                <option value="20ft">20ft</option>
+                                <option value="40ft">40ft</option>
+                                <option value="40ftHC">40ft HC</option>
+                                <option value="LCL">LCL</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>컨테이너 수량</label>
+                            <input type="number" id="docContainerQty" min="1" value="1">
+                        </div>
+                        <div class="fg" style="grid-column: span 2;">
+                            <label>비고</label>
+                            <input type="text" id="docRemarks" placeholder="추가 메모 입력">
+                        </div>
+                    </div>
+
+                    <div class="exchange-rate-box">
+                        <div class="ex-header">
+                            <h4><i class='bx bx-money'></i> 적용 환율 (외화 → KRW)</h4>
+                            <button id="btnReloadRates" class="btn-small"><i class='bx bx-refresh'></i> 서버 최신 환율 로드</button>
+                        </div>
+                        <div class="ex-grid">
+                            <div class="ex-item">
+                                <label>USD</label>
+                                <div class="input-with-symbol">
+                                    <span>₩</span>
+                                    <input type="number" id="rateUSD" step="0.01" value="1380">
+                                </div>
+                            </div>
+                            <div class="ex-item">
+                                <label>CNY</label>
+                                <div class="input-with-symbol">
+                                    <span>₩</span>
+                                    <input type="number" id="rateCNY" step="0.01" value="190">
+                                </div>
+                            </div>
+                            <div class="ex-item">
+                                <label>EUR</label>
+                                <div class="input-with-symbol">
+                                    <span>₩</span>
+                                    <input type="number" id="rateEUR" step="0.01" value="1500">
+                                </div>
+                            </div>
+                            <div class="ex-item">
+                                <label>JPY (100엔당)</label>
+                                <div class="input-with-symbol">
+                                    <span>₩</span>
+                                    <input type="number" id="rateJPY" step="0.01" value="950">
+                                </div>
+                            </div>
+                        </div>
+                        <p class="help-text">* 환율은 수동으로 수정할 수 있으며, 이 견적서에만 적용됩니다.</p>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: 수입 품목 & 인코텀즈 단가 -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>2. 수입 대상 품목 및 인코텀즈 단가</h3>
+                        <div class="incoterms-manager">
+                            <label>비교 대상 인코텀즈:</label>
+                            <div id="incotermsChips" class="chip-container">
+                                <!-- JS로 렌더링 (기본: EXW, FOB) -->
+                            </div>
+                            <button id="btnAddIncoterm" class="btn-small"><i class='bx bx-plus'></i> 추가</button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="item-table" id="itemTable">
+                            <thead>
+                                <tr id="itemTableHead">
+                                    <th>HS CODE</th>
+                                    <th>품명</th>
+                                    <th class="col-num">수량</th>
+                                    <th>단위</th>
+                                    <th class="col-num">총중량(kg)</th>
+                                    <!-- 인코텀즈 단가 컬럼들이 여기에 동적으로 추가됨 -->
+                                    <th class="col-action">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemTableBody">
+                                <!-- 아이템 행 동적 렌더링 -->
+                            </tbody>
+                            <tfoot id="itemTableFoot">
+                                <!-- 합계 동적 렌더링 -->
+                            </tfoot>
+                        </table>
+                    </div>
+                    <button id="btnAddItem" class="btn-outline" style="margin-top: 10px;"><i class='bx bx-plus'></i> 품목 라인 추가</button>
+                </section>
+
+                <!-- SECTION 3: 포워더별 부대비용 입력 -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>3. 포워더별 수입 부대비용 산출</h3>
+                        <div class="forwarder-tabs" id="forwarderTabs">
+                            <!-- 탭 동적 렌더링 -->
+                            <button id="btnAddForwarder" class="tab-btn add-tab"><i class='bx bx-plus'></i> 포워더 추가</button>
+                        </div>
+                    </div>
+                    
+                    <div id="forwarderContentArea" class="forwarder-content">
+                        <!-- 선택된 포워더의 비용 입력 테이블 렌더링 -->
+                        <div class="empty-state">포워더를 추가하거나 선택해주세요.</div>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: 비용 요약 비교 -->
+                <section class="edit-section highlight-section">
+                    <h3>4. 비용 요약 (포워더 / 인코텀즈 비교)</h3>
+                    <div class="table-responsive">
+                        <table class="summary-table" id="summaryTable">
+                            <thead>
+                                <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
+                            </thead>
+                            <tbody>
+                                <!-- 내용 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SECTION 5: 실수입원가 -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>
+                            5. 대상 품목 실제 수입원가 산출 
+                            <i class='bx bx-info-circle tooltip-icon'>
+                                <span class="tooltip-text">가치비례 배분법: 품목의 단가 비율에 따라 부대비용을 배분합니다. FCL(Full Container Load)의 경우 부피나 무게의 영향이 적어 이 방식이 합리적입니다.</span>
+                            </i>
+                        </h3>
+                        <div class="cost-selector">
+                            <label>기준 선택:</label>
+                            <select id="costResultSelector">
+                                <!-- 선택 가능한 포워더+인코텀즈 조합 렌더링 -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="cost-table" id="costTable">
+                            <thead>
+                                <tr>
+                                    <th>품명</th>
+                                    <th class="col-num">수량</th>
+                                    <th class="col-num">단위당 단가 (외화)</th>
+                                    <th class="col-num">배분된 부대비용 (외화)</th>
+                                    <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costTableBody">
+                                <!-- 결과 동적 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <div class="bottom-actions">
+                    <button class="btn-outline btn-large" id="btnCancelEditBottom">취소</button>
+                    <button class="btn-primary btn-large" id="btnSaveQuoteBottom"><i class='bx bx-save'></i> 견적 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 모달: 포워더 추가/이름변경 -->
+    <div id="forwarderModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="fwModalTitle">포워더 추가</h2>
+                <button class="btn-close" id="btnCloseFwModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="fg">
+                    <label>포워더 이름</label>
+                    <input type="text" id="fwNameInput" placeholder="예: 한진해운, DHL">
+                </div>
+                <div class="form-actions" style="margin-top: 20px; text-align: right;">
+                    <button class="btn-primary" id="btnConfirmFw">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 알림 -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <script type="module" src="forwarder-quotation.js"></script>
+</body>
+</html>

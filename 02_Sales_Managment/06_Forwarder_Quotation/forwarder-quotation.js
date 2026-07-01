@@ -1,0 +1,983 @@
+// forwarder-quotation.js
+
+// ─────────────────────────────────────────────────────────────
+// 상태 관리 (State)
+// ─────────────────────────────────────────────────────────────
+let state = {
+    view: 'list', // 'list' | 'edit'
+    list: [],
+    rates: { USD: 1380, CNY: 190, EUR: 1500, JPY: 9.5 },
+    doc: {
+        id: '',
+        title: '',
+        quoteDate: '',
+        status: 'draft',
+        containerType: '20ft',
+        containerQty: 1,
+        exchangeRates: {},
+        incoterms: ['EXW', 'FOB'],
+        items: [],
+        forwarders: [],
+        remarks: ''
+    },
+    activeForwarderIdx: 0
+};
+
+// ─────────────────────────────────────────────────────────────
+// 유틸리티 및 상수
+// ─────────────────────────────────────────────────────────────
+const API_BASE = '/api/forwarder-quotation';
+const RATE_API = '/api/exchange-rates';
+
+const formatNum = (num, decimals = 0) => {
+    return Number(num).toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
+const showToast = (msg, isError = false) => {
+    const container = document.getElementById('toastContainer');
+    if (!container) return alert(msg);
+    const toast = document.createElement('div');
+    toast.className = `toast ${isError ? 'error' : 'success'}`;
+    toast.innerHTML = `<i class='bx ${isError ? 'bx-error' : 'bx-check-circle'}'></i> <span>${msg}</span>`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
+// 기본 부대비용 템플릿
+const DEFAULT_COSTS = [
+    { key: 'OF', label: '해상운임 (O/F, Ocean Freight)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CY', label: 'CY비 (CY Charge)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'PORT', label: '항만비용 (Port Charge)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'EDI', label: 'EDI/서류/부킹 (EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'THC_E', label: '터미널하역비 수출 (THC E)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'VGM', label: '총중량검증비 (VGM)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CUST_E', label: '수출통관비 (Customs E)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'TRK_E', label: '내륙운송 수출 (Trucking E)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: false, CIF: false } },
+    
+    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CRS', label: '컨테이너회송료 (C.R.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DO', label: '화물인도지시서 (D/O)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'THC_I', label: '터미널하역비 수입 (THC I)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'WHFG', label: '부두사용료 (Wharfage)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TSF', label: '터미널보안료 (TSF)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'PSMF', label: '항만안전관리비 (PSMF)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CCC', label: '컨테이너세정비 (CCC)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CUST_I', label: '통관수수료 (Customs I)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: '자동계산', applyTo: { EXW: true, FOB: true, CIF: false } }
+];
+
+const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per TON', 'per Unit', '자동계산'];
+
+// ─────────────────────────────────────────────────────────────
+// 초기화 및 이벤트 바인딩
+// ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    initEvents();
+    loadRates();
+    loadList();
+});
+
+function initEvents() {
+    // 뷰 전환
+    document.getElementById('btnNewQuote').addEventListener('click', openNewQuote);
+    document.getElementById('btnCancelEdit').addEventListener('click', closeEdit);
+    document.getElementById('btnCancelEditBottom').addEventListener('click', closeEdit);
+    
+    // 저장
+    document.getElementById('btnSaveQuote').addEventListener('click', saveQuote);
+    document.getElementById('btnSaveQuoteBottom').addEventListener('click', saveQuote);
+    
+    // 목록 액션
+    document.getElementById('selectAll').addEventListener('change', e => {
+        document.querySelectorAll('.row-chk').forEach(cb => cb.checked = e.target.checked);
+    });
+    document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
+    
+    // 환율 로드
+    document.getElementById('btnReloadRates').addEventListener('click', loadRates);
+    
+    // 환율 입력 이벤트
+    ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
+        document.getElementById(`rate${curr}`).addEventListener('input', e => {
+            state.doc.exchangeRates[curr] = parseFloat(e.target.value) || 0;
+            renderAllCalculations();
+        });
+    });
+
+    // 기본정보 입력 이벤트
+    ['docTitle', 'docDate', 'docStatus', 'docContainerType', 'docContainerQty', 'docRemarks'].forEach(id => {
+        document.getElementById(id).addEventListener('input', e => {
+            let key = id.replace('doc', '');
+            key = key.charAt(0).toLowerCase() + key.slice(1);
+            if (id === 'docContainerQty') state.doc[key] = parseInt(e.target.value) || 1;
+            else state.doc[key] = e.target.value;
+            
+            if (id === 'docContainerQty') {
+                updateDefaultCostQuantities();
+                renderAllCalculations();
+            }
+        });
+    });
+
+    // 인코텀즈 관리
+    document.getElementById('btnAddIncoterm').addEventListener('click', () => {
+        const term = prompt('추가할 인코텀즈를 입력하세요 (예: CIF, CFR):');
+        if (term && !state.doc.incoterms.includes(term.toUpperCase())) {
+            if (state.doc.incoterms.length >= 5) return showToast('인코텀즈는 최대 5개까지만 추가할 수 있습니다.', true);
+            state.doc.incoterms.push(term.toUpperCase());
+            // 기존 포워더들에 새 인코텀즈 false로 추가
+            state.doc.forwarders.forEach(fw => {
+                fw.costs.forEach(c => c.applyTo[term.toUpperCase()] = false);
+            });
+            renderIncoterms();
+            renderItems();
+            renderForwarderContent();
+        }
+    });
+
+    // 품목 추가
+    document.getElementById('btnAddItem').addEventListener('click', () => {
+        const prices = {};
+        state.doc.incoterms.forEach(term => prices[term] = { unitPrice: 0, currency: 'USD' });
+        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, prices });
+        renderItems();
+    });
+
+    // 포워더 추가 모달
+    document.getElementById('btnAddForwarder').addEventListener('click', () => {
+        document.getElementById('fwNameInput').value = '';
+        document.getElementById('forwarderModal').classList.add('open');
+        document.getElementById('fwNameInput').focus();
+    });
+    document.getElementById('btnCloseFwModal').addEventListener('click', () => {
+        document.getElementById('forwarderModal').classList.remove('open');
+    });
+    document.getElementById('btnConfirmFw').addEventListener('click', () => {
+        const name = document.getElementById('fwNameInput').value.trim();
+        if (!name) return showToast('포워더 이름을 입력하세요.', true);
+        
+        // 기본 부대비용 생성
+        const costs = DEFAULT_COSTS.map(c => {
+            const applyTo = {};
+            state.doc.incoterms.forEach(term => {
+                applyTo[term] = c.applyTo[term] || false;
+            });
+            let qty = 1;
+            if (c.defaultUnit === 'per Container') qty = state.doc.containerQty || 1;
+            
+            return {
+                key: c.key,
+                label: c.label,
+                amount: 0,
+                currency: c.key === 'INS' || c.key.includes('I') || c.key.includes('WHFG') || c.key.includes('TSF') || c.key.includes('PSMF') || c.key.includes('DOC') || c.key.includes('STRIP') ? 'KRW' : 'USD', // 수입국 비용은 대개 원화
+                unit: c.defaultUnit,
+                unitQty: qty,
+                applyTo
+            };
+        });
+
+        state.doc.forwarders.push({
+            id: 'FW-' + Date.now(),
+            name: name,
+            costs: costs
+        });
+        
+        state.activeForwarderIdx = state.doc.forwarders.length - 1;
+        document.getElementById('forwarderModal').classList.remove('open');
+        renderForwarderTabs();
+        renderForwarderContent();
+    });
+    
+    // 실수입원가 선택
+    document.getElementById('costResultSelector').addEventListener('change', renderCostResultTable);
+}
+
+function updateDefaultCostQuantities() {
+    const cQty = state.doc.containerQty || 1;
+    state.doc.forwarders.forEach(fw => {
+        fw.costs.forEach(c => {
+            if (c.unit === 'per Container') {
+                c.unitQty = cQty;
+            }
+        });
+    });
+}
+
+function switchView(view) {
+    document.getElementById('listView').classList.remove('active');
+    document.getElementById('editView').classList.remove('active');
+    document.getElementById(view + 'View').classList.add('active');
+    state.view = view;
+}
+
+// ─────────────────────────────────────────────────────────────
+// API 통신
+// ─────────────────────────────────────────────────────────────
+async function loadRates() {
+    try {
+        const res = await fetch(RATE_API);
+        if (!res.ok) throw new Error('환율 로드 실패');
+        const data = await res.json();
+        if (data.USD) {
+            state.rates = {
+                USD: 1 / data.USD,
+                CNY: 1 / data.CNY,
+                EUR: 1 / data.EUR,
+                JPY: (1 / data.JPY) * 100 // 100엔당
+            };
+            if (state.view === 'edit') {
+                // 수동 입력이 없을 경우에만 덮어쓰기
+                ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
+                    document.getElementById(`rate${curr}`).value = state.rates[curr].toFixed(2);
+                    state.doc.exchangeRates[curr] = state.rates[curr];
+                });
+                renderAllCalculations();
+            }
+            showToast('환율을 업데이트했습니다.');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function loadList() {
+    try {
+        const res = await fetch(API_BASE);
+        if (!res.ok) throw new Error('목록 로드 실패');
+        state.list = await res.json();
+        renderList();
+    } catch (err) {
+        showToast(err.message, true);
+    }
+}
+
+async function saveQuote() {
+    if (!state.doc.title) return showToast('견적명을 입력하세요.', true);
+    if (!state.doc.quoteDate) return showToast('견적일자를 입력하세요.', true);
+    
+    // 입력값 동기화
+    document.querySelectorAll('.fw-cost-input').forEach(el => {
+        el.dispatchEvent(new Event('input')); // 강제 반영
+    });
+
+    try {
+        const isNew = !state.doc.id;
+        const url = isNew ? API_BASE : `${API_BASE}/${state.doc.id}`;
+        const method = isNew ? 'POST' : 'PUT';
+        
+        const res = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state.doc)
+        });
+        
+        if (!res.ok) throw new Error('저장 실패');
+        showToast('저장되었습니다.');
+        loadList();
+        switchView('list');
+    } catch (err) {
+        showToast(err.message, true);
+    }
+}
+
+async function deleteSelected() {
+    const ids = Array.from(document.querySelectorAll('.row-chk:checked')).map(cb => cb.value);
+    if (ids.length === 0) return showToast('삭제할 항목을 선택하세요.', true);
+    if (!confirm(`선택한 ${ids.length}건을 삭제하시겠습니까?`)) return;
+    
+    try {
+        const res = await fetch(`${API_BASE}/delete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        if (!res.ok) throw new Error('삭제 실패');
+        showToast('삭제되었습니다.');
+        loadList();
+    } catch (err) {
+        showToast(err.message, true);
+    }
+}
+
+async function editQuote(id) {
+    try {
+        const res = await fetch(`${API_BASE}/${id}`);
+        if (!res.ok) throw new Error('데이터 로드 실패');
+        const data = await res.json();
+        state.doc = data;
+        state.activeForwarderIdx = 0;
+        
+        // 폼 채우기
+        document.getElementById('docTitle').value = data.title;
+        document.getElementById('docDate').value = data.quoteDate;
+        document.getElementById('docStatus').value = data.status;
+        document.getElementById('docContainerType').value = data.containerType;
+        document.getElementById('docContainerQty').value = data.containerQty;
+        document.getElementById('docRemarks').value = data.remarks;
+        
+        ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
+            const val = data.exchangeRates[curr] || state.rates[curr] || 0;
+            document.getElementById(`rate${curr}`).value = val.toFixed(2);
+            state.doc.exchangeRates[curr] = val;
+        });
+
+        document.getElementById('editTitle').innerHTML = `<i class='bx bx-edit-alt'></i> 견적 수정`;
+        
+        renderIncoterms();
+        renderItems();
+        renderForwarderTabs();
+        renderForwarderContent();
+        
+        switchView('edit');
+    } catch (err) {
+        showToast(err.message, true);
+    }
+}
+
+function openNewQuote() {
+    state.doc = {
+        id: '',
+        title: '',
+        quoteDate: new Date().toISOString().split('T')[0],
+        status: 'draft',
+        containerType: '20ft',
+        containerQty: 1,
+        exchangeRates: { ...state.rates },
+        incoterms: ['EXW', 'FOB'],
+        items: [],
+        forwarders: [],
+        remarks: ''
+    };
+    state.activeForwarderIdx = 0;
+    
+    document.getElementById('docTitle').value = '';
+    document.getElementById('docDate').value = state.doc.quoteDate;
+    document.getElementById('docStatus').value = 'draft';
+    document.getElementById('docContainerType').value = '20ft';
+    document.getElementById('docContainerQty').value = '1';
+    document.getElementById('docRemarks').value = '';
+    
+    ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
+        document.getElementById(`rate${curr}`).value = state.rates[curr].toFixed(2);
+    });
+
+    document.getElementById('editTitle').innerHTML = `<i class='bx bx-edit-alt'></i> 신규 견적 등록`;
+    
+    renderIncoterms();
+    renderItems();
+    renderForwarderTabs();
+    renderForwarderContent();
+    
+    switchView('edit');
+}
+
+function closeEdit() {
+    switchView('list');
+}
+
+// ─────────────────────────────────────────────────────────────
+// 렌더링 (List)
+// ─────────────────────────────────────────────────────────────
+function renderList() {
+    const tbody = document.getElementById('quoteListBody');
+    if (state.list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">저장된 견적이 없습니다.</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    state.list.forEach(item => {
+        const statusMap = { 'draft': '초안', 'confirmed': '확정', 'expired': '만료' };
+        html += `
+            <tr style="cursor: pointer" onclick="window.editQuote('${item.id}')">
+                <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-chk" value="${item.id}"></td>
+                <td><span class="status-badge ${item.status}">${statusMap[item.status] || item.status}</span></td>
+                <td style="font-weight: 500;">${item.title}</td>
+                <td>${item.quoteDate}</td>
+                <td>${(item.forwarders || []).length} 곳</td>
+                <td>${item.containerType} × ${item.containerQty}</td>
+                <td>${item.createdAt.split('T')[0]}</td>
+                <td class="col-action">
+                    <button class="btn-icon" onclick="event.stopPropagation(); window.editQuote('${item.id}')"><i class='bx bx-edit'></i></button>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 렌더링 (Edit - Incoterms & Items)
+// ─────────────────────────────────────────────────────────────
+function renderIncoterms() {
+    const container = document.getElementById('incotermsChips');
+    let html = '';
+    state.doc.incoterms.forEach((term, idx) => {
+        html += `
+            <div class="incoterm-chip active">
+                ${term}
+                ${idx > 0 ? `<button class="btn-remove" onclick="removeIncoterm('${term}')"><i class='bx bx-x'></i></button>` : ''}
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+window.removeIncoterm = function(term) {
+    if (state.doc.incoterms.length <= 1) return showToast('최소 1개의 인코텀즈는 필요합니다.', true);
+    if (!confirm(`'${term}' 항목을 삭제하시겠습니까? 관련된 단가 및 비용 설정이 모두 지워집니다.`)) return;
+    
+    state.doc.incoterms = state.doc.incoterms.filter(t => t !== term);
+    
+    // 품목 단가 제거
+    state.doc.items.forEach(item => {
+        if (item.prices[term]) delete item.prices[term];
+    });
+    
+    // 포워더 적용 체크 제거
+    state.doc.forwarders.forEach(fw => {
+        fw.costs.forEach(c => {
+            if (c.applyTo[term] !== undefined) delete c.applyTo[term];
+        });
+    });
+    
+    renderIncoterms();
+    renderItems();
+    renderForwarderContent();
+};
+
+function renderItems() {
+    // 헤더 재생성
+    const thead = document.getElementById('itemTableHead');
+    let thHtml = `
+        <th>HS CODE</th>
+        <th>품명</th>
+        <th class="col-num" style="width: 80px;">수량</th>
+        <th style="width: 80px;">단위</th>
+        <th class="col-num" style="width: 100px;">총중량(kg)</th>
+    `;
+    state.doc.incoterms.forEach(term => {
+        thHtml += `<th class="col-num" style="width: 150px;">${term} 단가</th>`;
+    });
+    thHtml += `<th class="col-action">삭제</th>`;
+    thead.innerHTML = thHtml;
+
+    // 바디 재생성
+    const tbody = document.getElementById('itemTableBody');
+    if (state.doc.items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${6 + state.doc.incoterms.length}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
+        renderItemFooter();
+        renderAllCalculations();
+        return;
+    }
+
+    let bHtml = '';
+    state.doc.items.forEach((item, idx) => {
+        bHtml += `
+            <tr>
+                <td><input type="text" value="${item.hsCode}" onchange="updateItem(${idx}, 'hsCode', this.value)"></td>
+                <td><input type="text" value="${item.name}" onchange="updateItem(${idx}, 'name', this.value)"></td>
+                <td><input type="number" value="${item.qty}" min="1" class="col-num" oninput="updateItem(${idx}, 'qty', this.value)"></td>
+                <td><input type="text" value="${item.unit}" onchange="updateItem(${idx}, 'unit', this.value)"></td>
+                <td><input type="number" value="${item.weight}" min="0" class="col-num" oninput="updateItem(${idx}, 'weight', this.value)"></td>
+        `;
+        
+        state.doc.incoterms.forEach(term => {
+            const p = item.prices[term] || { unitPrice: 0, currency: 'USD' };
+            bHtml += `
+                <td>
+                    <div style="display:flex; gap:4px;">
+                        <select onchange="updateItemPrice(${idx}, '${term}', 'currency', this.value)" style="width: 60px;">
+                            <option value="USD" ${p.currency==='USD'?'selected':''}>USD</option>
+                            <option value="CNY" ${p.currency==='CNY'?'selected':''}>CNY</option>
+                            <option value="EUR" ${p.currency==='EUR'?'selected':''}>EUR</option>
+                            <option value="JPY" ${p.currency==='JPY'?'selected':''}>JPY</option>
+                            <option value="KRW" ${p.currency==='KRW'?'selected':''}>KRW</option>
+                        </select>
+                        <input type="number" value="${p.unitPrice}" min="0" class="col-num" style="flex:1" oninput="updateItemPrice(${idx}, '${term}', 'unitPrice', this.value)">
+                    </div>
+                </td>
+            `;
+        });
+        
+        bHtml += `
+                <td class="col-action">
+                    <button class="btn-icon" style="color:var(--danger-color)" onclick="removeItem(${idx})"><i class='bx bx-trash'></i></button>
+                </td>
+            </tr>
+        `;
+    });
+    tbody.innerHTML = bHtml;
+    
+    renderItemFooter();
+    renderAllCalculations();
+}
+
+window.updateItem = function(idx, field, val) {
+    if (field === 'qty' || field === 'weight') state.doc.items[idx][field] = parseFloat(val) || 0;
+    else state.doc.items[idx][field] = val;
+    if (field === 'qty') {
+        renderItemFooter();
+        renderAllCalculations();
+    }
+};
+
+window.updateItemPrice = function(idx, term, field, val) {
+    if (!state.doc.items[idx].prices[term]) state.doc.items[idx].prices[term] = { unitPrice: 0, currency: 'USD' };
+    if (field === 'unitPrice') state.doc.items[idx].prices[term][field] = parseFloat(val) || 0;
+    else state.doc.items[idx].prices[term][field] = val;
+    renderItemFooter();
+    renderAllCalculations();
+};
+
+window.removeItem = function(idx) {
+    state.doc.items.splice(idx, 1);
+    renderItems();
+};
+
+function renderItemFooter() {
+    const tfoot = document.getElementById('itemTableFoot');
+    if (state.doc.items.length === 0) {
+        tfoot.innerHTML = '';
+        return;
+    }
+    
+    let totalQty = 0;
+    let totalWeight = 0;
+    const totalsByTerm = {};
+    state.doc.incoterms.forEach(t => totalsByTerm[t] = { USD: 0, CNY: 0, EUR: 0, JPY: 0, KRW: 0 });
+    
+    state.doc.items.forEach(item => {
+        totalQty += (item.qty || 0);
+        totalWeight += (item.weight || 0);
+        state.doc.incoterms.forEach(term => {
+            const p = item.prices[term];
+            if (p && p.currency && p.unitPrice) {
+                totalsByTerm[term][p.currency] += (p.unitPrice * item.qty);
+            }
+        });
+    });
+
+    let fHtml = `
+        <tr style="background:var(--bg-tertiary); font-weight:600;">
+            <td colspan="2" style="text-align:center;">합계</td>
+            <td class="col-num">${formatNum(totalQty)}</td>
+            <td></td>
+            <td class="col-num">${formatNum(totalWeight)} kg</td>
+    `;
+    
+    state.doc.incoterms.forEach(term => {
+        const currs = Object.keys(totalsByTerm[term]).filter(c => totalsByTerm[term][c] > 0);
+        let str = currs.map(c => `${c} ${formatNum(totalsByTerm[term][c])}`).join('<br>') || '0';
+        fHtml += `<td class="col-num" style="font-size:0.9rem;">${str}</td>`;
+    });
+    
+    fHtml += `<td></td></tr>`;
+    tfoot.innerHTML = fHtml;
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// 렌더링 (Edit - Forwarders & Costs)
+// ─────────────────────────────────────────────────────────────
+function renderForwarderTabs() {
+    const container = document.getElementById('forwarderTabs');
+    // 탭 헤더 제외 초기화 (마지막은 +버튼이므로)
+    Array.from(container.children).forEach(child => {
+        if (!child.classList.contains('add-tab')) child.remove();
+    });
+    
+    const addBtn = document.getElementById('btnAddForwarder');
+    
+    state.doc.forwarders.forEach((fw, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${idx === state.activeForwarderIdx ? 'active' : ''}`;
+        btn.innerHTML = `
+            ${fw.name} 
+            <i class='bx bx-x' style="margin-left:4px; font-size:1.1em;" onclick="event.stopPropagation(); removeForwarder(${idx})"></i>
+        `;
+        btn.onclick = () => {
+            state.activeForwarderIdx = idx;
+            renderForwarderTabs();
+            renderForwarderContent();
+        };
+        container.insertBefore(btn, addBtn);
+    });
+}
+
+window.removeForwarder = function(idx) {
+    if (!confirm('해당 포워더 견적을 삭제하시겠습니까?')) return;
+    state.doc.forwarders.splice(idx, 1);
+    if (state.activeForwarderIdx >= state.doc.forwarders.length) {
+        state.activeForwarderIdx = Math.max(0, state.doc.forwarders.length - 1);
+    }
+    renderForwarderTabs();
+    renderForwarderContent();
+};
+
+function renderForwarderContent() {
+    const area = document.getElementById('forwarderContentArea');
+    if (state.doc.forwarders.length === 0) {
+        area.innerHTML = '<div class="empty-state">포워더를 추가하여 부대비용 견적을 입력하세요.</div>';
+        renderAllCalculations();
+        return;
+    }
+    
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    
+    let html = `
+        <table class="item-table" style="margin-bottom:10px;">
+            <thead>
+                <tr>
+                    <th>비용 항목 (약어 / 한글)</th>
+                    <th class="col-num" style="width:120px;">단가</th>
+                    <th style="width:80px;">통화</th>
+                    <th style="width:120px;">단위</th>
+                    <th class="col-num" style="width:80px;">수량</th>
+                    <th class="col-num" style="width:120px;">합계</th>
+    `;
+    state.doc.incoterms.forEach(term => {
+        html += `<th class="chk-cell" style="width:60px;">${term}</th>`;
+    });
+    html += `       <th class="col-action">관리</th>
+                </tr>
+            </thead>
+            <tbody>`;
+            
+    fw.costs.forEach((c, idx) => {
+        const isAuto = c.key === 'INS' || c.unit === '자동계산';
+        html += `
+            <tr>
+                <td><input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}></td>
+                <td><input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)" ${isAuto?'readonly':''}></td>
+                <td>
+                    <select onchange="updateCost(${idx}, 'currency', this.value)" ${isAuto?'disabled':''}>
+                        <option value="KRW" ${c.currency==='KRW'?'selected':''}>KRW</option>
+                        <option value="USD" ${c.currency==='USD'?'selected':''}>USD</option>
+                        <option value="CNY" ${c.currency==='CNY'?'selected':''}>CNY</option>
+                        <option value="EUR" ${c.currency==='EUR'?'selected':''}>EUR</option>
+                        <option value="JPY" ${c.currency==='JPY'?'selected':''}>JPY</option>
+                    </select>
+                </td>
+                <td>
+                    <select onchange="updateCost(${idx}, 'unit', this.value)" ${isAuto?'disabled':''}>
+                        ${UNIT_OPTIONS.map(opt => `<option value="${opt}" ${c.unit===opt?'selected':''}>${opt}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="1" oninput="updateCost(${idx}, 'unitQty', this.value)" ${isAuto?'readonly':''}></td>
+                <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
+        `;
+        
+        state.doc.incoterms.forEach(term => {
+            const checked = c.applyTo[term] ? 'checked' : '';
+            html += `<td class="chk-cell"><input type="checkbox" ${checked} onchange="updateCostApply(${idx}, '${term}', this.checked)"></td>`;
+        });
+        
+        html += `
+                <td class="col-action">
+                    ${isAuto ? '' : `<button class="btn-icon" style="color:var(--danger-color)" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>`}
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `</tbody></table>
+        <button class="btn-outline btn-small" onclick="addCustomCost()"><i class='bx bx-plus'></i> 커스텀 항목 추가</button>
+    `;
+    
+    area.innerHTML = html;
+    calculateAutoCosts(); // 적하보험 등 렌더링 후 자동계산 갱신
+    renderAllCalculations();
+}
+
+window.updateCost = function(idx, field, val) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    if (field === 'amount' || field === 'unitQty') {
+        fw.costs[idx][field] = parseFloat(val) || 0;
+        document.getElementById(`fwCostSum_${idx}`).innerText = formatNum(fw.costs[idx].amount * fw.costs[idx].unitQty);
+    } else {
+        fw.costs[idx][field] = val;
+    }
+    renderAllCalculations();
+};
+
+window.updateCostApply = function(idx, term, checked) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    if (!fw.costs[idx].applyTo) fw.costs[idx].applyTo = {};
+    fw.costs[idx].applyTo[term] = checked;
+    renderAllCalculations();
+};
+
+window.removeCost = function(idx) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    fw.costs.splice(idx, 1);
+    renderForwarderContent();
+};
+
+window.addCustomCost = function() {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    const applyTo = {};
+    state.doc.incoterms.forEach(t => applyTo[t] = true);
+    fw.costs.push({
+        key: 'CUSTOM_' + Date.now(),
+        label: '사용자 추가 항목',
+        amount: 0,
+        currency: 'KRW',
+        unit: 'Lump Sum',
+        unitQty: 1,
+        applyTo
+    });
+    renderForwarderContent();
+};
+
+// ─────────────────────────────────────────────────────────────
+// 자동 계산 (적하보험 등)
+// ─────────────────────────────────────────────────────────────
+function calculateAutoCosts() {
+    if (!state.doc.forwarders[state.activeForwarderIdx]) return;
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    
+    // 1. CIF 금액 찾기 (인보이스 총액 기준)
+    let totalCifUsd = 0; // 기준 통화를 통일하기 위해 일단 USD 환산? 
+    // 여기서는 간단히 각 아이템의 해당 인코텀즈 단가 * 수량 * 해당통화환율을 원화로 바꿔서 합산
+    
+    // 하지만 각 포워더 탭 안에서는 해당 인코텀즈별 총액을 알아야함.
+    // 적하보험은 관행상 인보이스 금액(주로 FOB나 CIF) * 110% * 0.1% (원화)
+    // 인코텀즈 중 가장 높은 금액을 기준으로 산정하거나, 특정 인코텀즈를 기준으로.
+    // 여기서는 단순화를 위해 전체 품목의 FOB 혹은 제일 금액이 큰 조건의 원화 총액을 기준으로 함.
+    
+    let maxInvoiceKrw = 0;
+    state.doc.incoterms.forEach(term => {
+        let termSumKrw = 0;
+        state.doc.items.forEach(item => {
+            const p = item.prices[term];
+            if (p && p.currency && p.unitPrice) {
+                const exRate = state.doc.exchangeRates[p.currency] || 1;
+                termSumKrw += (p.unitPrice * item.qty * exRate);
+            }
+        });
+        if (termSumKrw > maxInvoiceKrw) maxInvoiceKrw = termSumKrw;
+    });
+
+    const insAmount = Math.round(maxInvoiceKrw * 1.1 * 0.001); // 110% * 0.1%
+
+    fw.costs.forEach((c, idx) => {
+        if (c.key === 'INS') {
+            c.amount = insAmount;
+            c.unitQty = 1;
+            c.currency = 'KRW';
+            const el = document.getElementById(`fwCostSum_${idx}`);
+            if (el) el.innerText = formatNum(insAmount);
+            
+            // 입력창도 업데이트
+            const inputs = document.querySelectorAll('#forwarderContentArea tbody tr')[idx].querySelectorAll('input[type="number"]');
+            if (inputs[0]) inputs[0].value = insAmount;
+            if (inputs[1]) inputs[1].value = 1;
+        }
+    });
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// 전체 요약 계산 (Summary) & 원가 산출
+// ─────────────────────────────────────────────────────────────
+function renderAllCalculations() {
+    renderSummaryTable();
+    populateCostResultSelector();
+    renderCostResultTable();
+}
+
+function renderSummaryTable() {
+    const thead = document.querySelector('#summaryTable thead');
+    const tbody = document.querySelector('#summaryTable tbody');
+    
+    if (state.doc.forwarders.length === 0 || state.doc.items.length === 0) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td style="text-align:center; padding:20px;">비용 요약을 계산할 데이터가 부족합니다.</td></tr>';
+        return;
+    }
+
+    // 1. 헤더 (포워더 × 인코텀즈)
+    let hHtml = '<tr><th>비용 구분</th>';
+    state.doc.forwarders.forEach(fw => {
+        state.doc.incoterms.forEach(term => {
+            hHtml += `<th>${fw.name}<br><span style="font-size:0.85rem; color:var(--text-secondary)">${term}</span></th>`;
+        });
+    });
+    hHtml += '</tr>';
+    thead.innerHTML = hHtml;
+
+    // 2. 인보이스 총액 계산 (인코텀즈별) - 통화별로 보여주기 복잡하므로, 대표적으로 KRW 환산 금액 사용 + 외화 대표 표시?
+    // 깔끔하게 원화(KRW) 기준으로 통일하되 툴팁으로 표시.
+    const getInvoiceSumKrw = (term) => {
+        let sum = 0;
+        state.doc.items.forEach(item => {
+            const p = item.prices[term];
+            if (p && p.currency && p.unitPrice) {
+                const exRate = state.doc.exchangeRates[p.currency] || 1;
+                sum += (p.unitPrice * item.qty * exRate);
+            }
+        });
+        return sum;
+    };
+
+    // 3. 부대비용 그룹화
+    // 그룹: 해상운임(OF), 수출국(THC_E 등), 수입국(THC_I 등), 적하보험(INS), 통관수수료(CUST_I)
+    
+    let rows = {
+        invoice: { label: '물품 대금 (KRW 환산)', values: [] },
+        ocean: { label: '해상 운임 (O/F)', values: [] },
+        export: { label: '수출국 부대비용', values: [] },
+        import: { label: '수입국 부대비용', values: [] },
+        ins: { label: '적하보험료', values: [] },
+        customs: { label: '수입 통관수수료', values: [] },
+        subtotal: { label: '부대비용 합계 (KRW)', values: [], isTotal: true },
+        grandtotal: { label: '총 비용 (물품+부대) KRW', values: [], isGrand: true }
+    };
+
+    state.doc.forwarders.forEach((fw, fIdx) => {
+        state.doc.incoterms.forEach(term => {
+            // 인보이스
+            const invKrw = getInvoiceSumKrw(term);
+            rows.invoice.values.push(invKrw);
+
+            let oceanKrw = 0;
+            let exportKrw = 0;
+            let importKrw = 0;
+            let insKrw = 0;
+            let customsKrw = 0;
+
+            fw.costs.forEach(c => {
+                if (c.applyTo[term]) {
+                    const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
+                    
+                    if (c.key === 'OF') oceanKrw += amtKrw;
+                    else if (c.key === 'INS') insKrw += amtKrw;
+                    else if (c.key === 'CUST_I') customsKrw += amtKrw;
+                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) exportKrw += amtKrw;
+                    else importKrw += amtKrw; // 나머지 모두 수입국 (커스텀 포함)
+                }
+            });
+
+            rows.ocean.values.push(oceanKrw);
+            rows.export.values.push(exportKrw);
+            rows.import.values.push(importKrw);
+            rows.ins.values.push(insKrw);
+            rows.customs.values.push(customsKrw);
+            
+            const sub = oceanKrw + exportKrw + importKrw + insKrw + customsKrw;
+            rows.subtotal.values.push(sub);
+            rows.grandtotal.values.push(invKrw + sub);
+            
+            // 데이터 속성 저장을 위해 state에 결과 캐싱 (원가 산출에서 사용)
+            if (!fw.calculated) fw.calculated = {};
+            fw.calculated[term] = {
+                invoiceKrw: invKrw,
+                ancillaryKrw: sub,
+                totalKrw: invKrw + sub
+            };
+        });
+    });
+
+    let bHtml = '';
+    Object.keys(rows).forEach(key => {
+        const r = rows[key];
+        const cls = r.isGrand ? 'grand-total-row' : (r.isTotal ? 'total-row' : '');
+        bHtml += `<tr class="${cls}"><td>${r.label}</td>`;
+        r.values.forEach(v => {
+            bHtml += `<td>${v > 0 ? '₩ ' + formatNum(v) : '—'}</td>`;
+        });
+        bHtml += `</tr>`;
+    });
+    
+    tbody.innerHTML = bHtml;
+}
+
+
+function populateCostResultSelector() {
+    const sel = document.getElementById('costResultSelector');
+    const oldVal = sel.value;
+    sel.innerHTML = '';
+    
+    if (state.doc.forwarders.length === 0) return;
+    
+    state.doc.forwarders.forEach((fw, fIdx) => {
+        state.doc.incoterms.forEach(term => {
+            const val = `${fIdx}_${term}`;
+            const opt = document.createElement('option');
+            opt.value = val;
+            opt.textContent = `${fw.name} - ${term} 조건`;
+            if (val === oldVal) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+function renderCostResultTable() {
+    const tbody = document.getElementById('costTableBody');
+    const selVal = document.getElementById('costResultSelector').value;
+    
+    if (!selVal || state.doc.items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        return;
+    }
+    
+    const [fIdxStr, term] = selVal.split('_');
+    const fw = state.doc.forwarders[parseInt(fIdxStr)];
+    
+    if (!fw || !fw.calculated || !fw.calculated[term]) return;
+    
+    const calc = fw.calculated[term];
+    const totalAncillaryKrw = calc.ancillaryKrw;
+    const totalInvoiceKrw = calc.invoiceKrw;
+    
+    // 배분 비율 (전체 부대비용 / 전체 인보이스)
+    // 만약 인보이스 총액이 0이면 배분 불가
+    const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+    
+    let html = '';
+    state.doc.items.forEach(item => {
+        const p = item.prices[term];
+        if (!p || !p.unitPrice || p.unitPrice === 0) {
+            html += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            return;
+        }
+        
+        // 외화 기준 단가
+        const unitPriceFC = p.unitPrice;
+        // 배분된 부대비용 (단위당, 외화 기준) = 단가 * 배분비율
+        const allocatedFC = unitPriceFC * allocationRatio;
+        // 실수입원가 (단위당, 외화 기준)
+        const realCostFC = unitPriceFC + allocatedFC;
+        
+        // 원화 환산
+        const exRate = state.doc.exchangeRates[p.currency] || 1;
+        const realCostKrw = realCostFC * exRate;
+        
+        html += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${formatNum(item.qty)}</td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC, 2)}</td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw)}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// 전역 노출
+window.editQuote = editQuote;
