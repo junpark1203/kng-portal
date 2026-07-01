@@ -30,17 +30,19 @@ const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '
 const API_BASE = '/api/forwarder-quotation';
 const RATE_API = '/api/exchange-rates';
 
-function getToken() {
+async function getToken() {
     try {
-        const m = document.cookie.match(/kng_token=([^;]+)/);
-        if (m) return m[1];
-        if (window.parent && window.parent.__kngToken) return window.parent.__kngToken;
-    } catch(e) {}
-    return localStorage.getItem('kng_token') || '';
+        if (window.parent && typeof window.parent.getAuthToken === 'function') {
+            return await window.parent.getAuthToken();
+        }
+    } catch(e) {
+        console.warn('Failed to get token from parent:', e);
+    }
+    return '';
 }
 
 async function authFetch(url, opts = {}) {
-    const token = getToken();
+    const token = await getToken();
     opts.headers = { ...opts.headers, 'Content-Type': 'application/json' };
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(SERVER_URL + url, opts);
