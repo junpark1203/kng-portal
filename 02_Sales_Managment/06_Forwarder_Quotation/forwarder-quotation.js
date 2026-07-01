@@ -26,8 +26,31 @@ let state = {
 // ─────────────────────────────────────────────────────────────
 // 유틸리티 및 상수
 // ─────────────────────────────────────────────────────────────
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000' : 'https://kng.junparks.com';
 const API_BASE = '/api/forwarder-quotation';
 const RATE_API = '/api/exchange-rates';
+
+function getToken() {
+    try {
+        const m = document.cookie.match(/kng_token=([^;]+)/);
+        if (m) return m[1];
+        if (window.parent && window.parent.__kngToken) return window.parent.__kngToken;
+    } catch(e) {}
+    return localStorage.getItem('kng_token') || '';
+}
+
+async function authFetch(url, opts = {}) {
+    const token = getToken();
+    opts.headers = { ...opts.headers, 'Content-Type': 'application/json' };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(SERVER_URL + url, opts);
+    if (!res.ok) {
+        let errMsg = res.statusText;
+        try { const e = await res.json(); errMsg = e.error || errMsg; } catch(e) {}
+        throw new Error(errMsg);
+    }
+    return res.json();
+}
 
 const formatNum = (num, decimals = 0) => {
     return Number(num).toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
@@ -225,9 +248,7 @@ function switchView(view) {
 // ─────────────────────────────────────────────────────────────
 async function loadRates() {
     try {
-        const res = await fetch(RATE_API);
-        if (!res.ok) throw new Error('환율 로드 실패');
-        const data = await res.json();
+        const data = await authFetch(RATE_API);
         if (data.USD) {
             state.rates = {
                 USD: 1 / data.USD,
@@ -252,9 +273,7 @@ async function loadRates() {
 
 async function loadList() {
     try {
-        const res = await fetch(API_BASE);
-        if (!res.ok) throw new Error('목록 로드 실패');
-        state.list = await res.json();
+        state.list = await authFetch(API_BASE);
         renderList();
     } catch (err) {
         showToast(err.message, true);
@@ -275,13 +294,11 @@ async function saveQuote() {
         const url = isNew ? API_BASE : `${API_BASE}/${state.doc.id}`;
         const method = isNew ? 'POST' : 'PUT';
         
-        const res = await fetch(url, {
+        await authFetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(state.doc)
         });
         
-        if (!res.ok) throw new Error('저장 실패');
         showToast('저장되었습니다.');
         loadList();
         switchView('list');
@@ -296,12 +313,10 @@ async function deleteSelected() {
     if (!confirm(`선택한 ${ids.length}건을 삭제하시겠습니까?`)) return;
     
     try {
-        const res = await fetch(`${API_BASE}/delete`, {
+        await authFetch(`${API_BASE}/delete`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids })
         });
-        if (!res.ok) throw new Error('삭제 실패');
         showToast('삭제되었습니다.');
         loadList();
     } catch (err) {
@@ -311,9 +326,7 @@ async function deleteSelected() {
 
 async function editQuote(id) {
     try {
-        const res = await fetch(`${API_BASE}/${id}`);
-        if (!res.ok) throw new Error('데이터 로드 실패');
-        const data = await res.json();
+        const data = await authFetch(`${API_BASE}/${id}`);
         state.doc = data;
         state.activeForwarderIdx = 0;
         
