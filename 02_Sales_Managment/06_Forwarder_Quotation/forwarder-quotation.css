@@ -287,13 +287,13 @@
     border: 1px solid var(--border-color);
 }
 .summary-table td {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     text-align: right;
 }
 .summary-table td:first-child {
     text-align: left;
     font-weight: 500;
-    background: var(--bg-secondary);
+    background: var(--gray-50);
 }
 .summary-table .total-row td {
     font-weight: 700;
@@ -301,7 +301,7 @@
 }
 .summary-table .grand-total-row td {
     font-weight: 700;
-    background: var(--brand-color);
+    background: var(--primary);
     color: white;
 }
 
