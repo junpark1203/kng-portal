@@ -18,6 +18,9 @@ let state = {
         incoterms: ['EXW', 'FOB'],
         items: [],
         forwarders: [],
+        otherCosts: [
+            { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
+        ],
         remarks: ''
     },
     activeForwarderIdx: 0
@@ -247,8 +250,20 @@ function initEvents() {
         renderForwarderContent();
     });
     
+    // 기타 비용 추가
+    document.getElementById('btnAddOtherCost').addEventListener('click', () => {
+        state.doc.otherCosts = state.doc.otherCosts || [];
+        state.doc.otherCosts.push({
+            id: 'custom_' + Date.now(),
+            name: '추가 비용',
+            type: 'manual',
+            amount: 0
+        });
+        renderAllCalculations();
+    });
+
     // 실수입원가 선택
-    document.getElementById('costResultSelector').addEventListener('change', renderCostResultTable);
+    document.getElementById('costResultSelector').addEventListener('change', renderAllCalculations);
 }
 
 function updateDefaultCostQuantities() {
@@ -384,6 +399,11 @@ async function editQuote(id) {
         }
         
         state.doc = data;
+        if (!state.doc.otherCosts || state.doc.otherCosts.length === 0) {
+            state.doc.otherCosts = [
+                { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
+            ];
+        }
         state.activeForwarderIdx = 0;
         
         // 폼 채우기
@@ -427,6 +447,9 @@ function openNewQuote() {
         incoterms: ['EXW', 'FOB'],
         items: [],
         forwarders: [],
+        otherCosts: [
+            { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
+        ],
         remarks: ''
     };
     state.activeForwarderIdx = 0;
@@ -888,6 +911,201 @@ function renderSummaryTable() {
     // 3. 부대비용 그룹화
     // 그룹: 해상운임(OF), 수출국(THC_E 등), 수입국(THC_I 등), 적하보험(INS), 통관수수료(CUST_I)
     
+    state.editingForwarderIdx = idx;
+    document.getElementById('fwModalTitle').innerText = '포워더 이름 변경';
+    document.getElementById('fwNameInput').value = state.doc.forwarders[idx].name;
+    document.getElementById('forwarderModal').classList.add('active');
+    document.getElementById('fwNameInput').focus();
+};
+
+window.removeForwarder = function(idx) {
+    if (!confirm('해당 포워더 견적을 삭제하시겠습니까?')) return;
+    state.doc.forwarders.splice(idx, 1);
+    if (state.activeForwarderIdx >= state.doc.forwarders.length) {
+        state.activeForwarderIdx = Math.max(0, state.doc.forwarders.length - 1);
+    }
+    renderForwarderTabs();
+    renderForwarderContent();
+};
+
+function renderForwarderContent() {
+    const area = document.getElementById('forwarderContentArea');
+    if (state.doc.forwarders.length === 0) {
+        area.innerHTML = '<div class="empty-state">포워더를 추가하여 부대비용 견적을 입력하세요.</div>';
+        renderAllCalculations();
+        return;
+    }
+    
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    
+    let html = `
+        <table class="item-table" style="margin-bottom:10px;">
+            <thead>
+                <tr>
+                    <th>비용 항목 (약어 / 한글)</th>
+                    <th class="col-num" style="width:120px;">단가</th>
+                    <th style="width:80px;">통화</th>
+                    <th style="width:120px;">단위</th>
+                    <th class="col-num" style="width:80px;">수량</th>
+                    <th class="col-num" style="width:120px;">합계</th>
+    `;
+    state.doc.incoterms.forEach(term => {
+        html += `<th class="chk-cell" style="width:60px;">${term}</th>`;
+    });
+    html += `       <th class="col-action">관리</th>
+                </tr>
+            </thead>
+            <tbody>`;
+            
+    fw.costs.forEach((c, idx) => {
+        const isAuto = false; // 자동계산 기능 완전히 제거됨
+        let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
+        if (c.key === 'INS') {
+            labelHtml = `<div style="display:flex; align-items:center;">
+                ${labelHtml}
+                <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
+            </div>`;
+        }
+        
+        html += `
+            <tr>
+                <td>${labelHtml}</td>
+                <td><input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)" ${isAuto?'readonly':''}></td>
+                <td>
+                    <select onchange="updateCost(${idx}, 'currency', this.value)" ${isAuto?'disabled':''}>
+                        <option value="KRW" ${c.currency==='KRW'?'selected':''}>KRW</option>
+                        <option value="USD" ${c.currency==='USD'?'selected':''}>USD</option>
+                        <option value="CNY" ${c.currency==='CNY'?'selected':''}>CNY</option>
+                        <option value="EUR" ${c.currency==='EUR'?'selected':''}>EUR</option>
+                        <option value="JPY" ${c.currency==='JPY'?'selected':''}>JPY</option>
+                    </select>
+                </td>
+                <td>
+                    <select onchange="updateCost(${idx}, 'unit', this.value)" ${isAuto?'disabled':''}>
+                        ${UNIT_OPTIONS.map(opt => `<option value="${opt}" ${c.unit===opt?'selected':''}>${opt}</option>`).join('')}
+                    </select>
+                </td>
+                <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="1" oninput="updateCost(${idx}, 'unitQty', this.value)" ${isAuto?'readonly':''}></td>
+                <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
+        `;
+        
+        state.doc.incoterms.forEach(term => {
+            const checked = c.applyTo[term] ? 'checked' : '';
+            html += `<td class="chk-cell"><input type="checkbox" ${checked} onchange="updateCostApply(${idx}, '${term}', this.checked)"></td>`;
+        });
+        
+        html += `
+                <td class="col-action">
+                    ${isAuto ? '' : `<button class="btn-icon" style="color:var(--danger-color)" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>`}
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `</tbody></table>
+        <button class="btn-outline btn-small" onclick="addCustomCost()"><i class='bx bx-plus'></i> 커스텀 항목 추가</button>
+    `;
+    
+    area.innerHTML = html;
+    calculateAutoCosts(); // 적하보험 등 렌더링 후 자동계산 갱신
+    renderAllCalculations();
+}
+
+window.updateCost = function(idx, field, val) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    if (field === 'amount' || field === 'unitQty') {
+        fw.costs[idx][field] = parseFloat(val) || 0;
+        document.getElementById(`fwCostSum_${idx}`).innerText = formatNum(fw.costs[idx].amount * fw.costs[idx].unitQty);
+    } else {
+        fw.costs[idx][field] = val;
+    }
+    renderAllCalculations();
+};
+
+window.updateCostApply = function(idx, term, checked) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    if (!fw.costs[idx].applyTo) fw.costs[idx].applyTo = {};
+    fw.costs[idx].applyTo[term] = checked;
+    renderAllCalculations();
+};
+
+window.removeCost = function(idx) {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    fw.costs.splice(idx, 1);
+    renderForwarderContent();
+};
+
+window.addCustomCost = function() {
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    const applyTo = {};
+    state.doc.incoterms.forEach(t => applyTo[t] = true);
+    fw.costs.push({
+        key: 'CUSTOM_' + Date.now(),
+        label: '사용자 추가 항목',
+        amount: 0,
+        currency: 'KRW',
+        unit: 'Lump Sum',
+        unitQty: 1,
+        applyTo
+    });
+    renderForwarderContent();
+};
+
+// ─────────────────────────────────────────────────────────────
+// 자동 계산 (적하보험 등)
+// ─────────────────────────────────────────────────────────────
+function calculateAutoCosts() {
+    // 자동계산 항목이 추가되면 이곳에 로직 구현
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// 전체 요약 계산 (Summary) & 원가 산출
+// ─────────────────────────────────────────────────────────────
+function renderAllCalculations() {
+    renderSummaryTable();
+    populateCostResultSelector();
+    renderCostResultTable();
+    generatePrintAndExcelHTML();
+}
+
+function renderSummaryTable() {
+    const thead = document.querySelector('#summaryTable thead');
+    const tbody = document.querySelector('#summaryTable tbody');
+    
+    if (state.doc.forwarders.length === 0 || state.doc.items.length === 0) {
+        thead.innerHTML = '';
+        tbody.innerHTML = '<tr><td style="text-align:center; padding:20px;">비용 요약을 계산할 데이터가 부족합니다.</td></tr>';
+        return;
+    }
+
+    // 1. 헤더 (포워더 × 인코텀즈)
+    let hHtml = '<tr><th>비용 구분</th>';
+    state.doc.forwarders.forEach(fw => {
+        state.doc.incoterms.forEach(term => {
+            hHtml += `<th>${fw.name}<br><span style="font-size:0.85rem; color:var(--text-secondary)">${term}</span></th>`;
+        });
+    });
+    hHtml += '</tr>';
+    thead.innerHTML = hHtml;
+
+    // 2. 인보이스 총액 계산 (인코텀즈별) - 통화별로 보여주기 복잡하므로, 대표적으로 KRW 환산 금액 사용 + 외화 대표 표시?
+    // 깔끔하게 원화(KRW) 기준으로 통일하되 툴팁으로 표시.
+    const getInvoiceSumKrw = (term) => {
+        let sum = 0;
+        state.doc.items.forEach(item => {
+            const p = item.prices[term];
+            if (p && p.currency && p.unitPrice) {
+                const exRate = state.doc.exchangeRates[p.currency] || 1;
+                sum += (p.unitPrice * item.qty * exRate);
+            }
+        });
+        return sum;
+    };
+
+    // 3. 부대비용 그룹화
+    // 그룹: 해상운임(OF), 수출국(THC_E 등), 수입국(THC_I 등), 적하보험(INS), 통관수수료(CUST_I)
+    
     let rows = {
         invoice: { label: '물품 대금 (KRW 환산)', values: [] },
         ocean: { label: '해상 운임 (O/F)', values: [] },
@@ -895,8 +1113,9 @@ function renderSummaryTable() {
         import: { label: '수입국 부대비용', values: [] },
         ins: { label: '적하보험료', values: [] },
         customs: { label: '수입 통관수수료', values: [] },
-        subtotal: { label: '부대비용 합계 (KRW)', values: [], isTotal: true },
-        grandtotal: { label: '총 비용 (물품+부대) KRW', values: [], isGrand: true }
+        subtotal: { label: '포워더 부대비용 소계 (KRW)', values: [], isTotal: true },
+        otherCosts: { label: '기타 추가비용 (이자 등)', values: [] },
+        grandtotal: { label: '총 비용 (물품+포워더+기타) KRW', values: [], isGrand: true }
     };
 
     state.doc.forwarders.forEach((fw, fIdx) => {
@@ -931,14 +1150,36 @@ function renderSummaryTable() {
             
             const sub = oceanKrw + exportKrw + importKrw + insKrw + customsKrw;
             rows.subtotal.values.push(sub);
-            rows.grandtotal.values.push(invKrw + sub);
+            
+            // 기타 금융 및 추가비용 계산
+            let manualOtherCosts = 0;
+            let interestCost = 0;
+            if (state.doc.otherCosts) {
+                state.doc.otherCosts.forEach(oc => {
+                    if (oc.type === 'manual') manualOtherCosts += (oc.amount || 0);
+                    else if (oc.type === 'calculated' && oc.id === 'interest') {
+                        const duration = oc.durationMonths || 0;
+                        const colDays = oc.collectionDays || 0;
+                        const rate = oc.interestRate || 0;
+                        const avgMonths = ((duration + 1) / 2) + (colDays / 30);
+                        const principal = invKrw + sub;
+                        interestCost = principal * (avgMonths / 12) * (rate / 100);
+                    }
+                });
+            }
+            const totalOther = manualOtherCosts + interestCost;
+            rows.otherCosts.values.push(totalOther);
+            
+            const grand = invKrw + sub + totalOther;
+            rows.grandtotal.values.push(grand);
             
             // 데이터 속성 저장을 위해 state에 결과 캐싱 (원가 산출에서 사용)
             if (!fw.calculated) fw.calculated = {};
             fw.calculated[term] = {
                 invoiceKrw: invKrw,
                 ancillaryKrw: sub,
-                totalKrw: invKrw + sub
+                otherCostsKrw: totalOther,
+                totalKrw: grand
             };
         });
     });
@@ -994,7 +1235,7 @@ function renderCostResultTable() {
     if (!fw || !fw.calculated || !fw.calculated[term]) return;
     
     const calc = fw.calculated[term];
-    const totalAncillaryKrw = calc.ancillaryKrw;
+    const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
     const totalInvoiceKrw = calc.invoiceKrw;
     
     // --- 5-1. 가치비례 배분법 렌더링 ---
@@ -1091,14 +1332,15 @@ function generatePrintAndExcelHTML() {
     // 9 columns definition
     html += `
         <colgroup>
-            <col style="width:11%;">
-            <col style="width:17%;">
+            <col style="width:10%;">
+            <col style="width:12%;">
             <col style="width:9%;">
             <col style="width:9%;">
-            <col style="width:11%;">
             <col style="width:10%;">
             <col style="width:9%;">
-            <col style="width:11%;">
+            <col style="width:9%;">
+            <col style="width:9%;">
+            <col style="width:10%;">
             <col style="width:13%;">
         </colgroup>
     `;
@@ -1107,24 +1349,24 @@ function generatePrintAndExcelHTML() {
     html += `
         <thead>
             <tr>
-                <th colspan="9" style="font-size:18px; padding:15px; text-align:center; background:#f8fafc; border:1px solid #333;">포워더 견적서 (${state.doc.title || ''})</th>
+                <th colspan="10" style="font-size:18px; padding:15px; text-align:center; background:#f8fafc; border:1px solid #333;">포워더 견적서 (${state.doc.title || ''})</th>
             </tr>
             <tr>
                 <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">견적일자</th>
-                <td colspan="2" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.quoteDate || ''}</td>
+                <td colspan="3" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.quoteDate || ''}</td>
                 <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">컨테이너 규격 및 수량</th>
                 <td colspan="3" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.containerType || ''} x ${state.doc.containerQty || 1}</td>
             </tr>
             <tr>
                 <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">적용 환율</th>
-                <td colspan="7" style="padding:8px; border:1px solid #333; text-align:left;">
+                <td colspan="8" style="padding:8px; border:1px solid #333; text-align:left;">
                     USD: ₩${formatNum(state.doc.exchangeRates.USD)} &nbsp;&nbsp;|&nbsp;&nbsp; 
                     CNY: ₩${formatNum(state.doc.exchangeRates.CNY)} &nbsp;&nbsp;|&nbsp;&nbsp; 
                     EUR: ₩${formatNum(state.doc.exchangeRates.EUR)} &nbsp;&nbsp;|&nbsp;&nbsp; 
                     JPY: ₩${formatNum(state.doc.exchangeRates.JPY)}
                 </td>
             </tr>
-            <tr><th colspan="9" style="height:20px; border:none; background:white;"></th></tr>
+            <tr><th colspan="10" style="height:20px; border:none; background:white;"></th></tr>
         </thead>
         <tbody>
     `;
@@ -1132,7 +1374,7 @@ function generatePrintAndExcelHTML() {
     // 2. 수입 대상 품목
     html += `
         <tr>
-            <th colspan="9" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[1] 수입 대상 품목</th>
+            <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[1] 수입 대상 품목</th>
         </tr>
         <tr>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">HS CODE</th>
@@ -1141,7 +1383,7 @@ function generatePrintAndExcelHTML() {
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">단위</th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">총중량(kg)</th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">최대적재량</th>
-            <th colspan="3" style="background:#f8fafc; padding:6px; border:1px solid #333;">비고</th>
+            <th colspan="4" style="background:#f8fafc; padding:6px; border:1px solid #333;">비고</th>
         </tr>
     `;
     
@@ -1159,7 +1401,7 @@ function generatePrintAndExcelHTML() {
                 <td style="text-align:center; padding:6px; border:1px solid #333;">${item.unit || ''}</td>
                 <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.weight)}</td>
                 <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.maxLoad)} /cntr</td>
-                <td colspan="3" style="padding:6px; border:1px solid #333;"></td>
+                <td colspan="4" style="padding:6px; border:1px solid #333;"></td>
             </tr>
         `;
     });
@@ -1170,9 +1412,9 @@ function generatePrintAndExcelHTML() {
             <th style="background:#f8fafc; padding:6px; border:1px solid #333; text-align:right;">${formatNum(sumQty)}</th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;"></th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333; text-align:right;">${formatNum(sumWeight)} kg</th>
-            <th colspan="4" style="background:#f8fafc; padding:6px; border:1px solid #333;"></th>
+            <th colspan="5" style="background:#f8fafc; padding:6px; border:1px solid #333;"></th>
         </tr>
-        <tr><td colspan="9" style="height:20px; border:none; background:white;"></td></tr>
+        <tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>
     `;
 
     // 3. 비용 요약 (행/열 반전 Transpose 로직)
@@ -1190,7 +1432,7 @@ function generatePrintAndExcelHTML() {
 
     html += `
         <tr>
-            <th colspan="9" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[2] 비용 요약 (원화 환산)</th>
+            <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[2] 비용 요약 (원화 환산)</th>
         </tr>
         <tr>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">구분 (포워더 / 조건)</th>
@@ -1200,14 +1442,21 @@ function generatePrintAndExcelHTML() {
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수입국 부대비용</th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">적하보험료</th>
             <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수입 통관수수료</th>
-            <th style="background:#eef2ff; padding:6px; border:1px solid #333;">부대비용 합계</th>
+            <th style="background:#eef2ff; padding:6px; border:1px solid #333;">포워더 소계</th>
+            <th style="background:#fff7ed; padding:6px; border:1px solid #333;">기타 추가비용</th>
             <th style="background:#4f46e5; color:white; padding:6px; border:1px solid #333;">총 비용 (KRW)</th>
         </tr>
     `;
 
     state.doc.forwarders.forEach((fw) => {
         state.doc.incoterms.forEach(term => {
-            const invKrw = getInvoiceSumKrw(term);
+            if (!fw.calculated || !fw.calculated[term]) return;
+            const calc = fw.calculated[term];
+            const invKrw = calc.invoiceKrw;
+            const sub = calc.ancillaryKrw;
+            const totalOther = calc.otherCostsKrw || 0;
+            const grand = calc.totalKrw;
+            
             let oceanKrw = 0, exportKrw = 0, importKrw = 0, insKrw = 0, customsKrw = 0;
 
             fw.costs.forEach(c => {
@@ -1221,9 +1470,6 @@ function generatePrintAndExcelHTML() {
                 }
             });
 
-            const sub = oceanKrw + exportKrw + importKrw + insKrw + customsKrw;
-            const grand = invKrw + sub;
-
             html += `
                 <tr>
                     <td style="text-align:center; padding:6px; border:1px solid #333; font-weight:bold; word-break:keep-all;">${fw.name}<br>(${term})</td>
@@ -1234,13 +1480,14 @@ function generatePrintAndExcelHTML() {
                     <td style="text-align:right; padding:6px; border:1px solid #333;">${insKrw > 0 ? '₩ ' + formatNum(insKrw) : '—'}</td>
                     <td style="text-align:right; padding:6px; border:1px solid #333;">${customsKrw > 0 ? '₩ ' + formatNum(customsKrw) : '—'}</td>
                     <td style="text-align:right; padding:6px; border:1px solid #333; background:#eef2ff; font-weight:bold;">${sub > 0 ? '₩ ' + formatNum(sub) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border:1px solid #333; background:#fff7ed; font-weight:bold;">${totalOther > 0 ? '₩ ' + formatNum(totalOther) : '—'}</td>
                     <td style="text-align:right; padding:6px; border:1px solid #333; font-weight:bold; color:#4f46e5;">${grand > 0 ? '₩ ' + formatNum(grand) : '—'}</td>
                 </tr>
             `;
         });
     });
 
-    html += `<tr><td colspan="9" style="height:20px; border:none; background:white;"></td></tr>`;
+    html += `<tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>`;
 
     // 4. 모든 인코텀즈 실수입원가 (5-1, 5-2)
     state.doc.forwarders.forEach((fw, fIdx) => {
@@ -1263,7 +1510,7 @@ function generatePrintAndExcelHTML() {
 
             html += `
                 <tr>
-                    <th colspan="9" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">
+                    <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">
                         [3] 실수입원가 - ${fw.name} (${term})
                     </th>
                 </tr>
@@ -1271,13 +1518,13 @@ function generatePrintAndExcelHTML() {
 
             // 5-1 가치비례
             html += `
-                <tr><td colspan="9" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(1) 가치비례 배분법 (가액 기준)</td></tr>
+                <tr><td colspan="10" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(1) 가치비례 배분법 (가액 기준)</td></tr>
                 <tr>
                     <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">품명</th>
                     <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수량</th>
                     <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">순수 물품대금 (단위당)</th>
                     <th style="background:#f8fafc; padding:6px; border:1px solid #333;">부대비용 (단위당)</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
+                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
                     <th colspan="2" style="background:#eef2ff; padding:6px; border:1px solid #333;">실수입원가 (KRW)</th>
                 </tr>
             `;
@@ -1285,7 +1532,7 @@ function generatePrintAndExcelHTML() {
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
                 if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">${item.qty}</td><td colspan="6" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
+                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
                     return;
                 }
                 const unitPriceFC = p.unitPrice;
@@ -1300,7 +1547,7 @@ function generatePrintAndExcelHTML() {
                         <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.qty)}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                         <td style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
-                        <td style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#eef2ff; padding:6px; border:1px solid #333;">₩ ${formatNum(realCostKrw_Value)}</td>
                     </tr>
                 `;
@@ -1308,13 +1555,13 @@ function generatePrintAndExcelHTML() {
 
             // 5-2 적재비율
             html += `
-                <tr><td colspan="9" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
+                <tr><td colspan="10" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
                 <tr>
                     <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">품명</th>
                     <th style="background:#f8fafc; padding:6px; border:1px solid #333;">점유율</th>
                     <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">순수 물품대금 (단위당)</th>
                     <th style="background:#f8fafc; padding:6px; border:1px solid #333;">부대비용 (단위당)</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
+                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
                     <th colspan="2" style="background:#eef2ff; padding:6px; border:1px solid #333;">실수입원가 (KRW)</th>
                 </tr>
             `;
@@ -1322,7 +1569,7 @@ function generatePrintAndExcelHTML() {
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
                 if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">-</td><td colspan="6" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
+                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">-</td><td colspan="7" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
                     return;
                 }
                 const unitPriceFC = p.unitPrice;
@@ -1346,12 +1593,12 @@ function generatePrintAndExcelHTML() {
                         <td style="text-align:right; padding:6px; border:1px solid #333;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                         <td style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
-                        <td style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#eef2ff; padding:6px; border:1px solid #333;">₩ ${formatNum(realCostKrw_Volume)}</td>
                     </tr>
                 `;
             });
-            html += `<tr><td colspan="9" style="height:20px; border:none; background:white;"></td></tr>`;
+            html += `<tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>`;
         });
     });
 

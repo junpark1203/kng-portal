@@ -211,10 +211,40 @@
                     </div>
                 </section>
 
-                <!-- SECTION 5: 실수입원가 -->
+                <!-- SECTION 5: 기타 금융 및 추가 부대비용 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
-                        <h3>5. 대상 품목 실제 수입원가 산출</h3>
+                        <h3>5. 기타 금융 및 추가 부대비용</h3>
+                        <button id="btnAddOtherCost" class="btn-small btn-outline"><i class='bx bx-plus'></i> 항목 추가</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="item-table" id="otherCostTable">
+                            <thead>
+                                <tr>
+                                    <th>비용 항목명</th>
+                                    <th>유형</th>
+                                    <th>계산 조건 (자동계산 시)</th>
+                                    <th class="col-num" style="width:150px;">금액 (KRW)</th>
+                                    <th class="col-action">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="otherCostTableBody">
+                                <!-- 동적 렌더링 -->
+                            </tbody>
+                            <tfoot id="otherCostTableFoot">
+                                <!-- 합계 렌더링 -->
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p class="help-text" style="margin-top:10px; color: var(--text-secondary);">
+                        * <strong>이자비용</strong>은 아래 <strong>6번 섹션</strong>에서 선택된 [포워더+인코텀즈] 조합의 총 비용을 기준으로 실시간 자동 산출됩니다.
+                    </p>
+                </section>
+
+                <!-- SECTION 6: 실수입원가 -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>6. 대상 품목 실제 수입원가 산출</h3>
                         <div class="cost-selector">
                             <label>기준 선택:</label>
                             <select id="costResultSelector">
@@ -224,7 +254,7 @@
                     </div>
                     
                     <h4 style="margin-top:15px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
-                        5-1. 실수입원가 (가치비례 배분법)
+                        6-1. 실수입원가 (가치비례 배분법)
                         <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
                             <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
                         </i>
@@ -248,7 +278,7 @@
                     </div>
 
                     <h4 style="margin-top:30px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
-                        5-2. 실수입원가 (컨테이너 적재비율 배분법)
+                        6-2. 실수입원가 (컨테이너 적재비율 배분법)
                         <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
                             <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.<br>FCL 화물의 부피/중량 편차를 보정할 때 유리합니다.</span>
                         </i>
