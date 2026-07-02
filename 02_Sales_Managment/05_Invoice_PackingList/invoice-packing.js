@@ -790,13 +790,21 @@ function renderPreview() {
                 ${fmtAddr(d.shipper)}
             </div>
             <div style="display:flex;flex-direction:column;gap:14px;">
-                <div class="doc-party-box" style="flex:1; position:relative;">
-                    ${d.countryOfOrigin ? `<div style="position:absolute; top:8px; right:8px; font-weight:700; font-size:11px; border:1px solid #333; padding:4px 8px; color:#111; text-align:center;">Country of Origin<br><span style="font-size:12px;">${d.countryOfOrigin}</span></div>` : ''}
-                    <div class="party-label">${isInv ? 'Invoice No. & Date' : 'Packing List No. & Date'}</div>
-                    <div style="display:flex;gap:20px;margin-bottom:8px;">
-                        <div><b>No:</b> ${docNo || '-'}</div>
-                        <div><b>Date:</b> ${d.docDate || '-'}</div>
+                <div style="display:flex; gap:14px;">
+                    <div class="doc-party-box" style="flex:1;">
+                        <div class="party-label">${isInv ? 'Invoice No. & Date' : 'Packing List No. & Date'}</div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            <div><b>No:</b> ${docNo || '-'}</div>
+                            <div><b>Date:</b> ${d.docDate || '-'}</div>
+                        </div>
                     </div>
+                    ${d.countryOfOrigin ? `
+                    <div class="doc-party-box" style="flex:0.7;">
+                        <div class="party-label">Country of Origin</div>
+                        <div style="font-weight:700; font-size:12px; margin-top:6px;">${d.countryOfOrigin}</div>
+                    </div>` : ''}
+                </div>
+                <div class="doc-party-box" style="flex:1;">
                     <div class="party-label">Remarks</div>
                     <div>${(d.remarks||'').replace(/\n/g, '<br>')}</div>
                 </div>
