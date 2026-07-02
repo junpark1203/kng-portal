@@ -52,6 +52,7 @@ const allowedOrigins = [
     'https://kng.junparks.com',
     'http://localhost:8788',            // 로컬 개발용
     'http://localhost:3000',
+    'http://localhost:8000',
     'http://localhost:8090',            // mass_upload dev-server
     'http://127.0.0.1:8788',
     'http://127.0.0.1:8090'

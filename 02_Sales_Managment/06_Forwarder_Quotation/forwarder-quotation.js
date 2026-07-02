@@ -348,12 +348,18 @@ async function editQuote(id) {
     try {
         const data = await authFetch(`${API_BASE}/${id}`);
         
-        // 구버전 호환: '자동계산' 단위가 저장된 경우 'Lump Sum'으로 변환
+        // 구버전 호환: '자동계산' 단위가 저장된 경우 'Lump Sum'으로 변환 및 applyTo 초기화
         if (data.forwarders) {
             data.forwarders.forEach(fw => {
                 if (fw.costs) {
                     fw.costs.forEach(c => {
                         if (c.unit === '자동계산') c.unit = 'Lump Sum';
+                        if (!c.applyTo) {
+                            c.applyTo = {};
+                            if (data.incoterms) {
+                                data.incoterms.forEach(term => c.applyTo[term] = true);
+                            }
+                        }
                     });
                 }
             });
@@ -521,7 +527,7 @@ function renderItems() {
     // 바디 재생성
     const tbody = document.getElementById('itemTableBody');
     if (state.doc.items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${6 + state.doc.incoterms.length}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${7 + state.doc.incoterms.length}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
         renderItemFooter();
         renderAllCalculations();
         return;
