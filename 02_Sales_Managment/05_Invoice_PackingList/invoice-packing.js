@@ -199,6 +199,7 @@ function renderTable() {
                 <div class="inv-row-actions">
                     <button type="button" class="btn-preview" onclick="openPreview('${d.id}')" title="미리보기/인쇄"><i class='bx bx-printer'></i></button>
                     <button type="button" onclick="editDoc('${d.id}')" title="수정"><i class='bx bx-edit-alt'></i></button>
+                    <button type="button" class="btn-copy" onclick="copyDoc('${d.id}')" title="문서 복사"><i class='bx bx-copy'></i></button>
                     <button type="button" class="btn-delete" onclick="deleteDoc('${d.id}')" title="삭제"><i class='bx bx-trash'></i></button>
                 </div>
             </td>
@@ -417,6 +418,21 @@ function closeDocModal() {
 window.editDoc = function(id) {
     const doc = allDocs.find(d => d.id === id);
     if (doc) openDocModal(doc);
+};
+
+window.copyDoc = function(id) {
+    const doc = allDocs.find(d => d.id === id);
+    if (!doc) return;
+    
+    // 깊은 복사 후 ID 초기화 및 제목 수정
+    const clonedDoc = JSON.parse(JSON.stringify(doc));
+    clonedDoc.id = ''; 
+    if (clonedDoc.invoiceNo) clonedDoc.invoiceNo = clonedDoc.invoiceNo + '-COPY';
+    if (clonedDoc.packingListNo) clonedDoc.packingListNo = clonedDoc.packingListNo + '-COPY';
+    
+    openDocModal(clonedDoc);
+    els.modalTitle.textContent = '문서 복사 생성';
+    showToast('문서 내용이 복사되었습니다. 저장 시 새로운 문서로 생성됩니다.');
 };
 
 window.deleteDoc = async function(id) {
