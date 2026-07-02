@@ -1133,7 +1133,7 @@ function generatePrintAndExcelHTML() {
                 <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.qty)}</td>
                 <td style="text-align:center; padding:6px; border:1px solid #333;">${item.unit || ''}</td>
                 <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.weight)}</td>
-                <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.maxLoad)}</td>
+                <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.maxLoad)} /cntr</td>
                 <td colspan="2" style="padding:6px; border:1px solid #333;"></td>
             </tr>
         `;
@@ -1187,12 +1187,13 @@ function generatePrintAndExcelHTML() {
 
             fw.costs.forEach(c => {
                 if (c.applyTo[term]) {
-                    if (c.key === 'OF') oceanKrw += c.amountKrw || 0;
-                    else if (c.key.endsWith('_E')) exportKrw += c.amountKrw || 0;
-                    else if (c.key.endsWith('_I') && c.key !== 'CUST_I') importKrw += c.amountKrw || 0;
-                    else if (c.key === 'INS') insKrw += c.amountKrw || 0;
-                    else if (c.key === 'CUST_I') customsKrw += c.amountKrw || 0;
-                    else importKrw += c.amountKrw || 0; // 기타 수입국 비용
+                    const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
+                    
+                    if (c.key === 'OF') oceanKrw += amtKrw;
+                    else if (c.key === 'INS') insKrw += amtKrw;
+                    else if (c.key === 'CUST_I') customsKrw += amtKrw;
+                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) exportKrw += amtKrw;
+                    else importKrw += amtKrw; // 나머지 모두 수입국 (커스텀 포함)
                 }
             });
 
