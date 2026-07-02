@@ -1115,6 +1115,15 @@ function generatePrintAndExcelHTML() {
                 <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">컨테이너 규격 및 수량</th>
                 <td colspan="3" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.containerType || ''} x ${state.doc.containerQty || 1}</td>
             </tr>
+            <tr>
+                <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">적용 환율</th>
+                <td colspan="7" style="padding:8px; border:1px solid #333; text-align:left;">
+                    USD: ₩${formatNum(state.doc.exchangeRates.USD)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    CNY: ₩${formatNum(state.doc.exchangeRates.CNY)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    EUR: ₩${formatNum(state.doc.exchangeRates.EUR)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    JPY: ₩${formatNum(state.doc.exchangeRates.JPY)}
+                </td>
+            </tr>
             <tr><th colspan="9" style="height:20px; border:none; background:white;"></th></tr>
         </thead>
         <tbody>
