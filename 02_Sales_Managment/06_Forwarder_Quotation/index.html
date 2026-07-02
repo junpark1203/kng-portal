@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="../supply-common.css">
     <!-- 전용 CSS -->
     <link rel="stylesheet" href="forwarder-quotation.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="fq-container">
@@ -51,6 +53,8 @@
                 <h2 id="editTitle"><i class='bx bx-edit-alt'></i> 견적 입력/수정</h2>
                 <div class="header-actions">
                     <button id="btnCancelEdit" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                    <button id="btnPrint" class="btn-outline"><i class='bx bx-printer'></i> 인쇄</button>
+                    <button id="btnExportExcel" class="btn-outline" style="color: #107c41; border-color: #107c41;"><i class='bx bx-spreadsheet'></i> 엑셀 내보내기</button>
                     <button id="btnSaveCopy" class="btn-outline btn-outline-primary" style="display: none;"><i class='bx bx-copy'></i> 복사본으로 저장</button>
                     <button id="btnSaveQuote" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
                 </div>
@@ -299,6 +303,9 @@
     <!-- Toast 알림 -->
     <div id="toastContainer" class="toast-container"></div>
     
+    <!-- 인쇄 전용 영역 -->
+    <div id="printContainer" class="print-only"></div>
+
     <script type="module" src="forwarder-quotation.js"></script>
 </body>
 </html>

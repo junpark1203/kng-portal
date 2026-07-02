@@ -320,3 +320,81 @@
     padding: 12px 24px;
     font-size: 1rem;
 }
+
+/* ───────────────────────────────────────────────────────────── */
+/* 인쇄 전용 (Print Only) */
+/* ───────────────────────────────────────────────────────────── */
+.print-only {
+    display: none;
+}
+
+@media print {
+    /* 기존 화면 숨김 */
+    body * {
+        visibility: hidden;
+    }
+    
+    /* 화면 여백 초기화 및 레이아웃 수정 */
+    @page {
+        margin: 1cm;
+        size: A4 portrait;
+    }
+    
+    body {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* 인쇄 컨테이너만 보이기 */
+    #printContainer, #printContainer * {
+        visibility: visible;
+    }
+    
+    #printContainer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        display: block !important;
+    }
+    
+    /* 인쇄용 표 스타일 지정 */
+    #printContainer table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 24px;
+        font-size: 11px; /* A4 용지 너비에 맞추기 위해 약간 줄임 */
+    }
+    
+    #printContainer th, #printContainer td {
+        border: 1px solid #333 !important;
+        padding: 6px;
+        text-align: right;
+    }
+    
+    #printContainer th {
+        background-color: #f3f4f6 !important;
+        -webkit-print-color-adjust: exact;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    #printContainer td:first-child {
+        text-align: left;
+    }
+    
+    #printContainer h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 18px;
+    }
+    
+    #printContainer h3 {
+        margin-top: 20px;
+        margin-bottom: 10px;
+        font-size: 14px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 4px;
+    }
+}
