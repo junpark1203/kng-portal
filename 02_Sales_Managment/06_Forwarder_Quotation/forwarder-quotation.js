@@ -981,7 +981,9 @@ function renderCostResultTable() {
     // --- 5-2. 컨테이너 적재비율 배분법 사전 계산 ---
     let totalContainers = 0;
     state.doc.items.forEach(item => {
-        if (item.maxLoad > 0) {
+        const p = item.prices[term];
+        // 단가가 없는(렌더링에서 제외되는) 품목은 부대비용 분배 모수에서도 제외
+        if (p && p.unitPrice > 0 && item.maxLoad > 0) {
             totalContainers += (item.qty / item.maxLoad);
         }
     });
@@ -1018,7 +1020,7 @@ function renderCostResultTable() {
         let allocatedFC_Volume = 0;
         let volumeShareRatio = 0;
         
-        if (item.maxLoad > 0 && totalContainers > 0) {
+        if (item.maxLoad > 0 && totalContainers > 0 && item.qty > 0) {
             const itemContainerUsage = item.qty / item.maxLoad;
             volumeShareRatio = itemContainerUsage / totalContainers; // 전체 컨테이너 사용량 중 해당 품목의 점유율
             
