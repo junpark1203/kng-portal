@@ -263,7 +263,7 @@ function initEvents() {
     });
 
     // 실수입원가 선택
-    document.getElementById('costResultSelector').addEventListener('change', renderAllCalculations);
+    document.getElementById('costResultSelector')?.addEventListener('change', renderAllCalculations);
 }
 
 function updateDefaultCostQuantities() {
