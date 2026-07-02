@@ -1327,9 +1327,9 @@ function generatePrintAndExcelHTML() {
     }
 
     // A4 width filling via table-layout:fixed and 9-column grid
-    let html = `<table id="exportMasterTable" style="width:100%; border-collapse:collapse; font-size:11px; font-family:sans-serif; table-layout:fixed;">`;
+    let html = `<table id="exportMasterTable" style="width:100%; border-collapse:collapse; font-size:11px; font-family:'Malgun Gothic', sans-serif; table-layout:fixed; color:#000;">`;
     
-    // 9 columns definition
+    // 9 columns definition -> 10 columns
     html += `
         <colgroup>
             <col style="width:10%;">
@@ -1349,21 +1349,23 @@ function generatePrintAndExcelHTML() {
     html += `
         <thead>
             <tr>
-                <th colspan="10" style="font-size:18px; padding:15px; text-align:center; background:#f8fafc; border:1px solid #333;">포워더 견적서 (${state.doc.title || ''})</th>
+                <th colspan="10" style="font-size:18px; color:#203864; padding:15px; text-align:left; border-bottom:2px solid #203864; background:white;">
+                    포워더 견적서 (${state.doc.title || ''})
+                </th>
             </tr>
             <tr>
-                <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">견적일자</th>
-                <td colspan="3" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.quoteDate || ''}</td>
-                <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">컨테이너 규격 및 수량</th>
-                <td colspan="3" style="padding:8px; border:1px solid #333; text-align:center;">${state.doc.containerType || ''} x ${state.doc.containerQty || 1}</td>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">견적일자</th>
+                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.quoteDate || ''}</td>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">컨테이너 규격 / 수량</th>
+                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.containerType || ''} x ${state.doc.containerQty || 1}</td>
             </tr>
             <tr>
-                <th colspan="2" style="background:#f1f5f9; padding:8px; border:1px solid #333; text-align:center;">적용 환율</th>
-                <td colspan="8" style="padding:8px; border:1px solid #333; text-align:left;">
-                    USD: ₩${formatNum(state.doc.exchangeRates.USD)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    CNY: ₩${formatNum(state.doc.exchangeRates.CNY)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    EUR: ₩${formatNum(state.doc.exchangeRates.EUR)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    JPY: ₩${formatNum(state.doc.exchangeRates.JPY)}
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">적용 환율</th>
+                <td colspan="8" style="padding:8px; border:1px solid #ccc; text-align:left; background:#fff2cc;">
+                    <strong>USD:</strong> ₩${formatNum(state.doc.exchangeRates.USD)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>CNY:</strong> ₩${formatNum(state.doc.exchangeRates.CNY)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>EUR:</strong> ₩${formatNum(state.doc.exchangeRates.EUR)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY)}
                 </td>
             </tr>
             <tr><th colspan="10" style="height:20px; border:none; background:white;"></th></tr>
@@ -1374,16 +1376,18 @@ function generatePrintAndExcelHTML() {
     // 2. 수입 대상 품목
     html += `
         <tr>
-            <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[1] 수입 대상 품목</th>
+            <th colspan="10" style="font-size:15px; color:#203864; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #203864; background:white;">
+                1. 수입 대상 품목
+            </th>
         </tr>
         <tr>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">HS CODE</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">품명</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수량</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">단위</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">총중량(kg)</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">최대적재량</th>
-            <th colspan="4" style="background:#f8fafc; padding:6px; border:1px solid #333;">비고</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">HS CODE</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">단위</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">총중량(kg)</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">최대적재량</th>
+            <th colspan="4" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">비고</th>
         </tr>
     `;
     
@@ -1395,24 +1399,24 @@ function generatePrintAndExcelHTML() {
         sumWeight += (item.weight || 0);
         html += `
             <tr>
-                <td style="text-align:center; padding:6px; border:1px solid #333; word-break:keep-all;">${item.hsCode || ''}</td>
-                <td style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name || ''}</td>
-                <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.qty)}</td>
-                <td style="text-align:center; padding:6px; border:1px solid #333;">${item.unit || ''}</td>
-                <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.weight)}</td>
-                <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.maxLoad)} /cntr</td>
-                <td colspan="4" style="padding:6px; border:1px solid #333;"></td>
+                <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.hsCode || ''}</td>
+                <td style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name || ''}</td>
+                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.unit || ''}</td>
+                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.weight)}</td>
+                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.maxLoad)} /cntr</td>
+                <td colspan="4" style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;"></td>
             </tr>
         `;
     });
     
     html += `
         <tr>
-            <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333; text-align:center;">합계</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333; text-align:right;">${formatNum(sumQty)}</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;"></th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333; text-align:right;">${formatNum(sumWeight)} kg</th>
-            <th colspan="5" style="background:#f8fafc; padding:6px; border:1px solid #333;"></th>
+            <th colspan="2" style="background:#f2f2f2; padding:6px; border:1px solid #ccc; text-align:center;">합계</th>
+            <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc; text-align:right;">${formatNum(sumQty)}</th>
+            <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
+            <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc; text-align:right;">${formatNum(sumWeight)} kg</th>
+            <th colspan="5" style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
         </tr>
         <tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>
     `;
@@ -1432,19 +1436,21 @@ function generatePrintAndExcelHTML() {
 
     html += `
         <tr>
-            <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">[2] 비용 요약 (원화 환산)</th>
+            <th colspan="10" style="font-size:15px; color:#203864; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #203864; background:white;">
+                2. 비용 요약 (원화 환산)
+            </th>
         </tr>
         <tr>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">구분 (포워더 / 조건)</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">물품 대금</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">해상 운임 (O/F)</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수출국 부대비용</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수입국 부대비용</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">적하보험료</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수입 통관수수료</th>
-            <th style="background:#eef2ff; padding:6px; border:1px solid #333;">포워더 소계</th>
-            <th style="background:#fff7ed; padding:6px; border:1px solid #333;">기타 추가비용</th>
-            <th style="background:#4f46e5; color:white; padding:6px; border:1px solid #333;">총 비용 (KRW)</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">구분 (포워더 / 조건)</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">물품 대금</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">해상 운임 (O/F)</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수출국 부대비용</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수입국 부대비용</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">적하보험료</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수입 통관수수료</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">포워더 소계</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">기타 추가비용</th>
+            <th style="background:#D9E1F2; color:#203864; padding:6px; border:1px solid #203864;">총 비용 (KRW)</th>
         </tr>
     `;
 
@@ -1472,22 +1478,22 @@ function generatePrintAndExcelHTML() {
 
             html += `
                 <tr>
-                    <td style="text-align:center; padding:6px; border:1px solid #333; font-weight:bold; word-break:keep-all;">${fw.name}<br>(${term})</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${invKrw > 0 ? '₩ ' + formatNum(invKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${oceanKrw > 0 ? '₩ ' + formatNum(oceanKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${exportKrw > 0 ? '₩ ' + formatNum(exportKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${importKrw > 0 ? '₩ ' + formatNum(importKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${insKrw > 0 ? '₩ ' + formatNum(insKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333;">${customsKrw > 0 ? '₩ ' + formatNum(customsKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333; background:#eef2ff; font-weight:bold;">${sub > 0 ? '₩ ' + formatNum(sub) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333; background:#fff7ed; font-weight:bold;">${totalOther > 0 ? '₩ ' + formatNum(totalOther) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border:1px solid #333; font-weight:bold; color:#4f46e5;">${grand > 0 ? '₩ ' + formatNum(grand) : '—'}</td>
+                    <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; font-weight:bold; word-break:keep-all;">${fw.name}<br>(${term})</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${invKrw > 0 ? '₩ ' + formatNum(invKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${oceanKrw > 0 ? '₩ ' + formatNum(oceanKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${exportKrw > 0 ? '₩ ' + formatNum(exportKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${importKrw > 0 ? '₩ ' + formatNum(importKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${insKrw > 0 ? '₩ ' + formatNum(insKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${customsKrw > 0 ? '₩ ' + formatNum(customsKrw) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; background:#f2f2f2; font-weight:bold;">${sub > 0 ? '₩ ' + formatNum(sub) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; background:#f2f2f2; font-weight:bold;">${totalOther > 0 ? '₩ ' + formatNum(totalOther) : '—'}</td>
+                    <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; font-weight:bold; background:#D9E1F2; color:#203864;">${grand > 0 ? '₩ ' + formatNum(grand) : '—'}</td>
                 </tr>
             `;
         });
     });
 
-    html += `<tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>`;
+    html += `<tr><td colspan="10" style="border-top:1px solid #ccc; height:20px; border-left:none; border-right:none; background:white;"></td></tr>`;
 
     // 4. 모든 인코텀즈 실수입원가 (5-1, 5-2)
     state.doc.forwarders.forEach((fw, fIdx) => {
@@ -1510,29 +1516,29 @@ function generatePrintAndExcelHTML() {
 
             html += `
                 <tr>
-                    <th colspan="10" style="font-size:14px; background:#e2e8f0; text-align:left; padding:8px; border:1px solid #333;">
-                        [3] 실수입원가 - ${fw.name} (${term})
+                    <th colspan="10" style="font-size:15px; color:#203864; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #203864; background:white;">
+                        3. 실수입원가 - ${fw.name} (${term})
                     </th>
                 </tr>
             `;
 
             // 5-1 가치비례
             html += `
-                <tr><td colspan="10" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(1) 가치비례 배분법 (가액 기준)</td></tr>
+                <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(1) 가치비례 배분법 (가액 기준)</td></tr>
                 <tr>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">품명</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">수량</th>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">순수 물품대금 (단위당)</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#eef2ff; padding:6px; border:1px solid #333;">실수입원가 (KRW)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
+                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
+                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
                 </tr>
             `;
             
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
                 if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
+                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
                     return;
                 }
                 const unitPriceFC = p.unitPrice;
@@ -1543,33 +1549,33 @@ function generatePrintAndExcelHTML() {
 
                 html += `
                     <tr>
-                        <td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border:1px solid #333;">${formatNum(item.qty)}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#eef2ff; padding:6px; border:1px solid #333;">₩ ${formatNum(realCostKrw_Value)}</td>
+                        <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
                     </tr>
                 `;
             });
 
             // 5-2 적재비율
             html += `
-                <tr><td colspan="10" style="background:#f1f5f9; font-weight:bold; padding:6px; border:1px solid #333;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
+                <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
                 <tr>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">품명</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">점유율</th>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">순수 물품대금 (단위당)</th>
-                    <th style="background:#f8fafc; padding:6px; border:1px solid #333;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #333;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#eef2ff; padding:6px; border:1px solid #333;">실수입원가 (KRW)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
+                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">점유율</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
+                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
+                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
                 </tr>
             `;
 
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
                 if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border:1px solid #333;">-</td><td colspan="7" style="text-align:center; padding:6px; border:1px solid #333; color:#666;">단가 없음</td></tr>`;
+                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">-</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
                     return;
                 }
                 const unitPriceFC = p.unitPrice;
@@ -1589,16 +1595,16 @@ function generatePrintAndExcelHTML() {
 
                 html += `
                     <tr>
-                        <td colspan="2" style="padding:6px; border:1px solid #333; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border:1px solid #333;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border:1px solid #333;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#eef2ff; padding:6px; border:1px solid #333;">₩ ${formatNum(realCostKrw_Volume)}</td>
+                        <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
+                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Volume)}</td>
                     </tr>
                 `;
             });
-            html += `<tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>`;
+            html += `<tr><td colspan="10" style="border-top:1px solid #ccc; height:20px; border-left:none; border-right:none; background:white;"></td></tr>`;
         });
     });
 
