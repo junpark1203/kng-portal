@@ -129,6 +129,8 @@ function initEvents() {
     // 저장
     document.getElementById('btnSaveQuote').addEventListener('click', saveQuote);
     document.getElementById('btnSaveQuoteBottom').addEventListener('click', saveQuote);
+    document.getElementById('btnSaveCopy').addEventListener('click', saveAsCopy);
+    document.getElementById('btnSaveCopyBottom').addEventListener('click', saveAsCopy);
     
     // 목록 액션
     document.getElementById('selectAll').addEventListener('change', e => {
@@ -327,6 +329,18 @@ async function saveQuote() {
     }
 }
 
+async function saveAsCopy() {
+    if (!state.doc.title) return showToast('견적명을 입력하세요.', true);
+    if (!confirm('현재 내용을 새로운 견적서로 복사하여 저장하시겠습니까?')) return;
+    
+    // ID를 제거하여 신규 생성(POST)으로 처리되도록 함
+    delete state.doc.id;
+    state.doc.title = state.doc.title + ' (복사본)';
+    document.getElementById('docTitle').value = state.doc.title;
+    
+    await saveQuote();
+}
+
 async function deleteSelected() {
     const ids = Array.from(document.querySelectorAll('.row-chk:checked')).map(cb => cb.value);
     if (ids.length === 0) return showToast('삭제할 항목을 선택하세요.', true);
@@ -383,6 +397,8 @@ async function editQuote(id) {
         });
 
         document.getElementById('editTitle').innerHTML = `<i class='bx bx-edit-alt'></i> 견적 수정`;
+        document.getElementById('btnSaveCopy').style.display = 'inline-block';
+        document.getElementById('btnSaveCopyBottom').style.display = 'inline-block';
         
         renderIncoterms();
         renderItems();
@@ -422,7 +438,9 @@ function openNewQuote() {
         document.getElementById(`rate${curr}`).value = state.rates[curr].toFixed(2);
     });
 
-    document.getElementById('editTitle').innerHTML = `<i class='bx bx-edit-alt'></i> 신규 견적 등록`;
+    document.getElementById('editTitle').innerHTML = `<i class='bx bx-file-blank'></i> 신규 견적`;
+    document.getElementById('btnSaveCopy').style.display = 'none';
+    document.getElementById('btnSaveCopyBottom').style.display = 'none';
     
     renderIncoterms();
     renderItems();
