@@ -60,8 +60,11 @@ function initInvoicePackingTables(database) {
                     paymentTerms TEXT DEFAULT '',
                     incoterms TEXT DEFAULT '',
                     currency TEXT DEFAULT 'USD',
+                    countryOfOrigin TEXT DEFAULT '',
+                    departureDate TEXT DEFAULT '',
                     
                     items TEXT DEFAULT '[]',
+                    packingItems TEXT DEFAULT '[]',
                     remarks TEXT DEFAULT '',
                     
                     totalAmount REAL DEFAULT 0,
@@ -94,7 +97,12 @@ function initInvoicePackingTables(database) {
                     console.error('invoice_packing 테이블 생성 오류:', err.message);
                     reject(err);
                 } else {
-                    console.log('invoice_packing_docs / invoice_packing_partners 테이블 확인 완료');
+                    // 마이그레이션: 기존 테이블에 신규 컬럼 추가 (에러 무시)
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN countryOfOrigin TEXT DEFAULT ''`, () => {});
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN departureDate TEXT DEFAULT ''`, () => {});
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN packingItems TEXT DEFAULT '[]'`, () => {});
+
+                    console.log('invoice_packing_docs / invoice_packing_partners 테이블 확인 및 마이그레이션 완료');
                     resolve();
                 }
             });
@@ -115,6 +123,7 @@ router.get('/documents', async (req, res) => {
             try { r.consignee = JSON.parse(r.consignee || '{}'); } catch(e) { r.consignee = {}; }
             try { r.notifyParty = JSON.parse(r.notifyParty || '{}'); } catch(e) { r.notifyParty = {}; }
             try { r.items = JSON.parse(r.items || '[]'); } catch(e) { r.items = []; }
+            try { r.packingItems = JSON.parse(r.packingItems || '[]'); } catch(e) { r.packingItems = []; }
             return r;
         });
         res.json(result);
@@ -132,6 +141,7 @@ router.get('/documents/:id', async (req, res) => {
         try { row.consignee = JSON.parse(row.consignee || '{}'); } catch(e) { row.consignee = {}; }
         try { row.notifyParty = JSON.parse(row.notifyParty || '{}'); } catch(e) { row.notifyParty = {}; }
         try { row.items = JSON.parse(row.items || '[]'); } catch(e) { row.items = []; }
+        try { row.packingItems = JSON.parse(row.packingItems || '[]'); } catch(e) { row.packingItems = []; }
         res.json(row);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -148,11 +158,11 @@ router.post('/documents', async (req, res) => {
             id, invoiceNo, packingListNo, docDate,
             shipper, consignee, notifyParty,
             vessel, portOfLoading, portOfDischarge, finalDestination,
-            paymentTerms, incoterms, currency,
-            items, remarks,
+            paymentTerms, incoterms, currency, countryOfOrigin, departureDate,
+            items, packingItems, remarks,
             totalAmount, totalNetWeight, totalGrossWeight, totalMeasurement, totalQty,
             createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.invoiceNo || '',
@@ -168,7 +178,10 @@ router.post('/documents', async (req, res) => {
             p.paymentTerms || '',
             p.incoterms || '',
             p.currency || 'USD',
+            p.countryOfOrigin || '',
+            p.departureDate || '',
             JSON.stringify(p.items || []),
+            JSON.stringify(p.packingItems || []),
             p.remarks || '',
             p.totalAmount || 0,
             p.totalNetWeight || 0,
@@ -194,8 +207,8 @@ router.put('/documents/:id', async (req, res) => {
             invoiceNo=?, packingListNo=?, docDate=?,
             shipper=?, consignee=?, notifyParty=?,
             vessel=?, portOfLoading=?, portOfDischarge=?, finalDestination=?,
-            paymentTerms=?, incoterms=?, currency=?,
-            items=?, remarks=?,
+            paymentTerms=?, incoterms=?, currency=?, countryOfOrigin=?, departureDate=?,
+            items=?, packingItems=?, remarks=?,
             totalAmount=?, totalNetWeight=?, totalGrossWeight=?, totalMeasurement=?, totalQty=?,
             updatedAt=?
         WHERE id=?`;
@@ -213,7 +226,10 @@ router.put('/documents/:id', async (req, res) => {
             p.paymentTerms || '',
             p.incoterms || '',
             p.currency || 'USD',
+            p.countryOfOrigin || '',
+            p.departureDate || '',
             JSON.stringify(p.items || []),
+            JSON.stringify(p.packingItems || []),
             p.remarks || '',
             p.totalAmount || 0,
             p.totalNetWeight || 0,

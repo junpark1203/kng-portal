@@ -25,8 +25,17 @@ const els = {
     docModal: document.getElementById('docModal'),
     modalTitle: document.getElementById('modalTitle'),
     docForm: document.getElementById('docForm'),
+    // Item tabs
+    tabBtns: document.querySelectorAll('.inv-tab-btn'),
+    invItemsWrap: document.getElementById('invItemsWrap'),
+    plItemsWrap: document.getElementById('plItemsWrap'),
+    
+    // Items
     itemLines: document.getElementById('itemLines'),
+    plItemLines: document.getElementById('plItemLines'),
     addItemBtn: document.getElementById('addItemBtn'),
+    addPlItemBtn: document.getElementById('addPlItemBtn'),
+    copyFromInvBtn: document.getElementById('copyFromInvBtn'),
     saveDocBtn: document.getElementById('saveDocBtn'),
     closeModalBtn: document.getElementById('closeModalBtn'),
     cancelModalBtn: document.getElementById('cancelModalBtn'),
@@ -198,9 +207,21 @@ function renderTable() {
 }
 
 // ── Item Lines Logic ──
-function createItemLine(item = {}) {
+// Tabs
+els.tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        els.tabBtns.forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.inv-tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.target).classList.add('active');
+    });
+});
+
+// Invoice Items
+function createInvItemLine(item = {}) {
     const div = document.createElement('div');
     div.className = 'inv-item-row';
+    div.style.gridTemplateColumns = '2.5fr 1fr 1fr 0.8fr 1.2fr 1.2fr 40px';
     div.innerHTML = `
         <input type="text" placeholder="품명/설명" class="i-desc" value="${item.description || ''}">
         <input type="text" placeholder="HS Code" class="i-hs" value="${item.hsCode || ''}">
@@ -208,63 +229,106 @@ function createItemLine(item = {}) {
         <input type="text" placeholder="EA" class="i-unit" value="${item.unit || 'EA'}">
         <input type="number" placeholder="0.00" class="i-price" min="0" step="0.01" value="${item.unitPrice || ''}">
         <input type="text" class="item-amount" readonly tabindex="-1" value="${item.amount || '0.00'}">
-        <input type="number" placeholder="0.00" class="i-nw" min="0" step="0.01" value="${item.netWeight || ''}">
-        <input type="number" placeholder="0.00" class="i-gw" min="0" step="0.01" value="${item.grossWeight || ''}">
-        <input type="number" placeholder="0.000" class="i-cbm" min="0" step="0.001" value="${item.measurement || ''}">
         <button type="button" class="inv-item-del"><i class='bx bx-trash'></i></button>
     `;
     
-    // Add event listeners for calculation
-    const inputs = div.querySelectorAll('.i-qty, .i-price, .i-nw, .i-gw, .i-cbm');
-    inputs.forEach(inp => inp.addEventListener('input', calculateRowAndTotals));
+    const inputs = div.querySelectorAll('.i-qty, .i-price');
+    inputs.forEach(inp => inp.addEventListener('input', calcInvTotals));
     
     div.querySelector('.inv-item-del').addEventListener('click', () => {
         div.remove();
-        calculateRowAndTotals();
+        calcInvTotals();
     });
     
     els.itemLines.appendChild(div);
 }
 
-function calculateRowAndTotals() {
-    let totQty = 0, totAmt = 0, totNW = 0, totGW = 0, totCBM = 0;
-    
+function calcInvTotals() {
+    let totQty = 0, totAmt = 0;
     Array.from(els.itemLines.children).forEach(row => {
         const qty = parseFloat(row.querySelector('.i-qty').value) || 0;
         const price = parseFloat(row.querySelector('.i-price').value) || 0;
-        const nw = parseFloat(row.querySelector('.i-nw').value) || 0;
-        const gw = parseFloat(row.querySelector('.i-gw').value) || 0;
-        const cbm = parseFloat(row.querySelector('.i-cbm').value) || 0;
-        
         const amt = qty * price;
         row.querySelector('.item-amount').value = amt.toFixed(2);
-        
         totQty += qty;
         totAmt += amt;
-        totNW += nw;
-        totGW += gw;
-        totCBM += cbm;
     });
-    
     document.getElementById('totQty').textContent = totQty.toLocaleString();
     document.getElementById('totAmount').textContent = totAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    document.getElementById('totNW').textContent = totNW.toFixed(2);
-    document.getElementById('totGW').textContent = totGW.toFixed(2);
-    document.getElementById('totCBM').textContent = totCBM.toFixed(3);
 }
 
-function gatherItems() {
+function gatherInvItems() {
     return Array.from(els.itemLines.children).map(row => ({
         description: row.querySelector('.i-desc').value.trim(),
         hsCode: row.querySelector('.i-hs').value.trim(),
         qty: parseFloat(row.querySelector('.i-qty').value) || 0,
         unit: row.querySelector('.i-unit').value.trim() || 'EA',
         unitPrice: parseFloat(row.querySelector('.i-price').value) || 0,
-        amount: parseFloat(row.querySelector('.item-amount').value) || 0,
+        amount: parseFloat(row.querySelector('.item-amount').value) || 0
+    })).filter(i => i.description || i.qty > 0);
+}
+
+// Packing List Items
+function createPlItemLine(item = {}) {
+    const div = document.createElement('div');
+    div.className = 'pl-item-row';
+    div.innerHTML = `
+        <input type="text" placeholder="컨테이너/씰 번호" class="i-cont" value="${item.containerNo || ''}">
+        <input type="text" placeholder="품명/설명" class="i-desc" value="${item.description || ''}">
+        <input type="number" placeholder="0" class="i-qty" min="0" value="${item.qty || ''}">
+        <input type="text" placeholder="EA" class="i-unit" value="${item.unit || 'EA'}">
+        <input type="number" placeholder="0.00" class="i-nw" min="0" step="0.01" value="${item.netWeight || ''}">
+        <input type="number" placeholder="0.00" class="i-gw" min="0" step="0.01" value="${item.grossWeight || ''}">
+        <input type="text" placeholder="비고" class="i-rmk" value="${item.remarks || ''}">
+        <button type="button" class="inv-item-del"><i class='bx bx-trash'></i></button>
+    `;
+    
+    const inputs = div.querySelectorAll('.i-nw, .i-gw');
+    inputs.forEach(inp => inp.addEventListener('input', calcPlTotals));
+    
+    div.querySelector('.inv-item-del').addEventListener('click', () => {
+        div.remove();
+        calcPlTotals();
+    });
+    
+    els.plItemLines.appendChild(div);
+}
+
+function calcPlTotals() {
+    let totNW = 0, totGW = 0;
+    Array.from(els.plItemLines.children).forEach(row => {
+        totNW += parseFloat(row.querySelector('.i-nw').value) || 0;
+        totGW += parseFloat(row.querySelector('.i-gw').value) || 0;
+    });
+    document.getElementById('totNW').textContent = totNW.toFixed(2);
+    document.getElementById('totGW').textContent = totGW.toFixed(2);
+}
+
+function gatherPlItems() {
+    return Array.from(els.plItemLines.children).map(row => ({
+        containerNo: row.querySelector('.i-cont').value.trim(),
+        description: row.querySelector('.i-desc').value.trim(),
+        qty: parseFloat(row.querySelector('.i-qty').value) || 0,
+        unit: row.querySelector('.i-unit').value.trim() || 'EA',
         netWeight: parseFloat(row.querySelector('.i-nw').value) || 0,
         grossWeight: parseFloat(row.querySelector('.i-gw').value) || 0,
-        measurement: parseFloat(row.querySelector('.i-cbm').value) || 0
-    })).filter(i => i.description || i.qty > 0);
+        remarks: row.querySelector('.i-rmk').value.trim()
+    })).filter(i => i.description || i.qty > 0 || i.containerNo);
+}
+
+if(els.copyFromInvBtn) {
+    els.copyFromInvBtn.addEventListener('click', () => {
+        const invItems = gatherInvItems();
+        if(invItems.length === 0) return showToast('가져올 인보이스 품목이 없습니다.', 'error');
+        invItems.forEach(i => {
+            createPlItemLine({
+                description: i.description,
+                qty: i.qty,
+                unit: i.unit
+            });
+        });
+        showToast('인보이스 품목을 가져왔습니다.');
+    });
 }
 
 // ── Modal Logic (Create/Edit) ──
@@ -304,7 +368,11 @@ function openDocModal(doc = null) {
         document.getElementById('inpNotifyAddress').value = doc.notifyParty?.address || '';
         document.getElementById('inpNotifyTel').value = doc.notifyParty?.tel || '';
         
-        // Shipping
+        els.itemLines.innerHTML = '';
+        els.plItemLines.innerHTML = '';
+        
+        document.getElementById('inpCountryOfOrigin').value = doc.countryOfOrigin || '';
+        document.getElementById('inpDepartureDate').value = doc.departureDate || '';
         document.getElementById('inpVessel').value = doc.vessel || '';
         document.getElementById('inpIncoterms').value = doc.incoterms || '';
         document.getElementById('inpPortOfLoading').value = doc.portOfLoading || '';
@@ -313,21 +381,32 @@ function openDocModal(doc = null) {
         document.getElementById('inpPaymentTerms').value = doc.paymentTerms || '';
         
         // Items
+        
         if (doc.items && doc.items.length > 0) {
-            doc.items.forEach(item => createItemLine(item));
+            doc.items.forEach(item => createInvItemLine(item));
         } else {
-            createItemLine();
+            createInvItemLine();
         }
         
+        if (doc.packingItems && doc.packingItems.length > 0) {
+            doc.packingItems.forEach(item => createPlItemLine(item));
+        } else {
+            createPlItemLine();
+        }
+        
+        calcInvTotals();
+        calcPlTotals();
         document.getElementById('inpRemarks').value = doc.remarks || '';
         
     } else {
         els.modalTitle.textContent = '신규 거래 생성';
         document.getElementById('editId').value = '';
-        createItemLine();
+        document.getElementById('inpCountryOfOrigin').value = '';
+        document.getElementById('inpDepartureDate').value = '';
+        createInvItemLine();
+        createPlItemLine();
     }
     
-    calculateRowAndTotals();
     els.docModal.classList.add('active');
 }
 
@@ -387,6 +466,8 @@ els.saveDocBtn.addEventListener('click', async () => {
             tel: document.getElementById('inpNotifyTel').value.trim()
         },
         
+        countryOfOrigin: document.getElementById('inpCountryOfOrigin').value.trim(),
+        departureDate: document.getElementById('inpDepartureDate').value,
         vessel: document.getElementById('inpVessel').value.trim(),
         incoterms: document.getElementById('inpIncoterms').value.trim(),
         portOfLoading: document.getElementById('inpPortOfLoading').value.trim(),
@@ -394,14 +475,15 @@ els.saveDocBtn.addEventListener('click', async () => {
         finalDestination: document.getElementById('inpFinalDestination').value.trim(),
         paymentTerms: document.getElementById('inpPaymentTerms').value.trim(),
         
-        items: gatherItems(),
+        items: gatherInvItems(),
+        packingItems: gatherPlItems(),
         remarks: document.getElementById('inpRemarks').value.trim(),
         
         totalAmount: parseFloat(document.getElementById('totAmount').textContent.replace(/,/g,'')) || 0,
         totalQty: parseFloat(document.getElementById('totQty').textContent.replace(/,/g,'')) || 0,
         totalNetWeight: parseFloat(document.getElementById('totNW').textContent) || 0,
         totalGrossWeight: parseFloat(document.getElementById('totGW').textContent) || 0,
-        totalMeasurement: parseFloat(document.getElementById('totCBM').textContent) || 0
+        totalMeasurement: 0,
     };
     
     try {
@@ -627,24 +709,51 @@ function renderPreview() {
     
     // Items
     let itemsHtml = '';
-    d.items.forEach(i => {
-        if (isInv) {
+    
+    if (isInv) {
+        d.items.forEach(i => {
             itemsHtml += `<tr>
                 <td class="td-desc">${i.description}<br><span style="font-size:8px;color:#666;">HS Code: ${i.hsCode||'-'}</span></td>
                 <td class="td-num">${Number(i.qty).toLocaleString()} ${i.unit}</td>
                 <td class="td-num">${sym} ${Number(i.unitPrice).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                 <td class="td-num">${sym} ${Number(i.amount).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             </tr>`;
-        } else {
-            itemsHtml += `<tr>
-                <td class="td-desc">${i.description}</td>
-                <td class="td-num">${Number(i.qty).toLocaleString()} ${i.unit}</td>
-                <td class="td-num">${Number(i.netWeight).toFixed(2)}</td>
-                <td class="td-num">${Number(i.grossWeight).toFixed(2)}</td>
-                <td class="td-num">${Number(i.measurement).toFixed(3)}</td>
+        });
+    } else {
+        // Packing List Grouping
+        const pItems = d.packingItems || [];
+        const grouped = {};
+        pItems.forEach(i => {
+            const cNo = i.containerNo || 'No Container Specified';
+            if(!grouped[cNo]) grouped[cNo] = { items: [], subNW: 0, subGW: 0, subQty: 0 };
+            grouped[cNo].items.push(i);
+            grouped[cNo].subNW += Number(i.netWeight) || 0;
+            grouped[cNo].subGW += Number(i.grossWeight) || 0;
+            grouped[cNo].subQty += Number(i.qty) || 0;
+        });
+        
+        for (const [cNo, g] of Object.entries(grouped)) {
+            itemsHtml += `<tr style="background:#f1f5f9; font-weight:bold;">
+                <td colspan="4" style="text-align:left; padding:8px 6px;">Container / Seal No : ${cNo}</td>
+            </tr>`;
+            
+            g.items.forEach(i => {
+                itemsHtml += `<tr>
+                    <td class="td-desc">${i.description} ${i.remarks ? '<br><span style="font-size:8px;color:#666;">' + i.remarks + '</span>' : ''}</td>
+                    <td class="td-num">${Number(i.qty).toLocaleString()} ${i.unit}</td>
+                    <td class="td-num">${Number(i.netWeight).toFixed(2)}</td>
+                    <td class="td-num">${Number(i.grossWeight).toFixed(2)}</td>
+                </tr>`;
+            });
+            
+            itemsHtml += `<tr style="font-weight:bold; color:#555;">
+                <td style="text-align:right;">Subtotal</td>
+                <td class="td-num">${Number(g.subQty).toLocaleString()}</td>
+                <td class="td-num">${Number(g.subNW).toFixed(2)}</td>
+                <td class="td-num">${Number(g.subGW).toFixed(2)}</td>
             </tr>`;
         }
-    });
+    }
 
     // Format Addresses
     const fmtAddr = (p) => {
@@ -665,7 +774,8 @@ function renderPreview() {
                 ${fmtAddr(d.shipper)}
             </div>
             <div style="display:flex;flex-direction:column;gap:14px;">
-                <div class="doc-party-box" style="flex:1;">
+                <div class="doc-party-box" style="flex:1; position:relative;">
+                    ${d.countryOfOrigin ? `<div style="position:absolute; top:8px; right:8px; font-weight:700; font-size:11px; border:1px solid #333; padding:4px 8px; color:#111; text-align:center;">Country of Origin<br><span style="font-size:12px;">${d.countryOfOrigin}</span></div>` : ''}
                     <div class="party-label">${isInv ? 'Invoice No. & Date' : 'Packing List No. & Date'}</div>
                     <div style="display:flex;gap:20px;margin-bottom:8px;">
                         <div><b>No:</b> ${docNo || '-'}</div>
@@ -692,7 +802,7 @@ function renderPreview() {
             <div class="doc-shipping-cell"><div class="sh-label">Port of Loading</div><div class="sh-value">${d.portOfLoading || '-'}</div></div>
             <div class="doc-shipping-cell"><div class="sh-label">Port of Discharge</div><div class="sh-value">${d.portOfDischarge || '-'}</div></div>
             <div class="doc-shipping-cell"><div class="sh-label">Final Destination</div><div class="sh-value">${d.finalDestination || '-'}</div></div>
-            <div class="doc-shipping-cell"><div class="sh-label">Vessel / Flight</div><div class="sh-value">${d.vessel || '-'}</div></div>
+            <div class="doc-shipping-cell"><div class="sh-label">Vessel / Flight</div><div class="sh-value">${d.vessel || '-'} ${d.departureDate ? '<span style="color:#666;font-size:9px;">(ETD: '+d.departureDate+')</span>' : ''}</div></div>
             <div class="doc-shipping-cell" style="grid-column: span 2;"><div class="sh-label">Payment Terms</div><div class="sh-value">${d.paymentTerms || '-'}</div></div>
             <div class="doc-shipping-cell" style="grid-column: span 2;"><div class="sh-label">Incoterms</div><div class="sh-value">${d.incoterms || '-'}</div></div>
         </div>
@@ -707,11 +817,10 @@ function renderPreview() {
                     <th style="width:20%;">Amount</th>
                 </tr>` : `
                 <tr>
-                    <th style="width:40%;">Description of Goods</th>
+                    <th style="width:55%;">Description of Goods & Remarks</th>
                     <th style="width:15%;">Quantity</th>
                     <th style="width:15%;">Net Wt (kg)</th>
                     <th style="width:15%;">Gross Wt (kg)</th>
-                    <th style="width:15%;">Measurement (CBM)</th>
                 </tr>`}
             </thead>
             <tbody>
@@ -726,11 +835,10 @@ function renderPreview() {
                     <td class="td-num" style="color:var(--primary);">${sym} ${Number(d.totalAmount).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                 </tr>` : `
                 <tr>
-                    <td style="text-align:right;">TOTAL</td>
-                    <td class="td-num">${Number(d.totalQty).toLocaleString()}</td>
+                    <td style="text-align:right;">GRAND TOTAL</td>
+                    <td class="td-num">${d.packingItems ? d.packingItems.reduce((s,i)=>s+(Number(i.qty)||0),0).toLocaleString() : 0}</td>
                     <td class="td-num">${Number(d.totalNetWeight).toFixed(2)}</td>
                     <td class="td-num">${Number(d.totalGrossWeight).toFixed(2)}</td>
-                    <td class="td-num">${Number(d.totalMeasurement).toFixed(3)}</td>
                 </tr>`}
             </tfoot>
         </table>
@@ -765,7 +873,8 @@ function renderPreview() {
 els.addBtn.addEventListener('click', () => openDocModal());
 els.closeModalBtn.addEventListener('click', closeDocModal);
 els.cancelModalBtn.addEventListener('click', closeDocModal);
-els.addItemBtn.addEventListener('click', () => createItemLine());
+els.addItemBtn.addEventListener('click', () => createInvItemLine());
+if(els.addPlItemBtn) els.addPlItemBtn.addEventListener('click', () => createPlItemLine());
 els.partnerBtn.addEventListener('click', openPartnerDrawer);
 els.closeDrawerBtn.addEventListener('click', closePartnerDrawer);
 els.closeTplPickerBtn.addEventListener('click', () => els.tplPickerModal.classList.remove('active'));

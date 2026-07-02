@@ -226,8 +226,16 @@
                         <!-- Shipping Details -->
                         <div class="inv-section-title">Shipping Details</div>
                         <div class="inv-fg">
+                            <label for="inpCountryOfOrigin">Country of Origin</label>
+                            <input type="text" id="inpCountryOfOrigin" placeholder="예: Republic of Korea">
+                        </div>
+                        <div class="inv-fg">
                             <label for="inpVessel">Vessel / Flight</label>
                             <input type="text" id="inpVessel" placeholder="선박/항공편명">
+                        </div>
+                        <div class="inv-fg">
+                            <label for="inpDepartureDate">Departure Date (ETD)</label>
+                            <input type="date" id="inpDepartureDate">
                         </div>
                         <div class="inv-fg">
                             <label for="inpIncoterms">Incoterms</label>
@@ -263,30 +271,61 @@
                         </div>
 
                         <!-- Items -->
-                        <div class="inv-section-title">품목 (Items)</div>
-                        <div class="inv-items-section">
-                            <div class="inv-items-header">
-                                <span>Description</span>
-                                <span>HS Code</span>
-                                <span>Qty</span>
-                                <span>Unit</span>
-                                <span>Unit Price</span>
-                                <span>Amount</span>
-                                <span>N.W (kg)</span>
-                                <span>G.W (kg)</span>
-                                <span>CBM</span>
-                                <span></span>
+                        <div class="inv-section-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: none; margin-bottom: 0; padding-bottom: 0;">
+                            <span>품목 (Items)</span>
+                            <div class="inv-tabs-header">
+                                <button type="button" class="inv-tab-btn active" data-target="invItemsWrap">인보이스 품목</button>
+                                <button type="button" class="inv-tab-btn" data-target="plItemsWrap">팩킹리스트 품목</button>
                             </div>
-                            <div id="itemLines"></div>
-                            <button type="button" class="inv-add-item" id="addItemBtn">
-                                <i class='bx bx-plus'></i> 품목 추가
-                            </button>
-                            <div class="inv-totals-bar" id="totalsBar">
-                                <div class="tot-item"><span class="tot-label">Total Qty:</span><span class="tot-value" id="totQty">0</span></div>
-                                <div class="tot-item"><span class="tot-label">Total Amount:</span><span class="tot-value" id="totAmount">0.00</span></div>
-                                <div class="tot-item"><span class="tot-label">Total N.W:</span><span class="tot-value" id="totNW">0.00</span></div>
-                                <div class="tot-item"><span class="tot-label">Total G.W:</span><span class="tot-value" id="totGW">0.00</span></div>
-                                <div class="tot-item"><span class="tot-label">Total CBM:</span><span class="tot-value" id="totCBM">0.000</span></div>
+                        </div>
+
+                        <!-- Invoice Items -->
+                        <div id="invItemsWrap" class="inv-tab-content active">
+                            <div class="inv-items-section" style="margin-top: 10px;">
+                                <div class="inv-items-header" style="grid-template-columns: 2.5fr 1fr 1fr 0.8fr 1.2fr 1.2fr 40px;">
+                                    <span>Description</span>
+                                    <span>HS Code</span>
+                                    <span>Qty</span>
+                                    <span>Unit</span>
+                                    <span>Unit Price</span>
+                                    <span>Amount</span>
+                                    <span></span>
+                                </div>
+                                <div id="itemLines"></div>
+                                <button type="button" class="inv-add-item" id="addItemBtn">
+                                    <i class='bx bx-plus'></i> 인보이스 품목 추가
+                                </button>
+                                <div class="inv-totals-bar" id="totalsBar">
+                                    <div class="tot-item"><span class="tot-label">Total Qty:</span><span class="tot-value" id="totQty">0</span></div>
+                                    <div class="tot-item"><span class="tot-label">Total Amount:</span><span class="tot-value" id="totAmount">0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Packing List Items -->
+                        <div id="plItemsWrap" class="inv-tab-content">
+                            <div style="display:flex; justify-content:flex-end; margin-top: 10px; margin-bottom: 10px;">
+                                <button type="button" class="btn-outline" id="copyFromInvBtn" style="font-size: 12px; padding: 6px 12px;"><i class='bx bx-copy'></i> 인보이스 품목 가져오기</button>
+                            </div>
+                            <div class="inv-items-section">
+                                <div class="pl-items-header" style="display:grid; grid-template-columns: 1.5fr 2fr 0.8fr 0.8fr 1fr 1fr 1.5fr 40px; gap:8px; padding:10px 14px; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:12px; font-weight:600; color:var(--gray-600);">
+                                    <span>Container/Seal No.</span>
+                                    <span>Description</span>
+                                    <span>Qty</span>
+                                    <span>Unit</span>
+                                    <span>N.W (kg)</span>
+                                    <span>G.W (kg)</span>
+                                    <span>Remarks</span>
+                                    <span></span>
+                                </div>
+                                <div id="plItemLines"></div>
+                                <button type="button" class="inv-add-item" id="addPlItemBtn">
+                                    <i class='bx bx-plus'></i> 팩킹리스트 품목 추가
+                                </button>
+                                <div class="inv-totals-bar" id="plTotalsBar">
+                                    <div class="tot-item"><span class="tot-label">Total N.W:</span><span class="tot-value" id="totNW">0.00</span></div>
+                                    <div class="tot-item"><span class="tot-label">Total G.W:</span><span class="tot-value" id="totGW">0.00</span></div>
+                                </div>
                             </div>
                         </div>
 

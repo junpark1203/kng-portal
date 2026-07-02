@@ -219,6 +219,44 @@
 .inv-totals-bar .tot-label { font-weight: 600; color: var(--gray-500); }
 .inv-totals-bar .tot-value { font-weight: 700; color: var(--primary); font-size: 14px; }
 
+/* ── Tabs ── */
+.inv-tabs-header {
+    display: flex; gap: 4px;
+}
+.inv-tab-btn {
+    background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200);
+    padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+    border-radius: 6px 6px 0 0; border-bottom: none; transition: all 0.2s;
+}
+.inv-tab-btn:hover {
+    background: var(--gray-200); color: var(--gray-700);
+}
+.inv-tab-btn.active {
+    background: var(--surface); color: var(--primary); border-color: var(--border);
+    box-shadow: 0 -2px 0 var(--primary) inset;
+}
+.inv-tab-content {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+.inv-tab-content.active {
+    display: block;
+}
+
+.pl-item-row {
+    display: grid;
+    grid-template-columns: 1.5fr 2fr 0.8fr 0.8fr 1fr 1fr 1.5fr 40px;
+    gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--gray-50);
+    align-items: center;
+}
+.pl-item-row input {
+    height: 30px; padding: 0 6px; border: 1px solid var(--border);
+    border-radius: 4px; font-size: 11.5px; outline: none; width: 100%;
+    font-family: 'Inter', sans-serif;
+}
+.pl-item-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-muted); }
+
 /* ── Partner Template Drawer ── */
 .inv-drawer-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.25);
