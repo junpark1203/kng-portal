@@ -1454,7 +1454,7 @@ function generatePrintAndExcelHTML() {
             if (!fw.calculated || !fw.calculated[term]) return;
 
             const calc = fw.calculated[term];
-            const totalAncillaryKrw = calc.ancillaryKrw;
+            const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
             const totalInvoiceKrw = calc.invoiceKrw;
             
             const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
