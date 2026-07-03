@@ -886,9 +886,75 @@ function calculateAutoCosts() {
 
 
 // ─────────────────────────────────────────────────────────────
+// 기타 비용 렌더링
+// ─────────────────────────────────────────────────────────────
+function renderOtherCosts() {
+    const tbody = document.getElementById('otherCostTableBody');
+    const tfoot = document.getElementById('otherCostTableFoot');
+    if (!tbody) return;
+    
+    if (!state.doc.otherCosts || state.doc.otherCosts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">추가된 항목이 없습니다.</td></tr>';
+        if (tfoot) tfoot.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    
+    state.doc.otherCosts.forEach((cost, idx) => {
+        let conditionHtml = '';
+        let amountHtml = '';
+        
+        if (cost.type === 'calculated') {
+            conditionHtml = `
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:0.85rem;">
+                    <div>사업기간: <input type="number" style="width:50px; padding:2px;" value="${cost.durationMonths}" oninput="updateOtherCost(${idx}, 'durationMonths', this.value)">개월</div>
+                    <div>연이자율: <input type="number" style="width:60px; padding:2px;" value="${cost.interestRate}" step="0.1" oninput="updateOtherCost(${idx}, 'interestRate', this.value)">%</div>
+                    <div>대금회수: <input type="number" style="width:60px; padding:2px;" value="${cost.collectionDays}" oninput="updateOtherCost(${idx}, 'collectionDays', this.value)">일</div>
+                    <i class='bx bx-help-circle tooltip-icon' style="font-size:1.2rem; cursor:pointer;" title="평균 자금 묶임 기간 산출식: ((사업기간+1)/2) + (대금회수/30) 개월"></i>
+                </div>
+            `;
+            amountHtml = `<div style="text-align:right; color:var(--text-secondary);">(자동 산출)</div>`;
+        } else {
+            conditionHtml = `<div style="color:var(--text-secondary); font-size:0.85rem;">수동 입력</div>`;
+            amountHtml = `<input type="number" class="col-num" value="${cost.amount}" oninput="updateOtherCost(${idx}, 'amount', this.value)" style="width:100%;">`;
+        }
+        
+        html += `
+            <tr>
+                <td><input type="text" value="${cost.name}" onchange="updateOtherCost(${idx}, 'name', this.value)" ${cost.type==='calculated'?'readonly':''}></td>
+                <td><span class="status-badge ${cost.type==='calculated'?'confirmed':'draft'}">${cost.type==='calculated'?'자동계산':'수동입력'}</span></td>
+                <td>${conditionHtml}</td>
+                <td>${amountHtml}</td>
+                <td class="col-action">
+                    ${cost.type === 'manual' ? `<button class="btn-remove" onclick="removeOtherCost(${idx})"><i class='bx bx-x'></i></button>` : ''}
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+window.updateOtherCost = function(idx, key, val) {
+    if (key === 'name') {
+        state.doc.otherCosts[idx][key] = val;
+    } else {
+        state.doc.otherCosts[idx][key] = parseFloat(val) || 0;
+    }
+    renderAllCalculations();
+};
+
+window.removeOtherCost = function(idx) {
+    state.doc.otherCosts.splice(idx, 1);
+    renderAllCalculations();
+};
+
+// ─────────────────────────────────────────────────────────────
 // 전체 요약 계산 (Summary) & 원가 산출
 // ─────────────────────────────────────────────────────────────
 function renderAllCalculations() {
+    renderOtherCosts();
     renderSummaryTable();
     populateCostResultSelector();
     renderCostResultTable();
