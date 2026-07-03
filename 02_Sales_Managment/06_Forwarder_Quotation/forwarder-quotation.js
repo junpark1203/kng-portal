@@ -173,18 +173,35 @@ function initEvents() {
 
     // 인코텀즈 관리
     document.getElementById('btnAddIncoterm').addEventListener('click', () => {
-        const term = prompt('추가할 인코텀즈를 입력하세요 (예: CIF, CFR):');
-        if (term && !state.doc.incoterms.includes(term.toUpperCase())) {
-            if (state.doc.incoterms.length >= 5) return showToast('인코텀즈는 최대 5개까지만 추가할 수 있습니다.', true);
-            state.doc.incoterms.push(term.toUpperCase());
-            // 기존 포워더들에 새 인코텀즈 false로 추가
-            state.doc.forwarders.forEach(fw => {
-                fw.costs.forEach(c => c.applyTo[term.toUpperCase()] = false);
-            });
-            renderIncoterms();
-            renderItems();
-            renderForwarderContent();
+        let term = prompt('추가할 인코텀즈를 입력하세요 (예: CIF, CFR, FOB CNY):');
+        if (!term) return;
+        term = term.toUpperCase().trim();
+        
+        let finalTerm = term;
+        let count = 1;
+        while (state.doc.incoterms.includes(finalTerm)) {
+            count++;
+            finalTerm = `${term} (${count})`;
         }
+        
+        if (state.doc.incoterms.length >= 5) return showToast('인코텀즈는 최대 5개까지만 추가할 수 있습니다.', true);
+        state.doc.incoterms.push(finalTerm);
+        
+        let baseTerm = finalTerm;
+        if (finalTerm.startsWith('EXW')) baseTerm = 'EXW';
+        else if (finalTerm.startsWith('FOB')) baseTerm = 'FOB';
+        else if (finalTerm.startsWith('CIF') || finalTerm.startsWith('CFR')) baseTerm = 'CIF';
+        
+        // 기존 포워더들에 새 인코텀즈 기본값 복사하여 추가
+        state.doc.forwarders.forEach(fw => {
+            fw.costs.forEach(c => {
+                const defaultCost = DEFAULT_COSTS.find(dc => dc.key === c.key);
+                c.applyTo[finalTerm] = defaultCost ? (defaultCost.applyTo[baseTerm] || false) : false;
+            });
+        });
+        renderIncoterms();
+        renderItems();
+        renderForwarderContent();
     });
 
     // 품목 추가
@@ -222,7 +239,11 @@ function initEvents() {
         const costs = DEFAULT_COSTS.map(c => {
             const applyTo = {};
             state.doc.incoterms.forEach(term => {
-                applyTo[term] = c.applyTo[term] || false;
+                let baseTerm = term;
+                if (term.startsWith('EXW')) baseTerm = 'EXW';
+                else if (term.startsWith('FOB')) baseTerm = 'FOB';
+                else if (term.startsWith('CIF') || term.startsWith('CFR')) baseTerm = 'CIF';
+                applyTo[term] = c.applyTo[baseTerm] || false;
             });
             let qty = 1;
             if (c.defaultUnit === 'per Container') qty = state.doc.containerQty || 1;
