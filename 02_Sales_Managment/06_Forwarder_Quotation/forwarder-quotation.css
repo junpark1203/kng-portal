@@ -337,7 +337,7 @@
     /* 화면 여백 초기화 및 레이아웃 수정 */
     @page {
         margin: 1cm;
-        size: A4 portrait;
+        size: A4 landscape;
     }
     
     body {
@@ -357,6 +357,8 @@
         top: 0;
         width: 100%;
         display: block !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     
     /* 인쇄용 표 스타일 지정 */
@@ -374,8 +376,6 @@
     }
     
     #printContainer th {
-        background-color: #f3f4f6 !important;
-        -webkit-print-color-adjust: exact;
         text-align: center;
         font-weight: bold;
     }
