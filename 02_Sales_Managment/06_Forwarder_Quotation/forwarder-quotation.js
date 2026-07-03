@@ -522,7 +522,7 @@ function renderIncoterms() {
         html += `
             <div class="incoterm-chip active">
                 ${term}
-                ${idx > 0 ? `<button class="btn-remove" onclick="removeIncoterm('${term}')"><i class='bx bx-x'></i></button>` : ''}
+                ${state.doc.incoterms.length > 1 ? `<button class="btn-remove" onclick="removeIncoterm('${term}')"><i class='bx bx-x'></i></button>` : ''}
             </div>
         `;
     });
