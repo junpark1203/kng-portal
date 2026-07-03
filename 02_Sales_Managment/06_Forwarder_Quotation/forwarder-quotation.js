@@ -1326,7 +1326,7 @@ function generatePrintAndExcelHTML() {
                 sumPerTerm[term] += total;
                 html += `<td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; font-size:10px;">
                     ${p.currency || ''} ${formatNum(p.unitPrice)}<br>
-                    <span style="color:#555;">(총: ${formatNum(total)})</span>
+                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total)})</span>
                 </td>`;
             } else {
                 html += `<td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#aaa;">—</td>`;
@@ -1349,7 +1349,22 @@ function generatePrintAndExcelHTML() {
             <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
     `;
     printTerms.forEach(term => {
-        html += `<th style="text-align:right; padding:6px; border:1px solid #ccc; background:#f2f2f2; font-size:10px;">총: ${formatNum(sumPerTerm[term])}</th>`;
+        let currency = '';
+        let exRate = 1;
+        for (const item of state.doc.items) {
+            if (item.prices[term] && item.prices[term].currency) {
+                currency = item.prices[term].currency;
+                exRate = state.doc.exchangeRates[currency] || 1;
+                break;
+            }
+        }
+        const sumVal = sumPerTerm[term] || 0;
+        const sumKrw = sumVal * exRate;
+
+        html += `<th style="text-align:right; padding:6px; border:1px solid #ccc; background:#f2f2f2; font-size:10px;">
+            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal)}</span><br>
+            <span style="color:#555; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
+        </th>`;
     });
     if (remainingCols > 0) {
         html += `<th colspan="${remainingCols}" style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>`;
