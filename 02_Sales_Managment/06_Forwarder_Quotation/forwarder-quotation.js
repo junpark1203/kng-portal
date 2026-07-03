@@ -1083,6 +1083,10 @@ function renderSummaryTable() {
     let bHtml = '';
     Object.keys(rows).forEach(key => {
         const r = rows[key];
+        
+        // 값이 전부 0인 선택적 비용 행은 숨김 처리
+        if ((key === 'manualOther' || key === 'interestCost') && r.values.every(v => !v || v === 0)) return;
+        
         const cls = r.isGrand ? 'grand-total-row' : (r.isTotal ? 'total-row' : '');
         bHtml += `<tr class="${cls}"><td>${r.label}</td>`;
         r.values.forEach(v => {
