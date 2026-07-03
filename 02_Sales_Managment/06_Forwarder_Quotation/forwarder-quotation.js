@@ -1274,10 +1274,15 @@ function generatePrintAndExcelHTML() {
     `;
 
     // 2. 수입 대상 품목
+    const printTerms = state.doc.incoterms.slice(0, 4);
+    const hasMoreTerms = state.doc.incoterms.length > 4;
+    const remainingCols = 4 - printTerms.length;
+
     html += `
         <tr>
             <th colspan="10" style="font-size:15px; color:#203864; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #203864; background:white;">
                 1. 수입 대상 품목
+                ${hasMoreTerms ? `<span style="font-size:12px; color:red; margin-left:15px; font-weight:normal;">* 인쇄 여백 제한으로 최대 4개의 인코텀즈 단가만 표시됩니다.</span>` : ''}
             </th>
         </tr>
         <tr>
@@ -1287,12 +1292,19 @@ function generatePrintAndExcelHTML() {
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">단위</th>
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">총중량(kg)</th>
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">최대적재량</th>
-            <th colspan="4" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">비고</th>
-        </tr>
     `;
+    printTerms.forEach(term => {
+        html += `<th style="background:#203864; color:white; padding:6px; border:1px solid #203864; font-size:10px;">단가/총액<br>(${term})</th>`;
+    });
+    if (remainingCols > 0) {
+        html += `<th colspan="${remainingCols}" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">비고</th>`;
+    }
+    html += `</tr>`;
     
     let sumQty = 0;
     let sumWeight = 0;
+    let sumPerTerm = {};
+    printTerms.forEach(t => sumPerTerm[t] = 0);
 
     state.doc.items.forEach(item => {
         sumQty += (item.qty || 0);
@@ -1305,9 +1317,27 @@ function generatePrintAndExcelHTML() {
                 <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.unit || ''}</td>
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.weight)}</td>
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.maxLoad)} /cntr</td>
-                <td colspan="4" style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;"></td>
-            </tr>
         `;
+        
+        printTerms.forEach(term => {
+            const p = item.prices[term];
+            if (p && p.unitPrice) {
+                const total = p.unitPrice * (item.qty || 0);
+                sumPerTerm[term] += total;
+                html += `<td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; font-size:10px;">
+                    ${p.currency || ''} ${formatNum(p.unitPrice)}<br>
+                    <span style="color:#555;">(총: ${formatNum(total)})</span>
+                </td>`;
+            } else {
+                html += `<td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#aaa;">—</td>`;
+            }
+        });
+
+        if (remainingCols > 0) {
+            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;"></td>`;
+        }
+        
+        html += `</tr>`;
     });
     
     html += `
@@ -1316,7 +1346,15 @@ function generatePrintAndExcelHTML() {
             <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc; text-align:right;">${formatNum(sumQty)}</th>
             <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
             <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc; text-align:right;">${formatNum(sumWeight)} kg</th>
-            <th colspan="5" style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
+            <th style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>
+    `;
+    printTerms.forEach(term => {
+        html += `<th style="text-align:right; padding:6px; border:1px solid #ccc; background:#f2f2f2; font-size:10px;">총: ${formatNum(sumPerTerm[term])}</th>`;
+    });
+    if (remainingCols > 0) {
+        html += `<th colspan="${remainingCols}" style="background:#f2f2f2; padding:6px; border:1px solid #ccc;"></th>`;
+    }
+    html += `
         </tr>
         <tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>
     `;
