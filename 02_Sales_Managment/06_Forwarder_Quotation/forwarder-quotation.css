@@ -329,6 +329,11 @@
 }
 
 @media print {
+    /* 기존 화면 요소 공간 완전히 제거하여 빈 페이지 방지 */
+    .fq-container, .toast-container {
+        display: none !important;
+    }
+    
     /* 기존 화면 숨김 */
     body * {
         visibility: hidden;
