@@ -1262,10 +1262,10 @@ function generatePrintAndExcelHTML() {
             <tr>
                 <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">적용 환율</th>
                 <td colspan="8" style="padding:8px; border:1px solid #ccc; text-align:left; background:#fff2cc;">
-                    <strong>USD:</strong> ₩${formatNum(state.doc.exchangeRates.USD)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>CNY:</strong> ₩${formatNum(state.doc.exchangeRates.CNY)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>EUR:</strong> ₩${formatNum(state.doc.exchangeRates.EUR)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY)}
+                    <strong>USD:</strong> ₩${formatNum(state.doc.exchangeRates.USD, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>CNY:</strong> ₩${formatNum(state.doc.exchangeRates.CNY, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>EUR:</strong> ₩${formatNum(state.doc.exchangeRates.EUR, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
+                    <strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY, 2)}
                 </td>
             </tr>
             <tr><th colspan="10" style="height:20px; border:none; background:white;"></th></tr>
