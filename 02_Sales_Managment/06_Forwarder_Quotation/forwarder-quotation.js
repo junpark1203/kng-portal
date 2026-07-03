@@ -1006,7 +1006,8 @@ function renderSummaryTable() {
         ins: { label: '적하보험료', values: [] },
         customs: { label: '수입 통관수수료', values: [] },
         subtotal: { label: '포워더 부대비용 소계 (KRW)', values: [], isTotal: true },
-        otherCosts: { label: '기타 추가비용 (이자 등)', values: [] },
+        interestCost: { label: '금융비용 (이자비용)', values: [] },
+        manualOther: { label: '기타 추가 부대비용 (수동)', values: [] },
         grandtotal: { label: '총 비용 (물품+포워더+기타) KRW', values: [], isGrand: true }
     };
 
@@ -1059,8 +1060,11 @@ function renderSummaryTable() {
                     }
                 });
             }
+            
+            rows.interestCost.values.push(interestCost);
+            rows.manualOther.values.push(manualOtherCosts);
+            
             const totalOther = manualOtherCosts + interestCost;
-            rows.otherCosts.values.push(totalOther);
             
             const grand = invKrw + sub + totalOther;
             rows.grandtotal.values.push(grand);

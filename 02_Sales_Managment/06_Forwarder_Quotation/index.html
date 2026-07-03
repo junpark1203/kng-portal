@@ -196,25 +196,10 @@
                     </div>
                 </section>
 
-                <!-- SECTION 4: 비용 요약 비교 -->
-                <section class="edit-section highlight-section">
-                    <h3>4. 비용 요약 (포워더 / 인코텀즈 비교)</h3>
-                    <div class="table-responsive">
-                        <table class="summary-table" id="summaryTable">
-                            <thead>
-                                <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
-                            </thead>
-                            <tbody>
-                                <!-- 내용 동적 생성 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- SECTION 5: 기타 금융 및 추가 부대비용 -->
+                <!-- SECTION 4: 기타 금융 및 추가 부대비용 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
-                        <h3>5. 기타 금융 및 추가 부대비용</h3>
+                        <h3>4. 기타 금융 및 추가 부대비용</h3>
                         <button id="btnAddOtherCost" class="btn-small btn-outline"><i class='bx bx-plus'></i> 항목 추가</button>
                     </div>
                     <div class="table-responsive">
@@ -237,8 +222,23 @@
                         </table>
                     </div>
                     <p class="help-text" style="margin-top:10px; color: var(--text-secondary);">
-                        * <strong>이자비용</strong>은 아래 <strong>6번 섹션</strong>에서 선택된 [포워더+인코텀즈] 조합의 총 비용을 기준으로 실시간 자동 산출됩니다.
+                        * <strong>이자비용</strong>은 아래 <strong>5번 요약표</strong> 및 <strong>6번 산출표</strong>에 명시된 포워더+인코텀즈 조합을 기준으로 실시간 자동 산출되어 합산됩니다.
                     </p>
+                </section>
+
+                <!-- SECTION 5: 비용 요약 비교 -->
+                <section class="edit-section highlight-section">
+                    <h3>5. 비용 요약 (포워더 / 인코텀즈 비교)</h3>
+                    <div class="table-responsive">
+                        <table class="summary-table" id="summaryTable">
+                            <thead>
+                                <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
+                            </thead>
+                            <tbody>
+                                <!-- 내용 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
 
                 <!-- SECTION 6: 실수입원가 -->
