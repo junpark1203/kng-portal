@@ -911,7 +911,7 @@ function renderOtherCosts() {
                     <div>사업기간: <input type="number" style="width:50px; padding:2px;" value="${cost.durationMonths}" oninput="updateOtherCost(${idx}, 'durationMonths', this.value)">개월</div>
                     <div>연이자율: <input type="number" style="width:60px; padding:2px;" value="${cost.interestRate}" step="0.1" oninput="updateOtherCost(${idx}, 'interestRate', this.value)">%</div>
                     <div>대금회수: <input type="number" style="width:60px; padding:2px;" value="${cost.collectionDays}" oninput="updateOtherCost(${idx}, 'collectionDays', this.value)">일</div>
-                    <i class='bx bx-help-circle tooltip-icon' style="font-size:1.2rem; cursor:pointer;" title="평균 자금 묶임 기간 산출식: ((사업기간+1)/2) + (대금회수/30) 개월"></i>
+                    <i class='bx bx-help-circle tooltip-icon' style="font-size:1.2rem; cursor:pointer;"><span class="tooltip-text">평균 자금 묶임 기간 산출식:<br>((사업기간+1)/2) + (대금회수/30) 개월</span></i>
                 </div>
             `;
             amountHtml = `<div style="text-align:right; color:var(--text-secondary);">(자동 산출)</div>`;
