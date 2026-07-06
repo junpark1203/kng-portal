@@ -161,7 +161,20 @@ function renderQuoteList() {
         else if (q.status === 'won') statusHtml = '<span class="status-badge status-won" style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:12px;font-weight:600;">계약성사</span>';
         else if (q.status === 'lost') statusHtml = '<span class="status-badge status-lost" style="background:#fee2e2;color:#991b1b;padding:2px 6px;border-radius:4px;font-size:12px;font-weight:600;">실패</span>';
         
-        const dateStr = q.createdAt ? q.createdAt.replace('T', ' ').substring(0, 16) : '-';
+        let dateStr = '-';
+        if (q.createdAt) {
+            const d = new Date(q.createdAt);
+            if (!isNaN(d.getTime())) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                dateStr = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+            } else {
+                dateStr = q.createdAt.replace('T', ' ').substring(0, 16);
+            }
+        }
         
         tr.innerHTML = `
             <td class="col-check"><input type="checkbox" class="row-check" value="${q.id}"></td>
