@@ -85,19 +85,25 @@
                     
                     <div class="form-grid" style="margin-top: 15px;">
                         <div class="fg">
+                            <label>선적 형태</label>
+                            <div class="radio-group" style="display:flex; gap:15px; margin-top:5px; height: 35px; align-items: center;">
+                                <label style="display:flex; gap:5px; align-items:center; cursor:pointer;"><input type="radio" name="docShipmentType" value="FCL" checked> FCL</label>
+                                <label style="display:flex; gap:5px; align-items:center; cursor:pointer;"><input type="radio" name="docShipmentType" value="LCL"> LCL</label>
+                            </div>
+                        </div>
+                        <div class="fg fcl-only">
                             <label>컨테이너 규격</label>
                             <select id="docContainerType">
                                 <option value="20ft">20ft</option>
                                 <option value="40ft">40ft</option>
                                 <option value="40ftHC">40ft HC</option>
-                                <option value="LCL">LCL</option>
                             </select>
                         </div>
-                        <div class="fg">
+                        <div class="fg fcl-only">
                             <label>컨테이너 수량</label>
                             <input type="number" id="docContainerQty" min="1" value="1">
                         </div>
-                        <div class="fg" style="grid-column: span 2;">
+                        <div class="fg">
                             <label>비고</label>
                             <input type="text" id="docRemarks" placeholder="추가 메모 입력">
                         </div>
@@ -147,6 +153,14 @@
                     <div class="section-header-flex">
                         <h3>2. 수입 대상 품목 및 인코텀즈 단가</h3>
                         <div class="incoterms-manager">
+                            <span class="lcl-only" id="dimUnitWrapper" style="margin-right:15px; display:none; align-items:center;">
+                                치수 단위:
+                                <select id="docDimUnit" style="padding: 3px 6px; margin-left: 5px; border-radius:4px; border:1px solid var(--border-color);">
+                                    <option value="cm">cm</option>
+                                    <option value="mm">mm</option>
+                                    <option value="m">m</option>
+                                </select>
+                            </span>
                             <label>비교 대상 인코텀즈:</label>
                             <div id="incotermsChips" class="chip-container">
                                 <!-- JS로 렌더링 (기본: EXW, FOB) -->
@@ -268,6 +282,7 @@
                                     <th class="col-num">단위당 단가 (외화)</th>
                                     <th class="col-num">배분된 부대비용 (외화)</th>
                                     <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num">관세 (KRW)</th>
                                     <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
                                 </tr>
                             </thead>
@@ -278,7 +293,7 @@
                     </div>
 
                     <h4 style="margin-top:30px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
-                        6-2. 실수입원가 (컨테이너 적재비율 배분법)
+                        6-2. 실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
                         <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
                             <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.<br>FCL 화물의 부피/중량 편차를 보정할 때 유리합니다.</span>
                         </i>
@@ -292,6 +307,7 @@
                                     <th class="col-num">단위당 단가 (외화)</th>
                                     <th class="col-num">배분된 부대비용 (외화)</th>
                                     <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num">관세 (KRW)</th>
                                     <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
                                 </tr>
                             </thead>

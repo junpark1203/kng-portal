@@ -12,6 +12,8 @@ let state = {
         title: '',
         quoteDate: '',
         status: 'draft',
+        shipmentType: 'FCL',
+        dimUnit: 'cm',
         containerType: '20ft',
         containerQty: 1,
         exchangeRates: {},
@@ -156,6 +158,26 @@ function initEvents() {
         });
     });
 
+    // 선적 형태 및 치수 단위 이벤트
+    document.querySelectorAll('input[name="docShipmentType"]').forEach(el => {
+        el.addEventListener('change', e => {
+            state.doc.shipmentType = e.target.value;
+            // UI Toggle
+            document.querySelectorAll('.fcl-only').forEach(el => el.style.display = state.doc.shipmentType === 'FCL' ? '' : 'none');
+            const dimUnitWrapper = document.getElementById('dimUnitWrapper');
+            if(dimUnitWrapper) dimUnitWrapper.style.display = state.doc.shipmentType === 'LCL' ? 'flex' : 'none';
+            renderItems();
+        });
+    });
+
+    const dimUnitEl = document.getElementById('docDimUnit');
+    if(dimUnitEl) {
+        dimUnitEl.addEventListener('change', e => {
+            state.doc.dimUnit = e.target.value;
+            renderItems(); // re-render headers and re-calc
+        });
+    }
+
     // 기본정보 입력 이벤트
     ['docTitle', 'docDate', 'docStatus', 'docContainerType', 'docContainerQty', 'docRemarks'].forEach(id => {
         document.getElementById(id).addEventListener('input', e => {
@@ -208,7 +230,7 @@ function initEvents() {
     document.getElementById('btnAddItem').addEventListener('click', () => {
         const prices = {};
         state.doc.incoterms.forEach(term => prices[term] = { unitPrice: 0, currency: 'USD' });
-        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, maxLoad: 0, prices });
+        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, maxLoad: 0, l: 0, w: 0, h: 0, pkgWeight: 0, dutyRate: 0, cbm: 0, rt: 0, prices });
         renderItems();
     });
 
@@ -420,6 +442,8 @@ async function editQuote(id) {
         }
         
         state.doc = data;
+        if (!state.doc.shipmentType) state.doc.shipmentType = 'FCL';
+        if (!state.doc.dimUnit) state.doc.dimUnit = 'cm';
         if (!state.doc.otherCosts || state.doc.otherCosts.length === 0) {
             state.doc.otherCosts = [
                 { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
@@ -431,6 +455,16 @@ async function editQuote(id) {
         document.getElementById('docTitle').value = data.title;
         document.getElementById('docDate').value = data.quoteDate;
         document.getElementById('docStatus').value = data.status;
+        
+        const shipRadios = document.querySelectorAll('input[name="docShipmentType"]');
+        shipRadios.forEach(r => r.checked = (r.value === state.doc.shipmentType));
+        document.querySelectorAll('.fcl-only').forEach(el => el.style.display = state.doc.shipmentType === 'FCL' ? '' : 'none');
+        const dimUnitWrapper = document.getElementById('dimUnitWrapper');
+        if(dimUnitWrapper) dimUnitWrapper.style.display = state.doc.shipmentType === 'LCL' ? 'flex' : 'none';
+        
+        const dimUnitEl = document.getElementById('docDimUnit');
+        if (dimUnitEl) dimUnitEl.value = state.doc.dimUnit;
+
         document.getElementById('docContainerType').value = data.containerType;
         document.getElementById('docContainerQty').value = data.containerQty;
         document.getElementById('docRemarks').value = data.remarks;
@@ -462,6 +496,8 @@ function openNewQuote() {
         title: '',
         quoteDate: new Date().toISOString().split('T')[0],
         status: 'draft',
+        shipmentType: 'FCL',
+        dimUnit: 'cm',
         containerType: '20ft',
         containerQty: 1,
         exchangeRates: { ...state.rates },
@@ -478,6 +514,14 @@ function openNewQuote() {
     document.getElementById('docTitle').value = '';
     document.getElementById('docDate').value = state.doc.quoteDate;
     document.getElementById('docStatus').value = 'draft';
+    
+    document.querySelectorAll('input[name="docShipmentType"]').forEach(r => r.checked = (r.value === 'FCL'));
+    document.querySelectorAll('.fcl-only').forEach(el => el.style.display = '');
+    const dimUnitWrapper = document.getElementById('dimUnitWrapper');
+    if(dimUnitWrapper) dimUnitWrapper.style.display = 'none';
+    const dimUnitEl = document.getElementById('docDimUnit');
+    if(dimUnitEl) dimUnitEl.value = 'cm';
+    
     document.getElementById('docContainerType').value = '20ft';
     document.getElementById('docContainerQty').value = '1';
     document.getElementById('docRemarks').value = '';
@@ -574,6 +618,7 @@ window.removeIncoterm = function(term) {
 };
 
 function renderItems() {
+    const isLCL = state.doc.shipmentType === 'LCL';
     // 헤더 재생성
     const thead = document.getElementById('itemTableHead');
     let thHtml = `
@@ -581,9 +626,26 @@ function renderItems() {
         <th>품명</th>
         <th class="col-num" style="width: 80px;">수량</th>
         <th style="width: 80px;">단위</th>
-        <th class="col-num" style="width: 100px;">총중량(kg)</th>
-        <th class="col-num" style="width: 110px;">최대적재량<br><span style="font-weight:normal;font-size:10px;">(Max/CNTR)</span></th>
     `;
+    
+    if (isLCL) {
+        const u = state.doc.dimUnit || 'cm';
+        thHtml += `
+            <th style="width: 140px;">박스 치수 (L x W x H)<br><span style="font-size:10px;">(${u})</span></th>
+            <th class="col-num" style="width: 80px;">단위 중량<br><span style="font-size:10px;">(kg/개)</span></th>
+            <th class="col-num" style="width: 80px;">총 중량<br><span style="font-size:10px;">(kg)</span></th>
+            <th class="col-num" style="width: 80px;">CBM<br><span style="font-size:10px;">(자동계산)</span></th>
+            <th class="col-num" style="width: 80px;">R/T<br><span style="font-size:10px;">(운임톤)</span></th>
+        `;
+    } else {
+        thHtml += `
+            <th class="col-num" style="width: 100px;">총중량(kg)</th>
+            <th class="col-num" style="width: 110px;">최대적재량<br><span style="font-weight:normal;font-size:10px;">(Max/CNTR)</span></th>
+        `;
+    }
+    
+    thHtml += `<th class="col-num" style="width: 70px;">관세율<br><span style="font-size:10px;">(%)</span></th>`;
+
     state.doc.incoterms.forEach(term => {
         thHtml += `<th class="col-num" style="width: 150px;">${term} 단가</th>`;
     });
@@ -593,7 +655,8 @@ function renderItems() {
     // 바디 재생성
     const tbody = document.getElementById('itemTableBody');
     if (state.doc.items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${7 + state.doc.incoterms.length}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
+        let colSpan = isLCL ? (9 + 1 + state.doc.incoterms.length) : (6 + 1 + state.doc.incoterms.length);
+        tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
         renderItemFooter();
         renderAllCalculations();
         return;
@@ -601,16 +664,40 @@ function renderItems() {
 
     let bHtml = '';
     state.doc.items.forEach((item, idx) => {
+        const cbm = item.cbm || 0;
+        const rt = item.rt || 0;
+
         bHtml += `
             <tr>
                 <td><input type="text" value="${item.hsCode}" onchange="updateItem(${idx}, 'hsCode', this.value)"></td>
                 <td><input type="text" value="${item.name}" onchange="updateItem(${idx}, 'name', this.value)"></td>
                 <td><input type="number" value="${item.qty}" min="1" class="col-num" oninput="updateItem(${idx}, 'qty', this.value)"></td>
                 <td><input type="text" value="${item.unit}" onchange="updateItem(${idx}, 'unit', this.value)"></td>
-                <td><input type="number" value="${item.weight}" min="0" class="col-num" oninput="updateItem(${idx}, 'weight', this.value)"></td>
-                <td><input type="number" value="${item.maxLoad || 0}" min="0" class="col-num" oninput="updateItem(${idx}, 'maxLoad', this.value)"></td>
         `;
         
+        if (isLCL) {
+            bHtml += `
+                <td>
+                    <div style="display:flex; gap:2px;">
+                        <input type="number" value="${item.l||0}" style="width:33%; padding:0 2px;" placeholder="L" oninput="updateItem(${idx}, 'l', this.value)">
+                        <input type="number" value="${item.w||0}" style="width:33%; padding:0 2px;" placeholder="W" oninput="updateItem(${idx}, 'w', this.value)">
+                        <input type="number" value="${item.h||0}" style="width:33%; padding:0 2px;" placeholder="H" oninput="updateItem(${idx}, 'h', this.value)">
+                    </div>
+                </td>
+                <td><input type="number" value="${item.pkgWeight||0}" min="0" class="col-num" oninput="updateItem(${idx}, 'pkgWeight', this.value)"></td>
+                <td class="col-num" style="background:#f9f9f9;" id="item-weight-${idx}">${formatNum(item.weight||0, 2)}</td>
+                <td class="col-num" style="background:#f9f9f9;" id="item-cbm-${idx}">${formatNum(cbm, 3)}</td>
+                <td class="col-num" style="background:#eef2ff; font-weight:600;" id="item-rt-${idx}">${formatNum(rt, 3)}</td>
+            `;
+        } else {
+            bHtml += `
+                <td><input type="number" value="${item.weight}" min="0" class="col-num" oninput="updateItem(${idx}, 'weight', this.value)"></td>
+                <td><input type="number" value="${item.maxLoad || 0}" min="0" class="col-num" oninput="updateItem(${idx}, 'maxLoad', this.value)"></td>
+            `;
+        }
+        
+        bHtml += `<td><input type="number" value="${item.dutyRate||0}" min="0" max="100" class="col-num" oninput="updateItem(${idx}, 'dutyRate', this.value)"></td>`;
+
         state.doc.incoterms.forEach(term => {
             const p = item.prices[term] || { unitPrice: 0, currency: 'USD' };
             bHtml += `
@@ -643,12 +730,35 @@ function renderItems() {
 }
 
 window.updateItem = function(idx, field, val) {
-    if (field === 'qty' || field === 'weight' || field === 'maxLoad') state.doc.items[idx][field] = parseFloat(val) || 0;
-    else state.doc.items[idx][field] = val;
-    if (field === 'qty' || field === 'maxLoad') {
-        renderItemFooter();
-        renderAllCalculations();
+    const item = state.doc.items[idx];
+    if (['qty', 'weight', 'maxLoad', 'l', 'w', 'h', 'pkgWeight', 'dutyRate'].includes(field)) {
+        item[field] = parseFloat(val) || 0;
+    } else {
+        item[field] = val;
     }
+    
+    if (state.doc.shipmentType === 'LCL') {
+        const qty = item.qty || 0;
+        let cbmFactor = 1000000;
+        if (state.doc.dimUnit === 'mm') cbmFactor = 1000000000;
+        else if (state.doc.dimUnit === 'm') cbmFactor = 1;
+        
+        item.cbm = ((item.l || 0) * (item.w || 0) * (item.h || 0) / cbmFactor) * qty;
+        item.weight = (item.pkgWeight || 0) * qty;
+        const ton = item.weight / 1000;
+        item.rt = Math.max(item.cbm, ton);
+        
+        const wEl = document.getElementById(`item-weight-${idx}`);
+        const cbmEl = document.getElementById(`item-cbm-${idx}`);
+        const rtEl = document.getElementById(`item-rt-${idx}`);
+        
+        if(wEl) wEl.innerText = formatNum(item.weight, 2);
+        if(cbmEl) cbmEl.innerText = formatNum(item.cbm, 3);
+        if(rtEl) rtEl.innerText = formatNum(item.rt, 3);
+    }
+    
+    renderItemFooter();
+    renderAllCalculations();
 };
 
 window.updateItemPrice = function(idx, term, field, val) {
@@ -665,6 +775,7 @@ window.removeItem = function(idx) {
 };
 
 function renderItemFooter() {
+    const isLCL = state.doc.shipmentType === 'LCL';
     const tfoot = document.getElementById('itemTableFoot');
     if (state.doc.items.length === 0) {
         tfoot.innerHTML = '';
@@ -673,12 +784,18 @@ function renderItemFooter() {
     
     let totalQty = 0;
     let totalWeight = 0;
+    let totalCbm = 0;
+    let totalRt = 0;
     const totalsByTerm = {};
     state.doc.incoterms.forEach(t => totalsByTerm[t] = { USD: 0, CNY: 0, EUR: 0, JPY: 0, KRW: 0 });
     
     state.doc.items.forEach(item => {
         totalQty += (item.qty || 0);
         totalWeight += (item.weight || 0);
+        if(isLCL) {
+            totalCbm += (item.cbm || 0);
+            totalRt += (item.rt || 0);
+        }
         state.doc.incoterms.forEach(term => {
             const p = item.prices[term];
             if (p && p.currency && p.unitPrice) {
@@ -692,10 +809,25 @@ function renderItemFooter() {
             <td colspan="2" style="text-align:center;">합계</td>
             <td class="col-num">${formatNum(totalQty)}</td>
             <td></td>
-            <td class="col-num">${formatNum(totalWeight)} kg</td>
-            <td></td>
     `;
     
+    if (isLCL) {
+        fHtml += `
+            <td></td>
+            <td></td>
+            <td class="col-num" id="foot-total-weight">${formatNum(totalWeight, 2)} kg</td>
+            <td class="col-num" id="foot-total-cbm">${formatNum(totalCbm, 3)}</td>
+            <td class="col-num" id="foot-total-rt">${formatNum(totalRt, 3)}</td>
+        `;
+    } else {
+        fHtml += `
+            <td class="col-num">${formatNum(totalWeight)} kg</td>
+            <td></td>
+        `;
+    }
+    
+    fHtml += `<td></td>`; // Duty Rate column
+
     state.doc.incoterms.forEach(term => {
         const currs = Object.keys(totalsByTerm[term]).filter(c => totalsByTerm[term][c] > 0);
         let str = currs.map(c => `${c} ${formatNum(totalsByTerm[term][c])}`).join('<br>') || '0';
@@ -1124,8 +1256,8 @@ function renderCostResultTable() {
     const selVal = document.getElementById('costResultSelector').value;
     
     if (!selVal || state.doc.items.length === 0) {
-        tbodyValue.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
-        tbodyVolume.innerHTML = '<tr><td colspan="6" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        tbodyValue.innerHTML = '<tr><td colspan="7" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        tbodyVolume.innerHTML = '<tr><td colspan="7" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
         return;
     }
     
@@ -1138,17 +1270,22 @@ function renderCostResultTable() {
     const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
     const totalInvoiceKrw = calc.invoiceKrw;
     
+    const isLCL = state.doc.shipmentType === 'LCL';
+    
     // --- 5-1. 가치비례 배분법 렌더링 ---
     const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
     let htmlValue = '';
     
-    // --- 5-2. 컨테이너 적재비율 배분법 사전 계산 ---
-    let totalContainers = 0;
+    // --- 5-2. 체적/운임톤 배분법 사전 계산 ---
+    let totalModulus = 0;
     state.doc.items.forEach(item => {
         const p = item.prices[term];
-        // 단가가 없는(렌더링에서 제외되는) 품목은 부대비용 분배 모수에서도 제외
-        if (p && p.unitPrice > 0 && item.maxLoad > 0) {
-            totalContainers += (item.qty / item.maxLoad);
+        if (p && p.unitPrice > 0) {
+            if (isLCL) {
+                totalModulus += (item.rt || 0);
+            } else {
+                if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
+            }
         }
     });
     let htmlVolume = '';
@@ -1156,18 +1293,21 @@ function renderCostResultTable() {
     state.doc.items.forEach(item => {
         const p = item.prices[term];
         if (!p || !p.unitPrice || p.unitPrice === 0) {
-            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
-            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="4" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
             return;
         }
         
         const unitPriceFC = p.unitPrice;
         const exRate = state.doc.exchangeRates[p.currency] || 1;
+        const dutyRate = item.dutyRate || 0;
         
         // --- 5-1 로직 ---
         const allocatedFC_Value = unitPriceFC * allocationRatio;
-        const realCostFC_Value = unitPriceFC + allocatedFC_Value;
-        const realCostKrw_Value = realCostFC_Value * exRate;
+        const baseCostFC_Value = unitPriceFC + allocatedFC_Value;
+        const baseCostKrw_Value = baseCostFC_Value * exRate;
+        const dutyKrw_Value = baseCostKrw_Value * (dutyRate / 100);
+        const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
         
         htmlValue += `
             <tr>
@@ -1175,7 +1315,8 @@ function renderCostResultTable() {
                 <td class="col-num">${formatNum(item.qty)}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
             </tr>
         `;
@@ -1184,27 +1325,35 @@ function renderCostResultTable() {
         let allocatedFC_Volume = 0;
         let volumeShareRatio = 0;
         
-        if (item.maxLoad > 0 && totalContainers > 0 && item.qty > 0) {
-            const itemContainerUsage = item.qty / item.maxLoad;
-            volumeShareRatio = itemContainerUsage / totalContainers; // 전체 컨테이너 사용량 중 해당 품목의 점유율
-            
-            // 해당 품목이 부담해야 할 총 부대비용(원화)
+        if (totalModulus > 0 && item.qty > 0) {
+            if (isLCL) {
+                volumeShareRatio = (item.rt || 0) / totalModulus;
+            } else {
+                if (item.maxLoad > 0) {
+                    volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+                }
+            }
             const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-            
-            // 단위당 부담 부대비용(외화) = (품목 총 부대비용 / 환율) / 수량
             allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
         }
         
-        const realCostFC_Volume = unitPriceFC + allocatedFC_Volume;
-        const realCostKrw_Volume = realCostFC_Volume * exRate;
+        const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume;
+        const baseCostKrw_Volume = baseCostFC_Volume * exRate;
+        const dutyKrw_Volume = baseCostKrw_Volume * (dutyRate / 100);
+        const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
         
+        const shareText = isLCL ? 
+            ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
+            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
+
         htmlVolume += `
             <tr>
                 <td>${item.name}</td>
-                <td class="col-num">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>'}</td>
+                <td class="col-num">${shareText}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
             </tr>
         `;
@@ -1256,8 +1405,8 @@ function generatePrintAndExcelHTML() {
             <tr>
                 <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">견적일자</th>
                 <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.quoteDate || ''}</td>
-                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">컨테이너 규격 / 수량</th>
-                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.containerType || ''} x ${state.doc.containerQty || 1}</td>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">선적 / 규격</th>
+                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.shipmentType === 'LCL' ? 'LCL 화물' : `FCL (${state.doc.containerType || ''} x ${state.doc.containerQty || 1})`}</td>
             </tr>
             <tr>
                 <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">적용 환율</th>
@@ -1291,7 +1440,7 @@ function generatePrintAndExcelHTML() {
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">단위</th>
             <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">총중량(kg)</th>
-            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">최대적재량</th>
+            <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">${state.doc.shipmentType === 'LCL' ? 'CBM / R/T' : '최대적재량'}</th>
     `;
     printTerms.forEach(term => {
         html += `<th style="background:#203864; color:white; padding:6px; border:1px solid #203864; font-size:10px;">단가/총액<br>(${term})</th>`;
@@ -1316,7 +1465,7 @@ function generatePrintAndExcelHTML() {
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
                 <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.unit || ''}</td>
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.weight)}</td>
-                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.maxLoad)} /cntr</td>
+                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${state.doc.shipmentType === 'LCL' ? `${formatNum(item.cbm || 0, 3)} / ${formatNum(item.rt || 0, 3)}` : `${formatNum(item.maxLoad)} /cntr`}</td>
         `;
         
         printTerms.forEach(term => {
