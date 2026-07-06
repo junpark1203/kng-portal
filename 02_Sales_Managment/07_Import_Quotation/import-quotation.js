@@ -636,24 +636,17 @@ function printQuote() {
         <div class="print-doc">
             <h1>${printTitle}</h1>
             
-            <div class="print-header-grid">
-                <div class="print-company-info">
-                    <h3>SUPPLIER: ${document.getElementById('docSupplierName').value || 'Supplier'}</h3>
-                    <div style="font-size: 13px; color: #475569; margin-bottom: 4px;">
-                        <strong>ATTN:</strong> ${document.getElementById('docSupplierContact').value || 'Sales Manager'}
-                    </div>
-                </div>
-                
-                <div class="print-meta-info">
-                    <table>
-                        <tr><th>DATE</th><td>${document.getElementById('docDate').value}</td></tr>
-                        <tr><th>QUOTE NO</th><td>${currentQuoteId || 'DRAFT'}</td></tr>
-                        <tr><th>PROJECT</th><td>${document.getElementById('docTitle').value}</td></tr>
-                        <tr><th>VALIDITY</th><td>${document.getElementById('docValidity').value || '-'}</td></tr>
-                        <tr><th>INCOTERMS</th><td>${document.getElementById('docIncoterms').value || '-'}</td></tr>
-                        <tr><th>PAYMENT</th><td>${document.getElementById('docPaymentTerms').value || '-'}</td></tr>
-                    </table>
-                </div>
+            <div class="print-header-flat">
+                <table>
+                    <tr><th>SUPPLIER</th><td>${document.getElementById('docSupplierName').value || 'Supplier'}</td></tr>
+                    <tr><th>ATTN</th><td>${document.getElementById('docSupplierContact').value || 'Sales Manager'}</td></tr>
+                    <tr><th>DATE</th><td>${document.getElementById('docDate').value}</td></tr>
+                    <tr><th>QUOTE NO</th><td>${currentQuoteId || 'DRAFT'}</td></tr>
+                    <tr><th>PROJECT</th><td>${document.getElementById('docTitle').value}</td></tr>
+                    <tr><th>VALIDITY</th><td>${document.getElementById('docValidity').value || '-'}</td></tr>
+                    <tr><th>INCOTERMS</th><td>${document.getElementById('docIncoterms').value || '-'}</td></tr>
+                    <tr><th>PAYMENT</th><td>${document.getElementById('docPaymentTerms').value || '-'}</td></tr>
+                </table>
             </div>
             
             <table class="print-items-table">
@@ -696,11 +689,6 @@ function printQuote() {
             
             <div class="print-summary-container">
                 <div class="print-summary-box">
-                    <div class="print-summary-row">
-                        <span>SUBTOTAL</span>
-                        <span>${formatCurrency(totalForeign, curr)}</span>
-                    </div>
-                    
                     <div class="print-summary-total">
                         <span>TOTAL AMOUNT</span>
                         <span>${formatCurrency(totalForeign, curr)} ${curr}</span>

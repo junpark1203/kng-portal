@@ -247,44 +247,32 @@ textarea {
         letter-spacing: 1px;
     }
     
-    .print-header-grid {
-        display: flex;
-        justify-content: space-between;
+    .print-header-flat {
         margin-bottom: 30px;
         border-bottom: 2px solid #e2e8f0;
         padding-bottom: 20px;
     }
-    
-    .print-company-info h3 {
-        margin: 0 0 10px 0;
-        font-size: 16px;
-        color: #334155;
-        border-left: 3px solid #3b82f6;
-        padding-left: 8px;
-    }
-    
-    .print-meta-info {
-        text-align: right;
-    }
-    .print-meta-info table {
-        margin-left: auto;
+    .print-header-flat table {
+        width: 100%;
         border-collapse: collapse;
     }
-    .print-meta-info th {
-        text-align: right;
-        padding: 4px 12px;
+    .print-header-flat th {
+        width: 15%;
+        text-align: left;
+        padding: 6px 12px 6px 0;
         color: #64748b;
         font-weight: 600;
-        font-size: 12px;
-        white-space: nowrap;
-    }
-    .print-meta-info td {
-        text-align: left;
-        padding: 4px 0;
-        font-weight: 500;
         font-size: 13px;
-        color: #0f172a;
         white-space: nowrap;
+        vertical-align: top;
+    }
+    .print-header-flat td {
+        width: 85%;
+        text-align: left;
+        padding: 6px 0;
+        font-weight: 500;
+        font-size: 14px;
+        color: #0f172a;
     }
 
     .print-items-table {
