@@ -486,10 +486,8 @@ async function editQuote(id) {
         state.doc = data;
         if (!state.doc.shipmentType) state.doc.shipmentType = 'FCL';
         if (!state.doc.dimUnit) state.doc.dimUnit = 'cm';
-        if (!state.doc.otherCosts || state.doc.otherCosts.length === 0) {
-            state.doc.otherCosts = [
-                { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
-            ];
+        if (!state.doc.otherCosts) {
+            state.doc.otherCosts = [];
         }
         state.activeForwarderIdx = 0;
         
