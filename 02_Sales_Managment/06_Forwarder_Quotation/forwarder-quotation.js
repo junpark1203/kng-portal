@@ -1249,6 +1249,7 @@ function renderSummaryTable() {
             fw.calculated[term] = {
                 invoiceKrw: invKrw,
                 ancillaryKrw: sub,
+                dutiableAncillaryKrw: oceanKrw + exportKrw + insKrw, // 과세표준(CIF)용 부대비용
                 otherCostsKrw: totalOther,
                 totalKrw: grand
             };
@@ -1311,6 +1312,7 @@ function renderCostResultTable() {
     
     const calc = fw.calculated[term];
     const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
+    const totalDutiableAncillaryKrw = calc.dutiableAncillaryKrw || 0;
     const totalInvoiceKrw = calc.invoiceKrw;
     
     const isLCL = state.doc.shipmentType === 'LCL';
@@ -1346,10 +1348,17 @@ function renderCostResultTable() {
         const dutyRate = item.dutyRate || 0;
         
         // --- 5-1 로직 ---
-        const allocatedFC_Value = unitPriceFC * allocationRatio;
-        const baseCostFC_Value = unitPriceFC + allocatedFC_Value;
-        const baseCostKrw_Value = baseCostFC_Value * exRate;
-        const dutyKrw_Value = baseCostKrw_Value * (dutyRate / 100);
+        const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
+        const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+        const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
+        
+        const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
+        const baseCostKrw_Value = baseCostFC_Value * exRate; // 전체 부대비용 포함 원가
+        
+        // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
+        const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * exRate;
+        const dutyKrw_Value = cifValueKrw_Value * (dutyRate / 100);
+        
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
         
         htmlValue += `
@@ -1357,7 +1366,7 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
@@ -1365,7 +1374,8 @@ function renderCostResultTable() {
         `;
         
         // --- 5-2 로직 ---
-        let allocatedFC_Volume = 0;
+        let allocatedFC_Volume_Total = 0;
+        let allocatedFC_Volume_Dutiable = 0;
         let volumeShareRatio = 0;
         
         if (totalModulus > 0 && item.qty > 0) {
@@ -1377,12 +1387,19 @@ function renderCostResultTable() {
                 }
             }
             const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-            allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
+            const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+            
+            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
         }
         
-        const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume;
-        const baseCostKrw_Volume = baseCostFC_Volume * exRate;
-        const dutyKrw_Volume = baseCostKrw_Volume * (dutyRate / 100);
+        const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume_Total;
+        const baseCostKrw_Volume = baseCostFC_Volume * exRate; // 전체 부대비용 포함 원가
+        
+        // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
+        const cifValueKrw_Volume = (unitPriceFC + allocatedFC_Volume_Dutiable) * exRate;
+        const dutyKrw_Volume = cifValueKrw_Volume * (dutyRate / 100);
+        
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
         
         const shareText = isLCL ? 
@@ -1394,7 +1411,7 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${shareText}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
