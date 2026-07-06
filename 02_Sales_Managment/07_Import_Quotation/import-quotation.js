@@ -1,9 +1,44 @@
 // 02_Sales_Managment/07_Import_Quotation/import-quotation.js
 
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000' : 'https://kng.junparks.com';
 const API_BASE = '/api/import-quotation';
 let quotes = [];
 let currentQuoteId = null;
 let currentItems = [];
+
+// ==========================================
+// 인증 및 API
+// ==========================================
+async function getToken() {
+    try {
+        if (window.parent && typeof window.parent.getAuthToken === 'function') {
+            let token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
+            return token || '';
+        }
+    } catch(e) {
+        console.warn('Failed to get token from parent:', e);
+    }
+    return '';
+}
+
+async function authFetch(url, opts = {}) {
+    const token = await getToken();
+    opts.headers = { ...opts.headers, 'Content-Type': 'application/json' };
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(SERVER_URL + url, opts);
+    if (!res.ok) {
+        let errMsg = res.statusText;
+        try { const e = await res.json(); errMsg = e.error || errMsg; } catch(e) {}
+        throw new Error(errMsg);
+    }
+    return res.json();
+}
 
 // ==========================================
 // 유틸리티
@@ -96,9 +131,7 @@ function showView(viewId) {
 // ==========================================
 async function loadQuotes() {
     try {
-        const res = await fetch(API_BASE);
-        if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
-        quotes = await res.json();
+        quotes = await authFetch(API_BASE);
         renderQuoteList();
     } catch (err) {
         console.error(err);
@@ -323,30 +356,25 @@ async function saveQuote(isCopy = false) {
     };
 
     try {
-        let res;
         const btn = isCopy ? document.getElementById('btnSaveCopy') : document.getElementById('btnSaveQuote');
         const orgHtml = btn.innerHTML;
         btn.innerHTML = '저장 중...';
         btn.disabled = true;
 
         if (currentQuoteId && !isCopy) {
-            res = await fetch(`${API_BASE}/${currentQuoteId}`, {
+            await authFetch(`${API_BASE}/${currentQuoteId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
         } else {
-            res = await fetch(API_BASE, {
+            await authFetch(API_BASE, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
         }
         
         btn.innerHTML = orgHtml;
         btn.disabled = false;
-
-        if (!res.ok) throw new Error(await res.text());
         
         showToast(isCopy ? '복사본이 저장되었습니다.' : '저장되었습니다.', 'success');
         await loadQuotes();
@@ -370,12 +398,10 @@ async function deleteSelected() {
     if (!confirm(`선택한 ${checked.length}개의 견적을 삭제하시겠습니까?`)) return;
 
     try {
-        const res = await fetch(API_BASE, {
+        await authFetch(API_BASE, {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids: checked })
         });
-        if (!res.ok) throw new Error('삭제 실패');
         
         showToast('삭제되었습니다.', 'success');
         document.getElementById('selectAll').checked = false;
@@ -397,15 +423,16 @@ async function loadLatestExchangeRates() {
         btn.disabled = true;
         
         // KNG 환율 API가 있다면 호출 (예시)
-        const res = await fetch('/api/forwarder-quotation/exchange-rates');
-        if(res.ok) {
-            const data = await res.json();
+        try {
+            const data = await authFetch('/api/forwarder-quotation/exchange-rates');
             if(data && data.USD) {
                 document.getElementById('exRateUSD').value = data.USD;
                 showToast('하나은행 고시환율을 적용했습니다.', 'success');
                 calculateTotals();
+            } else {
+                throw new Error('No USD rate');
             }
-        } else {
+        } catch (fetchErr) {
             // 실패 시 프롬프트로 대체 (임시)
             const rate = prompt('서버 환율 조회를 실패했습니다. 수동으로 USD 환율을 입력하세요:', '1400');
             if(rate) {
@@ -430,9 +457,7 @@ async function openInvoiceModal() {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">로딩 중...</td></tr>';
     
     try {
-        const res = await fetch('/api/invoice-packing');
-        if(!res.ok) throw new Error('인보이스 데이터를 불러올 수 없습니다.');
-        const invoices = await res.json();
+        const invoices = await authFetch('/api/invoice-packing/documents');
         
         tbody.innerHTML = '';
         if(invoices.length === 0) {
