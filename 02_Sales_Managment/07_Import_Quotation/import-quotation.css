@@ -113,6 +113,9 @@
     border-radius: var(--radius);
     font-family: inherit;
     font-size: 14px;
+    box-sizing: border-box;
+    height: 42px;
+    line-height: 1.5;
 }
 .fg input:focus, .fg select:focus {
     border-color: var(--primary);
