@@ -187,6 +187,8 @@ function initEvents() {
         document.getElementById(id).addEventListener('input', e => {
             let key = id.replace('doc', '');
             key = key.charAt(0).toLowerCase() + key.slice(1);
+            if (id === 'docDate') key = 'quoteDate';
+            
             if (id === 'docContainerQty') state.doc[key] = parseInt(e.target.value) || 1;
             else state.doc[key] = e.target.value;
             
@@ -610,8 +612,7 @@ function renderList() {
         if (item.shipmentType === 'LCL') {
             let totalRt = 0;
             (item.items || []).forEach(i => totalRt += (i.rt || 0));
-            containerInfo = `<span style="font-weight:600; color:var(--primary); background:#e6f0fa; padding:3px 8px; border-radius:12px; font-size:0.85rem;">LCL 화물</span>`;
-            if (totalRt > 0) containerInfo += `<br><span style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px; display:inline-block;">${totalRt.toFixed(3)} R/T</span>`;
+            containerInfo = totalRt > 0 ? `${totalRt.toFixed(3)} R/T` : 'LCL';
         }
 
         html += `
