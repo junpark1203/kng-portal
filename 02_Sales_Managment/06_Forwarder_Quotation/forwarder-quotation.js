@@ -143,6 +143,19 @@ function initEvents() {
     document.getElementById('btnPrint').addEventListener('click', () => window.print());
     document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
     
+    // Drag and Drop CSS Injection
+    if (!document.getElementById('dnd-styles')) {
+        const style = document.createElement('style');
+        style.id = 'dnd-styles';
+        style.textContent = `
+            .draggable-row.dragging { opacity: 0.5; background: #f0f0f0; }
+            .draggable-row.drag-over { border-top: 2px dashed var(--primary); }
+            .drag-handle { cursor: grab; color: #aaa; margin-right: 5px; vertical-align: middle; font-size: 1.1rem; }
+            .drag-handle:active { cursor: grabbing; color: var(--primary); }
+        `;
+        document.head.appendChild(style);
+    }
+    
     // 목록 액션
     document.getElementById('selectAll').addEventListener('change', e => {
         document.querySelectorAll('.row-chk').forEach(cb => cb.checked = e.target.checked);
@@ -1050,8 +1063,19 @@ function renderForwarderContent() {
                 }
                 
                 html += `
-                    <tr>
-                        <td>${labelHtml}</td>
+                    <tr class="draggable-row" draggable="true" data-idx="${idx}"
+                        ondragstart="handleDragStart(event)"
+                        ondragover="handleDragOver(event)"
+                        ondragenter="handleDragEnter(event)"
+                        ondragleave="handleDragLeave(event)"
+                        ondrop="handleDrop(event, ${idx})"
+                        ondragend="handleDragEnd(event)">
+                        <td>
+                            <div style="display:flex; align-items:center;">
+                                <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
+                                ${labelHtml}
+                            </div>
+                        </td>
                         <td>
                             <input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)">
                         </td>
@@ -1120,6 +1144,51 @@ window.updateCostApply = function(idx, term, checked) {
     if (!fw.costs[idx].applyTo) fw.costs[idx].applyTo = {};
     fw.costs[idx].applyTo[term] = checked;
     renderAllCalculations();
+};
+
+// --- Drag and Drop Handlers ---
+window.handleDragStart = function(e) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', e.currentTarget.dataset.idx);
+    e.currentTarget.classList.add('dragging');
+};
+
+window.handleDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleDragEnter = function(e) {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (tr) tr.classList.add('drag-over');
+};
+
+window.handleDragLeave = function(e) {
+    const tr = e.target.closest('tr');
+    if (tr && !tr.contains(e.relatedTarget)) {
+        tr.classList.remove('drag-over');
+    }
+};
+
+window.handleDrop = function(e, toIdx) {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (tr) tr.classList.remove('drag-over');
+    
+    const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+    if (isNaN(fromIdx) || fromIdx === toIdx) return;
+    
+    const fw = state.doc.forwarders[state.activeForwarderIdx];
+    const movedItem = fw.costs.splice(fromIdx, 1)[0];
+    fw.costs.splice(toIdx, 0, movedItem);
+    
+    renderForwarderContent();
+};
+
+window.handleDragEnd = function(e) {
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 };
 
 window.removeCost = function(idx) {
