@@ -442,7 +442,7 @@ async function loadLatestExchangeRates() {
         // KNG 환율 API가 있다면 호출 (예시)
         try {
             const curr = document.getElementById('docCurrency').value;
-            const data = await authFetch('/api/forwarder-quotation/exchange-rates');
+            const data = await authFetch('/api/exchange-rates');
             if(data && data[curr]) {
                 document.getElementById('exRateInput').value = data[curr];
                 showToast(`하나은행 고시환율(${curr})을 적용했습니다.`, 'success');
