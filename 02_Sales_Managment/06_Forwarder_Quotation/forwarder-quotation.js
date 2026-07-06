@@ -1009,25 +1009,34 @@ function renderForwarderContent() {
                         <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
                     </div>`;
                 }
-                
-                let hintHtml = '';
                 if (c.key === 'CUST_I') {
                     let estimatedFee = 0;
+                    let cifKrw = 0;
+                    let rawFee = 0;
                     if (fw.calculated) {
                         const baseTerm = state.doc.incoterms[0];
                         const calc = fw.calculated[baseTerm];
                         if (calc) {
-                            const cifKrw = calc.invoiceKrw + calc.dutiableAncillaryKrw;
-                            let fee = cifKrw * 0.002; // 0.2%
-                            fee = Math.max(30000, Math.min(450000, fee)); // Min 3만, Max 45만
-                            estimatedFee = fee;
+                            cifKrw = calc.invoiceKrw + calc.dutiableAncillaryKrw;
+                            rawFee = cifKrw * 0.002; // 0.2%
+                            estimatedFee = Math.max(30000, Math.min(450000, rawFee)); // Min 3만, Max 45만
                         }
                     }
+                    
+                    let tooltipStr = `관세사 통관수수료 산출 공식:<br>CIF 과세표준(KRW) × 0.2%<br>(최소 3만원 ~ 최대 45만원)`;
                     if (estimatedFee > 0) {
-                        hintHtml = `<div style="font-size:0.75rem; color:var(--primary); margin-top:4px;">예상: ₩ ${formatNum(estimatedFee)}</div>`;
+                        tooltipStr += `<br><br><b>[현재 견적 기준 예상액]</b><br>CIF: ₩ ${formatNum(cifKrw)}<br>계산금액: ₩ ${formatNum(rawFee)}`;
+                        if (rawFee < 30000) tooltipStr += `<br><span style="color:#ffd700">최소요금 3만원 적용</span>`;
+                        else if (rawFee > 450000) tooltipStr += `<br><span style="color:#ffd700">최대요금 45만원 적용</span>`;
+                        tooltipStr += `<br><b style="color:var(--primary)">최종 예상: ₩ ${formatNum(estimatedFee)}</b>`;
                     } else {
-                        hintHtml = `<div style="font-size:0.75rem; color:var(--text-tertiary); margin-top:4px;">(과세표준 산출 후 표기)</div>`;
+                        tooltipStr += `<br><br>(과세표준 산출 후 계산됩니다.)`;
                     }
+                    
+                    labelHtml = `<div style="display:flex; align-items:center;">
+                        ${labelHtml}
+                        <i class='bx bx-calculator tooltip-icon' style="color:var(--primary);"><span class="tooltip-text" style="width:220px; font-weight:normal;">${tooltipStr}</span></i>
+                    </div>`;
                 }
                 
                 html += `
@@ -1035,7 +1044,6 @@ function renderForwarderContent() {
                         <td>${labelHtml}</td>
                         <td>
                             <input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)">
-                            ${hintHtml}
                         </td>
                         <td>
                             <select onchange="updateCost(${idx}, 'currency', this.value)">
