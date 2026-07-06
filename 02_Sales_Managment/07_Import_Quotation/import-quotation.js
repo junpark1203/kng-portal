@@ -616,27 +616,29 @@ function printQuote() {
     const printMode = document.querySelector('input[name="printMode"]:checked').value;
     const curr = document.getElementById('docCurrency').value;
     const exRate = parseFloat(document.getElementById('exRateInput').value) || 1;
+    const printTitle = document.getElementById('printTitle').value || 'IMPORT QUOTATION';
     
     // HTML 조립
     let html = `
         <div class="print-doc">
-            <h1>PROFORMA INVOICE (수입 견적 명세서)</h1>
+            <h1>${printTitle}</h1>
             
-            <div class="print-info-grid">
-                <div class="print-info-box">
-                    <table class="print-info-table">
-                        <tr><th>견적번호</th><td>${currentQuoteId || '저장 전'}</td></tr>
-                        <tr><th>견적일자</th><td>${document.getElementById('docDate').value}</td></tr>
-                        <tr><th>프로젝트명</th><td>${document.getElementById('docTitle').value}</td></tr>
-                        <tr><th>유효기간</th><td>${document.getElementById('docValidity').value}</td></tr>
-                    </table>
+            <div class="print-header-grid">
+                <div class="print-company-info">
+                    <h3>TO: ${document.getElementById('docSupplierName').value || 'Supplier'}</h3>
+                    <div style="font-size: 13px; color: #475569; margin-bottom: 4px;">
+                        <strong>ATTN:</strong> ${document.getElementById('docSupplierContact').value || 'Sales Manager'}
+                    </div>
                 </div>
-                <div class="print-info-box">
-                    <table class="print-info-table">
-                        <tr><th>공급사 (Supplier)</th><td>${document.getElementById('docSupplierName').value}</td></tr>
-                        <tr><th>결제조건 (Payment)</th><td>${document.getElementById('docPaymentTerms').value}</td></tr>
-                        <tr><th>인코텀즈 (Incoterms)</th><td>${document.getElementById('docIncoterms').value}</td></tr>
-                        <tr><th>납기일 (Lead Time)</th><td>${document.getElementById('docLeadTime').value}</td></tr>
+                
+                <div class="print-meta-info">
+                    <table>
+                        <tr><th>DATE</th><td>${document.getElementById('docDate').value}</td></tr>
+                        <tr><th>QUOTE NO</th><td>${currentQuoteId || 'DRAFT'}</td></tr>
+                        <tr><th>PROJECT</th><td>${document.getElementById('docTitle').value}</td></tr>
+                        <tr><th>VALIDITY</th><td>${document.getElementById('docValidity').value || '-'}</td></tr>
+                        <tr><th>INCOTERMS</th><td>${document.getElementById('docIncoterms').value || '-'}</td></tr>
+                        <tr><th>PAYMENT</th><td>${document.getElementById('docPaymentTerms').value || '-'}</td></tr>
                     </table>
                 </div>
             </div>
@@ -644,14 +646,14 @@ function printQuote() {
             <table class="print-items-table">
                 <thead>
                     <tr>
-                        <th style="width:5%;">No.</th>
-                        <th style="width:15%;">모델명</th>
-                        <th style="width:30%;">품명 및 사양</th>
-                        <th style="width:10%;">수량</th>
-                        <th style="width:10%;">단위</th>
-                        <th style="width:15%;">단가 (${curr})</th>
-                        <th style="width:15%;">금액 (${curr})</th>
-                        ${printMode === 'dual' ? '<th style="width:15%;">금액 (KRW)</th>' : ''}
+                        <th style="width:5%;">NO.</th>
+                        <th style="width:20%;">MODEL NO</th>
+                        <th style="width:30%;">DESCRIPTION</th>
+                        <th style="width:8%;">QTY</th>
+                        <th style="width:7%;">UNIT</th>
+                        <th style="width:15%;">UNIT PRICE (${curr})</th>
+                        <th style="width:15%;">AMOUNT (${curr})</th>
+                        ${printMode === 'dual' ? `<th style="width:15%;">AMOUNT (KRW)</th>` : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -679,26 +681,41 @@ function printQuote() {
                 </tbody>
             </table>
             
-            <div class="print-summary">
-                <div class="print-summary-row print-summary-total">
-                    <div class="print-summary-label">TOTAL AMOUNT:</div>
-                    <div class="print-summary-value" style="color:var(--primary);">${formatCurrency(totalForeign, curr)} ${curr}</div>
+            <div class="print-summary-container">
+                <div class="print-summary-box">
+                    <div class="print-summary-row">
+                        <span>SUBTOTAL</span>
+                        <span>${formatCurrency(totalForeign, curr)}</span>
+                    </div>
+                    
+                    <div class="print-summary-total">
+                        <span>TOTAL AMOUNT</span>
+                        <span>${formatCurrency(totalForeign, curr)} ${curr}</span>
+                    </div>
+                    
+                    ${printMode === 'dual' ? `
+                    <div class="print-summary-row" style="margin-top: 12px; font-size: 11px;">
+                        <span>EX. RATE</span>
+                        <span>${formatCurrency(exRate, 'KRW')} ₩ / 1 ${curr}</span>
+                    </div>
+                    <div class="print-summary-total-krw">
+                        <span>TOTAL (KRW)</span>
+                        <span>${formatCurrency(totalForeign * exRate, 'KRW')} ₩</span>
+                    </div>
+                    ` : ''}
                 </div>
-                ${printMode === 'dual' ? `
-                <div class="print-summary-row" style="margin-top:5px; font-size:12px; color:#555;">
-                    <div class="print-summary-label">적용 환율:</div>
-                    <div class="print-summary-value">${formatCurrency(exRate, 'KRW')} ₩ / 1 ${curr}</div>
-                </div>
-                <div class="print-summary-row" style="margin-top:2px;">
-                    <div class="print-summary-label">원화 환산 예상액:</div>
-                    <div class="print-summary-value" style="font-weight:bold;">${formatCurrency(totalForeign * exRate, 'KRW')} ₩</div>
-                </div>
-                ` : ''}
             </div>
             
             <div class="print-remarks">
-                <div class="print-remarks-title">REMARKS</div>
-                <div>${document.getElementById('docRemarks').value.replace(/\n/g, '<br>')}</div>
+                <div class="print-remarks-title">REMARKS & CONDITIONS</div>
+                <div>${document.getElementById('docRemarks').value.replace(/\n/g, '<br>') || '-'}</div>
+            </div>
+            
+            <div class="print-footer">
+                <div class="print-signature">
+                    <div class="print-signature-line"></div>
+                    <div class="print-signature-label">AUTHORIZED SIGNATURE</div>
+                </div>
             </div>
         </div>
     `;

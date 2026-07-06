@@ -62,7 +62,9 @@
                     <div class="action-divider"></div>
 
                     <!-- 인쇄 옵션 토글 -->
-                    <div class="print-options">
+                    <div class="print-options" style="align-items: center;">
+                        <input type="text" id="printTitle" value="IMPORT QUOTATION" placeholder="인쇄 제목" style="width: 150px; padding: 2px 5px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px;">
+                        <div class="action-divider" style="height: 16px; margin: 0 5px;"></div>
                         <label class="print-toggle"><input type="radio" name="printMode" value="foreign" checked> 외화 전용</label>
                         <label class="print-toggle"><input type="radio" name="printMode" value="dual"> 외화+원화</label>
                     </div>
