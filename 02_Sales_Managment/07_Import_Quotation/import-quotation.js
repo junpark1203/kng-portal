@@ -117,7 +117,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnLoadRates').addEventListener('click', loadLatestExchangeRates);
     
     // 인쇄 및 엑셀
-    document.getElementById('btnPrint').addEventListener('click', printQuote);
+    document.getElementById('btnPrint').addEventListener('click', () => {
+        document.getElementById('printOptionsModal').style.display = 'block';
+    });
+    
+    document.getElementById('closePrintModal').addEventListener('click', () => {
+        document.getElementById('printOptionsModal').style.display = 'none';
+    });
+    document.getElementById('btnCancelPrintModal').addEventListener('click', () => {
+        document.getElementById('printOptionsModal').style.display = 'none';
+    });
+    document.getElementById('btnExecutePrint').addEventListener('click', () => {
+        document.getElementById('printOptionsModal').style.display = 'none';
+        printQuote();
+    });
+    
     document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
 });
 
@@ -631,6 +645,19 @@ function printQuote() {
     const exRate = parseFloat(document.getElementById('exRateInput').value) || 1;
     const printTitle = document.getElementById('printTitle').value || 'IMPORT QUOTATION';
     
+    // 선택된 헤더 항목 확인
+    const selectedFields = Array.from(document.querySelectorAll('.print-field-cb:checked')).map(cb => cb.value);
+    
+    let headerHtml = '';
+    if (selectedFields.includes('supplier')) headerHtml += `<tr><th>SUPPLIER</th><td>${document.getElementById('docSupplierName').value || 'Supplier'}</td></tr>`;
+    if (selectedFields.includes('attn')) headerHtml += `<tr><th>ATTN</th><td>${document.getElementById('docSupplierContact').value || 'Sales Manager'}</td></tr>`;
+    if (selectedFields.includes('date')) headerHtml += `<tr><th>DATE</th><td>${document.getElementById('docDate').value}</td></tr>`;
+    if (selectedFields.includes('quoteNo')) headerHtml += `<tr><th>QUOTE NO</th><td>${currentQuoteId || 'DRAFT'}</td></tr>`;
+    if (selectedFields.includes('project')) headerHtml += `<tr><th>PROJECT</th><td>${document.getElementById('docTitle').value}</td></tr>`;
+    if (selectedFields.includes('validity')) headerHtml += `<tr><th>VALIDITY</th><td>${document.getElementById('docValidity').value || '-'}</td></tr>`;
+    if (selectedFields.includes('incoterms')) headerHtml += `<tr><th>INCOTERMS</th><td>${document.getElementById('docIncoterms').value || '-'}</td></tr>`;
+    if (selectedFields.includes('payment')) headerHtml += `<tr><th>PAYMENT</th><td>${document.getElementById('docPaymentTerms').value || '-'}</td></tr>`;
+    
     // HTML 조립
     let html = `
         <div class="print-doc">
@@ -638,14 +665,7 @@ function printQuote() {
             
             <div class="print-header-flat">
                 <table>
-                    <tr><th>SUPPLIER</th><td>${document.getElementById('docSupplierName').value || 'Supplier'}</td></tr>
-                    <tr><th>ATTN</th><td>${document.getElementById('docSupplierContact').value || 'Sales Manager'}</td></tr>
-                    <tr><th>DATE</th><td>${document.getElementById('docDate').value}</td></tr>
-                    <tr><th>QUOTE NO</th><td>${currentQuoteId || 'DRAFT'}</td></tr>
-                    <tr><th>PROJECT</th><td>${document.getElementById('docTitle').value}</td></tr>
-                    <tr><th>VALIDITY</th><td>${document.getElementById('docValidity').value || '-'}</td></tr>
-                    <tr><th>INCOTERMS</th><td>${document.getElementById('docIncoterms').value || '-'}</td></tr>
-                    <tr><th>PAYMENT</th><td>${document.getElementById('docPaymentTerms').value || '-'}</td></tr>
+                    ${headerHtml}
                 </table>
             </div>
             
