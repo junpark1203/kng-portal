@@ -731,12 +731,6 @@ function printQuote() {
                 <div class="print-remarks-title">REMARKS & CONDITIONS</div>
                 <div>${document.getElementById('docRemarks').value.replace(/\n/g, '<br>') || '-'}</div>
             </div>
-            
-            <div class="print-footer">
-                <div class="print-signature">
-                    <div class="print-signature-line"></div>
-                    <div class="print-signature-label">AUTHORIZED SIGNATURE</div>
-                </div>
             </div>
         </div>
     `;
