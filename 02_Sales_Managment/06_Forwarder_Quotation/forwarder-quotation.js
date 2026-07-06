@@ -116,7 +116,7 @@ const DEFAULT_COSTS = [
     { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: false } }
 ];
 
-const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per TON', 'per Unit'];
+const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per R/T', 'per TON', 'per Unit'];
 
 // ─────────────────────────────────────────────────────────────
 // 초기화 및 이벤트 바인딩
@@ -168,7 +168,9 @@ function initEvents() {
             document.querySelectorAll('.fcl-only').forEach(el => el.style.display = state.doc.shipmentType === 'FCL' ? '' : 'none');
             const dimUnitWrapper = document.getElementById('dimUnitWrapper');
             if(dimUnitWrapper) dimUnitWrapper.style.display = state.doc.shipmentType === 'LCL' ? 'flex' : 'none';
+            updateDefaultCostQuantities();
             renderItems();
+            renderForwarderContent();
         });
     });
 
@@ -190,6 +192,7 @@ function initEvents() {
             
             if (id === 'docContainerQty') {
                 updateDefaultCostQuantities();
+                renderForwarderContent();
                 renderAllCalculations();
             }
         });
@@ -232,8 +235,10 @@ function initEvents() {
     document.getElementById('btnAddItem').addEventListener('click', () => {
         const prices = {};
         state.doc.incoterms.forEach(term => prices[term] = { unitPrice: 0, currency: 'USD' });
-        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', weight: 0, maxLoad: 0, l: 0, w: 0, h: 0, pkgWeight: 0, dutyRate: 0, cbm: 0, rt: 0, prices });
+        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', ctn: 1, weight: 0, maxLoad: 0, l: 0, w: 0, h: 0, pkgWeight: 0, dutyRate: 0, cbm: 0, rt: 0, prices });
+        updateDefaultCostQuantities();
         renderItems();
+        renderForwarderContent();
     });
 
     // 포워더 추가 모달
@@ -259,6 +264,7 @@ function initEvents() {
             return;
         }
         
+        const isLCL = state.doc.shipmentType === 'LCL';
         // 기본 부대비용 생성
         const costs = DEFAULT_COSTS.map(c => {
             const applyTo = {};
@@ -269,15 +275,20 @@ function initEvents() {
                 else if (term.startsWith('CIF') || term.startsWith('CFR')) baseTerm = 'CIF';
                 applyTo[term] = c.applyTo[baseTerm] || false;
             });
+            let unit = c.defaultUnit;
+            if (isLCL && unit === 'per Container') {
+                unit = 'per R/T';
+            }
             let qty = 1;
-            if (c.defaultUnit === 'per Container') qty = state.doc.containerQty || 1;
+            if (unit === 'per Container') qty = state.doc.containerQty || 1;
+            else if (unit === 'per R/T' || unit === 'per CBM') qty = getTotalRT();
             
             return {
                 key: c.key,
                 label: c.label,
                 amount: 0,
                 currency: c.key === 'INS' || c.key.includes('I') || c.key.includes('WHFG') || c.key.includes('TSF') || c.key.includes('PSMF') || c.key.includes('DOC') || c.key.includes('STRIP') ? 'KRW' : 'USD', // 수입국 비용은 대개 원화
-                unit: c.defaultUnit,
+                unit: unit,
                 unitQty: qty,
                 applyTo
             };
@@ -311,11 +322,24 @@ function initEvents() {
     document.getElementById('costResultSelector')?.addEventListener('change', renderAllCalculations);
 }
 
+function getTotalRT() {
+    let rt = 0;
+    if (state.doc.items) {
+        state.doc.items.forEach(item => { rt += (item.rt || 0); });
+    }
+    return Math.max(rt, 1);
+}
+
 function updateDefaultCostQuantities() {
+    const isLCL = state.doc.shipmentType === 'LCL';
     const cQty = state.doc.containerQty || 1;
+    const totalRt = getTotalRT();
+    
     state.doc.forwarders.forEach(fw => {
         fw.costs.forEach(c => {
-            if (c.unit === 'per Container') {
+            if (isLCL && (c.unit === 'per R/T' || c.unit === 'per CBM')) {
+                c.unitQty = totalRt;
+            } else if (!isLCL && c.unit === 'per Container') {
                 c.unitQty = cQty;
             }
         });
@@ -768,7 +792,10 @@ window.updateItem = function(idx, field, val) {
         if(rtEl) rtEl.innerText = formatNum(item.rt, 3);
     }
     
+    updateDefaultCostQuantities();
+    
     renderItemFooter();
+    renderForwarderContent(); // Re-render forwarder content to reflect new R/T
     renderAllCalculations();
 };
 
@@ -782,7 +809,9 @@ window.updateItemPrice = function(idx, term, field, val) {
 
 window.removeItem = function(idx) {
     state.doc.items.splice(idx, 1);
+    updateDefaultCostQuantities();
     renderItems();
+    renderForwarderContent();
 };
 
 function renderItemFooter() {
@@ -957,7 +986,7 @@ function renderForwarderContent() {
                         ${UNIT_OPTIONS.map(opt => `<option value="${opt}" ${c.unit===opt?'selected':''}>${opt}</option>`).join('')}
                     </select>
                 </td>
-                <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="1" oninput="updateCost(${idx}, 'unitQty', this.value)" ${isAuto?'readonly':''}></td>
+                <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="0" step="0.001" oninput="updateCost(${idx}, 'unitQty', this.value)" ${isAuto?'readonly':''} ${((state.doc.shipmentType==='FCL' && c.unit==='per Container') || (state.doc.shipmentType==='LCL' && (c.unit==='per R/T' || c.unit==='per CBM'))) ? 'readonly style="background:#f0f0f0; border-color:#ddd;" title="화물 수량/부피와 연동되어 자동 계산됩니다."' : ''}></td>
                 <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
         `;
         
