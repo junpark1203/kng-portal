@@ -86,32 +86,34 @@ const showToast = (msg, isError = false) => {
 
 // 기본 부대비용 템플릿
 const DEFAULT_COSTS = [
-    { key: 'OF', label: '해상운임 (O/F, Ocean Freight)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'CY', label: 'CY비 (CY Charge)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'PORT', label: '항만비용 (Port Charge)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'EDI', label: 'EDI/서류/부킹 (EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'THC_E', label: '터미널하역비 수출 (THC E)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'VGM', label: '총중량검증비 (VGM)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'CUST_E', label: '수출통관비 (Customs E)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'TRK_E', label: '내륙운송 수출 (Trucking E)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'OF', label: '해상운임 (O/F, Ocean Freight)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+
+    { key: 'CY', label: 'CY비 (CY Charge)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'PORT', label: '항만비용 (Port Charge)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'EDI', label: 'EDI/서류/부킹 (EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'THC_E', label: '터미널하역비 수출 (THC E)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'VGM', label: '총중량검증비 (VGM)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CUST_E', label: '수출통관비 (Customs E)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'TRK_E', label: '내륙운송 수출 (Trucking E)', defaultUnit: 'Lump Sum', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
     
-    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CRS', label: '컨테이너회송료 (C.R.S)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'DO', label: '화물인도지시서 (D/O)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'THC_I', label: '터미널하역비 수입 (THC I)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'WHFG', label: '부두사용료 (Wharfage)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'TSF', label: '터미널보안료 (TSF)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'PSMF', label: '항만안전관리비 (PSMF)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CCC', label: '컨테이너세정비 (CCC)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CUST_I', label: '통관수수료 (Customs I)', defaultUnit: 'per B/L', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', applyTo: { EXW: true, FOB: true, CIF: false } }
+    { key: 'CRS', label: '컨테이너회송료 (C.R.S)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DO', label: '화물인도지시서 (D/O)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'THC_I', label: '터미널하역비 수입 (THC I)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'WHFG', label: '부두사용료 (Wharfage)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TSF', label: '터미널보안료 (TSF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'PSMF', label: '항만안전관리비 (PSMF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CCC', label: '컨테이너세정비 (CCC)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    
+    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'CUST_I', label: '통관수수료 (Customs I)', defaultUnit: 'per B/L', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: true } }
 ];
 
 const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per R/T', 'per TON', 'per Unit'];
@@ -951,76 +953,136 @@ function renderForwarderContent() {
     
     const fw = state.doc.forwarders[state.activeForwarderIdx];
     
-    let html = `
-        <table class="item-table" style="margin-bottom:10px;">
-            <thead>
-                <tr>
-                    <th>비용 항목 (약어 / 한글)</th>
-                    <th class="col-num" style="width:120px;">단가</th>
-                    <th style="width:80px;">통화</th>
-                    <th style="width:120px;">단위</th>
-                    <th class="col-num" style="width:80px;">수량</th>
-                    <th class="col-num" style="width:120px;">합계</th>
-    `;
-    state.doc.incoterms.forEach(term => {
-        html += `<th class="chk-cell" style="width:60px;">${term}</th>`;
-    });
-    html += `       <th class="col-action">관리</th>
-                </tr>
-            </thead>
-            <tbody>`;
+    const groups = [
+        { id: 'ocean', title: '🚢 해상 운임 및 할증료' },
+        { id: 'export', title: '🛫 수출국 부대비용' },
+        { id: 'import', title: '🛬 수입국 부대비용' },
+        { id: 'customs', title: '📋 적하보험 및 수입통관' }
+    ];
+    
+    let html = '';
+    
+    groups.forEach(g => {
+        html += `
+            <div style="margin-bottom:25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background: #f8f9fa; padding: 10px 15px; border-bottom: 1px solid #eee;">
+                    <h4 style="margin:0; font-size:1rem; color:var(--text-primary);">${g.title}</h4>
+                    <button class="btn-small btn-outline" onclick="addCustomCost('${g.id}')"><i class='bx bx-plus'></i> 추가</button>
+                </div>
+                <table class="item-table" style="margin:0; border:none; box-shadow:none;">
+                    <thead>
+                        <tr>
+                            <th>비용 항목 (약어 / 한글)</th>
+                            <th class="col-num" style="width:120px;">단가</th>
+                            <th style="width:80px;">통화</th>
+                            <th style="width:120px;">단위</th>
+                            <th class="col-num" style="width:80px;">수량</th>
+                            <th class="col-num" style="width:120px;">합계</th>
+        `;
+        state.doc.incoterms.forEach(term => {
+            html += `<th class="chk-cell" style="width:60px;">${term}</th>`;
+        });
+        html += `           <th class="col-action">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        let hasItems = false;
+        fw.costs.forEach((c, idx) => {
+            let costGroup = c.group;
+            if (!costGroup) {
+                if (c.key === 'OF') costGroup = 'ocean';
+                else if (c.key === 'INS' || c.key === 'CUST_I') costGroup = 'customs';
+                else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) costGroup = 'export';
+                else costGroup = 'import';
+                c.group = costGroup;
+            }
             
-    fw.costs.forEach((c, idx) => {
-        const isAuto = false; // 자동계산 기능 완전히 제거됨
-        let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
-        if (c.key === 'INS') {
-            labelHtml = `<div style="display:flex; align-items:center;">
-                ${labelHtml}
-                <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
-            </div>`;
+            if (costGroup === g.id) {
+                hasItems = true;
+                const isAuto = false;
+                let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
+                if (c.key === 'INS') {
+                    labelHtml = `<div style="display:flex; align-items:center;">
+                        ${labelHtml}
+                        <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
+                    </div>`;
+                }
+                
+                let hintHtml = '';
+                if (c.key === 'CUST_I') {
+                    let estimatedFee = 0;
+                    if (fw.calculated) {
+                        const baseTerm = state.doc.incoterms[0];
+                        const calc = fw.calculated[baseTerm];
+                        if (calc) {
+                            const cifKrw = calc.invoiceKrw + calc.dutiableAncillaryKrw;
+                            let fee = cifKrw * 0.002; // 0.2%
+                            fee = Math.max(30000, Math.min(450000, fee)); // Min 3만, Max 45만
+                            estimatedFee = fee;
+                        }
+                    }
+                    if (estimatedFee > 0) {
+                        hintHtml = `<div style="font-size:0.75rem; color:var(--primary); margin-top:4px;">예상: ₩ ${formatNum(estimatedFee)}</div>`;
+                    } else {
+                        hintHtml = `<div style="font-size:0.75rem; color:var(--text-tertiary); margin-top:4px;">(과세표준 산출 후 표기)</div>`;
+                    }
+                }
+                
+                html += `
+                    <tr>
+                        <td>${labelHtml}</td>
+                        <td>
+                            <input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)">
+                            ${hintHtml}
+                        </td>
+                        <td>
+                            <select onchange="updateCost(${idx}, 'currency', this.value)">
+                                <option value="KRW" ${c.currency==='KRW'?'selected':''}>KRW</option>
+                                <option value="USD" ${c.currency==='USD'?'selected':''}>USD</option>
+                                <option value="CNY" ${c.currency==='CNY'?'selected':''}>CNY</option>
+                                <option value="EUR" ${c.currency==='EUR'?'selected':''}>EUR</option>
+                                <option value="JPY" ${c.currency==='JPY'?'selected':''}>JPY</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select onchange="updateCost(${idx}, 'unit', this.value)">
+                                ${UNIT_OPTIONS.map(opt => `<option value="${opt}" ${c.unit===opt?'selected':''}>${opt}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="0" step="0.001" oninput="updateCost(${idx}, 'unitQty', this.value)" ${((state.doc.shipmentType==='FCL' && c.unit==='per Container') || (state.doc.shipmentType==='LCL' && (c.unit==='per R/T' || c.unit==='per CBM'))) ? 'readonly style="background:#f0f0f0; border-color:#ddd;" title="화물 수량/부피와 연동되어 자동 계산됩니다."' : ''}></td>
+                        <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
+                `;
+                
+                state.doc.incoterms.forEach(term => {
+                    const checked = c.applyTo[term] ? 'checked' : '';
+                    html += `<td class="chk-cell"><input type="checkbox" ${checked} onchange="updateCostApply(${idx}, '${term}', this.checked)"></td>`;
+                });
+                
+                html += `
+                        <td class="col-action">
+                            <button class="btn-icon" style="color:var(--danger-color)" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+        
+        if (!hasItems) {
+            let colSpan = 6 + state.doc.incoterms.length + 1;
+            html += `<tr><td colspan="${colSpan}" style="text-align:center; color:var(--text-tertiary); padding: 15px;">추가된 항목이 없습니다.</td></tr>`;
         }
         
         html += `
-            <tr>
-                <td>${labelHtml}</td>
-                <td><input type="number" class="col-num fw-cost-input" value="${c.amount}" oninput="updateCost(${idx}, 'amount', this.value)" ${isAuto?'readonly':''}></td>
-                <td>
-                    <select onchange="updateCost(${idx}, 'currency', this.value)" ${isAuto?'disabled':''}>
-                        <option value="KRW" ${c.currency==='KRW'?'selected':''}>KRW</option>
-                        <option value="USD" ${c.currency==='USD'?'selected':''}>USD</option>
-                        <option value="CNY" ${c.currency==='CNY'?'selected':''}>CNY</option>
-                        <option value="EUR" ${c.currency==='EUR'?'selected':''}>EUR</option>
-                        <option value="JPY" ${c.currency==='JPY'?'selected':''}>JPY</option>
-                    </select>
-                </td>
-                <td>
-                    <select onchange="updateCost(${idx}, 'unit', this.value)" ${isAuto?'disabled':''}>
-                        ${UNIT_OPTIONS.map(opt => `<option value="${opt}" ${c.unit===opt?'selected':''}>${opt}</option>`).join('')}
-                    </select>
-                </td>
-                <td><input type="number" class="col-num fw-cost-input" value="${c.unitQty}" min="0" step="0.001" oninput="updateCost(${idx}, 'unitQty', this.value)" ${isAuto?'readonly':''} ${((state.doc.shipmentType==='FCL' && c.unit==='per Container') || (state.doc.shipmentType==='LCL' && (c.unit==='per R/T' || c.unit==='per CBM'))) ? 'readonly style="background:#f0f0f0; border-color:#ddd;" title="화물 수량/부피와 연동되어 자동 계산됩니다."' : ''}></td>
-                <td class="col-num" style="font-weight:500;" id="fwCostSum_${idx}">${formatNum((c.amount||0)*(c.unitQty||0))}</td>
-        `;
-        
-        state.doc.incoterms.forEach(term => {
-            const checked = c.applyTo[term] ? 'checked' : '';
-            html += `<td class="chk-cell"><input type="checkbox" ${checked} onchange="updateCostApply(${idx}, '${term}', this.checked)"></td>`;
-        });
-        
-        html += `
-                <td class="col-action">
-                    ${isAuto ? '' : `<button class="btn-icon" style="color:var(--danger-color)" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>`}
-                </td>
-            </tr>
+                    </tbody>
+                </table>
+            </div>
         `;
     });
     
-    html += `</tbody></table>
-        <button class="btn-outline btn-small" onclick="addCustomCost()"><i class='bx bx-plus'></i> 커스텀 항목 추가</button>
-    `;
-    
     area.innerHTML = html;
-    calculateAutoCosts(); // 적하보험 등 렌더링 후 자동계산 갱신
+    calculateAutoCosts();
     renderAllCalculations();
 }
 
@@ -1048,13 +1110,14 @@ window.removeCost = function(idx) {
     renderForwarderContent();
 };
 
-window.addCustomCost = function() {
+window.addCustomCost = function(group) {
     const fw = state.doc.forwarders[state.activeForwarderIdx];
     const applyTo = {};
     state.doc.incoterms.forEach(t => applyTo[t] = true);
     fw.costs.push({
         key: 'CUSTOM_' + Date.now(),
         label: '사용자 추가 항목',
+        group: group || 'import',
         amount: 0,
         currency: 'KRW',
         unit: 'Lump Sum',
@@ -1216,10 +1279,10 @@ function renderSummaryTable() {
                     const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
                     
                     let tRow;
-                    if (c.key === 'OF') tRow = rows.ocean;
+                    if (c.group === 'ocean') tRow = rows.ocean;
+                    else if (c.group === 'export') tRow = rows.export;
                     else if (c.key === 'INS') tRow = rows.ins;
                     else if (c.key === 'CUST_I') tRow = rows.customs;
-                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM', 'BAF', 'CAF'].includes(c.key)) tRow = rows.export;
                     else tRow = rows.import; // 나머지 모두 수입국 (커스텀 포함)
                     
                     tRow.values[colIdx] = (tRow.values[colIdx] || 0) + amtKrw;
@@ -1228,10 +1291,10 @@ function renderSummaryTable() {
                     tRow.details[c.key].cols[colIdx] = { curr: c.currency, amt: c.amount, qty: c.unitQty };
                     
                     // For duty calculation context (not displayed here directly)
-                    if (c.key === 'OF') oceanKrw += amtKrw;
+                    if (c.group === 'ocean') oceanKrw += amtKrw;
+                    else if (c.group === 'export') exportKrw += amtKrw;
                     else if (c.key === 'INS') insKrw += amtKrw;
                     else if (c.key === 'CUST_I') customsKrw += amtKrw;
-                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM', 'BAF', 'CAF'].includes(c.key)) exportKrw += amtKrw;
                     else importKrw += amtKrw;
                 }
             });
