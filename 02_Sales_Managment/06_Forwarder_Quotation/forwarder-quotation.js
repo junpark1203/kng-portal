@@ -16,6 +16,8 @@ let state = {
         dimUnit: 'cm',
         containerType: '20ft',
         containerQty: 1,
+        pol: '',
+        pod: '',
         exchangeRates: {},
         incoterms: ['EXW', 'FOB'],
         items: [],
@@ -179,7 +181,7 @@ function initEvents() {
     }
 
     // 기본정보 입력 이벤트
-    ['docTitle', 'docDate', 'docStatus', 'docContainerType', 'docContainerQty', 'docRemarks'].forEach(id => {
+    ['docTitle', 'docDate', 'docStatus', 'docContainerType', 'docContainerQty', 'docRemarks', 'docPol', 'docPod'].forEach(id => {
         document.getElementById(id).addEventListener('input', e => {
             let key = id.replace('doc', '');
             key = key.charAt(0).toLowerCase() + key.slice(1);
@@ -465,9 +467,11 @@ async function editQuote(id) {
         const dimUnitEl = document.getElementById('docDimUnit');
         if (dimUnitEl) dimUnitEl.value = state.doc.dimUnit;
 
-        document.getElementById('docContainerType').value = data.containerType;
-        document.getElementById('docContainerQty').value = data.containerQty;
-        document.getElementById('docRemarks').value = data.remarks;
+        document.getElementById('docContainerType').value = data.containerType || '20ft';
+        document.getElementById('docContainerQty').value = data.containerQty || 1;
+        document.getElementById('docPol').value = data.pol || '';
+        document.getElementById('docPod').value = data.pod || '';
+        document.getElementById('docRemarks').value = data.remarks || '';
         
         ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
             const val = data.exchangeRates[curr] || state.rates[curr] || 0;
@@ -500,6 +504,8 @@ function openNewQuote() {
         dimUnit: 'cm',
         containerType: '20ft',
         containerQty: 1,
+        pol: '',
+        pod: '',
         exchangeRates: { ...state.rates },
         incoterms: ['EXW', 'FOB'],
         items: [],
@@ -524,6 +530,8 @@ function openNewQuote() {
     
     document.getElementById('docContainerType').value = '20ft';
     document.getElementById('docContainerQty').value = '1';
+    document.getElementById('docPol').value = '';
+    document.getElementById('docPod').value = '';
     document.getElementById('docRemarks').value = '';
     
     ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
@@ -1407,6 +1415,12 @@ function generatePrintAndExcelHTML() {
                 <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.quoteDate || ''}</td>
                 <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">선적 / 규격</th>
                 <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.shipmentType === 'LCL' ? 'LCL 화물' : `FCL (${state.doc.containerType || ''} x ${state.doc.containerQty || 1})`}</td>
+            </tr>
+            <tr>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">출발항 (POL)</th>
+                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.pol || ''}</td>
+                <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">도착항 (POD)</th>
+                <td colspan="3" style="padding:8px; border:1px solid #ccc; text-align:center;">${state.doc.pod || ''}</td>
             </tr>
             <tr>
                 <th colspan="2" style="background:#203864; color:white; padding:8px; border:1px solid #203864; text-align:center;">적용 환율</th>
