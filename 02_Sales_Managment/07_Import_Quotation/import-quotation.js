@@ -90,15 +90,18 @@ document.addEventListener('DOMContentLoaded', () => {
         checkboxes.forEach(cb => cb.checked = e.target.checked);
     });
 
-    // 인쇄 옵션
+    // 인쇄 옵션 및 통화 변경
     document.querySelectorAll('input[name="printMode"]').forEach(radio => {
         radio.addEventListener('change', updateCurrencyDisplay);
     });
     
-    document.getElementById('docCurrency').addEventListener('change', updateCurrencyDisplay);
+    document.getElementById('docCurrency').addEventListener('change', () => {
+        updateCurrencyDisplay();
+        updateExchangeRateLabel();
+    });
     
     // 환율 입력 시 자동 계산
-    document.getElementById('exRateUSD').addEventListener('input', calculateTotals);
+    document.getElementById('exRateInput').addEventListener('input', calculateTotals);
 
     // 연동 버튼들 (TODO)
     document.getElementById('btnImportInvoice').addEventListener('click', openInvoiceModal);
@@ -202,7 +205,11 @@ function openEditor(quote = null) {
     document.getElementById('docLeadTime').value = quote?.leadTime || '';
     
     document.getElementById('docCurrency').value = quote?.currency || 'USD';
-    document.getElementById('exRateUSD').value = quote?.exchangeRates?.USD || '';
+    
+    // exchangeRates 오브젝트에서 현재 선택된 통화의 환율을 가져옴
+    const curr = quote?.currency || 'USD';
+    document.getElementById('exRateInput').value = quote?.exchangeRates?.[curr] || quote?.exchangeRates?.USD || '';
+    
     document.getElementById('docRemarks').value = quote?.remarks || '';
     
     // 항목 초기화
@@ -214,6 +221,7 @@ function openEditor(quote = null) {
     }
     
     updateCurrencyDisplay();
+    updateExchangeRateLabel();
 }
 
 function editQuote(id) {
@@ -304,10 +312,19 @@ function updateCurrencyDisplay() {
     calculateTotals();
 }
 
+function updateExchangeRateLabel() {
+    const curr = document.getElementById('docCurrency').value;
+    const label = document.getElementById('exRateLabel');
+    const input = document.getElementById('exRateInput');
+    
+    if (label) label.textContent = `(1 ${curr} 기준)`;
+    if (input) input.placeholder = `${curr} 환율`;
+}
+
 function calculateTotals() {
     let totalForeign = 0;
     const curr = document.getElementById('docCurrency').value;
-    const exRate = parseFloat(document.getElementById('exRateUSD').value) || 1;
+    const exRate = parseFloat(document.getElementById('exRateInput').value) || 1;
     const printMode = document.querySelector('input[name="printMode"]:checked').value;
     
     currentItems.forEach(item => {
@@ -349,7 +366,7 @@ async function saveQuote(isCopy = false) {
         leadTime: document.getElementById('docLeadTime').value,
         currency: document.getElementById('docCurrency').value,
         exchangeRates: {
-            USD: parseFloat(document.getElementById('exRateUSD').value) || null
+            [document.getElementById('docCurrency').value]: parseFloat(document.getElementById('exRateInput').value) || null
         },
         items: currentItems,
         remarks: document.getElementById('docRemarks').value
@@ -424,19 +441,25 @@ async function loadLatestExchangeRates() {
         
         // KNG 환율 API가 있다면 호출 (예시)
         try {
+            const curr = document.getElementById('docCurrency').value;
             const data = await authFetch('/api/forwarder-quotation/exchange-rates');
-            if(data && data.USD) {
-                document.getElementById('exRateUSD').value = data.USD;
-                showToast('하나은행 고시환율을 적용했습니다.', 'success');
+            if(data && data[curr]) {
+                document.getElementById('exRateInput').value = data[curr];
+                showToast(`하나은행 고시환율(${curr})을 적용했습니다.`, 'success');
+                calculateTotals();
+            } else if (data && data.USD) {
+                document.getElementById('exRateInput').value = data.USD;
+                showToast(`선택하신 통화의 환율이 없어 기본 USD 환율을 적용했습니다.`, 'info');
                 calculateTotals();
             } else {
-                throw new Error('No USD rate');
+                throw new Error('No rate');
             }
         } catch (fetchErr) {
             // 실패 시 프롬프트로 대체 (임시)
-            const rate = prompt('서버 환율 조회를 실패했습니다. 수동으로 USD 환율을 입력하세요:', '1400');
+            const curr = document.getElementById('docCurrency').value;
+            const rate = prompt(`서버 환율 조회를 실패했습니다. 수동으로 ${curr} 환율을 입력하세요:`, '1400');
             if(rate) {
-                document.getElementById('exRateUSD').value = rate;
+                document.getElementById('exRateInput').value = rate;
                 calculateTotals();
             }
         }
@@ -472,9 +495,9 @@ async function openInvoiceModal() {
             tr.innerHTML = `
                 <td><button class="btn-outline btn-small" onclick="loadInvoiceData('${inv.id}')">선택</button></td>
                 <td>${inv.invoiceNo}</td>
-                <td>${inv.date}</td>
-                <td>${inv.shipperName || ''}</td>
-                <td>${inv.pod || ''}</td>
+                <td>${inv.docDate || inv.createdAt?.substring(0,10) || '-'}</td>
+                <td>${inv.shipper?.name || inv.shipperName || ''}</td>
+                <td>${inv.portOfDischarge || inv.pod || ''}</td>
                 <td style="font-weight:600; color:var(--primary);">${formatCurrency(total)}</td>
             `;
             tbody.appendChild(tr);
@@ -493,16 +516,22 @@ window.loadInvoiceData = function(invId) {
     if(!inv) return;
     
     if(confirm(`${inv.invoiceNo} 데이터를 견적서로 가져오시겠습니까?\n(현재 작성 중인 품목 내용은 덮어씌워집니다)`)) {
-        document.getElementById('docSupplierName').value = inv.shipperName || '';
-        document.getElementById('docPol').value = inv.pol || '';
-        document.getElementById('docPod').value = inv.pod || '';
+        document.getElementById('docSupplierName').value = inv.shipper?.name || inv.shipperName || '';
+        document.getElementById('docPol').value = inv.portOfLoading || inv.pol || '';
+        document.getElementById('docPod').value = inv.portOfDischarge || inv.pod || '';
         document.getElementById('docPaymentTerms').value = inv.paymentTerms || '';
         document.getElementById('docIncoterms').value = inv.incoterms || 'FOB';
+        
+        if (inv.currency) {
+            document.getElementById('docCurrency').value = inv.currency;
+            updateCurrencyDisplay();
+            updateExchangeRateLabel();
+        }
         
         if (inv.items && inv.items.length > 0) {
             currentItems = inv.items.map((it, idx) => ({
                 id: generateItemId(),
-                modelNo: it.modelNo || '',
+                modelNo: it.description || '', // 품명이 없는 경우 모델명에라도 임시 입력
                 description: it.description || '',
                 unit: it.unit || 'EA',
                 qty: parseFloat(it.qty) || 0,
@@ -579,7 +608,7 @@ function exportToForwarder() {
 function printQuote() {
     const printMode = document.querySelector('input[name="printMode"]:checked').value;
     const curr = document.getElementById('docCurrency').value;
-    const exRate = parseFloat(document.getElementById('exRateUSD').value) || 1;
+    const exRate = parseFloat(document.getElementById('exRateInput').value) || 1;
     
     // HTML 조립
     let html = `
