@@ -53,6 +53,8 @@ function initForwarderQuotationTables(database) {
                     items TEXT DEFAULT '[]',
                     forwarders TEXT DEFAULT '[]',
                     remarks TEXT DEFAULT '',
+                    pol TEXT DEFAULT '',
+                    pod TEXT DEFAULT '',
                     createdAt TEXT,
                     updatedAt TEXT
                 )
@@ -65,7 +67,9 @@ function initForwarderQuotationTables(database) {
                     const columns = [
                         'shipmentType TEXT DEFAULT "FCL"',
                         'dimUnit TEXT DEFAULT "cm"',
-                        'otherCosts TEXT DEFAULT "[]"'
+                        'otherCosts TEXT DEFAULT "[]"',
+                        'pol TEXT DEFAULT ""',
+                        'pod TEXT DEFAULT ""'
                     ];
                     let completed = 0;
                     columns.forEach(col => {
@@ -135,9 +139,9 @@ router.post('/', async (req, res) => {
         const sql = `INSERT INTO forwarder_quotations (
             id, title, quoteDate, status, containerType, containerQty,
             exchangeRates, incoterms, items, forwarders, remarks,
-            shipmentType, dimUnit, otherCosts,
+            shipmentType, dimUnit, otherCosts, pol, pod,
             createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.title || '',
@@ -153,6 +157,8 @@ router.post('/', async (req, res) => {
             p.shipmentType || 'FCL',
             p.dimUnit || 'cm',
             JSON.stringify(p.otherCosts || []),
+            p.pol || '',
+            p.pod || '',
             now, now
         ];
         await dbRun(sql, params);
@@ -171,7 +177,7 @@ router.put('/:id', async (req, res) => {
         const sql = `UPDATE forwarder_quotations SET
             title=?, quoteDate=?, status=?, containerType=?, containerQty=?,
             exchangeRates=?, incoterms=?, items=?, forwarders=?, remarks=?,
-            shipmentType=?, dimUnit=?, otherCosts=?,
+            shipmentType=?, dimUnit=?, otherCosts=?, pol=?, pod=?,
             updatedAt=?
         WHERE id=?`;
         const params = [
@@ -188,6 +194,8 @@ router.put('/:id', async (req, res) => {
             p.shipmentType || 'FCL',
             p.dimUnit || 'cm',
             JSON.stringify(p.otherCosts || []),
+            p.pol || '',
+            p.pod || '',
             now, id
         ];
         const result = await dbRun(sql, params);
