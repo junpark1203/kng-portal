@@ -660,8 +660,8 @@ function printQuote() {
                 <thead>
                     <tr>
                         <th style="width:5%;">NO.</th>
-                        <th style="width:25%;">ITEM / DESCRIPTION</th>
-                        <th style="width:25%;">SPECIFICATION</th>
+                        <th style="width:30%;">ITEM / DESCRIPTION</th>
+                        <th style="width:20%;">SPECIFICATION</th>
                         <th style="width:7%;">QTY</th>
                         <th style="width:8%;">UNIT</th>
                         <th style="width:15%;">UNIT PRICE (${curr})</th>
@@ -680,7 +680,7 @@ function printQuote() {
             <tr>
                 <td>${idx + 1}</td>
                 <td class="text-left">${item.modelNo}</td>
-                <td class="text-left">${item.description}</td>
+                <td>${item.description}</td>
                 <td>${item.qty}</td>
                 <td>${item.unit}</td>
                 <td class="text-right">${formatCurrency(item.unitPrice, curr)}</td>
