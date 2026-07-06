@@ -276,6 +276,7 @@ textarea {
         color: #64748b;
         font-weight: 600;
         font-size: 12px;
+        white-space: nowrap;
     }
     .print-meta-info td {
         text-align: left;
@@ -283,6 +284,7 @@ textarea {
         font-weight: 500;
         font-size: 13px;
         color: #0f172a;
+        white-space: nowrap;
     }
 
     .print-items-table {

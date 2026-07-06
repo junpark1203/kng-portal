@@ -625,7 +625,7 @@ function printQuote() {
             
             <div class="print-header-grid">
                 <div class="print-company-info">
-                    <h3>TO: ${document.getElementById('docSupplierName').value || 'Supplier'}</h3>
+                    <h3>SUPPLIER: ${document.getElementById('docSupplierName').value || 'Supplier'}</h3>
                     <div style="font-size: 13px; color: #475569; margin-bottom: 4px;">
                         <strong>ATTN:</strong> ${document.getElementById('docSupplierContact').value || 'Sales Manager'}
                     </div>
@@ -647,10 +647,10 @@ function printQuote() {
                 <thead>
                     <tr>
                         <th style="width:5%;">NO.</th>
-                        <th style="width:20%;">MODEL NO</th>
-                        <th style="width:30%;">DESCRIPTION</th>
-                        <th style="width:8%;">QTY</th>
-                        <th style="width:7%;">UNIT</th>
+                        <th style="width:25%;">ITEM / DESCRIPTION</th>
+                        <th style="width:25%;">SPECIFICATION</th>
+                        <th style="width:7%;">QTY</th>
+                        <th style="width:8%;">UNIT</th>
                         <th style="width:15%;">UNIT PRICE (${curr})</th>
                         <th style="width:15%;">AMOUNT (${curr})</th>
                         ${printMode === 'dual' ? `<th style="width:15%;">AMOUNT (KRW)</th>` : ''}
