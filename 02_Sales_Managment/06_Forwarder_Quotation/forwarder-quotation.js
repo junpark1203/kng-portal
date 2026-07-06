@@ -639,6 +639,7 @@ function renderItems() {
     if (isLCL) {
         const u = state.doc.dimUnit || 'cm';
         thHtml += `
+            <th class="col-num" style="width: 80px;">총 박스수<br><span style="font-size:10px;">(CTN)</span></th>
             <th style="width: 140px;">박스 치수 (L x W x H)<br><span style="font-size:10px;">(${u})</span></th>
             <th class="col-num" style="width: 80px;">단위 중량<br><span style="font-size:10px;">(kg/개)</span></th>
             <th class="col-num" style="width: 80px;">총 중량<br><span style="font-size:10px;">(kg)</span></th>
@@ -685,6 +686,7 @@ function renderItems() {
         
         if (isLCL) {
             bHtml += `
+                <td><input type="number" value="${item.ctn||1}" min="1" class="col-num" oninput="updateItem(${idx}, 'ctn', this.value)"></td>
                 <td>
                     <div style="display:flex; gap:2px;">
                         <input type="number" value="${item.l||0}" style="width:33%; padding:0 2px;" placeholder="L" oninput="updateItem(${idx}, 'l', this.value)">
@@ -739,7 +741,7 @@ function renderItems() {
 
 window.updateItem = function(idx, field, val) {
     const item = state.doc.items[idx];
-    if (['qty', 'weight', 'maxLoad', 'l', 'w', 'h', 'pkgWeight', 'dutyRate'].includes(field)) {
+    if (['qty', 'ctn', 'weight', 'maxLoad', 'l', 'w', 'h', 'pkgWeight', 'dutyRate'].includes(field)) {
         item[field] = parseFloat(val) || 0;
     } else {
         item[field] = val;
@@ -747,11 +749,12 @@ window.updateItem = function(idx, field, val) {
     
     if (state.doc.shipmentType === 'LCL') {
         const qty = item.qty || 0;
+        const ctn = item.ctn || 1;
         let cbmFactor = 1000000;
         if (state.doc.dimUnit === 'mm') cbmFactor = 1000000000;
         else if (state.doc.dimUnit === 'm') cbmFactor = 1;
         
-        item.cbm = ((item.l || 0) * (item.w || 0) * (item.h || 0) / cbmFactor) * qty;
+        item.cbm = ((item.l || 0) * (item.w || 0) * (item.h || 0) / cbmFactor) * ctn;
         item.weight = (item.pkgWeight || 0) * qty;
         const ton = item.weight / 1000;
         item.rt = Math.max(item.cbm, ton);
@@ -791,6 +794,7 @@ function renderItemFooter() {
     }
     
     let totalQty = 0;
+    let totalCtn = 0;
     let totalWeight = 0;
     let totalCbm = 0;
     let totalRt = 0;
@@ -801,6 +805,7 @@ function renderItemFooter() {
         totalQty += (item.qty || 0);
         totalWeight += (item.weight || 0);
         if(isLCL) {
+            totalCtn += (item.ctn || 0);
             totalCbm += (item.cbm || 0);
             totalRt += (item.rt || 0);
         }
@@ -821,6 +826,7 @@ function renderItemFooter() {
     
     if (isLCL) {
         fHtml += `
+            <td class="col-num">${formatNum(totalCtn)}</td>
             <td></td>
             <td></td>
             <td class="col-num" id="foot-total-weight">${formatNum(totalWeight, 2)} kg</td>
@@ -1476,7 +1482,10 @@ function generatePrintAndExcelHTML() {
             <tr>
                 <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.hsCode || ''}</td>
                 <td style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name || ''}</td>
-                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">
+                    ${formatNum(item.qty)}
+                    ${state.doc.shipmentType === 'LCL' ? `<br><span style="font-size:10px; color:#555;">[CTN: ${formatNum(item.ctn || 1)}]</span>` : ''}
+                </td>
                 <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.unit || ''}</td>
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.weight)}</td>
                 <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${state.doc.shipmentType === 'LCL' ? `${formatNum(item.cbm || 0, 3)} / ${formatNum(item.rt || 0, 3)}` : `${formatNum(item.maxLoad)} /cntr`}</td>
