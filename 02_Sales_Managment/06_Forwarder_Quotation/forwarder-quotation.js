@@ -1051,7 +1051,7 @@ function renderForwarderContent() {
                         tooltipStr += `<br><br><b>[현재 견적 기준 예상액]</b><br>CIF: ₩ ${formatNum(cifKrw)}<br>계산금액: ₩ ${formatNum(rawFee)}`;
                         if (rawFee < 30000) tooltipStr += `<br><span style="color:#ffd700">최소요금 3만원 적용</span>`;
                         else if (rawFee > 450000) tooltipStr += `<br><span style="color:#ffd700">최대요금 45만원 적용</span>`;
-                        tooltipStr += `<br><b style="color:var(--primary)">최종 예상: ₩ ${formatNum(estimatedFee)}</b>`;
+                        tooltipStr += `<br><b style="color:#66b2ff;">최종 예상: ₩ ${formatNum(estimatedFee)}</b>`;
                     } else {
                         tooltipStr += `<br><br>(과세표준 산출 후 계산됩니다.)`;
                     }
