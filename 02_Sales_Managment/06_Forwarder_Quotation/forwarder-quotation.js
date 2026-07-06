@@ -605,6 +605,15 @@ function renderList() {
     let html = '';
     state.list.forEach(item => {
         const statusMap = { 'draft': '초안', 'confirmed': '확정', 'expired': '만료' };
+        
+        let containerInfo = `${item.containerType} × ${item.containerQty}`;
+        if (item.shipmentType === 'LCL') {
+            let totalRt = 0;
+            (item.items || []).forEach(i => totalRt += (i.rt || 0));
+            containerInfo = `<span style="font-weight:600; color:var(--primary); background:#e6f0fa; padding:3px 8px; border-radius:12px; font-size:0.85rem;">LCL 화물</span>`;
+            if (totalRt > 0) containerInfo += `<br><span style="font-size:0.8rem; color:var(--text-secondary); margin-top:2px; display:inline-block;">${totalRt.toFixed(3)} R/T</span>`;
+        }
+
         html += `
             <tr style="cursor: pointer" onclick="window.editQuote('${item.id}')">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-chk" value="${item.id}"></td>
@@ -612,7 +621,7 @@ function renderList() {
                 <td style="font-weight: 500;">${item.title}</td>
                 <td>${item.quoteDate}</td>
                 <td>${(item.forwarders || []).length} 곳</td>
-                <td>${item.containerType} × ${item.containerQty}</td>
+                <td>${containerInfo}</td>
                 <td>${item.createdAt.split('T')[0]}</td>
                 <td class="col-action">
                     <button class="btn-icon" onclick="event.stopPropagation(); window.editQuote('${item.id}')"><i class='bx bx-edit'></i></button>
