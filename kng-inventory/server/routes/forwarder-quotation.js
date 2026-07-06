@@ -61,8 +61,24 @@ function initForwarderQuotationTables(database) {
                     console.error('forwarder_quotations 테이블 생성 오류:', err.message);
                     reject(err);
                 } else {
-                    console.log('forwarder_quotations 테이블 확인 완료');
-                    resolve();
+                    // 마이그레이션: 누락된 컬럼 추가
+                    const columns = [
+                        'shipmentType TEXT DEFAULT "FCL"',
+                        'dimUnit TEXT DEFAULT "cm"',
+                        'otherCosts TEXT DEFAULT "[]"'
+                    ];
+                    let completed = 0;
+                    columns.forEach(col => {
+                        const colName = col.split(' ')[0];
+                        database.run(`ALTER TABLE forwarder_quotations ADD COLUMN ${colName} TEXT`, (e) => {
+                            // Column might already exist, ignore error
+                            completed++;
+                            if (completed === columns.length) {
+                                console.log('forwarder_quotations 테이블 확인 및 마이그레이션 완료');
+                                resolve();
+                            }
+                        });
+                    });
                 }
             });
         });
@@ -100,6 +116,9 @@ router.get('/:id', async (req, res) => {
         try { row.incoterms = JSON.parse(row.incoterms || '[]'); } catch(e) { row.incoterms = []; }
         try { row.items = JSON.parse(row.items || '[]'); } catch(e) { row.items = []; }
         try { row.forwarders = JSON.parse(row.forwarders || '[]'); } catch(e) { row.forwarders = []; }
+        try { row.otherCosts = JSON.parse(row.otherCosts || '[]'); } catch(e) { row.otherCosts = []; }
+        row.shipmentType = row.shipmentType || 'FCL';
+        row.dimUnit = row.dimUnit || 'cm';
         
         res.json(row);
     } catch (err) {
@@ -116,8 +135,9 @@ router.post('/', async (req, res) => {
         const sql = `INSERT INTO forwarder_quotations (
             id, title, quoteDate, status, containerType, containerQty,
             exchangeRates, incoterms, items, forwarders, remarks,
+            shipmentType, dimUnit, otherCosts,
             createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.title || '',
@@ -130,6 +150,9 @@ router.post('/', async (req, res) => {
             JSON.stringify(p.items || []),
             JSON.stringify(p.forwarders || []),
             p.remarks || '',
+            p.shipmentType || 'FCL',
+            p.dimUnit || 'cm',
+            JSON.stringify(p.otherCosts || []),
             now, now
         ];
         await dbRun(sql, params);
@@ -148,6 +171,7 @@ router.put('/:id', async (req, res) => {
         const sql = `UPDATE forwarder_quotations SET
             title=?, quoteDate=?, status=?, containerType=?, containerQty=?,
             exchangeRates=?, incoterms=?, items=?, forwarders=?, remarks=?,
+            shipmentType=?, dimUnit=?, otherCosts=?,
             updatedAt=?
         WHERE id=?`;
         const params = [
@@ -161,6 +185,9 @@ router.put('/:id', async (req, res) => {
             JSON.stringify(p.items || []),
             JSON.stringify(p.forwarders || []),
             p.remarks || '',
+            p.shipmentType || 'FCL',
+            p.dimUnit || 'cm',
+            JSON.stringify(p.otherCosts || []),
             now, id
         ];
         const result = await dbRun(sql, params);
