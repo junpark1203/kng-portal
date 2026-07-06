@@ -275,6 +275,7 @@ function renderCards() {
                     <span class="tbm-card-name">${d.itemName||'-'}</span>
                     ${d.manufacturer?`<span class="tbm-card-mfr">| ${d.manufacturer}</span>`:''}
                 </div>
+                <button class="tbm-card-toggle" style="margin-right:4px;" onclick="event.stopPropagation(); window.openModal('${d.id}', true)"><i class='bx bx-copy'></i> 복사</button>
                 <button class="tbm-card-toggle" onclick="event.stopPropagation(); toggleCard(this)">닫기 <i class='bx bx-chevron-up'></i></button>
             </div>
             <div class="tbm-card-body">
@@ -458,7 +459,7 @@ function getFormSnapshot() {
     return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, pkgSnap, currentFiles.length]);
 }
 
-window.openModal = function(id = null) {
+window.openModal = function(id = null, isDuplicate = false) {
     $('itemForm').reset(); $('inpTotal').value = ''; currentFiles = [];
     $('customFieldsSection').style.display = 'none'; $('customFieldsGrid').innerHTML = '';
     $('packagingGroupsContainer').innerHTML = '';
@@ -467,15 +468,22 @@ window.openModal = function(id = null) {
     if (id) {
         const d = allData.find(x => x.id === id);
         if (!d) return;
-        $('modalTitle').textContent = '자재 규격 수정';
-        $('editId').value = d.id;
+        $('modalTitle').textContent = isDuplicate ? '자재 규격 복사 등록' : '자재 규격 수정';
+        $('editId').value = isDuplicate ? '' : d.id;
         $('inpSite').value = d.site||''; $('inpEquipment').value = d.equipment||'';
-        $('inpCategory').value = d.category||''; $('inpItemName').value = d.itemName||'';
+        $('inpCategory').value = d.category||''; 
+        
+        let newItemName = d.itemName || '';
+        if (isDuplicate && newItemName) {
+            newItemName += ' (복사본)';
+        }
+        $('inpItemName').value = newItemName;
+        
         $('inpSpec').value = d.spec||''; $('inpUnit').value = d.unit||'EA';
         $('inpQty').value = d.qty||0; $('inpPrice').value = d.price||0;
         $('inpManufacturer').value = d.manufacturer||''; $('inpRemarks').value = d.remarks||'';
         $('inpQuoteDate').value = d.quoteDate || '';
-        currentFiles = Array.isArray(d.files) ? [...d.files] : [];
+        currentFiles = isDuplicate ? [] : (Array.isArray(d.files) ? [...d.files] : []);
         // Source type
         if (d.sourceType === 'import') {
             $('srcImport').checked = true; toggleSourceType();
