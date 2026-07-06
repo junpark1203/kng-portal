@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnAddItem').addEventListener('click', () => addItemRow());
 
     // 저장 및 복사 버튼
-    document.getElementById('btnSaveQuote').addEventListener('click', saveQuote);
-    document.getElementById('btnSaveCopy').addEventListener('click', saveCopyQuote);
+    document.getElementById('btnSaveQuote').addEventListener('click', () => saveQuote(false));
+    document.getElementById('btnSaveCopy').addEventListener('click', () => saveCopyQuote());
 
     // 삭제 버튼
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
