@@ -444,11 +444,13 @@ async function loadLatestExchangeRates() {
             const curr = document.getElementById('docCurrency').value;
             const data = await authFetch('/api/exchange-rates');
             if(data && data[curr]) {
-                document.getElementById('exRateInput').value = data[curr];
-                showToast(`하나은행 고시환율(${curr})을 적용했습니다.`, 'success');
+                let finalRate = (1 / data[curr]);
+                document.getElementById('exRateInput').value = finalRate.toFixed(2);
+                showToast(`최신 환율(${curr})을 적용했습니다.`, 'success');
                 calculateTotals();
             } else if (data && data.USD) {
-                document.getElementById('exRateInput').value = data.USD;
+                let finalRate = (1 / data.USD);
+                document.getElementById('exRateInput').value = finalRate.toFixed(2);
                 showToast(`선택하신 통화의 환율이 없어 기본 USD 환율을 적용했습니다.`, 'info');
                 calculateTotals();
             } else {
@@ -457,7 +459,12 @@ async function loadLatestExchangeRates() {
         } catch (fetchErr) {
             // 실패 시 프롬프트로 대체 (임시)
             const curr = document.getElementById('docCurrency').value;
-            const rate = prompt(`서버 환율 조회를 실패했습니다. 수동으로 ${curr} 환율을 입력하세요:`, '1400');
+            let defRate = '1400';
+            if(curr === 'CNY') defRate = '190';
+            if(curr === 'EUR') defRate = '1500';
+            if(curr === 'JPY') defRate = '9.5';
+            
+            const rate = prompt(`서버 환율 조회를 실패했습니다. 수동으로 ${curr} 환율을 입력하세요:`, defRate);
             if(rate) {
                 document.getElementById('exRateInput').value = rate;
                 calculateTotals();
