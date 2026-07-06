@@ -124,8 +124,54 @@ const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per R/
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
     loadRates();
-    loadList();
+    loadList().then(() => {
+        checkTransferData();
+    });
 });
+
+function checkTransferData() {
+    const dataStr = localStorage.getItem('kng_transfer_data');
+    if (dataStr) {
+        try {
+            const transfer = JSON.parse(dataStr);
+            if (transfer.source === 'import-quotation' && transfer.data) {
+                localStorage.removeItem('kng_transfer_data'); // 한번만 사용
+                
+                openNewQuote();
+                document.getElementById('docTitle').value = transfer.data.title || '';
+                document.getElementById('docPol').value = transfer.data.pol || '';
+                document.getElementById('docPod').value = transfer.data.pod || '';
+                
+                const terms = transfer.data.incoterms || 'FOB';
+                document.getElementById('docIncoterms').value = terms;
+                state.doc.incoterms = [terms];
+                
+                // 품목
+                state.doc.items = [];
+                if (transfer.data.items && transfer.data.items.length > 0) {
+                    transfer.data.items.forEach((it, idx) => {
+                        state.doc.items.push({
+                            id: generateId(),
+                            name: it.description || '',
+                            qty: it.qty || 1,
+                            unit: it.unit || 'EA',
+                            weight: '',
+                            cbm: ''
+                        });
+                    });
+                } else {
+                    state.doc.items.push({ id: generateId(), name: '', qty: 1, unit: 'EA', weight: '', cbm: '' });
+                }
+                
+                renderItems();
+                updateIncotermUI();
+                showToast('견적서 데이터가 포워더 견적에 적용되었습니다.', false);
+            }
+        } catch (e) {
+            console.error('Transfer data parse error', e);
+        }
+    }
+}
 
 function initEvents() {
     // 뷰 전환

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>(수입) 견적관리</title>
+    <!-- 공통 리소스 (상위 경로에서 가져옴) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <!-- 전용 CSS -->
+    <link rel="stylesheet" href="import-quotation.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="iq-container">
+        <!-- 뷰 1: 견적 목록 -->
+        <div id="listView" class="view-panel active">
+            <div class="panel-header">
+                <h2><i class='bx bx-calculator'></i> (수입) 견적관리</h2>
+                <div class="header-actions">
+                    <button id="btnNewQuote" class="btn-primary"><i class='bx bx-plus'></i> 신규 견적</button>
+                    <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                            <th>상태</th>
+                            <th>견적명 / 제목</th>
+                            <th>공급사</th>
+                            <th>견적일자</th>
+                            <th>결제조건</th>
+                            <th>등록일시</th>
+                            <th class="col-action">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteListBody">
+                        <tr><td colspan="8" style="text-align: center; padding: 2rem;">데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 뷰 2: 견적 편집기 -->
+        <div id="editView" class="view-panel">
+            <div class="panel-header">
+                <h2 id="editTitle"><i class='bx bx-edit-alt'></i> 수입 견적 입력/수정</h2>
+                <div class="header-actions">
+                    <button id="btnCancelEdit" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                    
+                    <!-- 데이터 내보내기/불러오기 기능 -->
+                    <div class="action-divider"></div>
+                    <button id="btnImportInvoice" class="btn-outline" style="color: #4f46e5; border-color: #4f46e5;"><i class='bx bx-import'></i> 인보이스 불러오기</button>
+                    <button id="btnExportInvoice" class="btn-outline" style="color: #4f46e5; border-color: #4f46e5;"><i class='bx bx-export'></i> 인보이스 생성</button>
+                    <button id="btnExportForwarder" class="btn-outline" style="color: #0d9488; border-color: #0d9488;"><i class='bx bx-anchor'></i> 포워더 견적 생성</button>
+                    <div class="action-divider"></div>
+
+                    <!-- 인쇄 옵션 토글 -->
+                    <div class="print-options">
+                        <label class="print-toggle"><input type="radio" name="printMode" value="foreign" checked> 외화 전용</label>
+                        <label class="print-toggle"><input type="radio" name="printMode" value="dual"> 외화+원화</label>
+                    </div>
+                    <button id="btnPrint" class="btn-outline"><i class='bx bx-printer'></i> 인쇄</button>
+                    <button id="btnExportExcel" class="btn-outline" style="color: #107c41; border-color: #107c41;"><i class='bx bx-spreadsheet'></i> 엑셀 다운로드</button>
+                    
+                    <button id="btnSaveCopy" class="btn-outline btn-outline-primary" style="display: none;"><i class='bx bx-copy'></i> 복사본 저장</button>
+                    <button id="btnSaveQuote" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
+                </div>
+            </div>
+
+            <div class="editor-body">
+                <!-- SECTION 1: 기본 정보 및 무역 조건 -->
+                <section class="edit-section">
+                    <h3>1. 기본 정보 및 무역 조건</h3>
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>견적명 / 프로젝트명 <span class="req">*</span></label>
+                            <input type="text" id="docTitle" placeholder="예: K2 안전화 수입 건">
+                        </div>
+                        <div class="fg">
+                            <label>견적일자 <span class="req">*</span></label>
+                            <input type="date" id="docDate">
+                        </div>
+                        <div class="fg">
+                            <label>유효기간</label>
+                            <input type="text" id="docValidity" placeholder="예: 30 days from date">
+                        </div>
+                        <div class="fg">
+                            <label>진행 상태</label>
+                            <select id="docStatus">
+                                <option value="draft">초안 (Draft)</option>
+                                <option value="sent">제출 (Sent)</option>
+                                <option value="won">계약 성사 (Won)</option>
+                                <option value="lost">계약 실패 (Lost)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid" style="margin-top: 15px;">
+                        <div class="fg">
+                            <label>공급사(Supplier) 명 <span class="req">*</span></label>
+                            <input type="text" id="docSupplierName" placeholder="공급사명 입력">
+                        </div>
+                        <div class="fg">
+                            <label>공급사 담당자/연락처</label>
+                            <input type="text" id="docSupplierContact" placeholder="담당자 이름 및 연락처">
+                        </div>
+                        <div class="fg">
+                            <label>인코텀즈 (Incoterms)</label>
+                            <select id="docIncoterms">
+                                <option value="EXW">EXW (공장인도조건)</option>
+                                <option value="FCA">FCA (운송인인도조건)</option>
+                                <option value="FOB">FOB (본선적재인도조건)</option>
+                                <option value="CFR">CFR (운임포함인도조건)</option>
+                                <option value="CIF">CIF (운임,보험료포함인도조건)</option>
+                                <option value="DAP">DAP (도착지인도조건)</option>
+                                <option value="DDP">DDP (관세지급인도조건)</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>결제 조건 (Payment Terms)</label>
+                            <input type="text" id="docPaymentTerms" placeholder="예: T/T 30% Adv, 70% before shipment">
+                        </div>
+                    </div>
+
+                    <div class="form-grid" style="margin-top: 15px;">
+                        <div class="fg">
+                            <label>출발항 (POL)</label>
+                            <input type="text" id="docPol" placeholder="Port of Loading">
+                        </div>
+                        <div class="fg">
+                            <label>도착항 (POD)</label>
+                            <input type="text" id="docPod" placeholder="Port of Discharge">
+                        </div>
+                        <div class="fg">
+                            <label>납기일 (Lead Time)</label>
+                            <input type="text" id="docLeadTime" placeholder="예: 4 weeks after payment">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: 통화 및 환율 정보 -->
+                <section class="edit-section">
+                    <h3>2. 통화 및 환율 (원화 병기 인쇄 시 기준)</h3>
+                    <div class="form-grid">
+                        <div class="fg" style="max-width: 200px;">
+                            <label>기준 통화 (Currency)</label>
+                            <select id="docCurrency">
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="JPY">JPY (¥)</option>
+                                <option value="CNY">CNY (¥)</option>
+                                <option value="GBP">GBP (£)</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>적용 환율 (수동 입력 가능)</label>
+                            <div class="exchange-rate-inputs" style="display:flex; gap:10px; align-items:center;">
+                                <div class="input-with-symbol">
+                                    <span class="symbol">₩</span>
+                                    <input type="number" id="exRateUSD" placeholder="USD 환율" style="width:100px;">
+                                </div>
+                                <span style="font-size:12px; color:var(--gray-500);">(1 USD 기준)</span>
+                                
+                                <button type="button" id="btnLoadRates" class="btn-outline btn-small" style="padding:4px 8px; font-size:12px;"><i class='bx bx-refresh'></i> 서버 최신환율 가져오기</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 3: 견적 품목 (Item Details) -->
+                <section class="edit-section">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
+                        <h3>3. 견적 품목 상세 (Item Details)</h3>
+                        <button type="button" id="btnAddItem" class="btn-outline btn-small"><i class='bx bx-plus'></i> 품목 추가</button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="item-table" id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">No</th>
+                                    <th>품번 / 모델명</th>
+                                    <th>품명 및 규격 (Description)</th>
+                                    <th style="width: 80px;">단위</th>
+                                    <th style="width: 100px;">수량 (Qty)</th>
+                                    <th style="width: 130px;">단가 (<span class="currency-symbol">USD</span>)</th>
+                                    <th style="width: 150px;">공급가액 (<span class="currency-symbol">USD</span>)</th>
+                                    <th class="krw-col" style="width: 150px; display:none;">공급가액 (KRW)</th>
+                                    <th style="width: 60px;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsBody">
+                                <!-- 항목들이 동적으로 추가됨 -->
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="6" style="text-align: right; font-weight: 700;">합계 (Total):</td>
+                                    <td id="totalForeign" style="font-weight: 700; color: var(--primary);">0.00</td>
+                                    <td class="krw-col" id="totalKrw" style="font-weight: 700; color: var(--primary); display:none;">0</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: 하단 비고 (Remarks) -->
+                <section class="edit-section">
+                    <h3>4. 비고 및 안내사항 (Remarks)</h3>
+                    <textarea id="docRemarks" rows="4" placeholder="견적서 하단에 인쇄될 비고 내용을 입력하세요."></textarea>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- 뷰 3: 인쇄 전용 영역 -->
+        <div id="printArea" class="print-only">
+            <!-- JS에서 동적으로 인쇄 HTML을 채움 -->
+        </div>
+
+    </div>
+
+    <!-- 토스트 알림 영역 -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- 모달: 인보이스 목록 불러오기 -->
+    <div id="invoiceLoadModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>인보이스/패킹리스트 불러오기</h2>
+                <button type="button" class="btn-close" id="closeInvoiceModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 10px; color: var(--gray-600); font-size: 14px;">기존에 작성된 인보이스 데이터를 가져와 견적서를 빠르게 작성합니다.</p>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>선택</th>
+                                <th>인보이스 번호</th>
+                                <th>인보이스 일자</th>
+                                <th>공급사 (Shipper)</th>
+                                <th>도착항 (POD)</th>
+                                <th>총액 (USD)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceListBody">
+                            <!-- 로드됨 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="import-quotation.js"></script>
+</body>
+</html>

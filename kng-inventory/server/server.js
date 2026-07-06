@@ -26,6 +26,10 @@ const { initInvoicePackingTables } = invoicePackingRoutes;
 const forwarderQuotationRoutes = require('./routes/forwarder-quotation');
 const { initForwarderQuotationTables } = forwarderQuotationRoutes;
 
+// 수입 견적 관리 모듈
+const importQuotationRoutes = require('./routes/import-quotation');
+const { initImportQuotationTables } = importQuotationRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -174,6 +178,15 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initForwarderQuotationTables(db).then(() => {
             forwarderQuotationRoutes.setDb(db);
             console.log('forwarder_quotation API 준비 완료');
+        });
+        // 수입 견적 테이블 초기화 + 라우트에 DB 주입
+        initImportQuotationTables(db).then(() => {
+            importQuotationRoutes.setDbFunctions(
+                (sql, params) => new Promise((resolve, reject) => db.run(sql, params, function(err) { err ? reject(err) : resolve(this); })),
+                (sql, params) => new Promise((resolve, reject) => db.all(sql, params, (err, rows) => err ? reject(err) : resolve(rows))),
+                (sql, params) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)))
+            );
+            console.log('import_quotation API 준비 완료');
         });
     }
 });
@@ -796,6 +809,11 @@ app.use('/api/tbm', tbmRoutes);
 // Invoice / Packing List API 라우트 마운트
 // ==========================================
 app.use('/api/invoice-packing', invoicePackingRoutes);
+
+// ==========================================
+// 수입 견적 API 라우트 마운트
+// ==========================================
+app.use('/api/import-quotation', importQuotationRoutes.router);
 
 // ==========================================
 // 포워더 견적 API 라우트 마운트

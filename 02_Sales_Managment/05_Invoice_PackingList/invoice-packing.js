@@ -126,9 +126,51 @@ async function loadDocs() {
         allDocs = await authFetch('/api/invoice-packing/documents');
         renderTable();
         updateKPI();
+        checkTransferData();
     } catch (e) {
         showToast('문서 목록을 불러오는 데 실패했습니다.', 'error');
         console.error(e);
+    }
+}
+
+function checkTransferData() {
+    const dataStr = localStorage.getItem('kng_transfer_data');
+    if (dataStr) {
+        try {
+            const transfer = JSON.parse(dataStr);
+            if (transfer.source === 'import-quotation' && transfer.data) {
+                localStorage.removeItem('kng_transfer_data'); // 한번만 사용
+                
+                // 새로운 인보이스 모달 열고 데이터 주입
+                openDocModal(null);
+                document.getElementById('inpShipperName').value = transfer.data.shipperName || '';
+                document.getElementById('inpPortOfLoading').value = transfer.data.pol || '';
+                document.getElementById('inpPortOfDischarge').value = transfer.data.pod || '';
+                document.getElementById('inpIncoterms').value = transfer.data.incoterms || '';
+                document.getElementById('inpPaymentTerms').value = transfer.data.paymentTerms || '';
+                
+                // 품목 주입
+                els.itemLines.innerHTML = '';
+                if (transfer.data.items && transfer.data.items.length > 0) {
+                    transfer.data.items.forEach(item => {
+                        createInvItemLine({
+                            description: item.description || '',
+                            qty: item.qty || 1,
+                            unit: item.unit || 'EA',
+                            unitPrice: item.unitPrice || 0,
+                            amount: item.amount || 0
+                        });
+                    });
+                } else {
+                    createInvItemLine();
+                }
+                calcInvTotals();
+                
+                showToast('견적서 데이터가 인보이스에 적용되었습니다.', 'success');
+            }
+        } catch (e) {
+            console.error('Transfer data parse error', e);
+        }
     }
 }
 
