@@ -22,9 +22,7 @@ let state = {
         incoterms: ['EXW', 'FOB'],
         items: [],
         forwarders: [],
-        otherCosts: [
-            { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
-        ],
+        otherCosts: [],
         remarks: ''
     },
     activeForwarderIdx: 0
@@ -318,6 +316,24 @@ function initEvents() {
         renderAllCalculations();
     });
 
+    document.getElementById('btnAddInterest').addEventListener('click', () => {
+        state.doc.otherCosts = state.doc.otherCosts || [];
+        if (state.doc.otherCosts.find(c => c.id === 'interest')) {
+            alert('이미 금융비용 항목이 존재합니다.');
+            return;
+        }
+        state.doc.otherCosts.push({
+            id: 'interest',
+            name: '금융비용(이자비용)',
+            type: 'calculated',
+            durationMonths: 2,
+            interestRate: 4.0,
+            collectionDays: 60,
+            amount: 0
+        });
+        renderAllCalculations();
+    });
+
     // 실수입원가 선택
     document.getElementById('costResultSelector')?.addEventListener('change', renderAllCalculations);
 }
@@ -534,9 +550,7 @@ function openNewQuote() {
         incoterms: ['EXW', 'FOB'],
         items: [],
         forwarders: [],
-        otherCosts: [
-            { id: 'interest', name: '금융비용(이자비용)', type: 'calculated', durationMonths: 2, interestRate: 4.0, collectionDays: 60, amount: 0 }
-        ],
+        otherCosts: [],
         remarks: ''
     };
     state.activeForwarderIdx = 0;
@@ -1102,7 +1116,7 @@ function renderOtherCosts() {
                 <td>${conditionHtml}</td>
                 <td>${amountHtml}</td>
                 <td class="col-action">
-                    ${cost.type === 'manual' ? `<button class="btn-remove" onclick="removeOtherCost(${idx})"><i class='bx bx-x'></i></button>` : ''}
+                    <button class="btn-remove" onclick="removeOtherCost(${idx})"><i class='bx bx-x'></i></button>
                 </td>
             </tr>
         `;
