@@ -1207,6 +1207,11 @@ function renderSummaryTable() {
             // 인보이스
             const invKrw = getInvoiceSumKrw(term);
             rows.invoice.values.push(invKrw);
+            let oceanKrw = 0;
+            let exportKrw = 0;
+            let importKrw = 0;
+            let insKrw = 0;
+            let customsKrw = 0;
 
             fw.costs.forEach(c => {
                 if (c.applyTo[term]) {
