@@ -1188,17 +1188,19 @@ function renderSummaryTable() {
     // 그룹: 해상운임(OF), 수출국(THC_E 등), 수입국(THC_I 등), 적하보험(INS), 통관수수료(CUST_I)
     
     let rows = {
-        invoice: { label: '물품 대금 (KRW 환산)', values: [] },
-        ocean: { label: '해상 운임 (O/F)', values: [], details: [], expandable: true },
-        export: { label: '수출국 부대비용', values: [], details: [], expandable: true },
-        import: { label: '수입국 부대비용', values: [], details: [], expandable: true },
-        ins: { label: '적하보험료', values: [], details: [], expandable: true },
-        customs: { label: '수입 통관수수료', values: [], details: [], expandable: true },
+        invoice: { label: '물품 대금 (KRW 환산)', values: [], details: {} },
+        ocean: { label: '해상 운임 (O/F)', values: [], details: {}, expandable: true },
+        export: { label: '수출국 부대비용', values: [], details: {}, expandable: true },
+        import: { label: '수입국 부대비용', values: [], details: {}, expandable: true },
+        ins: { label: '적하보험료', values: [], details: {}, expandable: true },
+        customs: { label: '수입 통관수수료', values: [], details: {}, expandable: true },
         subtotal: { label: '포워더 부대비용 소계 (KRW)', values: [], isTotal: true },
         interestCost: { label: '금융비용 (이자비용)', values: [] },
-        manualOther: { label: '기타 추가 부대비용 (수동)', values: [], details: [], expandable: true },
+        manualOther: { label: '기타 추가 부대비용 (수동)', values: [], details: {}, expandable: true },
         grandtotal: { label: '총 비용 (물품+포워더+기타) KRW', values: [], isGrand: true }
     };
+
+    let colIdx = 0;
 
     state.doc.forwarders.forEach((fw, fIdx) => {
         state.doc.incoterms.forEach(term => {
@@ -1206,48 +1208,44 @@ function renderSummaryTable() {
             const invKrw = getInvoiceSumKrw(term);
             rows.invoice.values.push(invKrw);
 
-            let oceanKrw = 0, oceanDetails = [];
-            let exportKrw = 0, exportDetails = [];
-            let importKrw = 0, importDetails = [];
-            let insKrw = 0, insDetails = [];
-            let customsKrw = 0, customsDetails = [];
-
             fw.costs.forEach(c => {
                 if (c.applyTo[term]) {
                     const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
-                    const detailObj = { label: c.label, curr: c.currency, amt: c.amount, qty: c.unitQty };
                     
-                    if (c.key === 'OF') { oceanKrw += amtKrw; oceanDetails.push(detailObj); }
-                    else if (c.key === 'INS') { insKrw += amtKrw; insDetails.push(detailObj); }
-                    else if (c.key === 'CUST_I') { customsKrw += amtKrw; customsDetails.push(detailObj); }
-                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM', 'BAF', 'CAF'].includes(c.key)) { exportKrw += amtKrw; exportDetails.push(detailObj); }
-                    else { importKrw += amtKrw; importDetails.push(detailObj); } // 나머지 모두 수입국 (커스텀 포함)
+                    let tRow;
+                    if (c.key === 'OF') tRow = rows.ocean;
+                    else if (c.key === 'INS') tRow = rows.ins;
+                    else if (c.key === 'CUST_I') tRow = rows.customs;
+                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM', 'BAF', 'CAF'].includes(c.key)) tRow = rows.export;
+                    else tRow = rows.import; // 나머지 모두 수입국 (커스텀 포함)
+                    
+                    tRow.values[colIdx] = (tRow.values[colIdx] || 0) + amtKrw;
+                    
+                    if (!tRow.details[c.key]) tRow.details[c.key] = { label: c.label, cols: {} };
+                    tRow.details[c.key].cols[colIdx] = { curr: c.currency, amt: c.amount, qty: c.unitQty };
+                    
+                    // For duty calculation context (not displayed here directly)
+                    if (c.key === 'OF') oceanKrw += amtKrw;
+                    else if (c.key === 'INS') insKrw += amtKrw;
+                    else if (c.key === 'CUST_I') customsKrw += amtKrw;
+                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM', 'BAF', 'CAF'].includes(c.key)) exportKrw += amtKrw;
+                    else importKrw += amtKrw;
                 }
             });
-
-            rows.ocean.values.push(oceanKrw);
-            rows.ocean.details.push(oceanDetails);
-            rows.export.values.push(exportKrw);
-            rows.export.details.push(exportDetails);
-            rows.import.values.push(importKrw);
-            rows.import.details.push(importDetails);
-            rows.ins.values.push(insKrw);
-            rows.ins.details.push(insDetails);
-            rows.customs.values.push(customsKrw);
-            rows.customs.details.push(customsDetails);
             
             const sub = oceanKrw + exportKrw + importKrw + insKrw + customsKrw;
-            rows.subtotal.values.push(sub);
+            rows.subtotal.values[colIdx] = sub;
             
             // 기타 금융 및 추가비용 계산
             let manualOtherCosts = 0;
-            let manualDetails = [];
             let interestCost = 0;
             if (state.doc.otherCosts) {
                 state.doc.otherCosts.forEach(oc => {
                     if (oc.type === 'manual') {
                         manualOtherCosts += (oc.amount || 0);
-                        manualDetails.push({ label: oc.name, curr: 'KRW', amt: oc.amount, qty: 1 });
+                        const dKey = oc.id || oc.name;
+                        if (!rows.manualOther.details[dKey]) rows.manualOther.details[dKey] = { label: oc.name, cols: {} };
+                        rows.manualOther.details[dKey].cols[colIdx] = { curr: 'KRW', amt: oc.amount, qty: 1 };
                     }
                     else if (oc.type === 'calculated' && oc.id === 'interest') {
                         const duration = oc.durationMonths || 0;
@@ -1260,9 +1258,8 @@ function renderSummaryTable() {
                 });
             }
             
-            rows.interestCost.values.push(interestCost);
-            rows.manualOther.values.push(manualOtherCosts);
-            rows.manualOther.details.push(manualDetails);
+            rows.interestCost.values[colIdx] = interestCost;
+            rows.manualOther.values[colIdx] = manualOtherCosts;
             
             const totalOther = manualOtherCosts + interestCost;
             
@@ -1278,8 +1275,11 @@ function renderSummaryTable() {
                 otherCostsKrw: totalOther,
                 totalKrw: grand
             };
+            colIdx++;
         });
     });
+
+    const colCount = colIdx;
 
     let bHtml = '';
     Object.keys(rows).forEach(key => {
@@ -1299,26 +1299,29 @@ function renderSummaryTable() {
         bHtml += rowHtml;
         
         if (r.expandable) {
-            bHtml += `<tr id="summary_details_${key}" style="display:none; background-color: #f9fbfd;">
-                <td style="text-align:right; font-size:0.85rem; color:var(--text-secondary); padding-right:15px; border-right:1px solid #eee;">상세내역 ↳</td>`;
-            r.details.forEach(detailArr => {
-                let dHtml = `<td style="vertical-align:top; font-size:0.85rem; padding:8px; border-right:1px solid #eee;">`;
-                if (detailArr && detailArr.length > 0) {
-                    detailArr.forEach(d => {
-                        if (d.amt > 0) {
-                            dHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px dashed #ddd; padding-bottom:2px;">
-                                <span style="color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%;" title="${d.label}">${d.label}</span>
-                                <span>${d.curr} ${formatNum(d.amt)} ${d.qty !== 1 ? ` <span style="color:#999;font-size:0.8em">×${formatNum(d.qty,2)}</span>` : ''}</span>
-                            </div>`;
-                        }
-                    });
-                } else {
-                    dHtml += `<div style="text-align:center; color:#ccc;">-</div>`;
+            const detailKeys = Object.keys(r.details);
+            detailKeys.forEach(dk => {
+                const dRow = r.details[dk];
+                const hasValue = Object.values(dRow.cols).some(c => c && c.amt > 0);
+                if (!hasValue) return;
+                
+                bHtml += `<tr class="summary_details_${key}" style="display:none; background-color: #f9fbfd; font-size: 0.85rem; color: #555;">
+                    <td style="padding-left: 25px; border-right: 1px solid #eee;">
+                        <span style="color:#aaa; margin-right:8px;">└</span>${dRow.label}
+                    </td>`;
+                
+                for (let i = 0; i < colCount; i++) {
+                    const cData = dRow.cols[i];
+                    if (cData && cData.amt > 0) {
+                        bHtml += `<td style="border-right: 1px solid #eee; font-weight:500;">
+                            ${cData.curr} ${formatNum(cData.amt)} ${cData.qty !== 1 ? `<span style="color:#999;font-size:0.8em;font-weight:normal;">×${formatNum(cData.qty,2)}</span>` : ''}
+                        </td>`;
+                    } else {
+                        bHtml += `<td style="border-right: 1px solid #eee; text-align:center; color:#ccc;">-</td>`;
+                    }
                 }
-                dHtml += `</td>`;
-                bHtml += dHtml;
+                bHtml += `</tr>`;
             });
-            bHtml += `</tr>`;
         }
     });
     
@@ -1326,14 +1329,15 @@ function renderSummaryTable() {
 }
 
 window.toggleSummaryDetails = function(key) {
-    const el = document.getElementById(`summary_details_${key}`);
-    if (el) {
-        if (el.style.display === 'none') {
-            el.style.display = 'table-row';
-        } else {
-            el.style.display = 'none';
-        }
+    const els = document.querySelectorAll(`.summary_details_${key}`);
+    let isHidden = false;
+    if (els.length > 0) {
+        isHidden = (els[0].style.display === 'none');
     }
+    
+    els.forEach(el => {
+        el.style.display = isHidden ? 'table-row' : 'none';
+    });
 };
 
 
