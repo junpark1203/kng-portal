@@ -202,14 +202,16 @@
 
 /* 체크박스 셀 */
 .chk-cell {
-    text-align: center;
+    text-align: center !important;
+    vertical-align: middle !important;
 }
 .chk-cell input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    min-width: 18px;
-    margin: 0 auto;
-    display: block;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    max-width: 18px !important;
+    margin: 0 auto !important;
+    display: inline-block !important;
     cursor: pointer;
 }
 
