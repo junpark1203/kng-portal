@@ -1,0 +1,195 @@
+/* Contract Management Specific Styles */
+
+.ct-container {
+    padding: 20px;
+    background-color: var(--bg-gray);
+    min-height: calc(100vh - 60px);
+}
+
+.view-panel {
+    display: none;
+    background: #fff;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 24px;
+    animation: fadeIn 0.3s ease;
+}
+.view-panel.active {
+    display: block;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--gray-200);
+}
+.panel-header h2 {
+    font-size: 20px;
+    color: var(--gray-800);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.search-box i {
+    position: absolute;
+    left: 12px;
+    color: var(--gray-400);
+}
+.search-box input {
+    padding-left: 36px;
+    width: 250px;
+}
+
+/* Upload Zone */
+.upload-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 30px 20px;
+    text-align: center;
+    background-color: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.upload-zone:hover {
+    border-color: var(--primary);
+    background-color: #eff6ff;
+}
+.upload-zone.dragover {
+    border-color: var(--primary);
+    background-color: #dbeafe;
+}
+
+/* File Card */
+.file-card {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    gap: 12px;
+    transition: all 0.2s;
+}
+.file-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.file-card.active-preview {
+    border-color: var(--primary);
+    background: #f0fdf4;
+}
+.file-icon {
+    font-size: 24px;
+}
+.file-icon.pdf { color: #ef4444; }
+.file-icon.doc, .file-icon.docx { color: #2563eb; }
+.file-icon.xls, .file-icon.xlsx { color: #10b981; }
+.file-icon.other { color: #64748b; }
+
+.file-info {
+    flex: 1;
+    overflow: hidden;
+}
+.file-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+.file-name:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+.file-meta {
+    font-size: 11px;
+    color: #64748b;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.version-badge {
+    padding: 2px 6px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #334155;
+}
+.version-badge.final { background: #dcfce7; color: #166534; }
+.version-badge.signed { background: #dbeafe; color: #1e40af; }
+.version-badge.draft { background: #fef9c3; color: #854d0e; }
+
+.file-actions button {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.file-actions button:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+/* Badge for Table */
+.ct-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.ct-badge.type-buy { background: #e0e7ff; color: #3730a3; }
+.ct-badge.type-sell { background: #dcfce7; color: #166534; }
+.ct-badge.type-nda { background: #fef3c7; color: #92400e; }
+.ct-badge.type-other { background: #f1f5f9; color: #475569; }
+
+/* Autocomplete list overrides if needed */
+.autocomplete {
+    position: relative;
+    width: 100%;
+}
+.ac-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--gray-300);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: var(--shadow-md);
+    display: none;
+}
+.ac-list.active {
+    display: block;
+}
+.ac-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid var(--gray-100);
+}
+.ac-list li:hover {
+    background: var(--gray-50);
+    color: var(--primary);
+}

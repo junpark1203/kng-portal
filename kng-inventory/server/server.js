@@ -30,6 +30,10 @@ const { initForwarderQuotationTables } = forwarderQuotationRoutes;
 const importQuotationRoutes = require('./routes/import-quotation');
 const { initImportQuotationTables } = importQuotationRoutes;
 
+// 계약서 관리 모듈
+const contractManagementRoutes = require('./routes/contract-management');
+const { initContractManagementTables } = contractManagementRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -103,6 +107,11 @@ app.use('/api/mass-upload/uploads', express.static(UPLOAD_DIR, { fallthrough: fa
 const TBM_UPLOAD_DIR = path.join(UPLOAD_DIR, 'tbm');
 if (!fs.existsSync(TBM_UPLOAD_DIR)) fs.mkdirSync(TBM_UPLOAD_DIR, { recursive: true });
 app.use('/api/tbm/uploads', express.static(TBM_UPLOAD_DIR, { fallthrough: false }));
+
+// 계약서 관리 첨부파일 — 인증 없이 다운로드 허용 (PDF 미리보기용)
+const CONTRACT_UPLOAD_DIR = path.join(UPLOAD_DIR, 'contracts');
+if (!fs.existsSync(CONTRACT_UPLOAD_DIR)) fs.mkdirSync(CONTRACT_UPLOAD_DIR, { recursive: true });
+app.use('/api/contracts/uploads', express.static(CONTRACT_UPLOAD_DIR, { fallthrough: false }));
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -187,6 +196,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
                 (sql, params) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)))
             );
             console.log('import_quotation API 준비 완료');
+        });
+        // 계약서 관리 테이블 초기화 + 라우트에 DB 주입
+        initContractManagementTables(db).then(() => {
+            contractManagementRoutes.setDb(db);
+            console.log('contract_management API 준비 완료');
         });
     }
 });
@@ -794,6 +808,11 @@ app.post('/api/unit-prices/delete', (req, res) => {
 // Mass Upload API 라우트 마운트
 // ==========================================
 app.use('/api/mass-upload', massUploadRoutes);
+
+// ==========================================
+// 계약서 관리 API 라우트 마운트
+// ==========================================
+app.use('/api/contracts', contractManagementRoutes);
 
 // ==========================================
 // HQ Inventory (본사 매입 현황) API 라우트 마운트

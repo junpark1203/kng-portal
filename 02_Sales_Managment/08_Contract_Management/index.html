@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>계약서 관리</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <link rel="stylesheet" href="contract.css">
+</head>
+<body>
+    <div class="ct-container">
+        <!-- 뷰 1: 계약서 목록 -->
+        <div id="listView" class="view-panel active">
+            <div class="panel-header">
+                <h2><i class='bx bx-pen'></i> 계약서 관리</h2>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <i class='bx bx-search'></i>
+                        <input type="text" id="searchInput" placeholder="계약번호, 계약명, 거래처 검색...">
+                    </div>
+                    <button id="btnNewContract" class="btn-primary"><i class='bx bx-plus'></i> 신규 계약 등록</button>
+                    <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                            <th>계약번호</th>
+                            <th>계약명 (Title)</th>
+                            <th>Buyer</th>
+                            <th>Seller</th>
+                            <th>계약유형</th>
+                            <th>효력발생일</th>
+                            <th>첨부파일</th>
+                            <th>최초 등록일 (KST)</th>
+                            <th class="col-action">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contractListBody">
+                        <tr><td colspan="10" style="text-align: center; padding: 2rem;">데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 계약서 등록/수정 모달 -->
+    <div id="contractModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="modalTitle">신규 계약 등록</h2>
+                <button class="btn-close" id="closeContractModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="contractForm" autocomplete="off">
+                    <input type="hidden" id="editId">
+                    
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>계약번호 <span class="req">*</span></label>
+                            <input type="text" id="inpContractNo" required placeholder="예: KNG-2607-001 (수정 가능)">
+                        </div>
+                        <div class="fg" style="grid-column: span 2;">
+                            <label>계약명 (Title) <span class="req">*</span></label>
+                            <input type="text" id="inpTitle" required placeholder="계약 제목을 입력하세요">
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>Buyer (구매자) <span class="req">*</span></label>
+                            <div class="autocomplete">
+                                <input type="text" id="inpBuyer" required placeholder="거래처 선택 또는 입력">
+                                <ul class="ac-list" id="acBuyerList"></ul>
+                            </div>
+                        </div>
+                        <div class="fg">
+                            <label>Seller (판매자) <span class="req">*</span></label>
+                            <div class="autocomplete">
+                                <input type="text" id="inpSeller" required placeholder="거래처 선택 또는 입력">
+                                <ul class="ac-list" id="acSellerList"></ul>
+                            </div>
+                        </div>
+                        <div class="fg">
+                            <label>계약 유형</label>
+                            <select id="inpType">
+                                <option value="구매계약">구매계약</option>
+                                <option value="공급/판매계약">공급/판매계약</option>
+                                <option value="비밀유지(NDA)">비밀유지(NDA)</option>
+                                <option value="용역/서비스">용역/서비스</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>계약금액 (옵션)</label>
+                            <div style="display:flex; gap:5px;">
+                                <select id="inpCurrency" style="width: 80px;">
+                                    <option value="KRW">KRW</option>
+                                    <option value="USD">USD</option>
+                                    <option value="CNY">CNY</option>
+                                    <option value="EUR">EUR</option>
+                                </select>
+                                <input type="number" id="inpAmount" placeholder="0" style="flex:1;">
+                            </div>
+                        </div>
+                        <div class="fg">
+                            <label>계약효력일 / 시작일</label>
+                            <input type="date" id="inpEffectiveDate">
+                        </div>
+                        <div class="fg">
+                            <label>결제 조건 (Payment Terms)</label>
+                            <input type="text" id="inpPaymentTerms" placeholder="예: T/T 30% Advance">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>담당자 (PIC)</label>
+                            <input type="text" id="inpPic" placeholder="내부 담당자">
+                        </div>
+                        <div class="fg" style="grid-column: span 2;">
+                            <label>비고 (Remarks)</label>
+                            <input type="text" id="inpRemarks" placeholder="특이사항">
+                        </div>
+                    </div>
+                    
+                    <div class="timestamp-info" id="timestampInfo" style="display:none; font-size:11px; color:#64748b; margin-top:15px; text-align:right;">
+                        최초 등록: <span id="lblCreatedAt"></span> | 최종 수정: <span id="lblUpdatedAt"></span> (KST 기준)
+                    </div>
+                    
+                    <div class="modal-footer" style="margin-top:20px; display:flex; justify-content:flex-end; gap:8px;">
+                        <button type="button" class="btn-outline" id="cancelContractBtn">취소</button>
+                        <button type="submit" class="btn-primary" id="saveContractBtn"><i class='bx bx-save'></i> 계약 정보 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 파일 관리 모달 -->
+    <div id="fileModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <div>
+                    <h2 style="display:inline-block; margin-right:10px;">첨부파일 관리</h2>
+                    <span class="badge" id="fmContractNo">KNG-2607-001</span>
+                </div>
+                <button class="btn-close" id="closeFileModalBtn"><i class='bx bx-x'></i></button>
+            </div>
+            
+            <div class="modal-body" style="flex: 1; overflow: hidden; display: flex; gap: 20px; padding-bottom: 20px;">
+                
+                <!-- 왼쪽: 업로드 및 파일 리스트 -->
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 15px; border-right: 1px solid #e2e8f0; padding-right: 15px; overflow-y: auto;">
+                    
+                    <div class="upload-zone" id="uploadZone">
+                        <i class='bx bx-cloud-upload' style="font-size: 40px; color: #94a3b8; margin-bottom: 10px;"></i>
+                        <p style="margin: 0; font-weight: 500;">이곳에 파일을 드래그하여 놓거나 클릭하여 업로드</p>
+                        <p style="margin: 5px 0 0; font-size: 11px; color: #64748b;">(지원: .pdf, .doc, .docx / 최대 50MB)</p>
+                        <input type="file" id="fileInput" style="display: none;" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                        
+                        <div style="margin-top: 15px; display: flex; justify-content: center; align-items: center; gap: 10px;" onclick="event.stopPropagation()">
+                            <label style="font-size: 12px; font-weight: 500;">버전 라벨:</label>
+                            <select id="fileVersionLabel" style="padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                <option value="초안 (Draft)">초안 (Draft)</option>
+                                <option value="수정본 (Revised)">수정본 (Revised)</option>
+                                <option value="최종본 (Final)">최종본 (Final)</option>
+                                <option value="양사날인본 (Signed)">양사날인본 (Signed)</option>
+                                <option value="기타 첨부">기타 첨부</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="font-weight: 600; padding-bottom: 8px; border-bottom: 2px solid #f1f5f9; display: flex; justify-content: space-between;">
+                        <span>파일 히스토리</span>
+                        <span id="fmFileCount" style="color: #64748b; font-size: 12px; font-weight: 400;">0개</span>
+                    </div>
+                    
+                    <div class="file-list" id="fileList">
+                        <!-- 파일 카드들 렌더링 -->
+                    </div>
+                </div>
+                
+                <!-- 오른쪽: 미리보기 (PDF 전용) -->
+                <div style="flex: 1.5; display: flex; flex-direction: column; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid #e2e8f0; background: #fff; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 600; font-size: 14px;"><i class='bx bx-show'></i> PDF 미리보기</span>
+                        <a id="previewDownloadBtn" href="#" style="display: none; font-size: 12px; color: var(--primary); text-decoration: none;"><i class='bx bx-download'></i> 다운로드</a>
+                    </div>
+                    <div id="previewContainer" style="flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; padding: 10px;">
+                        <div style="text-align: center;">
+                            <i class='bx bx-file-blank' style="font-size: 48px;"></i>
+                            <p style="margin-top: 10px; font-size: 13px;">미리보기할 PDF 파일을 리스트에서 선택해주세요.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script type="module" src="contract.js"></script>
+</body>
+</html>
