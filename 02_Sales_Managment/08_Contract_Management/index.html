@@ -66,6 +66,19 @@
                             <label>계약번호 <span class="req">*</span></label>
                             <input type="text" id="inpContractNo" required placeholder="예: KNG-2607-001 (수정 가능)">
                         </div>
+                        <div class="fg">
+                            <label>계약 유형</label>
+                            <select id="inpType">
+                                <option value="구매계약">구매계약</option>
+                                <option value="공급/판매계약">공급/판매계약</option>
+                                <option value="비밀유지(NDA)">비밀유지(NDA)</option>
+                                <option value="용역/서비스">용역/서비스</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
                         <div class="fg" style="grid-column: span 2;">
                             <label>계약명 (Title) <span class="req">*</span></label>
                             <input type="text" id="inpTitle" required placeholder="계약 제목을 입력하세요">
@@ -87,16 +100,6 @@
                                 <ul class="ac-list" id="acSellerList"></ul>
                             </div>
                         </div>
-                        <div class="fg">
-                            <label>계약 유형</label>
-                            <select id="inpType">
-                                <option value="구매계약">구매계약</option>
-                                <option value="공급/판매계약">공급/판매계약</option>
-                                <option value="비밀유지(NDA)">비밀유지(NDA)</option>
-                                <option value="용역/서비스">용역/서비스</option>
-                                <option value="기타">기타</option>
-                            </select>
-                        </div>
                     </div>
                     
                     <div class="form-grid">
@@ -116,17 +119,20 @@
                             <label>계약효력일 / 시작일</label>
                             <input type="date" id="inpEffectiveDate">
                         </div>
-                        <div class="fg">
-                            <label>결제 조건 (Payment Terms)</label>
-                            <input type="text" id="inpPaymentTerms" placeholder="예: T/T 30% Advance">
-                        </div>
                     </div>
 
                     <div class="form-grid">
                         <div class="fg">
+                            <label>결제 조건 (Payment Terms)</label>
+                            <input type="text" id="inpPaymentTerms" placeholder="예: T/T 30% Advance">
+                        </div>
+                        <div class="fg">
                             <label>담당자 (PIC)</label>
                             <input type="text" id="inpPic" placeholder="내부 담당자">
                         </div>
+                    </div>
+
+                    <div class="form-grid">
                         <div class="fg" style="grid-column: span 2;">
                             <label>비고 (Remarks)</label>
                             <input type="text" id="inpRemarks" placeholder="특이사항">
