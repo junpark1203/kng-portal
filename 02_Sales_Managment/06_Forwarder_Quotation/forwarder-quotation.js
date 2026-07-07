@@ -1077,7 +1077,7 @@ function renderForwarderContent() {
                 const isAuto = false;
                 let labelHtml = `<input type="text" value="${c.label}" onchange="updateCost(${idx}, 'label', this.value)" ${isAuto?'readonly':''}>`;
                 if (c.key === 'INS') {
-                    labelHtml = `<div style="display:flex; align-items:center;">
+                    labelHtml = `<div style="display:flex; align-items:center; flex: 1;">
                         ${labelHtml}
                         <i class='bx bx-question-mark tooltip-icon'><span class="tooltip-text">일반적인 산출 공식:<br>Commercial Invoice 총액 (ex: CIF) × 110% × 0.1%</span></i>
                     </div>`;
@@ -1106,7 +1106,7 @@ function renderForwarderContent() {
                         tooltipStr += `<br><br>(과세표준 산출 후 계산됩니다.)`;
                     }
                     
-                    labelHtml = `<div style="display:flex; align-items:center;">
+                    labelHtml = `<div style="display:flex; align-items:center; flex: 1;">
                         ${labelHtml}
                         <i class='bx bx-calculator tooltip-icon' style="color:var(--primary);"><span class="tooltip-text" style="width:220px; font-weight:normal;">${tooltipStr}</span></i>
                     </div>`;
