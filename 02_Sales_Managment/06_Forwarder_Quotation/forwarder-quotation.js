@@ -376,6 +376,7 @@ function initEvents() {
             type: 'manual',
             amount: 0
         });
+        renderOtherCosts();
         renderAllCalculations();
     });
 
@@ -394,6 +395,7 @@ function initEvents() {
             collectionDays: 60,
             amount: 0
         });
+        renderOtherCosts();
         renderAllCalculations();
     });
 
@@ -588,6 +590,7 @@ async function editQuote(id) {
         renderItems();
         renderForwarderTabs();
         renderForwarderContent();
+        renderOtherCosts();
         
         switchView('edit');
     } catch (err) {
@@ -645,6 +648,7 @@ function openNewQuote() {
     renderItems();
     renderForwarderTabs();
     renderForwarderContent();
+    renderOtherCosts();
     
     switchView('edit');
 }
@@ -1330,6 +1334,7 @@ window.updateOtherCost = function(idx, key, val) {
 
 window.removeOtherCost = function(idx) {
     state.doc.otherCosts.splice(idx, 1);
+    renderOtherCosts();
     renderAllCalculations();
 };
 
@@ -1337,7 +1342,6 @@ window.removeOtherCost = function(idx) {
 // 전체 요약 계산 (Summary) & 원가 산출
 // ─────────────────────────────────────────────────────────────
 function renderAllCalculations() {
-    renderOtherCosts();
     renderSummaryTable();
     populateCostResultSelector();
     renderCostResultTable();

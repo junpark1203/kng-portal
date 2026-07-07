@@ -207,6 +207,9 @@
 .chk-cell input[type="checkbox"] {
     width: 18px;
     height: 18px;
+    min-width: 18px;
+    margin: 0 auto;
+    display: block;
     cursor: pointer;
 }
 
