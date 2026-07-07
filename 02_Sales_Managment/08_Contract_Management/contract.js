@@ -26,7 +26,9 @@ const els = {
     // Form Inputs
     inpContractNo: document.getElementById('inpContractNo'),
     inpTitle: document.getElementById('inpTitle'),
+    inpBuyerRole: document.getElementById('inpBuyerRole'),
     inpBuyer: document.getElementById('inpBuyer'),
+    inpSellerRole: document.getElementById('inpSellerRole'),
     inpSeller: document.getElementById('inpSeller'),
     inpType: document.getElementById('inpType'),
     inpCurrency: document.getElementById('inpCurrency'),
@@ -51,6 +53,10 @@ const els = {
     fmContractNo: document.getElementById('fmContractNo'),
     fmFileCount: document.getElementById('fmFileCount'),
     fileList: document.getElementById('fileList'),
+    
+    // Partner Picker
+    partnerPickerModal: document.getElementById('partnerPickerModal'),
+    partnerPickerList: document.getElementById('partnerPickerList'),
     
     // Upload Zone
     uploadZone: document.getElementById('uploadZone'),
@@ -192,8 +198,8 @@ function renderContractTable() {
             <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
             <td style="font-weight:600; color:var(--primary);">${d.contractNo}</td>
             <td style="font-weight:500;">${d.title}</td>
-            <td>${d.buyer}</td>
-            <td>${d.seller}</td>
+            <td><div style="line-height:1.2;"><span style="font-size:10px;color:#94a3b8;">${d.buyerRole || 'BUYER (구매자)'}</span><br>${d.buyer}</div></td>
+            <td><div style="line-height:1.2;"><span style="font-size:10px;color:#94a3b8;">${d.sellerRole || 'SELLER (판매자)'}</span><br>${d.seller}</div></td>
             <td><span class="ct-badge ${getBadgeClass(d.type)}">${d.type}</span></td>
             <td>${d.effectiveDate || '-'}</td>
             <td onclick="event.stopPropagation()">
@@ -217,6 +223,9 @@ els.btnNewContract.addEventListener('click', async () => {
     els.contractForm.reset();
     els.editId.value = '';
     
+    els.inpBuyerRole.value = 'Party A';
+    els.inpSellerRole.value = 'Party B';
+    
     // 서버에서 순차적 계약번호 채번 (KNG-YYMM-001)
     els.inpContractNo.value = '번호 채번 중...';
     try {
@@ -239,7 +248,9 @@ window.editContract = function(id) {
     els.editId.value = d.id;
     els.inpContractNo.value = d.contractNo || '';
     els.inpTitle.value = d.title || '';
+    els.inpBuyerRole.value = d.buyerRole || 'Party A';
     els.inpBuyer.value = d.buyer || '';
+    els.inpSellerRole.value = d.sellerRole || 'Party B';
     els.inpSeller.value = d.seller || '';
     els.inpType.value = d.type || '기타';
     els.inpCurrency.value = d.currency || 'KRW';
@@ -272,7 +283,9 @@ els.contractForm.addEventListener('submit', async (e) => {
     const payload = {
         contractNo: els.inpContractNo.value.trim(),
         title: els.inpTitle.value.trim(),
+        buyerRole: els.inpBuyerRole.value.trim() || 'Party A',
         buyer: els.inpBuyer.value.trim(),
+        sellerRole: els.inpSellerRole.value.trim() || 'Party B',
         seller: els.inpSeller.value.trim(),
         type: els.inpType.value,
         currency: els.inpCurrency.value,
@@ -554,3 +567,37 @@ window.addEventListener('DOMContentLoaded', () => {
     loadPartners();
     loadContracts();
 });
+
+// ── Partner Picker Modal ──
+let currentPickerTarget = null;
+window.openPartnerPicker = function(target) {
+    currentPickerTarget = target;
+    els.partnerPickerList.innerHTML = '';
+    
+    if (allPartners.length === 0) {
+        els.partnerPickerList.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b;">등록된 거래처가 없습니다.</div>`;
+    } else {
+        allPartners.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'partner-picker-item';
+            div.innerHTML = `
+                <div class="partner-picker-name">${p.companyName || p.name}</div>
+                <div class="partner-picker-desc">${p.address || ''}</div>
+            `;
+            div.onclick = () => window.selectPartner(p.companyName || p.name);
+            els.partnerPickerList.appendChild(div);
+        });
+    }
+    
+    els.partnerPickerModal.classList.add('active');
+};
+
+window.closePartnerPicker = function() {
+    els.partnerPickerModal.classList.remove('active');
+};
+
+window.selectPartner = function(companyName) {
+    if (currentPickerTarget === 'buyer') els.inpBuyer.value = companyName;
+    else if (currentPickerTarget === 'seller') els.inpSeller.value = companyName;
+    closePartnerPicker();
+};

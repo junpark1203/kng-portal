@@ -234,3 +234,46 @@
 .fg input::placeholder {
     color: #94a3b8;
 }
+
+/* Custom Roles & Pickers */
+.role-input {
+    border: none !important;
+    border-bottom: 1px dashed #cbd5e1 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    text-transform: uppercase;
+    width: 120px !important;
+    background: transparent !important;
+}
+.role-input:focus {
+    border-bottom-color: var(--primary) !important;
+    box-shadow: none !important;
+}
+.btn-small {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+}
+.partner-picker-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.partner-picker-item:hover {
+    background: #f8fafc;
+}
+.partner-picker-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+.partner-picker-desc {
+    font-size: 12px;
+    color: #64748b;
+}

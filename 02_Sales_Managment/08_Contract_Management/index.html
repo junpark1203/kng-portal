@@ -87,14 +87,20 @@
                     
                     <div class="form-grid">
                         <div class="fg">
-                            <label>Buyer (구매자) <span class="req">*</span></label>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <input type="text" id="inpBuyerRole" class="role-input" value="Party A">
+                                <button type="button" class="btn-outline btn-small load-partner-btn" onclick="openPartnerPicker('buyer')"><i class='bx bx-import'></i> 거래처 불러오기</button>
+                            </div>
                             <div class="autocomplete">
                                 <input type="text" id="inpBuyer" required placeholder="거래처 선택 또는 입력">
                                 <ul class="ac-list" id="acBuyerList"></ul>
                             </div>
                         </div>
                         <div class="fg">
-                            <label>Seller (판매자) <span class="req">*</span></label>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <input type="text" id="inpSellerRole" class="role-input" value="Party B">
+                                <button type="button" class="btn-outline btn-small load-partner-btn" onclick="openPartnerPicker('seller')"><i class='bx bx-import'></i> 거래처 불러오기</button>
+                            </div>
                             <div class="autocomplete">
                                 <input type="text" id="inpSeller" required placeholder="거래처 선택 또는 입력">
                                 <ul class="ac-list" id="acSellerList"></ul>
@@ -214,6 +220,19 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Partner Picker Modal -->
+    <div id="partnerPickerModal" class="modal" style="z-index:1200;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class='bx bx-user-check'></i> 거래처 선택</h2>
+                <button class="btn-close" onclick="closePartnerPicker()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="max-height:50vh; overflow-y:auto; padding:0;">
+                <div id="partnerPickerList"></div>
+            </div>
+        </div>
+    </div>
 
     <script type="module" src="contract.js"></script>
 </body>

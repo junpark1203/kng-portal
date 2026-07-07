@@ -81,8 +81,13 @@ async function initContractManagementTables(database) {
                     console.error('contract_files 테이블 생성 오류:', err);
                     return reject(err);
                 }
-                console.log('Contract Management 테이블 확인 완료');
-                resolve();
+                
+                // Add role columns if they don't exist
+                db.run("ALTER TABLE contracts ADD COLUMN buyerRole TEXT DEFAULT 'Party A'", () => {});
+                db.run("ALTER TABLE contracts ADD COLUMN sellerRole TEXT DEFAULT 'Party B'", () => {
+                    console.log('Contract Management 테이블 확인 완료');
+                    resolve();
+                });
             });
         });
     });
@@ -162,11 +167,11 @@ router.post('/', (req, res) => {
 
     const sql = `
         INSERT INTO contracts (
-            id, contractNo, title, buyer, seller, type, amount, currency, effectiveDate, paymentTerms, pic, remarks, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, contractNo, title, buyerRole, buyer, sellerRole, seller, type, amount, currency, effectiveDate, paymentTerms, pic, remarks, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-        id, p.contractNo || '', p.title || '', p.buyer || '', p.seller || '', p.type || '',
+        id, p.contractNo || '', p.title || '', p.buyerRole || 'Party A', p.buyer || '', p.sellerRole || 'Party B', p.seller || '', p.type || '',
         p.amount || 0, p.currency || 'KRW', p.effectiveDate || '', p.paymentTerms || '',
         p.pic || '', p.remarks || '', kstDate, kstDate
     ];
@@ -194,12 +199,12 @@ router.put('/:id', (req, res) => {
 
     const sql = `
         UPDATE contracts SET 
-            contractNo=?, title=?, buyer=?, seller=?, type=?, amount=?, currency=?, 
+            contractNo=?, title=?, buyerRole=?, buyer=?, sellerRole=?, seller=?, type=?, amount=?, currency=?, 
             effectiveDate=?, paymentTerms=?, pic=?, remarks=?, updatedAt=?
         WHERE id=?
     `;
     const params = [
-        p.contractNo || '', p.title || '', p.buyer || '', p.seller || '', p.type || '',
+        p.contractNo || '', p.title || '', p.buyerRole || 'Party A', p.buyer || '', p.sellerRole || 'Party B', p.seller || '', p.type || '',
         p.amount || 0, p.currency || 'KRW', p.effectiveDate || '', p.paymentTerms || '',
         p.pic || '', p.remarks || '', kstDate, id
     ];
