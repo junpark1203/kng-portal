@@ -375,23 +375,26 @@
         print-color-adjust: exact !important;
     }
     
-    /* 인쇄용 표 스타일 지정 */
+    /* 인쇄용 표 스타일 지정 (Premium Design) */
     #printContainer table {
         width: 100%;
         border-collapse: collapse;
         margin-bottom: 24px;
-        font-size: 11px; /* A4 용지 너비에 맞추기 위해 약간 줄임 */
+        font-size: 11px;
     }
     
     #printContainer th, #printContainer td {
-        border: 1px solid #333 !important;
-        padding: 6px;
+        border: 1px solid #e2e8f0 !important;
+        padding: 8px;
         text-align: right;
+        color: #334155;
     }
     
     #printContainer th {
         text-align: center;
-        font-weight: bold;
+        font-weight: 600;
+        background-color: #f8fafc;
+        color: #0f172a;
     }
     
     #printContainer td:first-child {
