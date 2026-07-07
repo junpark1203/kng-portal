@@ -146,16 +146,6 @@ function formatBytes(bytes, decimals = 2) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-function generateContractNo() {
-    const now = new Date();
-    const yy = String(now.getFullYear()).slice(-2);
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    // Generate a random 3 digit number for uniqueness in the session, or sequential logic could be used.
-    // For simplicity, a random 3 digit string
-    const rnd = Math.floor(Math.random() * 900) + 100;
-    return `KNG-${yy}${mm}-${rnd}`;
-}
-
 // ── Load Data ──
 async function loadPartners() {
     try {
@@ -223,10 +213,20 @@ function renderContractTable() {
 }
 
 // ── Modals & Actions ──
-els.btnNewContract.addEventListener('click', () => {
+els.btnNewContract.addEventListener('click', async () => {
     els.contractForm.reset();
     els.editId.value = '';
-    els.inpContractNo.value = generateContractNo();
+    
+    // 서버에서 순차적 계약번호 채번 (KNG-YYMM-001)
+    els.inpContractNo.value = '번호 채번 중...';
+    try {
+        const res = await authFetch('/api/contracts/next-no');
+        els.inpContractNo.value = res.nextNo;
+    } catch(e) {
+        els.inpContractNo.value = '';
+        showToast('계약번호 채번에 실패했습니다. 직접 입력해주세요.', 'error');
+    }
+    
     els.modalTitle.textContent = '신규 계약 등록';
     els.timestampInfo.style.display = 'none';
     els.contractModal.classList.add('active');

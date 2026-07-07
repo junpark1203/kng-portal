@@ -109,6 +109,32 @@ router.get('/', (req, res) => {
     });
 });
 
+// Get next contract number (KNG-YYMM-XXX)
+router.get('/next-no', (req, res) => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const prefix = `KNG-${yy}${mm}-`;
+
+    db.get('SELECT contractNo FROM contracts WHERE contractNo LIKE ? ORDER BY contractNo DESC LIMIT 1', [prefix + '%'], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        let nextNum = 1;
+        if (row && row.contractNo) {
+            const parts = row.contractNo.split('-');
+            if (parts.length === 3) {
+                const seq = parseInt(parts[2], 10);
+                if (!isNaN(seq)) {
+                    nextNum = seq + 1;
+                }
+            }
+        }
+        
+        const nextContractNo = prefix + String(nextNum).padStart(3, '0');
+        res.json({ nextNo: nextContractNo });
+    });
+});
+
 // Get single contract with its files
 router.get('/:id', (req, res) => {
     const id = req.params.id;
