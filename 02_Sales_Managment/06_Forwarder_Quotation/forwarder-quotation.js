@@ -1055,7 +1055,7 @@ function renderForwarderContent() {
         state.doc.incoterms.forEach(term => {
             html += `<th class="chk-cell" style="width:60px;">${term}</th>`;
         });
-        html += `           <th class="col-action">관리</th>
+        html += `           <th class="col-action" style="width:50px;">관리</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1121,7 +1121,7 @@ function renderForwarderContent() {
                         ondrop="handleDrop(event, ${idx})"
                         ondragend="handleDragEnd(event)">
                         <td>
-                            <div style="display:flex; align-items:center;">
+                            <div style="display:flex; align-items:center; width: 100%;">
                                 <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
                                 ${labelHtml}
                             </div>

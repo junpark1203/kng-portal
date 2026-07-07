@@ -259,6 +259,10 @@
 }
 
 /* 테이블 강제 스타일 (인코텀즈 등) */
+.item-table {
+    table-layout: fixed;
+    width: 100%;
+}
 .item-table th, .item-table td,
 .cost-table th, .cost-table td,
 .summary-table th, .summary-table td {
