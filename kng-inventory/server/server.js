@@ -40,7 +40,8 @@ const PORT = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 app.use(helmet({
     contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    xFrameOptions: false
 }));
 
 // CORS 설정 — Cloudflare Pages 도메인 허용

@@ -394,14 +394,14 @@ window.deleteFile = async function(fileId) {
     } catch(e) { showToast('삭제 실패','error'); }
 };
 window.downloadFile = function(fp, fn) {
-    const a = document.createElement('a'); a.href=`${API_BASE}/api/contracts/uploads/${fp}`; a.download=fn; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href=`${API_BASE}/api/contracts/uploads/${encodeURIComponent(fp)}`; a.download=fn; a.target='_blank'; document.body.appendChild(a); a.click(); a.remove();
 };
 window.previewFile = function(fp, ft, fn) {
     const overlay = document.getElementById('previewOverlay');
     const container = document.getElementById('previewContainer');
     const dlBtn = document.getElementById('previewDownloadBtn');
     dlBtn.onclick = e => { e.preventDefault(); downloadFile(fp,fn); };
-    const url = `${API_BASE}/api/contracts/uploads/${fp}`;
+    const url = `${API_BASE}/api/contracts/uploads/${encodeURIComponent(fp)}`;
     if (ft==='.pdf') {
         container.innerHTML = `<iframe src="${url}#toolbar=0"></iframe>`;
     } else {
