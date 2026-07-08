@@ -31,8 +31,15 @@ const upload = multer({
     limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
+// ── KST Helper ──
+function getKSTDate() {
+    const now = new Date();
+    const kstOffset = 9 * 60 * 60 * 1000;
+    return new Date(now.getTime() + kstOffset).toISOString().replace('Z', '+09:00');
+}
+
 /**
- * Initialize Tables
+ * Initialize Tables — v2 (계약 품목 + 상태/만료일/Incoterms 확장)
  */
 async function initContractManagementTables(database) {
     db = database;
@@ -47,7 +54,7 @@ async function initContractManagementTables(database) {
                     buyer TEXT,
                     seller TEXT,
                     type TEXT,
-                    amount INTEGER DEFAULT 0,
+                    amount REAL DEFAULT 0,
                     currency TEXT DEFAULT 'KRW',
                     effectiveDate TEXT,
                     paymentTerms TEXT,
@@ -81,12 +88,48 @@ async function initContractManagementTables(database) {
                     console.error('contract_files 테이블 생성 오류:', err);
                     return reject(err);
                 }
-                
-                // Add role columns if they don't exist
-                db.run("ALTER TABLE contracts ADD COLUMN buyerRole TEXT DEFAULT 'Party A'", () => {});
-                db.run("ALTER TABLE contracts ADD COLUMN sellerRole TEXT DEFAULT 'Party B'", () => {
-                    console.log('Contract Management 테이블 확인 완료');
-                    resolve();
+            });
+
+            // contract_items table (v2 — 계약 품목)
+            db.run(`
+                CREATE TABLE IF NOT EXISTS contract_items (
+                    id TEXT PRIMARY KEY,
+                    contractId TEXT,
+                    itemName TEXT,
+                    specification TEXT,
+                    quantity REAL DEFAULT 0,
+                    unit TEXT DEFAULT 'EA',
+                    unitPrice REAL DEFAULT 0,
+                    amount REAL DEFAULT 0,
+                    hsCode TEXT,
+                    remarks TEXT,
+                    sortOrder INTEGER DEFAULT 0,
+                    FOREIGN KEY (contractId) REFERENCES contracts(id) ON DELETE CASCADE
+                )
+            `, (err) => {
+                if (err) {
+                    console.error('contract_items 테이블 생성 오류:', err);
+                }
+            });
+
+            // Add columns if they don't exist (safe migration)
+            const migrations = [
+                "ALTER TABLE contracts ADD COLUMN buyerRole TEXT DEFAULT 'Party A'",
+                "ALTER TABLE contracts ADD COLUMN sellerRole TEXT DEFAULT 'Party B'",
+                "ALTER TABLE contracts ADD COLUMN status TEXT DEFAULT '초안'",
+                "ALTER TABLE contracts ADD COLUMN expiryDate TEXT DEFAULT ''",
+                "ALTER TABLE contracts ADD COLUMN autoRenewal INTEGER DEFAULT 0",
+                "ALTER TABLE contracts ADD COLUMN incoterms TEXT DEFAULT ''"
+            ];
+
+            let completed = 0;
+            migrations.forEach(sql => {
+                db.run(sql, () => {
+                    completed++;
+                    if (completed === migrations.length) {
+                        console.log('Contract Management v2 테이블 확인 완료');
+                        resolve();
+                    }
                 });
             });
         });
@@ -101,11 +144,13 @@ function setDb(database) {
 // Contracts CRUD
 // ----------------------------------------------------
 
-// Get all contracts
+// Get all contracts (with file count AND item count + total amount)
 router.get('/', (req, res) => {
     db.all(`
         SELECT c.*, 
-        (SELECT COUNT(*) FROM contract_files cf WHERE cf.contractId = c.id) as fileCount
+        (SELECT COUNT(*) FROM contract_files cf WHERE cf.contractId = c.id) as fileCount,
+        (SELECT COUNT(*) FROM contract_items ci WHERE ci.contractId = c.id) as itemCount,
+        (SELECT COALESCE(SUM(ci.amount), 0) FROM contract_items ci WHERE ci.contractId = c.id) as itemsTotal
         FROM contracts c 
         ORDER BY c.createdAt DESC
     `, [], (err, rows) => {
@@ -140,7 +185,7 @@ router.get('/next-no', (req, res) => {
     });
 });
 
-// Get single contract with its files
+// Get single contract with its files AND items
 router.get('/:id', (req, res) => {
     const id = req.params.id;
     db.get('SELECT * FROM contracts WHERE id = ?', [id], (err, contract) => {
@@ -150,29 +195,42 @@ router.get('/:id', (req, res) => {
         db.all('SELECT * FROM contract_files WHERE contractId = ? ORDER BY uploadedAt DESC', [id], (err, files) => {
             if (err) return res.status(500).json({ error: err.message });
             contract.files = files || [];
-            res.json(contract);
+
+            db.all('SELECT * FROM contract_items WHERE contractId = ? ORDER BY sortOrder ASC, rowid ASC', [id], (err, items) => {
+                if (err) return res.status(500).json({ error: err.message });
+                contract.items = items || [];
+                res.json(contract);
+            });
         });
     });
 });
 
-// Create new contract
+// Create new contract (with items)
 router.post('/', (req, res) => {
     const p = req.body;
     const id = 'CTR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-    
-    // KST Time (UTC+9)
-    const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstDate = new Date(now.getTime() + kstOffset).toISOString().replace('Z', '+09:00');
+    const kstDate = getKSTDate();
+
+    // Calculate total from items
+    const items = p.items || [];
+    const totalAmount = items.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0);
 
     const sql = `
         INSERT INTO contracts (
-            id, contractNo, title, buyerRole, buyer, sellerRole, seller, type, amount, currency, effectiveDate, paymentTerms, pic, remarks, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, contractNo, title, buyerRole, buyer, sellerRole, seller, type, 
+            status, amount, currency, effectiveDate, expiryDate, autoRenewal,
+            paymentTerms, incoterms, pic, remarks, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-        id, p.contractNo || '', p.title || '', p.buyerRole || 'Party A', p.buyer || '', p.sellerRole || 'Party B', p.seller || '', p.type || '',
-        p.amount || 0, p.currency || 'KRW', p.effectiveDate || '', p.paymentTerms || '',
+        id, p.contractNo || '', p.title || '', 
+        p.buyerRole || 'Party A', p.buyer || '', 
+        p.sellerRole || 'Party B', p.seller || '', 
+        p.type || '기타', p.status || '초안',
+        totalAmount, p.currency || 'KRW', 
+        p.effectiveDate || '', p.expiryDate || '', 
+        p.autoRenewal ? 1 : 0,
+        p.paymentTerms || '', p.incoterms || '',
         p.pic || '', p.remarks || '', kstDate, kstDate
     ];
 
@@ -183,29 +241,50 @@ router.post('/', (req, res) => {
             }
             return res.status(500).json({ error: err.message });
         }
+
+        // Insert items
+        if (items.length > 0) {
+            const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            items.forEach((it, idx) => {
+                const itemId = 'CI-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+                db.run(itemSql, [
+                    itemId, id, it.itemName || '', it.specification || '',
+                    parseFloat(it.quantity) || 0, it.unit || 'EA',
+                    parseFloat(it.unitPrice) || 0, parseFloat(it.amount) || 0,
+                    it.hsCode || '', it.remarks || '', idx
+                ]);
+            });
+        }
+
         res.status(201).json({ message: '계약 등록 성공', id: id, contractNo: p.contractNo, createdAt: kstDate });
     });
 });
 
-// Update contract
+// Update contract (with items — delete-then-insert strategy)
 router.put('/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
-    
-    // KST Time
-    const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstDate = new Date(now.getTime() + kstOffset).toISOString().replace('Z', '+09:00');
+    const kstDate = getKSTDate();
+
+    const items = p.items || [];
+    const totalAmount = items.reduce((sum, it) => sum + (parseFloat(it.amount) || 0), 0);
 
     const sql = `
         UPDATE contracts SET 
-            contractNo=?, title=?, buyerRole=?, buyer=?, sellerRole=?, seller=?, type=?, amount=?, currency=?, 
-            effectiveDate=?, paymentTerms=?, pic=?, remarks=?, updatedAt=?
+            contractNo=?, title=?, buyerRole=?, buyer=?, sellerRole=?, seller=?, type=?, 
+            status=?, amount=?, currency=?, effectiveDate=?, expiryDate=?, autoRenewal=?,
+            paymentTerms=?, incoterms=?, pic=?, remarks=?, updatedAt=?
         WHERE id=?
     `;
     const params = [
-        p.contractNo || '', p.title || '', p.buyerRole || 'Party A', p.buyer || '', p.sellerRole || 'Party B', p.seller || '', p.type || '',
-        p.amount || 0, p.currency || 'KRW', p.effectiveDate || '', p.paymentTerms || '',
+        p.contractNo || '', p.title || '', 
+        p.buyerRole || 'Party A', p.buyer || '', 
+        p.sellerRole || 'Party B', p.seller || '', 
+        p.type || '기타', p.status || '초안',
+        totalAmount, p.currency || 'KRW', 
+        p.effectiveDate || '', p.expiryDate || '', 
+        p.autoRenewal ? 1 : 0,
+        p.paymentTerms || '', p.incoterms || '',
         p.pic || '', p.remarks || '', kstDate, id
     ];
 
@@ -217,11 +296,27 @@ router.put('/:id', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
         if (this.changes === 0) return res.status(404).json({ error: '수정할 계약건을 찾을 수 없습니다.' });
-        res.json({ message: '수정 성공', updatedAt: kstDate });
+
+        // Re-insert items (delete old → insert new)
+        db.run('DELETE FROM contract_items WHERE contractId = ?', [id], () => {
+            if (items.length > 0) {
+                const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                items.forEach((it, idx) => {
+                    const itemId = 'CI-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6) + idx;
+                    db.run(itemSql, [
+                        itemId, id, it.itemName || '', it.specification || '',
+                        parseFloat(it.quantity) || 0, it.unit || 'EA',
+                        parseFloat(it.unitPrice) || 0, parseFloat(it.amount) || 0,
+                        it.hsCode || '', it.remarks || '', idx
+                    ]);
+                });
+            }
+            res.json({ message: '수정 성공', updatedAt: kstDate });
+        });
     });
 });
 
-// Delete contract (and files logic)
+// Delete contract (and files + items)
 router.delete('/:id', (req, res) => {
     const id = req.params.id;
     
@@ -236,12 +331,14 @@ router.delete('/:id', (req, res) => {
             });
         }
         
-        // 2. Delete contract (Cascade will delete DB rows in contract_files if enabled, but let's delete manually to be safe)
-        db.run('DELETE FROM contract_files WHERE contractId = ?', [id], () => {
-            db.run('DELETE FROM contracts WHERE id = ?', [id], function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                if (this.changes === 0) return res.status(404).json({ error: '계약건을 찾을 수 없습니다.' });
-                res.json({ message: '삭제 성공' });
+        // 2. Delete items, files, and contract
+        db.run('DELETE FROM contract_items WHERE contractId = ?', [id], () => {
+            db.run('DELETE FROM contract_files WHERE contractId = ?', [id], () => {
+                db.run('DELETE FROM contracts WHERE id = ?', [id], function(err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    if (this.changes === 0) return res.status(404).json({ error: '계약건을 찾을 수 없습니다.' });
+                    res.json({ message: '삭제 성공' });
+                });
             });
         });
     });
@@ -258,11 +355,7 @@ router.post('/:id/files', upload.single('file'), (req, res) => {
     
     const versionLabel = req.body.versionLabel || '미지정';
     const fileId = 'CF-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-    
-    // KST Time
-    const now = new Date();
-    const kstOffset = 9 * 60 * 60 * 1000;
-    const kstDate = new Date(now.getTime() + kstOffset).toISOString().replace('Z', '+09:00');
+    const kstDate = getKSTDate();
 
     const ext = path.extname(req.file.originalname).toLowerCase();
     const sql = `
@@ -292,6 +385,8 @@ router.post('/:id/files', upload.single('file'), (req, res) => {
                 fileName: req.file.originalname,
                 versionLabel: versionLabel,
                 filePath: req.file.filename,
+                fileSize: req.file.size,
+                fileType: ext,
                 uploadedAt: kstDate
             }
         });
