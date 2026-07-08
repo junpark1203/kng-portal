@@ -245,10 +245,10 @@ function addItemLine(data={}) {
     div.innerHTML = `
         <input type="text" class="li-name" value="${data.itemName||''}" placeholder="품명">
         <input type="text" class="li-spec" value="${data.specification||''}" placeholder="규격/사양">
-        <input type="number" class="li-qty" value="${data.quantity||''}" placeholder="0" step="any" oninput="calcLineAmount(this)">
-        <input type="text" class="li-unit" value="${data.unit||'EA'}" placeholder="EA" list="unitList">
-        <input type="number" class="li-price" value="${data.unitPrice||''}" placeholder="0" step="any" oninput="calcLineAmount(this)">
-        <input type="text" class="li-amount line-amount" value="${fmtNum(data.amount||0)}" readonly>
+        <input type="number" class="li-qty" value="${data.quantity||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
+        <input type="text" class="li-unit" value="${data.unit||'EA'}" placeholder="EA" list="unitList" style="text-align:center;">
+        <input type="number" class="li-price" value="${data.unitPrice||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
+        <input type="text" class="li-amount line-amount" value="${fmtNum(data.amount||0)}" readonly style="text-align:right;">
         <button type="button" class="ct-item-remove" onclick="removeItemLine(this)"><i class='bx bx-x'></i></button>
     `;
     container.appendChild(div);
