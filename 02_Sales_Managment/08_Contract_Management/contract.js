@@ -401,7 +401,7 @@ window.previewFile = function(fp, ft, fn) {
     const container = document.getElementById('previewContainer');
     const dlBtn = document.getElementById('previewDownloadBtn');
     dlBtn.onclick = e => { e.preventDefault(); downloadFile(fp,fn); };
-    const url = `${API_BASE}/api/contracts/uploads/${encodeURIComponent(fp)}`;
+    const url = `${API_BASE}/api/contracts/uploads/${encodeURIComponent(fp)}?t=${Date.now()}`;
     if (ft==='.pdf') {
         container.innerHTML = `<iframe src="${url}#toolbar=0"></iframe>`;
     } else {
