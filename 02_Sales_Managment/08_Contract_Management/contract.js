@@ -42,20 +42,13 @@ function isExpiringSoon(d) { if(!d) return false; const diff=(new Date(d)-new Da
 // ── Load Data ──
 async function loadPartners() { try { allPartners = await authFetch('/api/invoice-packing/partners'); } catch(e){} }
 async function loadContracts() {
-    try { allContracts = await authFetch('/api/contracts'); renderKPI(); renderTable(); }
+    try { allContracts = await authFetch('/api/contracts'); updateTotalCount(); renderTable(); }
     catch(e) { showToast('계약 목록 로드 실패','error'); console.error(e); }
 }
 
-// ── KPI ──
-function renderKPI() {
+// ── Total Count ──
+function updateTotalCount() {
     const total = allContracts.length;
-    const active = allContracts.filter(d => d.status==='이행중'||d.status==='체결').length;
-    const expiring = allContracts.filter(d => isExpiringSoon(d.expiryDate) && d.status!=='만료' && d.status!=='해지').length;
-    const amount = allContracts.reduce((s,d) => s + (d.itemsTotal||d.amount||0), 0);
-    document.getElementById('kpiTotal').textContent = total;
-    document.getElementById('kpiActive').textContent = active;
-    document.getElementById('kpiExpiring').textContent = expiring;
-    document.getElementById('kpiAmount').textContent = '₩' + fmtNum(amount);
     document.getElementById('totalCount').textContent = total + '건';
 }
 
