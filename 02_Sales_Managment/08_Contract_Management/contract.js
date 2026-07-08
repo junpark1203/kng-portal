@@ -313,21 +313,27 @@ window.toggleAutoRenewal = function() {
 };
 
 // ── File Upload ──
-const uploadZone = document.getElementById('uploadZone');
 const fileInput = document.getElementById('fileInput');
-uploadZone.addEventListener('click', () => { if (!currentContractId) { showToast('먼저 계약 정보를 저장하세요.','error'); return; } fileInput.click(); });
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if(!currentContractId){showToast('먼저 계약 정보를 저장하세요.','error');return;} if(e.dataTransfer.files.length)handleFileUpload(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', e => { if(e.target.files.length) handleFileUpload(e.target.files[0]); e.target.value=''; });
+const fileDescInput = document.getElementById('fileDescInput');
+const btnUploadFile = document.getElementById('btnUploadFile');
 
-async function handleFileUpload(file) {
+btnUploadFile.addEventListener('click', () => {
+    if (!currentContractId) { showToast('먼저 계약 정보를 저장하세요.','error'); return; }
+    if (!fileInput.files.length) { showToast('업로드할 파일을 선택하세요.','error'); return; }
+    const desc = fileDescInput.value.trim();
+    if (!desc) { showToast('파일 설명을 입력하세요.','error'); return; }
+    handleFileUpload(fileInput.files[0], desc);
+});
+
+async function handleFileUpload(file, desc) {
     if (!currentContractId) return;
     if (file.size > 50*1024*1024) return showToast('50MB 이하만 가능','error');
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('versionLabel', document.getElementById('fileVersionLabel').value);
-    uploadZone.style.opacity = '0.5';
+    formData.append('versionLabel', desc);
+    
+    btnUploadFile.disabled = true;
+    btnUploadFile.innerHTML = "<i class='bx bx-loader bx-spin'></i> 업로드 중...";
     try {
         const token = await getToken();
         const headers = {}; if (token) headers['Authorization'] = 'Bearer '+token;
@@ -335,11 +341,17 @@ async function handleFileUpload(file) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error||'업로드 실패');
         showToast('파일 업로드 완료');
+        fileInput.value = '';
+        fileDescInput.value = '';
+        
         // Reload files
         const detail = await authFetch(`/api/contracts/${currentContractId}`);
         renderFileList(detail.files || []);
     } catch(e) { showToast(e.message,'error'); }
-    finally { uploadZone.style.opacity='1'; }
+    finally { 
+        btnUploadFile.disabled = false; 
+        btnUploadFile.innerHTML = "<i class='bx bx-upload'></i> 업로드";
+    }
 }
 
 function renderFileList(files) {
@@ -350,23 +362,26 @@ function renderFileList(files) {
         if(f.fileType==='.pdf'){ic='bxs-file-pdf';cls='pdf';}
         else if(f.fileType&&f.fileType.includes('doc')){ic='bxs-file-doc';cls='doc';}
         else if(f.fileType&&f.fileType.includes('xls')){ic='bx-spreadsheet';cls='xls';}
-        let vc='';
-        if(f.versionLabel&&f.versionLabel.includes('최종'))vc='final';
-        else if(f.versionLabel&&f.versionLabel.includes('날인'))vc='signed';
-        else if(f.versionLabel&&f.versionLabel.includes('초안'))vc='draft';
+        
+        let previewBtn = '';
+        if (f.fileType === '.pdf') {
+            previewBtn = `<button type="button" style="background:transparent; border:1px solid var(--primary); color:var(--primary); padding:3px 8px; border-radius:4px; font-size:11px; cursor:pointer; margin-right:4px;" onmouseover="this.style.background='rgba(44,62,143,0.1)'" onmouseout="this.style.background='transparent'" onclick="previewFile('${f.filePath}','${f.fileType}','${f.fileName}')"><i class='bx bx-search'></i> 미리보기</button>`;
+        }
+
         return `<div class="ct-file-card">
             <div class="ct-file-icon ${cls}"><i class='bx ${ic}'></i></div>
-            <div class="ct-file-info">
-                <div class="ct-file-name" onclick="previewFile('${f.filePath}','${f.fileType}','${f.fileName}')" title="${f.fileName}">${f.fileName}</div>
-                <div class="ct-file-meta">
-                    <span class="ct-version-badge ${vc}">${f.versionLabel||'미지정'}</span>
+            <div class="ct-file-info" style="display:flex; flex-direction:column; gap:2px;">
+                <div class="ct-file-name" onclick="downloadFile('${f.filePath}','${f.fileName}')" title="${f.fileName}" style="cursor:pointer; color:var(--gray-800); font-weight:600;">${f.fileName}</div>
+                <div style="font-size:11.5px; color:var(--gray-600);">${f.versionLabel||'설명 없음'}</div>
+                <div class="ct-file-meta" style="margin-top:2px;">
                     <span>${fmtBytes(f.fileSize)}</span>
                     <span>${fmtDate(f.uploadedAt)}</span>
                 </div>
             </div>
-            <div class="ct-file-actions">
-                <button title="다운로드" onclick="downloadFile('${f.filePath}','${f.fileName}')"><i class='bx bx-download'></i></button>
-                <button title="삭제" onclick="deleteFile('${f.id}')"><i class='bx bx-trash'></i></button>
+            <div class="ct-file-actions" style="display:flex; align-items:center;">
+                ${previewBtn}
+                <button type="button" title="다운로드" onclick="downloadFile('${f.filePath}','${f.fileName}')"><i class='bx bx-download'></i></button>
+                <button type="button" title="삭제" onclick="deleteFile('${f.id}')"><i class='bx bx-trash'></i></button>
             </div>
         </div>`;
     }).join('');

@@ -222,21 +222,10 @@
                     <!-- Section: 첨부 파일 -->
                     <div class="ct-section-title">첨부 파일</div>
                     <div id="fileSection">
-                        <div class="ct-upload-zone" id="uploadZone">
-                            <i class='bx bx-cloud-upload'></i>
-                            <p>파일을 드래그하거나 클릭하여 업로드</p>
-                            <div class="ct-upload-hint">.pdf, .doc, .docx, .xls, .xlsx / 최대 50MB</div>
-                            <input type="file" id="fileInput" style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple>
-                            <div style="margin-top:10px; display:flex; justify-content:center; align-items:center; gap:8px;" onclick="event.stopPropagation()">
-                                <label style="font-size:11px; font-weight:600;">버전:</label>
-                                <select id="fileVersionLabel" style="padding:3px 8px; font-size:11px; border:1px solid #cbd5e1; border-radius:4px;">
-                                    <option value="초안 (Draft)">초안 (Draft)</option>
-                                    <option value="수정본 (Revised)">수정본 (Revised)</option>
-                                    <option value="최종본 (Final)">최종본 (Final)</option>
-                                    <option value="양사날인본 (Signed)">양사날인본 (Signed)</option>
-                                    <option value="기타 첨부">기타 첨부</option>
-                                </select>
-                            </div>
+                        <div class="ct-file-upload-form" style="display:flex; gap:10px; align-items:center; margin-bottom: 15px; padding:12px; background:var(--gray-50); border:1px solid var(--border); border-radius:8px;">
+                            <input type="file" id="fileInput" style="flex:1; max-width:250px; font-size:12px;" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                            <input type="text" id="fileDescInput" placeholder="파일 설명 (예: 계약서 초안)" style="flex:2; height:32px; padding:0 10px; border:1px solid var(--border); border-radius:6px; font-size:12px;">
+                            <button type="button" class="btn-primary" id="btnUploadFile" style="height:32px; padding:0 15px; font-size:12px; white-space:nowrap;"><i class='bx bx-upload'></i> 업로드</button>
                         </div>
                         <div class="ct-file-list" id="fileList">
                             <!-- Dynamic file cards -->
