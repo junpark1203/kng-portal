@@ -21,8 +21,10 @@ const storage = multer.diskStorage({
         cb(null, SITE_CONSUMABLES_DIR);
     },
     filename: function (req, file, cb) {
-        // Safe filename with timestamp to prevent overwriting
-        const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        // Fix encoding for Korean filenames (latin1 to utf8)
+        file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+        // Safe filename with timestamp, allowing Korean and spaces
+        const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_가-힣\s]/g, '_');
         cb(null, Date.now() + '-' + safeName);
     }
 });
