@@ -150,13 +150,26 @@ function setDb(database) {
 
 // Get all contracts (with file count AND item count + multi-currency totals)
 router.get('/', (req, res) => {
-    db.all(`
+    const { q, status, type } = req.query;
+    let sql = `
         SELECT c.*, 
-        (SELECT COUNT(*) FROM contract_files cf WHERE cf.contractId = c.id) as fileCount,
-        (SELECT COUNT(*) FROM contract_items ci WHERE ci.contractId = c.id) as itemCount
-        FROM contracts c 
-        ORDER BY c.createdAt DESC
-    `, [], (err, rows) => {
+        (SELECT COUNT(id) FROM contract_files WHERE contractId = c.id) as fileCount,
+        (SELECT itemName FROM contract_items WHERE contractId = c.id ORDER BY sortOrder ASC LIMIT 1) as firstItemName,
+        (SELECT COUNT(id) FROM contract_items WHERE contractId = c.id) as itemCount
+        FROM contracts c WHERE 1=1
+    `;
+    const params = [];
+
+    if (q) {
+        sql += ` AND (c.contractNo LIKE ? OR c.title LIKE ? OR c.buyer LIKE ? OR c.seller LIKE ?)`;
+        params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+    }
+    if (status) { sql += ` AND c.status = ?`; params.push(status); }
+    if (type) { sql += ` AND c.type = ?`; params.push(type); }
+
+    sql += ` ORDER BY COALESCE(c.effectiveDate, c.createdAt) DESC`;
+
+    db.all(sql, params, (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         
         db.all(`SELECT contractId, currency, amount, prices FROM contract_items`, [], (err, itemTotals) => {

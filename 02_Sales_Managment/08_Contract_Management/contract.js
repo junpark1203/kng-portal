@@ -69,7 +69,6 @@ function renderTable() {
         const cur = d.currency || 'KRW';
         const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
         const expSoon = isExpiringSoon(d.expiryDate) && d.status!=='만료' && d.status!=='해지';
-        const period = d.effectiveDate ? (d.effectiveDate + (d.expiryDate ? ' ~ ' + d.expiryDate : ' ~')) : '-';
         
         let amountText = '-';
         if (d.multiTotals && Object.keys(d.multiTotals).length > 0) {
@@ -80,23 +79,45 @@ function renderTable() {
                     parts.push(`${s}${fmtNum(tot)}`);
                 }
             }
-            amountText = parts.length > 0 ? parts.join('<br><span style="font-size:10px;color:var(--gray-400);">+ </span>') : '-';
+            if (parts.length > 0) {
+                amountText = parts.join('<br><span style="font-size:10px;color:var(--gray-400);">+ </span>');
+            } else {
+                amountText = `<span style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px;color:var(--gray-600);">단가 계약</span>`;
+            }
         } else {
             const amt = d.itemsTotal || d.amount || 0;
-            amountText = `${sym}${fmtNum(amt)}`;
+            if (amt > 0) {
+                amountText = `${sym}${fmtNum(amt)}`;
+            } else {
+                amountText = `<span style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px;color:var(--gray-600);">단가 계약</span>`;
+            }
         }
+        if (d.incoterms) amountText += `<br><span style="font-size:11px;color:var(--gray-500);">${d.incoterms}</span>`;
         
+        const firstItem = d.firstItemName ? `<br><span style="font-size:11px;color:var(--gray-500);">${d.firstItemName} ${d.itemCount > 1 ? `외 ${d.itemCount - 1}건` : ''}</span>` : '';
+        
+        let counterparty = '';
+        let roleBadge = '';
+        if (d.type === '구매계약') {
+            counterparty = d.seller || '-';
+            roleBadge = `<br><span style="font-size:10px;background:#f3f4f6;padding:2px 4px;border-radius:4px;">Seller</span>`;
+        } else if (d.type === '판매계약') {
+            counterparty = d.buyer || '-';
+            roleBadge = `<br><span style="font-size:10px;background:#f3f4f6;padding:2px 4px;border-radius:4px;">Buyer</span>`;
+        } else {
+            counterparty = (d.buyer && d.buyer !== 'K&G CO., LTD.' ? d.buyer : d.seller) || '-';
+            roleBadge = '';
+        }
+
         return `<tr data-id="${d.id}" class="${expSoon?'expiring-soon':''}" onclick="editContract('${d.id}')">
             <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
             <td class="ct-no">${d.contractNo||'-'}</td>
-            <td class="ct-title" title="${d.title||''}">${d.title||'-'}</td>
-            <td><div class="ct-party-sub">${d.buyerRole||'Party A'}</div>${d.buyer||'-'}<br><div class="ct-party-sub">${d.sellerRole||'Party B'}</div>${d.seller||'-'}</td>
+            <td class="ct-title" title="${d.title||''}">${d.title||'-'}${firstItem}</td>
+            <td style="line-height:1.4;"><strong>${counterparty}</strong>${roleBadge}</td>
             <td><span class="ct-type ${getTypeClass(d.type)}">${d.type||'-'}</span></td>
-            <td><span class="ct-status ${getStatusClass(d.status)}">${d.status||'초안'}</span></td>
-            <td class="ct-date">${period}</td>
+            <td class="ct-date">${fmtDateShort(d.effectiveDate)}</td>
+            <td class="ct-date">${fmtDateShort(d.expiryDate)}</td>
             <td class="ct-amount" style="line-height:1.4;">${amountText}</td>
-            <td onclick="event.stopPropagation()"><span style="font-size:11px;color:var(--gray-500);"><i class='bx bx-paperclip'></i> ${d.fileCount||0}</span></td>
-            <td class="ct-date">${fmtDateShort(d.createdAt)}</td>
             <td class="col-actions" onclick="event.stopPropagation()">
                 <div class="ct-row-actions">
                     <button title="수정" onclick="editContract('${d.id}')"><i class='bx bx-edit-alt'></i></button>
