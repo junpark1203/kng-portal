@@ -313,7 +313,7 @@
 .ct-item-line {
     display: grid;
     grid-template-columns: 1.8fr 1.2fr 0.7fr 0.7fr 0.8fr 1fr 1.2fr 1.5fr 40px;
-    gap: 8px; padding: 8px 10px; align-items: center;
+    gap: 8px; padding: 8px 10px; align-items: start;
     border: 1px solid var(--gray-100); border-top: none;
     background: #fff; transition: background 0.1s;
 }
@@ -340,6 +340,26 @@
     font-size: 14px; transition: all 0.15s; padding: 0;
 }
 .ct-item-remove:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
+
+.li-cell-stack {
+    display: flex; flex-direction: column; gap: 4px;
+}
+.btn-price-action {
+    height: 30px; width: 100%; border: 1px dashed var(--gray-300);
+    border-radius: 4px; background: transparent; color: var(--gray-500);
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: all 0.1s;
+}
+.btn-price-action:hover {
+    border-color: var(--primary); color: var(--primary); background: rgba(44,62,143,0.05);
+}
+.btn-price-remove {
+    height: 30px; width: 100%; border: 1px solid var(--gray-200);
+    border-radius: 4px; background: transparent; color: var(--gray-400);
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; transition: all 0.1s;
+}
+.btn-price-remove:hover { border-color: #dc2626; color: #dc2626; background: #fef2f2; }
 
 .ct-add-item-btn {
     display: flex; align-items: center; justify-content: center;

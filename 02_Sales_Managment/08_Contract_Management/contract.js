@@ -167,7 +167,6 @@ window.editContract = async function(id) {
         document.getElementById('inpSeller').value = d.seller || '';
         document.getElementById('inpPaymentTerms').value = d.paymentTerms || '';
         document.getElementById('inpIncoterms').value = d.incoterms || '';
-        document.getElementById('inpCurrency').value = d.currency || 'KRW';
         document.getElementById('inpEffectiveDate').value = d.effectiveDate || '';
         document.getElementById('inpExpiryDate').value = d.expiryDate || '';
         document.getElementById('inpPic').value = d.pic || '';
@@ -214,7 +213,6 @@ document.getElementById('saveContractBtn').addEventListener('click', async () =>
         seller: document.getElementById('inpSeller').value.trim(),
         paymentTerms: document.getElementById('inpPaymentTerms').value.trim(),
         incoterms: document.getElementById('inpIncoterms').value,
-        currency: document.getElementById('inpCurrency').value,
         effectiveDate: document.getElementById('inpEffectiveDate').value,
         expiryDate: document.getElementById('inpExpiryDate').value,
         autoRenewal: document.getElementById('inpAutoRenewal').value === '1',
@@ -258,29 +256,77 @@ function addItemLine(data={}) {
     const div = document.createElement('div');
     div.className = 'ct-item-line';
     
-    const mainCur = document.getElementById('inpCurrency').value || 'KRW';
-    const cur = data.currency || mainCur;
-    const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
+    let prices = [];
+    try { prices = typeof data.prices === 'string' ? JSON.parse(data.prices) : (data.prices || []); } catch(e){}
+    if (!prices.length) {
+        prices = [{ currency: data.currency || 'KRW', price: data.unitPrice, amount: data.amount }];
+    }
     
-    div.innerHTML = `
-        <input type="text" class="li-name" value="${data.itemName||''}" placeholder="품명">
-        <input type="text" class="li-spec" value="${data.specification||''}" placeholder="규격/사양">
-        <input type="number" class="li-qty" value="${data.quantity||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
-        <input type="text" class="li-unit" value="${data.unit||'EA'}" placeholder="EA" list="unitList" style="text-align:center;">
-        <select class="li-currency" onchange="calcLineAmount(this)">
+    let curHtml = '', priceHtml = '', amtHtml = '';
+    prices.forEach((p, i) => {
+        const cur = p.currency || 'KRW';
+        const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
+        
+        curHtml += `<select class="li-currency" onchange="calcLineAmount(this)">
             <option value="KRW" ${cur==='KRW'?'selected':''}>KRW</option>
             <option value="USD" ${cur==='USD'?'selected':''}>USD</option>
             <option value="CNY" ${cur==='CNY'?'selected':''}>CNY</option>
             <option value="EUR" ${cur==='EUR'?'selected':''}>EUR</option>
             <option value="JPY" ${cur==='JPY'?'selected':''}>JPY</option>
-        </select>
-        <input type="number" class="li-price" value="${data.unitPrice||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
-        <input type="text" class="li-amount line-amount" value="${sym}${fmtNum(data.amount||0)}" readonly style="text-align:right;">
-        <input type="text" class="li-remarks" value="${data.remarks||''}" placeholder="비고 입력">
-        <button type="button" class="ct-item-remove" onclick="removeItemLine(this)"><i class='bx bx-x'></i></button>
+        </select>`;
+        priceHtml += `<input type="number" class="li-price" value="${p.price||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">`;
+        amtHtml += `<div style="display:flex; gap:4px; align-items:center;" class="li-amt-wrap">
+            <input type="text" class="li-amount line-amount" value="${sym}${fmtNum(p.amount||0)}" readonly style="text-align:right;">
+            ${i === 0 ? `<button type="button" class="btn-price-action" onclick="addPriceRow(this)" title="단가 추가" style="width:28px;height:30px;flex-shrink:0;padding:0;"><i class='bx bx-plus'></i></button>` : `<button type="button" class="btn-price-remove" onclick="removePriceRow(this)" title="단가 삭제" style="width:28px;height:30px;flex-shrink:0;padding:0;"><i class='bx bx-minus'></i></button>`}
+        </div>`;
+    });
+    
+    div.innerHTML = `
+        <div class="li-cell-stack"><input type="text" class="li-name" value="${data.itemName||''}" placeholder="품명"></div>
+        <div class="li-cell-stack"><input type="text" class="li-spec" value="${data.specification||''}" placeholder="규격/사양"></div>
+        <div class="li-cell-stack"><input type="number" class="li-qty" value="${data.quantity||''}" placeholder="0" step="any" oninput="calcLineAmountAll(this)" style="text-align:right;"></div>
+        <div class="li-cell-stack"><input type="text" class="li-unit" value="${data.unit||'EA'}" placeholder="EA" list="unitList" style="text-align:center;"></div>
+        <div class="li-cell-stack li-currencies">${curHtml}</div>
+        <div class="li-cell-stack li-prices">${priceHtml}</div>
+        <div class="li-cell-stack li-amounts">${amtHtml}</div>
+        <div class="li-cell-stack"><input type="text" class="li-remarks" value="${data.remarks||''}" placeholder="비고 입력"></div>
+        <div class="li-cell-stack li-actions">
+            <button type="button" class="ct-item-remove" onclick="removeItemLine(this)"><i class='bx bx-x'></i></button>
+        </div>
     `;
     container.appendChild(div);
 }
+
+window.addPriceRow = function(btn) {
+    const line = btn.closest('.ct-item-line');
+    const curStack = line.querySelector('.li-currencies');
+    const priceStack = line.querySelector('.li-prices');
+    const amtStack = line.querySelector('.li-amounts');
+    
+    curStack.insertAdjacentHTML('beforeend', `<select class="li-currency" onchange="calcLineAmount(this)">
+        <option value="KRW">KRW</option><option value="USD">USD</option><option value="CNY">CNY</option><option value="EUR">EUR</option><option value="JPY">JPY</option>
+    </select>`);
+    priceStack.insertAdjacentHTML('beforeend', `<input type="number" class="li-price" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">`);
+    amtStack.insertAdjacentHTML('beforeend', `<div style="display:flex; gap:4px; align-items:center;" class="li-amt-wrap">
+        <input type="text" class="li-amount line-amount" value="₩0" readonly style="text-align:right;">
+        <button type="button" class="btn-price-remove" onclick="removePriceRow(this)" title="단가 삭제" style="width:28px;height:30px;flex-shrink:0;padding:0;"><i class='bx bx-minus'></i></button>
+    </div>`);
+    updateGrandTotal();
+};
+
+window.removePriceRow = function(btn) {
+    const wrap = btn.closest('.li-amt-wrap');
+    const amtStack = wrap.parentElement;
+    const line = amtStack.closest('.ct-item-line');
+    const index = Array.from(amtStack.children).indexOf(wrap);
+    
+    line.querySelector('.li-currencies').children[index].remove();
+    line.querySelector('.li-prices').children[index].remove();
+    wrap.remove();
+    
+    updateGrandTotal();
+};
+
 window.removeItemLine = function(btn) {
     const line = btn.closest('.ct-item-line');
     if (document.querySelectorAll('.ct-item-line').length <= 1) { 
@@ -290,23 +336,43 @@ window.removeItemLine = function(btn) {
     } else { line.remove(); }
     updateGrandTotal();
 };
+window.calcLineAmountAll = function(qtyEl) {
+    const line = qtyEl.closest('.ct-item-line');
+    const prices = line.querySelectorAll('.li-price');
+    prices.forEach(p => window.calcLineAmount(p));
+};
 window.calcLineAmount = function(el) {
     const line = el.closest('.ct-item-line');
     const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
-    const price = parseFloat(line.querySelector('.li-price').value) || 0;
-    const cur = line.querySelector('.li-currency').value || 'KRW';
+    
+    // find index of el in its stack
+    let index = 0;
+    if (el.classList.contains('li-currency')) index = Array.from(line.querySelector('.li-currencies').children).indexOf(el);
+    if (el.classList.contains('li-price')) index = Array.from(line.querySelector('.li-prices').children).indexOf(el);
+    
+    const curSelect = line.querySelector('.li-currencies').children[index];
+    const priceInput = line.querySelector('.li-prices').children[index];
+    const amtWrap = line.querySelector('.li-amounts').children[index];
+    
+    const price = parseFloat(priceInput.value) || 0;
+    const cur = curSelect.value || 'KRW';
     const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
-    line.querySelector('.line-amount').value = sym + fmtNum(qty * price);
+    amtWrap.querySelector('.li-amount').value = sym + fmtNum(qty * price);
     updateGrandTotal();
 };
 function updateGrandTotal() {
     const totals = {};
     document.querySelectorAll('.ct-item-line').forEach(line => {
         const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
-        const price = parseFloat(line.querySelector('.li-price').value) || 0;
-        const cur = line.querySelector('.li-currency').value || 'KRW';
-        if (!totals[cur]) totals[cur] = 0;
-        totals[cur] += (qty * price);
+        const prices = line.querySelectorAll('.li-price');
+        const currencies = line.querySelectorAll('.li-currency');
+        
+        prices.forEach((pInput, i) => {
+            const price = parseFloat(pInput.value) || 0;
+            const cur = currencies[i] ? currencies[i].value : 'KRW';
+            if (!totals[cur]) totals[cur] = 0;
+            totals[cur] += (qty * price);
+        });
     });
     
     const parts = [];
@@ -324,17 +390,28 @@ function collectItems() {
     document.querySelectorAll('.ct-item-line').forEach((line, idx) => {
         const name = line.querySelector('.li-name').value.trim();
         const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
-        const price = parseFloat(line.querySelector('.li-price').value) || 0;
-        const cur = line.querySelector('.li-currency').value || 'KRW';
-        if (name || qty || price) {
+        
+        const prices = [];
+        const pInputs = line.querySelectorAll('.li-price');
+        const cSelects = line.querySelectorAll('.li-currency');
+        pInputs.forEach((p, i) => {
+            const price = parseFloat(p.value) || 0;
+            if (price > 0 || pInputs.length === 1) {
+                prices.push({
+                    currency: cSelects[i].value,
+                    price: price,
+                    amount: qty * price
+                });
+            }
+        });
+        
+        if (name || qty || prices.length > 0) {
             items.push({
                 itemName: name,
                 specification: line.querySelector('.li-spec').value.trim(),
                 quantity: qty,
                 unit: line.querySelector('.li-unit').value.trim() || 'EA',
-                currency: cur,
-                unitPrice: price,
-                amount: qty * price,
+                prices: prices,
                 hsCode: '', remarks: line.querySelector('.li-remarks').value.trim(), sortOrder: idx
             });
         }
@@ -342,7 +419,6 @@ function collectItems() {
     return items;
 }
 document.getElementById('addItemBtn').addEventListener('click', () => addItemLine());
-document.getElementById('inpCurrency').addEventListener('change', updateGrandTotal);
 
 // ── Auto Renewal Toggle ──
 window.toggleAutoRenewal = function() {
