@@ -271,8 +271,8 @@ function renderConsumables() {
             <td>${escapeHtml(c.remarks || '-')}</td>
             <td>
                 ${fileHtml}
-                <button class="btn-outline" style="padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" onclick="openFileManager('${c.id}')">
-                    <i class='bx bx-upload'></i> 업로드/관리
+                <button class="btn-outline" title="업로드/관리" style="padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center;" onclick="openFileManager('${c.id}')">
+                    <i class='bx bx-upload' style="font-size: 14px;"></i>
                 </button>
             </td>
             <td class="col-actions">
