@@ -290,7 +290,7 @@ function renderConsumables() {
             <td>
                 ${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}
             </td>
-            <td class="col-actions">
+            <td class="col-actions" style="white-space: nowrap;">
                 <button title="파일 관리/업로드" onclick="openFileManager('${c.id}')" style="background:none; border:none; color:#3b82f6; cursor:pointer;"><i class='bx bx-upload' style="font-size:18px;"></i></button>
                 <button title="수정" onclick="openConsumableModal('${c.id}')" style="background:none; border:none; color:#64748b; cursor:pointer; margin-left: 8px;"><i class='bx bx-edit-alt' style="font-size:18px;"></i></button>
                 <button title="삭제" onclick="deleteConsumable('${c.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; margin-left: 8px;"><i class='bx bx-trash' style="font-size:18px;"></i></button>
