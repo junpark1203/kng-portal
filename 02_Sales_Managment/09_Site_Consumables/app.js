@@ -286,27 +286,50 @@ function renderConsumables() {
 
 document.getElementById('consumableForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const id = document.getElementById('consumableId').value;
-    const body = {
-        siteId: currentSiteId,
-        name: document.getElementById('cName').value.trim(),
-        specification: document.getElementById('cSpec').value.trim(),
-        unit: document.getElementById('cUnit').value.trim(),
-        remarks: document.getElementById('cRemarks').value.trim()
-    };
     
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const origText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> 저장 중...';
+    submitBtn.disabled = true;
+
     try {
-        if (id) {
-            await authFetch(`/api/site-consumables/consumables/${id}`, { method: 'PUT', body: JSON.stringify(body) });
-            showToast('소모품 정보가 수정되었습니다.');
+        let consumableId = document.getElementById('consumableId').value;
+        const body = {
+            siteId: currentSiteId,
+            name: document.getElementById('cName').value.trim(),
+            specification: document.getElementById('cSpec').value.trim(),
+            unit: document.getElementById('cUnit').value.trim(),
+            remarks: document.getElementById('cRemarks').value.trim()
+        };
+        
+        if (consumableId) {
+            await authFetch(`/api/site-consumables/consumables/${consumableId}`, { method: 'PUT', body: JSON.stringify(body) });
         } else {
-            await authFetch('/api/site-consumables/consumables', { method: 'POST', body: JSON.stringify(body) });
-            showToast('소모품이 추가되었습니다.');
+            const res = await authFetch('/api/site-consumables/consumables', { method: 'POST', body: JSON.stringify(body) });
+            consumableId = res.id;
         }
+
+        // Handle file upload
+        const fileInput = document.getElementById('cFiles');
+        if (fileInput && fileInput.files.length > 0) {
+            const formData = new FormData();
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+            await authFetch(`/api/site-consumables/files/${consumableId}`, {
+                method: 'POST',
+                body: formData
+            });
+        }
+        
+        showToast(document.getElementById('consumableId').value ? '소모품 정보가 수정되었습니다.' : '소모품이 추가되었습니다.');
         closeConsumableModal();
         await loadConsumables();
     } catch(err) {
         showToast(err.message, 'error');
+    } finally {
+        submitBtn.innerHTML = origText;
+        submitBtn.disabled = false;
     }
 });
 
