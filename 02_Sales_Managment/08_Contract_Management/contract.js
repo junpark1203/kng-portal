@@ -137,7 +137,7 @@ document.getElementById('statusFilters').addEventListener('click', e => {
 });
 document.getElementById('typeFilter').addEventListener('change', renderTable);
 document.getElementById('searchInput').addEventListener('input', renderTable);
-document.getElementById('selectAll').addEventListener('change', e => {
+document.getElementById('checkAll').addEventListener('change', e => {
     document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
 });
 
