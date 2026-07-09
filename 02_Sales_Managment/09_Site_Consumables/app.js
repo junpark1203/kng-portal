@@ -137,7 +137,10 @@ async function loadSites() {
         sites = await authFetch('/api/site-consumables/sites');
         renderSites();
     } catch(e) {
-        showToast('현장 목록 로드 실패', 'error');
+        const list = document.getElementById('siteList');
+        if (list) list.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;">데이터를 불러오지 못했습니다.<br><small>' + e.message + '</small></div>';
+        showToast('현장 목록 로드 실패: ' + e.message, 'error');
+        console.error('loadSites error:', e);
     }
 }
 
