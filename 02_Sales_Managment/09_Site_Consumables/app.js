@@ -246,7 +246,23 @@ function renderConsumables() {
 
     currentConsumables.forEach(c => {
         const tr = document.createElement('tr');
-        const fCount = c.fileCount || 0;
+        
+        let fileHtml = '';
+        if (c.files && c.files.length > 0) {
+            fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
+            c.files.forEach(f => {
+                const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
+                const canPreview = isPreviewable(f.originalName);
+                const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+                
+                if (canPreview) {
+                    fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
+                } else {
+                    fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
+                }
+            });
+            fileHtml += '</div>';
+        }
         
         tr.innerHTML = `
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
@@ -254,9 +270,9 @@ function renderConsumables() {
             <td>${escapeHtml(c.unit || '-')}</td>
             <td>${escapeHtml(c.remarks || '-')}</td>
             <td>
+                ${fileHtml}
                 <button class="btn-outline" style="padding: 4px 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" onclick="openFileManager('${c.id}')">
-                    <i class='bx ${fCount>0 ? 'bx-file-find' : 'bx-upload'}'></i>
-                    도면 ${fCount>0 ? `(${fCount})` : ''}
+                    <i class='bx bx-upload'></i> 업로드/관리
                 </button>
             </td>
             <td class="col-actions">

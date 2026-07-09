@@ -133,15 +133,28 @@ router.delete('/sites/:id', (req, res) => {
 // Site Consumables CRUD
 // ==========================================
 router.get('/consumables/:siteId', (req, res) => {
-    db.all(`
-        SELECT c.*, 
-        (SELECT COUNT(id) FROM site_consumable_files WHERE consumableId = c.id) as fileCount
-        FROM site_consumables c 
-        WHERE siteId = ? 
-        ORDER BY createdAt DESC
-    `, [req.params.siteId], (err, rows) => {
+    db.all('SELECT * FROM site_consumables WHERE siteId = ? ORDER BY createdAt DESC', [req.params.siteId], (err, consumables) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        if (consumables.length === 0) return res.json([]);
+        
+        const consumableIds = consumables.map(c => c.id);
+        const placeholders = consumableIds.map(() => '?').join(',');
+        db.all(`SELECT id, consumableId, fileName, originalName FROM site_consumable_files WHERE consumableId IN (${placeholders}) ORDER BY uploadedAt DESC`, consumableIds, (err, files) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            const fileMap = {};
+            files.forEach(f => {
+                if(!fileMap[f.consumableId]) fileMap[f.consumableId] = [];
+                fileMap[f.consumableId].push(f);
+            });
+            
+            consumables.forEach(c => {
+                c.files = fileMap[c.id] || [];
+                c.fileCount = c.files.length;
+            });
+            
+            res.json(consumables);
+        });
     });
 });
 
