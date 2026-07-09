@@ -66,11 +66,26 @@ function renderTable() {
     if (!data.length) { tbody.innerHTML = `<tr><td colspan="11" class="ct-empty-state"><i class='bx bx-file-blank'></i>검색 결과가 없습니다.</td></tr>`; return; }
 
     tbody.innerHTML = data.map(d => {
-        const amt = d.itemsTotal || d.amount || 0;
         const cur = d.currency || 'KRW';
         const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
         const expSoon = isExpiringSoon(d.expiryDate) && d.status!=='만료' && d.status!=='해지';
         const period = d.effectiveDate ? (d.effectiveDate + (d.expiryDate ? ' ~ ' + d.expiryDate : ' ~')) : '-';
+        
+        let amountText = '-';
+        if (d.multiTotals && Object.keys(d.multiTotals).length > 0) {
+            const parts = [];
+            for (const [c, tot] of Object.entries(d.multiTotals)) {
+                if (tot > 0) {
+                    const s = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[c]||'';
+                    parts.push(`${s}${fmtNum(tot)}`);
+                }
+            }
+            amountText = parts.length > 0 ? parts.join('<br><span style="font-size:10px;color:var(--gray-400);">+ </span>') : '-';
+        } else {
+            const amt = d.itemsTotal || d.amount || 0;
+            amountText = `${sym}${fmtNum(amt)}`;
+        }
+        
         return `<tr data-id="${d.id}" class="${expSoon?'expiring-soon':''}" onclick="editContract('${d.id}')">
             <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
             <td class="ct-no">${d.contractNo||'-'}</td>
@@ -79,7 +94,7 @@ function renderTable() {
             <td><span class="ct-type ${getTypeClass(d.type)}">${d.type||'-'}</span></td>
             <td><span class="ct-status ${getStatusClass(d.status)}">${d.status||'초안'}</span></td>
             <td class="ct-date">${period}</td>
-            <td class="ct-amount">${sym}${fmtNum(amt)}</td>
+            <td class="ct-amount" style="line-height:1.4;">${amountText}</td>
             <td onclick="event.stopPropagation()"><span style="font-size:11px;color:var(--gray-500);"><i class='bx bx-paperclip'></i> ${d.fileCount||0}</span></td>
             <td class="ct-date">${fmtDateShort(d.createdAt)}</td>
             <td class="col-actions" onclick="event.stopPropagation()">
@@ -242,13 +257,26 @@ function addItemLine(data={}) {
     const container = document.getElementById('itemLines');
     const div = document.createElement('div');
     div.className = 'ct-item-line';
+    
+    const mainCur = document.getElementById('inpCurrency').value || 'KRW';
+    const cur = data.currency || mainCur;
+    const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
+    
     div.innerHTML = `
         <input type="text" class="li-name" value="${data.itemName||''}" placeholder="품명">
         <input type="text" class="li-spec" value="${data.specification||''}" placeholder="규격/사양">
         <input type="number" class="li-qty" value="${data.quantity||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
         <input type="text" class="li-unit" value="${data.unit||'EA'}" placeholder="EA" list="unitList" style="text-align:center;">
+        <select class="li-currency" onchange="calcLineAmount(this)">
+            <option value="KRW" ${cur==='KRW'?'selected':''}>KRW</option>
+            <option value="USD" ${cur==='USD'?'selected':''}>USD</option>
+            <option value="CNY" ${cur==='CNY'?'selected':''}>CNY</option>
+            <option value="EUR" ${cur==='EUR'?'selected':''}>EUR</option>
+            <option value="JPY" ${cur==='JPY'?'selected':''}>JPY</option>
+        </select>
         <input type="number" class="li-price" value="${data.unitPrice||''}" placeholder="0" step="any" oninput="calcLineAmount(this)" style="text-align:right;">
-        <input type="text" class="li-amount line-amount" value="${fmtNum(data.amount||0)}" readonly style="text-align:right;">
+        <input type="text" class="li-amount line-amount" value="${sym}${fmtNum(data.amount||0)}" readonly style="text-align:right;">
+        <input type="text" class="li-remarks" value="${data.remarks||''}" placeholder="비고 입력">
         <button type="button" class="ct-item-remove" onclick="removeItemLine(this)"><i class='bx bx-x'></i></button>
     `;
     container.appendChild(div);
@@ -266,19 +294,30 @@ window.calcLineAmount = function(el) {
     const line = el.closest('.ct-item-line');
     const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
     const price = parseFloat(line.querySelector('.li-price').value) || 0;
-    line.querySelector('.line-amount').value = fmtNum(qty * price);
+    const cur = line.querySelector('.li-currency').value || 'KRW';
+    const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
+    line.querySelector('.line-amount').value = sym + fmtNum(qty * price);
     updateGrandTotal();
 };
 function updateGrandTotal() {
-    let total = 0;
+    const totals = {};
     document.querySelectorAll('.ct-item-line').forEach(line => {
         const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
         const price = parseFloat(line.querySelector('.li-price').value) || 0;
-        total += qty * price;
+        const cur = line.querySelector('.li-currency').value || 'KRW';
+        if (!totals[cur]) totals[cur] = 0;
+        totals[cur] += (qty * price);
     });
-    const cur = document.getElementById('inpCurrency').value;
-    const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
-    document.getElementById('grandTotalValue').textContent = sym + fmtNum(total);
+    
+    const parts = [];
+    for (const [cur, total] of Object.entries(totals)) {
+        if (total > 0) {
+            const sym = {KRW:'₩',USD:'$',CNY:'¥',EUR:'€',JPY:'¥'}[cur]||'';
+            parts.push(`${sym}${fmtNum(total)}`);
+        }
+    }
+    
+    document.getElementById('grandTotalValue').textContent = parts.length > 0 ? parts.join(' / ') : '0';
 }
 function collectItems() {
     const items = [];
@@ -286,15 +325,17 @@ function collectItems() {
         const name = line.querySelector('.li-name').value.trim();
         const qty = parseFloat(line.querySelector('.li-qty').value) || 0;
         const price = parseFloat(line.querySelector('.li-price').value) || 0;
+        const cur = line.querySelector('.li-currency').value || 'KRW';
         if (name || qty || price) {
             items.push({
                 itemName: name,
                 specification: line.querySelector('.li-spec').value.trim(),
                 quantity: qty,
                 unit: line.querySelector('.li-unit').value.trim() || 'EA',
+                currency: cur,
                 unitPrice: price,
                 amount: qty * price,
-                hsCode: '', remarks: '', sortOrder: idx
+                hsCode: '', remarks: line.querySelector('.li-remarks').value.trim(), sortOrder: idx
             });
         }
     });

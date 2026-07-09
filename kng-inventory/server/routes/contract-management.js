@@ -101,6 +101,7 @@ async function initContractManagementTables(database) {
                     unit TEXT DEFAULT 'EA',
                     unitPrice REAL DEFAULT 0,
                     amount REAL DEFAULT 0,
+                    currency TEXT DEFAULT '',
                     hsCode TEXT,
                     remarks TEXT,
                     sortOrder INTEGER DEFAULT 0,
@@ -119,7 +120,8 @@ async function initContractManagementTables(database) {
                 "ALTER TABLE contracts ADD COLUMN status TEXT DEFAULT '초안'",
                 "ALTER TABLE contracts ADD COLUMN expiryDate TEXT DEFAULT ''",
                 "ALTER TABLE contracts ADD COLUMN autoRenewal INTEGER DEFAULT 0",
-                "ALTER TABLE contracts ADD COLUMN incoterms TEXT DEFAULT ''"
+                "ALTER TABLE contracts ADD COLUMN incoterms TEXT DEFAULT ''",
+                "ALTER TABLE contract_items ADD COLUMN currency TEXT DEFAULT ''"
             ];
 
             let completed = 0;
@@ -144,18 +146,32 @@ function setDb(database) {
 // Contracts CRUD
 // ----------------------------------------------------
 
-// Get all contracts (with file count AND item count + total amount)
+// Get all contracts (with file count AND item count + multi-currency totals)
 router.get('/', (req, res) => {
     db.all(`
         SELECT c.*, 
         (SELECT COUNT(*) FROM contract_files cf WHERE cf.contractId = c.id) as fileCount,
-        (SELECT COUNT(*) FROM contract_items ci WHERE ci.contractId = c.id) as itemCount,
-        (SELECT COALESCE(SUM(ci.amount), 0) FROM contract_items ci WHERE ci.contractId = c.id) as itemsTotal
+        (SELECT COUNT(*) FROM contract_items ci WHERE ci.contractId = c.id) as itemCount
         FROM contracts c 
         ORDER BY c.createdAt DESC
     `, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        
+        db.all(`SELECT contractId, currency, SUM(amount) as total FROM contract_items GROUP BY contractId, currency`, [], (err, itemTotals) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            const totalsMap = {};
+            itemTotals.forEach(it => {
+                if (!totalsMap[it.contractId]) totalsMap[it.contractId] = {};
+                const cur = it.currency || 'KRW';
+                totalsMap[it.contractId][cur] = (totalsMap[it.contractId][cur] || 0) + it.total;
+            });
+            
+            rows.forEach(r => {
+                r.multiTotals = totalsMap[r.id] || {};
+            });
+            res.json(rows);
+        });
     });
 });
 
@@ -244,13 +260,14 @@ router.post('/', (req, res) => {
 
         // Insert items
         if (items.length > 0) {
-            const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, currency, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
             items.forEach((it, idx) => {
                 const itemId = 'CI-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
                 db.run(itemSql, [
                     itemId, id, it.itemName || '', it.specification || '',
                     parseFloat(it.quantity) || 0, it.unit || 'EA',
                     parseFloat(it.unitPrice) || 0, parseFloat(it.amount) || 0,
+                    it.currency || '',
                     it.hsCode || '', it.remarks || '', idx
                 ]);
             });
@@ -300,13 +317,14 @@ router.put('/:id', (req, res) => {
         // Re-insert items (delete old → insert new)
         db.run('DELETE FROM contract_items WHERE contractId = ?', [id], () => {
             if (items.length > 0) {
-                const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                const itemSql = `INSERT INTO contract_items (id, contractId, itemName, specification, quantity, unit, unitPrice, amount, currency, hsCode, remarks, sortOrder) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
                 items.forEach((it, idx) => {
                     const itemId = 'CI-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6) + idx;
                     db.run(itemSql, [
                         itemId, id, it.itemName || '', it.specification || '',
                         parseFloat(it.quantity) || 0, it.unit || 'EA',
                         parseFloat(it.unitPrice) || 0, parseFloat(it.amount) || 0,
+                        it.currency || '',
                         it.hsCode || '', it.remarks || '', idx
                     ]);
                 });

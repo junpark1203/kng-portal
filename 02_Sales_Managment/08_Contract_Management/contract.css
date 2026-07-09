@@ -300,7 +300,7 @@
 /* ── Line Items ── */
 .ct-items-header {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 0.7fr 0.7fr 1fr 1fr 40px;
+    grid-template-columns: 1.8fr 1.2fr 0.7fr 0.7fr 0.8fr 1fr 1.2fr 1.5fr 40px;
     gap: 8px; padding: 8px 10px;
     background: var(--gray-50); border-radius: 6px 6px 0 0;
     border: 1px solid var(--gray-200); border-bottom: none;
@@ -312,18 +312,18 @@
 }
 .ct-item-line {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 0.7fr 0.7fr 1fr 1fr 40px;
+    grid-template-columns: 1.8fr 1.2fr 0.7fr 0.7fr 0.8fr 1fr 1.2fr 1.5fr 40px;
     gap: 8px; padding: 8px 10px; align-items: center;
     border: 1px solid var(--gray-100); border-top: none;
     background: #fff; transition: background 0.1s;
 }
 .ct-item-line:hover { background: var(--gray-50); }
-.ct-item-line input {
+.ct-item-line input, .ct-item-line select {
     height: 30px !important; font-size: 12px !important;
     padding: 0 8px !important; border: 1px solid var(--gray-200) !important;
     border-radius: 4px !important; width: 100% !important; box-sizing: border-box !important;
 }
-.ct-item-line input:focus {
+.ct-item-line input:focus, .ct-item-line select:focus {
     border-color: var(--primary) !important;
     box-shadow: 0 0 0 2px rgba(44,62,143,0.08) !important;
 }
