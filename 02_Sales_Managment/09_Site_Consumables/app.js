@@ -498,9 +498,15 @@ function setupDragDrop() {
 
         const updateCSelectedFiles = () => {
             if (cFiles.files.length > 0) {
-                cSelectedFiles.textContent = `${cFiles.files.length}개의 파일이 선택되었습니다.`;
+                let html = '<ul style="list-style:none; padding:0; margin:0;">';
+                for (let i = 0; i < cFiles.files.length; i++) {
+                    const f = cFiles.files[i];
+                    html += `<li style="display:flex; align-items:center; gap:4px; margin-bottom:4px; color:#475569;"><i class="bx bx-file"></i> ${escapeHtml(f.name)} <span style="font-size:11px; color:#94a3b8;">(${fmtBytes(f.size)})</span></li>`;
+                }
+                html += '</ul>';
+                cSelectedFiles.innerHTML = html;
             } else {
-                cSelectedFiles.textContent = '';
+                cSelectedFiles.innerHTML = '';
             }
         };
 
