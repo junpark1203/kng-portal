@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현장별 소모품 규격 관리</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../../styles.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="layout-container">
+        <!-- 좌측 현장 목록 -->
+        <aside class="site-sidebar">
+            <div class="sidebar-header">
+                <h2>🏢 현장 목록</h2>
+                <button class="btn-primary" onclick="openSiteModal()"><i class='bx bx-plus'></i> 현장 추가</button>
+            </div>
+            <div class="site-list" id="siteList">
+                <div class="loading-spinner"><i class='bx bx-loader-alt bx-spin'></i> 불러오는 중...</div>
+            </div>
+        </aside>
+
+        <!-- 우측 소모품 목록 -->
+        <main class="consumables-main">
+            <div class="empty-state" id="emptyState">
+                <i class='bx bx-buildings'></i>
+                <p>좌측에서 현장을 선택해주세요.</p>
+            </div>
+
+            <div class="consumables-content hidden" id="consumablesContent">
+                <div class="content-header">
+                    <div class="header-titles">
+                        <h2 id="currentSiteName">현장명</h2>
+                        <p id="currentSiteAddress" class="text-sm text-gray">주소</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn-outline" onclick="editSite()"><i class='bx bx-edit'></i> 현장 정보 수정</button>
+                        <button class="btn-outline btn-outline-danger" onclick="deleteSite()"><i class='bx bx-trash'></i> 현장 삭제</button>
+                        <button class="btn-primary" onclick="openConsumableModal()"><i class='bx bx-plus'></i> 소모품 추가</button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>품명</th>
+                                <th>규격</th>
+                                <th>단위</th>
+                                <th>비고</th>
+                                <th style="width: 120px;">도면 관리</th>
+                                <th class="col-action" style="width: 100px;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="consumablesTableBody">
+                            <!-- 로드됨 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 현장 모달 -->
+    <div id="siteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="siteModalTitle">현장 등록</h2>
+                <button type="button" class="btn-close" onclick="closeSiteModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="siteForm">
+                    <input type="hidden" id="siteId">
+                    <div class="fg">
+                        <label>현장명 <span class="required">*</span></label>
+                        <input type="text" id="siteName" required placeholder="예: 평택 삼성물산 P4">
+                    </div>
+                    <div class="fg">
+                        <label>주소</label>
+                        <input type="text" id="siteAddress" placeholder="현장 주소 입력">
+                    </div>
+                    <div class="fg">
+                        <label>비고</label>
+                        <input type="text" id="siteRemarks" placeholder="추가 메모">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-outline" onclick="closeSiteModal()">취소</button>
+                        <button type="submit" class="btn-primary">저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 소모품 모달 -->
+    <div id="consumableModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="consumableModalTitle">소모품 등록</h2>
+                <button type="button" class="btn-close" onclick="closeConsumableModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="consumableForm">
+                    <input type="hidden" id="consumableId">
+                    <div class="fg">
+                        <label>품명 <span class="required">*</span></label>
+                        <input type="text" id="cName" required placeholder="예: 안전모">
+                    </div>
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="fg" style="flex:2">
+                            <label>규격</label>
+                            <input type="text" id="cSpec" placeholder="예: 백색, A-Type">
+                        </div>
+                        <div class="fg" style="flex:1">
+                            <label>단위</label>
+                            <input type="text" id="cUnit" placeholder="예: EA">
+                        </div>
+                    </div>
+                    <div class="fg">
+                        <label>비고</label>
+                        <input type="text" id="cRemarks" placeholder="추가 메모">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-outline" onclick="closeConsumableModal()">취소</button>
+                        <button type="submit" class="btn-primary">저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 파일 업로드/조회 모달 -->
+    <div id="fileModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>도면 및 파일 관리</h2>
+                <button type="button" class="btn-close" onclick="closeFileModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="file-upload-zone" id="dropZone">
+                    <i class='bx bx-cloud-upload'></i>
+                    <p>클릭하거나 파일을 이곳에 드래그하여 업로드하세요</p>
+                    <p class="text-sm text-gray">지원: 이미지(JPG, PNG), PDF, CAD 등 전 포맷 지원</p>
+                    <input type="file" id="fileInput" multiple style="display:none;">
+                </div>
+                
+                <h3 class="file-list-title" style="margin-top: 20px; font-size: 14px; font-weight: 600;">업로드된 파일</h3>
+                <div class="file-list" id="fileList">
+                    <!-- 파일 목록 렌더링 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이미지/PDF 미리보기 모달 -->
+    <div id="previewModal" class="modal" style="z-index: 2000;">
+        <div class="modal-content" style="max-width: 90%; max-height: 90vh; width: 1000px; padding: 0;">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 15px 20px;">
+                <h2 id="previewTitle" style="font-size: 16px; margin: 0;">미리보기</h2>
+                <button type="button" class="btn-close" onclick="closePreviewModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding: 0; height: calc(90vh - 60px); display: flex; align-items: center; justify-content: center; background: #f0f2f5;">
+                <div id="previewContent" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <!-- 미리보기 내용 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
