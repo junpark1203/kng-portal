@@ -107,6 +107,8 @@ function setupModals() {
         form.reset();
         document.getElementById('consumableId').value = '';
         document.getElementById('consumableModalTitle').textContent = '소모품 등록';
+        const cSelectedFiles = document.getElementById('cSelectedFiles');
+        if (cSelectedFiles) cSelectedFiles.textContent = '';
         
         if (id) {
             const c = currentConsumables.find(x => x.id === id);
@@ -450,11 +452,11 @@ function setupDragDrop() {
 
     dropZone.addEventListener('click', () => fileInput.click());
 
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
     });
-
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
 
     ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
@@ -473,6 +475,44 @@ function setupDragDrop() {
         handleFiles(this.files);
         this.value = ''; // Reset
     });
+
+    // Consumable Modal Drop Zone
+    const cDropZone = document.getElementById('cDropZone');
+    const cFiles = document.getElementById('cFiles');
+    const cSelectedFiles = document.getElementById('cSelectedFiles');
+
+    if (cDropZone && cFiles) {
+        cDropZone.addEventListener('click', () => cFiles.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            cDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            cDropZone.addEventListener(eventName, () => cDropZone.style.borderColor = '#3b82f6', false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            cDropZone.addEventListener(eventName, () => cDropZone.style.borderColor = '#cbd5e1', false);
+        });
+
+        const updateCSelectedFiles = () => {
+            if (cFiles.files.length > 0) {
+                cSelectedFiles.textContent = `${cFiles.files.length}개의 파일이 선택되었습니다.`;
+            } else {
+                cSelectedFiles.textContent = '';
+            }
+        };
+
+        cDropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                cFiles.files = e.dataTransfer.files;
+                updateCSelectedFiles();
+            }
+        });
+
+        cFiles.addEventListener('change', updateCSelectedFiles);
+    }
 }
 
 async function handleFiles(files) {
