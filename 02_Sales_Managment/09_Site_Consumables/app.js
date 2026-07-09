@@ -356,8 +356,10 @@ function renderFiles() {
         const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
         const canPreview = isPreviewable(f.originalName);
         
+        const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+        
         div.innerHTML = `
-            <div class="file-info" style="cursor: ${canPreview?'pointer':'default'}" ${canPreview? `onclick="previewFile('${url}', '${f.originalName}')"` : ''}>
+            <div class="file-info" style="cursor: ${canPreview?'pointer':'default'}" ${canPreview? `onclick="previewFile('${url}', '${safeJsName}')"` : ''}>
                 <i class='bx ${getFileIcon(f.fileType, f.originalName)}' style="font-size:24px;"></i>
                 <div>
                     <div class="file-name" title="${escapeHtml(f.originalName)}">${escapeHtml(f.originalName)}</div>
@@ -365,7 +367,7 @@ function renderFiles() {
                 </div>
             </div>
             <div class="file-actions">
-                ${canPreview ? `<button class="btn-outline" onclick="previewFile('${url}', '${f.originalName}')"><i class='bx bx-show'></i></button>` : ''}
+                ${canPreview ? `<button class="btn-outline" onclick="previewFile('${url}', '${safeJsName}')"><i class='bx bx-show'></i></button>` : ''}
                 <a href="${url}" download="${f.originalName}" class="btn-outline" style="text-decoration:none;"><i class='bx bx-download'></i></a>
                 <button class="btn-outline btn-outline-danger" onclick="deleteFile('${f.id}')"><i class='bx bx-trash'></i></button>
             </div>
