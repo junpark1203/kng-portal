@@ -17,6 +17,9 @@
                 <h2>🏢 현장 목록</h2>
                 <button class="btn-primary" onclick="openSiteModal()"><i class='bx bx-plus'></i> 현장 추가</button>
             </div>
+            <div style="padding: 10px 20px;">
+                <input type="text" id="searchSite" placeholder="현장명 검색..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;">
+            </div>
             <div class="site-list" id="siteList">
                 <div class="loading-spinner"><i class='bx bx-loader-alt bx-spin'></i> 불러오는 중...</div>
             </div>
@@ -36,6 +39,7 @@
                         <p id="currentSiteAddress" class="text-sm text-gray">주소</p>
                     </div>
                     <div class="header-actions">
+                        <input type="text" id="searchConsumable" placeholder="구분, 품명 검색..." style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; margin-right: 8px;">
                         <button class="btn-outline" onclick="editSite()"><i class='bx bx-edit'></i> 현장 정보 수정</button>
                         <button class="btn-outline btn-outline-danger" onclick="deleteSite()"><i class='bx bx-trash'></i> 현장 삭제</button>
                         <button class="btn-primary" onclick="openConsumableModal()"><i class='bx bx-plus'></i> 소모품 추가</button>
@@ -46,6 +50,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th>구분</th>
                                 <th>품명</th>
                                 <th>규격</th>
                                 <th>단위</th>
@@ -104,6 +109,10 @@
             <div class="modal-body">
                 <form id="consumableForm">
                     <input type="hidden" id="consumableId">
+                    <div class="fg">
+                        <label>구분</label>
+                        <input type="text" id="cCategory" placeholder="예: 공구류, 안전용품">
+                    </div>
                     <div class="fg">
                         <label>품명 <span class="required">*</span></label>
                         <input type="text" id="cName" required placeholder="예: 안전모">

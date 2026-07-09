@@ -74,6 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSites();
     setupModals();
     setupDragDrop();
+    
+    document.getElementById('searchSite')?.addEventListener('input', renderSites);
+    document.getElementById('searchConsumable')?.addEventListener('input', renderConsumables);
 });
 
 // ── Modals ──
@@ -114,6 +117,7 @@ function setupModals() {
             const c = currentConsumables.find(x => x.id === id);
             if (c) {
                 document.getElementById('consumableId').value = c.id;
+                document.getElementById('cCategory').value = c.category || '';
                 document.getElementById('cName').value = c.name;
                 document.getElementById('cSpec').value = c.specification || '';
                 document.getElementById('cUnit').value = c.unit || '';
@@ -150,12 +154,15 @@ function renderSites() {
     const list = document.getElementById('siteList');
     list.innerHTML = '';
     
-    if (sites.length === 0) {
-        list.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">등록된 현장이 없습니다.</div>';
+    const query = (document.getElementById('searchSite')?.value || '').toLowerCase();
+    const filteredSites = sites.filter(s => s.name.toLowerCase().includes(query) || (s.address || '').toLowerCase().includes(query));
+
+    if (filteredSites.length === 0) {
+        list.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">검색된 현장이 없습니다.</div>';
         return;
     }
 
-    sites.forEach(s => {
+    filteredSites.forEach(s => {
         const div = document.createElement('div');
         div.className = `site-item ${s.id === currentSiteId ? 'active' : ''}`;
         div.onclick = () => selectSite(s.id);
@@ -241,12 +248,20 @@ function renderConsumables() {
     const tbody = document.getElementById('consumablesTableBody');
     tbody.innerHTML = '';
     
-    if (currentConsumables.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 30px; color: #94a3b8;">등록된 소모품이 없습니다.</td></tr>';
+    const query = (document.getElementById('searchConsumable')?.value || '').toLowerCase();
+    const filteredConsumables = currentConsumables.filter(c => 
+        (c.name || '').toLowerCase().includes(query) || 
+        (c.category || '').toLowerCase().includes(query) ||
+        (c.specification || '').toLowerCase().includes(query) ||
+        (c.remarks || '').toLowerCase().includes(query)
+    );
+    
+    if (filteredConsumables.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
         return;
     }
 
-    currentConsumables.forEach(c => {
+    filteredConsumables.forEach(c => {
         const tr = document.createElement('tr');
         
         let fileHtml = '';
@@ -267,6 +282,7 @@ function renderConsumables() {
         }
         
         tr.innerHTML = `
+            <td><span style="display:inline-block; padding:2px 8px; background:#f1f5f9; border-radius:4px; font-size:12px; color:#475569;">${escapeHtml(c.category || '-')}</span></td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
@@ -298,6 +314,7 @@ document.getElementById('consumableForm').addEventListener('submit', async (e) =
         let consumableId = document.getElementById('consumableId').value;
         const body = {
             siteId: currentSiteId,
+            category: document.getElementById('cCategory').value.trim(),
             name: document.getElementById('cName').value.trim(),
             specification: document.getElementById('cSpec').value.trim(),
             unit: document.getElementById('cUnit').value.trim(),
