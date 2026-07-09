@@ -288,13 +288,11 @@ function renderConsumables() {
             <td>${escapeHtml(c.unit || '-')}</td>
             <td>${escapeHtml(c.remarks || '-')}</td>
             <td>
-                ${fileHtml}
-                <button class="btn-outline" title="업로드/관리" style="padding: 4px 6px; display: inline-flex; align-items: center; justify-content: center;" onclick="openFileManager('${c.id}')">
-                    <i class='bx bx-upload' style="font-size: 14px;"></i>
-                </button>
+                ${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}
             </td>
             <td class="col-actions">
-                <button title="수정" onclick="openConsumableModal('${c.id}')" style="background:none; border:none; color:#64748b; cursor:pointer;"><i class='bx bx-edit-alt' style="font-size:18px;"></i></button>
+                <button title="파일 관리/업로드" onclick="openFileManager('${c.id}')" style="background:none; border:none; color:#3b82f6; cursor:pointer;"><i class='bx bx-upload' style="font-size:18px;"></i></button>
+                <button title="수정" onclick="openConsumableModal('${c.id}')" style="background:none; border:none; color:#64748b; cursor:pointer; margin-left: 8px;"><i class='bx bx-edit-alt' style="font-size:18px;"></i></button>
                 <button title="삭제" onclick="deleteConsumable('${c.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; margin-left: 8px;"><i class='bx bx-trash' style="font-size:18px;"></i></button>
             </td>
         `;
