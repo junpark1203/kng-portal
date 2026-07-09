@@ -282,7 +282,7 @@ function renderConsumables() {
         }
         
         tr.innerHTML = `
-            <td><span style="display:inline-block; padding:2px 8px; background:#f1f5f9; border-radius:4px; font-size:12px; color:#475569;">${escapeHtml(c.category || '-')}</span></td>
+            <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
