@@ -1206,7 +1206,7 @@ input:focus, select:focus {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--gray-400);
-    background: transparent;
+    background: var(--surface);
     text-align: left;
     white-space: nowrap;
     position: sticky;
