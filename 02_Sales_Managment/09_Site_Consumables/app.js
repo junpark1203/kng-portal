@@ -77,7 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDragDrop();
     
     document.getElementById('searchSite')?.addEventListener('input', renderSites);
-    document.getElementById('searchConsumable')?.addEventListener('input', renderConsumables);
+    document.getElementById('searchConsumable')?.addEventListener('input', () => {
+        if (currentSiteId === 'dashboard') renderDashboard();
+        else renderConsumables();
+    });
     document.getElementById('sortSiteBtn')?.addEventListener('click', () => {
         siteSortOrder = siteSortOrder === 'asc' ? 'desc' : 'asc';
         const icon = document.querySelector('#sortSiteBtn i');
@@ -151,6 +154,9 @@ async function loadSites() {
     try {
         sites = await authFetch('/api/site-consumables/sites');
         renderSites();
+        if (!currentSiteId) {
+            selectSite('dashboard');
+        }
     } catch(e) {
         const list = document.getElementById('siteList');
         if (list) list.innerHTML = '<div style="padding: 20px; text-align: center; color: #ef4444;">데이터를 불러오지 못했습니다.<br><small>' + e.message + '</small></div>';
@@ -171,8 +177,21 @@ function renderSites() {
         return b.name.localeCompare(a.name, 'ko');
     });
 
+    const dashDiv = document.createElement('div');
+    dashDiv.className = `site-item ${currentSiteId === 'dashboard' ? 'active' : ''}`;
+    dashDiv.style.borderBottom = '2px solid #e2e8f0';
+    dashDiv.style.marginBottom = '8px';
+    dashDiv.onclick = () => selectSite('dashboard');
+    dashDiv.innerHTML = `
+        <div class="site-name" style="font-weight: 700; color: #4f46e5;"><i class='bx bx-grid-alt'></i> 전체 대시보드</div>
+    `;
+    list.appendChild(dashDiv);
+
     if (filteredSites.length === 0) {
-        list.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">검색된 현장이 없습니다.</div>';
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style = "padding: 20px; text-align: center; color: #94a3b8;";
+        emptyDiv.textContent = '검색된 현장이 없습니다.';
+        list.appendChild(emptyDiv);
         return;
     }
 
@@ -191,15 +210,31 @@ window.selectSite = async (id) => {
     currentSiteId = id;
     renderSites();
     
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('consumablesContent').classList.remove('hidden');
+
+    if (id === 'dashboard') {
+        document.getElementById('currentSiteName').innerHTML = "<i class='bx bx-grid-alt'></i> 전체 대시보드";
+        document.getElementById('currentSiteAddress').textContent = '모든 현장에 등록된 소모품 현황입니다.';
+        
+        document.querySelector('.header-actions button[onclick="editSite()"]').style.display = 'none';
+        document.querySelector('.header-actions button[onclick="deleteSite()"]').style.display = 'none';
+        document.querySelector('.header-actions button[onclick="openConsumableModal()"]').style.display = 'none';
+
+        await loadDashboard();
+        return;
+    }
+
     const site = sites.find(s => s.id === id);
     if (!site) return;
 
-    document.getElementById('emptyState').classList.add('hidden');
-    document.getElementById('consumablesContent').classList.remove('hidden');
-    
     document.getElementById('currentSiteName').textContent = site.name;
     document.getElementById('currentSiteAddress').textContent = site.address || '-';
     
+    document.querySelector('.header-actions button[onclick="editSite()"]').style.display = 'inline-block';
+    document.querySelector('.header-actions button[onclick="deleteSite()"]').style.display = 'inline-block';
+    document.querySelector('.header-actions button[onclick="openConsumableModal()"]').style.display = 'inline-block';
+
     await loadConsumables();
 };
 
@@ -244,15 +279,78 @@ window.deleteSite = async () => {
 };
 
 // ── Consumables CRUD ──
-async function loadConsumables() {
-    if (!currentSiteId) return;
+async function loadDashboard() {
+    const theadTr = document.querySelector('.data-table thead tr');
+    theadTr.innerHTML = `
+        <th>현장명</th>
+        <th>구분</th>
+        <th>품명</th>
+        <th>규격</th>
+        <th>단위</th>
+        <th>비고</th>
+    `;
     const tbody = document.getElementById('consumablesTableBody');
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
+    try {
+        currentConsumables = await authFetch(`/api/site-consumables/all-consumables`);
+        renderDashboard();
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">불러오기 실패</td></tr>';
+        showToast(e.message, 'error');
+    }
+}
+
+function renderDashboard() {
+    const tbody = document.getElementById('consumablesTableBody');
+    tbody.innerHTML = '';
+    
+    const query = (document.getElementById('searchConsumable')?.value || '').toLowerCase();
+    const filteredConsumables = currentConsumables.filter(c => 
+        (c.name || '').toLowerCase().includes(query) || 
+        (c.category || '').toLowerCase().includes(query) ||
+        (c.specification || '').toLowerCase().includes(query) ||
+        (c.siteName || '').toLowerCase().includes(query) ||
+        (c.remarks || '').toLowerCase().includes(query)
+    );
+
+    if (filteredConsumables.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
+        return;
+    }
+
+    filteredConsumables.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
+            <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
+            <td style="font-weight:500;">${escapeHtml(c.name)}</td>
+            <td>${escapeHtml(c.specification || '-')}</td>
+            <td>${escapeHtml(c.unit || '-')}</td>
+            <td>${escapeHtml(c.remarks || '-')}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function loadConsumables() {
+    if (!currentSiteId || currentSiteId === 'dashboard') return;
+    const theadTr = document.querySelector('.data-table thead tr');
+    theadTr.innerHTML = `
+        <th>구분</th>
+        <th>품명</th>
+        <th>규격</th>
+        <th>단위</th>
+        <th>비고</th>
+        <th style="width: auto; min-width: 250px;">도면 관리</th>
+        <th class="col-action" style="width: 120px; white-space: nowrap;">관리</th>
+    `;
+    const tbody = document.getElementById('consumablesTableBody');
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/consumables/${currentSiteId}`);
         renderConsumables();
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">불러오기 실패</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">불러오기 실패</td></tr>';
         showToast(e.message, 'error');
     }
 }

@@ -138,6 +138,19 @@ router.delete('/sites/:id', (req, res) => {
 // ==========================================
 // Site Consumables CRUD
 // ==========================================
+router.get('/all-consumables', (req, res) => {
+    const sql = `
+        SELECT c.*, s.name as siteName 
+        FROM site_consumables c 
+        LEFT JOIN sites s ON c.siteId = s.id 
+        ORDER BY s.name ASC, c.category ASC, c.name ASC
+    `;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
 router.get('/consumables/:siteId', (req, res) => {
     db.all('SELECT * FROM site_consumables WHERE siteId = ? ORDER BY createdAt DESC', [req.params.siteId], (err, consumables) => {
         if (err) return res.status(500).json({ error: err.message });
