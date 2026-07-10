@@ -5,6 +5,7 @@ let currentSiteId = null;
 let currentConsumables = [];
 let currentFiles = [];
 let uploadQueue = [];
+let siteSortOrder = 'asc';
 
 // ── Auth ──
 async function getToken() {
@@ -77,6 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('searchSite')?.addEventListener('input', renderSites);
     document.getElementById('searchConsumable')?.addEventListener('input', renderConsumables);
+    document.getElementById('sortSiteBtn')?.addEventListener('click', () => {
+        siteSortOrder = siteSortOrder === 'asc' ? 'desc' : 'asc';
+        const icon = document.querySelector('#sortSiteBtn i');
+        if (icon) {
+            icon.className = siteSortOrder === 'asc' ? 'bx bx-sort-a-z' : 'bx bx-sort-z-a';
+        }
+        renderSites();
+    });
 });
 
 // ── Modals ──
@@ -155,7 +164,12 @@ function renderSites() {
     list.innerHTML = '';
     
     const query = (document.getElementById('searchSite')?.value || '').toLowerCase();
-    const filteredSites = sites.filter(s => s.name.toLowerCase().includes(query) || (s.address || '').toLowerCase().includes(query));
+    let filteredSites = sites.filter(s => s.name.toLowerCase().includes(query) || (s.address || '').toLowerCase().includes(query));
+
+    filteredSites.sort((a, b) => {
+        if (siteSortOrder === 'asc') return a.name.localeCompare(b.name, 'ko');
+        return b.name.localeCompare(a.name, 'ko');
+    });
 
     if (filteredSites.length === 0) {
         list.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;">검색된 현장이 없습니다.</div>';
@@ -168,7 +182,6 @@ function renderSites() {
         div.onclick = () => selectSite(s.id);
         div.innerHTML = `
             <div class="site-name">${escapeHtml(s.name)}</div>
-            <div class="site-addr"><i class='bx bx-map'></i> ${escapeHtml(s.address || '주소 없음')}</div>
         `;
         list.appendChild(div);
     });

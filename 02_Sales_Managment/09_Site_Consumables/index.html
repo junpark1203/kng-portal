@@ -17,8 +17,9 @@
                 <h2>🏢 현장 목록</h2>
                 <button class="btn-primary" onclick="openSiteModal()"><i class='bx bx-plus'></i> 현장 추가</button>
             </div>
-            <div style="padding: 10px 20px;">
-                <input type="text" id="searchSite" placeholder="현장명 검색..." style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;">
+            <div style="padding: 10px 20px; display: flex; gap: 8px; align-items: center;">
+                <input type="text" id="searchSite" placeholder="현장명 검색..." style="flex: 1; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;">
+                <button id="sortSiteBtn" class="btn-outline" style="padding: 8px; border-color: #cbd5e1; color: #475569; display: flex; align-items: center; justify-content: center;" title="정렬"><i class='bx bx-sort-a-z' style="font-size: 18px;"></i></button>
             </div>
             <div class="site-list" id="siteList">
                 <div class="loading-spinner"><i class='bx bx-loader-alt bx-spin'></i> 불러오는 중...</div>
