@@ -651,13 +651,18 @@ app.post('/api/supply-history/export', async (req, res) => {
         
         let rows = [];
         if (ids.length > 0) {
-            const placeholders = ids.map(() => '?').join(',');
-            rows = await new Promise((resolve, reject) => {
-                db.all(`SELECT * FROM supply_history WHERE id IN (${placeholders}) ORDER BY supplyDate DESC, createdAt DESC`, ids, (err, rows) => {
+            // SQLite의 최대 바인딩 변수(999개) 제한을 우회하기 위해 전체 조회 후 필터링
+            const allRows = await new Promise((resolve, reject) => {
+                db.all(`SELECT * FROM supply_history ORDER BY supplyDate DESC, createdAt DESC`, [], (err, rows) => {
                     if (err) reject(err);
                     else resolve(rows);
                 });
             });
+            const idMap = new Map();
+            allRows.forEach(r => idMap.set(r.id, r));
+            
+            // 프론트엔드에서 넘어온 ids 순서(정렬된 순서)를 그대로 유지
+            rows = ids.map(id => idMap.get(id)).filter(Boolean);
         }
 
         const workbook = new ExcelJS.Workbook();
