@@ -190,7 +190,6 @@ window.editContract = async function(id) {
         document.getElementById('inpIncoterms').value = d.incoterms || '';
         document.getElementById('inpEffectiveDate').value = d.effectiveDate || '';
         document.getElementById('inpExpiryDate').value = d.expiryDate || '';
-        document.getElementById('inpPic').value = d.pic || '';
         document.getElementById('inpRemarks').value = d.remarks || '';
         // Auto renewal
         const ar = d.autoRenewal ? true : false;
@@ -237,7 +236,6 @@ document.getElementById('saveContractBtn').addEventListener('click', async () =>
         effectiveDate: document.getElementById('inpEffectiveDate').value,
         expiryDate: document.getElementById('inpExpiryDate').value,
         autoRenewal: document.getElementById('inpAutoRenewal').value === '1',
-        pic: document.getElementById('inpPic').value.trim(),
         remarks: document.getElementById('inpRemarks').value.trim(),
         items: items
     };
