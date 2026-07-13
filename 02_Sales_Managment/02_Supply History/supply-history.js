@@ -89,6 +89,7 @@ function initEvents() {
 
     $('addBtn').addEventListener('click', () => openModal());
     $('deleteBtn').addEventListener('click', deleteSelected);
+    $('btnExportExcel')?.addEventListener('click', exportToExcel);
     $('closeModalBtn').addEventListener('click', closeModal);
     $('cancelBtn').addEventListener('click', closeModal);
     window.addEventListener('click', e => { if (e.target === itemModal) closeModal(); });
@@ -365,4 +366,40 @@ async function deleteSelected() {
         if (res.ok) { showToast('삭제되었습니다.', 'success'); loadData(); }
         else { const err = await res.json(); showToast('삭제 실패: ' + err.error, 'error'); }
     } catch (e) { console.error(e); showToast('서버 연결 오류', 'error'); }
+}
+
+async function exportToExcel() {
+    if (filteredData.length === 0) return showToast('내보낼 데이터가 없습니다.', 'warning');
+    const btn = $('btnExportExcel');
+    const originalText = btn.innerHTML;
+    try {
+        btn.innerHTML = "<i class='bx bx-loader bx-spin'></i> 생성 중...";
+        btn.disabled = true;
+
+        const ids = filteredData.map(d => d.id);
+        const res = await authFetch(API_BASE + '/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        
+        if (!res.ok) throw new Error('엑셀 생성 실패');
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        a.download = `자재공급내역_${dateStr}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        showToast('엑셀 다운로드 오류: ' + e.message, 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
 }

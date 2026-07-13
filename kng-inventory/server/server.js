@@ -642,6 +642,74 @@ app.get('/api/supply-history', (req, res) => {
     });
 });
 
+// 엑셀 내보내기 (Server-side Export)
+app.post('/api/supply-history/export', async (req, res) => {
+    try {
+        const ExcelJS = require('exceljs');
+        const { ids } = req.body;
+        if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids 배열이 필요합니다.' });
+        
+        let rows = [];
+        if (ids.length > 0) {
+            const placeholders = ids.map(() => '?').join(',');
+            rows = await new Promise((resolve, reject) => {
+                db.all(`SELECT * FROM supply_history WHERE id IN (${placeholders}) ORDER BY supplyDate DESC, createdAt DESC`, ids, (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                });
+            });
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('자재공급내역');
+        
+        worksheet.columns = [
+            { header: '공급일자', key: 'supplyDate', width: 15 },
+            { header: '현장명', key: 'site', width: 25 },
+            { header: '공급사', key: 'supplier', width: 20 },
+            { header: '제조사', key: 'manufacturer', width: 20 },
+            { header: '구분', key: 'category', width: 15 },
+            { header: '품명', key: 'item', width: 40 },
+            { header: '수량', key: 'qty', width: 12 },
+            { header: '단가', key: 'price', width: 15 },
+            { header: '총금액', key: 'total', width: 15 },
+        ];
+        
+        // Header styling
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+        worksheet.getRow(1).alignment = { horizontal: 'center' };
+
+        // Data rows
+        rows.forEach(r => {
+            const row = worksheet.addRow({
+                supplyDate: r.supplyDate || '-',
+                site: r.site || '-',
+                supplier: r.supplier || '-',
+                manufacturer: r.manufacturer || '-',
+                category: r.category || '-',
+                item: r.item || '-',
+                qty: r.qty || 0,
+                price: r.price || 0,
+                total: r.total || 0,
+            });
+            // Number formatting for amount columns
+            row.getCell('qty').numFmt = '#,##0';
+            row.getCell('price').numFmt = '#,##0';
+            row.getCell('total').numFmt = '#,##0';
+        });
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="supply_history.xlsx"');
+        
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (e) {
+        console.error('Excel Export Error:', e);
+        res.status(500).json({ error: '엑셀 파일 생성 중 오류가 발생했습니다.' });
+    }
+});
+
 // 강제 데이터 마이그레이션 (공급사 업데이트)
 app.get('/api/supply-history/fix-supplier', (req, res) => {
     db.run("ALTER TABLE supply_history ADD COLUMN supplier TEXT", () => {
