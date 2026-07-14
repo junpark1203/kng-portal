@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실수입비용 정산</title>
+    <!-- 공통 리소스 (상위 경로에서 가져옴) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <!-- 전용 CSS -->
+    <link rel="stylesheet" href="import-settlement.css">
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="is-container">
+        <!-- 뷰 1: 정산 목록 -->
+        <div id="listView" class="view-panel active">
+            <div class="panel-header">
+                <h2><i class='bx bx-calculator'></i> 실수입비용 정산</h2>
+                <div class="header-actions">
+                    <button id="btnNewSettlement" class="btn-primary"><i class='bx bx-plus'></i> 신규 정산 (견적 불러오기)</button>
+                    <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                            <th>상태</th>
+                            <th>정산 문서명</th>
+                            <th>연동된 견적명</th>
+                            <th>정산일자</th>
+                            <th>작성일시</th>
+                            <th class="col-action">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settlementListBody">
+                        <tr><td colspan="7" style="text-align: center; padding: 2rem;">데이터를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 뷰 2: 정산 편집기 -->
+        <div id="editView" class="view-panel">
+            <div class="panel-header">
+                <h2 id="editTitle"><i class='bx bx-edit-alt'></i> 실수입비용 정산 입력</h2>
+                <div class="header-actions">
+                    <button id="btnCancelEdit" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                    <button id="btnPrint" class="btn-outline"><i class='bx bx-printer'></i> 인쇄</button>
+                    <button id="btnExportExcel" class="btn-outline" style="color: #107c41; border-color: #107c41;"><i class='bx bx-spreadsheet'></i> 엑셀 내보내기</button>
+                    <button id="btnSaveSettlement" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
+                </div>
+            </div>
+
+            <div class="editor-body">
+                <!-- SECTION 1: 정산 기본 정보 및 연동된 견적 정보 -->
+                <section class="edit-section">
+                    <h3>1. 정산 및 연동 정보</h3>
+                    <div class="form-grid">
+                        <div class="fg">
+                            <label>정산 문서명 <span class="req">*</span></label>
+                            <input type="text" id="docTitle" placeholder="예: 26년 7월 TBM 수입 정산">
+                        </div>
+                        <div class="fg">
+                            <label>정산 일자 <span class="req">*</span></label>
+                            <input type="date" id="docDate">
+                        </div>
+                        <div class="fg">
+                            <label>진행 상태</label>
+                            <select id="docStatus">
+                                <option value="draft">작성 중 (Draft)</option>
+                                <option value="completed">정산 완료 (Completed)</option>
+                            </select>
+                        </div>
+                        <div class="fg">
+                            <label>비고</label>
+                            <input type="text" id="docRemarks" placeholder="추가 메모 입력">
+                        </div>
+                    </div>
+
+                    <!-- 읽기 전용 견적 데이터 (회색 배경 박스) -->
+                    <div class="readonly-quote-info">
+                        <h4><i class='bx bx-file'></i> 연동된 포워더 견적 정보 (원본)</h4>
+                        <div class="quote-info-grid">
+                            <div class="info-item"><span>견적명:</span> <strong id="roQuoteTitle">-</strong></div>
+                            <div class="info-item"><span>견적일:</span> <strong id="roQuoteDate">-</strong></div>
+                            <div class="info-item"><span>선적형태:</span> <strong id="roShipment">-</strong></div>
+                            <div class="info-item"><span>POL / POD:</span> <strong id="roPolPod">-</strong></div>
+                            <div class="info-item"><span>적용 포워더:</span> <strong id="roForwarder">-</strong></div>
+                            <div class="info-item"><span>기준 인코텀즈:</span> <strong id="roIncoterm">-</strong></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 2: 종합 요약 대시보드 -->
+                <section class="edit-section highlight-section" style="padding: 15px 20px;">
+                    <h3><i class='bx bx-bar-chart-alt-2'></i> 종합 요약 대시보드</h3>
+                    <div class="dashboard-grid">
+                        <div class="dash-card">
+                            <div class="dash-label">예상 총 부대비용 (견적)</div>
+                            <div class="dash-value" id="dashTotalEstimated">₩ 0</div>
+                        </div>
+                        <div class="dash-card">
+                            <div class="dash-label">실제 총 청구비용</div>
+                            <div class="dash-value" id="dashTotalBilled">₩ 0</div>
+                        </div>
+                        <div class="dash-card">
+                            <div class="dash-label">물류비 증감 (차액)</div>
+                            <div class="dash-value" id="dashCostVariance">₩ 0</div>
+                            <div class="dash-sub" id="dashCostVarianceSub">실제 청구 - 예상 비용</div>
+                        </div>
+                        <div class="dash-card" style="border-left: 1px solid rgba(0,0,0,0.1);">
+                            <div class="dash-label">실 송금액 (결제환율 적용)</div>
+                            <div class="dash-value" id="dashTotalPaid">₩ 0</div>
+                        </div>
+                        <div class="dash-card primary-card">
+                            <div class="dash-label" style="color:rgba(255,255,255,0.8);">총 환차익 / 환차손</div>
+                            <div class="dash-value" id="dashExchangeGainLoss" style="color:#fff;">₩ 0</div>
+                            <div class="dash-sub" style="color:rgba(255,255,255,0.7);">(실 송금환율 - 인보이스환율) * 외화</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 3: 환율 설정 -->
+                <section class="edit-section">
+                    <h3>2. 환율 설정</h3>
+                    <div class="rates-container">
+                        <!-- 견적 환율 (Read Only) -->
+                        <div class="rates-box readonly-box">
+                            <div class="ex-header">
+                                <h4><i class='bx bx-bookmark'></i> 견적 환율 (기준)</h4>
+                            </div>
+                            <div class="ex-grid">
+                                <div class="ex-item"><label>USD</label><div class="val">₩ <span id="roRateUSD">0.00</span></div></div>
+                                <div class="ex-item"><label>CNY</label><div class="val">₩ <span id="roRateCNY">0.00</span></div></div>
+                                <div class="ex-item"><label>EUR</label><div class="val">₩ <span id="roRateEUR">0.00</span></div></div>
+                                <div class="ex-item"><label>JPY (100엔)</label><div class="val">₩ <span id="roRateJPY">0.00</span></div></div>
+                            </div>
+                        </div>
+                        <!-- 실제 송금 환율 (Editable) -->
+                        <div class="rates-box active-box">
+                            <div class="ex-header">
+                                <h4><i class='bx bx-money'></i> 실제 송금/결제 환율 (은행 전신환매도율)</h4>
+                            </div>
+                            <div class="ex-grid">
+                                <div class="ex-item">
+                                    <label>USD</label>
+                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateUSD" step="0.01" value="0"></div>
+                                </div>
+                                <div class="ex-item">
+                                    <label>CNY</label>
+                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateCNY" step="0.01" value="0"></div>
+                                </div>
+                                <div class="ex-item">
+                                    <label>EUR</label>
+                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateEUR" step="0.01" value="0"></div>
+                                </div>
+                                <div class="ex-item">
+                                    <label>JPY (100엔당)</label>
+                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateJPY" step="0.01" value="0"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: 부대비용 정산 비교 그리드 -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>3. 항목별 비용 정산 및 분석</h3>
+                        <p class="help-text" style="margin:0;">* 각 항목별로 인보이스에 찍힌 <strong>실제 외화 금액</strong>과 <strong>적용 환율</strong>을 입력하세요.</p>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="settlement-table" id="settlementTable">
+                            <thead>
+                                <tr class="header-group">
+                                    <th colspan="2" class="group-basic">기본 항목</th>
+                                    <th colspan="3" class="group-quoted">예상 비용 (견적 원본)</th>
+                                    <th colspan="3" class="group-billed">실제 청구 비용 (인보이스)</th>
+                                    <th colspan="2" class="group-analysis">분석 (차이)</th>
+                                </tr>
+                                <tr class="header-sub">
+                                    <th>비용 항목명</th>
+                                    <th>단위</th>
+                                    
+                                    <!-- 예상 -->
+                                    <th>예상 외화/단위</th>
+                                    <th>견적 환율</th>
+                                    <th>예상 원화 (KRW)</th>
+                                    
+                                    <!-- 실제 -->
+                                    <th class="editable-col">실제 청구 외화</th>
+                                    <th class="editable-col">인보이스 환율</th>
+                                    <th>실제 원화 (KRW)</th>
+                                    
+                                    <!-- 분석 -->
+                                    <th>물류비 증감(KRW)<br><span style="font-size:10px;font-weight:normal;">(실제 - 예상)</span></th>
+                                    <th>환차익/손(KRW)<br><span style="font-size:10px;font-weight:normal;">(송금환율 - 인보이스환율)</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="settlementTableBody">
+                                <!-- JS 동적 렌더링 -->
+                            </tbody>
+                            <tfoot id="settlementTableFoot">
+                                <!-- 총계 렌더링 -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </section>
+
+                <div class="bottom-actions">
+                    <button class="btn-outline btn-large" id="btnCancelEditBottom">취소</button>
+                    <button class="btn-primary btn-large" id="btnSaveSettlementBottom"><i class='bx bx-save'></i> 정산 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 모달: 견적 불러오기 -->
+    <div id="quoteModal" class="modal">
+        <div class="modal-content" style="max-width: 800px; width: 90%;">
+            <div class="modal-header">
+                <h2 id="quoteModalTitle">견적서 불러오기</h2>
+                <button class="btn-close" id="btnCloseQuoteModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="data-table" style="margin: 0; border-radius: 0; box-shadow: none;">
+                        <thead style="position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                <th>선택</th>
+                                <th>견적명</th>
+                                <th>상태</th>
+                                <th>견적일자</th>
+                                <th>포워더 선택</th>
+                                <th>인코텀즈 선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quoteModalBody">
+                            <!-- JS 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px;">
+                <button class="btn-outline" id="btnCancelQuoteModal" style="margin-right: 10px;">취소</button>
+                <button class="btn-primary" id="btnConfirmQuote">불러오기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 알림 -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- 인쇄 전용 영역 -->
+    <div id="printContainer" class="print-only"></div>
+
+    <script type="module" src="import-settlement.js"></script>
+</body>
+</html>

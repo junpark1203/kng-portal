@@ -1,0 +1,371 @@
+/* import-settlement.css */
+
+.is-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.view-panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.view-panel.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.panel-header h2 {
+    font-size: 1.5rem;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* 정산 기본 정보 및 연동 정보 */
+.edit-section {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.edit-section h3 {
+    font-size: 1.1rem;
+    color: var(--text-color);
+    margin-top: 0;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.highlight-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.fg label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.fg input, .fg select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.fg input:focus, .fg select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+.readonly-quote-info {
+    margin-top: 20px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.readonly-quote-info h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.95rem;
+    color: #475569;
+}
+
+.quote-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.info-item {
+    font-size: 0.9rem;
+}
+
+.info-item span {
+    color: #64748b;
+    margin-right: 5px;
+}
+
+.info-item strong {
+    color: #0f172a;
+}
+
+/* 대시보드 */
+.dashboard-grid {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 15px;
+}
+
+.dash-card {
+    flex: 1;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: center;
+    border: 1px solid #e2e8f0;
+}
+
+.dash-card.primary-card {
+    background: var(--primary);
+    border: none;
+    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+}
+
+.dash-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 5px;
+}
+
+.dash-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.dash-sub {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 5px;
+}
+
+/* 환율 설정 */
+.rates-container {
+    display: flex;
+    gap: 20px;
+}
+
+.rates-box {
+    flex: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.rates-box.readonly-box {
+    background: #f8fafc;
+}
+
+.rates-box.active-box {
+    background: #fff;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.ex-header h4 {
+    margin: 0 0 15px 0;
+    font-size: 0.95rem;
+    color: var(--text-color);
+}
+
+.ex-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.ex-item label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.ex-item .val {
+    padding: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    font-weight: 600;
+    color: #334155;
+    text-align: right;
+}
+
+.input-with-symbol {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-symbol span {
+    position: absolute;
+    left: 10px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.input-with-symbol input {
+    width: 100%;
+    padding: 8px 8px 8px 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    text-align: right;
+    font-weight: 600;
+}
+
+/* 비용 정산 테이블 (와이드 그리드) */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.settlement-table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.settlement-table th, .settlement-table td {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    vertical-align: middle;
+}
+
+.settlement-table th {
+    font-weight: 600;
+    text-align: center;
+}
+
+.header-group th {
+    padding: 12px;
+    font-size: 0.95rem;
+}
+
+.group-basic { background: #f1f5f9; color: #334155; }
+.group-quoted { background: #e2e8f0; color: #475569; }
+.group-billed { background: #e0f2fe; color: #0369a1; }
+.group-analysis { background: #f0fdf4; color: #15803d; }
+
+.header-sub th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.85rem;
+}
+
+.header-sub th.editable-col {
+    background: #bae6fd;
+    color: #0c4a6e;
+}
+
+.settlement-table tbody tr:hover {
+    background-color: rgba(0,0,0,0.01);
+}
+
+.settlement-table td.col-num {
+    text-align: right;
+}
+
+.settlement-table td.col-readonly {
+    background: #f8fafc;
+    color: #475569;
+}
+
+.settlement-table input[type="number"], .settlement-table select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    text-align: right;
+}
+
+.settlement-table select {
+    text-align: left;
+}
+
+.val-variance {
+    font-weight: 600;
+}
+
+.val-variance.positive { color: #dc2626; } /* 비용 초과 */
+.val-variance.negative { color: #16a34a; } /* 비용 절감 */
+
+.val-gainloss {
+    font-weight: 600;
+}
+.val-gainloss.gain { color: #16a34a; } /* 이익 */
+.val-gainloss.loss { color: #dc2626; } /* 손실 */
+
+.bottom-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-large {
+    padding: 12px 24px;
+    font-size: 1rem;
+}
+
+/* Toast 알림 */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background: #333;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: opacity 0.3s;
+}
+
+.toast.success { background: #10b981; }
+.toast.error { background: #ef4444; }
+.toast i { font-size: 1.2rem; }

@@ -30,6 +30,10 @@ const { initForwarderQuotationTables } = forwarderQuotationRoutes;
 const importQuotationRoutes = require('./routes/import-quotation');
 const { initImportQuotationTables } = importQuotationRoutes;
 
+// 실수입비용 정산 모듈
+const importSettlementRoutes = require('./routes/import-settlement');
+const { initImportSettlementTables } = importSettlementRoutes;
+
 // 계약서 관리 모듈
 const contractManagementRoutes = require('./routes/contract-management');
 const { initContractManagementTables } = contractManagementRoutes;
@@ -206,6 +210,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
                 (sql, params) => new Promise((resolve, reject) => db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)))
             );
             console.log('import_quotation API 준비 완료');
+        });
+        // 실수입비용 정산 테이블 초기화 + 라우트에 DB 주입
+        initImportSettlementTables(db).then(() => {
+            importSettlementRoutes.setDb(db);
+            console.log('import_settlement API 준비 완료');
         });
         // 계약서 관리 테이블 초기화 + 라우트에 DB 주입
         initContractManagementTables(db).then(() => {
@@ -927,6 +936,9 @@ app.use('/api/import-quotation', importQuotationRoutes.router);
 // ==========================================
 // 포워더 견적
 app.use('/api/forwarder-quotation', forwarderQuotationRoutes);
+
+// 실수입비용 정산
+app.use('/api/import-settlement', importSettlementRoutes);
 
 // 현장별 소모품 규격 관리
 app.use('/api/site-consumables', siteConsumablesRoutes.router);
