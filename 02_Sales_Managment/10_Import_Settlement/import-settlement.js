@@ -82,6 +82,7 @@ function initEvents() {
     document.getElementById('btnNewSettlement').addEventListener('click', openQuoteModal);
     document.getElementById('btnCancelEdit').addEventListener('click', () => switchView('list'));
     document.getElementById('btnCancelEditBottom').addEventListener('click', () => switchView('list'));
+    document.getElementById('btnAddCustomCost').addEventListener('click', window.addCustomCost);
     
     document.getElementById('btnSaveSettlement').addEventListener('click', saveSettlement);
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
@@ -325,6 +326,24 @@ function renderSettlementGrid() {
         let qRate = cost.currency === 'KRW' ? 1 : (snapRates[cost.currency] || 0);
         let qKrw = cost.quotedForeign * qRate;
 
+        let labelHtml = cost.label;
+        if (cost.isCustom) {
+            labelHtml = `<input type="text" class="calc-input" value="${cost.label}" style="width:120px; padding:4px;" oninput="updateCost(${idx}, 'label', this.value)">`;
+        }
+
+        let currHtml = '';
+        if (cost.isCustom) {
+            currHtml = `
+                <select class="calc-input" style="padding:6px; min-width:60px;" onchange="updateCost(${idx}, 'currency', this.value)">
+                    <option value="KRW" ${cost.currency==='KRW'?'selected':''}>KRW</option>
+                    <option value="USD" ${cost.currency==='USD'?'selected':''}>USD</option>
+                    <option value="CNY" ${cost.currency==='CNY'?'selected':''}>CNY</option>
+                    <option value="EUR" ${cost.currency==='EUR'?'selected':''}>EUR</option>
+                    <option value="JPY" ${cost.currency==='JPY'?'selected':''}>JPY</option>
+                </select>
+            `;
+        }
+
         html += `
             <tr class="draggable-row" draggable="true" data-idx="${idx}"
                 ondragstart="handleDragStart(event)"
@@ -334,23 +353,24 @@ function renderSettlementGrid() {
                 ondrop="handleDrop(event, ${idx})"
                 ondragend="handleDragEnd(event)">
                 <td class="col-readonly">
-                    <div style="display:flex; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:5px;">
                         <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
-                        ${cost.label}
+                        ${cost.isCustom ? `<button class="btn-icon" style="color:var(--danger-color); padding:0; display:flex; align-items:center;" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>` : ''}
+                        ${labelHtml}
                     </div>
                 </td>
                 <td class="col-readonly" style="text-align:center;">${cost.unit}</td>
                 
                 <!-- 예상 (읽기 전용) -->
-                <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.currency}</td>
+                <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : cost.currency}</td>
                 <td class="col-num col-readonly">${formatNum(qRate, 2)}</td>
                 <td class="col-num col-readonly" style="font-weight:600;">${formatNum(qKrw)}</td>
                 
                 <!-- 실제 (입력) -->
                 <td>
-                    <div class="input-with-symbol">
-                        <span style="font-size:0.8em;">${cost.currency}</span>
-                        <input type="number" class="calc-input billed-foreign" step="0.01" value="${cost.billedForeign}" oninput="updateCost(${idx}, 'billedForeign', this.value)">
+                    <div style="display:flex; align-items:center; gap:5px; position:relative;">
+                        ${cost.isCustom ? currHtml : `<span style="position:absolute; left:10px; color:var(--text-secondary); font-weight:500; font-size:0.8em; pointer-events:none;">${cost.currency}</span>`}
+                        <input type="number" class="calc-input billed-foreign" step="0.01" value="${cost.billedForeign}" oninput="updateCost(${idx}, 'billedForeign', this.value)" style="width:100%; border:1px solid var(--border-color); border-radius:4px; text-align:right; font-weight:600; padding: 6px 6px 6px ${cost.isCustom ? '6px' : '35px'};">
                     </div>
                 </td>
                 <td>
@@ -369,7 +389,33 @@ function renderSettlementGrid() {
 }
 
 window.updateCost = function(idx, field, value) {
-    state.doc.actualCosts[idx][field] = parseFloat(value) || 0;
+    if (field === 'billedForeign' || field === 'billedRate') {
+        state.doc.actualCosts[idx][field] = parseFloat(value) || 0;
+    } else {
+        state.doc.actualCosts[idx][field] = value;
+    }
+    calculateAll();
+};
+
+window.addCustomCost = function() {
+    state.doc.actualCosts.push({
+        id: generateId(),
+        key: 'CUSTOM_' + Date.now(),
+        label: '추가 청구 항목',
+        unit: 'Lump Sum',
+        currency: 'KRW',
+        quotedForeign: 0,
+        billedForeign: 0,
+        billedRate: 1,
+        isCustom: true
+    });
+    renderSettlementGrid();
+    calculateAll();
+};
+
+window.removeCost = function(idx) {
+    state.doc.actualCosts.splice(idx, 1);
+    renderSettlementGrid();
     calculateAll();
 };
 
