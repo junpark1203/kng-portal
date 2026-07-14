@@ -390,3 +390,71 @@
 .toast.success { background: #10b981; }
 .toast.error { background: #ef4444; }
 .toast i { font-size: 1.2rem; }
+
+/* 툴팁 */
+.tooltip-icon {
+    color: var(--text-tertiary);
+    cursor: help;
+    position: relative;
+    margin-left: 6px;
+}
+.tooltip-text {
+    visibility: hidden;
+    width: 250px;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 10;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -125px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    font-family: var(--font-family);
+    font-weight: normal;
+    line-height: 1.4;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.tooltip-icon:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+/* 원가 산출 테이블 */
+.cost-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.cost-table th, .cost-table td {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    vertical-align: middle;
+}
+
+.cost-table th {
+    font-weight: 600;
+    text-align: center;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.highlight-col {
+    background: rgba(79, 70, 229, 0.05) !important;
+    font-weight: 700;
+}
