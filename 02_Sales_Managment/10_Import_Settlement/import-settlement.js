@@ -21,6 +21,39 @@ let state = {
     }
 };
 
+const DEFAULT_COSTS = [
+    { key: 'OF', label: '해상운임 (O/F, Ocean Freight)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+
+    { key: 'CY', label: 'CY비 (CY Charge)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'PORT', label: '항만비용 (Port Charge)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'EDI', label: 'EDI/서류/부킹 (EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'THC_E', label: '터미널하역비 수출 (THC E)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'VGM', label: '총중량검증비 (VGM)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CUST_E', label: '수출통관비 (Customs E)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'TRK_E', label: '내륙운송 수출 (Trucking E)', defaultUnit: 'Lump Sum', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    
+    { key: 'CRS', label: '컨테이너회송료 (C.R.S)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DO', label: '화물인도지시서 (D/O)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'THC_I', label: '터미널하역비 수입 (THC I)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'WHFG', label: '부두사용료 (Wharfage)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TSF', label: '터미널보안료 (TSF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'PSMF', label: '항만안전관리비 (PSMF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CCC', label: '컨테이너세정비 (CCC)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    
+    { key: 'INS', label: '적하보험료 (Cargo Ins)', defaultUnit: 'Lump Sum', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'CUST_I', label: '통관수수료 (Customs I)', defaultUnit: 'per B/L', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: true } }
+];
+
+const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per R/T', 'per TON', 'per Unit'];
+
 // ─────────────────────────────────────────────────────────────
 // 유틸리티
 // ─────────────────────────────────────────────────────────────
@@ -255,7 +288,8 @@ function loadSelectedQuote() {
             unit: c.unit,
             currency: c.currency,
             quotedForeign: quotedTotalForeign,
-            billedForeign: quotedTotalForeign, // 초기값은 견적과 동일하게 셋팅
+            amount: amt,
+            unitQty: qty,
             billedRate: (quote.exchangeRates && quote.exchangeRates[c.currency]) ? quote.exchangeRates[c.currency] : 0,
         });
     });
@@ -317,6 +351,14 @@ window.editSettlement = async function(id) {
 // ─────────────────────────────────────────────────────────────
 // 정산 그리드 렌더링 & 계산
 // ─────────────────────────────────────────────────────────────
+const COST_GROUPS = [
+    { key: 'ocean', label: '해상 운임 (O/F)' },
+    { key: 'export', label: '수출국 부대비용' },
+    { key: 'import', label: '수입국 부대비용' },
+    { key: 'customs', label: '통관/관세' },
+    { key: 'other', label: '기타 비용' }
+];
+
 function renderSettlementGrid() {
     const tbody = document.getElementById('settlementTableBody');
     let html = '';
@@ -324,19 +366,46 @@ function renderSettlementGrid() {
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
 
     state.doc.actualCosts.forEach((cost, idx) => {
-        // 견적 환율 적용하여 예상 원화 계산 (초기 렌더링용, 실제 계산은 calculateAll에서 수행하지만 뷰를 위해)
         let qRate = cost.currency === 'KRW' ? 1 : (snapRates[cost.currency] || 0);
         let qKrw = cost.quotedForeign * qRate;
 
-        let labelHtml = cost.label;
+        // 1. 그룹 선택
+        let groupHtml = '';
         if (cost.isCustom) {
-            labelHtml = `<input type="text" class="calc-input" value="${cost.label}" style="width:120px; padding:4px;" oninput="updateCost(${idx}, 'label', this.value)">`;
+            groupHtml = `<select class="calc-input" style="width:100%;" onchange="updateCost(${idx}, 'group', this.value)">`;
+            COST_GROUPS.forEach(g => {
+                groupHtml += `<option value="${g.key}" ${cost.group === g.key ? 'selected' : ''}>${g.label}</option>`;
+            });
+            groupHtml += `</select>`;
+        } else {
+            const grp = COST_GROUPS.find(g => g.key === cost.group);
+            groupHtml = grp ? grp.label : (cost.group === 'ocean' ? '해상 운임' : cost.group);
         }
 
-        let currHtml = '';
+        // 2. 항목명 선택/입력
+        let labelHtml = cost.label;
+        if (cost.isCustom) {
+            let optsHtml = `<option value="">-- 직접 입력 --</option>`;
+            DEFAULT_COSTS.filter(c => c.group === cost.group).forEach(c => {
+                optsHtml += `<option value="${c.key}" ${cost.key === c.key ? 'selected' : ''}>${c.label}</option>`;
+            });
+            
+            labelHtml = `
+                <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                    <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)">
+                        ${optsHtml}
+                    </select>
+                    <input type="text" class="calc-input" value="${cost.label}" style="width:100%; padding:4px;" oninput="updateCost(${idx}, 'label', this.value)">
+                </div>
+            `;
+        }
+
+        // 3. 단위 / 통화
+        let unitHtml = `<input type="text" class="calc-input" value="${cost.unit}" style="width:100%; text-align:center; padding:4px; margin-bottom:4px;" oninput="updateCost(${idx}, 'unit', this.value)">`;
+        let currHtml = `<span style="font-size:0.9em; font-weight:600; color:var(--text-secondary); display:block; text-align:center;">${cost.currency}</span>`;
         if (cost.isCustom) {
             currHtml = `
-                <select class="calc-input" style="padding:6px; min-width:60px;" onchange="updateCost(${idx}, 'currency', this.value)">
+                <select class="calc-input" style="padding:4px; width:100%; text-align:center;" onchange="updateCost(${idx}, 'currency', this.value)">
                     <option value="KRW" ${cost.currency==='KRW'?'selected':''}>KRW</option>
                     <option value="USD" ${cost.currency==='USD'?'selected':''}>USD</option>
                     <option value="CNY" ${cost.currency==='CNY'?'selected':''}>CNY</option>
@@ -346,45 +415,66 @@ function renderSettlementGrid() {
             `;
         }
 
+        // 4. 합계
+        let amt = parseFloat(cost.amount) || 0;
+        let qty = parseFloat(cost.unitQty) || 1;
+        let billedForeign = amt * qty;
+
         html += `
             <tr class="draggable-row" draggable="true" data-idx="${idx}"
-                ondragstart="handleDragStart(event)"
-                ondragover="handleDragOver(event)"
-                ondragenter="handleDragEnter(event)"
-                ondragleave="handleDragLeave(event)"
-                ondrop="handleDrop(event, ${idx})"
-                ondragend="handleDragEnd(event)">
+                ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)"
+                ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)">
+                
+                <!-- 1. 그룹 -->
                 <td class="col-readonly">
                     <div style="display:flex; align-items:center; gap:5px;">
                         <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
                         ${cost.isCustom ? `<button class="btn-icon" style="color:var(--danger-color); padding:0; display:flex; align-items:center;" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>` : ''}
-                        ${labelHtml}
+                        ${groupHtml}
                     </div>
                 </td>
+                
+                <!-- 2. 항목명 -->
+                <td class="col-readonly">${labelHtml}</td>
+                
+                <!-- 3. 입력: 단위/통화 -->
                 <td class="col-readonly" style="text-align:center;">
-                    ${cost.isCustom ? `<input type="text" class="calc-input" value="${cost.unit}" style="width:70px; text-align:center; padding:4px;" oninput="updateCost(${idx}, 'unit', this.value)">` : cost.unit}
+                    ${unitHtml}
+                    ${currHtml}
                 </td>
                 
-                <!-- 예상 (읽기 전용) -->
+                <!-- 4. 입력: 수량 -->
+                <td>
+                    <input type="number" class="calc-input" step="0.01" value="${qty}" oninput="updateCost(${idx}, 'unitQty', this.value)" style="width:100%; text-align:right;">
+                </td>
+                
+                <!-- 5. 입력: 단가 -->
+                <td>
+                    <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)" style="width:100%; text-align:right;">
+                </td>
+                
+                <!-- 6. 예상 -->
                 <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : cost.currency}</td>
-                <td class="col-num col-readonly">${formatNum(qRate, 2)}</td>
                 <td class="col-num col-readonly" style="font-weight:600;">${formatNum(qKrw)}</td>
                 
-                <!-- 실제 (입력) -->
-                <td>
-                    <div style="display:flex; align-items:center; gap:5px; position:relative;">
-                        ${cost.isCustom ? currHtml : `<span style="position:absolute; left:10px; color:var(--text-secondary); font-weight:500; font-size:0.8em; pointer-events:none;">${cost.currency}</span>`}
-                        <input type="number" class="calc-input billed-foreign" step="0.01" value="${cost.billedForeign}" oninput="updateCost(${idx}, 'billedForeign', this.value)" style="width:100%; border:1px solid var(--border-color); border-radius:4px; text-align:right; font-weight:600; padding: 6px 6px 6px ${cost.isCustom ? '6px' : '35px'};">
-                    </div>
+                <!-- 7. 실제 청구 외화 -->
+                <td class="col-num" style="background:#e0f2fe; color:#0369a1; font-weight:600;">
+                    ${formatNum(billedForeign, 2)}
                 </td>
+                
+                <!-- 8. 인보이스 환율 -->
                 <td>
                     <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${cost.currency === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
                 </td>
+                
+                <!-- 9. 실제 원화 -->
                 <td class="col-num" style="font-weight:600; background:#f8fafc;" id="krw_${idx}">0</td>
                 
-                <!-- 분석 -->
-                <td class="col-num val-variance" id="var_${idx}">0</td>
-                <td class="col-num val-gainloss" id="gl_${idx}">0</td>
+                <!-- 10. 분석 -->
+                <td class="col-num" style="line-height:1.4;">
+                    <div class="val-variance" id="var_${idx}">0</div>
+                    <div class="val-gainloss" id="gl_${idx}" style="font-size:0.85em;">0</div>
+                </td>
             </tr>
         `;
     });
@@ -392,34 +482,144 @@ function renderSettlementGrid() {
     tbody.innerHTML = html;
 }
 
-window.updateCost = function(idx, field, value) {
-    if (field === 'billedForeign' || field === 'billedRate') {
-        state.doc.actualCosts[idx][field] = parseFloat(value) || 0;
+window.onCostKeyChange = function(idx, key) {
+    const cost = state.doc.actualCosts[idx];
+    if (key === '') {
+        cost.key = 'CUSTOM_' + Date.now();
+        cost.label = '';
     } else {
-        state.doc.actualCosts[idx][field] = value;
-        if (field === 'currency') {
-            if (value === 'KRW') {
-                state.doc.actualCosts[idx].billedRate = 1;
-            } else {
-                const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
-                const paidRates = state.doc.paidRates || {};
-                state.doc.actualCosts[idx].billedRate = paidRates[value] || snapRates[value] || 0;
-            }
-            renderSettlementGrid();
+        const def = DEFAULT_COSTS.find(c => c.key === key);
+        if (def) {
+            cost.key = def.key;
+            cost.label = def.label;
+            cost.unit = def.defaultUnit;
         }
+    }
+    renderSettlementGrid();
+    calculateAll();
+};
+
+window.updateCost = function(idx, field, value) {
+    if (field === 'amount' || field === 'unitQty' || field === 'billedRate') {
+    const cost = state.doc.actualCosts[idx];
+    if (['amount', 'unitQty', 'billedRate'].includes(field)) {
+        cost[field] = parseFloat(value) || 0;
+    } else {
+        cost[field] = value;
+    }
+    
+    if (field === 'group' && cost.isCustom) {
+        cost.key = 'CUSTOM_' + Date.now();
+        cost.label = '';
+        renderSettlementGrid();
+    }
+    
+    if (field === 'currency') {
+        if (value === 'KRW') cost.billedRate = 1;
+        else {
+            const snap = state.doc.quotationSnapshot.exchangeRates || {};
+            const paid = state.doc.paidRates || {};
+            cost.billedRate = paid[value] || snap[value] || 0;
+        }
+        renderSettlementGrid();
     }
     calculateAll();
 };
 
-window.addCustomCost = function() {
+function calculateAll() {
+    let totalEstKrw = 0;
+    let totalBilledKrw = 0;
+    let totalPaidKrw = 0;
+    let totalDutiableKrw = 0;
+    
+    const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+    const paidRates = state.doc.paidRates || {};
+    
+    state.doc.actualCosts.forEach((cost, idx) => {
+        const isKrw = cost.currency === 'KRW';
+        
+        let amt = parseFloat(cost.amount) || 0;
+        let qty = parseFloat(cost.unitQty) || 1;
+        let billedForeign = amt * qty;
+
+        // 1. 예상 원화
+        let qRate = isKrw ? 1 : (snapRates[cost.currency] || 0);
+        let qKrw = cost.quotedForeign * qRate;
+        totalEstKrw += qKrw;
+        
+        // 2. 청구 원화 (인보이스 기준)
+        let bRate = isKrw ? 1 : (cost.billedRate || 0);
+        let bKrw = billedForeign * bRate;
+        totalBilledKrw += bKrw;
+        
+        // 3. 실제 송금 원화 (송금 환율 적용)
+        let pRate = isKrw ? 1 : (paidRates[cost.currency] || bRate);
+        if (pRate === 0 && !isKrw) pRate = bRate; 
+        let pKrw = billedForeign * pRate;
+        totalPaidKrw += pKrw;
+        
+        if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
+            totalDutiableKrw += pKrw;
+        }
+        
+        // 4. 분석: 물류비 증감액 (Cost Variance) = 청구 원화 - 예상 원화
+        let variance = bKrw - qKrw;
+        
+        // 5. 분석: 환차손익 (Exchange Gain/Loss) = (송금 환율 - 인보이스 환율) * 외화금액
+        let gainLoss = isKrw ? 0 : (bRate - pRate) * billedForeign;
+        
+        // Update DOM
+        const elKrw = document.getElementById(`krw_${idx}`);
+        if (elKrw) elKrw.innerText = formatNum(bKrw);
+        
+        const elVar = document.getElementById(`var_${idx}`);
+        if (elVar) {
+            elVar.innerText = variance > 0 ? '+ ₩ ' + formatNum(variance) : '₩ ' + formatNum(variance);
+            elVar.className = `col-num val-variance ${variance > 0 ? 'positive' : (variance < 0 ? 'negative' : '')}`;
+        }
+        
+        const elGl = document.getElementById(`gl_${idx}`);
+        if (elGl) {
+            elGl.innerText = gainLoss > 0 ? '+ ₩ ' + formatNum(gainLoss) : '₩ ' + formatNum(gainLoss);
+            elGl.className = `col-num val-gainloss ${gainLoss > 0 ? 'gain' : (gainLoss < 0 ? 'loss' : '')}`;
+        }
+        
+        // 저장
+        cost.billedKrw = bKrw;
+        cost.variance = variance;
+        cost.gainLoss = gainLoss;
+    });
+
+    // 대시보드 업데이트
+    document.getElementById('dashTotalEstimated').innerText = '₩ ' + formatNum(totalEstKrw);
+    document.getElementById('dashTotalBilled').innerText = '₩ ' + formatNum(totalBilledKrw);
+    document.getElementById('dashTotalPaid').innerText = '₩ ' + formatNum(totalPaidKrw);
+    
+    const totalVariance = totalBilledKrw - totalEstKrw;
+    const dashVar = document.getElementById('dashCostVariance');
+    dashVar.innerText = totalVariance > 0 ? '+ ₩ ' + formatNum(totalVariance) : '₩ ' + formatNum(totalVariance);
+    dashVar.style.color = totalVariance > 0 ? '#dc2626' : (totalVariance < 0 ? '#16a34a' : '#0f172a');
+    
+    let totalGainLoss = 0;
+    state.doc.actualCosts.forEach(c => totalGainLoss += (c.gainLoss || 0));
+    const dashGl = document.getElementById('dashExchangeGainLoss');
+    dashGl.innerText = totalGainLoss > 0 ? '+ ₩ ' + formatNum(totalGainLoss) : '₩ ' + formatNum(totalGainLoss);
+    dashGl.style.color = totalGainLoss > 0 ? '#a7f3d0' : (totalGainLoss < 0 ? '#fecaca' : '#fff');
+
+    renderCostResultTable(totalPaidKrw, totalDutiableKrw);
+}
+
+window.addCustomCost = function(group) {
     state.doc.actualCosts.push({
         id: generateId(),
         key: 'CUSTOM_' + Date.now(),
-        label: '추가 청구 항목',
+        group: group || 'import',
+        label: '사용자 추가 항목',
         unit: 'Lump Sum',
         currency: 'KRW',
         quotedForeign: 0,
-        billedForeign: 0,
+        amount: 0,
+        unitQty: 1,
         billedRate: 1,
         isCustom: true
     });
