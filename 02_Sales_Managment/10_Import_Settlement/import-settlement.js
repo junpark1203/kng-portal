@@ -500,7 +500,6 @@ window.onCostKeyChange = function(idx, key) {
 };
 
 window.updateCost = function(idx, field, value) {
-    if (field === 'amount' || field === 'unitQty' || field === 'billedRate') {
     const cost = state.doc.actualCosts[idx];
     if (['amount', 'unitQty', 'billedRate'].includes(field)) {
         cost[field] = parseFloat(value) || 0;
@@ -525,89 +524,6 @@ window.updateCost = function(idx, field, value) {
     }
     calculateAll();
 };
-
-function calculateAll() {
-    let totalEstKrw = 0;
-    let totalBilledKrw = 0;
-    let totalPaidKrw = 0;
-    let totalDutiableKrw = 0;
-    
-    const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
-    const paidRates = state.doc.paidRates || {};
-    
-    state.doc.actualCosts.forEach((cost, idx) => {
-        const isKrw = cost.currency === 'KRW';
-        
-        let amt = parseFloat(cost.amount) || 0;
-        let qty = parseFloat(cost.unitQty) || 1;
-        let billedForeign = amt * qty;
-
-        // 1. 예상 원화
-        let qRate = isKrw ? 1 : (snapRates[cost.currency] || 0);
-        let qKrw = cost.quotedForeign * qRate;
-        totalEstKrw += qKrw;
-        
-        // 2. 청구 원화 (인보이스 기준)
-        let bRate = isKrw ? 1 : (cost.billedRate || 0);
-        let bKrw = billedForeign * bRate;
-        totalBilledKrw += bKrw;
-        
-        // 3. 실제 송금 원화 (송금 환율 적용)
-        let pRate = isKrw ? 1 : (paidRates[cost.currency] || bRate);
-        if (pRate === 0 && !isKrw) pRate = bRate; 
-        let pKrw = billedForeign * pRate;
-        totalPaidKrw += pKrw;
-        
-        if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
-            totalDutiableKrw += pKrw;
-        }
-        
-        // 4. 분석: 물류비 증감액 (Cost Variance) = 청구 원화 - 예상 원화
-        let variance = bKrw - qKrw;
-        
-        // 5. 분석: 환차손익 (Exchange Gain/Loss) = (송금 환율 - 인보이스 환율) * 외화금액
-        let gainLoss = isKrw ? 0 : (bRate - pRate) * billedForeign;
-        
-        // Update DOM
-        const elKrw = document.getElementById(`krw_${idx}`);
-        if (elKrw) elKrw.innerText = formatNum(bKrw);
-        
-        const elVar = document.getElementById(`var_${idx}`);
-        if (elVar) {
-            elVar.innerText = variance > 0 ? '+ ₩ ' + formatNum(variance) : '₩ ' + formatNum(variance);
-            elVar.className = `col-num val-variance ${variance > 0 ? 'positive' : (variance < 0 ? 'negative' : '')}`;
-        }
-        
-        const elGl = document.getElementById(`gl_${idx}`);
-        if (elGl) {
-            elGl.innerText = gainLoss > 0 ? '+ ₩ ' + formatNum(gainLoss) : '₩ ' + formatNum(gainLoss);
-            elGl.className = `col-num val-gainloss ${gainLoss > 0 ? 'gain' : (gainLoss < 0 ? 'loss' : '')}`;
-        }
-        
-        // 저장
-        cost.billedKrw = bKrw;
-        cost.variance = variance;
-        cost.gainLoss = gainLoss;
-    });
-
-    // 대시보드 업데이트
-    document.getElementById('dashTotalEstimated').innerText = '₩ ' + formatNum(totalEstKrw);
-    document.getElementById('dashTotalBilled').innerText = '₩ ' + formatNum(totalBilledKrw);
-    document.getElementById('dashTotalPaid').innerText = '₩ ' + formatNum(totalPaidKrw);
-    
-    const totalVariance = totalBilledKrw - totalEstKrw;
-    const dashVar = document.getElementById('dashCostVariance');
-    dashVar.innerText = totalVariance > 0 ? '+ ₩ ' + formatNum(totalVariance) : '₩ ' + formatNum(totalVariance);
-    dashVar.style.color = totalVariance > 0 ? '#dc2626' : (totalVariance < 0 ? '#16a34a' : '#0f172a');
-    
-    let totalGainLoss = 0;
-    state.doc.actualCosts.forEach(c => totalGainLoss += (c.gainLoss || 0));
-    const dashGl = document.getElementById('dashExchangeGainLoss');
-    dashGl.innerText = totalGainLoss > 0 ? '+ ₩ ' + formatNum(totalGainLoss) : '₩ ' + formatNum(totalGainLoss);
-    dashGl.style.color = totalGainLoss > 0 ? '#a7f3d0' : (totalGainLoss < 0 ? '#fecaca' : '#fff');
-
-    renderCostResultTable(totalPaidKrw, totalDutiableKrw);
-}
 
 window.addCustomCost = function(group) {
     state.doc.actualCosts.push({
