@@ -343,6 +343,27 @@
     font-size: 1rem;
 }
 
+/* Drag and Drop */
+.draggable-row.dragging {
+    opacity: 0.5;
+    background: #f8fafc;
+}
+
+.draggable-row.drag-over {
+    border-top: 2px solid var(--primary);
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #94a3b8;
+    font-size: 1.2rem;
+    margin-right: 5px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 /* Toast 알림 */
 .toast-container {
     position: fixed;

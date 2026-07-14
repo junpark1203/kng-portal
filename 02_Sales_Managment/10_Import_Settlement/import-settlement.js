@@ -326,8 +326,19 @@ function renderSettlementGrid() {
         let qKrw = cost.quotedForeign * qRate;
 
         html += `
-            <tr data-idx="${idx}">
-                <td class="col-readonly">${cost.label}</td>
+            <tr class="draggable-row" draggable="true" data-idx="${idx}"
+                ondragstart="handleDragStart(event)"
+                ondragover="handleDragOver(event)"
+                ondragenter="handleDragEnter(event)"
+                ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event, ${idx})"
+                ondragend="handleDragEnd(event)">
+                <td class="col-readonly">
+                    <div style="display:flex; align-items:center;">
+                        <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
+                        ${cost.label}
+                    </div>
+                </td>
                 <td class="col-readonly" style="text-align:center;">${cost.unit}</td>
                 
                 <!-- 예상 (읽기 전용) -->
@@ -360,6 +371,51 @@ function renderSettlementGrid() {
 window.updateCost = function(idx, field, value) {
     state.doc.actualCosts[idx][field] = parseFloat(value) || 0;
     calculateAll();
+};
+
+// --- Drag and Drop Handlers ---
+window.handleDragStart = function(e) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', e.currentTarget.dataset.idx);
+    e.currentTarget.classList.add('dragging');
+};
+
+window.handleDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleDragEnter = function(e) {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (tr) tr.classList.add('drag-over');
+};
+
+window.handleDragLeave = function(e) {
+    const tr = e.target.closest('tr');
+    if (tr && !tr.contains(e.relatedTarget)) {
+        tr.classList.remove('drag-over');
+    }
+};
+
+window.handleDrop = function(e, toIdx) {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (tr) tr.classList.remove('drag-over');
+    
+    const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+    if (isNaN(fromIdx) || fromIdx === toIdx) return;
+    
+    const movedItem = state.doc.actualCosts.splice(fromIdx, 1)[0];
+    state.doc.actualCosts.splice(toIdx, 0, movedItem);
+    
+    renderSettlementGrid();
+    calculateAll();
+};
+
+window.handleDragEnd = function(e) {
+    e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 };
 
 function calculateAll() {
