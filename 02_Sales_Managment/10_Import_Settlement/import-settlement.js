@@ -393,6 +393,16 @@ window.updateCost = function(idx, field, value) {
         state.doc.actualCosts[idx][field] = parseFloat(value) || 0;
     } else {
         state.doc.actualCosts[idx][field] = value;
+        if (field === 'currency') {
+            if (value === 'KRW') {
+                state.doc.actualCosts[idx].billedRate = 1;
+            } else {
+                const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+                const paidRates = state.doc.paidRates || {};
+                state.doc.actualCosts[idx].billedRate = paidRates[value] || snapRates[value] || 0;
+            }
+            renderSettlementGrid();
+        }
     }
     calculateAll();
 };
