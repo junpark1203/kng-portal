@@ -230,7 +230,8 @@ function loadSelectedQuote() {
             exchangeRates: quote.exchangeRates || {},
             forwarderName: forwarder.name,
             incoterm: term,
-            costs: forwarder.costs.filter(c => c.applyTo[term] === true)
+            costs: forwarder.costs.filter(c => c.applyTo[term] === true),
+            items: quote.items || []
         },
         title: quote.title + ' 정산',
         settlementDate: new Date().toISOString().split('T')[0],
@@ -249,6 +250,7 @@ function loadSelectedQuote() {
         state.doc.actualCosts.push({
             id: generateId(),
             key: c.key,
+            group: c.group || 'import', // 추가: 과세표준 구분을 위해 그룹 저장
             label: c.label,
             unit: c.unit,
             currency: c.currency,
@@ -359,7 +361,9 @@ function renderSettlementGrid() {
                         ${labelHtml}
                     </div>
                 </td>
-                <td class="col-readonly" style="text-align:center;">${cost.unit}</td>
+                <td class="col-readonly" style="text-align:center;">
+                    ${cost.isCustom ? `<input type="text" class="calc-input" value="${cost.unit}" style="width:70px; text-align:center; padding:4px;" oninput="updateCost(${idx}, 'unit', this.value)">` : cost.unit}
+                </td>
                 
                 <!-- 예상 (읽기 전용) -->
                 <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : cost.currency}</td>
@@ -478,6 +482,7 @@ function calculateAll() {
     let totalEstKrw = 0;
     let totalBilledKrw = 0;
     let totalPaidKrw = 0;
+    let totalDutiableKrw = 0;
     
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
     const paidRates = state.doc.paidRates || {};
@@ -500,6 +505,10 @@ function calculateAll() {
         if (pRate === 0 && !isKrw) pRate = bRate; 
         let pKrw = cost.billedForeign * pRate;
         totalPaidKrw += pKrw;
+        
+        if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
+            totalDutiableKrw += pKrw;
+        }
         
         // 4. 분석: 물류비 증감액 (Cost Variance) = 청구 원화 - 예상 원화
         let variance = bKrw - qKrw;
@@ -542,6 +551,138 @@ function calculateAll() {
     const dashGl = document.getElementById('dashExchangeGainLoss');
     dashGl.innerText = totalGainLoss > 0 ? '+ ₩ ' + formatNum(totalGainLoss) : '₩ ' + formatNum(totalGainLoss);
     dashGl.style.color = totalGainLoss > 0 ? '#a7f3d0' : (totalGainLoss < 0 ? '#fecaca' : '#fff'); // Primary BG 위에 표시되므로 밝은 톤
+
+    renderCostResultTable(totalPaidKrw, totalDutiableKrw);
+}
+
+function renderCostResultTable(totalPaidKrw, totalDutiableAncillaryKrw) {
+    const tbodyValue = document.getElementById('costTableBodyValue');
+    const tbodyVolume = document.getElementById('costTableBodyVolume');
+    const section = document.getElementById('costResultSection');
+    
+    if (!state.doc.quotationSnapshot || !state.doc.quotationSnapshot.items || state.doc.quotationSnapshot.items.length === 0) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    
+    if (section) section.style.display = 'block';
+
+    const items = state.doc.quotationSnapshot.items;
+    const term = state.doc.quotationSnapshot.incoterm;
+    const isLCL = state.doc.quotationSnapshot.shipmentType === 'LCL';
+    const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+    const paidRates = state.doc.paidRates || {};
+
+    let totalInvoiceKrw = 0;
+    items.forEach(item => {
+        const p = item.prices && item.prices[term] ? item.prices[term] : null;
+        if (p && p.currency && p.unitPrice) {
+            const pRate = paidRates[p.currency] || snapRates[p.currency] || 1;
+            totalInvoiceKrw += (p.unitPrice * (item.qty || 0) * pRate);
+        }
+    });
+
+    const allocationRatio = totalInvoiceKrw > 0 ? (totalPaidKrw / totalInvoiceKrw) : 0;
+    let htmlValue = '';
+
+    let totalModulus = 0;
+    items.forEach(item => {
+        const p = item.prices && item.prices[term] ? item.prices[term] : null;
+        if (p && p.unitPrice > 0) {
+            if (isLCL) {
+                totalModulus += (item.rt || 0);
+            } else {
+                if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
+            }
+        }
+    });
+    let htmlVolume = '';
+
+    items.forEach(item => {
+        const p = item.prices && item.prices[term] ? item.prices[term] : null;
+        if (!p || !p.unitPrice || p.unitPrice === 0) {
+            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            return;
+        }
+
+        const unitPriceFC = p.unitPrice;
+        const exRate = paidRates[p.currency] || snapRates[p.currency] || 1;
+        const dutyRate = item.dutyRate || 0;
+
+        // 가치비례 배분
+        const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
+        const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+        const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
+
+        const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
+        const baseCostKrw_Value = baseCostFC_Value * exRate;
+
+        // 관세 산출
+        const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * exRate;
+        const dutyKrw_Value = cifValueKrw_Value * (dutyRate / 100);
+
+        const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
+
+        htmlValue += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${formatNum(item.qty)}</td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
+            </tr>
+        `;
+
+        // 체적/운임톤 배분
+        let allocatedFC_Volume_Total = 0;
+        let allocatedFC_Volume_Dutiable = 0;
+        let volumeShareRatio = 0;
+
+        if (totalModulus > 0 && item.qty > 0) {
+            if (isLCL) {
+                volumeShareRatio = (item.rt || 0) / totalModulus;
+            } else {
+                if (item.maxLoad > 0) {
+                    volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+                }
+            }
+            const itemTotalAncillaryKrw = totalPaidKrw * volumeShareRatio;
+            const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+
+            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+        }
+
+        const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume_Total;
+        const baseCostKrw_Volume = baseCostFC_Volume * exRate;
+
+        const cifValueKrw_Volume = (unitPriceFC + allocatedFC_Volume_Dutiable) * exRate;
+        const dutyKrw_Volume = cifValueKrw_Volume * (dutyRate / 100);
+
+        const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
+
+        const shareText = isLCL ? 
+            ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
+            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
+
+        htmlVolume += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${shareText}</td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume_Total, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
+            </tr>
+        `;
+    });
+
+    if (tbodyValue) tbodyValue.innerHTML = htmlValue;
+    if (tbodyVolume) tbodyVolume.innerHTML = htmlVolume;
 }
 
 // ─────────────────────────────────────────────────────────────

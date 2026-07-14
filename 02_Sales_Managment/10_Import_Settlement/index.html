@@ -218,6 +218,64 @@
                     </div>
                 </section>
 
+                <!-- SECTION 5: 품목별 실수입원가 산출 -->
+                <section class="edit-section" id="costResultSection" style="display:none;">
+                    <h3>4. 품목별 실수입원가 산출 (실 청구비용 기준)</h3>
+                    
+                    <h4 style="margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
+                        4-1. 실수입원가 (가치비례 배분법)
+                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
+                            <span class="tooltip-text">품목의 [단가]가 전체 물품대금에서 차지하는 비율에 따라 전체 부대비용을 배분합니다.<br>동일 규격이나 단가가 높은 고부가가치 상품에 적합합니다.</span>
+                        </i>
+                    </h4>
+                    <div class="table-responsive">
+                        <table class="cost-table" id="costTableValue">
+                            <thead>
+                                <tr>
+                                    <th>품명</th>
+                                    <th class="col-num">수량</th>
+                                    <th class="col-num">단위당 단가 (외화)</th>
+                                    <th class="col-num">배분된 부대비용 (외화)</th>
+                                    <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num">
+                                        관세 (KRW)
+                                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal; margin-left:3px;">
+                                            <span class="tooltip-text" style="width:250px;">과세표준(CIF 가액) 기준 산출:<br>(물품대금 + 과세대상 부대비용) × 관세율<br>*정산 시 입력된 실제 송금 환율이 적용됩니다.</span>
+                                        </i>
+                                    </th>
+                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costTableBodyValue">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 style="margin-top:30px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
+                        4-2. 실수입원가 (체적/운임톤 배분법)
+                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
+                            <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.<br>FCL 화물의 부피/중량 편차를 보정할 때 유리합니다.</span>
+                        </i>
+                    </h4>
+                    <div class="table-responsive">
+                        <table class="cost-table" id="costTableVolume">
+                            <thead>
+                                <tr>
+                                    <th>품명</th>
+                                    <th class="col-num">수량 / 점유율</th>
+                                    <th class="col-num">단위당 단가 (외화)</th>
+                                    <th class="col-num">배분된 부대비용 (외화)</th>
+                                    <th class="col-num">실수입원가 (외화)</th>
+                                    <th class="col-num">관세 (KRW)</th>
+                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costTableBodyVolume">
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <div class="bottom-actions">
                     <button class="btn-outline btn-large" id="btnCancelEditBottom">취소</button>
                     <button class="btn-primary btn-large" id="btnSaveSettlementBottom"><i class='bx bx-save'></i> 정산 저장</button>
