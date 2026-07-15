@@ -423,7 +423,7 @@ function showPrintPreview() {
         const rawProducts = card.querySelector('.input-mainProducts').value || '-';
         const rawApplicability = card.querySelector('.input-applicability').value || '-';
         const rawCounseling = card.querySelector('.input-counselingContent').value || '-';
-        const rawRemarks = card.querySelector('.input-remarks').value || '-';
+        const rawRemarks = card.querySelector('.input-remarks').value || '';
 
         const boothHtml = `
             <div class="booth-print-section">
