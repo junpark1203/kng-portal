@@ -35,7 +35,7 @@ const verifyToken = async (req, res, next) => {
 
     // 이미지 프록시 등 인증 없이 접근해야 하는 경로 예외 처리
     const publicPaths = ['/exhibition-report/proxy'];
-    if (publicPaths.some(p => req.path.includes(p))) {
+    if (publicPaths.some(p => req.originalUrl && req.originalUrl.includes(p))) {
         return next();
     }
 
