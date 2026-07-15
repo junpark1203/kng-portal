@@ -45,7 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     document.getElementById('btnNewReport').addEventListener('click', showNewForm);
     document.getElementById('btnBackToList').addEventListener('click', () => switchView('list'));
-    document.getElementById('btnSaveReport').addEventListener('click', saveReport);
+    
+    document.getElementById('btnSaveReport').addEventListener('click', () => saveReport(true));
+    const btnTempSave = document.getElementById('btnTempSaveReport');
+    if (btnTempSave) btnTempSave.addEventListener('click', () => saveReport(false));
+    
     document.getElementById('btnAddBooth').addEventListener('click', () => addBoothForm());
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
     document.getElementById('selectAll').addEventListener('change', (e) => {
@@ -274,7 +278,7 @@ function updateBoothIndices() {
     });
 }
 
-async function saveReport() {
+async function saveReport(exitAfterSave = true) {
     if (!form.reportValidity()) return;
     
     const booths = [];
@@ -312,8 +316,18 @@ async function saveReport() {
         });
         
         if (!res.ok) throw new Error('저장에 실패했습니다.');
+        const result = await res.json();
+        
+        if (!editingId && result.id) {
+            editingId = result.id;
+            document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 보고서 수정";
+        }
+        
         showToast('보고서가 저장되었습니다.', 'success');
-        switchView('list');
+        
+        if (exitAfterSave) {
+            switchView('list');
+        }
     } catch(e) {
         showToast(e.message, 'error');
     }
