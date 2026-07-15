@@ -1,6 +1,17 @@
 // report.js
 
-const API_URL = '/api/exhibition-report';
+// --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
+async function authFetch(url, options = {}) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!options.headers) options.headers = {};
+    if (token && !options.headers['Authorization']) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, options);
+}
+
+const API_URL = 'https://kng.junparks.com/api/exhibition-report';
 let currentReports = [];
 let editingId = null;
 
@@ -53,7 +64,7 @@ function switchView(view) {
 async function loadReports() {
     try {
         reportListBody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>';
-        const res = await fetch(API_URL);
+        const res = await authFetch(API_URL);
         if (!res.ok) throw new Error('목록을 불러오지 못했습니다.');
         
         currentReports = await res.json();
@@ -101,7 +112,7 @@ function showNewForm() {
 
 async function editReport(id) {
     try {
-        const res = await fetch(`${API_URL}/${id}`);
+        const res = await authFetch(`${API_URL}/${id}`);
         if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
         const report = await res.json();
         
@@ -176,7 +187,10 @@ function addBoothForm(data = null) {
         files.forEach(f => formData.append('photos', f));
         
         try {
-            const res = await fetch(`${API_URL}/upload`, {
+            // Upload endpoint might not need auth if we allow public upload, but authFetch is safer if it's protected.
+            // Wait, server.js has `app.use('/api/', verifyToken);` so upload needs it too.
+            // However, FormData means we shouldn't set Content-Type header. authFetch only adds Authorization.
+            const res = await authFetch(`${API_URL}/upload`, {
                 method: 'POST',
                 body: formData
             });
@@ -254,7 +268,7 @@ async function saveReport() {
     const url = editingId ? `${API_URL}/${editingId}` : API_URL;
     
     try {
-        const res = await fetch(url, {
+        const res = await authFetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -279,7 +293,7 @@ async function deleteSelected() {
     
     const ids = Array.from(checks).map(c => c.value);
     try {
-        const res = await fetch(`${API_URL}/delete`, {
+        const res = await authFetch(`${API_URL}/delete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ids })
