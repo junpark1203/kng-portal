@@ -127,8 +127,14 @@
                 </div>
                 <div class="form-row">
                     <div class="fg" style="flex: 1;">
-                        <label>사진 업로드 (최대 5장)</label>
-                        <input type="file" class="input-photos" accept="image/*" multiple>
+                        <label>사진 등록 (최대 5장)</label>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                            <input type="file" class="input-photos" accept="image/*" multiple style="flex: 1; min-width: 200px;">
+                            <div style="display: flex; flex: 1; min-width: 250px; gap: 5px;">
+                                <input type="text" class="input-photo-url" placeholder="이미지 URL 주소 입력" style="flex: 1; margin: 0;">
+                                <button type="button" class="btn-outline btn-add-url-photo" style="white-space: nowrap;">URL 추가</button>
+                            </div>
+                        </div>
                         <div class="photo-preview-container"></div>
                         <input type="hidden" class="input-uploaded-urls">
                     </div>
@@ -156,6 +162,6 @@
     </template>
 
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="report.js?v=4"></script>
+    <script type="module" src="report.js?v=5"></script>
 </body>
 </html>

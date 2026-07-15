@@ -219,6 +219,32 @@ function addBoothForm(data = null) {
         fileInput.value = ''; // 초기화
     });
 
+    // URL 직접 추가 로직
+    const urlInput = card.querySelector('.input-photo-url');
+    const btnAddUrl = card.querySelector('.btn-add-url-photo');
+    if (urlInput && btnAddUrl) {
+        btnAddUrl.addEventListener('click', () => {
+            const url = urlInput.value.trim();
+            if (!url) return;
+            
+            if (uploadedUrls.length >= 5) {
+                showToast('사진은 한 업체당 최대 5장까지만 업로드 가능합니다.', 'error');
+                urlInput.value = '';
+                return;
+            }
+
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showToast('올바른 이미지 URL을 입력하세요. (http 또는 https로 시작)', 'warning');
+                return;
+            }
+
+            uploadedUrls.push(url);
+            urlsInput.value = JSON.stringify(uploadedUrls);
+            renderThumbnails();
+            urlInput.value = '';
+        });
+    }
+
     function renderThumbnails() {
         previewContainer.innerHTML = '';
         uploadedUrls.forEach((url, i) => {
