@@ -33,6 +33,12 @@ try {
 const verifyToken = async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
 
+    // 이미지 프록시 등 인증 없이 접근해야 하는 경로 예외 처리
+    const publicPaths = ['/exhibition-report/proxy'];
+    if (publicPaths.some(p => req.path.includes(p))) {
+        return next();
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: '인증 토큰이 누락되었습니다. (Unauthorized)' });
