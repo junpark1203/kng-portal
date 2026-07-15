@@ -65,7 +65,7 @@ async function loadReports() {
     try {
         reportListBody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>';
         const res = await authFetch(API_URL);
-        if (!res.ok) throw new Error('목록을 불러오지 못했습니다.');
+        if (!res.ok) { const txt = await res.text(); throw new Error(서버 응답 오류 (): ); }
         
         currentReports = await res.json();
         renderList();
