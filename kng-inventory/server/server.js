@@ -42,6 +42,10 @@ const { initContractManagementTables } = contractManagementRoutes;
 const siteConsumablesRoutes = require('./routes/site-consumables');
 const { initSiteConsumablesTables } = siteConsumablesRoutes;
 
+// 전시회 참관 보고서 모듈
+const exhibitionReportRoutes = require('./routes/exhibition-report');
+const { initExhibitionReportTables } = exhibitionReportRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -126,6 +130,11 @@ app.use('/api/contracts/uploads', express.static(CONTRACT_UPLOAD_DIR, { fallthro
 const SITE_CONSUMABLE_UPLOAD_DIR = path.join(UPLOAD_DIR, 'site-consumables');
 if (!fs.existsSync(SITE_CONSUMABLE_UPLOAD_DIR)) fs.mkdirSync(SITE_CONSUMABLE_UPLOAD_DIR, { recursive: true });
 app.use('/api/site-consumables/uploads', express.static(SITE_CONSUMABLE_UPLOAD_DIR, { fallthrough: false }));
+
+// 전시회 참관 보고서 첨부파일 (사진 등) — 인증 없이 다운로드 허용 (미리보기/인쇄용)
+const EXHIBITION_REPORT_UPLOAD_DIR = path.join(UPLOAD_DIR, 'exhibition-reports');
+if (!fs.existsSync(EXHIBITION_REPORT_UPLOAD_DIR)) fs.mkdirSync(EXHIBITION_REPORT_UPLOAD_DIR, { recursive: true });
+app.use('/api/exhibition-report/uploads', express.static(EXHIBITION_REPORT_UPLOAD_DIR, { fallthrough: false }));
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -225,6 +234,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initSiteConsumablesTables(db).then(() => {
             siteConsumablesRoutes.setDb(db);
             console.log('site_consumables API 준비 완료');
+        });
+        // 전시회 참관 보고서 테이블 초기화 + 라우트에 DB 주입
+        initExhibitionReportTables(db).then(() => {
+            exhibitionReportRoutes.setDb(db);
+            console.log('exhibition_report API 준비 완료');
         });
     }
 });
@@ -942,6 +956,9 @@ app.use('/api/import-settlement', importSettlementRoutes);
 
 // 현장별 소모품 규격 관리
 app.use('/api/site-consumables', siteConsumablesRoutes.router);
+
+// 전시회 참관 보고서
+app.use('/api/exhibition-report', exhibitionReportRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

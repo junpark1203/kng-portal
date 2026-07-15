@@ -1,0 +1,303 @@
+/* 뷰 전환 */
+.view-section {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.view-section.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 카드 UI 확장 */
+.card {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.report-meta {
+    padding: 20px;
+}
+
+.section-title-wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 24px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f1f5f9;
+}
+
+.section-title-wrap h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #1e293b;
+}
+
+.booth-card {
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.booth-card-header {
+    background: #f8fafc;
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.booth-card-header h4 {
+    margin: 0;
+    font-size: 14px;
+    color: #475569;
+}
+
+.booth-card-body {
+    padding: 20px;
+}
+
+/* 폼 스타일 재정의 (로컬) */
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+.fg {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.fg label {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #475569;
+}
+
+.fg .required {
+    color: #ef4444;
+}
+
+.fg input[type="text"],
+.fg input[type="date"],
+.fg textarea {
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.fg input:focus,
+.fg textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* 사진 썸네일 미리보기 컨테이너 */
+.photo-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.photo-thumbnail-wrap {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    background: #f1f5f9;
+}
+
+.photo-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.btn-remove-photo {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+}
+.btn-remove-photo:hover {
+    background: #ef4444;
+}
+
+/* 인쇄 미리보기 레이아웃 */
+.print-layout {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #525659;
+    z-index: 9999;
+    overflow-y: auto;
+    padding: 20px 0;
+}
+
+.print-actions {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 10000;
+}
+
+/* A4 사이즈 용지 배경 */
+.document-page {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    padding: 20mm;
+    box-sizing: border-box;
+}
+
+/* 보고서 인쇄물 기본 스타일 */
+.doc-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+}
+
+.doc-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.doc-info-item strong {
+    margin-right: 10px;
+}
+
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 30px;
+    font-size: 12px;
+}
+
+.doc-table th, .doc-table td {
+    border: 1px solid #333;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.doc-table th {
+    background: #f1f5f9;
+    font-weight: 600;
+    text-align: center;
+    width: 120px;
+}
+
+.doc-table td {
+    line-height: 1.5;
+}
+
+.doc-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.doc-photo-item {
+    max-width: 48%; /* 최대 2장 나란히 또는 최대 5장일때 적절히 줄바꿈 */
+    height: 180px;
+    object-fit: contain;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* 5장 꽉 찰때 크기 자동 조정 */
+.doc-photos:has(> .doc-photo-item:nth-child(n+3)) .doc-photo-item {
+    max-width: 31%; /* 3개 이상일 땐 좀더 작게 3열 배치 */
+    height: 120px;
+}
+
+
+/* 인쇄 미디어 쿼리 */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .print-layout {
+        position: absolute;
+        left: 0;
+        top: 0;
+        background: transparent;
+        padding: 0;
+        overflow: visible;
+        display: block !important;
+    }
+
+    .document-page, .document-page * {
+        visibility: visible;
+    }
+
+    .document-page {
+        position: absolute;
+        left: 0;
+        top: 0;
+        margin: 0;
+        padding: 0; /* 브라우저 자체 여백 사용 */
+        box-shadow: none;
+        width: 100%;
+        min-height: auto;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    /* 페이지 넘김 방지 처리 */
+    .booth-print-section {
+        page-break-inside: avoid; /* 한 업체 표가 반으로 안 갈라지도록 */
+        margin-bottom: 20px;
+    }
+}

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전시회 참관 보고서</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../../styles.css">
+    <link rel="stylesheet" href="report.css">
+</head>
+<body>
+    <div class="app-container">
+        <main class="main-content">
+            <!-- 목록 뷰 -->
+            <div id="listView" class="view-section active">
+                <div class="section-block">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2><i class='bx bx-camera'></i> 전시회 참관 보고서 목록</h2>
+                            <div class="header-actions">
+                                <button id="btnNewReport" class="btn-primary"><i class='bx bx-plus'></i> 새 보고서 작성</button>
+                                <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th>방문 일자</th>
+                                        <th>전시회명</th>
+                                        <th>등록된 업체 수</th>
+                                        <th>작성 일시</th>
+                                        <th class="col-action">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportListBody">
+                                    <!-- 동적 렌더링 -->
+                                    <tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 편집 뷰 -->
+            <div id="editView" class="view-section">
+                <div class="section-block">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2 id="editViewTitle"><i class='bx bx-edit'></i> 보고서 작성</h2>
+                            <div class="header-actions">
+                                <button id="btnBackToList" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                                <button id="btnSaveReport" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
+                                <button id="btnPrintPreview" class="btn-outline btn-outline-success"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <form id="reportForm" onsubmit="return false;">
+                                <div class="report-meta card">
+                                    <div class="form-row">
+                                        <div class="fg">
+                                            <label for="exhibitionName">전시회명 <span class="required">*</span></label>
+                                            <input type="text" id="exhibitionName" required placeholder="예: 2026 스마트물류 엑스포">
+                                        </div>
+                                        <div class="fg">
+                                            <label for="visitDate">방문 일자 <span class="required">*</span></label>
+                                            <input type="date" id="visitDate" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="section-title-wrap">
+                                    <h3>방문 업체 상담 기록</h3>
+                                    <button type="button" id="btnAddBooth" class="btn-outline btn-sm"><i class='bx bx-plus'></i> 업체 추가</button>
+                                </div>
+
+                                <div id="boothsContainer">
+                                    <!-- 부스 폼 동적 렌더링 -->
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 인쇄 미리보기 레이아웃 -->
+            <div id="printLayout" class="print-layout">
+                <div class="print-actions no-print">
+                    <button id="btnClosePrint" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
+                    <button onclick="window.print()" class="btn-primary"><i class='bx bx-printer'></i> 인쇄하기</button>
+                </div>
+                
+                <div class="document-page" id="printPage">
+                    <!-- 렌더링 됨 -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 템플릿: 업체 입력 폼 -->
+    <template id="boothFormTemplate">
+        <div class="booth-card card" data-id="">
+            <div class="booth-card-header">
+                <h4>업체 #<span class="booth-index">1</span></h4>
+                <button type="button" class="btn-remove-booth text-danger"><i class='bx bx-trash'></i></button>
+            </div>
+            <div class="booth-card-body">
+                <div class="form-row">
+                    <div class="fg">
+                        <label>업체명 <span class="required">*</span></label>
+                        <input type="text" class="input-boothName" required placeholder="업체명을 입력하세요">
+                    </div>
+                    <div class="fg">
+                        <label>부스 위치</label>
+                        <input type="text" class="input-location" placeholder="예: Hall A, A100">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="fg" style="flex: 1;">
+                        <label>주요 취급상품</label>
+                        <input type="text" class="input-mainProducts" placeholder="예: 지게차, 컨베이어 벨트">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="fg" style="flex: 1;">
+                        <label>사진 업로드 (최대 5장)</label>
+                        <input type="file" class="input-photos" accept="image/*" multiple>
+                        <div class="photo-preview-container"></div>
+                        <input type="hidden" class="input-uploaded-urls">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="fg" style="flex: 1;">
+                        <label>적용가능성</label>
+                        <input type="text" class="input-applicability" placeholder="당사 시스템에 적용 가능한 부분 등">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="fg" style="flex: 1;">
+                        <label>주요 상담 내용 <span class="required">*</span></label>
+                        <textarea class="input-counselingContent" rows="4" required placeholder="상담 내용을 상세히 기록하세요"></textarea>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="fg" style="flex: 1;">
+                        <label>비고</label>
+                        <input type="text" class="input-remarks" placeholder="추가 메모 사항">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script type="module" src="report.js"></script>
+</body>
+</html>
