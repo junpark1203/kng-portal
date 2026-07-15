@@ -187,14 +187,12 @@ function addBoothForm(data = null) {
         }
     }
     
-    // 사진 업로드 로직
-    fileInput.addEventListener('change', async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
+    // 파일 업로드 공통 함수
+    const handleFileUpload = async (files) => {
+        if (!files || files.length === 0) return;
         
         if (uploadedUrls.length + files.length > 5) {
             showToast('사진은 한 업체당 최대 5장까지만 업로드 가능합니다.', 'error');
-            fileInput.value = '';
             return;
         }
 
@@ -202,9 +200,6 @@ function addBoothForm(data = null) {
         files.forEach(f => formData.append('photos', f));
         
         try {
-            // Upload endpoint might not need auth if we allow public upload, but authFetch is safer if it's protected.
-            // Wait, server.js has `app.use('/api/', verifyToken);` so upload needs it too.
-            // However, FormData means we shouldn't set Content-Type header. authFetch only adds Authorization.
             const res = await authFetch(`${API_URL}/upload`, {
                 method: 'POST',
                 body: formData
@@ -215,12 +210,38 @@ function addBoothForm(data = null) {
                 urlsInput.value = JSON.stringify(uploadedUrls);
                 renderThumbnails();
             } else {
-                showToast(result.error, 'error');
+                showToast(result.error || '업로드 실패', 'error');
             }
         } catch (err) {
             showToast('파일 업로드 실패', 'error');
         }
+    };
+
+    // 사진 업로드 로직 (파일 선택)
+    fileInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        await handleFileUpload(files);
         fileInput.value = ''; // 초기화
+    });
+
+    // 클립보드 이미지 붙여넣기 로직
+    card.addEventListener('paste', async (e) => {
+        if (!e.clipboardData || !e.clipboardData.items) return;
+        
+        const items = e.clipboardData.items;
+        const files = [];
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const file = items[i].getAsFile();
+                if (file) files.push(file);
+            }
+        }
+        
+        if (files.length > 0) {
+            // 이미지인 경우에만 기본 붙여넣기 방지 및 업로드 처리
+            e.preventDefault();
+            await handleFileUpload(files);
+        }
     });
 
     // URL 직접 추가 로직
