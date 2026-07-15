@@ -422,7 +422,10 @@ function showPrintPreview() {
                 <table class="doc-table">
                     <tr>
                         <th>업체명</th>
-                        <td style="width: 35%; font-weight: 600;">${card.querySelector('.input-boothName').value || '-'}</td>
+                        <td style="width: 35%; font-weight: 600;">
+                            <span style="display:inline-block; background:#3b82f6; color:#fff; padding:2px 6px; border-radius:10px; font-size:11px; margin-right:5px;">#${idx + 1}</span>
+                            ${card.querySelector('.input-boothName').value || '-'}
+                        </td>
                         <th>부스위치</th>
                         <td>${card.querySelector('.input-location').value || '-'}</td>
                     </tr>
