@@ -3,6 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
 
 let db;
 
@@ -69,6 +71,33 @@ router.post('/upload', upload.array('photos', 5), (req, res) => {
         console.error('Upload Error:', error);
         res.status(500).json({ error: '파일 업로드 중 오류가 발생했습니다.' });
     }
+});
+
+// 이미지 프록시 (Mixed Content 해결)
+router.get('/proxy', (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send('URL is required');
+
+    const client = targetUrl.startsWith('https') ? https : http;
+    
+    client.get(targetUrl, (proxyRes) => {
+        if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+            // 간단한 리다이렉트 처리
+            const redirectUrl = proxyRes.headers.location;
+            const redirectClient = redirectUrl.startsWith('https') ? https : http;
+            redirectClient.get(redirectUrl, (redirectRes) => {
+                res.writeHead(redirectRes.statusCode, redirectRes.headers);
+                redirectRes.pipe(res);
+            }).on('error', (err) => {
+                res.status(500).send(err.message);
+            });
+            return;
+        }
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+    }).on('error', (err) => {
+        res.status(500).send(err.message);
+    });
 });
 
 // 전체 목록 조회

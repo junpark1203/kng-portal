@@ -242,7 +242,13 @@ function addBoothForm(data = null) {
                 return;
             }
 
-            uploadedUrls.push(url);
+            // HTTP 링크인 경우 Mixed Content 방지를 위해 프록시 사용 (HTTPS도 원한다면 모두 적용 가능)
+            let finalUrl = url;
+            if (url.startsWith('http://')) {
+                finalUrl = `${API_URL}/proxy?url=${encodeURIComponent(url)}`;
+            }
+
+            uploadedUrls.push(finalUrl);
             urlsInput.value = JSON.stringify(uploadedUrls);
             renderThumbnails();
             urlInput.value = '';
