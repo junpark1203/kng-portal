@@ -438,7 +438,7 @@ function showPrintPreview() {
                         <td>${card.querySelector('.input-location').value || '-'}</td>
                     </tr>
                     <tr>
-                        <th>취급상품</th>
+                        <th>검토품목</th>
                         <td colspan="3">${truncate(rawProducts, 100)}</td>
                     </tr>
                     ${photosHtml ? `
@@ -447,11 +447,11 @@ function showPrintPreview() {
                         <td colspan="3">${photosHtml}</td>
                     </tr>` : ''}
                     <tr>
-                        <th>적용가능성</th>
+                        <th>적용방안</th>
                         <td colspan="3">${truncate(rawApplicability, 100)}</td>
                     </tr>
                     <tr>
-                        <th>상담내용</th>
+                        <th>내용</th>
                         <td colspan="3">${truncate(rawCounseling, 250).replace(/\n/g, '<br>')}</td>
                     </tr>
                     <tr>
