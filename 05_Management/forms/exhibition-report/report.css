@@ -220,9 +220,9 @@
 
 .doc-table th, .doc-table td {
     border: 1px solid #333;
-    padding: 8px;
+    padding: 4px 6px;
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
 }
 
 .doc-table th {
@@ -246,17 +246,17 @@
 
 .doc-photo-item {
     max-width: 48%; /* 최대 2장 나란히 또는 최대 5장일때 적절히 줄바꿈 */
-    height: 180px;
+    height: 110px;
     object-fit: contain;
     border: 1px solid #ddd;
     border-radius: 4px;
-    padding: 4px;
+    padding: 2px;
 }
 
 /* 5장 꽉 찰때 크기 자동 조정 */
 .doc-photos:has(> .doc-photo-item:nth-child(n+3)) .doc-photo-item {
     max-width: 31%; /* 3개 이상일 땐 좀더 작게 3열 배치 */
-    height: 120px;
+    height: 75px;
 }
 
 
@@ -298,6 +298,21 @@
     /* 페이지 넘김 방지 처리 */
     .booth-print-section {
         page-break-inside: avoid; /* 한 업체 표가 반으로 안 갈라지도록 */
-        margin-bottom: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .doc-table {
+        margin-bottom: 12px;
+        font-size: 11px; /* 폰트 사이즈 살짝 축소 */
+    }
+    
+    .doc-title {
+        font-size: 20px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+    
+    .doc-info {
+        margin-bottom: 10px;
     }
 }

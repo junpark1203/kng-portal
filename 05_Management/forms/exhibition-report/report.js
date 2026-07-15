@@ -417,6 +417,14 @@ function showPrintPreview() {
             photosHtml = `<div class="doc-photos">` + urls.map(url => `<img src="${url}" class="doc-photo-item">`).join('') + `</div>`;
         }
         
+        // 긴 텍스트 자르기 (한 페이지에 3개 업체가 들어갈 수 있도록)
+        const truncate = (text, max) => text.length > max ? text.substring(0, max) + '...' : text;
+        
+        const rawProducts = card.querySelector('.input-mainProducts').value || '-';
+        const rawApplicability = card.querySelector('.input-applicability').value || '-';
+        const rawCounseling = card.querySelector('.input-counselingContent').value || '-';
+        const rawRemarks = card.querySelector('.input-remarks').value || '-';
+
         const boothHtml = `
             <div class="booth-print-section">
                 <table class="doc-table">
@@ -431,7 +439,7 @@ function showPrintPreview() {
                     </tr>
                     <tr>
                         <th>취급상품</th>
-                        <td colspan="3">${card.querySelector('.input-mainProducts').value || '-'}</td>
+                        <td colspan="3">${truncate(rawProducts, 100)}</td>
                     </tr>
                     ${photosHtml ? `
                     <tr>
@@ -440,15 +448,15 @@ function showPrintPreview() {
                     </tr>` : ''}
                     <tr>
                         <th>적용가능성</th>
-                        <td colspan="3">${card.querySelector('.input-applicability').value || '-'}</td>
+                        <td colspan="3">${truncate(rawApplicability, 100)}</td>
                     </tr>
                     <tr>
                         <th>상담내용</th>
-                        <td colspan="3">${card.querySelector('.input-counselingContent').value.replace(/\n/g, '<br>') || '-'}</td>
+                        <td colspan="3">${truncate(rawCounseling, 250).replace(/\n/g, '<br>')}</td>
                     </tr>
                     <tr>
                         <th>비고</th>
-                        <td colspan="3">${card.querySelector('.input-remarks').value || '-'}</td>
+                        <td colspan="3">${truncate(rawRemarks, 100)}</td>
                     </tr>
                 </table>
             </div>
