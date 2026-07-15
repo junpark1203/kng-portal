@@ -262,6 +262,10 @@
 
 /* 인쇄 미디어 쿼리 */
 @media print {
+    html, body {
+        background-color: #ffffff !important;
+    }
+
     body * {
         visibility: hidden;
     }
