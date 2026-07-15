@@ -304,6 +304,7 @@
     .doc-table {
         margin-bottom: 12px;
         font-size: 11px; /* 폰트 사이즈 살짝 축소 */
+        height: 280px; /* 3개가 A4에 꽉 차게 균등 높이 지정 */
     }
     
     .doc-title {
