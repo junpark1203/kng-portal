@@ -28,7 +28,7 @@ let editingId = null;
 
 // DOM Elements
 const listView = document.getElementById('listView');
-const editView = document.getElementById('editView');
+const reportEditModal = document.getElementById('reportEditModal');
 const printLayout = document.getElementById('printLayout');
 
 const reportListBody = document.getElementById('reportListBody');
@@ -44,13 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Listeners
     document.getElementById('btnNewReport').addEventListener('click', showNewForm);
-    document.getElementById('btnBackToList').addEventListener('click', () => switchView('list'));
+    document.getElementById('btnBackToList').addEventListener('click', closeReportModal);
     
     document.getElementById('btnSaveReport').addEventListener('click', () => saveReport(true));
     const btnTempSave = document.getElementById('btnTempSaveReport');
     if (btnTempSave) btnTempSave.addEventListener('click', () => saveReport(false));
     
     document.getElementById('btnAddBooth').addEventListener('click', () => addBoothForm());
+    document.getElementById('btnAddBoothBottom').addEventListener('click', () => addBoothForm());
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
     document.getElementById('selectAll').addEventListener('change', (e) => {
         const checks = document.querySelectorAll('.check-row');
@@ -64,16 +65,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function switchView(view) {
-    listView.classList.remove('active');
-    editView.classList.remove('active');
-    
-    if (view === 'list') {
-        listView.classList.add('active');
-        loadReports();
-    } else if (view === 'edit') {
-        editView.classList.add('active');
-    }
+function openReportModal() {
+    reportEditModal.classList.add('active');
+    document.body.style.overflow = 'hidden'; // prevent body scroll behind modal
+}
+
+function closeReportModal() {
+    reportEditModal.classList.remove('active');
+    document.body.style.overflow = '';
+    loadReports(); // refresh list
 }
 
 async function loadReports() {
@@ -122,7 +122,7 @@ function showNewForm() {
     form.reset();
     boothsContainer.innerHTML = '';
     addBoothForm(); // 기본 1개 폼 추가
-    switchView('edit');
+    openReportModal();
 }
 
 async function editReport(id) {
@@ -144,7 +144,7 @@ async function editReport(id) {
             addBoothForm();
         }
         
-        switchView('edit');
+        openReportModal();
     } catch (e) {
         showToast(e.message, 'error');
     }
@@ -354,7 +354,7 @@ async function saveReport(exitAfterSave = true) {
         showToast('보고서가 저장되었습니다.', 'success');
         
         if (exitAfterSave) {
-            switchView('list');
+            closeReportModal();
         }
     } catch(e) {
         showToast(e.message, 'error');
