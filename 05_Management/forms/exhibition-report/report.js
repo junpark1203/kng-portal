@@ -206,7 +206,8 @@ function addBoothForm(data = null) {
             });
             const result = await res.json();
             if (res.ok) {
-                uploadedUrls = uploadedUrls.concat(result.urls);
+                const absoluteUrls = result.urls.map(u => u.startsWith('/') ? 'https://kng.junparks.com' + u : u);
+                uploadedUrls = uploadedUrls.concat(absoluteUrls);
                 urlsInput.value = JSON.stringify(uploadedUrls);
                 renderThumbnails();
             } else {
