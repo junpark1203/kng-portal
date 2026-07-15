@@ -3,7 +3,18 @@
 // --- authFetch: JWT 토큰을 자동으로 실어 보내는 fetch 래퍼 ---
 async function authFetch(url, options = {}) {
     let token = null;
-    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    try {
+        if (window.parent && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 10) { 
+                await new Promise(r => setTimeout(r, 500)); 
+                token = await window.parent.getAuthToken(); 
+                retries++; 
+            }
+        }
+    } catch(e) {}
+    
     if (!options.headers) options.headers = {};
     if (token && !options.headers['Authorization']) {
         options.headers['Authorization'] = 'Bearer ' + token;
@@ -65,7 +76,7 @@ async function loadReports() {
     try {
         reportListBody.innerHTML = '<tr class="loading-row"><td colspan="6"><div class="skeleton"></div></td></tr>';
         const res = await authFetch(API_URL);
-        if (!res.ok) { const txt = await res.text(); throw new Error(서버 응답 오류 (): ); }
+        if (!res.ok) { const txt = await res.text(); throw new Error(`서버 응답 오류 (${res.status}): ${txt}`); }
         
         currentReports = await res.json();
         renderList();
