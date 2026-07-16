@@ -404,6 +404,25 @@ router.post('/export-excel', async (req, res) => {
             sheet.getColumn(col).width = width + 0.71;
         }
 
+        // 전체 폰트 사이즈 10pt 일괄 적용
+        sheet.eachRow({ includeEmpty: true }, (row) => {
+            row.eachCell({ includeEmpty: true }, (cell) => {
+                const currentFont = cell.font || { name: '맑은 고딕' };
+                cell.font = { ...currentFont, size: 10 };
+            });
+        });
+
+        // 특수 지정 폰트 사이즈 덮어쓰기
+        // 문서 제목 (A1) 24pt
+        const titleFont = sheet.getCell('A1').font || { name: '맑은 고딕' };
+        sheet.getCell('A1').font = { ...titleFont, size: 24 };
+
+        // 금액 텍스트 영역 16pt
+        ['A18', 'E18', 'E19', 'E20'].forEach(ref => {
+            const f = sheet.getCell(ref).font || { name: '맑은 고딕' };
+            sheet.getCell(ref).font = { ...f, size: 16 };
+        });
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
         res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
