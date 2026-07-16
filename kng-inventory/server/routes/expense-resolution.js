@@ -428,6 +428,13 @@ router.post('/export-excel', async (req, res) => {
             cell.font = { ...f, size: 16 };
         });
 
+        // 특정 셀 13pt (하단 금액 E18:H20)
+        ['E18','F18','G18','H18', 'E19','F19','G19','H19', 'E20','F20','G20','H20'].forEach(ref => {
+            const cell = sheet.getCell(ref);
+            const f = cell.font || { name: '맑은 고딕' };
+            cell.font = { ...f, size: 13 };
+        });
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
         res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
