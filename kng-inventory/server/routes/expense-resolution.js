@@ -302,7 +302,7 @@ router.post('/export-excel', async (req, res) => {
 
         // Format dates
         const createdDate = data.createdDate ? new Date(data.createdDate) : new Date();
-        const createdStr = `${createdDate.getFullYear()}/${String(createdDate.getMonth() + 1).padStart(2, '0')}/${String(createdDate.getDate()).padStart(2, '0')}`;
+        const createdStr = `${createdDate.getFullYear()}년 ${String(createdDate.getMonth() + 1).padStart(2, '0')}월 ${String(createdDate.getDate()).padStart(2, '0')}일`;
         
         const paymentDate = data.paymentDate ? new Date(data.paymentDate) : null;
         const payStr = paymentDate ? `${String(paymentDate.getMonth() + 1).padStart(2, '0')}/${String(paymentDate.getDate()).padStart(2, '0')}` : '';
@@ -350,6 +350,7 @@ router.post('/export-excel', async (req, res) => {
             'C13': data.personInCharge || '',
             'C15': data.vendorName || '',
             'F15': data.representative || '',
+            'H15': '사업자\n등록번호',
             'I15': data.bizRegNumber || '',
             'C16': cleanTitle,
             'A18': taxStr,
@@ -380,6 +381,15 @@ router.post('/export-excel', async (req, res) => {
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
         const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
+
+        // 모든 행 높이 10% 증가
+        sheet.eachRow((row, rowNumber) => {
+            if (row.height) {
+                row.height = row.height * 1.1;
+            } else {
+                row.height = 15 * 1.1; // 엑셀 기본 행 높이 15를 기준으로 10% 증가
+            }
+        });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
