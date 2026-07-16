@@ -353,13 +353,19 @@ router.post('/export-excel', async (req, res) => {
             'A18': taxStr,
             'E18': curr + amtStr + ' ≠',
             'E19': isForeign ? '≠' : (vatStr + ' ≠'),
-            'E20': curr + totalStr + ' ≠',
-            'C21': data.content || ''
+            'E20': curr + totalStr + ' ≠'
         };
 
         for (const [cellRef, value] of Object.entries(mapping)) {
             const cell = sheet.getCell(cellRef);
             cell.value = value;
+        }
+
+        // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
+        const contentLines = (data.content || '').split(/\r?\n/);
+        for (let i = 0; i < 5; i++) {
+            const cell = sheet.getCell(`C${21 + i}`);
+            cell.value = contentLines[i] || ''; // 텍스트가 없으면 빈 문자열로 덮어씌워 템플릿 찌꺼기 제거
         }
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
