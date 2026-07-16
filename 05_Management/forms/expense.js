@@ -949,6 +949,11 @@ async function showPrintPreview() {
 }
 
 window.editExpense = editExpense;
+window.duplicateExpense = duplicateExpense;
+window.downloadExcel = downloadExcel;
+window.editVendor = editVendor;
+window.deleteVendor = deleteVendor;
+window.removeAccountRow = removeAccountRow;
 
 function showToast(msg, type='info') {
     const tc = document.getElementById('toastContainer');
