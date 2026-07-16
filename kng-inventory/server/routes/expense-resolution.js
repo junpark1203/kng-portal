@@ -385,7 +385,7 @@ router.post('/export-excel', async (req, res) => {
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
-        const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
+        const filename = `지출결의서_V3_${dateStr}_${curr}${amountStrForFile}.xlsx`;
 
         // 행 높이 명시적 지정
         sheet.getRow(1).height = 20;
@@ -412,15 +412,19 @@ router.post('/export-excel', async (req, res) => {
             });
         });
 
-        // 특수 지정 폰트 사이즈 덮어쓰기
-        // 문서 제목 (A1) 24pt
-        const titleFont = sheet.getCell('A1').font || { name: '맑은 고딕' };
-        sheet.getCell('A1').font = { ...titleFont, size: 24 };
+        // 특수 지정 폰트 사이즈 덮어쓰기 (병합된 셀 전체에 적용)
+        // 문서 제목 (A1:E2) 24pt
+        ['A1','B1','C1','D1','E1','A2','B2','C2','D2','E2'].forEach(ref => {
+            const cell = sheet.getCell(ref);
+            const f = cell.font || { name: '맑은 고딕' };
+            cell.font = { ...f, size: 24 };
+        });
 
-        // 특정 셀 16pt (한글 금액 칸, B4, H4)
-        ['A18', 'B4', 'H4'].forEach(ref => {
-            const f = sheet.getCell(ref).font || { name: '맑은 고딕' };
-            sheet.getCell(ref).font = { ...f, size: 16 };
+        // 특정 셀 16pt (한글 금액 A18:D18, B4:G4, H4:J4)
+        ['A18','B18','C18','D18', 'B4','C4','D4','E4','F4','G4', 'H4','I4','J4'].forEach(ref => {
+            const cell = sheet.getCell(ref);
+            const f = cell.font || { name: '맑은 고딕' };
+            cell.font = { ...f, size: 16 };
         });
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
