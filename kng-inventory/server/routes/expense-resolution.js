@@ -368,12 +368,11 @@ router.post('/export-excel', async (req, res) => {
         }
 
         // --- 조건부 서식 (글자 크기 및 줄바꿈 자동 조절) ---
+        // 엑셀은 shrinkToFit과 wrapText가 동시에 선언되면 파일 손상으로 간주하므로, 명시적으로 하나만 지정해야 합니다.
+        
         // 1. 자동 글자 크기 조정 (Shrink to fit) 항목
-        const shrinkCells = ['C16', 'I15']; // 제목, 사업자등록번호
-        shrinkCells.forEach(ref => {
-            const cell = sheet.getCell(ref);
-            cell.alignment = { ...(cell.alignment || {}), shrinkToFit: true, wrapText: false };
-        });
+        sheet.getCell('C16').alignment = { horizontal: 'left', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
+        sheet.getCell('I15').alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
 
         // 2. 글자 길이에 따라 폰트 사이즈 6 + 줄바꿈 적용 항목 (은행명, 예금주, 거래처명, 대표자)
         const dynamicWrapRules = [
@@ -386,10 +385,11 @@ router.post('/export-excel', async (req, res) => {
         dynamicWrapRules.forEach(rule => {
             const cell = sheet.getCell(rule.ref);
             if (rule.text.length > rule.threshold) {
-                cell.font = { ...(cell.font || {}), size: 6 };
-                cell.alignment = { ...(cell.alignment || {}), wrapText: true, shrinkToFit: false };
+                // 폰트 객체를 안전하게 복사 후 사이즈만 6으로 덮어씀
+                cell.font = Object.assign({}, cell.font, { size: 6 });
+                cell.alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', wrapText: true };
             } else {
-                cell.alignment = { ...(cell.alignment || {}), shrinkToFit: true, wrapText: false };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
             }
         });
         // ------------------------------------------------
