@@ -386,7 +386,7 @@ router.post('/export-excel', async (req, res) => {
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
-        const filename = `지출결의서_V3_${dateStr}_${curr}${amountStrForFile}.xlsx`;
+        const filename = `지출결의서_V4_${dateStr}_${curr}${amountStrForFile}.xlsx`;
 
         // 행 높이 명시적 지정
         sheet.getRow(1).height = 20;
