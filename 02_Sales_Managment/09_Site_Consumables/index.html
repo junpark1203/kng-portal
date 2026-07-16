@@ -59,6 +59,7 @@
                                 <th>구분(하위)</th>
                                 <th>품명</th>
                                 <th>규격</th>
+                                <th>운용수량</th>
                                 <th>단위</th>
                                 <th>비고</th>
                                 <th style="width: auto; min-width: 250px;">도면 관리</th>
@@ -141,6 +142,10 @@
                             <input type="text" id="cSpec" placeholder="예: 백색, A-Type">
                         </div>
                         <div class="fg" style="flex:1">
+                            <label>운용수량</label>
+                            <input type="number" id="cOpQuantity" min="0" step="any" placeholder="예: 4">
+                        </div>
+                        <div class="fg" style="flex:1">
                             <label>단위</label>
                             <input type="text" id="cUnit" placeholder="예: EA">
                         </div>
@@ -207,6 +212,6 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="app.js?v=5"></script>
+    <script type="module" src="app.js?v=6"></script>
 </body>
 </html>

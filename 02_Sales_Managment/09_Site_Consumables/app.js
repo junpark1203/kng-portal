@@ -134,6 +134,7 @@ function setupModals() {
                 document.getElementById('cSubCategory').value = c.subCategory || '';
                 document.getElementById('cName').value = c.name;
                 document.getElementById('cSpec').value = c.specification || '';
+                document.getElementById('cOpQuantity').value = c.opQuantity || '';
                 document.getElementById('cUnit').value = c.unit || '';
                 document.getElementById('cRemarks').value = c.remarks || '';
                 document.getElementById('consumableModalTitle').textContent = '소모품 수정';
@@ -306,6 +307,7 @@ async function loadDashboard() {
         <th>구분(하위)</th>
         <th>품명</th>
         <th>규격</th>
+        <th>운용수량</th>
         <th>단위</th>
         <th>비고</th>
     `;
@@ -347,6 +349,7 @@ function renderDashboard() {
             <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
+            <td>${c.opQuantity ? `<span style="font-weight: 600; color: #0f172a;">${escapeHtml(c.opQuantity)}</span>` : '-'}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
             <td>${escapeHtml(c.remarks || '-')}</td>
         `;
@@ -362,6 +365,7 @@ async function loadConsumables() {
         <th>구분(하위)</th>
         <th>품명</th>
         <th>규격</th>
+        <th>운용수량</th>
         <th>단위</th>
         <th>비고</th>
         <th style="width: auto; min-width: 250px;">도면 관리</th>
@@ -421,6 +425,7 @@ function renderConsumables() {
             <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
+            <td>${c.opQuantity ? `<span style="font-weight: 600; color: #0f172a;">${escapeHtml(c.opQuantity)}</span>` : '-'}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
             <td>${escapeHtml(c.remarks || '-')}</td>
             <td>
@@ -452,6 +457,7 @@ document.getElementById('consumableForm').addEventListener('submit', async (e) =
             subCategory: document.getElementById('cSubCategory').value.trim(),
             name: document.getElementById('cName').value.trim(),
             specification: document.getElementById('cSpec').value.trim(),
+            opQuantity: document.getElementById('cOpQuantity').value.trim(),
             unit: document.getElementById('cUnit').value.trim(),
             remarks: document.getElementById('cRemarks').value.trim()
         };

@@ -84,8 +84,11 @@ function initSiteConsumablesTables(database) {
                                 database.run("ALTER TABLE sites ADD COLUMN tunnelLength TEXT", () => {
                                     // Add subCategory for consumables
                                     database.run("ALTER TABLE site_consumables ADD COLUMN subCategory TEXT", () => {
-                                        console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
-                                        resolve();
+                                        // Add opQuantity for consumables
+                                        database.run("ALTER TABLE site_consumables ADD COLUMN opQuantity TEXT", () => {
+                                            console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
+                                            resolve();
+                                        });
                                     });
                                 });
                             });
@@ -193,8 +196,8 @@ router.post('/consumables', (req, res) => {
     const id = p.id || ('CONS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
     
-    const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, unit, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.siteId, p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.unit || '', p.remarks || '', now, now];
+    const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.siteId, p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', now, now];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -207,8 +210,8 @@ router.put('/consumables/:id', (req, res) => {
     const p = req.body;
     const now = new Date().toISOString();
     
-    const sql = `UPDATE site_consumables SET category=?, subCategory=?, name=?, specification=?, unit=?, remarks=?, updatedAt=? WHERE id=?`;
-    const params = [p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.unit || '', p.remarks || '', now, id];
+    const sql = `UPDATE site_consumables SET category=?, subCategory=?, name=?, specification=?, opQuantity=?, unit=?, remarks=?, updatedAt=? WHERE id=?`;
+    const params = [p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', now, id];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
