@@ -202,7 +202,7 @@ function getFormDataString() {
         currency: fCurrency.value,
         amount: fAmount.value,
         vatAmount: fVatAmount.value,
-        vendorSelect: fVendorSelect.value,
+        vendorSelect: fVendorId.value,
         accountSelect: fAccountSelect.value,
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value,
         title: fTitle.value,
@@ -842,7 +842,7 @@ function getCurrencyKoreanText(curr, amount) {
 }
 
 async function showPrintPreview() {
-    if (!fCreatedDate.value || !fAmount.value || !fTitle.value || !fVendorSelect.value) {
+    if (!fCreatedDate.value || !fAmount.value || !fTitle.value || !fVendorId.value) {
         showToast('필수 항목을 모두 입력 후 미리보기가 가능합니다.', 'warning');
         return;
     }
@@ -860,7 +860,7 @@ async function showPrintPreview() {
     const koreanAmt = getCurrencyKoreanText(curr, amount);
     
     // Vendor Info
-    const selectedVendor = currentVendors.find(v => v.id === fVendorSelect.value);
+    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
     let bankName = '', accountNumber = '', accountHolder = '';
     if (selectedVendor) {
         if (selectedVendor.accounts && selectedVendor.accounts.length === 1) {
