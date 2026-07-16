@@ -105,8 +105,9 @@ function setupModals() {
             if (site) {
                 document.getElementById('siteId').value = site.id;
                 document.getElementById('siteName').value = site.name;
-                document.getElementById('siteAddress').value = site.address || '';
-                document.getElementById('siteRemarks').value = site.remarks || '';
+                document.getElementById('siteTbmMachine').value = site.tbmMachine || '';
+                document.getElementById('siteTunnelDiameter').value = site.tunnelInnerDiameter || '';
+                document.getElementById('siteTunnelLength').value = site.tunnelLength || '';
                 document.getElementById('siteModalTitle').textContent = '현장 수정';
             }
         }
@@ -199,8 +200,19 @@ function renderSites() {
         const div = document.createElement('div');
         div.className = `site-item ${s.id === currentSiteId ? 'active' : ''}`;
         div.onclick = () => selectSite(s.id);
+        
+        let specsHtml = '';
+        if (s.tbmMachine || s.tunnelInnerDiameter || s.tunnelLength) {
+            specsHtml = `<div style="font-size: 11px; color: #64748b; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap;">
+                ${s.tbmMachine ? `<span><i class='bx bx-cog'></i> ${escapeHtml(s.tbmMachine)}</span>` : ''}
+                ${s.tunnelInnerDiameter ? `<span><i class='bx bx-target-lock'></i> ${escapeHtml(s.tunnelInnerDiameter)}mm</span>` : ''}
+                ${s.tunnelLength ? `<span><i class='bx bx-ruler'></i> ${escapeHtml(s.tunnelLength)}m</span>` : ''}
+            </div>`;
+        }
+
         div.innerHTML = `
             <div class="site-name">${escapeHtml(s.name)}</div>
+            ${specsHtml}
         `;
         list.appendChild(div);
     });
@@ -215,7 +227,7 @@ window.selectSite = async (id) => {
 
     if (id === 'dashboard') {
         document.getElementById('currentSiteName').innerHTML = "<i class='bx bx-grid-alt'></i> 전체 대시보드";
-        document.getElementById('currentSiteAddress').textContent = '모든 현장에 등록된 소모품 현황입니다.';
+        if(document.getElementById('currentSiteSpecs')) document.getElementById('currentSiteSpecs').style.display = 'none';
         
         document.querySelector('.header-actions button[onclick="editSite()"]').style.display = 'none';
         document.querySelector('.header-actions button[onclick="deleteSite()"]').style.display = 'none';
@@ -229,7 +241,12 @@ window.selectSite = async (id) => {
     if (!site) return;
 
     document.getElementById('currentSiteName').textContent = site.name;
-    document.getElementById('currentSiteAddress').textContent = site.address || '-';
+    if(document.getElementById('currentSiteSpecs')) {
+        document.getElementById('currentSiteSpecs').style.display = 'flex';
+        document.getElementById('specTbm').innerHTML = `<i class='bx bx-cog'></i> TBM장비: <b>${escapeHtml(site.tbmMachine || '-')}</b>`;
+        document.getElementById('specDiameter').innerHTML = `<i class='bx bx-target-lock'></i> 터널내경: <b>${escapeHtml(site.tunnelInnerDiameter ? site.tunnelInnerDiameter + 'mm' : '-')}</b>`;
+        document.getElementById('specLength').innerHTML = `<i class='bx bx-ruler'></i> 터널연장: <b>${escapeHtml(site.tunnelLength ? site.tunnelLength + 'm' : '-')}</b>`;
+    }
     
     document.querySelector('.header-actions button[onclick="editSite()"]').style.display = 'inline-block';
     document.querySelector('.header-actions button[onclick="deleteSite()"]').style.display = 'inline-block';
@@ -243,8 +260,9 @@ document.getElementById('siteForm').addEventListener('submit', async (e) => {
     const id = document.getElementById('siteId').value;
     const body = {
         name: document.getElementById('siteName').value.trim(),
-        address: document.getElementById('siteAddress').value.trim(),
-        remarks: document.getElementById('siteRemarks').value.trim()
+        tbmMachine: document.getElementById('siteTbmMachine').value.trim(),
+        tunnelInnerDiameter: document.getElementById('siteTunnelDiameter').value.trim(),
+        tunnelLength: document.getElementById('siteTunnelLength').value.trim()
     };
     
     try {

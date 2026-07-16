@@ -36,8 +36,12 @@
             <div class="consumables-content hidden" id="consumablesContent">
                 <div class="content-header">
                     <div class="header-titles">
-                        <h2 id="currentSiteName">현장명</h2>
-                        <p id="currentSiteAddress" class="text-sm text-gray">주소</p>
+                        <h2 id="currentSiteName" style="margin-bottom: 5px;">현장명</h2>
+                        <div id="currentSiteSpecs" class="site-specs" style="display: flex; gap: 15px; font-size: 13px; color: #475569;">
+                            <span id="specTbm"><i class='bx bx-cog'></i> TBM장비: <b>-</b></span>
+                            <span id="specDiameter"><i class='bx bx-target-lock'></i> 터널내경: <b>-</b></span>
+                            <span id="specLength"><i class='bx bx-ruler'></i> 터널연장: <b>-</b></span>
+                        </div>
                     </div>
                     <div class="header-actions">
                         <input type="text" id="searchConsumable" placeholder="구분, 품명 검색..." style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; margin-right: 8px;">
@@ -84,12 +88,18 @@
                         <input type="text" id="siteName" required placeholder="예: 평택 삼성물산 P4">
                     </div>
                     <div class="fg">
-                        <label>주소</label>
-                        <input type="text" id="siteAddress" placeholder="현장 주소 입력">
+                        <label>TBM장비</label>
+                        <input type="text" id="siteTbmMachine" placeholder="예: 가와사키, 소일맥 등">
                     </div>
-                    <div class="fg">
-                        <label>비고</label>
-                        <input type="text" id="siteRemarks" placeholder="추가 메모">
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="fg" style="flex:1">
+                            <label>터널내경(mm)</label>
+                            <input type="text" id="siteTunnelDiameter" placeholder="예: 3000">
+                        </div>
+                        <div class="fg" style="flex:1">
+                            <label>터널연장(m)</label>
+                            <input type="text" id="siteTunnelLength" placeholder="예: 1500">
+                        </div>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn-outline" onclick="closeSiteModal()">취소</button>
@@ -190,6 +200,6 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="app.js?v=3"></script>
+    <script type="module" src="app.js?v=4"></script>
 </body>
 </html>

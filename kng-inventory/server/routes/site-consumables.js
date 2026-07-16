@@ -77,10 +77,16 @@ function initSiteConsumablesTables(database) {
                     reject(err);
                 } else {
                     // Migrate: Add category column if not exists
-                    database.run("ALTER TABLE site_consumables ADD COLUMN category TEXT", (alterErr) => {
-                        // ignore error as it likely means column already exists
-                        console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
-                        resolve();
+                    database.run("ALTER TABLE site_consumables ADD COLUMN category TEXT", () => {
+                        // Add new fields for sites
+                        database.run("ALTER TABLE sites ADD COLUMN tbmMachine TEXT", () => {
+                            database.run("ALTER TABLE sites ADD COLUMN tunnelInnerDiameter TEXT", () => {
+                                database.run("ALTER TABLE sites ADD COLUMN tunnelLength TEXT", () => {
+                                    console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
+                                    resolve();
+                                });
+                            });
+                        });
                     });
                 }
             });
@@ -103,8 +109,8 @@ router.post('/sites', (req, res) => {
     const id = p.id || ('SITE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
     
-    const sql = `INSERT INTO sites (id, name, address, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.name || '', p.address || '', p.remarks || '', now, now];
+    const sql = `INSERT INTO sites (id, name, tbmMachine, tunnelInnerDiameter, tunnelLength, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.name || '', p.tbmMachine || '', p.tunnelInnerDiameter || '', p.tunnelLength || '', now, now];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -117,8 +123,8 @@ router.put('/sites/:id', (req, res) => {
     const p = req.body;
     const now = new Date().toISOString();
     
-    const sql = `UPDATE sites SET name=?, address=?, remarks=?, updatedAt=? WHERE id=?`;
-    const params = [p.name || '', p.address || '', p.remarks || '', now, id];
+    const sql = `UPDATE sites SET name=?, tbmMachine=?, tunnelInnerDiameter=?, tunnelLength=?, updatedAt=? WHERE id=?`;
+    const params = [p.name || '', p.tbmMachine || '', p.tunnelInnerDiameter || '', p.tunnelLength || '', now, id];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
