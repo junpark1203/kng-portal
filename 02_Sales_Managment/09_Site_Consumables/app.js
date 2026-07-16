@@ -434,6 +434,7 @@ function renderConsumables() {
             <td class="col-actions" style="white-space: nowrap;">
                 <button title="파일 관리/업로드" onclick="openFileManager('${c.id}')" style="background:none; border:none; color:#3b82f6; cursor:pointer;"><i class='bx bx-upload' style="font-size:18px;"></i></button>
                 <button title="수정" onclick="openConsumableModal('${c.id}')" style="background:none; border:none; color:#64748b; cursor:pointer; margin-left: 8px;"><i class='bx bx-edit-alt' style="font-size:18px;"></i></button>
+                <button title="복사" onclick="copyConsumable('${c.id}')" style="background:none; border:none; color:#10b981; cursor:pointer; margin-left: 8px;"><i class='bx bx-copy' style="font-size:18px;"></i></button>
                 <button title="삭제" onclick="deleteConsumable('${c.id}')" style="background:none; border:none; color:#ef4444; cursor:pointer; margin-left: 8px;"><i class='bx bx-trash' style="font-size:18px;"></i></button>
             </td>
         `;
@@ -501,6 +502,17 @@ window.deleteConsumable = async (id) => {
         await loadConsumables();
     } catch(e) {
         showToast(e.message, 'error');
+    }
+};
+
+window.copyConsumable = async (id) => {
+    if(!confirm('이 소모품과 첨부된 도면 파일을 복사하시겠습니까?')) return;
+    try {
+        const res = await authFetch(`/api/site-consumables/consumables/${id}/copy`, { method: 'POST' });
+        showToast(res.message);
+        await loadConsumables();
+    } catch(e) {
+        showToast('복사 실패: ' + e.message, 'error');
     }
 };
 

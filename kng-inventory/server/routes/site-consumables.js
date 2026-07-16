@@ -228,6 +228,74 @@ router.delete('/consumables/:id', (req, res) => {
     });
 });
 
+router.post('/consumables/:id/copy', (req, res) => {
+    const originalId = req.params.id;
+    
+    // 1. 원본 소모품 정보 조회
+    db.get('SELECT * FROM site_consumables WHERE id = ?', [originalId], (err, original) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!original) return res.status(404).json({ error: '원본 소모품을 찾을 수 없습니다.' });
+        
+        // 2. 새 소모품 데이터 복제 저장
+        const newId = 'CONS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+        const now = new Date().toISOString();
+        const newName = original.name + ' - 복사본';
+        
+        const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [newId, original.siteId, original.category || '', original.subCategory || '', newName, original.specification || '', original.opQuantity || '', original.unit || '', original.remarks || '', now, now];
+        
+        db.run(sql, params, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            // 3. 원본에 첨부된 파일(도면) 조회
+            db.all('SELECT * FROM site_consumable_files WHERE consumableId = ?', [originalId], (err, files) => {
+                if (err) return res.status(500).json({ error: err.message });
+                if (!files || files.length === 0) {
+                    return res.status(201).json({ message: '소모품 복사 완료 (첨부파일 없음)', id: newId });
+                }
+                
+                // 4. 물리적 파일 복사 및 DB 레코드 추가
+                let completed = 0;
+                let hasError = false;
+                
+                files.forEach(f => {
+                    if (hasError) return;
+                    
+                    const oldPath = path.join(SITE_CONSUMABLES_DIR, f.fileName);
+                    const newFileName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(f.originalName);
+                    const newPath = path.join(SITE_CONSUMABLES_DIR, newFileName);
+                    
+                    try {
+                        if (fs.existsSync(oldPath)) {
+                            fs.copyFileSync(oldPath, newPath);
+                            
+                            const fileId = 'CFILE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+                            db.run(`INSERT INTO site_consumable_files (id, consumableId, originalName, fileName, mimeType, fileSize, uploadedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                [fileId, newId, f.originalName, newFileName, f.mimeType, f.fileSize, now], (err) => {
+                                    if (err) { hasError = true; return res.status(500).json({ error: err.message }); }
+                                    completed++;
+                                    if (completed === files.length && !hasError) {
+                                        res.status(201).json({ message: '소모품 및 첨부 도면 복사 완료', id: newId });
+                                    }
+                            });
+                        } else {
+                            completed++;
+                            if (completed === files.length && !hasError) {
+                                res.status(201).json({ message: '소모품 복사 완료 (일부 파일 유실)', id: newId });
+                            }
+                        }
+                    } catch (e) {
+                        if(!hasError) {
+                            hasError = true;
+                            res.status(500).json({ error: '파일 복사 중 오류: ' + e.message });
+                        }
+                    }
+                });
+            });
+        });
+    });
+});
+
 // ==========================================
 // Consumable Files
 // ==========================================
