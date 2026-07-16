@@ -367,32 +367,6 @@ router.post('/export-excel', async (req, res) => {
             }
         }
 
-        // --- 조건부 서식 (글자 크기 및 줄바꿈 자동 조절) ---
-        // 엑셀은 shrinkToFit과 wrapText가 동시에 선언되면 파일 손상으로 간주하므로, 명시적으로 하나만 지정해야 합니다.
-        
-        // 1. 자동 글자 크기 조정 (Shrink to fit) 항목
-        sheet.getCell('C16').alignment = { horizontal: 'left', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
-        sheet.getCell('I15').alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
-
-        // 2. 글자 길이에 따라 폰트 사이즈 6 + 줄바꿈 적용 항목 (은행명, 예금주, 거래처명, 대표자)
-        const dynamicWrapRules = [
-            { ref: 'B5', text: data.bankName || '', threshold: 8 },
-            { ref: 'I5', text: data.accountHolder || '', threshold: 10 },
-            { ref: 'C15', text: data.vendorName || '', threshold: 16 },
-            { ref: 'F15', text: data.representative || '', threshold: 8 }
-        ];
-
-        dynamicWrapRules.forEach(rule => {
-            const cell = sheet.getCell(rule.ref);
-            if (rule.text.length > rule.threshold) {
-                // 폰트 객체를 안전하게 복사 후 사이즈만 6으로 덮어씀
-                cell.font = Object.assign({}, cell.font, { size: 6 });
-                cell.alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', wrapText: true };
-            } else {
-                cell.alignment = { horizontal: 'center', vertical: 'middle', readingOrder: 'ltr', shrinkToFit: true };
-            }
-        });
-        // ------------------------------------------------
 
         // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
         const cleanContent = (data.content || '').replace(/[\t\r]/g, '');
@@ -406,12 +380,6 @@ router.post('/export-excel', async (req, res) => {
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
         const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
-
-        // 인쇄 페이지 설정 (1페이지에 맞춤)
-        sheet.pageSetup.fitToPage = true;
-        sheet.pageSetup.fitToWidth = 1;
-        sheet.pageSetup.fitToHeight = 1;
-        sheet.pageSetup.paperSize = 9; // A4
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
