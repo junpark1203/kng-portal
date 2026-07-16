@@ -361,11 +361,38 @@ router.post('/export-excel', async (req, res) => {
         for (const [cellRef, value] of Object.entries(mapping)) {
             const cell = sheet.getCell(cellRef);
             cell.value = value;
-            // 특수 서식(예: 구글 시트에서 넘어온 @ * ㅇ 채우기 서식) 초기화
+            // 구글 시트 찌꺼기 채우기 서식 초기화 (정렬 설정은 유지)
             if (typeof value === 'string') {
                 cell.numFmt = '@';
             }
         }
+
+        // --- 조건부 서식 (글자 크기 및 줄바꿈 자동 조절) ---
+        // 1. 자동 글자 크기 조정 (Shrink to fit) 항목
+        const shrinkCells = ['C16', 'I15']; // 제목, 사업자등록번호
+        shrinkCells.forEach(ref => {
+            const cell = sheet.getCell(ref);
+            cell.alignment = { ...(cell.alignment || {}), shrinkToFit: true, wrapText: false };
+        });
+
+        // 2. 글자 길이에 따라 폰트 사이즈 6 + 줄바꿈 적용 항목 (은행명, 예금주, 거래처명, 대표자)
+        const dynamicWrapRules = [
+            { ref: 'B5', text: data.bankName || '', threshold: 8 },
+            { ref: 'I5', text: data.accountHolder || '', threshold: 10 },
+            { ref: 'C15', text: data.vendorName || '', threshold: 16 },
+            { ref: 'F15', text: data.representative || '', threshold: 8 }
+        ];
+
+        dynamicWrapRules.forEach(rule => {
+            const cell = sheet.getCell(rule.ref);
+            if (rule.text.length > rule.threshold) {
+                cell.font = { ...(cell.font || {}), size: 6 };
+                cell.alignment = { ...(cell.alignment || {}), wrapText: true, shrinkToFit: false };
+            } else {
+                cell.alignment = { ...(cell.alignment || {}), shrinkToFit: true, wrapText: false };
+            }
+        });
+        // ------------------------------------------------
 
         // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
         const cleanContent = (data.content || '').replace(/[\t\r]/g, '');
