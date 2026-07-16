@@ -302,13 +302,13 @@ router.post('/export-excel', async (req, res) => {
 
         // Format dates
         const createdDate = data.createdDate ? new Date(data.createdDate) : new Date();
-        const createdStr = \`\${createdDate.getFullYear()}/\${String(createdDate.getMonth() + 1).padStart(2, '0')}/\${String(createdDate.getDate()).padStart(2, '0')}\`;
+        const createdStr = `${createdDate.getFullYear()}/${String(createdDate.getMonth() + 1).padStart(2, '0')}/${String(createdDate.getDate()).padStart(2, '0')}`;
         
         const paymentDate = data.paymentDate ? new Date(data.paymentDate) : null;
-        const payStr = paymentDate ? \`\${String(paymentDate.getMonth() + 1).padStart(2, '0')}/\${String(paymentDate.getDate()).padStart(2, '0')}\` : '';
+        const payStr = paymentDate ? `${String(paymentDate.getMonth() + 1).padStart(2, '0')}/${String(paymentDate.getDate()).padStart(2, '0')}` : '';
 
         const taxDate = data.taxInvoiceDate ? new Date(data.taxInvoiceDate) : null;
-        const taxStr = taxDate ? \`\${taxDate.getFullYear()}-\${String(taxDate.getMonth() + 1).padStart(2, '0')}-\${String(taxDate.getDate()).padStart(2, '0')}\` : '';
+        const taxStr = taxDate ? `${taxDate.getFullYear()}-${String(taxDate.getMonth() + 1).padStart(2, '0')}-${String(taxDate.getDate()).padStart(2, '0')}` : '';
 
         // Format amount
         const isForeign = ['USD', 'CNY', 'EUR', 'JPY'].includes(data.currency);
@@ -323,15 +323,15 @@ router.post('/export-excel', async (req, res) => {
         let koreanAmt = '';
         const curr = data.currency;
         if (curr === 'KRW') {
-            koreanAmt = \`일금 \${numberToKorean(amount)} 원정\`;
+            koreanAmt = `일금 ${numberToKorean(amount)} 원정`;
         } else if (curr === 'USD') {
-            koreanAmt = \`美貨 \${numberToKorean(amount)} 달러\`;
+            koreanAmt = `美貨 ${numberToKorean(amount)} 달러`;
         } else if (curr === 'CNY') {
-            koreanAmt = \`中貨 \${numberToKorean(amount)} 원元\`;
+            koreanAmt = `中貨 ${numberToKorean(amount)} 원元`;
         } else if (curr === 'EUR') {
-            koreanAmt = \`유로 \${numberToKorean(amount)} 유로\`;
+            koreanAmt = `유로 ${numberToKorean(amount)} 유로`;
         } else if (curr === 'JPY') {
-            koreanAmt = \`日貨 \${numberToKorean(amount)} 엔\`;
+            koreanAmt = `日貨 ${numberToKorean(amount)} 엔`;
         }
 
         // Map data to cells
@@ -363,10 +363,10 @@ router.post('/export-excel', async (req, res) => {
         }
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
-        const filename = \`지출결의서_\${dateStr}.xlsx\`;
+        const filename = `지출결의서_${dateStr}.xlsx`;
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', \`attachment; filename=\${encodeURIComponent(filename)}\`);
+        res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
         
         await workbook.xlsx.write(res);
         res.end();
