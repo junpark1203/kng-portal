@@ -335,6 +335,8 @@ router.post('/export-excel', async (req, res) => {
         }
 
         // Map data to cells
+        const cleanTitle = (data.title || '').replace(/[\t\r]/g, '');
+
         const mapping = {
             'I1': createdStr,
             'B4': koreanAmt,
@@ -349,7 +351,7 @@ router.post('/export-excel', async (req, res) => {
             'C15': data.vendorName || '',
             'F15': data.representative || '',
             'I15': data.bizRegNumber || '',
-            'C16': data.title || '',
+            'C16': cleanTitle,
             'A18': taxStr,
             'E18': curr + amtStr + ' ≠',
             'E19': isForeign ? '≠' : (vatStr + ' ≠'),
@@ -366,7 +368,8 @@ router.post('/export-excel', async (req, res) => {
         }
 
         // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
-        const contentLines = (data.content || '').split(/\r?\n/);
+        const cleanContent = (data.content || '').replace(/[\t\r]/g, '');
+        const contentLines = cleanContent.split(/\n/);
         for (let i = 0; i < 5; i++) {
             const cell = sheet.getCell(`C${21 + i}`);
             cell.value = contentLines[i] || ''; // 텍스트가 없으면 빈 문자열로 덮어씌워 템플릿 찌꺼기 제거
