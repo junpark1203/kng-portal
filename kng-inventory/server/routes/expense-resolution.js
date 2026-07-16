@@ -352,6 +352,7 @@ router.post('/export-excel', async (req, res) => {
             'F15': data.representative || '',
             'H15': '사업자\n등록번호',
             'I15': data.bizRegNumber || '',
+            'A9': '결\n\n\n\n\n재',
             'C16': cleanTitle,
             'A18': taxStr,
             'E18': curr + amtStr + ' ≠',
@@ -368,6 +369,8 @@ router.post('/export-excel', async (req, res) => {
             }
         }
 
+        // '결 재' 텍스트가 줄바꿈되도록 A9 셀에 wrapText 명시적 허용
+        sheet.getCell('A9').alignment = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'ltr' };
 
         // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
         const cleanContent = (data.content || '').replace(/[\t\r]/g, '');
