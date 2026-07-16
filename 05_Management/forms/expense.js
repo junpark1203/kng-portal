@@ -661,13 +661,10 @@ async function showPrintPreview() {
     };
 
     try {
-        const token = localStorage.getItem('token');
-        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5001' : '';
-        const res = await fetch(`${baseUrl}/api/expense-resolution/export-excel`, {
+        const res = await authFetch(`${API_URL}/export-excel`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)
         });
