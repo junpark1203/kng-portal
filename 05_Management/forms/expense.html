@@ -64,7 +64,7 @@
                                         <th data-sort="title" style="cursor: pointer;">제목 <i class='bx bx-sort'></i></th>
                                         <th data-sort="vendorName" style="cursor: pointer;">거래처 <i class='bx bx-sort'></i></th>
                                         <th data-sort="currency" style="cursor: pointer;">통화 <i class='bx bx-sort'></i></th>
-                                        <th data-sort="amount" style="cursor: pointer;">공급가 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="amount" style="cursor: pointer;">집행 금액 <i class='bx bx-sort'></i></th>
                                         <th data-sort="paymentMethod" style="cursor: pointer;">지불조건 <i class='bx bx-sort'></i></th>
                                         <th data-sort="personInCharge" style="cursor: pointer;">담당 <i class='bx bx-sort'></i></th>
                                         <th class="col-action">관리</th>
@@ -123,6 +123,11 @@
                                 <div class="fg" id="vatGroup">
                                     <label for="fVatAmount">부가가치세</label>
                                     <input type="number" id="fVatAmount" step="1" min="0" placeholder="0">
+                                </div>
+                                <!-- 합계 금액 -->
+                                <div class="fg" id="totalAmountGroup">
+                                    <label>합계 금액 (집행 금액)</label>
+                                    <input type="text" id="fTotalAmount" readonly style="background-color: #f1f5f9; font-weight: bold; border-color: #e2e8f0; color: #475569;" placeholder="0">
                                 </div>
                                 <!-- 담당 -->
                                 <div class="fg">

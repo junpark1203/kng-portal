@@ -48,6 +48,7 @@ const fPaymentDate = document.getElementById('fPaymentDate');
 const fCurrency = document.getElementById('fCurrency');
 const fAmount = document.getElementById('fAmount');
 const fVatAmount = document.getElementById('fVatAmount');
+const fTotalAmount = document.getElementById('fTotalAmount');
 const vatGroup = document.getElementById('vatGroup');
 const fPersonInCharge = document.getElementById('fPersonInCharge');
 const fTaxInvoiceDate = document.getElementById('fTaxInvoiceDate');
@@ -129,7 +130,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Form Events
-    fCurrency.addEventListener('change', handleCurrencyChange);
+    const calcTotal = () => {
+        const amt = parseFloat(fAmount.value) || 0;
+        const vat = isForeignCurrency(fCurrency.value) ? 0 : (parseFloat(fVatAmount.value) || 0);
+        fTotalAmount.value = (amt + vat).toLocaleString();
+    };
+
+    fAmount.addEventListener('input', calcTotal);
+    fVatAmount.addEventListener('input', calcTotal);
+    fCurrency.addEventListener('change', () => {
+        handleCurrencyChange();
+        calcTotal();
+    });
     fVendorSelect.addEventListener('change', handleVendorSelect);
 
     // Vendor Management Events
@@ -261,7 +273,7 @@ function renderExpenseList() {
             <td><strong>${exp.title || '-'}</strong></td>
             <td>${exp.vendorName || '-'}</td>
             <td>${exp.currency}</td>
-            <td style="text-align:right;">${currencySym} ${amountText}</td>
+            <td style="text-align:right;">${currencySym} ${Number(Number(exp.amount) + (isForeignCurrency(exp.currency) ? 0 : Number(exp.vatAmount || 0))).toLocaleString()}</td>
             <td>${exp.paymentMethod === 'cash' ? '현금' : '어음'}</td>
             <td>${exp.personInCharge || '-'}</td>
             <td class="col-action" onclick="event.stopPropagation()">
@@ -293,7 +305,9 @@ function showNewExpenseForm() {
     
     vendorInfoDisplay.style.display = 'none';
     accountSelectWrap.style.display = 'none';
-    
+    handleCurrencyChange();
+    fAmount.dispatchEvent(new Event('input')); // Trigger calcTotal
+
     initialFormData = getFormDataString();
     openExpenseModal();
 }
@@ -361,6 +375,7 @@ async function duplicateExpense(id) {
         
         fAmount.value = exp.amount;
         fVatAmount.value = exp.vatAmount;
+        fAmount.dispatchEvent(new Event('input')); // Trigger calcTotal
         fPersonInCharge.value = exp.personInCharge || '';
         
         const pmRadio = document.querySelector(`input[name="paymentMethod"][value="${exp.paymentMethod}"]`);

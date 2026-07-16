@@ -323,15 +323,15 @@ router.post('/export-excel', async (req, res) => {
         let koreanAmt = '';
         const curr = data.currency;
         if (curr === 'KRW') {
-            koreanAmt = `一金  ${numberToKorean(amount)}  원整`;
+            koreanAmt = `一金  ${numberToKorean(total)}  원整`;
         } else if (curr === 'USD') {
-            koreanAmt = `美貨 ${numberToKorean(amount)} 달러`;
+            koreanAmt = `美貨 ${numberToKorean(total)} 달러`;
         } else if (curr === 'CNY') {
-            koreanAmt = `中貨 ${numberToKorean(amount)} 원元`;
+            koreanAmt = `中貨 ${numberToKorean(total)} 원元`;
         } else if (curr === 'EUR') {
-            koreanAmt = `유로 ${numberToKorean(amount)} 유로`;
+            koreanAmt = `유로 ${numberToKorean(total)} 유로`;
         } else if (curr === 'JPY') {
-            koreanAmt = `日貨 ${numberToKorean(amount)} 엔`;
+            koreanAmt = `日貨 ${numberToKorean(total)} 엔`;
         }
 
         // Map data to cells
@@ -341,7 +341,7 @@ router.post('/export-excel', async (req, res) => {
         const mapping = {
             'I1': createdStr,
             'B4': koreanAmt,
-            'H4': displayCurr + amtStr + ' ≠',
+            'H4': displayCurr + totalStr + ' ≠',
             'B5': data.bankName || '',
             'D5': data.accountNumber || '',
             'I5': data.accountHolder || '',
