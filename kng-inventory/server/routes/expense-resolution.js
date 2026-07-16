@@ -385,14 +385,22 @@ router.post('/export-excel', async (req, res) => {
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
         const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
 
-        // 모든 행 높이 10% 증가
-        sheet.eachRow((row, rowNumber) => {
-            if (row.height) {
-                row.height = row.height * 1.1;
-            } else {
-                row.height = 15 * 1.1; // 엑셀 기본 행 높이 15를 기준으로 10% 증가
-            }
-        });
+        // 행 높이 명시적 지정
+        sheet.getRow(1).height = 20;
+        sheet.getRow(2).height = 20;
+        sheet.getRow(3).height = 10;
+        for (let r = 4; r <= 13; r++) sheet.getRow(r).height = 30;
+        sheet.getRow(14).height = 10;
+        for (let r = 15; r <= 28; r++) sheet.getRow(r).height = 30;
+
+        // 열 너비 명시적 지정
+        const colWidths = {
+            'A': 7.63, 'B': 8.25, 'C': 12.5, 'D': 9.25, 'E': 7.25,
+            'F': 5.75, 'G': 7.5, 'H': 7.63, 'I': 4.38, 'J': 10.38
+        };
+        for (const [col, width] of Object.entries(colWidths)) {
+            sheet.getColumn(col).width = width;
+        }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
