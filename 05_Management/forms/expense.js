@@ -445,6 +445,7 @@ async function saveExpense() {
         if (!res.ok) throw new Error('저장에 실패했습니다.');
         
         showToast('지출결의서가 저장되었습니다.', 'success');
+        initialFormData = getFormDataString(); // 저장 성공 시 경고창 우회
         closeExpenseModal();
     } catch(e) {
         showToast(e.message, 'error');
