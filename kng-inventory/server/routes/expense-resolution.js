@@ -359,6 +359,10 @@ router.post('/export-excel', async (req, res) => {
         for (const [cellRef, value] of Object.entries(mapping)) {
             const cell = sheet.getCell(cellRef);
             cell.value = value;
+            // 특수 서식(예: 구글 시트에서 넘어온 @ * ㅇ 채우기 서식) 초기화
+            if (typeof value === 'string') {
+                cell.numFmt = '@';
+            }
         }
 
         // 멀티라인 내용 처리 (C21 ~ C25에 분배하고 템플릿의 기존 예시 텍스트는 지움)
@@ -366,6 +370,7 @@ router.post('/export-excel', async (req, res) => {
         for (let i = 0; i < 5; i++) {
             const cell = sheet.getCell(`C${21 + i}`);
             cell.value = contentLines[i] || ''; // 텍스트가 없으면 빈 문자열로 덮어씌워 템플릿 찌꺼기 제거
+            cell.numFmt = '@'; // 구글 시트에서 가져온 찌꺼기 채우기 서식 무효화
         }
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
