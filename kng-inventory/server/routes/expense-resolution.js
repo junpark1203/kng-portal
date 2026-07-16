@@ -336,11 +336,12 @@ router.post('/export-excel', async (req, res) => {
 
         // Map data to cells
         const cleanTitle = (data.title || '').replace(/[\t\r]/g, '');
+        const displayCurr = curr === 'KRW' ? '₩' : curr;
 
         const mapping = {
             'I1': createdStr,
             'B4': koreanAmt,
-            'H4': curr + amtStr + ' ≠',
+            'H4': displayCurr + amtStr + ' ≠',
             'B5': data.bankName || '',
             'D5': data.accountNumber || '',
             'I5': data.accountHolder || '',
@@ -355,9 +356,9 @@ router.post('/export-excel', async (req, res) => {
             'A9': '결\n\n\n\n\n재',
             'C16': cleanTitle,
             'A18': taxStr,
-            'E18': curr + amtStr + ' ≠',
+            'E18': displayCurr + amtStr + ' ≠',
             'E19': isForeign ? '≠' : (vatStr + ' ≠'),
-            'E20': curr + totalStr + ' ≠'
+            'E20': displayCurr + totalStr + ' ≠'
         };
 
         for (const [cellRef, value] of Object.entries(mapping)) {
