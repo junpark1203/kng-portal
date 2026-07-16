@@ -417,8 +417,8 @@ router.post('/export-excel', async (req, res) => {
         const titleFont = sheet.getCell('A1').font || { name: '맑은 고딕' };
         sheet.getCell('A1').font = { ...titleFont, size: 24 };
 
-        // 금액 텍스트 영역 16pt
-        ['A18', 'E18', 'E19', 'E20'].forEach(ref => {
+        // 특정 셀 16pt (한글 금액 칸, B4, H4)
+        ['A18', 'B4', 'H4'].forEach(ref => {
             const f = sheet.getCell(ref).font || { name: '맑은 고딕' };
             sheet.getCell(ref).font = { ...f, size: 16 };
         });
