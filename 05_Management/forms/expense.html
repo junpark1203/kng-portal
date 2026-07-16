@@ -29,11 +29,30 @@
                             <span>엑셀 파일 다운로드 후 인쇄 시 <b>인쇄 영역을 지정</b>하고 여백을 <b>'좁게'</b> 설정하여 출력해 주세요.</span>
                         </div>
                         <div class="search-filter" style="padding: 0 20px 15px 20px;">
-                            <div class="search-box" style="display: flex; gap: 10px; max-width: 400px;">
-                                <div class="input-with-icon" style="position: relative; flex: 1;">
+                            <div class="advanced-filter-grid" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <div class="input-with-icon" style="position: relative; flex: 1; min-width: 150px;">
                                     <i class='bx bx-search' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
-                                    <input type="text" id="expenseSearchInput" placeholder="제목, 거래처, 통화, 담당자 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                    <input type="text" id="filterTitle" placeholder="제목 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
                                 </div>
+                                <div class="input-with-icon" style="position: relative; flex: 1; min-width: 120px;">
+                                    <i class='bx bx-buildings' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
+                                    <input type="text" id="filterVendor" placeholder="거래처 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                </div>
+                                <div class="input-with-icon" style="position: relative; width: 140px;">
+                                    <i class='bx bx-user' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
+                                    <input type="text" id="filterPerson" placeholder="담당자 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                </div>
+                                <select id="filterCurrency" style="padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; width: 110px;">
+                                    <option value="">모든 통화</option>
+                                    <option value="KRW">KRW (원)</option>
+                                    <option value="USD">USD ($)</option>
+                                    <option value="CNY">CNY (¥)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                </select>
+                                <button id="btnResetFilters" class="btn-outline" style="padding: 8px 12px; height: 36px; display: flex; align-items: center; gap: 4px;">
+                                    <i class='bx bx-refresh'></i> 초기화
+                                </button>
                             </div>
                         </div>
                         <div class="table-responsive">

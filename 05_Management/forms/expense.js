@@ -28,7 +28,7 @@ let currentVendors = [];
 let editingExpenseId = null;
 let editingVendorId = null;
 
-let searchTerm = '';
+let filters = { title: '', vendor: '', person: '', currency: '' };
 let currentSort = { key: 'createdDate', asc: false };
 let initialFormData = '';
 
@@ -68,11 +68,32 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelectedExpenses);
     
     // Search & Sort Events
-    const searchInput = document.getElementById('expenseSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            searchTerm = e.target.value.toLowerCase();
-            renderExpenseList();
+    const filterTitle = document.getElementById('filterTitle');
+    const filterVendor = document.getElementById('filterVendor');
+    const filterPerson = document.getElementById('filterPerson');
+    const filterCurrency = document.getElementById('filterCurrency');
+    const btnResetFilters = document.getElementById('btnResetFilters');
+
+    const applyFilters = () => {
+        filters.title = filterTitle.value.toLowerCase();
+        filters.vendor = filterVendor.value.toLowerCase();
+        filters.person = filterPerson.value.toLowerCase();
+        filters.currency = filterCurrency.value;
+        renderExpenseList();
+    };
+
+    if (filterTitle) filterTitle.addEventListener('input', applyFilters);
+    if (filterVendor) filterVendor.addEventListener('input', applyFilters);
+    if (filterPerson) filterPerson.addEventListener('input', applyFilters);
+    if (filterCurrency) filterCurrency.addEventListener('change', applyFilters);
+
+    if (btnResetFilters) {
+        btnResetFilters.addEventListener('click', () => {
+            filterTitle.value = '';
+            filterVendor.value = '';
+            filterPerson.value = '';
+            filterCurrency.value = '';
+            applyFilters();
         });
     }
 
@@ -182,15 +203,18 @@ async function loadExpenses() {
 function getFilteredAndSortedExpenses() {
     let filtered = currentExpenses;
 
-    // 1. Search filter
-    if (searchTerm) {
-        filtered = filtered.filter(exp => {
-            const title = (exp.title || '').toLowerCase();
-            const vendor = (exp.vendorName || '').toLowerCase();
-            const curr = (exp.currency || '').toLowerCase();
-            const person = (exp.personInCharge || '').toLowerCase();
-            return title.includes(searchTerm) || vendor.includes(searchTerm) || curr.includes(searchTerm) || person.includes(searchTerm);
-        });
+    // 1. Search filters (AND condition)
+    if (filters.title) {
+        filtered = filtered.filter(exp => (exp.title || '').toLowerCase().includes(filters.title));
+    }
+    if (filters.vendor) {
+        filtered = filtered.filter(exp => (exp.vendorName || '').toLowerCase().includes(filters.vendor));
+    }
+    if (filters.person) {
+        filtered = filtered.filter(exp => (exp.personInCharge || '').toLowerCase().includes(filters.person));
+    }
+    if (filters.currency) {
+        filtered = filtered.filter(exp => (exp.currency || '').toUpperCase() === filters.currency);
     }
 
     // 2. Sort
