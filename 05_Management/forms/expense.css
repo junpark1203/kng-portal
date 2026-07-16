@@ -1,0 +1,377 @@
+/* ==========================================
+   지출결의서 (Expense Resolution) Styles
+   ========================================== */
+
+/* --- 뷰 컨테이너 --- */
+.view-section { display: none; }
+.view-section.active { display: block; }
+
+/* --- 편집 모달 폼 --- */
+.expense-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.expense-form-grid .fg.full-width {
+    grid-column: 1 / -1;
+}
+
+.fg label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 5px;
+}
+.fg label .required { color: #ef4444; }
+
+.fg select,
+.fg textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+.fg select:focus,
+.fg textarea:focus {
+    border-color: #6366f1;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.fg textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.7;
+}
+
+/* --- 지불조건 라디오 --- */
+.payment-method-group {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 8px 0;
+}
+.payment-method-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 0;
+}
+.payment-method-group input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #6366f1;
+}
+
+/* --- 거래처 선택 영역 --- */
+.vendor-select-wrap {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.vendor-select-wrap select {
+    flex: 1;
+}
+.vendor-select-wrap .btn-outline {
+    white-space: nowrap;
+    height: 38px;
+}
+
+.vendor-info-display {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+    font-size: 13px;
+}
+.vendor-info-display .vi-item {
+    display: flex;
+    gap: 6px;
+}
+.vendor-info-display .vi-label {
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.vendor-info-display .vi-value {
+    color: #1e293b;
+}
+
+/* 계좌 선택 드롭다운 */
+.account-select-wrap {
+    margin-top: 8px;
+}
+.account-select-wrap select {
+    width: 100%;
+    font-size: 13px;
+}
+
+/* --- 거래처 관리 모달 --- */
+.vendor-list-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+.vendor-list-table th,
+.vendor-list-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+.vendor-list-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+    position: sticky;
+    top: 0;
+}
+.vendor-list-table tr:hover {
+    background: #f1f5f9;
+}
+
+.vendor-form-area {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+.account-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 8px;
+    align-items: end;
+}
+.account-row input {
+    font-size: 13px;
+}
+.account-row .btn-remove-account {
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    height: 38px;
+}
+.account-row .btn-remove-account:hover {
+    background: #fef2f2;
+}
+
+/* --- 인쇄 미리보기 레이아웃 --- */
+.print-layout {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 9999;
+    background: #f1f5f9;
+    overflow-y: auto;
+}
+
+.print-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.document-page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 20px auto;
+    background: #fff;
+    padding: 15mm 12mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+    box-sizing: border-box;
+}
+
+/* --- 출력물 테이블 스타일 --- */
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    table-layout: fixed;
+}
+.doc-table td,
+.doc-table th {
+    border: 1px solid #000;
+    padding: 4px 6px;
+    vertical-align: middle;
+    word-break: break-all;
+}
+.doc-table th {
+    background: #fff;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 제목행 */
+.doc-title-row td {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 8px;
+    padding: 10px;
+    border: 2px solid #000;
+}
+.doc-title-left {
+    text-align: left !important;
+    letter-spacing: 4px !important;
+    font-size: 20px !important;
+}
+
+/* 작성일자 셀 */
+.doc-date-cell {
+    font-size: 11px !important;
+    text-align: right !important;
+    letter-spacing: 0 !important;
+    font-weight: 400 !important;
+    padding: 3px 8px !important;
+}
+
+/* 금액행 */
+.amount-row {
+    background: #e8f0fe;
+}
+.amount-row td {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 6px 8px;
+}
+
+/* 결재란 */
+.approval-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.approval-table td {
+    border: 1px solid #000;
+    padding: 3px 5px;
+    text-align: center;
+    font-size: 10px;
+    height: 28px;
+}
+.approval-label-cell {
+    width: 30px;
+    font-weight: 700;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 4px;
+    font-size: 12px;
+}
+.approval-pos-cell {
+    width: 40px;
+    font-size: 10px;
+}
+.approval-sign-cell {
+    width: 60px;
+    min-height: 28px;
+}
+.approval-type-cell {
+    width: 20px;
+    font-weight: 700;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 2px;
+    font-size: 11px;
+}
+
+/* 합계 행 */
+.total-row {
+    background: #fffde7;
+}
+.total-row td {
+    font-weight: 700;
+}
+
+/* 내용 영역 */
+.content-cell {
+    white-space: pre-line;
+    line-height: 1.8;
+    min-height: 120px;
+    vertical-align: top;
+    padding: 8px !important;
+    font-size: 11px;
+}
+
+/* 하단 (주)케이앤지 */
+.doc-company-footer {
+    text-align: center;
+    font-size: 11px;
+    padding: 8px;
+    border-top: none;
+    text-decoration: underline;
+}
+
+/* ==========================================
+   인쇄 시 적용 스타일
+   ========================================== */
+@media print {
+    body * { visibility: hidden; }
+    .print-layout,
+    .print-layout * {
+        visibility: visible;
+    }
+    .print-layout {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        background: #fff;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .document-page {
+        width: 100%;
+        margin: 0;
+        padding: 10mm;
+        box-shadow: none;
+        min-height: auto;
+        page-break-inside: avoid;
+    }
+    @page {
+        size: A4;
+        margin: 5mm;
+    }
+}
+
+/* --- 반응형 --- */
+@media (max-width: 768px) {
+    .expense-form-grid {
+        grid-template-columns: 1fr;
+    }
+    .account-row {
+        grid-template-columns: 1fr 1fr;
+    }
+    .document-page {
+        width: 100%;
+        padding: 10px;
+    }
+}

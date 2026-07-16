@@ -6,20 +6,219 @@
     <title>지출결의서</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../../styles.css">
-    <style>
-        body { padding: 40px; text-align: center; background-color: var(--bg-body); }
-        .coming-soon { background: #fff; padding: 60px 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); max-width: 600px; margin: 0 auto; }
-        .coming-soon i { font-size: 64px; color: var(--primary); margin-bottom: 20px; }
-        .coming-soon h1 { font-size: 24px; color: var(--gray-800); margin-bottom: 10px; }
-        .coming-soon p { color: var(--gray-500); }
-    </style>
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="expense.css">
 </head>
 <body>
-    <div class="coming-soon">
-        <i class='bx bx-wallet'></i>
-        <h1>지출결의서</h1>
-        <p>해당 양식 관리 기능은 현재 준비 중입니다.</p>
+    <div class="app-container">
+        <main class="main-content">
+            <!-- ═══ 목록 뷰 ═══ -->
+            <div id="listView" class="view-section active">
+                <div class="section-block">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2><i class='bx bx-wallet'></i> 지출결의서 목록</h2>
+                            <div class="header-actions">
+                                <button id="btnManageVendors" class="btn-outline"><i class='bx bx-buildings'></i> 거래처 관리</button>
+                                <button id="btnNewExpense" class="btn-primary"><i class='bx bx-plus'></i> 새 지출결의서</button>
+                                <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th>작성일자</th>
+                                        <th>제목</th>
+                                        <th>거래처</th>
+                                        <th>통화</th>
+                                        <th>금액</th>
+                                        <th>지불조건</th>
+                                        <th>담당</th>
+                                        <th class="col-action">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="expenseListBody">
+                                    <tr class="loading-row"><td colspan="9"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ 편집 모달 ═══ -->
+            <div id="expenseEditModal" class="modal">
+                <div class="modal-content" style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding: 20px;">
+                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
+                        <h2 id="editViewTitle" style="margin: 0;"><i class='bx bx-edit'></i> 지출결의서 작성</h2>
+                        <div class="header-actions" style="display: flex; gap: 8px;">
+                            <button id="btnSaveExpense" class="btn-primary"><i class='bx bx-check'></i> 저장</button>
+                            <button id="btnPrintPreview" class="btn-outline btn-outline-success"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
+                            <button id="btnCloseEdit" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
+                        </div>
+                    </div>
+                    <div class="modal-body" style="overflow-y: auto; flex: 1; padding-right: 10px;">
+                        <form id="expenseForm" onsubmit="return false;">
+                            <div class="expense-form-grid">
+                                <!-- 작성일자 -->
+                                <div class="fg">
+                                    <label for="fCreatedDate">작성일자 <span class="required">*</span></label>
+                                    <input type="date" id="fCreatedDate" required>
+                                </div>
+                                <!-- 지급 요청일 -->
+                                <div class="fg">
+                                    <label for="fPaymentDate">지급 요청일 <span class="required">*</span></label>
+                                    <input type="date" id="fPaymentDate" required>
+                                </div>
+                                <!-- 통화 -->
+                                <div class="fg">
+                                    <label for="fCurrency">통화 단위 <span class="required">*</span></label>
+                                    <select id="fCurrency">
+                                        <option value="KRW">KRW (원)</option>
+                                        <option value="USD">USD ($)</option>
+                                        <option value="CNY">CNY (¥)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="JPY">JPY (¥)</option>
+                                    </select>
+                                </div>
+                                <!-- 금액 -->
+                                <div class="fg">
+                                    <label for="fAmount">금액 <span class="required">*</span></label>
+                                    <input type="number" id="fAmount" step="1" min="0" required placeholder="0">
+                                </div>
+                                <!-- 부가가치세 -->
+                                <div class="fg" id="vatGroup">
+                                    <label for="fVatAmount">부가가치세</label>
+                                    <input type="number" id="fVatAmount" step="1" min="0" placeholder="0">
+                                </div>
+                                <!-- 담당 -->
+                                <div class="fg">
+                                    <label for="fPersonInCharge">담당</label>
+                                    <input type="text" id="fPersonInCharge" placeholder="예: 박준영 차장">
+                                </div>
+                                <!-- 지불조건 -->
+                                <div class="fg">
+                                    <label>지불조건</label>
+                                    <div class="payment-method-group">
+                                        <label><input type="radio" name="paymentMethod" value="cash" checked> 현금</label>
+                                        <label><input type="radio" name="paymentMethod" value="bill"> 어음</label>
+                                    </div>
+                                </div>
+                                <!-- 세금계산서 일자 -->
+                                <div class="fg">
+                                    <label for="fTaxInvoiceDate">세금계산서 일자</label>
+                                    <input type="date" id="fTaxInvoiceDate">
+                                </div>
+                                <!-- 거래처 선택 -->
+                                <div class="fg full-width">
+                                    <label>거래처 선택</label>
+                                    <div class="vendor-select-wrap">
+                                        <select id="fVendorSelect">
+                                            <option value="">-- 거래처 선택 --</option>
+                                        </select>
+                                        <button type="button" id="btnOpenVendorMgmt" class="btn-outline"><i class='bx bx-cog'></i> 관리</button>
+                                    </div>
+                                    <div id="vendorInfoDisplay" class="vendor-info-display" style="display:none;"></div>
+                                    <div id="accountSelectWrap" class="account-select-wrap" style="display:none;">
+                                        <label for="fAccountSelect" style="font-size: 12px;">계좌 선택:</label>
+                                        <select id="fAccountSelect"></select>
+                                    </div>
+                                </div>
+                                <!-- 제목 -->
+                                <div class="fg full-width">
+                                    <label for="fTitle">제목 <span class="required">*</span></label>
+                                    <input type="text" id="fTitle" required placeholder="예: 윤활유 수입대금 선급 외화송금 수수료">
+                                </div>
+                                <!-- 내용 -->
+                                <div class="fg full-width">
+                                    <label for="fContent">내용</label>
+                                    <textarea id="fContent" rows="6" placeholder="내용을 입력하세요. 줄바꿈이 그대로 출력됩니다."></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ 거래처 관리 모달 ═══ -->
+            <div id="vendorModal" class="modal">
+                <div class="modal-content" style="width: 95%; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column; padding: 20px;">
+                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
+                        <h2 style="margin: 0;"><i class='bx bx-buildings'></i> 거래처 관리</h2>
+                        <button id="btnCloseVendorModal" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
+                    </div>
+                    <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+                            <button id="btnNewVendor" class="btn-primary btn-sm"><i class='bx bx-plus'></i> 신규 거래처</button>
+                        </div>
+                        <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <table class="vendor-list-table">
+                                <thead>
+                                    <tr>
+                                        <th>거래처명</th>
+                                        <th>대표자</th>
+                                        <th>사업자등록번호</th>
+                                        <th>계좌 수</th>
+                                        <th style="width:100px;">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vendorListBody">
+                                    <tr><td colspan="5" style="text-align:center; color:#94a3b8;">거래처가 없습니다.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- 거래처 입력 폼 -->
+                        <div id="vendorFormArea" class="vendor-form-area" style="display:none;">
+                            <h4 id="vendorFormTitle" style="margin: 0 0 12px 0;">거래처 등록</h4>
+                            <div class="expense-form-grid">
+                                <div class="fg">
+                                    <label for="vVendorName">거래처명 <span class="required">*</span></label>
+                                    <input type="text" id="vVendorName" required placeholder="거래처명">
+                                </div>
+                                <div class="fg">
+                                    <label for="vRepresentative">대표자명</label>
+                                    <input type="text" id="vRepresentative" placeholder="대표자명">
+                                </div>
+                                <div class="fg full-width">
+                                    <label for="vBizRegNumber">사업자등록번호</label>
+                                    <input type="text" id="vBizRegNumber" placeholder="사업자등록번호">
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                                    <label style="font-weight:600; color:#475569; font-size:13px; margin:0;">계좌 정보</label>
+                                    <button type="button" id="btnAddAccount" class="btn-outline btn-sm"><i class='bx bx-plus'></i> 계좌 추가</button>
+                                </div>
+                                <div id="accountsList" class="accounts-list">
+                                    <!-- 동적 계좌 행 -->
+                                </div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                <button type="button" id="btnCancelVendor" class="btn-outline">취소</button>
+                                <button type="button" id="btnSaveVendor" class="btn-primary"><i class='bx bx-save'></i> 저장</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ 인쇄 미리보기 ═══ -->
+            <div id="printLayout" class="print-layout">
+                <div class="print-actions no-print">
+                    <button id="btnClosePrint" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
+                    <button onclick="window.print()" class="btn-primary"><i class='bx bx-printer'></i> 인쇄하기</button>
+                </div>
+                <div class="document-page" id="printPage">
+                    <!-- 인쇄 내용 동적 렌더링 -->
+                </div>
+            </div>
+
+        </main>
     </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script type="module" src="expense.js?v=1"></script>
 </body>
 </html>
