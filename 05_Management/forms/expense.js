@@ -642,62 +642,67 @@ function showPrintPreview() {
 
     const html = `
         <table class="doc-table">
+            <colgroup>
+                <col style="width: 12%;">
+                <col style="width: 10%;">
+                <col style="width: 13%;">
+                <col style="width: 10%;">
+                <col style="width: 13%;">
+                <col style="width: 10%;">
+                <col style="width: 16%;">
+                <col style="width: 16%;">
+            </colgroup>
             <tr class="doc-title-row">
                 <td colspan="5" class="doc-title-left">수입( )지출(V) 결 의 서</td>
                 <td colspan="3" style="padding:0; border:none; vertical-align:top;">
                     <table style="width:100%; height:100%; border-collapse:collapse;">
                         <tr>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:center !important; width:40%;">작성 일자</td>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:right !important;">${createdStr}</td>
+                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:center !important; width:40%; font-weight:400 !important; font-size:10px !important;">작성 일자</td>
+                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:right !important; font-weight:400 !important; font-size:10px !important;">${createdStr}</td>
                         </tr>
                         <tr>
-                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; text-align:center !important;">전결 조항</td>
-                            <td class="doc-date-cell" style="border-bottom:none; border-right:none;"></td>
+                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; text-align:center !important; font-weight:400 !important; font-size:10px !important;">전결 조항</td>
+                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; font-weight:400 !important; font-size:10px !important;"></td>
                         </tr>
                     </table>
                 </td>
             </tr>
             <tr class="amount-row">
-                <td style="width: 10%; text-align:center; font-weight: 700;">금 액</td>
+                <th style="text-align:center; font-weight: 700 !important; font-size: 10px !important;">금 액</th>
                 <td colspan="4" style="text-align:center; font-size: 16px !important; font-weight: 700 !important;">${koreanAmt}</td>
-                <td colspan="3" style="width: 30%; text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
+                <td colspan="3" style="text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
             </tr>
             <tr>
-                <th style="width: 10%;">은행명</th>
-                <td style="width: 20%; font-size:10px; text-align:center;">${bankName || '-'}</td>
-                <th style="width: 10%;">계좌번호</th>
+                <th>은행명</th>
+                <td colspan="2" style="text-align:center;">${bankName || '-'}</td>
+                <th>계좌번호</th>
                 <td colspan="2" style="text-align:center;">${accountNumber || '-'}</td>
-                <th style="width: 10%;">예금주</th>
-                <td colspan="2" style="font-size:10px; text-align:center;">${accountHolder || '-'}</td>
+                <th>예금주</th>
+                <td colspan="1" style="text-align:center; font-size:9px;">${accountHolder || '-'}</td>
             </tr>
             <tr>
                 <th colspan="2">지급 요청일</th>
-                <td colspan="2" style="text-align:center;">${payStr}</td>
-                <td colspan="4" style="text-align:center;">사장</td>
+                <td colspan="3" style="text-align:center;">${payStr}</td>
+                <th colspan="3" style="text-align:center;">사 장</th>
             </tr>
             <tr>
                 <th rowspan="2">지 불<br>조 건</th>
-                <th style="width: 10%;">현금</th>
-                <td colspan="2" style="text-align:center;">${isCash ? 'O' : ''}</td>
-                <td colspan="4" rowspan="2"></td>
+                <th>현금</th>
+                <td colspan="3" style="text-align:center;">${isCash ? 'O' : ''}</td>
+                <td colspan="3" rowspan="2"></td>
             </tr>
             <tr>
                 <th>어음</th>
-                <td colspan="2" style="text-align:center;">${!isCash ? 'O' : ''}</td>
+                <td colspan="3" style="text-align:center;">${!isCash ? 'O' : ''}</td>
             </tr>
             <tr>
-                <th rowspan="4">결<br><br><br>재</th>
+                <th rowspan="4" class="approval-label-cell">결<br>재</th>
                 <th>전무</th>
-                <td style="width:10%;"></td>
+                <td></td>
                 <th>부사장</th>
-                <td style="width:10%;"></td>
-                <td colspan="2" rowspan="4">
-                    <table class="approval-table" style="border:none;">
-                        <tr><td style="border:none;" class="approval-label-cell">협</td></tr>
-                        <tr><td style="border:none;" class="approval-label-cell">조</td></tr>
-                    </table>
-                </td>
-                <td rowspan="4" style="width:15%;"></td>
+                <td></td>
+                <th rowspan="4" class="approval-label-cell" style="letter-spacing: 2px;">협<br>조</th>
+                <td colspan="2" rowspan="4"></td>
             </tr>
             <tr>
                 <th>이사</th>
@@ -720,18 +725,27 @@ function showPrintPreview() {
             <tr>
                 <th colspan="2">담 당</th>
                 <td colspan="3" style="text-align:center;">${fPersonInCharge.value || '-'}</td>
-                <td colspan="3" style="text-align:center;">현장명</td>
+                <th colspan="1">현장명</th>
+                <td colspan="2"></td>
             </tr>
         </table>
         
         <table class="doc-table" style="margin-top: 8px;">
+            <colgroup>
+                <col style="width: 15%;">
+                <col style="width: 35%;">
+                <col style="width: 10%;">
+                <col style="width: 15%;">
+                <col style="width: 10%;">
+                <col style="width: 15%;">
+            </colgroup>
             <tr>
-                <th style="width: 18%;">거래처/대표자</th>
-                <td style="width: 32%; font-size:10px; text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
-                <th style="width: 10%;">대표자</th>
-                <td style="width: 15%; text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
-                <th style="width: 10%; font-size:10px;">사업자<br>등록번호</th>
-                <td style="width: 15%; font-size:10px; text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
+                <th>거래처/대표자</th>
+                <td style="text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
+                <th>대표자</th>
+                <td style="text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
+                <th>사업자<br>등록번호</th>
+                <td style="text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
             </tr>
             <tr>
                 <th>제 목</th>
@@ -770,7 +784,7 @@ function showPrintPreview() {
             </tr>
         </table>
         
-        <div class="doc-company-footer">(주)케이앤지</div>
+        <div class="doc-company-footer">(주)케앤지</div>
     `;
 
     page.insertAdjacentHTML('beforeend', html);
