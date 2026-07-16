@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const ExcelJS = require('exceljs');
+const path = require('path');
 
 let db;
 
@@ -234,6 +236,144 @@ router.put('/:id', (req, res) => {
         if (this.changes === 0) return res.status(404).json({ error: '지출결의서를 찾을 수 없습니다.' });
         res.json({ message: '수정 성공' });
     });
+});
+
+function numberToKorean(number) {
+    const koreanNumbers = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+    const units = ['', '십', '백', '천'];
+    const bigUnits = ['', '만', '억', '조', '경'];
+
+    if (number === 0) return '영';
+
+    let numStr = number.toString();
+    let isNegative = false;
+    if (numStr.startsWith('-')) {
+        isNegative = true;
+        numStr = numStr.substring(1);
+    }
+    
+    const parts = numStr.split('.');
+    let intPartStr = parts[0];
+    const decPartStr = parts[1];
+
+    let result = '';
+    let unitCount = 0;
+
+    for (let i = intPartStr.length - 1; i >= 0; i -= 4) {
+        let chunk = intPartStr.substring(Math.max(0, i - 3), i + 1);
+        let chunkStr = '';
+        for (let j = 0; j < chunk.length; j++) {
+            let digit = parseInt(chunk[j]);
+            if (digit !== 0) {
+                chunkStr += koreanNumbers[digit] + units[chunk.length - 1 - j];
+            }
+        }
+        if (chunkStr !== '') {
+            result = chunkStr + bigUnits[unitCount] + result;
+        }
+        unitCount++;
+    }
+
+    if (isNegative) {
+        result = '마이너스 ' + result;
+    }
+    
+    let decResult = '';
+    if (decPartStr && parseInt(decPartStr) !== 0) {
+        decResult = '점';
+        for(let i=0; i<decPartStr.length; i++) {
+            decResult += (decPartStr[i] === '0' ? '영' : koreanNumbers[parseInt(decPartStr[i])]);
+        }
+    }
+    
+    return result + decResult;
+}
+
+// 엑셀 다운로드 API
+router.post('/export-excel', async (req, res) => {
+    try {
+        const data = req.body;
+        const templatePath = path.join(__dirname, '../templates/expense_template.xlsx');
+        
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(templatePath);
+        
+        const sheet = workbook.worksheets[0];
+
+        // Format dates
+        const createdDate = data.createdDate ? new Date(data.createdDate) : new Date();
+        const createdStr = \`\${createdDate.getFullYear()}/\${String(createdDate.getMonth() + 1).padStart(2, '0')}/\${String(createdDate.getDate()).padStart(2, '0')}\`;
+        
+        const paymentDate = data.paymentDate ? new Date(data.paymentDate) : null;
+        const payStr = paymentDate ? \`\${String(paymentDate.getMonth() + 1).padStart(2, '0')}/\${String(paymentDate.getDate()).padStart(2, '0')}\` : '';
+
+        const taxDate = data.taxInvoiceDate ? new Date(data.taxInvoiceDate) : null;
+        const taxStr = taxDate ? \`\${taxDate.getFullYear()}-\${String(taxDate.getMonth() + 1).padStart(2, '0')}-\${String(taxDate.getDate()).padStart(2, '0')}\` : '';
+
+        // Format amount
+        const isForeign = ['USD', 'CNY', 'EUR', 'JPY'].includes(data.currency);
+        let amount = parseFloat(data.amount) || 0;
+        let vat = parseFloat(data.vatAmount) || 0;
+        let total = amount + (isForeign ? 0 : vat);
+
+        let amtStr = amount.toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 });
+        let totalStr = total.toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 });
+        let vatStr = vat.toLocaleString();
+
+        let koreanAmt = '';
+        const curr = data.currency;
+        if (curr === 'KRW') {
+            koreanAmt = \`일금 \${numberToKorean(amount)} 원정\`;
+        } else if (curr === 'USD') {
+            koreanAmt = \`美貨 \${numberToKorean(amount)} 달러\`;
+        } else if (curr === 'CNY') {
+            koreanAmt = \`中貨 \${numberToKorean(amount)} 원元\`;
+        } else if (curr === 'EUR') {
+            koreanAmt = \`유로 \${numberToKorean(amount)} 유로\`;
+        } else if (curr === 'JPY') {
+            koreanAmt = \`日貨 \${numberToKorean(amount)} 엔\`;
+        }
+
+        // Map data to cells
+        const mapping = {
+            'I1': createdStr,
+            'B4': koreanAmt,
+            'H4': curr + amtStr + ' ≠',
+            'B5': data.bankName || '',
+            'D5': data.accountNumber || '',
+            'I5': data.accountHolder || '',
+            'C6': payStr,
+            'C7': data.paymentMethod === 'cash' ? 'O' : '',
+            'C8': data.paymentMethod !== 'cash' ? 'O' : '',
+            'C13': data.personInCharge || '',
+            'C15': data.vendorName || '',
+            'F15': data.representative || '',
+            'I15': data.bizRegNumber || '',
+            'C16': data.title || '',
+            'A18': taxStr,
+            'E18': curr + amtStr + ' ≠',
+            'E19': isForeign ? '≠' : (vatStr + ' ≠'),
+            'E20': curr + totalStr + ' ≠',
+            'C21': data.content || ''
+        };
+
+        for (const [cellRef, value] of Object.entries(mapping)) {
+            const cell = sheet.getCell(cellRef);
+            cell.value = value;
+        }
+
+        const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
+        const filename = \`지출결의서_\${dateStr}.xlsx\`;
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', \`attachment; filename=\${encodeURIComponent(filename)}\`);
+        
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Excel Export Error:', err);
+        res.status(500).json({ error: '엑셀 파일 생성 중 오류가 발생했습니다.' });
+    }
 });
 
 module.exports = {

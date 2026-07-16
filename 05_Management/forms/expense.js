@@ -595,7 +595,7 @@ function getCurrencyKoreanText(curr, amount) {
     return `${curr} ${intText}${fracText}`;
 }
 
-function showPrintPreview() {
+async function showPrintPreview() {
     if (!fCreatedDate.value || !fAmount.value || !fTitle.value || !fVendorSelect.value) {
         showToast('필수 항목을 모두 입력 후 미리보기가 가능합니다.', 'warning');
         return;
@@ -640,162 +640,69 @@ function showPrintPreview() {
     
     const isCash = document.querySelector('input[name="paymentMethod"]:checked').value === 'cash';
 
-    const html = `
-        <table class="doc-table">
-            <colgroup>
-                <col style="width: 9.5%;">
-                <col style="width: 10.2%;">
-                <col style="width: 15.6%;">
-                <col style="width: 11.5%;">
-                <col style="width: 9.0%;">
-                <col style="width: 7.2%;">
-                <col style="width: 9.4%;">
-                <col style="width: 9.4%;">
-                <col style="width: 5.4%;">
-                <col style="width: 12.8%;">
-            </colgroup>
-            <tr class="doc-title-row">
-                <td colspan="7" class="doc-title-left">수입( )지출(V) 결 의 서</td>
-                <td colspan="3" style="padding:0; border:none; vertical-align:top;">
-                    <table style="width:100%; height:100%; border-collapse:collapse;">
-                        <tr>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:center !important; width:40%; font-weight:400 !important; font-size:10px !important;">작성 일자</td>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:right !important; font-weight:400 !important; font-size:10px !important;">${createdStr}</td>
-                        </tr>
-                        <tr>
-                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; text-align:center !important; font-weight:400 !important; font-size:10px !important;">전결 조항</td>
-                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; font-weight:400 !important; font-size:10px !important;"></td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-            <tr class="amount-row">
-                <th style="text-align:center; font-weight: 700 !important; font-size: 10px !important;">금 액</th>
-                <td colspan="4" style="text-align:center; font-size: 16px !important; font-weight: 700 !important;">${koreanAmt}</td>
-                <td colspan="5" style="text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
-            </tr>
-            <tr>
-                <th>은행명</th>
-                <td colspan="2" style="text-align:center;">${bankName || '-'}</td>
-                <th colspan="2">계좌번호</th>
-                <td colspan="2" style="text-align:center;">${accountNumber || '-'}</td>
-                <th colspan="2">예금주</th>
-                <td colspan="1" style="text-align:center;">${accountHolder || '-'}</td>
-            </tr>
-            <tr>
-                <th colspan="3">지급 요청일</th>
-                <td colspan="2" style="text-align:center;">${payStr}</td>
-                <th colspan="5" style="text-align:center;">사 장</th>
-            </tr>
-            <tr>
-                <th rowspan="2">지 불<br>조 건</th>
-                <th>현금</th>
-                <td colspan="3" style="text-align:center;">${isCash ? 'O' : ''}</td>
-                <td colspan="5" rowspan="2"></td>
-            </tr>
-            <tr>
-                <th>어음</th>
-                <td colspan="3" style="text-align:center;">${!isCash ? 'O' : ''}</td>
-            </tr>
-            <tr>
-                <th rowspan="4" class="approval-label-cell">결<br>재</th>
-                <th>전무</th>
-                <td></td>
-                <th>부사장</th>
-                <td></td>
-                <th rowspan="4" class="approval-label-cell" style="letter-spacing: 2px;">협<br>조</th>
-                <td colspan="4" rowspan="4"></td>
-            </tr>
-            <tr>
-                <th>이사</th>
-                <td></td>
-                <th>상무</th>
-                <td></td>
-            </tr>
-            <tr>
-                <th>차장</th>
-                <td></td>
-                <th>부장</th>
-                <td></td>
-            </tr>
-            <tr>
-                <th>대리</th>
-                <td></td>
-                <th>과장</th>
-                <td></td>
-            </tr>
-            <tr>
-                <th colspan="2">담 당</th>
-                <td colspan="3" style="text-align:center;">${fPersonInCharge.value || '-'}</td>
-                <th colspan="3">현장명</th>
-                <td colspan="2"></td>
-            </tr>
-        </table>
-        
-        <table class="doc-table" style="margin-top: 13px;">
-            <colgroup>
-                <col style="width: 9.5%;">
-                <col style="width: 10.2%;">
-                <col style="width: 15.6%;">
-                <col style="width: 11.5%;">
-                <col style="width: 9.0%;">
-                <col style="width: 7.2%;">
-                <col style="width: 9.4%;">
-                <col style="width: 9.4%;">
-                <col style="width: 5.4%;">
-                <col style="width: 12.8%;">
-            </colgroup>
-            <tr>
-                <th colspan="2">거래처/대표자</th>
-                <td colspan="3" style="text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
-                <th colspan="2">대표자</th>
-                <td colspan="1" style="text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
-                <th colspan="1">사업자<br>등록번호</th>
-                <td colspan="1" style="font-size:10px; text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
-            </tr>
-            <tr>
-                <th colspan="2">제 목</th>
-                <td colspan="8" style="font-weight: 400 !important;">${fTitle.value || '-'}</td>
-            </tr>
-            <tr>
-                <th colspan="2">세금계산서 일자</th>
-                <th colspan="3">적 요</th>
-                <th colspan="3">금 액</th>
-                <th colspan="2">비 고</th>
-            </tr>
-            <tr>
-                <td colspan="2" rowspan="3" style="text-align:center; font-weight: 400 !important;">${fTaxInvoiceDate.value || ''}</td>
-                <td colspan="3" style="text-align:center; font-weight: 700;">공 급 가</td>
-                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${curr}${amtStr} ≠</td>
-                <td colspan="2" rowspan="3" style="font-weight: 400 !important;"></td>
-            </tr>
-            <tr>
-                <td colspan="3" style="text-align:center; font-weight: 700;">부가 가치세</td>
-                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${isForeign ? '' : (vat.toLocaleString() + ' ≠')}</td>
-            </tr>
-            <tr class="total-row">
-                <td colspan="3" style="text-align:center; font-weight: 700;">계</td>
-                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ≠</td>
-            </tr>
-            <tr>
-                <th colspan="2">내 용</th>
-                <td colspan="8" class="content-cell">${fContent.value || ''}</td>
-            </tr>
-            <tr>
-                <th colspan="2">출납확인</th>
-                <td colspan="2" style="text-align:center;">담 당</td>
-                <td colspan="1"></td>
-                <th colspan="2" style="text-align:center;">회 계</th>
-                <td colspan="3"></td>
-            </tr>
-        </table>
-        
-        <div class="doc-company-footer">(주)케앤지</div>
-    `;
+    const payload = {
+        createdDate: fCreatedDate.value,
+        paymentDate: fPaymentDate.value,
+        currency: curr,
+        amount: amount,
+        vatAmount: vat,
+        vendorId: selectedVendor ? selectedVendor.id : '',
+        vendorName: selectedVendor ? selectedVendor.vendorName : '',
+        representative: selectedVendor ? selectedVendor.representative : '',
+        bizRegNumber: selectedVendor ? selectedVendor.bizRegNumber : '',
+        bankName: bankName,
+        accountNumber: accountNumber,
+        accountHolder: accountHolder,
+        paymentMethod: isCash ? 'cash' : 'bill',
+        title: fTitle.value,
+        taxInvoiceDate: fTaxInvoiceDate.value,
+        content: fContent.value,
+        personInCharge: fPersonInCharge.value
+    };
 
-    page.insertAdjacentHTML('beforeend', html);
-    printLayout.style.display = 'block';
-    document.body.style.overflow = 'hidden';
+    try {
+        const token = localStorage.getItem('token');
+        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5001' : '';
+        const res = await fetch(`${baseUrl}/api/expense-resolution/export-excel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            let errMsg = '엑셀 변환 실패';
+            try {
+                const err = await res.json();
+                errMsg = err.error || errMsg;
+            } catch (e) {}
+            throw new Error(errMsg);
+        }
+
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        let filename = '지출결의서.xlsx';
+        const disposition = res.headers.get('content-disposition');
+        if (disposition && disposition.indexOf('filename=') !== -1) {
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (matches != null && matches[1]) { 
+                filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
+            }
+        }
+        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        showToast(e.message, 'danger');
+    }
 }
 
 window.editExpense = editExpense;
