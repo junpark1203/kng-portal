@@ -224,6 +224,8 @@
     padding: 6px 8px;
     vertical-align: middle;
     word-break: break-all;
+    height: 40px;
+    box-sizing: border-box;
 }
 .doc-table th {
     background: #fff;
@@ -283,7 +285,6 @@
     text-align: center;
     font-size: 10px !important;
     font-weight: 400 !important;
-    height: 32px;
 }
 .approval-label-cell {
     width: 30px;
@@ -300,7 +301,6 @@
 }
 .approval-sign-cell {
     width: 60px;
-    min-height: 32px;
 }
 .approval-type-cell {
     width: 20px;

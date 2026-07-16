@@ -643,17 +643,19 @@ function showPrintPreview() {
     const html = `
         <table class="doc-table">
             <colgroup>
-                <col style="width: 12%;">
-                <col style="width: 10%;">
-                <col style="width: 13%;">
-                <col style="width: 10%;">
-                <col style="width: 13%;">
-                <col style="width: 10%;">
-                <col style="width: 16%;">
-                <col style="width: 16%;">
+                <col style="width: 9.5%;">
+                <col style="width: 10.2%;">
+                <col style="width: 15.6%;">
+                <col style="width: 11.5%;">
+                <col style="width: 9.0%;">
+                <col style="width: 7.2%;">
+                <col style="width: 9.4%;">
+                <col style="width: 9.4%;">
+                <col style="width: 5.4%;">
+                <col style="width: 12.8%;">
             </colgroup>
             <tr class="doc-title-row">
-                <td colspan="5" class="doc-title-left">수입( )지출(V) 결 의 서</td>
+                <td colspan="7" class="doc-title-left">수입( )지출(V) 결 의 서</td>
                 <td colspan="3" style="padding:0; border:none; vertical-align:top;">
                     <table style="width:100%; height:100%; border-collapse:collapse;">
                         <tr>
@@ -670,26 +672,26 @@ function showPrintPreview() {
             <tr class="amount-row">
                 <th style="text-align:center; font-weight: 700 !important; font-size: 10px !important;">금 액</th>
                 <td colspan="4" style="text-align:center; font-size: 16px !important; font-weight: 700 !important;">${koreanAmt}</td>
-                <td colspan="3" style="text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
+                <td colspan="5" style="text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
             </tr>
             <tr>
                 <th>은행명</th>
                 <td colspan="2" style="text-align:center;">${bankName || '-'}</td>
-                <th>계좌번호</th>
+                <th colspan="2">계좌번호</th>
                 <td colspan="2" style="text-align:center;">${accountNumber || '-'}</td>
-                <th>예금주</th>
+                <th colspan="2">예금주</th>
                 <td colspan="1" style="text-align:center; font-size:9px;">${accountHolder || '-'}</td>
             </tr>
             <tr>
-                <th colspan="2">지급 요청일</th>
-                <td colspan="3" style="text-align:center;">${payStr}</td>
-                <th colspan="3" style="text-align:center;">사 장</th>
+                <th colspan="3">지급 요청일</th>
+                <td colspan="2" style="text-align:center;">${payStr}</td>
+                <th colspan="5" style="text-align:center;">사 장</th>
             </tr>
             <tr>
                 <th rowspan="2">지 불<br>조 건</th>
                 <th>현금</th>
                 <td colspan="3" style="text-align:center;">${isCash ? 'O' : ''}</td>
-                <td colspan="3" rowspan="2"></td>
+                <td colspan="5" rowspan="2"></td>
             </tr>
             <tr>
                 <th>어음</th>
@@ -702,7 +704,7 @@ function showPrintPreview() {
                 <th>부사장</th>
                 <td></td>
                 <th rowspan="4" class="approval-label-cell" style="letter-spacing: 2px;">협<br>조</th>
-                <td colspan="2" rowspan="4"></td>
+                <td colspan="4" rowspan="4"></td>
             </tr>
             <tr>
                 <th>이사</th>
@@ -725,62 +727,66 @@ function showPrintPreview() {
             <tr>
                 <th colspan="2">담 당</th>
                 <td colspan="3" style="text-align:center;">${fPersonInCharge.value || '-'}</td>
-                <th colspan="1">현장명</th>
+                <th colspan="3">현장명</th>
                 <td colspan="2"></td>
             </tr>
         </table>
         
-        <table class="doc-table" style="margin-top: 8px;">
+        <table class="doc-table" style="margin-top: 13px;">
             <colgroup>
-                <col style="width: 15%;">
-                <col style="width: 35%;">
-                <col style="width: 10%;">
-                <col style="width: 15%;">
-                <col style="width: 10%;">
-                <col style="width: 15%;">
+                <col style="width: 9.5%;">
+                <col style="width: 10.2%;">
+                <col style="width: 15.6%;">
+                <col style="width: 11.5%;">
+                <col style="width: 9.0%;">
+                <col style="width: 7.2%;">
+                <col style="width: 9.4%;">
+                <col style="width: 9.4%;">
+                <col style="width: 5.4%;">
+                <col style="width: 12.8%;">
             </colgroup>
             <tr>
-                <th>거래처/대표자</th>
-                <td style="text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
-                <th>대표자</th>
-                <td style="text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
-                <th>사업자<br>등록번호</th>
-                <td style="text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
+                <th colspan="2">거래처/대표자</th>
+                <td colspan="3" style="text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
+                <th colspan="2">대표자</th>
+                <td colspan="1" style="text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
+                <th colspan="1" style="font-size:9px;">사업자<br>등록번호</th>
+                <td colspan="1" style="font-size:10px; text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
             </tr>
             <tr>
-                <th>제 목</th>
-                <td colspan="5" style="font-weight: 400 !important;">${fTitle.value || '-'}</td>
+                <th colspan="2">제 목</th>
+                <td colspan="8" style="font-weight: 400 !important;">${fTitle.value || '-'}</td>
             </tr>
             <tr>
-                <th>세금계산서 일자</th>
-                <th colspan="2">적 요</th>
-                <th colspan="2">금 액</th>
-                <th>비 고</th>
+                <th colspan="2">세금계산서 일자</th>
+                <th colspan="3">적 요</th>
+                <th colspan="3">금 액</th>
+                <th colspan="2">비 고</th>
             </tr>
             <tr>
-                <td rowspan="3" style="text-align:center; font-weight: 400 !important;">${fTaxInvoiceDate.value || ''}</td>
-                <td colspan="2" style="text-align:center; font-weight: 700;">공 급 가</td>
-                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${curr}${amtStr} ≠</td>
-                <td rowspan="3" style="font-weight: 400 !important;"></td>
+                <td colspan="2" rowspan="3" style="text-align:center; font-weight: 400 !important;">${fTaxInvoiceDate.value || ''}</td>
+                <td colspan="3" style="text-align:center; font-weight: 700;">공 급 가</td>
+                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${curr}${amtStr} ≠</td>
+                <td colspan="2" rowspan="3" style="font-weight: 400 !important;"></td>
             </tr>
             <tr>
-                <td colspan="2" style="text-align:center; font-weight: 700;">부가 가치세</td>
-                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${isForeign ? '' : (vat.toLocaleString() + ' ≠')}</td>
+                <td colspan="3" style="text-align:center; font-weight: 700;">부가 가치세</td>
+                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${isForeign ? '' : (vat.toLocaleString() + ' ≠')}</td>
             </tr>
             <tr class="total-row">
-                <td colspan="2" style="text-align:center; background:#e8f0fe; font-weight: 700;">계</td>
-                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ≠</td>
+                <td colspan="3" style="text-align:center; background:#e8f0fe; font-weight: 700;">계</td>
+                <td colspan="3" style="text-align:right; font-weight: 400 !important;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ≠</td>
             </tr>
             <tr>
-                <th>내 용</th>
-                <td colspan="5" class="content-cell">${fContent.value || ''}</td>
+                <th colspan="2">내 용</th>
+                <td colspan="8" class="content-cell">${fContent.value || ''}</td>
             </tr>
             <tr>
-                <th>출납확인</th>
-                <td style="text-align:center;">담 당</td>
-                <td></td>
-                <td colspan="2" style="text-align:center;">회계</td>
-                <td></td>
+                <th colspan="2">출납확인</th>
+                <td colspan="2" style="text-align:center;">담 당</td>
+                <td colspan="1"></td>
+                <th colspan="2" style="text-align:center;">회 계</th>
+                <td colspan="3"></td>
             </tr>
         </table>
         
