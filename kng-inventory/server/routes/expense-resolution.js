@@ -374,9 +374,11 @@ router.post('/export-excel', async (req, res) => {
         }
 
         const dateStr = createdDate.getFullYear() + String(createdDate.getMonth() + 1).padStart(2, '0') + String(createdDate.getDate()).padStart(2, '0');
-        const filename = `지출결의서_${dateStr}.xlsx`;
+        const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
+        const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
         res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
         
         await workbook.xlsx.write(res);
