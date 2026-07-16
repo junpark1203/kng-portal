@@ -647,11 +647,11 @@ function showPrintPreview() {
                 <td colspan="3" style="padding:0; border:none; vertical-align:top;">
                     <table style="width:100%; height:100%; border-collapse:collapse;">
                         <tr>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none;">작성 일자</td>
-                            <td class="doc-date-cell" style="border-top:none; border-right:none;">${createdStr}</td>
+                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:center !important; width:40%;">작성 일자</td>
+                            <td class="doc-date-cell" style="border-top:none; border-right:none; text-align:right !important;">${createdStr}</td>
                         </tr>
                         <tr>
-                            <td class="doc-date-cell" style="border-bottom:none; border-right:none;">전결 조항</td>
+                            <td class="doc-date-cell" style="border-bottom:none; border-right:none; text-align:center !important;">전결 조항</td>
                             <td class="doc-date-cell" style="border-bottom:none; border-right:none;"></td>
                         </tr>
                     </table>
