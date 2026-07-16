@@ -357,7 +357,7 @@ router.post('/export-excel', async (req, res) => {
             'C16': cleanTitle,
             'A18': taxStr,
             'E18': displayCurr + amtStr + ' ≠',
-            'E19': isForeign ? '≠' : (vatStr + ' ≠'),
+            'E19': isForeign ? '≠' : (displayCurr + vatStr + ' ≠'),
             'E20': displayCurr + totalStr + ' ≠'
         };
 
@@ -421,8 +421,8 @@ router.post('/export-excel', async (req, res) => {
             cell.font = { ...f, size: 24 };
         });
 
-        // 특정 셀 16pt (한글 금액 A18:D18, B4:G4, H4:J4)
-        ['A18','B18','C18','D18', 'B4','C4','D4','E4','F4','G4', 'H4','I4','J4'].forEach(ref => {
+        // 특정 셀 16pt (상단 한글 금액 B4:G4, 숫자 금액 H4:J4)
+        ['B4','C4','D4','E4','F4','G4', 'H4','I4','J4'].forEach(ref => {
             const cell = sheet.getCell(ref);
             const f = cell.font || { name: '맑은 고딕' };
             cell.font = { ...f, size: 16 };
