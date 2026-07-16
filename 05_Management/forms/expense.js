@@ -658,9 +658,9 @@ function showPrintPreview() {
                 </td>
             </tr>
             <tr class="amount-row">
-                <td style="width: 10%; text-align:center;">금 액</td>
-                <td colspan="4" style="text-align:center; font-size: 16px;">${koreanAmt}</td>
-                <td colspan="3" style="width: 30%; text-align:right;">${curr}${amtStr} ${sym}</td>
+                <td style="width: 10%; text-align:center; font-weight: 700;">금 액</td>
+                <td colspan="4" style="text-align:center; font-size: 16px !important; font-weight: 700 !important;">${koreanAmt}</td>
+                <td colspan="3" style="width: 30%; text-align:right; font-size: 16px !important; font-weight: 700 !important;">${curr}${amtStr} ≠</td>
             </tr>
             <tr>
                 <th style="width: 10%;">은행명</th>
@@ -735,7 +735,7 @@ function showPrintPreview() {
             </tr>
             <tr>
                 <th>제 목</th>
-                <td colspan="5">${fTitle.value || '-'}</td>
+                <td colspan="5" style="font-weight: 400 !important;">${fTitle.value || '-'}</td>
             </tr>
             <tr>
                 <th>세금계산서 일자</th>
@@ -744,18 +744,18 @@ function showPrintPreview() {
                 <th>비 고</th>
             </tr>
             <tr>
-                <td rowspan="3" style="text-align:center;">${fTaxInvoiceDate.value || ''}</td>
-                <td colspan="2" style="text-align:center;">공 급 가</td>
-                <td colspan="2" style="text-align:right;">${curr}${amtStr} ${sym}</td>
-                <td rowspan="3"></td>
+                <td rowspan="3" style="text-align:center; font-weight: 400 !important;">${fTaxInvoiceDate.value || ''}</td>
+                <td colspan="2" style="text-align:center; font-weight: 700;">공 급 가</td>
+                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${curr}${amtStr} ≠</td>
+                <td rowspan="3" style="font-weight: 400 !important;"></td>
             </tr>
             <tr>
-                <td colspan="2" style="text-align:center;">부가 가치세</td>
-                <td colspan="2" style="text-align:right;">${isForeign ? '' : (vat.toLocaleString() + ' ₩')}</td>
+                <td colspan="2" style="text-align:center; font-weight: 700;">부가 가치세</td>
+                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${isForeign ? '' : (vat.toLocaleString() + ' ≠')}</td>
             </tr>
             <tr class="total-row">
-                <td colspan="2" style="text-align:center; background:#e8f0fe;">계</td>
-                <td colspan="2" style="text-align:right;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ${sym}</td>
+                <td colspan="2" style="text-align:center; background:#e8f0fe; font-weight: 700;">계</td>
+                <td colspan="2" style="text-align:right; font-weight: 400 !important;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ≠</td>
             </tr>
             <tr>
                 <th>내 용</th>

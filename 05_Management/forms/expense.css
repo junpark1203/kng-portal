@@ -214,8 +214,8 @@
 .doc-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
-    font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+    font-size: 10px;
+    font-family: 'DotumChe', '돋움체', sans-serif;
     table-layout: fixed;
 }
 .doc-table td,
@@ -227,15 +227,20 @@
 }
 .doc-table th {
     background: #fff;
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 10px;
     text-align: center;
     white-space: nowrap;
+}
+.doc-table td {
+    font-weight: 400;
+    font-size: 10px;
 }
 
 /* 제목행 */
 .doc-title-row td {
-    font-size: 26px;
-    font-weight: 700;
+    font-size: 24px !important;
+    font-weight: 700 !important;
     text-align: center;
     letter-spacing: 12px;
     padding: 12px;
@@ -244,15 +249,16 @@
 .doc-title-left {
     text-align: left !important;
     letter-spacing: 6px !important;
-    font-size: 26px !important;
+    font-size: 24px !important;
+    font-weight: 700 !important;
 }
 
 /* 작성일자 셀 */
 .doc-date-cell {
-    font-size: 12px !important;
+    font-size: 10px !important;
     text-align: right !important;
     letter-spacing: 0 !important;
-    font-weight: 500 !important;
+    font-weight: 400 !important;
     padding: 6px 8px !important;
 }
 
@@ -261,8 +267,8 @@
     background: #e8f0fe;
 }
 .amount-row td {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 16px !important;
+    font-weight: 700 !important;
     padding: 10px 8px;
 }
 
@@ -275,20 +281,22 @@
     border: 1px solid #000;
     padding: 4px 5px;
     text-align: center;
-    font-size: 12px;
+    font-size: 10px !important;
+    font-weight: 400 !important;
     height: 32px;
 }
 .approval-label-cell {
     width: 30px;
-    font-weight: 700;
+    font-weight: 700 !important;
     writing-mode: vertical-rl;
     text-orientation: upright;
     letter-spacing: 6px;
-    font-size: 14px;
+    font-size: 10px !important;
 }
 .approval-pos-cell {
     width: 40px;
-    font-size: 12px;
+    font-size: 10px !important;
+    font-weight: 700 !important;
 }
 .approval-sign-cell {
     width: 60px;
@@ -296,11 +304,11 @@
 }
 .approval-type-cell {
     width: 20px;
-    font-weight: 700;
+    font-weight: 700 !important;
     writing-mode: vertical-rl;
     text-orientation: upright;
     letter-spacing: 2px;
-    font-size: 12px;
+    font-size: 10px !important;
 }
 
 /* 합계 행 */
@@ -318,17 +326,19 @@
     min-height: 160px;
     vertical-align: top;
     padding: 12px !important;
-    font-size: 13px;
+    font-size: 10px !important;
+    font-weight: 400 !important;
 }
 
 /* 하단 (주)케이앤지 */
 .doc-company-footer {
     text-align: center;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 10px !important;
+    font-weight: 700 !important;
     padding: 12px;
     border-top: none;
     text-decoration: underline;
+    font-family: 'DotumChe', '돋움체', sans-serif;
 }
 
 /* ==========================================
