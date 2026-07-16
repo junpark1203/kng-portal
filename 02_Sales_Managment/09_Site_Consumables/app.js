@@ -7,6 +7,14 @@ let currentFiles = [];
 let uploadQueue = [];
 let siteSortOrder = 'asc';
 
+let dashboardFilters = {
+    siteName: '',
+    category: '',
+    subCategory: '',
+    name: '',
+    specification: ''
+};
+
 // ── Auth ──
 async function getToken() {
     try {
@@ -78,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('searchSite')?.addEventListener('input', renderSites);
     document.getElementById('searchConsumable')?.addEventListener('input', () => {
-        if (currentSiteId === 'dashboard') renderDashboard();
+        if (currentSiteId === 'dashboard') applyDashboardFilters();
         else renderConsumables();
     });
     document.getElementById('sortSiteBtn')?.addEventListener('click', () => {
@@ -89,7 +97,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderSites();
     });
+    initDashboardFilters();
 });
+
+function initDashboardFilters() {
+    ['filterSite', 'filterCategory', 'filterSubCategory', 'filterName', 'filterSpec'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', (e) => {
+                const key = id.replace('filter', '');
+                const propMap = { 'Site': 'siteName', 'Category': 'category', 'SubCategory': 'subCategory', 'Name': 'name', 'Spec': 'specification' };
+                dashboardFilters[propMap[key]] = e.target.value;
+                applyDashboardFilters();
+            });
+        }
+    });
+}
 
 // ── Modals ──
 function setupModals() {
@@ -234,11 +257,17 @@ window.selectSite = async (id) => {
         document.querySelector('.header-actions button[onclick="editSite()"]').style.display = 'none';
         document.querySelector('.header-actions button[onclick="deleteSite()"]').style.display = 'none';
         document.querySelector('.header-actions button[onclick="openConsumableModal()"]').style.display = 'none';
+        document.getElementById('dashboardPanel').style.display = 'block';
+
+        // 대시보드 필터 초기화
+        dashboardFilters = { siteName: '', category: '', subCategory: '', name: '', specification: '' };
+        document.getElementById('searchConsumable').value = '';
 
         await loadDashboard();
         return;
     }
 
+    document.getElementById('dashboardPanel').style.display = 'none';
     const site = sites.find(s => s.id === id);
     if (!site) return;
 
@@ -315,33 +344,90 @@ async function loadDashboard() {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/all-consumables`);
-        renderDashboard();
+        applyDashboardFilters();
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">불러오기 실패</td></tr>';
         showToast(e.message, 'error');
     }
 }
 
-function renderDashboard() {
+function applyDashboardFilters() {
+    // 1. Calculate filtered list
+    const query = (document.getElementById('searchConsumable')?.value || '').toLowerCase();
+    
+    let filtered = currentConsumables.filter(c => {
+        if (dashboardFilters.siteName && c.siteName !== dashboardFilters.siteName) return false;
+        if (dashboardFilters.category && c.category !== dashboardFilters.category) return false;
+        if (dashboardFilters.subCategory && c.subCategory !== dashboardFilters.subCategory) return false;
+        if (dashboardFilters.name && c.name !== dashboardFilters.name) return false;
+        if (dashboardFilters.specification && c.specification !== dashboardFilters.specification) return false;
+        
+        if (query) {
+            const matchesQuery = (c.name || '').toLowerCase().includes(query) || 
+                                 (c.category || '').toLowerCase().includes(query) ||
+                                 (c.subCategory || '').toLowerCase().includes(query) ||
+                                 (c.specification || '').toLowerCase().includes(query) ||
+                                 (c.siteName || '').toLowerCase().includes(query) ||
+                                 (c.remarks || '').toLowerCase().includes(query);
+            if (!matchesQuery) return false;
+        }
+        return true;
+    });
+
+    // 2. Update dropdowns
+    const props = [
+        { id: 'filterSite', key: 'siteName', label: '전체 현장' },
+        { id: 'filterCategory', key: 'category', label: '전체' },
+        { id: 'filterSubCategory', key: 'subCategory', label: '전체' },
+        { id: 'filterName', key: 'name', label: '전체' },
+        { id: 'filterSpec', key: 'specification', label: '전체' }
+    ];
+
+    props.forEach(({ id, key, label }) => {
+        const otherFilters = { ...dashboardFilters };
+        delete otherFilters[key]; // ignore self
+        
+        const validForThisDropdown = currentConsumables.filter(c => {
+            if (otherFilters.siteName && c.siteName !== otherFilters.siteName) return false;
+            if (otherFilters.category && c.category !== otherFilters.category) return false;
+            if (otherFilters.subCategory && c.subCategory !== otherFilters.subCategory) return false;
+            if (otherFilters.name && c.name !== otherFilters.name) return false;
+            if (otherFilters.specification && c.specification !== otherFilters.specification) return false;
+            return true;
+        });
+
+        const uniqueValues = [...new Set(validForThisDropdown.map(c => c[key] || ''))].filter(v => v !== '');
+        uniqueValues.sort((a, b) => a.localeCompare(b, 'ko'));
+
+        const el = document.getElementById(id);
+        const currentVal = dashboardFilters[key];
+        
+        el.innerHTML = `<option value="">${label}</option>` + uniqueValues.map(v => `<option value="${escapeHtml(v)}"${v === currentVal ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
+    });
+
+    // 3. Update Summary Cards
+    const uniqueSites = new Set(filtered.map(c => c.siteId)).size;
+    const uniqueTypes = new Set(filtered.map(c => (c.name || '') + '|' + (c.specification || ''))).size;
+    const totalQuantity = filtered.reduce((sum, c) => {
+        const qty = parseFloat(c.opQuantity);
+        return sum + (isNaN(qty) ? 0 : qty);
+    }, 0);
+
+    document.getElementById('summarySites').textContent = uniqueSites.toLocaleString();
+    document.getElementById('summaryTypes').textContent = uniqueTypes.toLocaleString();
+    document.getElementById('summaryQuantity').textContent = totalQuantity.toLocaleString();
+    document.getElementById('summaryRows').textContent = filtered.length.toLocaleString();
+
+    // 4. Render Table
     const tbody = document.getElementById('consumablesTableBody');
     tbody.innerHTML = '';
     
-    const query = (document.getElementById('searchConsumable')?.value || '').toLowerCase();
-    const filteredConsumables = currentConsumables.filter(c => 
-        (c.name || '').toLowerCase().includes(query) || 
-        (c.category || '').toLowerCase().includes(query) ||
-        (c.subCategory || '').toLowerCase().includes(query) ||
-        (c.specification || '').toLowerCase().includes(query) ||
-        (c.siteName || '').toLowerCase().includes(query) ||
-        (c.remarks || '').toLowerCase().includes(query)
-    );
-
-    if (filteredConsumables.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>';
         return;
     }
 
-    filteredConsumables.forEach(c => {
+    filtered.forEach(c => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
