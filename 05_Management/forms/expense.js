@@ -28,6 +28,10 @@ let currentVendors = [];
 let editingExpenseId = null;
 let editingVendorId = null;
 
+let searchTerm = '';
+let currentSort = { key: 'createdDate', asc: false };
+let initialFormData = '';
+
 // DOM Elements
 const listView = document.getElementById('listView');
 const expenseEditModal = document.getElementById('expenseEditModal');
@@ -62,6 +66,41 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnCloseEdit').addEventListener('click', closeExpenseModal);
     document.getElementById('btnSaveExpense').addEventListener('click', saveExpense);
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelectedExpenses);
+    
+    // Search & Sort Events
+    const searchInput = document.getElementById('expenseSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            renderExpenseList();
+        });
+    }
+
+    const sortHeaders = document.querySelectorAll('th[data-sort]');
+    sortHeaders.forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.getAttribute('data-sort');
+            if (currentSort.key === key) {
+                currentSort.asc = !currentSort.asc;
+            } else {
+                currentSort.key = key;
+                currentSort.asc = true;
+            }
+            // Update icons
+            sortHeaders.forEach(h => h.querySelector('i').className = 'bx bx-sort');
+            const icon = currentSort.asc ? 'bx bx-sort-up' : 'bx bx-sort-down';
+            th.querySelector('i').className = icon;
+            renderExpenseList();
+        });
+    });
+
+    // Vendor Search Event
+    const fVendorSearch = document.getElementById('fVendorSearch');
+    if (fVendorSearch) {
+        fVendorSearch.addEventListener('input', (e) => {
+            updateVendorDropdown(e.target.value);
+        });
+    }
     
     document.getElementById('selectAll').addEventListener('change', (e) => {
         const checks = document.querySelectorAll('.check-row');
@@ -99,9 +138,31 @@ function openExpenseModal() {
 }
 
 function closeExpenseModal() {
+    if (getFormDataString() !== initialFormData) {
+        if (!confirm('저장하지 않은 변경 사항이 있습니다. 창을 닫으시겠습니까?')) {
+            return;
+        }
+    }
     expenseEditModal.classList.remove('active');
     document.body.style.overflow = '';
     loadExpenses();
+}
+
+function getFormDataString() {
+    return JSON.stringify({
+        createdDate: fCreatedDate.value,
+        paymentDate: fPaymentDate.value,
+        currency: fCurrency.value,
+        amount: fAmount.value,
+        vatAmount: fVatAmount.value,
+        vendorSelect: fVendorSelect.value,
+        accountSelect: fAccountSelect.value,
+        paymentMethod: document.querySelector('input[name="paymentMethod"]:checked')?.value,
+        title: fTitle.value,
+        taxInvoiceDate: fTaxInvoiceDate.value,
+        content: fContent.value,
+        personInCharge: fPersonInCharge.value
+    });
 }
 
 async function loadExpenses() {
@@ -118,21 +179,60 @@ async function loadExpenses() {
     }
 }
 
+function getFilteredAndSortedExpenses() {
+    let filtered = currentExpenses;
+
+    // 1. Search filter
+    if (searchTerm) {
+        filtered = filtered.filter(exp => {
+            const title = (exp.title || '').toLowerCase();
+            const vendor = (exp.vendorName || '').toLowerCase();
+            const curr = (exp.currency || '').toLowerCase();
+            const person = (exp.personInCharge || '').toLowerCase();
+            return title.includes(searchTerm) || vendor.includes(searchTerm) || curr.includes(searchTerm) || person.includes(searchTerm);
+        });
+    }
+
+    // 2. Sort
+    filtered.sort((a, b) => {
+        let valA = a[currentSort.key] || '';
+        let valB = b[currentSort.key] || '';
+
+        if (currentSort.key === 'amount') {
+            valA = Number(valA);
+            valB = Number(valB);
+        } else if (typeof valA === 'string') {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return currentSort.asc ? -1 : 1;
+        if (valA > valB) return currentSort.asc ? 1 : -1;
+        return 0;
+    });
+
+    return filtered;
+}
+
 function renderExpenseList() {
     expenseListBody.innerHTML = '';
-    if (currentExpenses.length === 0) {
-        expenseListBody.innerHTML = '<tr><td colspan="9" class="text-center">등록된 지출결의서가 없습니다.</td></tr>';
+    const displayData = getFilteredAndSortedExpenses();
+
+    if (displayData.length === 0) {
+        expenseListBody.innerHTML = '<tr><td colspan="9" class="text-center">조회된 지출결의서가 없습니다.</td></tr>';
         return;
     }
 
-    currentExpenses.forEach(exp => {
+    displayData.forEach(exp => {
         const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => editExpense(exp.id);
+
         const currencySym = getCurrencySymbol(exp.currency);
-        
         let amountText = exp.amount.toLocaleString(undefined, { minimumFractionDigits: isForeignCurrency(exp.currency) ? 2 : 0 });
         
         tr.innerHTML = `
-            <td class="col-check"><input type="checkbox" class="check-row" value="${exp.id}"></td>
+            <td class="col-check"><input type="checkbox" class="check-row" value="${exp.id}" onclick="event.stopPropagation()"></td>
             <td>${exp.createdDate || '-'}</td>
             <td><strong>${exp.title || '-'}</strong></td>
             <td>${exp.vendorName || '-'}</td>
@@ -140,7 +240,8 @@ function renderExpenseList() {
             <td style="text-align:right;">${currencySym} ${amountText}</td>
             <td>${exp.paymentMethod === 'cash' ? '현금' : '어음'}</td>
             <td>${exp.personInCharge || '-'}</td>
-            <td class="col-action">
+            <td class="col-action" onclick="event.stopPropagation()">
+                <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')" style="margin-right:4px;">복사</button>
                 <button class="btn-outline btn-sm" onclick="editExpense('${exp.id}')">수정</button>
             </td>
         `;
@@ -159,10 +260,15 @@ function showNewExpenseForm() {
     fCurrency.value = 'KRW';
     
     handleCurrencyChange();
+    
+    const fVendorSearch = document.getElementById('fVendorSearch');
+    if (fVendorSearch) fVendorSearch.value = '';
     updateVendorDropdown();
+    
     vendorInfoDisplay.style.display = 'none';
     accountSelectWrap.style.display = 'none';
     
+    initialFormData = getFormDataString();
     openExpenseModal();
 }
 
@@ -192,6 +298,8 @@ async function editExpense(id) {
         fContent.value = exp.content || '';
         
         // Vendor setup
+        const fVendorSearch = document.getElementById('fVendorSearch');
+        if (fVendorSearch) fVendorSearch.value = '';
         updateVendorDropdown();
         fVendorSelect.value = exp.vendorId || '';
         handleVendorSelect();
@@ -202,6 +310,53 @@ async function editExpense(id) {
             fAccountSelect.value = accVal;
         }
         
+        initialFormData = getFormDataString();
+        openExpenseModal();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+async function duplicateExpense(id) {
+    try {
+        const res = await authFetch(`${API_URL}/${id}`);
+        if (!res.ok) throw new Error('데이터를 불러오지 못했습니다.');
+        const exp = await res.json();
+        
+        editingExpenseId = null; // 신규 작성 모드로 변경
+        document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지출결의서 작성 (복사됨)";
+        
+        // 작성일자와 지급일자는 오늘로 초기화
+        fCreatedDate.value = new Date().toISOString().split('T')[0];
+        fPaymentDate.value = new Date().toISOString().split('T')[0];
+        
+        fCurrency.value = exp.currency || 'KRW';
+        handleCurrencyChange();
+        
+        fAmount.value = exp.amount;
+        fVatAmount.value = exp.vatAmount;
+        fPersonInCharge.value = exp.personInCharge || '';
+        
+        const pmRadio = document.querySelector(`input[name="paymentMethod"][value="${exp.paymentMethod}"]`);
+        if (pmRadio) pmRadio.checked = true;
+        
+        fTaxInvoiceDate.value = exp.taxInvoiceDate || '';
+        fTitle.value = exp.title || '';
+        fContent.value = exp.content || '';
+        
+        // Vendor setup
+        const fVendorSearch = document.getElementById('fVendorSearch');
+        if (fVendorSearch) fVendorSearch.value = '';
+        updateVendorDropdown();
+        fVendorSelect.value = exp.vendorId || '';
+        handleVendorSelect();
+        
+        if (exp.accountNumber) {
+            const accVal = `${exp.bankName}|${exp.accountNumber}|${exp.accountHolder}`;
+            fAccountSelect.value = accVal;
+        }
+        
+        initialFormData = getFormDataString();
         openExpenseModal();
     } catch (e) {
         showToast(e.message, 'error');
@@ -320,9 +475,16 @@ function handleCurrencyChange() {
     }
 }
 
-function updateVendorDropdown() {
+function updateVendorDropdown(searchStr = '') {
     fVendorSelect.innerHTML = '<option value="">-- 거래처 선택 --</option>';
-    currentVendors.forEach(v => {
+    
+    let filteredVendors = currentVendors;
+    if (searchStr.trim() !== '') {
+        const s = searchStr.toLowerCase();
+        filteredVendors = currentVendors.filter(v => v.vendorName.toLowerCase().includes(s));
+    }
+
+    filteredVendors.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v.id;
         opt.textContent = v.vendorName;

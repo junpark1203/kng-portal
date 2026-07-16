@@ -24,18 +24,30 @@
                                 <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
                             </div>
                         </div>
+                        <div class="print-warning" style="background-color: #fff3cd; color: #856404; padding: 10px 15px; margin: 0 20px 15px 20px; border-radius: 4px; border-left: 4px solid #ffeeba; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                            <i class='bx bx-error-circle' style="font-size: 18px;"></i>
+                            <span>엑셀 파일 다운로드 후 인쇄 시 <b>인쇄 영역을 지정</b>하고 여백을 <b>'좁게'</b> 설정하여 출력해 주세요.</span>
+                        </div>
+                        <div class="search-filter" style="padding: 0 20px 15px 20px;">
+                            <div class="search-box" style="display: flex; gap: 10px; max-width: 400px;">
+                                <div class="input-with-icon" style="position: relative; flex: 1;">
+                                    <i class='bx bx-search' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
+                                    <input type="text" id="expenseSearchInput" placeholder="제목, 거래처, 통화, 담당자 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th class="col-check"><input type="checkbox" id="selectAll"></th>
-                                        <th>작성일자</th>
-                                        <th>제목</th>
-                                        <th>거래처</th>
-                                        <th>통화</th>
-                                        <th>금액</th>
-                                        <th>지불조건</th>
-                                        <th>담당</th>
+                                        <th data-sort="createdDate" style="cursor: pointer;">작성일자 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="title" style="cursor: pointer;">제목 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="vendorName" style="cursor: pointer;">거래처 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="currency" style="cursor: pointer;">통화 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="amount" style="cursor: pointer;">금액 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="paymentMethod" style="cursor: pointer;">지불조건 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="personInCharge" style="cursor: pointer;">담당 <i class='bx bx-sort'></i></th>
                                         <th class="col-action">관리</th>
                                     </tr>
                                 </thead>
@@ -115,10 +127,13 @@
                                 <div class="fg full-width">
                                     <label>거래처 선택</label>
                                     <div class="vendor-select-wrap">
-                                        <select id="fVendorSelect">
-                                            <option value="">-- 거래처 선택 --</option>
-                                        </select>
-                                        <button type="button" id="btnOpenVendorMgmt" class="btn-outline"><i class='bx bx-cog'></i> 관리</button>
+                                        <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
+                                            <input type="text" id="fVendorSearch" placeholder="거래처명 검색 (입력 후 아래 목록 선택)" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                                            <select id="fVendorSelect">
+                                                <option value="">-- 거래처 선택 --</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" id="btnOpenVendorMgmt" class="btn-outline" style="height: fit-content; margin-top: 37px;"><i class='bx bx-cog'></i> 관리</button>
                                     </div>
                                     <div id="vendorInfoDisplay" class="vendor-info-display" style="display:none;"></div>
                                     <div id="accountSelectWrap" class="account-select-wrap" style="display:none;">
