@@ -265,9 +265,6 @@
 }
 
 /* 금액행 */
-.amount-row {
-    background: #e8f0fe;
-}
 .amount-row td {
     font-size: 16px !important;
     font-weight: 700 !important;
@@ -312,9 +309,6 @@
 }
 
 /* 합계 행 */
-.total-row {
-    background: #fffde7;
-}
 .total-row td {
     font-weight: 700;
 }

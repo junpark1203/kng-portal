@@ -680,7 +680,7 @@ function showPrintPreview() {
                 <th colspan="2">계좌번호</th>
                 <td colspan="2" style="text-align:center;">${accountNumber || '-'}</td>
                 <th colspan="2">예금주</th>
-                <td colspan="1" style="text-align:center; font-size:9px;">${accountHolder || '-'}</td>
+                <td colspan="1" style="text-align:center;">${accountHolder || '-'}</td>
             </tr>
             <tr>
                 <th colspan="3">지급 요청일</th>
@@ -750,7 +750,7 @@ function showPrintPreview() {
                 <td colspan="3" style="text-align:center;">${selectedVendor ? selectedVendor.vendorName : '-'}</td>
                 <th colspan="2">대표자</th>
                 <td colspan="1" style="text-align:center;">${selectedVendor ? selectedVendor.representative : '-'}</td>
-                <th colspan="1" style="font-size:9px;">사업자<br>등록번호</th>
+                <th colspan="1">사업자<br>등록번호</th>
                 <td colspan="1" style="font-size:10px; text-align:center;">${selectedVendor ? selectedVendor.bizRegNumber : '-'}</td>
             </tr>
             <tr>
@@ -774,7 +774,7 @@ function showPrintPreview() {
                 <td colspan="3" style="text-align:right; font-weight: 400 !important;">${isForeign ? '' : (vat.toLocaleString() + ' ≠')}</td>
             </tr>
             <tr class="total-row">
-                <td colspan="3" style="text-align:center; background:#e8f0fe; font-weight: 700;">계</td>
+                <td colspan="3" style="text-align:center; font-weight: 700;">계</td>
                 <td colspan="3" style="text-align:right; font-weight: 400 !important;">${curr}${(amount + (isForeign ? 0 : vat)).toLocaleString(undefined, { minimumFractionDigits: isForeign ? 2 : 0 })} ≠</td>
             </tr>
             <tr>
