@@ -323,7 +323,7 @@ router.post('/export-excel', async (req, res) => {
         let koreanAmt = '';
         const curr = data.currency;
         if (curr === 'KRW') {
-            koreanAmt = `일금 ${numberToKorean(amount)} 원정`;
+            koreanAmt = `一金  ${numberToKorean(amount)}  원整`;
         } else if (curr === 'USD') {
             koreanAmt = `美貨 ${numberToKorean(amount)} 달러`;
         } else if (curr === 'CNY') {
