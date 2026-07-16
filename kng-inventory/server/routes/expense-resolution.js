@@ -407,8 +407,7 @@ router.post('/export-excel', async (req, res) => {
         const amountStrForFile = isForeign ? amount.toFixed(2) : amount.toString();
         const filename = `지출결의서_${dateStr}_${curr}${amountStrForFile}.xlsx`;
 
-        // 인쇄 영역 및 페이지 설정 (A1:J28 영역을 1페이지에 맞춤)
-        sheet.pageSetup.printArea = 'A1:J28';
+        // 인쇄 페이지 설정 (1페이지에 맞춤)
         sheet.pageSetup.fitToPage = true;
         sheet.pageSetup.fitToWidth = 1;
         sheet.pageSetup.fitToHeight = 1;
