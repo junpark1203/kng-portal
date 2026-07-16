@@ -393,13 +393,13 @@ router.post('/export-excel', async (req, res) => {
         sheet.getRow(14).height = 10;
         for (let r = 15; r <= 28; r++) sheet.getRow(r).height = 30;
 
-        // 열 너비 명시적 지정
+        // 열 너비 명시적 지정 (엑셀 표시 너비 오차 보정을 위해 +0.71 추가)
         const colWidths = {
             'A': 7.63, 'B': 8.25, 'C': 12.5, 'D': 9.25, 'E': 7.25,
             'F': 5.75, 'G': 7.5, 'H': 7.63, 'I': 4.38, 'J': 10.38
         };
         for (const [col, width] of Object.entries(colWidths)) {
-            sheet.getColumn(col).width = width;
+            sheet.getColumn(col).width = width + 0.71;
         }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
