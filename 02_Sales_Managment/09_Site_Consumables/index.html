@@ -55,7 +55,8 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>구분</th>
+                                <th>구분(상위)</th>
+                                <th>구분(하위)</th>
                                 <th>품명</th>
                                 <th>규격</th>
                                 <th>단위</th>
@@ -120,9 +121,15 @@
             <div class="modal-body">
                 <form id="consumableForm">
                     <input type="hidden" id="consumableId">
-                    <div class="fg">
-                        <label>구분</label>
-                        <input type="text" id="cCategory" placeholder="예: 공구류, 안전용품">
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="fg" style="flex:1">
+                            <label>구분(상위)</label>
+                            <input type="text" id="cCategory" placeholder="예: Disc Cutter, Grease">
+                        </div>
+                        <div class="fg" style="flex:1">
+                            <label>구분(하위)</label>
+                            <input type="text" id="cSubCategory" placeholder="예: Center, Face 등 (선택)">
+                        </div>
                     </div>
                     <div class="fg">
                         <label>품명 <span class="required">*</span></label>
@@ -200,6 +207,6 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
-    <script type="module" src="app.js?v=4"></script>
+    <script type="module" src="app.js?v=5"></script>
 </body>
 </html>

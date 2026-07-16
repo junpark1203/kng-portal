@@ -131,6 +131,7 @@ function setupModals() {
             if (c) {
                 document.getElementById('consumableId').value = c.id;
                 document.getElementById('cCategory').value = c.category || '';
+                document.getElementById('cSubCategory').value = c.subCategory || '';
                 document.getElementById('cName').value = c.name;
                 document.getElementById('cSpec').value = c.specification || '';
                 document.getElementById('cUnit').value = c.unit || '';
@@ -301,14 +302,15 @@ async function loadDashboard() {
     const theadTr = document.querySelector('.data-table thead tr');
     theadTr.innerHTML = `
         <th>현장명</th>
-        <th>구분</th>
+        <th>구분(상위)</th>
+        <th>구분(하위)</th>
         <th>품명</th>
         <th>규격</th>
         <th>단위</th>
         <th>비고</th>
     `;
     const tbody = document.getElementById('consumablesTableBody');
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/all-consumables`);
         renderDashboard();
@@ -326,13 +328,14 @@ function renderDashboard() {
     const filteredConsumables = currentConsumables.filter(c => 
         (c.name || '').toLowerCase().includes(query) || 
         (c.category || '').toLowerCase().includes(query) ||
+        (c.subCategory || '').toLowerCase().includes(query) ||
         (c.specification || '').toLowerCase().includes(query) ||
         (c.siteName || '').toLowerCase().includes(query) ||
         (c.remarks || '').toLowerCase().includes(query)
     );
 
     if (filteredConsumables.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
         return;
     }
 
@@ -341,6 +344,7 @@ function renderDashboard() {
         tr.innerHTML = `
             <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
             <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
+            <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
@@ -354,7 +358,8 @@ async function loadConsumables() {
     if (!currentSiteId || currentSiteId === 'dashboard') return;
     const theadTr = document.querySelector('.data-table thead tr');
     theadTr.innerHTML = `
-        <th>구분</th>
+        <th>구분(상위)</th>
+        <th>구분(하위)</th>
         <th>품명</th>
         <th>규격</th>
         <th>단위</th>
@@ -363,7 +368,7 @@ async function loadConsumables() {
         <th class="col-action" style="width: 120px; white-space: nowrap;">관리</th>
     `;
     const tbody = document.getElementById('consumablesTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/consumables/${currentSiteId}`);
         renderConsumables();
@@ -381,12 +386,13 @@ function renderConsumables() {
     const filteredConsumables = currentConsumables.filter(c => 
         (c.name || '').toLowerCase().includes(query) || 
         (c.category || '').toLowerCase().includes(query) ||
+        (c.subCategory || '').toLowerCase().includes(query) ||
         (c.specification || '').toLowerCase().includes(query) ||
         (c.remarks || '').toLowerCase().includes(query)
     );
     
     if (filteredConsumables.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
         return;
     }
 
@@ -412,6 +418,7 @@ function renderConsumables() {
         
         tr.innerHTML = `
             <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
+            <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
             <td>${escapeHtml(c.specification || '-')}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
@@ -442,6 +449,7 @@ document.getElementById('consumableForm').addEventListener('submit', async (e) =
         const body = {
             siteId: currentSiteId,
             category: document.getElementById('cCategory').value.trim(),
+            subCategory: document.getElementById('cSubCategory').value.trim(),
             name: document.getElementById('cName').value.trim(),
             specification: document.getElementById('cSpec').value.trim(),
             unit: document.getElementById('cUnit').value.trim(),
