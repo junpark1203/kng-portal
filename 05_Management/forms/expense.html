@@ -149,20 +149,20 @@
                                 </div>
                                 <!-- 거래처 선택 -->
                                 <div class="fg full-width">
-                                    <label>거래처 선택</label>
-                                    <div class="vendor-select-wrap">
-                                        <div style="flex: 1; display: flex; flex-direction: column; gap: 5px;">
-                                            <input type="text" id="fVendorSearch" placeholder="거래처명 검색 (입력 후 아래 목록 선택)" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
-                                            <select id="fVendorSelect">
-                                                <option value="">-- 거래처 선택 --</option>
-                                            </select>
+                                    <label>거래처 선택 <span class="required">*</span></label>
+                                    <div class="vendor-select-wrap" style="display: flex; gap: 10px; align-items: flex-start;">
+                                        <div class="vendor-autocomplete" style="position: relative; flex: 1;">
+                                            <input type="text" id="fVendorSearch" placeholder="거래처명을 입력하세요..." autocomplete="off" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
+                                            <input type="hidden" id="fVendorId">
+                                            <ul id="fVendorList" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-top: none; max-height: 200px; overflow-y: auto; z-index: 10; margin: 0; padding: 0; list-style: none; border-radius: 0 0 4px 4px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+                                            </ul>
                                         </div>
-                                        <button type="button" id="btnOpenVendorMgmt" class="btn-outline" style="height: fit-content; margin-top: 37px;"><i class='bx bx-cog'></i> 관리</button>
+                                        <button type="button" id="btnOpenVendorMgmt" class="btn-outline" style="height: 35px; white-space: nowrap;"><i class='bx bx-cog'></i> 관리</button>
                                     </div>
-                                    <div id="vendorInfoDisplay" class="vendor-info-display" style="display:none;"></div>
-                                    <div id="accountSelectWrap" class="account-select-wrap" style="display:none;">
+                                    <div id="vendorInfoDisplay" class="vendor-info-display" style="display:none; margin-top: 10px;"></div>
+                                    <div id="accountSelectWrap" class="account-select-wrap" style="display:none; margin-top: 10px;">
                                         <label for="fAccountSelect" style="font-size: 12px;">계좌 선택:</label>
-                                        <select id="fAccountSelect"></select>
+                                        <select id="fAccountSelect" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px;"></select>
                                     </div>
                                 </div>
                                 <!-- 제목 -->

@@ -52,7 +52,9 @@ const fTotalAmount = document.getElementById('fTotalAmount');
 const vatGroup = document.getElementById('vatGroup');
 const fPersonInCharge = document.getElementById('fPersonInCharge');
 const fTaxInvoiceDate = document.getElementById('fTaxInvoiceDate');
-const fVendorSelect = document.getElementById('fVendorSelect');
+const fVendorSearch = document.getElementById('fVendorSearch');
+const fVendorId = document.getElementById('fVendorId');
+const fVendorList = document.getElementById('fVendorList');
 const fAccountSelect = document.getElementById('fAccountSelect');
 const accountSelectWrap = document.getElementById('accountSelectWrap');
 const vendorInfoDisplay = document.getElementById('vendorInfoDisplay');
@@ -117,10 +119,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Vendor Search Event
-    const fVendorSearch = document.getElementById('fVendorSearch');
     if (fVendorSearch) {
+        fVendorSearch.addEventListener('focus', () => {
+            updateVendorDropdown(fVendorSearch.value);
+            fVendorList.style.display = 'block';
+        });
         fVendorSearch.addEventListener('input', (e) => {
             updateVendorDropdown(e.target.value);
+            fVendorList.style.display = 'block';
+            fVendorId.value = ''; // clear selection
+            handleVendorSelect();
+        });
+        fVendorSearch.addEventListener('blur', () => {
+            setTimeout(() => {
+                fVendorList.style.display = 'none';
+                if (!fVendorId.value) fVendorSearch.value = '';
+            }, 200);
         });
     }
     
@@ -142,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleCurrencyChange();
         calcTotal();
     });
-    fVendorSelect.addEventListener('change', handleVendorSelect);
+    // Vendor list is handled via clicks now, not select change
 
     // Vendor Management Events
     document.getElementById('btnManageVendors').addEventListener('click', openVendorModal);
@@ -299,8 +313,8 @@ function showNewExpenseForm() {
     
     handleCurrencyChange();
     
-    const fVendorSearch = document.getElementById('fVendorSearch');
-    if (fVendorSearch) fVendorSearch.value = '';
+    fVendorSearch.value = '';
+    fVendorId.value = '';
     updateVendorDropdown();
     
     vendorInfoDisplay.style.display = 'none';
@@ -338,10 +352,13 @@ async function editExpense(id) {
         fContent.value = exp.content || '';
         
         // Vendor setup
-        const fVendorSearch = document.getElementById('fVendorSearch');
-        if (fVendorSearch) fVendorSearch.value = '';
+        fVendorSearch.value = '';
+        fVendorId.value = exp.vendorId || '';
+        
+        const vendor = currentVendors.find(v => v.id === exp.vendorId);
+        if (vendor) fVendorSearch.value = vendor.vendorName;
+        
         updateVendorDropdown();
-        fVendorSelect.value = exp.vendorId || '';
         handleVendorSelect();
         
         // After handleVendorSelect, accounts are populated. Select the right one if multiple.
@@ -386,10 +403,13 @@ async function duplicateExpense(id) {
         fContent.value = exp.content || '';
         
         // Vendor setup
-        const fVendorSearch = document.getElementById('fVendorSearch');
-        if (fVendorSearch) fVendorSearch.value = '';
+        fVendorSearch.value = '';
+        fVendorId.value = exp.vendorId || '';
+        
+        const vendor = currentVendors.find(v => v.id === exp.vendorId);
+        if (vendor) fVendorSearch.value = vendor.vendorName;
+        
         updateVendorDropdown();
-        fVendorSelect.value = exp.vendorId || '';
         handleVendorSelect();
         
         if (exp.accountNumber) {
@@ -405,12 +425,12 @@ async function duplicateExpense(id) {
 }
 
 async function saveExpense() {
-    if (!fCreatedDate.value || !fPaymentDate.value || !fAmount.value || !fTitle.value || !fVendorSelect.value) {
+    if (!fCreatedDate.value || !fPaymentDate.value || !fAmount.value || !fTitle.value || !fVendorId.value) {
         showToast('필수 항목(* 표시)을 모두 입력해주세요.', 'warning');
         return;
     }
 
-    const selectedVendor = currentVendors.find(v => v.id === fVendorSelect.value);
+    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
     if (!selectedVendor) return;
 
     let bankName = '', accountNumber = '', accountHolder = '';
@@ -518,7 +538,7 @@ function handleCurrencyChange() {
 }
 
 function updateVendorDropdown(searchStr = '') {
-    fVendorSelect.innerHTML = '<option value="">-- 거래처 선택 --</option>';
+    fVendorList.innerHTML = '';
     
     let filteredVendors = currentVendors;
     if (searchStr.trim() !== '') {
@@ -526,16 +546,36 @@ function updateVendorDropdown(searchStr = '') {
         filteredVendors = currentVendors.filter(v => v.vendorName.toLowerCase().includes(s));
     }
 
+    if (filteredVendors.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = '검색된 거래처가 없습니다.';
+        li.style.padding = '8px 12px';
+        li.style.color = '#94a3b8';
+        li.style.cursor = 'default';
+        fVendorList.appendChild(li);
+        return;
+    }
+
     filteredVendors.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v.id;
-        opt.textContent = v.vendorName;
-        fVendorSelect.appendChild(opt);
+        const li = document.createElement('li');
+        li.textContent = v.vendorName;
+        li.style.padding = '8px 12px';
+        li.style.cursor = 'pointer';
+        li.style.borderBottom = '1px solid #f1f5f9';
+        li.onmouseover = () => li.style.backgroundColor = '#f1f5f9';
+        li.onmouseout = () => li.style.backgroundColor = 'transparent';
+        li.onclick = () => {
+            fVendorSearch.value = v.vendorName;
+            fVendorId.value = v.id;
+            fVendorList.style.display = 'none';
+            handleVendorSelect();
+        };
+        fVendorList.appendChild(li);
     });
 }
 
 function handleVendorSelect() {
-    const vid = fVendorSelect.value;
+    const vid = fVendorId.value;
     const vendor = currentVendors.find(v => v.id === vid);
     
     if (!vendor) {
@@ -588,9 +628,11 @@ function closeVendorModal() {
     vendorModal.classList.remove('active');
     // If expense form is open, update dropdown
     if (expenseEditModal.classList.contains('active')) {
-        const currentSel = fVendorSelect.value;
+        const currentSel = fVendorId.value;
+        const vendor = currentVendors.find(v => v.id === currentSel);
         updateVendorDropdown();
-        fVendorSelect.value = currentSel;
+        fVendorId.value = currentSel;
+        if (vendor) fVendorSearch.value = vendor.vendorName;
         handleVendorSelect();
     }
 }
