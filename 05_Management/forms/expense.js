@@ -265,8 +265,10 @@ function renderExpenseList() {
             <td>${exp.paymentMethod === 'cash' ? '현금' : '어음'}</td>
             <td>${exp.personInCharge || '-'}</td>
             <td class="col-action" onclick="event.stopPropagation()">
-                <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')" style="margin-right:4px;">복사</button>
-                <button class="btn-outline btn-sm" onclick="editExpense('${exp.id}')">수정</button>
+                <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
+                    <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')">복사</button>
+                    <button class="btn-outline btn-sm" onclick="editExpense('${exp.id}')">수정</button>
+                </div>
             </td>
         `;
         expenseListBody.appendChild(tr);
