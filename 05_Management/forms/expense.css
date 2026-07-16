@@ -37,6 +37,11 @@
     transition: border-color 0.2s;
     box-sizing: border-box;
 }
+
+.fg select {
+    height: 39px;
+    line-height: 1.5;
+}
 .fg select:focus,
 .fg textarea:focus {
     border-color: #6366f1;
