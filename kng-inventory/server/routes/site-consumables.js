@@ -270,8 +270,8 @@ router.post('/consumables/:id/copy', (req, res) => {
                             fs.copyFileSync(oldPath, newPath);
                             
                             const fileId = 'CFILE-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
-                            db.run(`INSERT INTO site_consumable_files (id, consumableId, originalName, fileName, mimeType, fileSize, uploadedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                                [fileId, newId, f.originalName, newFileName, f.mimeType, f.fileSize, now], (err) => {
+                            db.run(`INSERT INTO site_consumable_files (id, consumableId, originalName, fileName, fileType, fileSize, uploadedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                                [fileId, newId, f.originalName, newFileName, f.fileType, f.fileSize, now], (err) => {
                                     if (err) { hasError = true; return res.status(500).json({ error: err.message }); }
                                     completed++;
                                     if (completed === files.length && !hasError) {
