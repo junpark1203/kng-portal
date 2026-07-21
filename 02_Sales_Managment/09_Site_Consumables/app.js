@@ -479,23 +479,7 @@ function applyDashboardFilters() {
 
         const renderGroupRow = (item, isGrouped) => {
             const tr = document.createElement('tr');
-            
-            let fileHtml = '';
-            if (item.allFiles.size > 0) {
-                fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
-                item.allFiles.forEach(f => {
-                    const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
-                    const canPreview = isPreviewable(f.originalName);
-                    const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
-                    
-                    if (canPreview) {
-                        fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
-                    } else {
-                        fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
-                    }
-                });
-                fileHtml += '</div>';
-            }
+            const fileHtml = generateFileIconsHtml(item.allFiles);
 
             let identifier = isGrouped ? (item.drawingNumber || item.uniqueNumber) : '-';
             let siteHtml = Array.from(item.sites).map(s => `<span style="display:inline-block; padding:2px 8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; margin:2px;">${escapeHtml(s)}</span>`).join('');
@@ -519,23 +503,7 @@ function applyDashboardFilters() {
     } else {
         filtered.forEach(c => {
             const tr = document.createElement('tr');
-
-            let fileHtml = '';
-            if (c.files && c.files.length > 0) {
-                fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
-                c.files.forEach(f => {
-                    const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
-                    const canPreview = isPreviewable(f.originalName);
-                    const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
-                    
-                    if (canPreview) {
-                        fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
-                    } else {
-                        fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
-                    }
-                });
-                fileHtml += '</div>';
-            }
+            const fileHtml = generateFileIconsHtml(c.files);
 
             tr.innerHTML = `
                 <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
@@ -621,6 +589,8 @@ async function loadConsumables() {
     if (!currentSiteId || currentSiteId === 'dashboard') return;
     const theadTr = document.querySelector('.data-table thead tr');
     theadTr.innerHTML = `
+        <th>도면번호</th>
+        <th>고유번호</th>
         <th>구분(상위)</th>
         <th>구분(하위)</th>
         <th>품명</th>
@@ -628,11 +598,11 @@ async function loadConsumables() {
         <th>운용수량</th>
         <th>단위</th>
         <th>비고</th>
-        <th style="width: auto; min-width: 250px;">도면 관리</th>
+        <th style="width: auto; min-width: 150px;">도면 관리</th>
         <th class="col-action" style="width: 120px; white-space: nowrap;">관리</th>
     `;
     const tbody = document.getElementById('consumablesTableBody');
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/consumables/${currentSiteId}`);
         renderConsumables();
@@ -656,31 +626,17 @@ function renderConsumables() {
     );
     
     if (filteredConsumables.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 검색된 소모품이 없습니다.</td></tr>';
         return;
     }
 
     filteredConsumables.forEach(c => {
         const tr = document.createElement('tr');
-        
-        let fileHtml = '';
-        if (c.files && c.files.length > 0) {
-            fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
-            c.files.forEach(f => {
-                const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
-                const canPreview = isPreviewable(f.originalName);
-                const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
-                
-                if (canPreview) {
-                    fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
-                } else {
-                    fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
-                }
-            });
-            fileHtml += '</div>';
-        }
+        const fileHtml = generateFileIconsHtml(c.files);
         
         tr.innerHTML = `
+            <td>${c.drawingNumber ? `<span style="font-weight:500; color:#0369a1;">${escapeHtml(c.drawingNumber)}</span>` : '<span style="color:#cbd5e1;">-</span>'}</td>
+            <td>${c.uniqueNumber ? `<span style="font-weight:500; color:#4338ca;">${escapeHtml(c.uniqueNumber)}</span>` : '<span style="color:#cbd5e1;">-</span>'}</td>
             <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
             <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
             <td style="font-weight:500;">${escapeHtml(c.name)}</td>
@@ -812,6 +768,35 @@ function getFileIcon(type, name) {
 function isPreviewable(name) {
     const n = name.toLowerCase();
     return n.endsWith('.pdf') || n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg');
+}
+
+function generateFileIconsHtml(files) {
+    if (!files || (files.length === 0 && files.size === 0)) return '';
+    let html = '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">';
+    
+    files.forEach(f => {
+        const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
+        const canPreview = isPreviewable(f.originalName);
+        const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+        const iconClass = getFileIcon(f.fileType, f.originalName);
+        const n = (f.originalName || '').toLowerCase();
+        const isImage = n.endsWith('.png') || n.endsWith('.jpg') || n.endsWith('.jpeg');
+        
+        if (isImage) {
+            html += `<div class="img-hover-preview" style="cursor:pointer; font-size:24px; color:#475569; transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="previewFile('${url}', '${safeJsName}')" title="${escapeHtml(f.originalName)}">
+                <i class='bx ${iconClass}'></i>
+                <div class="preview-popup">
+                    <img src="${url}" alt="preview">
+                </div>
+            </div>`;
+        } else if (canPreview) {
+            html += `<div style="cursor:pointer; font-size:24px; color:#475569; transition:transform 0.1s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" onclick="previewFile('${url}', '${safeJsName}')" title="${escapeHtml(f.originalName)} (미리보기)"><i class='bx ${iconClass}'></i></div>`;
+        } else {
+            html += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="cursor:pointer; font-size:24px; color:#475569; text-decoration:none; transition:transform 0.1s; display:inline-block;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'" title="${escapeHtml(f.originalName)} (다운로드)"><i class='bx ${iconClass}'></i></a>`;
+        }
+    });
+    html += '</div>';
+    return html;
 }
 
 function renderFiles() {
