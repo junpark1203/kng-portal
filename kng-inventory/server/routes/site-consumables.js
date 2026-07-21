@@ -159,7 +159,25 @@ router.get('/all-consumables', (req, res) => {
     `;
     db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        if (rows.length === 0) return res.json([]);
+
+        // 모든 소모품의 파일 정보를 가져오기 위해 전체 파일 목록 조회
+        db.all(`SELECT id, consumableId, fileName, originalName FROM site_consumable_files ORDER BY uploadedAt DESC`, [], (err, files) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            const fileMap = {};
+            files.forEach(f => {
+                if(!fileMap[f.consumableId]) fileMap[f.consumableId] = [];
+                fileMap[f.consumableId].push(f);
+            });
+            
+            rows.forEach(c => {
+                c.files = fileMap[c.id] || [];
+                c.fileCount = c.files.length;
+            });
+            
+            res.json(rows);
+        });
     });
 });
 

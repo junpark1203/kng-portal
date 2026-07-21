@@ -339,9 +339,10 @@ async function loadDashboard() {
         <th>운용수량</th>
         <th>단위</th>
         <th>비고</th>
+        <th style="width: auto; min-width: 250px;">도면 관리</th>
     `;
     const tbody = document.getElementById('consumablesTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
         currentConsumables = await authFetch(`/api/site-consumables/all-consumables`);
         applyDashboardFilters();
@@ -423,12 +424,30 @@ function applyDashboardFilters() {
     tbody.innerHTML = '';
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>';
         return;
     }
 
     filtered.forEach(c => {
         const tr = document.createElement('tr');
+
+        let fileHtml = '';
+        if (c.files && c.files.length > 0) {
+            fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
+            c.files.forEach(f => {
+                const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
+                const canPreview = isPreviewable(f.originalName);
+                const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+                
+                if (canPreview) {
+                    fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
+                } else {
+                    fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
+                }
+            });
+            fileHtml += '</div>';
+        }
+
         tr.innerHTML = `
             <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
             <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
@@ -438,6 +457,7 @@ function applyDashboardFilters() {
             <td>${c.opQuantity ? `<span style="font-weight: 600; color: #0f172a;">${escapeHtml(c.opQuantity)}</span>` : '-'}</td>
             <td>${escapeHtml(c.unit || '-')}</td>
             <td>${escapeHtml(c.remarks || '-')}</td>
+            <td>${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
         `;
         tbody.appendChild(tr);
     });
