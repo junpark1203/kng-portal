@@ -443,6 +443,68 @@ function applyDashboardFilters() {
     });
 }
 
+window.exportDashboardExcel = async () => {
+    const query = (document.getElementById('searchConsumable')?.value || '').toLowerCase();
+    
+    let filtered = currentConsumables.filter(c => {
+        if (dashboardFilters.siteName && c.siteName !== dashboardFilters.siteName) return false;
+        if (dashboardFilters.category && c.category !== dashboardFilters.category) return false;
+        if (dashboardFilters.subCategory && c.subCategory !== dashboardFilters.subCategory) return false;
+        if (dashboardFilters.name && c.name !== dashboardFilters.name) return false;
+        if (dashboardFilters.specification && c.specification !== dashboardFilters.specification) return false;
+        
+        if (query) {
+            const matchesQuery = (c.name || '').toLowerCase().includes(query) || 
+                                 (c.category || '').toLowerCase().includes(query) ||
+                                 (c.subCategory || '').toLowerCase().includes(query) ||
+                                 (c.specification || '').toLowerCase().includes(query) ||
+                                 (c.siteName || '').toLowerCase().includes(query) ||
+                                 (c.remarks || '').toLowerCase().includes(query);
+            if (!matchesQuery) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        return showToast('내보낼 데이터가 없습니다.', 'error');
+    }
+
+    try {
+        const btn = document.querySelector('button[onclick="exportDashboardExcel()"]');
+        if (btn) btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> 생성 중...';
+
+        const token = await getToken();
+        const ids = filtered.map(c => c.id);
+        
+        const res = await fetch(`${API_BASE}/api/site-consumables/all-consumables/export`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            },
+            body: JSON.stringify({ ids })
+        });
+        
+        if (!res.ok) throw new Error('엑셀 내보내기 실패');
+        
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `현장별_소모품_전체현황_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        
+        if (btn) btn.innerHTML = "<i class='bx bx-export'></i> 엑셀 다운로드";
+    } catch(e) {
+        showToast(e.message, 'error');
+        const btn = document.querySelector('button[onclick="exportDashboardExcel()"]');
+        if (btn) btn.innerHTML = "<i class='bx bx-export'></i> 엑셀 다운로드";
+    }
+};
+
 async function loadConsumables() {
     if (!currentSiteId || currentSiteId === 'dashboard') return;
     const theadTr = document.querySelector('.data-table thead tr');

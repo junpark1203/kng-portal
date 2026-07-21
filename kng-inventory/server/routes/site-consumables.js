@@ -163,6 +163,74 @@ router.get('/all-consumables', (req, res) => {
     });
 });
 
+router.post('/all-consumables/export', async (req, res) => {
+    try {
+        const ExcelJS = require('exceljs');
+        const { ids } = req.body;
+        if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids 배열이 필요합니다.' });
+
+        const sql = `
+            SELECT c.*, s.name as siteName 
+            FROM site_consumables c 
+            LEFT JOIN sites s ON c.siteId = s.id 
+            ORDER BY s.name ASC, c.category ASC, c.name ASC
+        `;
+        
+        let rows = [];
+        if (ids.length > 0) {
+            const allRows = await new Promise((resolve, reject) => {
+                db.all(sql, [], (err, results) => {
+                    if (err) reject(err);
+                    else resolve(results);
+                });
+            });
+            const idMap = new Map();
+            allRows.forEach(r => idMap.set(r.id, r));
+            rows = ids.map(id => idMap.get(id)).filter(Boolean);
+        }
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('전체 현장 현황');
+        
+        worksheet.columns = [
+            { header: '현장명', key: 'siteName', width: 25 },
+            { header: '구분(상위)', key: 'category', width: 20 },
+            { header: '구분(하위)', key: 'subCategory', width: 20 },
+            { header: '품명', key: 'name', width: 30 },
+            { header: '규격', key: 'specification', width: 30 },
+            { header: '운용수량', key: 'opQuantity', width: 12 },
+            { header: '단위', key: 'unit', width: 10 },
+            { header: '비고', key: 'remarks', width: 30 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+        worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+        rows.forEach(r => {
+            worksheet.addRow({
+                siteName: r.siteName || '-',
+                category: r.category || '-',
+                subCategory: r.subCategory || '-',
+                name: r.name || '-',
+                specification: r.specification || '-',
+                opQuantity: r.opQuantity || '',
+                unit: r.unit || '-',
+                remarks: r.remarks || '-'
+            });
+        });
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="site_consumables_dashboard.xlsx"');
+        
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (e) {
+        console.error('Excel Export Error:', e);
+        res.status(500).json({ error: '엑셀 파일 생성 중 오류가 발생했습니다.' });
+    }
+});
+
 router.get('/consumables/:siteId', (req, res) => {
     db.all('SELECT * FROM site_consumables WHERE siteId = ? ORDER BY createdAt DESC', [req.params.siteId], (err, consumables) => {
         if (err) return res.status(500).json({ error: err.message });
