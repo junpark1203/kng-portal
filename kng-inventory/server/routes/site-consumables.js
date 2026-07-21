@@ -82,12 +82,17 @@ function initSiteConsumablesTables(database) {
                         database.run("ALTER TABLE sites ADD COLUMN tbmMachine TEXT", () => {
                             database.run("ALTER TABLE sites ADD COLUMN tunnelInnerDiameter TEXT", () => {
                                 database.run("ALTER TABLE sites ADD COLUMN tunnelLength TEXT", () => {
-                                    // Add subCategory for consumables
+                                     // Add subCategory for consumables
                                     database.run("ALTER TABLE site_consumables ADD COLUMN subCategory TEXT", () => {
                                         // Add opQuantity for consumables
                                         database.run("ALTER TABLE site_consumables ADD COLUMN opQuantity TEXT", () => {
-                                            console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
-                                            resolve();
+                                            // Add drawingNumber and uniqueNumber
+                                            database.run("ALTER TABLE site_consumables ADD COLUMN drawingNumber TEXT", () => {
+                                                database.run("ALTER TABLE site_consumables ADD COLUMN uniqueNumber TEXT", () => {
+                                                    console.log('현장별 소모품(sites, site_consumables, site_consumable_files) 테이블 확인 완료');
+                                                    resolve();
+                                                });
+                                            });
                                         });
                                     });
                                 });
@@ -184,7 +189,7 @@ router.get('/all-consumables', (req, res) => {
 router.post('/all-consumables/export', async (req, res) => {
     try {
         const ExcelJS = require('exceljs');
-        const { ids } = req.body;
+        const { ids, isGroupedView } = req.body;
         if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids 배열이 필요합니다.' });
 
         const sql = `
@@ -209,34 +214,95 @@ router.post('/all-consumables/export', async (req, res) => {
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('전체 현장 현황');
-        
-        worksheet.columns = [
-            { header: '현장명', key: 'siteName', width: 25 },
-            { header: '구분(상위)', key: 'category', width: 20 },
-            { header: '구분(하위)', key: 'subCategory', width: 20 },
-            { header: '품명', key: 'name', width: 30 },
-            { header: '규격', key: 'specification', width: 30 },
-            { header: '운용수량', key: 'opQuantity', width: 12 },
-            { header: '단위', key: 'unit', width: 10 },
-            { header: '비고', key: 'remarks', width: 30 }
-        ];
 
-        worksheet.getRow(1).font = { bold: true };
-        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
-        worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        if (isGroupedView) {
+            worksheet.columns = [
+                { header: '식별번호(도면/고유)', key: 'identifier', width: 25 },
+                { header: '품명', key: 'name', width: 30 },
+                { header: '규격', key: 'specification', width: 30 },
+                { header: '투입 현장', key: 'siteNames', width: 40 },
+                { header: '총 운용수량', key: 'totalQuantity', width: 15 },
+                { header: '단위', key: 'unit', width: 10 },
+                { header: '비고', key: 'remarks', width: 30 }
+            ];
 
-        rows.forEach(r => {
-            worksheet.addRow({
-                siteName: r.siteName || '-',
-                category: r.category || '-',
-                subCategory: r.subCategory || '-',
-                name: r.name || '-',
-                specification: r.specification || '-',
-                opQuantity: r.opQuantity || '',
-                unit: r.unit || '-',
-                remarks: r.remarks || '-'
+            const groupedMap = new Map();
+            const ungroupedList = [];
+
+            rows.forEach(c => {
+                let key = c.drawingNumber ? c.drawingNumber : (c.uniqueNumber ? c.uniqueNumber : null);
+                if (key) {
+                    if (!groupedMap.has(key)) {
+                        groupedMap.set(key, { ...c, totalQuantity: 0, sites: new Set() });
+                    }
+                    const group = groupedMap.get(key);
+                    const qty = parseFloat(c.opQuantity);
+                    group.totalQuantity += (isNaN(qty) ? 0 : qty);
+                    if (c.siteName) group.sites.add(c.siteName);
+                } else {
+                    ungroupedList.push(c);
+                }
             });
-        });
+
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+            worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+            groupedMap.forEach((g, key) => {
+                worksheet.addRow({
+                    identifier: key,
+                    name: g.name || '-',
+                    specification: g.specification || '-',
+                    siteNames: Array.from(g.sites).join(', '),
+                    totalQuantity: g.totalQuantity,
+                    unit: g.unit || '-',
+                    remarks: g.remarks || '-'
+                });
+            });
+            ungroupedList.forEach(c => {
+                worksheet.addRow({
+                    identifier: '-',
+                    name: c.name || '-',
+                    specification: c.specification || '-',
+                    siteNames: c.siteName || '-',
+                    totalQuantity: c.opQuantity || '',
+                    unit: c.unit || '-',
+                    remarks: c.remarks || '-'
+                });
+            });
+        } else {
+            worksheet.columns = [
+                { header: '현장명', key: 'siteName', width: 25 },
+                { header: '도면번호', key: 'drawingNumber', width: 20 },
+                { header: '고유번호', key: 'uniqueNumber', width: 20 },
+                { header: '구분(상위)', key: 'category', width: 20 },
+                { header: '구분(하위)', key: 'subCategory', width: 20 },
+                { header: '품명', key: 'name', width: 30 },
+                { header: '규격', key: 'specification', width: 30 },
+                { header: '운용수량', key: 'opQuantity', width: 12 },
+                { header: '단위', key: 'unit', width: 10 },
+                { header: '비고', key: 'remarks', width: 30 }
+            ];
+
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
+            worksheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+            rows.forEach(r => {
+                worksheet.addRow({
+                    siteName: r.siteName || '-',
+                    drawingNumber: r.drawingNumber || '-',
+                    uniqueNumber: r.uniqueNumber || '-',
+                    category: r.category || '-',
+                    subCategory: r.subCategory || '-',
+                    name: r.name || '-',
+                    specification: r.specification || '-',
+                    opQuantity: r.opQuantity || '',
+                    unit: r.unit || '-',
+                    remarks: r.remarks || '-'
+                });
+            });
+        }
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename="site_consumables_dashboard.xlsx"');
@@ -282,8 +348,8 @@ router.post('/consumables', (req, res) => {
     const id = p.id || ('CONS-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
     
-    const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [id, p.siteId, p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', now, now];
+    const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, drawingNumber, uniqueNumber, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [id, p.siteId, p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', p.drawingNumber || '', p.uniqueNumber || '', now, now];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -296,8 +362,8 @@ router.put('/consumables/:id', (req, res) => {
     const p = req.body;
     const now = new Date().toISOString();
     
-    const sql = `UPDATE site_consumables SET category=?, subCategory=?, name=?, specification=?, opQuantity=?, unit=?, remarks=?, updatedAt=? WHERE id=?`;
-    const params = [p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', now, id];
+    const sql = `UPDATE site_consumables SET category=?, subCategory=?, name=?, specification=?, opQuantity=?, unit=?, remarks=?, drawingNumber=?, uniqueNumber=?, updatedAt=? WHERE id=?`;
+    const params = [p.category || '', p.subCategory || '', p.name || '', p.specification || '', p.opQuantity || '', p.unit || '', p.remarks || '', p.drawingNumber || '', p.uniqueNumber || '', now, id];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -327,8 +393,8 @@ router.post('/consumables/:id/copy', (req, res) => {
         const now = new Date().toISOString();
         const newName = original.name + ' - 복사본';
         
-        const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-        const params = [newId, original.siteId, original.category || '', original.subCategory || '', newName, original.specification || '', original.opQuantity || '', original.unit || '', original.remarks || '', now, now];
+        const sql = `INSERT INTO site_consumables (id, siteId, category, subCategory, name, specification, opQuantity, unit, remarks, drawingNumber, uniqueNumber, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const params = [newId, original.siteId, original.category || '', original.subCategory || '', newName, original.specification || '', original.opQuantity || '', original.unit || '', original.remarks || '', original.drawingNumber || '', original.uniqueNumber || '', now, now];
         
         db.run(sql, params, function(err) {
             if (err) return res.status(500).json({ error: err.message });

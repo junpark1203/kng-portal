@@ -53,7 +53,13 @@
 
                 <div id="dashboardPanel" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <div style="font-weight: 600; font-size: 14px; color: #1e293b;"><i class='bx bx-filter-alt'></i> 필터 및 요약</div>
+                        <div style="font-weight: 600; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 15px;">
+                            <span><i class='bx bx-filter-alt'></i> 필터 및 요약</span>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; font-size: 13px; color: #4f46e5;">
+                                <input type="checkbox" id="toggleGroupView" style="cursor: pointer; width: 16px; height: 16px;">
+                                🗂️ 도면/고유번호 기준으로 묶어보기
+                            </label>
+                        </div>
                         <button class="btn-outline" style="border-color: #10b981; color: #10b981; display: flex; align-items: center; gap: 4px;" onclick="exportDashboardExcel()">
                             <i class='bx bx-export'></i> 엑셀 다운로드
                         </button>
@@ -185,6 +191,16 @@
                     <div class="fg">
                         <label>품명 <span class="required">*</span></label>
                         <input type="text" id="cName" required placeholder="예: 안전모">
+                    </div>
+                    <div class="form-row" style="display: flex; gap: 15px;">
+                        <div class="fg" style="flex:1">
+                            <label>도면번호 <span style="font-size:11px; color:#94a3b8; font-weight:normal;">(있는 경우)</span></label>
+                            <input type="text" id="cDrawingNumber" placeholder="예: DWG-1001">
+                        </div>
+                        <div class="fg" style="flex:1">
+                            <label>고유번호 <span style="font-size:11px; color:#94a3b8; font-weight:normal;">(도면이 없는 경우)</span></label>
+                            <input type="text" id="cUniqueNumber" placeholder="예: SK-HAT-01">
+                        </div>
                     </div>
                     <div class="form-row" style="display: flex; gap: 15px;">
                         <div class="fg" style="flex:2">

@@ -14,6 +14,7 @@ let dashboardFilters = {
     name: '',
     specification: ''
 };
+let isGroupedView = false;
 
 // ── Auth ──
 async function getToken() {
@@ -97,6 +98,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderSites();
     });
+    
+    const toggleGroupView = document.getElementById('toggleGroupView');
+    if (toggleGroupView) {
+        toggleGroupView.addEventListener('change', (e) => {
+            isGroupedView = e.target.checked;
+            loadDashboard(); // 테이블 헤더 및 바디 재렌더링
+        });
+    }
+
     initDashboardFilters();
 });
 
@@ -156,6 +166,8 @@ function setupModals() {
                 document.getElementById('cCategory').value = c.category || '';
                 document.getElementById('cSubCategory').value = c.subCategory || '';
                 document.getElementById('cName').value = c.name;
+                document.getElementById('cDrawingNumber').value = c.drawingNumber || '';
+                document.getElementById('cUniqueNumber').value = c.uniqueNumber || '';
                 document.getElementById('cSpec').value = c.specification || '';
                 document.getElementById('cOpQuantity').value = c.opQuantity || '';
                 document.getElementById('cUnit').value = c.unit || '';
@@ -330,17 +342,32 @@ window.deleteSite = async () => {
 // ── Consumables CRUD ──
 async function loadDashboard() {
     const theadTr = document.querySelector('.data-table thead tr');
-    theadTr.innerHTML = `
-        <th>현장명</th>
-        <th>구분(상위)</th>
-        <th>구분(하위)</th>
-        <th>품명</th>
-        <th>규격</th>
-        <th>운용수량</th>
-        <th>단위</th>
-        <th>비고</th>
-        <th style="width: auto; min-width: 250px;">도면 관리</th>
-    `;
+    if (isGroupedView) {
+        theadTr.innerHTML = `
+            <th>식별번호(도면/고유)</th>
+            <th>품명</th>
+            <th>규격</th>
+            <th>투입 현장(다중)</th>
+            <th>총 운용수량</th>
+            <th>단위</th>
+            <th>비고</th>
+            <th style="width: auto; min-width: 250px;">도면 관리</th>
+        `;
+    } else {
+        theadTr.innerHTML = `
+            <th>현장명</th>
+            <th>도면번호</th>
+            <th>고유번호</th>
+            <th>구분(상위)</th>
+            <th>구분(하위)</th>
+            <th>품명</th>
+            <th>규격</th>
+            <th>운용수량</th>
+            <th>단위</th>
+            <th>비고</th>
+            <th style="width: auto; min-width: 250px;">도면 관리</th>
+        `;
+    }
     const tbody = document.getElementById('consumablesTableBody');
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;"><i class="bx bx-loader-alt bx-spin"></i> 로딩 중...</td></tr>';
     try {
@@ -424,43 +451,108 @@ function applyDashboardFilters() {
     tbody.innerHTML = '';
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${isGroupedView ? 8 : 11}" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>`;
         return;
     }
 
-    filtered.forEach(c => {
-        const tr = document.createElement('tr');
+    if (isGroupedView) {
+        const groupedMap = new Map();
+        const ungroupedList = [];
 
-        let fileHtml = '';
-        if (c.files && c.files.length > 0) {
-            fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
-            c.files.forEach(f => {
-                const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
-                const canPreview = isPreviewable(f.originalName);
-                const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
-                
-                if (canPreview) {
-                    fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
-                } else {
-                    fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
+        filtered.forEach(c => {
+            let key = c.drawingNumber ? c.drawingNumber : (c.uniqueNumber ? c.uniqueNumber : null);
+            if (key) {
+                if (!groupedMap.has(key)) {
+                    groupedMap.set(key, { ...c, totalQuantity: 0, sites: new Set(), allFiles: new Map() });
                 }
-            });
-            fileHtml += '</div>';
-        }
+                const group = groupedMap.get(key);
+                const qty = parseFloat(c.opQuantity);
+                group.totalQuantity += (isNaN(qty) ? 0 : qty);
+                if (c.siteName) group.sites.add(c.siteName);
+                if (c.files) {
+                    c.files.forEach(f => group.allFiles.set(f.originalName, f)); // 중복 제거
+                }
+            } else {
+                ungroupedList.push({ ...c, totalQuantity: c.opQuantity, sites: new Set([c.siteName]), allFiles: new Map(c.files ? c.files.map(f => [f.originalName, f]) : []) });
+            }
+        });
 
-        tr.innerHTML = `
-            <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
-            <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
-            <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
-            <td style="font-weight:500;">${escapeHtml(c.name)}</td>
-            <td>${escapeHtml(c.specification || '-')}</td>
-            <td>${c.opQuantity ? `<span style="font-weight: 600; color: #0f172a;">${escapeHtml(c.opQuantity)}</span>` : '-'}</td>
-            <td>${escapeHtml(c.unit || '-')}</td>
-            <td>${escapeHtml(c.remarks || '-')}</td>
-            <td>${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+        const renderGroupRow = (item, isGrouped) => {
+            const tr = document.createElement('tr');
+            
+            let fileHtml = '';
+            if (item.allFiles.size > 0) {
+                fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
+                item.allFiles.forEach(f => {
+                    const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
+                    const canPreview = isPreviewable(f.originalName);
+                    const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+                    
+                    if (canPreview) {
+                        fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
+                    } else {
+                        fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
+                    }
+                });
+                fileHtml += '</div>';
+            }
+
+            let identifier = isGrouped ? (item.drawingNumber || item.uniqueNumber) : '-';
+            let siteHtml = Array.from(item.sites).map(s => `<span style="display:inline-block; padding:2px 8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; margin:2px;">${escapeHtml(s)}</span>`).join('');
+
+            tr.innerHTML = `
+                <td style="font-weight:600; color:#1e293b;">${escapeHtml(identifier)}</td>
+                <td style="font-weight:500;">${escapeHtml(item.name)}</td>
+                <td>${escapeHtml(item.specification || '-')}</td>
+                <td>${siteHtml || '-'}</td>
+                <td><span style="font-weight: 600; color: #0f172a;">${item.totalQuantity}</span></td>
+                <td>${escapeHtml(item.unit || '-')}</td>
+                <td>${escapeHtml(item.remarks || '-')}</td>
+                <td>${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
+            `;
+            tbody.appendChild(tr);
+        };
+
+        groupedMap.forEach(g => renderGroupRow(g, true));
+        ungroupedList.forEach(c => renderGroupRow(c, false));
+        
+    } else {
+        filtered.forEach(c => {
+            const tr = document.createElement('tr');
+
+            let fileHtml = '';
+            if (c.files && c.files.length > 0) {
+                fileHtml = '<div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 8px;">';
+                c.files.forEach(f => {
+                    const url = `${API_BASE}/api/site-consumables/uploads/${f.fileName}`;
+                    const canPreview = isPreviewable(f.originalName);
+                    const safeJsName = escapeHtml(f.originalName).replace(/'/g, "\\'");
+                    
+                    if (canPreview) {
+                        fileHtml += `<div style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#3b82f6; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" onclick="previewFile('${url}', '${safeJsName}')" title="미리보기"><i class='bx bx-file'></i> ${escapeHtml(f.originalName)}</div>`;
+                    } else {
+                        fileHtml += `<a href="${url}" download="${escapeHtml(f.originalName)}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;" title="다운로드"><i class='bx bx-download'></i> ${escapeHtml(f.originalName)}</a>`;
+                    }
+                });
+                fileHtml += '</div>';
+            }
+
+            tr.innerHTML = `
+                <td style="font-weight:600; color:#475569; white-space:nowrap;">${escapeHtml(c.siteName || '알 수 없음')}</td>
+                <td>${c.drawingNumber ? `<span style="font-weight:500; color:#0369a1;">${escapeHtml(c.drawingNumber)}</span>` : '<span style="color:#cbd5e1;">-</span>'}</td>
+                <td>${c.uniqueNumber ? `<span style="font-weight:500; color:#4338ca;">${escapeHtml(c.uniqueNumber)}</span>` : '<span style="color:#cbd5e1;">-</span>'}</td>
+                <td><span style="display:inline-block; padding:3px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:12px; font-size:12px; font-weight:500; color:#4f46e5; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">${escapeHtml(c.category || '-')}</span></td>
+                <td>${c.subCategory ? `<span style="display:inline-block; padding:3px 10px; background:#f1f5f9; border:1px solid #e2e8f0; border-radius:12px; font-size:12px; font-weight:500; color:#475569;">${escapeHtml(c.subCategory)}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
+                <td style="font-weight:500;">${escapeHtml(c.name)}</td>
+                <td>${escapeHtml(c.specification || '-')}</td>
+                <td>${c.opQuantity ? `<span style="font-weight: 600; color: #0f172a;">${escapeHtml(c.opQuantity)}</span>` : '-'}</td>
+                <td>${escapeHtml(c.unit || '-')}</td>
+                <td>${escapeHtml(c.remarks || '-')}</td>
+                <td>${fileHtml || '<span style="color:#94a3b8; font-size:12px;">-</span>'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
 }
 
 window.exportDashboardExcel = async () => {
@@ -502,7 +594,7 @@ window.exportDashboardExcel = async () => {
                 'Content-Type': 'application/json',
                 'Authorization': token ? `Bearer ${token}` : ''
             },
-            body: JSON.stringify({ ids })
+            body: JSON.stringify({ ids, isGroupedView })
         });
         
         if (!res.ok) throw new Error('엑셀 내보내기 실패');
@@ -625,6 +717,8 @@ document.getElementById('consumableForm').addEventListener('submit', async (e) =
             category: document.getElementById('cCategory').value.trim(),
             subCategory: document.getElementById('cSubCategory').value.trim(),
             name: document.getElementById('cName').value.trim(),
+            drawingNumber: document.getElementById('cDrawingNumber').value.trim(),
+            uniqueNumber: document.getElementById('cUniqueNumber').value.trim(),
             specification: document.getElementById('cSpec').value.trim(),
             opQuantity: document.getElementById('cOpQuantity').value.trim(),
             unit: document.getElementById('cUnit').value.trim(),
