@@ -56,6 +56,7 @@ body {
 .edit-form select {
     font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif !important;
     width: 100% !important;
+    height: 42px !important;
     padding: 10px 14px !important;
     border: 1px solid #cbd5e1 !important;
     border-radius: 6px !important;
@@ -63,6 +64,18 @@ body {
     color: #334155 !important;
     transition: all 0.2s ease !important;
     background-color: #ffffff !important;
+    box-sizing: border-box !important;
+}
+
+.edit-form select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 16px !important;
+    padding-right: 38px !important;
 }
 
 .edit-form input[type="text"]:focus,
@@ -73,7 +86,8 @@ body {
 }
 
 /* Toast UI Editor 폰트 강제 적용 및 보정 */
-.toastui-editor-defaultUI, .toastui-editor-contents {
+.toastui-editor-defaultUI, .toastui-editor-contents,
+.toastui-editor-defaultUI *, .toastui-editor-contents * {
     font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif !important;
 }
 .toastui-editor-defaultUI {
