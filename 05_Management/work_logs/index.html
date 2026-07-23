@@ -31,41 +31,42 @@
                 </div>
             </div>
 
-            <div class="filter-area glass-panel">
-                <div class="filter-group">
-                    <label>기간</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="date" id="filterStartDate">
-                        <span>~</span>
-                        <input type="date" id="filterEndDate">
-                    </div>
-                    <div class="date-presets" id="datePresets">
+            <div class="filter-area glass-panel" style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">기간</label>
+                    <input type="date" id="filterStartDate" class="filter-input">
+                    <span style="color: var(--text-muted);">~</span>
+                    <input type="date" id="filterEndDate" class="filter-input">
+                    <div class="date-presets" id="datePresets" style="margin: 0 0 0 4px; display: flex; gap: 4px;">
                         <button class="btn-preset active" data-range="all">전체</button>
-                        <button class="btn-preset" data-range="1y">지난 1년</button>
-                        <button class="btn-preset" data-range="1m">지난 1달</button>
-                        <button class="btn-preset" data-range="1w">지난 1주</button>
+                        <button class="btn-preset" data-range="1y">1년</button>
+                        <button class="btn-preset" data-range="1m">1달</button>
+                        <button class="btn-preset" data-range="1w">1주</button>
                     </div>
                 </div>
-                <div class="filter-group">
-                    <label>유형</label>
-                    <select id="filterLogType">
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">유형</label>
+                    <select id="filterLogType" class="filter-input">
                         <option value="">전체</option>
                         <option value="일일">일일</option>
                         <option value="주간">주간</option>
                         <option value="월간">월간</option>
                     </select>
                 </div>
-                <div class="filter-group">
-                    <label>구분</label>
-                    <select id="filterCategory">
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="font-weight: 600; color: var(--text-muted); font-size: 13px; white-space: nowrap;">구분</label>
+                    <select id="filterCategory" class="filter-input">
                         <option value="">전체</option>
                         <option value="업무">업무</option>
                         <option value="보고">보고</option>
                         <option value="기타">기타</option>
                     </select>
                 </div>
-                <div class="filter-group checkbox-group">
-                    <label><input type="checkbox" id="filterDraft"> 임시저장만 보기</label>
+                
+                <div class="checkbox-group" style="margin: 0; display: flex; align-items: center;">
+                    <label style="white-space: nowrap;"><input type="checkbox" id="filterDraft"> 임시저장만 보기</label>
                 </div>
             </div>
 

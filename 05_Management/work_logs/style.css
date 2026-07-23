@@ -192,8 +192,7 @@ button {
     color: var(--text-muted);
 }
 
-.filter-group input[type="date"],
-.filter-group select {
+.filter-input {
     padding: 9px 12px;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -204,7 +203,7 @@ button {
     transition: border-color 0.2s;
 }
 
-.filter-group input:focus, .filter-group select:focus {
+.filter-input:focus {
     border-color: var(--primary-color);
 }
 
