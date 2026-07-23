@@ -1,15 +1,107 @@
+/* Container & Layout */
+body {
+    background-color: #f8fafc !important;
+}
+
+.app-container {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 30px !important;
+}
+
+/* Card Panel Override for a softer look */
+.panel {
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 30px !important;
+}
+
+/* Header */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+}
+.panel-header h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 폼 스타일 */
+.fg {
+    display: flex;
+    flex-direction: column;
+}
+.fg label {
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #475569;
+}
+.required {
+    color: #ef4444;
+}
+
+.edit-form input[type="text"],
+.edit-form select {
+    width: 100% !important;
+    padding: 10px 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    color: #334155 !important;
+    transition: all 0.2s ease !important;
+    background-color: #ffffff !important;
+}
+
+.edit-form input[type="text"]:focus,
+.edit-form select:focus {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Toast UI Editor 폰트 강제 적용 및 보정 */
+.toastui-editor-defaultUI, .toastui-editor-contents {
+    font-family: 'Inter', sans-serif !important;
+}
+.toastui-editor-defaultUI {
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    overflow: hidden;
+}
+.toastui-editor-contents p, .toastui-editor-contents li {
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+}
+.toastui-editor-contents h1, .toastui-editor-contents h2, .toastui-editor-contents h3 {
+    border-bottom: none !important;
+}
+
+/* 유틸리티 및 뱃지 */
 .view-section {
     display: none;
 }
 .view-section.active {
     display: block;
 }
+
 .badge {
     display: inline-block;
-    padding: 3px 8px;
-    border-radius: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
     background-color: #f1f5f9;
     color: #475569;
     margin-right: 5px;
@@ -22,31 +114,4 @@
     background-color: #f3f4f6;
     color: #374151;
     border: 1px solid #e5e7eb;
-}
-
-/* Toast UI Editor 폰트 강제 적용 */
-.toastui-editor-defaultUI, .toastui-editor-contents {
-    font-family: 'Inter', sans-serif !important;
-}
-.toastui-editor-contents p, .toastui-editor-contents li {
-    font-size: 15px !important;
-    line-height: 1.6 !important;
-}
-.toastui-editor-contents h1, .toastui-editor-contents h2, .toastui-editor-contents h3 {
-    border-bottom: none !important;
-}
-
-/* 폼 스타일 보정 */
-.fg {
-    display: flex;
-    flex-direction: column;
-}
-.fg label {
-    margin-bottom: 5px;
-    font-weight: 500;
-    font-size: 14px;
-    color: #334155;
-}
-.required {
-    color: #ef4444;
 }

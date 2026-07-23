@@ -304,16 +304,46 @@
     color: #475569;
 }
 
-.settlement-table input[type="number"], .settlement-table select {
+.settlement-table input[type="number"], 
+.settlement-table input[type="text"], 
+.settlement-table select {
     width: 100%;
-    padding: 6px;
-    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    border: 1px solid transparent;
     border-radius: 4px;
-    text-align: right;
+    background-color: transparent;
+    transition: all 0.2s ease;
 }
 
+.settlement-table input[type="number"] {
+    text-align: right;
+}
+.settlement-table input[type="text"] {
+    text-align: center;
+}
 .settlement-table select {
-    text-align: left;
+    text-align: center;
+    cursor: pointer;
+}
+
+.settlement-table input:hover,
+.settlement-table select:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+    border-color: #cbd5e1;
+}
+
+.settlement-table input:focus,
+.settlement-table select:focus {
+    background-color: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    outline: none;
+}
+
+/* 사용자가 입력해야 하는 셀을 강조 */
+.settlement-table td:has(input),
+.settlement-table td:has(select) {
+    background-color: #fefce8; /* 아주 옅은 노란색 */
 }
 
 .val-variance {

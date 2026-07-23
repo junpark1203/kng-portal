@@ -402,18 +402,15 @@ function renderSettlementGrid() {
 
         // 3. 단위 / 통화
         let unitHtml = `<input type="text" class="calc-input" value="${cost.unit}" style="width:100%; text-align:center; padding:4px; margin-bottom:4px;" oninput="updateCost(${idx}, 'unit', this.value)">`;
-        let currHtml = `<span style="font-size:0.9em; font-weight:600; color:var(--text-secondary); display:block; text-align:center;">${cost.currency}</span>`;
-        if (cost.isCustom) {
-            currHtml = `
-                <select class="calc-input" style="padding:4px; width:100%; text-align:center;" onchange="updateCost(${idx}, 'currency', this.value)">
-                    <option value="KRW" ${cost.currency==='KRW'?'selected':''}>KRW</option>
-                    <option value="USD" ${cost.currency==='USD'?'selected':''}>USD</option>
-                    <option value="CNY" ${cost.currency==='CNY'?'selected':''}>CNY</option>
-                    <option value="EUR" ${cost.currency==='EUR'?'selected':''}>EUR</option>
-                    <option value="JPY" ${cost.currency==='JPY'?'selected':''}>JPY</option>
-                </select>
-            `;
-        }
+        let currHtml = `
+            <select class="calc-input curr-select" style="padding:4px; width:100%; text-align:center; cursor:pointer;" onchange="updateCost(${idx}, 'currency', this.value)">
+                <option value="KRW" ${cost.currency==='KRW'?'selected':''}>KRW</option>
+                <option value="USD" ${cost.currency==='USD'?'selected':''}>USD</option>
+                <option value="CNY" ${cost.currency==='CNY'?'selected':''}>CNY</option>
+                <option value="EUR" ${cost.currency==='EUR'?'selected':''}>EUR</option>
+                <option value="JPY" ${cost.currency==='JPY'?'selected':''}>JPY</option>
+            </select>
+        `;
 
         // 4. 합계
         let amt = parseFloat(cost.amount) || 0;
