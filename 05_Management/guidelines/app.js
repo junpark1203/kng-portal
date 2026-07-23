@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initEditorjs(containerId, readOnly = false, initialData = null) {
-    return new EditorJS({
+    const editor = new EditorJS({
         holder: containerId,
         readOnly: readOnly,
         data: initialData || {},
@@ -94,6 +94,60 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
             }
         }
     });
+
+    // 노션 스타일 단축키 (Markdown shortcuts) 구현
+    if (!readOnly) {
+        editor.isReady.then(() => {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            container.addEventListener('input', (e) => {
+                const target = e.target;
+                if (target.classList.contains('ce-paragraph') || target.getAttribute('data-placeholder')) {
+                    // textContent를 통해 앞부분 텍스트 확인 (공백 문자가 &nbsp; 일 수 있으므로 변환)
+                    const text = target.textContent.replace(/\u00A0/g, ' '); 
+                    
+                    let type = null;
+                    let data = {};
+                    
+                    if (text === '- ' || text === '* ') {
+                        type = 'list';
+                        data = { style: 'unordered', items: [] };
+                    } else if (text === '1. ') {
+                        type = 'list';
+                        data = { style: 'ordered', items: [] };
+                    } else if (text === '# ') {
+                        type = 'header';
+                        data = { level: 1, text: '' };
+                    } else if (text === '## ') {
+                        type = 'header';
+                        data = { level: 2, text: '' };
+                    } else if (text === '### ') {
+                        type = 'header';
+                        data = { level: 3, text: '' };
+                    } else if (text === '> ') {
+                        type = 'quote';
+                        data = { text: '', caption: '' };
+                    } else if (text === '[] ' || text === '[ ] ') {
+                        type = 'checklist';
+                        data = { items: [{text: '', checked: false}] };
+                    }
+                    
+                    if (type) {
+                        try {
+                            const index = editor.blocks.getCurrentBlockIndex();
+                            editor.blocks.delete(index);
+                            editor.blocks.insert(type, data, {}, index, true);
+                        } catch(err) {
+                            console.error("Markdown shortcut error:", err);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    return editor;
 }
 
 function debounce(func, wait) {
