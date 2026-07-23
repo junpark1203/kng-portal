@@ -120,6 +120,7 @@ body {
     background-color: #f1f5f9;
     color: #475569;
     margin-right: 5px;
+    white-space: nowrap;
 }
 .badge-category {
     background-color: #e0e7ff;
