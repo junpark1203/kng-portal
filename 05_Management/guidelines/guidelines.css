@@ -1,0 +1,52 @@
+.view-section {
+    display: none;
+}
+.view-section.active {
+    display: block;
+}
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    background-color: #f1f5f9;
+    color: #475569;
+    margin-right: 5px;
+}
+.badge-category {
+    background-color: #e0e7ff;
+    color: #4338ca;
+}
+.badge-tag {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+}
+
+/* Toast UI Editor 폰트 강제 적용 */
+.toastui-editor-defaultUI, .toastui-editor-contents {
+    font-family: 'Inter', sans-serif !important;
+}
+.toastui-editor-contents p, .toastui-editor-contents li {
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+}
+.toastui-editor-contents h1, .toastui-editor-contents h2, .toastui-editor-contents h3 {
+    border-bottom: none !important;
+}
+
+/* 폼 스타일 보정 */
+.fg {
+    display: flex;
+    flex-direction: column;
+}
+.fg label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #334155;
+}
+.required {
+    color: #ef4444;
+}
