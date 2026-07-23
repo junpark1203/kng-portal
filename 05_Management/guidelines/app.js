@@ -246,7 +246,7 @@ function renderGuidelines() {
         tr.innerHTML = `
             <td><span class="badge badge-category">${item.category || '분류없음'}</span></td>
             <td style="font-weight: 500;"><a href="javascript:void(0)" class="title-link" style="color:#2563eb; text-decoration:none;">${item.title}</a></td>
-            <td>${tagsHtml}</td>
+            <td><div style="display: flex; gap: 4px; flex-wrap: nowrap; align-items: center;">${tagsHtml}</div></td>
             <td>${item.authorName || '관리자'}</td>
             <td>${dateStr}</td>
             <td>
