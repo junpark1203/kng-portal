@@ -224,6 +224,22 @@ async function loadLogs() {
     }
 }
 
+function highlightTerm(text, term) {
+    if (!text) return '-';
+    // XSS 방지를 위해 기본 이스케이프 처리
+    const escapedText = String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+        
+    if (!term) return escapedText;
+    
+    // 검색어 정규식 안전하게 처리 및 하이라이트 태그 추가
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedTerm})`, 'gi');
+    return escapedText.replace(regex, '<mark style="background-color: #fef08a; font-weight: bold; border-radius: 2px; padding: 0 2px;">$1</mark>');
+}
+
 function renderList() {
     // Apply filters
     let filtered = currentLogs;
@@ -274,13 +290,17 @@ function renderList() {
             } catch(e) {}
         }
 
+        const highlightedAuthor = highlightTerm(log.authorName, sTerm);
+        const highlightedToday = highlightTerm(log.todayTasks, sTerm);
+        const highlightedNext = highlightTerm(log.nextTasks, sTerm);
+
         card.innerHTML = `
             <div class="log-card-header">
                 <div class="log-meta">
                     ${isDraftBadge}
                     <span class="meta-badge">[${log.logType || '분류없음'}] ${log.category || ''}</span>
                     <span class="meta-date">${log.date}</span>
-                    <span class="meta-author"><i class="fa-solid fa-user"></i> ${log.authorName}</span>
+                    <span class="meta-author"><i class="fa-solid fa-user"></i> ${highlightedAuthor !== '-' ? highlightedAuthor : log.authorName}</span>
                 </div>
                 <div class="log-meta" style="color: var(--text-muted); font-size: 12px;">
                     작성: ${new Date(log.createdAt).toLocaleString()}
@@ -289,11 +309,11 @@ function renderList() {
             <div class="log-card-body">
                 <div class="log-section">
                     <h3 class="today"><i class="fa-solid fa-sun"></i> 금일사항</h3>
-                    <div class="log-content">${log.todayTasks || '-'}</div>
+                    <div class="log-content">${highlightedToday}</div>
                 </div>
                 <div class="log-section">
                     <h3 class="next"><i class="fa-solid fa-moon"></i> 차일사항</h3>
-                    <div class="log-content">${log.nextTasks || '-'}</div>
+                    <div class="log-content">${highlightedNext}</div>
                 </div>
                 ${imagesHtml}
             </div>
