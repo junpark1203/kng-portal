@@ -112,11 +112,11 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
                     
                     if (text === '- ' || text === '* ') {
                         type = 'list';
-                        data = { style: 'unordered', items: [] }; 
-                        // 플러그인에 따라 초기값이 없으면 렌더링이 안 될 수 있으므로, 삽입 시 빈 객체 전달
+                        // 최신 @editorjs/list (nested-list) 포맷에 맞춘 초기 아이템 구조
+                        data = { style: 'unordered', items: [ { content: '', items: [] } ] };
                     } else if (text === '1. ') {
                         type = 'list';
-                        data = { style: 'ordered', items: [] };
+                        data = { style: 'ordered', items: [ { content: '', items: [] } ] };
                     } else if (text === '# ') {
                         type = 'header';
                         data = { level: 1, text: '' };
@@ -131,7 +131,7 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
                         data = { text: '', caption: '' };
                     } else if (text === '[] ' || text === '[ ] ') {
                         type = 'checklist';
-                        data = { items: [] };
+                        data = { items: [ { text: '', checked: false } ] };
                     }
                     
                     if (type) {
@@ -139,13 +139,11 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
                             const index = editor.blocks.getCurrentBlockIndex();
                             editor.blocks.delete(index);
                             
-                            // data를 넘기지 않으면 각 플러그인이 기본값(1개의 빈 항목 등)을 자동 생성합니다.
-                            // 단, Header 등은 필수값이 있을 수 있으므로 data를 넘기되, list/checklist는 빈 항목을 위해 기본 객체만 넘깁니다.
-                            let blockData = data;
-                            if (type === 'list') blockData = { style: data.style };
-                            if (type === 'checklist') blockData = {};
-                            
-                            editor.blocks.insert(type, blockData, {}, index, true);
+                            // 0.5초 대기 후 포커스 주는 방식으로 변경 (안전성 확보)
+                            editor.blocks.insert(type, data, {}, index, false);
+                            setTimeout(() => {
+                                editor.caret.setToBlock(index, 'end');
+                            }, 10);
                         } catch(err) {
                             console.error("Markdown shortcut error:", err);
                         }
