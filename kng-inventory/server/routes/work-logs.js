@@ -14,6 +14,7 @@ const setDb = (dbInstance) => {
 // HTML 변환 및 이미지 추출 헬퍼 함수
 const stripHTMLAndExtractImages = (htmlStr) => {
     if (!htmlStr) return { text: '', images: [] };
+    htmlStr = String(htmlStr);
     const images = [];
     const imgRegex = /<img[^>]+src="([^">]+)"/gi;
     let match;
