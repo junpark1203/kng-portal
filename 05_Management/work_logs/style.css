@@ -304,9 +304,9 @@ button {
 .meta-author { font-weight: 500; }
 
 .log-card-body {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     padding: 24px;
 }
 
@@ -329,12 +329,28 @@ button {
     line-height: 1.6;
     max-height: 150px;
     overflow: hidden;
+    white-space: pre-wrap; /* Preserve newlines */
     text-overflow: ellipsis;
 }
-/* Ensure tinymce generated images don't overflow in card view */
-.log-content img {
-    max-width: 100%;
-    height: auto;
+
+.log-attachments {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 12px;
+}
+.log-attachments img {
+    max-width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+}
+.log-attachments img:hover {
+    opacity: 0.8;
 }
 
 /* Editor View */
@@ -383,15 +399,87 @@ button {
     outline: none;
     transition: all 0.2s;
 }
-.form-group input:focus, .form-group select:focus {
+.form-group textarea {
+    padding: 12px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+    min-height: 250px;
+    resize: vertical;
+    line-height: 1.6;
+}
+.form-group textarea:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-/* TinyMCE wrapper styling adjustments */
-.tox-tinymce {
-    border-radius: var(--radius-md) !important;
-    border-color: var(--border-color) !important;
+.attachment-section {
+    margin-top: 24px;
+}
+.dropzone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    background: #FAFAFA;
+    transition: all 0.2s;
+}
+.dropzone:hover, .dropzone.dragover {
+    border-color: var(--primary-color);
+    background: #EEF2FF;
+}
+.dropzone i {
+    font-size: 32px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+}
+.dropzone p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.attachment-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+.attachment-item {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    background: #FFF;
+}
+.attachment-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.attachment-item .btn-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+.attachment-item .btn-remove:hover {
+    background: rgba(220, 38, 38, 1);
 }
 
 @media (max-width: 1024px) {

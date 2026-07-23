@@ -46,50 +46,88 @@ const inputAuthorName = document.getElementById('inputAuthorName');
 const inputLogType = document.getElementById('inputLogType');
 const inputCategory = document.getElementById('inputCategory');
 
-// Initialize TinyMCE
-function initEditors() {
-    tinymce.init({
-        selector: '#editorToday, #editorNext',
-        height: 400,
-        menubar: false,
-        plugins: 'lists link image table code help wordcount autoresize',
-        toolbar: 'undo redo | blocks | bold italic strikethrough forecolor backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | image table | removeformat',
-        
-        // Image Upload Configuration
-        images_upload_handler: async function (blobInfo, progress) {
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const formData = new FormData();
-                    formData.append('file', blobInfo.blob(), blobInfo.filename());
-                    
-                    const response = await authFetch(`${API_BASE}/upload-image`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error('HTTP Error: ' + response.status);
+let attachedImages = [];
+
+const editorToday = document.getElementById('editorToday');
+const editorNext = document.getElementById('editorNext');
+const imageDropzone = document.getElementById('imageDropzone');
+const fileInput = document.getElementById('fileInput');
+const attachmentGallery = document.getElementById('attachmentGallery');
+
+// ----------------------------------------------------
+// File Upload & Drag and Drop
+// ----------------------------------------------------
+imageDropzone.addEventListener('click', () => fileInput.click());
+
+imageDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    imageDropzone.classList.add('dragover');
+});
+
+imageDropzone.addEventListener('dragleave', () => {
+    imageDropzone.classList.remove('dragover');
+});
+
+imageDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    imageDropzone.classList.remove('dragover');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFiles(e.dataTransfer.files);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files && fileInput.files.length > 0) {
+        handleFiles(fileInput.files);
+    }
+});
+
+async function handleFiles(files) {
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith('image/')) {
+            formData.append('file', files[i]);
+            // Currently upload-image endpoint only handles single file, so we upload one by one
+            try {
+                const singleFormData = new FormData();
+                singleFormData.append('file', files[i]);
+                const res = await authFetch(`${API_BASE}/upload-image`, {
+                    method: 'POST',
+                    body: singleFormData
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.location) {
+                        attachedImages.push(data.location);
+                        renderGallery();
                     }
-                    
-                    const result = await response.json();
-                    if (result && result.location) {
-                        resolve(result.location);
-                    } else {
-                        reject('Invalid JSON response from server.');
-                    }
-                } catch (error) {
-                    reject('Image upload failed: ' + error.message);
                 }
-            });
-        },
-        
-        // Allowed resize (Object Resizing is enabled by default in TinyMCE for images)
-        object_resizing: true,
-        
-        // Paste configuration to keep sticky notes format mostly intact
-        paste_data_images: true, // Allow pasting images directly
-        paste_as_text: false,
-        smart_paste: true
+            } catch (err) {
+                console.error("Upload error:", err);
+            }
+        }
+    }
+}
+
+function renderGallery() {
+    attachmentGallery.innerHTML = '';
+    attachedImages.forEach((url, index) => {
+        const item = document.createElement('div');
+        item.className = 'attachment-item';
+        item.innerHTML = `
+            <img src="${url}" alt="attachment" onclick="window.open('${url}', '_blank')">
+            <button class="btn-remove" data-index="${index}"><i class="fa-solid fa-xmark"></i></button>
+        `;
+        attachmentGallery.appendChild(item);
+    });
+
+    // Add remove event listeners
+    attachmentGallery.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+            attachedImages.splice(idx, 1);
+            renderGallery();
+        });
     });
 }
 
@@ -140,8 +178,13 @@ async function showEditor(id = null, pushState = true) {
                 inputLogType.value = log.logType || '일일';
                 inputCategory.value = log.category || '업무';
                 
-                tinymce.get('editorToday').setContent(log.todayTasks || '');
-                tinymce.get('editorNext').setContent(log.nextTasks || '');
+                editorToday.value = log.todayTasks || '';
+                editorNext.value = log.nextTasks || '';
+                
+                try {
+                    attachedImages = log.attachedImages ? JSON.parse(log.attachedImages) : [];
+                } catch(e) { attachedImages = []; }
+                renderGallery();
             } else {
                 alert('업무일지를 불러오는데 실패했습니다.');
                 showList(true);
@@ -159,8 +202,10 @@ async function showEditor(id = null, pushState = true) {
         inputLogType.value = '일일';
         inputCategory.value = '업무';
         
-        tinymce.get('editorToday').setContent('');
-        tinymce.get('editorNext').setContent('');
+        editorToday.value = '';
+        editorNext.value = '';
+        attachedImages = [];
+        renderGallery();
     }
 }
 
@@ -217,6 +262,18 @@ function renderList() {
         
         const isDraftBadge = log.isDraft ? `<span class="meta-badge meta-draft">임시저장</span>` : '';
         
+        let imagesHtml = '';
+        if (log.attachedImages) {
+            try {
+                const imgs = JSON.parse(log.attachedImages);
+                if (imgs.length > 0) {
+                    imagesHtml = `<div class="log-attachments">` + 
+                        imgs.map(url => `<img src="${url}" onclick="window.open('${url}', '_blank')">`).join('') +
+                        `</div>`;
+                }
+            } catch(e) {}
+        }
+
         card.innerHTML = `
             <div class="log-card-header">
                 <div class="log-meta">
@@ -238,6 +295,7 @@ function renderList() {
                     <h3 class="next"><i class="fa-solid fa-moon"></i> 차일사항</h3>
                     <div class="log-content">${log.nextTasks || '-'}</div>
                 </div>
+                ${imagesHtml}
             </div>
         `;
         logList.appendChild(card);
@@ -259,8 +317,9 @@ async function saveLog(isDraft) {
         logType: inputLogType.value,
         category: inputCategory.value,
         isDraft: isDraft,
-        todayTasks: tinymce.get('editorToday').getContent(),
-        nextTasks: tinymce.get('editorNext').getContent()
+        todayTasks: editorToday.value,
+        nextTasks: editorNext.value,
+        attachedImages: JSON.stringify(attachedImages)
     };
 
     try {
@@ -318,12 +377,8 @@ async function deleteLog() {
 // Event Listeners
 // ----------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
-    initEditors();
-    
-    // Check initial route after a short delay to let TinyMCE init
-    setTimeout(() => {
-        handleRoute(false);
-    }, 100);
+    // Check initial route
+    handleRoute(false);
 });
 
 btnNewLog.addEventListener('click', () => showEditor(null, true));

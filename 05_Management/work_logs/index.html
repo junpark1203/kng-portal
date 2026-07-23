@@ -10,9 +10,6 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- TinyMCE CDN (Open Source via cdnjs) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js" referrerpolicy="origin"></script>
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -122,11 +119,23 @@
                 <div class="form-row split-editor">
                     <div class="form-group half-width">
                         <label>금일사항 (Today's Work)</label>
-                        <textarea id="editorToday"></textarea>
+                        <textarea id="editorToday" placeholder="오늘 진행한 업무 내용을 자유롭게 작성하세요..."></textarea>
                     </div>
                     <div class="form-group half-width">
                         <label>차일사항 (Next Work)</label>
-                        <textarea id="editorNext"></textarea>
+                        <textarea id="editorNext" placeholder="내일 또는 향후 진행할 업무 내용을 자유롭게 작성하세요..."></textarea>
+                    </div>
+                </div>
+
+                <div class="attachment-section">
+                    <label style="font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 8px; display: block;">첨부 이미지</label>
+                    <div class="dropzone" id="imageDropzone">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p>여기로 이미지를 드래그하거나 클릭하여 업로드하세요.</p>
+                        <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+                    </div>
+                    <div class="attachment-gallery" id="attachmentGallery">
+                        <!-- 썸네일 미리보기가 이곳에 렌더링 됩니다 -->
                     </div>
                 </div>
             </div>

@@ -11,6 +11,58 @@ const setDb = (dbInstance) => {
     db = dbInstance;
 };
 
+// HTML 변환 및 이미지 추출 헬퍼 함수
+const stripHTMLAndExtractImages = (htmlStr) => {
+    if (!htmlStr) return { text: '', images: [] };
+    const images = [];
+    const imgRegex = /<img[^>]+src="([^">]+)"/gi;
+    let match;
+    while ((match = imgRegex.exec(htmlStr)) !== null) {
+        images.push(match[1]);
+    }
+    // 줄바꿈 태그 처리
+    let text = htmlStr.replace(/<br\s*[\/]?>/gi, '\n');
+    text = text.replace(/<\/p>\s*<p>/gi, '\n\n');
+    text = text.replace(/<\/?p>/gi, '');
+    // 나머지 HTML 태그 제거
+    text = text.replace(/<[^>]*>?/gm, '');
+    // 엔티티 변환
+    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    return { text: text.trim(), images };
+};
+
+// 기존 데이터 마이그레이션 함수
+const migrateData = () => {
+    db.all("PRAGMA table_info(work_logs)", [], (err, cols) => {
+        if (err) return console.error('PRAGMA 에러:', err);
+        const hasAttachedImages = cols.some(c => c.name === 'attachedImages');
+        if (!hasAttachedImages) {
+            console.log("attachedImages 컬럼 추가 중...");
+            db.run("ALTER TABLE work_logs ADD COLUMN attachedImages TEXT DEFAULT '[]'", (err) => {
+                if (err) return console.error('ALTER TABLE 에러:', err);
+                console.log("데이터 마이그레이션(HTML 제거 및 이미지 추출) 시작...");
+                db.all("SELECT id, todayTasks, nextTasks FROM work_logs", [], (err, rows) => {
+                    if (err || !rows) return;
+                    rows.forEach(row => {
+                        const today = stripHTMLAndExtractImages(row.todayTasks);
+                        const next = stripHTMLAndExtractImages(row.nextTasks);
+                        const allImages = [...today.images, ...next.images];
+                        
+                        db.run(
+                            "UPDATE work_logs SET todayTasks = ?, nextTasks = ?, attachedImages = ? WHERE id = ?",
+                            [today.text, next.text, JSON.stringify(allImages), row.id],
+                            (err) => {
+                                if (err) console.error("마이그레이션 실패 id:", row.id, err);
+                            }
+                        );
+                    });
+                    console.log("업무일지 마이그레이션 완료.");
+                });
+            });
+        }
+    });
+};
+
 // 테이블 초기화
 const initWorkLogsTables = (dbInstance) => {
     return new Promise((resolve, reject) => {
@@ -27,6 +79,7 @@ const initWorkLogsTables = (dbInstance) => {
                 isDraft INTEGER DEFAULT 0,
                 todayTasks TEXT,
                 nextTasks TEXT,
+                attachedImages TEXT DEFAULT '[]',
                 createdAt TEXT,
                 updatedAt TEXT
             )
@@ -36,6 +89,7 @@ const initWorkLogsTables = (dbInstance) => {
                 reject(err);
             } else {
                 console.log('work_logs 테이블 확인 완료');
+                migrateData();
                 resolve();
             }
         });
@@ -101,13 +155,13 @@ router.post('/', (req, res) => {
     const now = new Date().toISOString();
     const sql = `
         INSERT INTO work_logs (
-            id, date, department, company, authorId, authorName, logType, category, isDraft, todayTasks, nextTasks, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, date, department, company, authorId, authorName, logType, category, isDraft, todayTasks, nextTasks, attachedImages, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const params = [
         id, p.date || '', p.department || '', p.company || '', p.authorId || '', p.authorName || '', 
-        p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', now, now
+        p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', p.attachedImages || '[]', now, now
     ];
     
     db.run(sql, params, function(err) {
@@ -123,13 +177,13 @@ router.put('/:id', (req, res) => {
     const now = new Date().toISOString();
     const sql = `
         UPDATE work_logs SET
-            date = ?, department = ?, company = ?, authorId = ?, authorName = ?, logType = ?, category = ?, isDraft = ?, todayTasks = ?, nextTasks = ?, updatedAt = ?
+            date = ?, department = ?, company = ?, authorId = ?, authorName = ?, logType = ?, category = ?, isDraft = ?, todayTasks = ?, nextTasks = ?, attachedImages = ?, updatedAt = ?
         WHERE id = ?
     `;
     
     const params = [
         p.date || '', p.department || '', p.company || '', p.authorId || '', p.authorName || '', 
-        p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', now, id
+        p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', p.attachedImages || '[]', now, id
     ];
     
     db.run(sql, params, function(err) {
