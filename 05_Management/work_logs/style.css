@@ -326,10 +326,7 @@ button {
     font-size: 14px;
     color: #4B5563;
     line-height: 1.6;
-    max-height: 150px;
-    overflow: hidden;
     white-space: pre-wrap; /* Preserve newlines */
-    text-overflow: ellipsis;
 }
 
 .log-attachments {
