@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>개인 업무일지 (Work Logs)</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- TinyMCE CDN -->
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app-container">
+        
+        <!-- ListView -->
+        <div id="listView" class="view-section active">
+            <div class="header-area">
+                <div class="header-title">
+                    <h1><i class="fa-solid fa-book-open"></i> 개인 업무일지</h1>
+                    <p>나의 업무 이력을 깔끔하게 기록하고 관리하세요.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="searchInput" placeholder="업무 내용 검색...">
+                    </div>
+                    <button class="btn-primary" id="btnNewLog"><i class="fa-solid fa-pen"></i> 업무일지 작성</button>
+                </div>
+            </div>
+
+            <div class="filter-area glass-panel">
+                <div class="filter-group">
+                    <label>기간</label>
+                    <input type="date" id="filterStartDate">
+                    <span>~</span>
+                    <input type="date" id="filterEndDate">
+                </div>
+                <div class="filter-group">
+                    <label>유형</label>
+                    <select id="filterLogType">
+                        <option value="">전체</option>
+                        <option value="일일">일일</option>
+                        <option value="주간">주간</option>
+                        <option value="월간">월간</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>구분</label>
+                    <select id="filterCategory">
+                        <option value="">전체</option>
+                        <option value="업무">업무</option>
+                        <option value="보고">보고</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="filter-group checkbox-group">
+                    <label><input type="checkbox" id="filterDraft"> 임시저장만 보기</label>
+                </div>
+            </div>
+
+            <div class="list-container" id="logList">
+                <!-- Data will be loaded here -->
+            </div>
+        </div>
+
+        <!-- EditView / DetailView (Shared Form) -->
+        <div id="editView" class="view-section">
+            <div class="editor-header">
+                <button class="btn-back" id="btnBack"><i class="fa-solid fa-arrow-left"></i> 뒤로가기</button>
+                <div class="editor-actions">
+                    <button class="btn-secondary" id="btnSaveDraft"><i class="fa-solid fa-floppy-disk"></i> 임시저장</button>
+                    <button class="btn-primary" id="btnSave"><i class="fa-solid fa-check"></i> 저장완료</button>
+                    <button class="btn-danger" id="btnDelete" style="display: none;"><i class="fa-solid fa-trash"></i> 삭제</button>
+                </div>
+            </div>
+
+            <div class="editor-form glass-panel">
+                <div class="form-row multi-col">
+                    <div class="form-group">
+                        <label>작성일</label>
+                        <input type="date" id="inputDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>부서명</label>
+                        <input type="text" id="inputDepartment" placeholder="예: 자재부" required>
+                    </div>
+                    <div class="form-group">
+                        <label>회사명</label>
+                        <select id="inputCompany">
+                            <option value="행복한안전">행복한안전</option>
+                            <option value="평생건산">평생건산</option>
+                            <option value="KNG">KNG</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>작성자</label>
+                        <input type="text" id="inputAuthorName" required>
+                    </div>
+                </div>
+
+                <div class="form-row multi-col">
+                    <div class="form-group">
+                        <label>유형</label>
+                        <select id="inputLogType">
+                            <option value="일일">일일</option>
+                            <option value="주간">주간</option>
+                            <option value="월간">월간</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>구분</label>
+                        <select id="inputCategory">
+                            <option value="업무">업무</option>
+                            <option value="보고">보고</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row split-editor">
+                    <div class="form-group half-width">
+                        <label>금일사항 (Today's Work)</label>
+                        <textarea id="editorToday"></textarea>
+                    </div>
+                    <div class="form-group half-width">
+                        <label>차일사항 (Next Work)</label>
+                        <textarea id="editorNext"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script Entry -->
+    <script type="module" src="app.js?v=1"></script>
+</body>
+</html>

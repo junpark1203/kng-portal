@@ -50,6 +50,10 @@ const { initExhibitionReportTables } = exhibitionReportRoutes;
 const expenseResolutionRoutes = require('./routes/expense-resolution');
 const { initExpenseResolutionTables } = expenseResolutionRoutes;
 
+// 개인 업무일지 모듈
+const workLogsRoutes = require('./routes/work-logs');
+const { initWorkLogsTables } = workLogsRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -139,6 +143,11 @@ app.use('/api/site-consumables/uploads', express.static(SITE_CONSUMABLE_UPLOAD_D
 const EXHIBITION_REPORT_UPLOAD_DIR = path.join(UPLOAD_DIR, 'exhibition-reports');
 if (!fs.existsSync(EXHIBITION_REPORT_UPLOAD_DIR)) fs.mkdirSync(EXHIBITION_REPORT_UPLOAD_DIR, { recursive: true });
 app.use('/api/exhibition-report/uploads', express.static(EXHIBITION_REPORT_UPLOAD_DIR, { fallthrough: false }));
+
+// 업무일지 첨부파일 (사진 등) — 인증 없이 다운로드 허용
+const WORK_LOGS_UPLOAD_DIR = path.join(UPLOAD_DIR, 'work-logs');
+if (!fs.existsSync(WORK_LOGS_UPLOAD_DIR)) fs.mkdirSync(WORK_LOGS_UPLOAD_DIR, { recursive: true });
+app.use('/api/work-logs/uploads', express.static(WORK_LOGS_UPLOAD_DIR, { fallthrough: false }));
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -173,6 +182,10 @@ app.delete('/api/happysafety/saves/:id', (req, res) => {
         res.json({ message: '삭제 성공' });
     });
 });
+
+// 업무일지 API 라우트 등록 (인증 적용)
+app.use('/api/work-logs', workLogsRoutes.router);
+
 app.use('/api/', verifyToken);
 
 // 데이터 디렉터리 확인 및 생성
@@ -248,6 +261,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initExpenseResolutionTables(db).then(() => {
             expenseResolutionRoutes.setDb(db);
             console.log('expense_resolution API 준비 완료');
+        });
+        // 업무일지 테이블 초기화 + 라우트에 DB 주입
+        initWorkLogsTables(db).then(() => {
+            workLogsRoutes.setDb(db);
+            console.log('work_logs API 준비 완료');
         });
     }
 });
