@@ -229,7 +229,18 @@ function renderGuidelines() {
     filtered.forEach(item => {
         const tr = document.createElement('tr');
         
-        const tagsHtml = (item.tags || []).map(t => `<span class="badge badge-tag">${t}</span>`).join(' ');
+        let tagsHtml = '';
+        const tags = item.tags || [];
+        if (tags.length > 0) {
+            const maxVisible = 2;
+            const visibleTags = tags.slice(0, maxVisible);
+            const hiddenTags = tags.slice(maxVisible);
+            
+            tagsHtml = visibleTags.map(t => `<span class="badge badge-tag">${t}</span>`).join(' ');
+            if (hiddenTags.length > 0) {
+                tagsHtml += ` <span class="badge badge-tag tag-more" title="${hiddenTags.join(', ')}">+${hiddenTags.length}</span>`;
+            }
+        }
         const dateStr = item.updatedAt ? new Date(item.updatedAt.toDate()).toLocaleDateString('ko-KR') : '-';
         
         tr.innerHTML = `
