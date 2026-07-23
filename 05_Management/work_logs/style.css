@@ -228,6 +228,27 @@ button {
     accent-color: var(--primary-color);
 }
 
+.date-presets {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+.btn-preset {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-preset:hover, .btn-preset.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 /* List Container (Cards) */
 .list-container {
     display: flex;

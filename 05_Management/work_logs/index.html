@@ -37,9 +37,17 @@
             <div class="filter-area glass-panel">
                 <div class="filter-group">
                     <label>기간</label>
-                    <input type="date" id="filterStartDate">
-                    <span>~</span>
-                    <input type="date" id="filterEndDate">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="date" id="filterStartDate">
+                        <span>~</span>
+                        <input type="date" id="filterEndDate">
+                    </div>
+                    <div class="date-presets" id="datePresets">
+                        <button class="btn-preset active" data-range="all">전체</button>
+                        <button class="btn-preset" data-range="1y">지난 1년</button>
+                        <button class="btn-preset" data-range="1m">지난 1달</button>
+                        <button class="btn-preset" data-range="1w">지난 1주</button>
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label>유형</label>

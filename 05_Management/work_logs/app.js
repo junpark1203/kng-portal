@@ -339,6 +339,53 @@ btnDelete.addEventListener('click', deleteLog);
 // Filter Events
 const filterInputs = [searchInput, filterStartDate, filterEndDate, filterLogType, filterCategory, filterDraft];
 filterInputs.forEach(input => {
-    input.addEventListener('input', renderList);
-    input.addEventListener('change', renderList);
+    input.addEventListener('input', () => {
+        if (input === filterStartDate || input === filterEndDate) {
+            document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        }
+        renderList();
+    });
+    input.addEventListener('change', () => {
+        if (input === filterStartDate || input === filterEndDate) {
+            document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        }
+        renderList();
+    });
+});
+
+// Date Presets Logic
+const presetButtons = document.querySelectorAll('.btn-preset');
+presetButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        // Update active state
+        presetButtons.forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        const range = e.target.getAttribute('data-range');
+        const today = new Date();
+        const endDateStr = today.toISOString().split('T')[0];
+        let startDateStr = '';
+
+        if (range === 'all') {
+            filterStartDate.value = '';
+            filterEndDate.value = '';
+            renderList();
+            return;
+        }
+
+        if (range === '1y') {
+            const startDate = new Date(today.setFullYear(today.getFullYear() - 1));
+            startDateStr = startDate.toISOString().split('T')[0];
+        } else if (range === '1m') {
+            const startDate = new Date(today.setMonth(today.getMonth() - 1));
+            startDateStr = startDate.toISOString().split('T')[0];
+        } else if (range === '1w') {
+            const startDate = new Date(today.setDate(today.getDate() - 7));
+            startDateStr = startDate.toISOString().split('T')[0];
+        }
+
+        filterStartDate.value = startDateStr;
+        filterEndDate.value = endDateStr;
+        renderList();
+    });
 });
