@@ -678,12 +678,22 @@ function renderList() {
             containerInfo = totalRt > 0 ? `${totalRt.toFixed(3)} R/T` : 'LCL';
         }
 
+        let ratesHtml = '-';
+        if (item.exchangeRates) {
+            const arr = [];
+            ['USD', 'CNY', 'EUR', 'JPY'].forEach(c => {
+                if(item.exchangeRates[c]) arr.push(`<b>${c}</b> ${formatNum(item.exchangeRates[c], 2)}`);
+            });
+            if(arr.length > 0) ratesHtml = `<div style="font-size:12px; color:#475569; white-space:nowrap;">${arr.join(' &nbsp;|&nbsp; ')}</div>`;
+        }
+
         html += `
             <tr style="cursor: pointer" onclick="window.editQuote('${item.id}')">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-chk" value="${item.id}"></td>
                 <td><span class="status-badge ${item.status}">${statusMap[item.status] || item.status}</span></td>
                 <td style="font-weight: 500;">${item.title}</td>
                 <td>${item.quoteDate}</td>
+                <td>${ratesHtml}</td>
                 <td>${(item.forwarders || []).length} 곳</td>
                 <td>${containerInfo}</td>
                 <td>${item.createdAt.split('T')[0]}</td>
