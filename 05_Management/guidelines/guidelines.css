@@ -54,6 +54,7 @@ body {
 
 .edit-form input[type="text"],
 .edit-form select {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif !important;
     width: 100% !important;
     padding: 10px 14px !important;
     border: 1px solid #cbd5e1 !important;
@@ -73,7 +74,7 @@ body {
 
 /* Toast UI Editor 폰트 강제 적용 및 보정 */
 .toastui-editor-defaultUI, .toastui-editor-contents {
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif !important;
 }
 .toastui-editor-defaultUI {
     border: 1px solid #cbd5e1 !important;
