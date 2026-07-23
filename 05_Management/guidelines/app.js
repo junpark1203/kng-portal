@@ -59,7 +59,7 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
         placeholder: '빈 줄에서 "/" 키를 눌러 메뉴를 열거나 텍스트를 입력하세요.',
         tools: {
             header: { class: window.Header, inlineToolbar: true, config: { placeholder: '제목', levels: [1, 2, 3], defaultLevel: 2 } },
-            list: { class: window.EditorjsList || window.List, inlineToolbar: true },
+            list: { class: window.NestedList || window.EditorjsList || window.List, inlineToolbar: true, config: { maxLevel: 10 } },
             checklist: { class: window.Checklist, inlineToolbar: true },
             quote: { class: window.Quote, inlineToolbar: true },
             table: { class: window.Table, inlineToolbar: true },
