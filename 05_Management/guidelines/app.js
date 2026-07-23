@@ -40,6 +40,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnSaveGuideline').addEventListener('click', saveGuideline);
     document.getElementById('btnEditGuideline').addEventListener('click', openEditorForEdit);
     
+    // 뒤로 가기(popstate) 이벤트 처리
+    window.addEventListener('popstate', (e) => {
+        const state = e.state;
+        if (state && state.view) {
+            if (state.view === 'detailView' && state.id) {
+                openDetail(state.id, false);
+            } else if (state.view === 'editView') {
+                if (state.id) {
+                    const item = currentGuidelines.find(g => g.id === state.id);
+                    if (item) openEditor(item, false);
+                    else showView('listView', false);
+                } else {
+                    openEditor(null, false);
+                }
+            } else {
+                showView('listView', false);
+            }
+        } else {
+            handleRoute(false);
+        }
+    });
+    
     // 검색 필터 이벤트
     document.getElementById('searchInput').addEventListener('input', debounce(renderGuidelines, 300));
     document.getElementById('categoryFilter').addEventListener('change', renderGuidelines);
@@ -47,7 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 로그인 상태 확인 후 데이터 로드
     onAuthStateChanged(auth, (user) => {
         currentUser = user;
-        loadGuidelines();
+        loadGuidelines().then(() => {
+            // 데이터 로드 완료 후 초기 라우트 처리 (히스토리 푸시 안 함)
+            if (!history.state) {
+                handleRoute(false);
+            }
+        });
     });
 });
 
@@ -168,7 +195,24 @@ function debounce(func, wait) {
     };
 }
 
-function showView(viewName) {
+function handleRoute(pushState = true) {
+    const hash = window.location.hash;
+    if (hash.startsWith('#detail=')) {
+        const id = hash.split('=')[1];
+        openDetail(id, pushState);
+    } else if (hash === '#new') {
+        openEditor(null, pushState);
+    } else if (hash.startsWith('#edit=')) {
+        const id = hash.split('=')[1];
+        const item = currentGuidelines.find(g => g.id === id);
+        if (item) openEditor(item, pushState);
+        else showView('listView', pushState);
+    } else {
+        showView('listView', pushState);
+    }
+}
+
+function showView(viewName, pushState = true) {
     document.querySelectorAll('.view-section').forEach(el => {
         if(el.id === viewName) {
             el.classList.add('active');
@@ -178,6 +222,28 @@ function showView(viewName) {
             el.classList.remove('active');
         }
     });
+
+    if (pushState) {
+        let hash = '#list';
+        const state = { view: viewName };
+        
+        if (viewName === 'detailView' && currentDetailId) {
+            hash = '#detail=' + currentDetailId;
+            state.id = currentDetailId;
+        } else if (viewName === 'editView') {
+            const editId = document.getElementById('editGuidelineId').value;
+            if (editId) {
+                hash = '#edit=' + editId;
+                state.id = editId;
+            } else {
+                hash = '#new';
+            }
+        }
+        
+        if (window.location.hash !== hash) {
+            history.pushState(state, '', hash);
+        }
+    }
 }
 
 async function loadGuidelines() {
@@ -262,7 +328,7 @@ function renderGuidelines() {
     });
 }
 
-async function openEditor(item = null) {
+async function openEditor(item = null, updateHistory = true) {
     try {
         if (item) {
             document.getElementById('editGuidelineId').value = item.id;
@@ -303,7 +369,7 @@ async function openEditor(item = null) {
         
         editor = initEditorjs('editor', false, initialData);
 
-        showView('editView');
+        showView('editView', updateHistory);
     } catch(err) {
         alert("에디터 열기 에러: " + err.message);
         console.error(err);
@@ -316,7 +382,7 @@ function openEditorForEdit() {
     if (item) openEditor(item);
 }
 
-function openDetail(id) {
+function openDetail(id, updateHistory = true) {
     const item = currentGuidelines.find(g => g.id === id);
     if (!item) return;
     
@@ -348,7 +414,7 @@ function openDetail(id) {
         detailEditorjs = initEditorjs('detailBlocks', true, item.content);
     }
     
-    showView('detailView');
+    showView('detailView', updateHistory);
 }
 
 async function saveGuideline() {
