@@ -58,14 +58,14 @@ function initEditorjs(containerId, readOnly = false, initialData = null) {
         data: initialData || {},
         placeholder: '빈 줄에서 "/" 키를 눌러 메뉴를 열거나 텍스트를 입력하세요.',
         tools: {
-            header: { class: Header, inlineToolbar: true, config: { placeholder: '제목', levels: [1, 2, 3], defaultLevel: 2 } },
-            list: { class: List, inlineToolbar: true },
-            checklist: { class: Checklist, inlineToolbar: true },
-            quote: { class: Quote, inlineToolbar: true },
-            table: { class: Table, inlineToolbar: true },
-            marker: { class: Marker },
+            header: { class: window.Header, inlineToolbar: true, config: { placeholder: '제목', levels: [1, 2, 3], defaultLevel: 2 } },
+            list: { class: window.EditorjsList || window.List, inlineToolbar: true },
+            checklist: { class: window.Checklist, inlineToolbar: true },
+            quote: { class: window.Quote, inlineToolbar: true },
+            table: { class: window.Table, inlineToolbar: true },
+            marker: { class: window.Marker },
             image: {
-                class: ImageTool,
+                class: window.ImageTool || window.SimpleImage,
                 config: {
                     uploader: {
                         uploadByFile(file) {
@@ -192,46 +192,51 @@ function renderGuidelines() {
 }
 
 async function openEditor(item = null) {
-    if (item) {
-        document.getElementById('editGuidelineId').value = item.id;
-        document.getElementById('editCategory').value = item.category || '공통';
-        document.getElementById('editTitle').value = item.title || '';
-        document.getElementById('editTags').value = (item.tags || []).join(', ');
-        document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 지침 수정";
-    } else {
-        document.getElementById('editGuidelineId').value = '';
-        document.getElementById('editCategory').value = '공통';
-        document.getElementById('editTitle').value = '';
-        document.getElementById('editTags').value = '';
-        document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지침 작성";
-    }
-    
-    if (editor) {
-        try {
-            await editor.isReady;
-            editor.destroy();
-        } catch (e) { console.error(e); }
-    }
-    
-    document.getElementById('editor').innerHTML = '';
-    
-    let initialData = null;
-    if (item) {
-        if (typeof item.content === 'object') {
-            initialData = item.content;
-        } else if (typeof item.content === 'string' && item.content.trim()) {
-            initialData = {
-                blocks: [
-                    { type: 'paragraph', data: { text: "<b>[안내] 이 글은 구버전 마크다운으로 작성되었습니다. 스타일이 초기화되었습니다.</b>" } },
-                    { type: 'paragraph', data: { text: item.content.replace(/\n/g, '<br>') } }
-                ]
-            };
+    try {
+        if (item) {
+            document.getElementById('editGuidelineId').value = item.id;
+            document.getElementById('editCategory').value = item.category || '공통';
+            document.getElementById('editTitle').value = item.title || '';
+            document.getElementById('editTags').value = (item.tags || []).join(', ');
+            document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 지침 수정";
+        } else {
+            document.getElementById('editGuidelineId').value = '';
+            document.getElementById('editCategory').value = '공통';
+            document.getElementById('editTitle').value = '';
+            document.getElementById('editTags').value = '';
+            document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지침 작성";
         }
-    }
-    
-    editor = initEditorjs('editor', false, initialData);
+        
+        if (editor) {
+            try {
+                await editor.isReady;
+                editor.destroy();
+            } catch (e) { console.error(e); }
+        }
+        
+        document.getElementById('editor').innerHTML = '';
+        
+        let initialData = null;
+        if (item) {
+            if (typeof item.content === 'object') {
+                initialData = item.content;
+            } else if (typeof item.content === 'string' && item.content.trim()) {
+                initialData = {
+                    blocks: [
+                        { type: 'paragraph', data: { text: "<b>[안내] 이 글은 구버전 마크다운으로 작성되었습니다. 스타일이 초기화되었습니다.</b>" } },
+                        { type: 'paragraph', data: { text: item.content.replace(/\n/g, '<br>') } }
+                    ]
+                };
+            }
+        }
+        
+        editor = initEditorjs('editor', false, initialData);
 
-    showView('editView');
+        showView('editView');
+    } catch(err) {
+        alert("에디터 열기 에러: " + err.message);
+        console.error(err);
+    }
 }
 
 function openEditorForEdit() {
