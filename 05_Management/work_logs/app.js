@@ -42,8 +42,6 @@ const filterDraft = document.getElementById('filterDraft');
 
 // Form Elements
 const inputDate = document.getElementById('inputDate');
-const inputDepartment = document.getElementById('inputDepartment');
-const inputCompany = document.getElementById('inputCompany');
 const inputAuthorName = document.getElementById('inputAuthorName');
 const inputLogType = document.getElementById('inputLogType');
 const inputCategory = document.getElementById('inputCategory');
@@ -138,8 +136,6 @@ async function showEditor(id = null, pushState = true) {
             if (res.ok) {
                 const log = await res.json();
                 inputDate.value = log.date || '';
-                inputDepartment.value = log.department || '';
-                inputCompany.value = log.company || '행복한안전';
                 inputAuthorName.value = log.authorName || '';
                 inputLogType.value = log.logType || '일일';
                 inputCategory.value = log.category || '업무';
@@ -159,9 +155,7 @@ async function showEditor(id = null, pushState = true) {
         btnDelete.style.display = 'none';
         const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
         inputDate.value = today;
-        inputDepartment.value = '';
         inputAuthorName.value = ''; // Should ideally fetch from auth profile
-        inputCompany.value = '행복한안전';
         inputLogType.value = '일일';
         inputCategory.value = '업무';
         
@@ -199,7 +193,6 @@ function renderList() {
     if (sTerm) {
         filtered = filtered.filter(l => 
             (l.authorName && l.authorName.toLowerCase().includes(sTerm)) ||
-            (l.department && l.department.toLowerCase().includes(sTerm)) ||
             (l.todayTasks && l.todayTasks.toLowerCase().includes(sTerm)) ||
             (l.nextTasks && l.nextTasks.toLowerCase().includes(sTerm))
         );
@@ -230,7 +223,6 @@ function renderList() {
                     ${isDraftBadge}
                     <span class="meta-badge">[${log.logType || '분류없음'}] ${log.category || ''}</span>
                     <span class="meta-date">${log.date}</span>
-                    <span class="meta-dept">${log.company} - ${log.department}</span>
                     <span class="meta-author"><i class="fa-solid fa-user"></i> ${log.authorName}</span>
                 </div>
                 <div class="log-meta" style="color: var(--text-muted); font-size: 12px;">
@@ -254,15 +246,15 @@ function renderList() {
 
 async function saveLog(isDraft) {
     // Validate
-    if (!inputDate.value || !inputDepartment.value || !inputAuthorName.value) {
-        alert('작성일, 부서명, 작성자는 필수 입력 항목입니다.');
+    if (!inputDate.value || !inputAuthorName.value) {
+        alert('작성일, 작성자는 필수 입력 항목입니다.');
         return;
     }
 
     const payload = {
         date: inputDate.value,
-        department: inputDepartment.value,
-        company: inputCompany.value,
+        department: '',
+        company: '',
         authorName: inputAuthorName.value,
         logType: inputLogType.value,
         category: inputCategory.value,
