@@ -20,29 +20,13 @@ const auth = getAuth(app);
 let currentUser = null;
 let currentGuidelines = [];
 let currentDetailId = null;
-let editor;
-let viewer;
+let editor = null;
+let detailEditorjs = null;
+let viewer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Toast UI Editor 초기화
+    // Toast UI Viewer 초기화 (구버전 마크다운 데이터 호환용 뷰어)
     const Editor = toastui.Editor;
-    editor = new Editor({
-        el: document.querySelector('#editor'),
-        height: '600px',
-        initialEditType: 'wysiwyg',
-        previewStyle: 'vertical',
-        language: 'ko-KR',
-        placeholder: '내용을 입력해주세요. 이미지 복사/붙여넣기도 가능합니다.',
-        toolbarItems: [
-            ['heading', 'bold', 'italic', 'strike'],
-            ['hr', 'quote'],
-            ['ul', 'ol', 'task', 'indent', 'outdent'],
-            ['table', 'image', 'link'],
-            ['code', 'codeblock']
-        ]
-    });
-
-    // Toast UI Viewer 초기화
     viewer = Editor.factory({
         el: document.querySelector('#detailContent'),
         viewer: true,
@@ -66,6 +50,51 @@ document.addEventListener('DOMContentLoaded', () => {
         loadGuidelines();
     });
 });
+
+function initEditorjs(containerId, readOnly = false, initialData = null) {
+    return new EditorJS({
+        holder: containerId,
+        readOnly: readOnly,
+        data: initialData || {},
+        placeholder: '빈 줄에서 "/" 키를 눌러 메뉴를 열거나 텍스트를 입력하세요.',
+        tools: {
+            header: { class: Header, inlineToolbar: true, config: { placeholder: '제목', levels: [1, 2, 3], defaultLevel: 2 } },
+            list: { class: List, inlineToolbar: true },
+            checklist: { class: Checklist, inlineToolbar: true },
+            quote: { class: Quote, inlineToolbar: true },
+            table: { class: Table, inlineToolbar: true },
+            marker: { class: Marker },
+            image: {
+                class: ImageTool,
+                config: {
+                    uploader: {
+                        uploadByFile(file) {
+                            return new Promise((resolve, reject) => {
+                                const formData = new FormData();
+                                formData.append('photos', file);
+                                
+                                auth.currentUser.getIdToken().then(token => {
+                                    fetch('https://kng.junparks.com/api/exhibition-report/upload', {
+                                        method: 'POST',
+                                        headers: { 'Authorization': 'Bearer ' + token },
+                                        body: formData
+                                    }).then(res => res.json()).then(data => {
+                                        if (data.urls && data.urls.length > 0) {
+                                            const url = data.urls[0].startsWith('/') ? 'https://kng.junparks.com' + data.urls[0] : data.urls[0];
+                                            resolve({ success: 1, file: { url: url } });
+                                        } else {
+                                            reject('Upload failed');
+                                        }
+                                    }).catch(err => reject(err));
+                                });
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
 
 function debounce(func, wait) {
     let timeout;
@@ -162,22 +191,46 @@ function renderGuidelines() {
     });
 }
 
-function openEditor(item = null) {
+async function openEditor(item = null) {
     if (item) {
         document.getElementById('editGuidelineId').value = item.id;
         document.getElementById('editCategory').value = item.category || '공통';
         document.getElementById('editTitle').value = item.title || '';
         document.getElementById('editTags').value = (item.tags || []).join(', ');
-        editor.setMarkdown(item.content || '');
         document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 지침 수정";
     } else {
         document.getElementById('editGuidelineId').value = '';
         document.getElementById('editCategory').value = '공통';
         document.getElementById('editTitle').value = '';
         document.getElementById('editTags').value = '';
-        editor.setMarkdown('');
         document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지침 작성";
     }
+    
+    if (editor) {
+        try {
+            await editor.isReady;
+            editor.destroy();
+        } catch (e) { console.error(e); }
+    }
+    
+    document.getElementById('editor').innerHTML = '';
+    
+    let initialData = null;
+    if (item) {
+        if (typeof item.content === 'object') {
+            initialData = item.content;
+        } else if (typeof item.content === 'string' && item.content.trim()) {
+            initialData = {
+                blocks: [
+                    { type: 'paragraph', data: { text: "<b>[안내] 이 글은 구버전 마크다운으로 작성되었습니다. 스타일이 초기화되었습니다.</b>" } },
+                    { type: 'paragraph', data: { text: item.content.replace(/\n/g, '<br>') } }
+                ]
+            };
+        }
+    }
+    
+    editor = initEditorjs('editor', false, initialData);
+
     showView('editView');
 }
 
@@ -201,7 +254,23 @@ function openDetail(id) {
     const tagsHtml = (item.tags || []).map(t => `<span class="badge badge-tag">${t}</span>`).join(' ');
     document.getElementById('detailTags').innerHTML = tagsHtml;
     
-    viewer.setMarkdown(item.content || '');
+    const divMarkdown = document.getElementById('detailContent');
+    const divBlocks = document.getElementById('detailBlocks');
+    
+    if (typeof item.content === 'string') {
+        divBlocks.style.display = 'none';
+        divMarkdown.style.display = 'block';
+        viewer.setMarkdown(item.content || '');
+    } else {
+        divMarkdown.style.display = 'none';
+        divBlocks.style.display = 'block';
+        
+        if (detailEditorjs) {
+            detailEditorjs.destroy();
+        }
+        document.getElementById('detailBlocks').innerHTML = '';
+        detailEditorjs = initEditorjs('detailBlocks', true, item.content);
+    }
     
     showView('detailView');
 }
@@ -212,14 +281,21 @@ async function saveGuideline() {
     const title = document.getElementById('editTitle').value.trim();
     const tagsInput = document.getElementById('editTags').value;
     const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t !== '');
-    const content = editor.getMarkdown(); // 마크다운 원본 저장
     
     if (!title) {
         alert("제목을 입력해주세요.");
         return;
     }
-    if (!content) {
-        alert("본문 내용을 입력해주세요.");
+    
+    let contentData = null;
+    try {
+        contentData = await editor.save();
+        if (contentData.blocks.length === 0) {
+            alert("본문 내용을 입력해주세요.");
+            return;
+        }
+    } catch(e) {
+        console.error("Editor.js save failed: ", e);
         return;
     }
     
@@ -227,7 +303,7 @@ async function saveGuideline() {
         title,
         category,
         tags,
-        content,
+        content: contentData, // Editor.js JSON Object
         authorId: currentUser ? currentUser.uid : 'admin',
         authorName: currentUser ? (currentUser.email ? currentUser.email.split('@')[0] : 'admin') : 'admin',
         updatedAt: serverTimestamp()

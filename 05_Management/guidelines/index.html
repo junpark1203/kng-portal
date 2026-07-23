@@ -7,9 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="guidelines.css?v=5">
+    <link rel="stylesheet" href="guidelines.css?v=6">
     
-    <!-- Toast UI Editor -->
+    <!-- Toast UI Editor (for fallback rendering of old markdown) -->
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
 </head>
 <body>
@@ -84,8 +84,11 @@
                         <div class="detail-tags" id="detailTags" style="margin-bottom: 20px;">
                             <!-- 태그 배지들 -->
                         </div>
-                        <div id="detailContent" class="toastui-editor-contents" style="min-height: 400px; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px;">
-                            <!-- 본문 내용 출력 영역 -->
+                        <div class="guideline-content-wrapper" style="min-height: 400px; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px;">
+                            <!-- 구버전 마크다운용 뷰어 -->
+                            <div id="detailContent" class="toastui-editor-contents"></div>
+                            <!-- 신버전 Editor.js 뷰어 -->
+                            <div id="detailBlocks" class="editorjs-read-only" style="display: none;"></div>
                         </div>
                     </div>
                 </div>
@@ -137,8 +140,19 @@
         </main>
     </div>
     
-    <!-- Toast UI Editor JS -->
+    <!-- Toast UI Editor JS (for fallback) -->
     <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    
+    <!-- Editor.js Core and Plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest"></script>
+
     <script type="module" src="app.js"></script>
 </body>
 </html>
