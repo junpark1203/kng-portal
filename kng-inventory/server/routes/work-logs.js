@@ -65,6 +65,7 @@ const migrateData = () => {
 
 // 테이블 초기화
 const initWorkLogsTables = (dbInstance) => {
+    setDb(dbInstance); // 반드시 먼저 db를 초기화해야 migrateData에서 에러가 발생하지 않습니다.
     return new Promise((resolve, reject) => {
         dbInstance.run(`
             CREATE TABLE IF NOT EXISTS work_logs (
