@@ -277,3 +277,8 @@
     .modal-form-grid { grid-template-columns: 1fr; }
     .quote-table th, .quote-table td { padding: 12px 10px; font-size: 13px;}
 }
+
+/* SweetAlert z-index fix */
+.swal2-container {
+    z-index: 10000 !important;
+}

@@ -352,7 +352,8 @@ router.post('/files/upload-url', async (req, res) => {
             throw new Error('URL does not point to a valid image');
         }
 
-        const buffer = await response.buffer();
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         const ts = Date.now();
         // 간단한 확장자 추출 (기본 jpg)
         let ext = '.jpg';
