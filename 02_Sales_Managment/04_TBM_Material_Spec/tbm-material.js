@@ -505,6 +505,7 @@ window.openModal = function(id = null, isDuplicate = false) {
         $('modalTitle').textContent = '신규 자재 등록'; $('editId').value = '';
     }
     $('itemModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
     requestAnimationFrame(() => { modalSnapshot = getFormSnapshot(); });
 };
 
@@ -515,7 +516,7 @@ function confirmCloseModal() {
     }
 }
 
-function closeModal() { $('itemModal').classList.remove('active'); }
+function closeModal() { $('itemModal').classList.remove('active'); document.body.style.overflow = ''; }
 
 async function saveItem() {
     const id = $('editId').value;
@@ -661,6 +662,7 @@ let selectedPresetId = null;
 function openPresetDrawer() {
     $('drawerOverlay').classList.add('active');
     $('presetDrawer').classList.add('open');
+    document.body.style.overflow = 'hidden';
     renderDrawerCategories();
     selectedPresetId = null;
     $('drawerNoSelection').style.display = '';
@@ -670,6 +672,7 @@ function openPresetDrawer() {
 function closePresetDrawer() {
     $('drawerOverlay').classList.remove('active');
     $('presetDrawer').classList.remove('open');
+    document.body.style.overflow = '';
 }
 
 function renderDrawerCategories() {
