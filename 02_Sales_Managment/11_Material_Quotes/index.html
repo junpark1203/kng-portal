@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="품목별 견적 비교">
+    <title>품목별 견적 비교</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <link rel="stylesheet" href="../../Common/css/search-engine.css">
+    <style>
+        .main-content { margin-left: 0; padding-bottom: 80px; }
+
+        /* KPI / Toolbar */
+        .page-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px;
+        }
+        .page-title { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 20px; font-weight: 700; color: var(--gray-800); }
+        .page-title i { color: var(--primary); font-size: 24px; }
+        
+        .kpi-row { display: flex; gap: 16px; margin-bottom: 24px; }
+        .kpi-card {
+            background: var(--surface); padding: 16px 20px; border-radius: 12px;
+            border: 1px solid var(--gray-200); flex: 1;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .kpi-card .kpi-label { font-size: 13px; color: var(--gray-500); font-weight: 500; margin-bottom: 4px; }
+        .kpi-card .kpi-value { font-size: 24px; font-weight: 700; color: var(--gray-800); }
+        .kpi-card .kpi-icon {
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--blue-50); color: var(--blue-500);
+            display: flex; align-items: center; justify-content: center; font-size: 24px;
+        }
+
+        /* Material Card */
+        .mat-list { display: flex; flex-direction: column; gap: 16px; }
+        .mat-card {
+            background: var(--surface); border: 1px solid var(--gray-200); border-radius: 12px;
+            overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        }
+        .mat-header {
+            display: flex; gap: 16px; padding: 16px; border-bottom: 1px solid var(--gray-100);
+            position: relative;
+        }
+        .mat-img {
+            width: 100px; height: 100px; border-radius: 8px; background: var(--gray-100);
+            object-fit: contain; cursor: pointer; border: 1px solid var(--gray-200);
+        }
+        .mat-img-placeholder {
+            width: 100px; height: 100px; border-radius: 8px; background: var(--gray-50);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--gray-400); font-size: 24px; border: 1px dashed var(--gray-300);
+        }
+        .mat-info { flex: 1; }
+        .mat-info h3 { font-size: 18px; font-weight: 700; color: var(--gray-800); margin: 0 0 6px 0; }
+        .mat-cat-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px; background: var(--gray-100);
+            font-size: 11px; font-weight: 600; color: var(--gray-600); margin-bottom: 8px;
+        }
+        .mat-remarks { font-size: 13px; color: var(--gray-500); white-space: pre-wrap; line-height: 1.4; }
+        .mat-actions {
+            position: absolute; top: 16px; right: 16px; display: flex; gap: 6px;
+        }
+        
+        /* Variants & Quotes */
+        .mat-body { padding: 0; background: var(--gray-50); }
+        .variant-block {
+            border-bottom: 1px solid var(--gray-200); padding: 12px 16px;
+        }
+        .variant-block:last-child { border-bottom: none; }
+        .variant-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .variant-title { font-size: 14px; font-weight: 600; color: var(--gray-800); display: flex; align-items: center; gap: 6px; }
+        .variant-title i { color: var(--primary); }
+        .variant-unit { font-size: 12px; color: var(--gray-500); font-weight: normal; }
+        
+        .quote-table { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; border: 1px solid var(--gray-200); border-radius: 6px; overflow: hidden; }
+        .quote-table th, .quote-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--gray-100); }
+        .quote-table th { background: var(--gray-50); color: var(--gray-500); font-weight: 600; }
+        .quote-table tr:last-child td { border-bottom: none; }
+        .quote-table td.col-price { text-align: right; font-weight: 600; font-family: monospace; font-size: 13px; }
+        .quote-table td.col-actions { text-align: right; }
+        .quote-row.lowest-price { background-color: rgba(16, 185, 129, 0.05); }
+        .badge-lowest {
+            display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--green-500);
+            color: #fff; font-size: 10px; font-weight: 600; margin-left: 6px;
+        }
+        .badge-selected {
+            display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--blue-500);
+            color: #fff; font-size: 10px; font-weight: 600; margin-left: 6px;
+        }
+
+        .btn-add-variant {
+            display: block; width: 100%; padding: 12px; text-align: center;
+            background: #fff; color: var(--primary); font-size: 13px; font-weight: 600;
+            border: none; border-top: 1px solid var(--gray-200); cursor: pointer; transition: background 0.2s;
+        }
+        .btn-add-variant:hover { background: var(--gray-50); }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.2s;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--surface); border-radius: 12px; width: 500px; max-width: 90vw;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transform: translateY(20px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; max-height: 90vh;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        
+        .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--gray-800); }
+        .modal-close { background: none; border: none; font-size: 20px; color: var(--gray-400); cursor: pointer; }
+        .modal-body { padding: 20px; overflow-y: auto; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* Form groups */
+        .fg { margin-bottom: 16px; }
+        .fg label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+        .fg input, .fg select, .fg textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px;
+            font-size: 13px; transition: border-color 0.2s;
+        }
+        .fg input:focus, .fg select:focus, .fg textarea:focus { border-color: var(--primary); outline: none; }
+        .fg textarea { resize: vertical; min-height: 80px; }
+        
+        /* Combo box custom */
+        .combo-box-wrapper { position: relative; }
+        .combo-box-wrapper select { position: absolute; right: 0; top: 0; bottom: 0; width: 30px; opacity: 0; cursor: pointer; }
+        .combo-box-wrapper .combo-icon { position: absolute; right: 10px; top: 10px; pointer-events: none; color: var(--gray-400); }
+
+        /* File dropzone */
+        .dropzone {
+            border: 2px dashed var(--gray-300); border-radius: 8px; padding: 20px;
+            text-align: center; color: var(--gray-500); transition: all 0.2s;
+            cursor: pointer; background: var(--gray-50); margin-bottom: 10px;
+        }
+        .dropzone.dragover { border-color: var(--primary); background: var(--blue-50); color: var(--primary); }
+        .dropzone i { font-size: 32px; margin-bottom: 8px; }
+        .img-preview-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .img-preview-item {
+            position: relative; width: 60px; height: 60px; border-radius: 6px; overflow: hidden;
+            border: 1px solid var(--gray-200);
+        }
+        .img-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .img-preview-item .btn-remove {
+            position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: #fff;
+            border: none; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; cursor: pointer;
+        }
+
+        /* Image viewer modal */
+        #imgViewerOverlay { z-index: 1100; }
+        #imgViewerOverlay img { max-width: 90vw; max-height: 90vh; border-radius: 4px; box-shadow: 0 4px 24px rgba(0,0,0,0.3); }
+        #imgViewerOverlay .modal-close { position: absolute; top: 20px; right: 20px; color: #fff; font-size: 32px; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    </style>
+</head>
+
+<body>
+    <!-- Top App Bar -->
+    <header class="app-bar">
+        <div class="app-bar-left">
+            <h1>품목별 견적 비교</h1>
+        </div>
+        <div class="app-bar-right">
+            <div class="user-profile">
+                <div class="avatar"><i class='bx bx-user'></i></div>
+                <span class="user-name" id="currentUser">User</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Toolbar & Search (SearchEngine) -->
+        <div class="page-toolbar">
+            <div class="page-title">
+                <i class='bx bx-file-find'></i>
+                <span>견적 리스트</span>
+            </div>
+            <button class="btn btn-primary" onclick="openItemModal()">
+                <i class='bx bx-plus'></i> 품목 등록
+            </button>
+        </div>
+
+        <div class="kpi-row">
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-label">등록된 품목</div>
+                    <div class="kpi-value" id="kpiTotalItems">0</div>
+                </div>
+                <div class="kpi-icon"><i class='bx bx-box'></i></div>
+            </div>
+            <div class="kpi-card">
+                <div>
+                    <div class="kpi-label">총 견적 수</div>
+                    <div class="kpi-value" id="kpiTotalQuotes">0</div>
+                </div>
+                <div class="kpi-icon"><i class='bx bx-receipt'></i></div>
+            </div>
+        </div>
+
+        <!-- Search Engine Container -->
+        <div class="search-engine-container mb-16">
+            <div class="search-engine-bar">
+                <div class="search-engine-input">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="searchInput" placeholder="품목명, 규격, 공급사 검색..." autocomplete="off">
+                    <button class="btn-clear" id="searchClear"><i class='bx bx-x'></i></button>
+                </div>
+                <!-- 카테고리 필터 영역 -->
+                <div class="search-engine-filters" id="categoryFilters">
+                    <!-- JS로 카테고리 칩 렌더링 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Material List -->
+        <div class="mat-list" id="matList">
+            <!-- 렌더링 영역 -->
+        </div>
+    </main>
+
+    <!-- Item Modal -->
+    <div class="modal-overlay" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="itemModalTitle">품목 등록</h2>
+                <button class="modal-close" onclick="closeItemModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="itemId">
+                <div class="fg">
+                    <label>품목명 <span class="text-danger">*</span></label>
+                    <input type="text" id="itemItemName" placeholder="예: LED 작업등" required>
+                </div>
+                <div class="fg">
+                    <label>분류</label>
+                    <div class="combo-box-wrapper" style="position:relative;">
+                        <input type="text" id="itemCategory" placeholder="분류 입력 (또는 선택)" autocomplete="off">
+                        <div id="categoryDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--gray-200); border-radius:4px; max-height:150px; overflow-y:auto; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                    </div>
+                </div>
+                <div class="fg">
+                    <label>사진 (드래그 앤 드롭 또는 URL)</label>
+                    <div class="dropzone" id="itemDropzone">
+                        <i class='bx bx-cloud-upload'></i>
+                        <p>클릭하거나 파일을 드래그하여 업로드하세요</p>
+                        <input type="file" id="itemFileInput" multiple style="display:none;" accept="image/*">
+                    </div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <input type="text" id="itemImgUrl" placeholder="이미지 주소(URL) 붙여넣기" style="flex:1;">
+                        <button type="button" class="btn btn-outline" onclick="uploadImgUrl()">추가</button>
+                    </div>
+                    <div class="img-preview-list" id="itemImgPreview"></div>
+                </div>
+                <div class="fg">
+                    <label>비고</label>
+                    <textarea id="itemRemarks" placeholder="특이사항 메모"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeItemModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveItem()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variant Modal -->
+    <div class="modal-overlay" id="variantModal">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h2 id="variantModalTitle">규격 추가</h2>
+                <button class="modal-close" onclick="closeVariantModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="variantId">
+                <input type="hidden" id="variantItemId">
+                <div class="fg">
+                    <label>규격/모델 <span class="text-danger">*</span></label>
+                    <input type="text" id="variantSpec" placeholder="예: 24V / 30W" required>
+                </div>
+                <div class="fg">
+                    <label>단위</label>
+                    <div class="combo-box-wrapper">
+                        <input type="text" id="variantUnit" placeholder="직접 입력 또는 선택" style="padding-right: 30px;">
+                        <i class='bx bx-chevron-down combo-icon'></i>
+                        <select onchange="document.getElementById('variantUnit').value = this.value; this.value=''">
+                            <option value="">(선택)</option>
+                            <option value="EA">EA</option>
+                            <option value="SET">SET</option>
+                            <option value="M">M</option>
+                            <option value="KG">KG</option>
+                            <option value="BOX">BOX</option>
+                            <option value="ROLL">ROLL</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeVariantModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveVariant()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quote Modal -->
+    <div class="modal-overlay" id="quoteModal">
+        <div class="modal-content" style="width: 450px;">
+            <div class="modal-header">
+                <h2 id="quoteModalTitle">견적 추가</h2>
+                <button class="modal-close" onclick="closeQuoteModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="quoteId">
+                <input type="hidden" id="quoteVariantId">
+                <div class="fg">
+                    <label>공급업체명 <span class="text-danger">*</span></label>
+                    <input type="text" id="quoteSupplier" placeholder="업체명 입력" required>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <div class="fg" style="flex:1;">
+                        <label>단가 <span class="text-danger">*</span></label>
+                        <input type="number" id="quoteUnitPrice" placeholder="0" required>
+                    </div>
+                    <div class="fg" style="width:100px;">
+                        <label>통화</label>
+                        <select id="quoteCurrency">
+                            <option value="KRW">KRW(₩)</option>
+                            <option value="USD">USD($)</option>
+                            <option value="EUR">EUR(€)</option>
+                            <option value="JPY">JPY(¥)</option>
+                            <option value="CNY">CNY(¥)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="fg">
+                    <label>견적일</label>
+                    <input type="date" id="quoteDate">
+                </div>
+                <div class="fg">
+                    <label>비고/조건</label>
+                    <input type="text" id="quoteRemarks" placeholder="예: 100개 이상 발주 시 단가">
+                </div>
+                <div class="fg">
+                    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                        <input type="checkbox" id="quoteIsSelected" style="width:auto; margin:0;">
+                        이 견적을 기본으로 채택 (선택)
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeQuoteModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveQuote()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer -->
+    <div class="modal-overlay" id="imgViewerOverlay" onclick="closeImgViewer(event)">
+        <button class="modal-close" onclick="closeImgViewer(event)"><i class='bx bx-x'></i></button>
+        <img id="imgViewerTarget" src="" alt="확대 이미지" onclick="event.stopPropagation()">
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../Common/js/auth.js"></script>
+    <script src="material-quotes.js"></script>
+</body>
+</html>

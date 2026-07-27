@@ -54,6 +54,10 @@ const { initExpenseResolutionTables } = expenseResolutionRoutes;
 const workLogsRoutes = require('./routes/work-logs');
 const { initWorkLogsTables } = workLogsRoutes;
 
+// 품목별 견적 비교 모듈
+const materialQuotesRoutes = require('./routes/material-quotes');
+const { initMaterialQuotesTables } = materialQuotesRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -266,6 +270,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initWorkLogsTables(db).then(() => {
             workLogsRoutes.setDb(db);
             console.log('work_logs API 준비 완료');
+        });
+        // 품목별 견적 비교 테이블 초기화 + 라우트에 DB 주입
+        initMaterialQuotesTables(db).then(() => {
+            materialQuotesRoutes.setDb(db);
+            console.log('material_quotes API 준비 완료');
         });
     }
 });
@@ -989,6 +998,9 @@ app.use('/api/exhibition-report', exhibitionReportRoutes.router);
 
 // 지출결의서
 app.use('/api/expense-resolution', expenseResolutionRoutes.router);
+
+// 품목별 견적 비교
+app.use('/api/mat-quotes', materialQuotesRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
