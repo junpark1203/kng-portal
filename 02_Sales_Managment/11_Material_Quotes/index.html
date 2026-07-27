@@ -75,6 +75,9 @@
                     <!-- Info and variants rendered here -->
                 </div>
             </div>
+            <div class="pdp-bottom-section" id="pdpBottomSection" style="padding:0 32px 32px 32px;">
+                <!-- Matrix table rendered here -->
+            </div>
         </div>
     </div>
 
@@ -127,14 +130,29 @@
                         </div>
                         <div class="img-preview-list" id="itemImgPreview"></div>
                     </div>
-                    <!-- 초기 규격 일괄 등록 영역 -->
+                    <!-- 초기 규격/견적 일괄 등록 영역 (Matrix) -->
                     <div class="fg fg-full" id="itemInitialVariantsWrapper" style="margin-top: 10px; border-top: 1px dashed var(--gray-300); padding-top: 16px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                            <label style="margin:0;">초기 규격(옵션) 일괄 등록</label>
-                            <button type="button" class="btn btn-sm btn-outline" onclick="addInitialVariantRow()"><i class='bx bx-plus'></i> 행 추가</button>
+                            <label style="margin:0; font-weight:700; color:var(--primary);"><i class='bx bx-table'></i> 초기 규격 및 단가 등록</label>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addInitialSupplier()"><i class='bx bx-store-alt'></i> 판매사 추가</button>
+                                <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addInitialVariantRow()"><i class='bx bx-plus'></i> 규격 추가</button>
+                            </div>
                         </div>
-                        <div id="initialVariantList" style="display:flex; flex-direction:column; gap:8px;">
-                            <!-- JS로 행 추가됨 -->
+                        <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--gray-200);">
+                            <table class="initial-matrix-table" id="initialMatrixTable" style="width:100%; border-collapse:collapse; text-align:center;">
+                                <thead style="background:var(--gray-100); font-size:12px; color:var(--gray-700);">
+                                    <tr id="initialMatrixHeader">
+                                        <th style="min-width:120px; padding:8px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">규격 (필수)</th>
+                                        <th style="width:80px; padding:8px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">단위</th>
+                                        <!-- JS로 판매사(Supplier) 컬럼 추가됨 -->
+                                        <th class="matrix-action-col" style="width:40px; padding:8px; border-bottom:1px solid var(--gray-200);"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="initialVariantList">
+                                    <!-- JS로 규격(Row) 추가됨 -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

@@ -338,6 +338,7 @@ function renderPDP(id) {
 
     const galleryCol = document.getElementById('pdpGalleryCol');
     const infoCol = document.getElementById('pdpInfoCol');
+    const bottomSec = document.getElementById('pdpBottomSection');
     
     // Setup Gallery
     if (item.images && item.images.length > 0) {
@@ -362,19 +363,50 @@ function renderPDP(id) {
         galleryCol.innerHTML = `<div class="pdp-main-img-placeholder"><i class='bx bx-image'></i></div>`;
     }
 
-    // Setup Info & Variants
-    let variantsHtml = item.variants.length > 0 
-        ? item.variants.map(v => renderPDPVariant(v)).join('') 
-        : '<div style="padding:40px;text-align:center;color:var(--gray-400);font-size:14px;background:#f8fafc;border-radius:12px;border:2px dashed var(--gray-200);margin-bottom:24px;">등록된 규격(옵션)이 없습니다.</div>';
+    // Info Col (Top Right)
+    const allSuppliers = Array.from(new Set(item.variants.flatMap(v => v.quotes.map(q => q.supplier)))).sort();
+    let minPriceOverall = Infinity;
+    let repSpec = '-';
+    item.variants.forEach(v => {
+        v.quotes.forEach(q => {
+            const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
+            if(krwPrice < minPriceOverall) {
+                minPriceOverall = krwPrice;
+                repSpec = v.spec;
+            }
+        });
+    });
+    if(minPriceOverall === Infinity) minPriceOverall = 0;
 
     infoCol.innerHTML = `
-        ${item.category ? `<span class="pdp-cat">${item.category}</span>` : ''}
-        <h1 class="pdp-title">${item.itemName}</h1>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+            <h1 class="pdp-title" style="margin:0; font-size:24px; font-weight:700;">${item.itemName}</h1>
+            <div style="color:var(--gray-400); font-size:24px; cursor:pointer;"><i class='bx bx-heart'></i></div>
+        </div>
         
-        ${item.remarks ? `<div class="pdp-remarks">${item.remarks}</div>` : ''}
+        <div class="pdp-meta-table" style="margin-bottom:24px; font-size:14px;">
+            <div style="display:flex; padding:8px 0; border-bottom:1px solid var(--gray-100);">
+                <div style="width:100px; color:var(--gray-500);">판매업체</div>
+                <div style="font-weight:600; color:var(--primary);">${allSuppliers.length}개</div>
+            </div>
+            <div style="display:flex; padding:8px 0; border-bottom:1px solid var(--gray-100);">
+                <div style="width:100px; color:var(--gray-500);">카테고리</div>
+                <div>${item.category || '-'}</div>
+            </div>
+            <div style="display:flex; padding:8px 0; border-bottom:1px solid var(--gray-100);">
+                <div style="width:100px; color:var(--gray-500);">대표규격</div>
+                <div>${repSpec}</div>
+            </div>
+            <div style="display:flex; padding:8px 0; border-bottom:1px solid var(--gray-100);">
+                <div style="width:100px; color:var(--gray-500);">대표단가</div>
+                <div style="font-weight:700; font-size:16px; color:var(--gray-900);">${minPriceOverall > 0 ? formatCurrency(minPriceOverall) : '-'}</div>
+            </div>
+        </div>
+
+        ${item.remarks ? `<div class="pdp-remarks" style="margin-bottom:24px; padding:12px; background:var(--gray-50); border-radius:8px; font-size:13px;">${item.remarks}</div>` : ''}
         
         ${item.customFields && item.customFields.length > 0 ? `
-            <div class="pdp-custom-fields" style="margin-bottom: 20px;">
+            <div class="pdp-custom-fields" style="margin-bottom: 24px;">
                 <table style="width:100%; border-collapse:collapse; font-size:13px; border:1px solid var(--gray-200); border-radius:8px; overflow:hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     ${item.customFields.map((cf, idx) => `
                         <tr>
@@ -386,71 +418,75 @@ function renderPDP(id) {
             </div>
         ` : ''}
         
-        <div class="pdp-section-title">
-            <span>규격 및 견적 단가</span>
-            <button class="btn btn-primary btn-sm" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 규격 추가</button>
-        </div>
-        
-        ${variantsHtml}
+        <button class="btn btn-primary" style="width:100%; padding:14px; font-size:16px; font-weight:700; border-radius:8px; background:#f97316; border:none; box-shadow:0 4px 10px rgba(249,115,22,0.3);" onclick="openVariantModal('${item.id}')">새 규격 추가</button>
     `;
-}
-
-function renderPDPVariant(variant) {
-    let minPrice = Infinity;
-    variant.quotes.forEach(q => {
-        const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
-        if (krwPrice < minPrice) minPrice = krwPrice;
-    });
-
-    let quotesHtml = '';
-    if (variant.quotes.length > 0) {
-        quotesHtml = `
-            <table class="quote-table">
-                <thead>
-                    <tr>
-                        <th style="width:25%;">공급업체</th>
-                        <th style="width:25%; text-align:right;">단가</th>
-                        <th style="width:35%;">비고 / 조건</th>
-                        <th style="width:15%; text-align:right;">관리</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${variant.quotes.map(q => {
-                        const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
-                        const isLowest = krwPrice === minPrice && minPrice !== Infinity && variant.quotes.length > 1;
-                        return `
-                        <tr class="${isLowest ? 'lowest-price' : ''}">
-                            <td>
-                                <strong>${q.supplier}</strong>
-                                ${isLowest ? '<span class="badge-crown"><i class="bx bxs-crown"></i> 최저가</span>' : ''}
-                                ${q.isSelected ? '<span class="badge-selected"><i class="bx bx-check"></i> 채택</span>' : ''}
-                            </td>
-                            <td class="col-price">${formatCurrency(q.unitPrice, q.currency)}</td>
-                            <td><span style="color:var(--gray-500); font-size:12px;">${q.remarks || '-'}</span></td>
-                            <td class="col-actions">
-                                <button class="btn btn-sm btn-icon" onclick="editQuote('${q.id}')"><i class='bx bx-edit'></i></button>
-                                <button class="btn btn-sm btn-icon" style="color:var(--red-500);" onclick="deleteQuote('${q.id}')"><i class='bx bx-trash'></i></button>
-                            </td>
+    
+    // Bottom Section (Matrix Table)
+    let matrixHtml = `
+        <div class="pdp-section-title" style="margin-bottom:16px; display:flex; justify-content:space-between; align-items:flex-end;">
+            <span style="font-size:18px; font-weight:700; color:var(--primary);">규격별 단가</span>
+        </div>
+    `;
+    
+    if (item.variants.length > 0) {
+        matrixHtml += `
+            <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--gray-200);">
+                <table style="width:100%; border-collapse:collapse; font-size:14px; text-align:center;">
+                    <thead style="background:var(--gray-50); color:var(--gray-700); font-weight:600;">
+                        <tr>
+                            <th style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">규격</th>
+                            <th style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); width:80px;">단위</th>
+                            ${allSuppliers.map(s => `<th style="padding:12px; border-bottom:1px solid var(--gray-200); min-width:120px;">${s}</th>`).join('')}
                         </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        `;
-    }
+                    </thead>
+                    <tbody>
+                        ${item.variants.map(v => {
+                            let vMin = Infinity;
+                            v.quotes.forEach(qq => {
+                                const kp = qq.currency === 'KRW' ? qq.unitPrice : qq.unitPrice * 1350;
+                                if(kp < vMin) vMin = kp;
+                            });
 
-    return `
-        <div class="pdp-variant-block">
-            <div class="pdp-variant-header">
-                <div class="pdp-variant-title">${variant.spec} <span style="font-size:13px; color:var(--gray-500); font-weight:normal;">${variant.unit ? '('+variant.unit+')' : ''}</span></div>
-                <div>
-                    <button class="btn btn-sm btn-outline" style="padding:4px 8px;" onclick="editVariant('${variant.id}')"><i class='bx bx-edit'></i> 수정</button>
-                </div>
+                            return `
+                                <tr>
+                                    <td style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); text-align:left; font-weight:600; color:var(--gray-800);">
+                                        ${v.spec}
+                                        <div style="margin-top:6px; display:flex; gap:4px;">
+                                            <button class="btn btn-sm btn-outline" style="padding:2px 6px; font-size:11px;" onclick="editVariant('${v.id}')"><i class='bx bx-edit'></i> 수정</button>
+                                            <button class="btn btn-sm btn-outline" style="padding:2px 6px; font-size:11px;" onclick="openQuoteModal('${v.id}')"><i class='bx bx-plus'></i> 단가</button>
+                                        </div>
+                                    </td>
+                                    <td style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); color:var(--gray-600);">${v.unit || '-'}</td>
+                                    ${allSuppliers.map(s => {
+                                        const q = v.quotes.find(quote => quote.supplier === s);
+                                        if (q) {
+                                            const qp = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
+                                            const isVarLowest = (qp === vMin && v.quotes.length > 1);
+                                            
+                                            return `
+                                            <td style="padding:12px; border-bottom:1px solid var(--gray-200); position:relative;">
+                                                <div style="font-weight:${isVarLowest ? '700' : 'normal'}; color:${isVarLowest ? 'var(--red-600)' : 'var(--gray-800)'};">${formatCurrency(q.unitPrice, q.currency)}</div>
+                                                <div style="margin-top:6px; display:flex; gap:4px; justify-content:center;">
+                                                    <button class="btn btn-sm btn-icon" style="padding:0px; font-size:16px; color:var(--gray-400);" onclick="editQuote('${q.id}')"><i class='bx bx-edit'></i></button>
+                                                    <button class="btn btn-sm btn-icon" style="padding:0px; font-size:16px; color:var(--red-400);" onclick="deleteQuote('${q.id}')"><i class='bx bx-trash'></i></button>
+                                                </div>
+                                            </td>
+                                            `;
+                                        } else {
+                                            return `<td style="padding:12px; border-bottom:1px solid var(--gray-200); color:var(--gray-300);">-</td>`;
+                                        }
+                                    }).join('')}
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
             </div>
-            ${quotesHtml}
-            <button class="btn-add-quote-full" onclick="openQuoteModal('${variant.id}')"><i class='bx bx-plus'></i> 이 규격에 새 견적 추가</button>
-        </div>
-    `;
+        `;
+    } else {
+        matrixHtml += '<div style="padding:40px;text-align:center;color:var(--gray-400);font-size:14px;background:#f8fafc;border-radius:12px;border:2px dashed var(--gray-200);">등록된 규격(옵션)이 없습니다.</div>';
+    }
+    bottomSec.innerHTML = matrixHtml;
 }
 
 // --- Dynamic Custom Fields ---
@@ -467,26 +503,84 @@ function addCustomFieldRow(key = '', val = '') {
     list.insertAdjacentHTML('beforeend', html);
 }
 
-// --- Dynamic Initial Variants ---
+// --- Dynamic Initial Variants & Suppliers (Matrix) ---
+let initialSupplierIds = [];
+
+function addInitialSupplier(defaultName = '') {
+    const colId = 'supp_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    initialSupplierIds.push(colId);
+
+    const headerRow = document.getElementById('initialMatrixHeader');
+    const th = document.createElement('th');
+    th.className = 'matrix-supplier-col';
+    th.style.padding = '8px';
+    th.style.borderBottom = '1px solid var(--gray-200)';
+    th.style.borderRight = '1px solid var(--gray-200)';
+    th.dataset.colId = colId;
+    th.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--gray-300); border-radius:4px; padding:2px 4px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            <input type="text" placeholder="판매사명" value="${defaultName}" class="initial-supplier-name" style="width:70px; border:none; outline:none; font-size:12px; font-weight:700; text-align:center; color:var(--primary);">
+            <button type="button" class="btn btn-sm btn-icon" style="padding:2px; color:var(--red-500);" onclick="removeInitialSupplier('${colId}')"><i class='bx bx-x' style="font-size:16px;"></i></button>
+        </div>
+    `;
+    headerRow.insertBefore(th, headerRow.lastElementChild);
+
+    document.querySelectorAll('#initialVariantList tr').forEach(tr => {
+        const td = document.createElement('td');
+        td.className = 'matrix-supplier-col';
+        td.style.padding = '4px';
+        td.style.borderBottom = '1px solid var(--gray-200)';
+        td.style.borderRight = '1px solid var(--gray-200)';
+        td.dataset.colId = colId;
+        td.innerHTML = `<input type="number" class="initial-supplier-price" placeholder="단가(원)" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px; text-align:right;">`;
+        tr.insertBefore(td, tr.lastElementChild);
+    });
+}
+
+function removeInitialSupplier(colId) {
+    initialSupplierIds = initialSupplierIds.filter(id => id !== colId);
+    document.querySelectorAll(`.matrix-supplier-col[data-col-id="${colId}"]`).forEach(el => el.remove());
+}
+
 function addInitialVariantRow(spec = '', unit = '') {
     const list = document.getElementById('initialVariantList');
     const rowId = 'ivRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
-    const html = `
-        <div id="${rowId}" style="display:flex; gap:8px; align-items:center;">
-            <input type="text" class="iv-spec" placeholder="규격/옵션명 (필수)" value="${spec}" style="flex:2; padding:8px 12px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;" required>
-            <div class="combo-box-wrapper" style="flex:1;">
-                <input type="text" class="iv-unit" placeholder="단위" value="${unit}" style="width:100%; padding:8px 24px 8px 12px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
-                <i class='bx bx-chevron-down combo-icon' style="right:8px;"></i>
-                <select onchange="this.previousElementSibling.previousElementSibling.value = this.value; this.value=''" style="width:24px;">
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    
+    let html = `
+        <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
+            <input type="text" class="iv-spec" placeholder="규격 입력" value="${spec}" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px;" required>
+        </td>
+        <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
+            <div class="combo-box-wrapper" style="width:100%;">
+                <input type="text" class="iv-unit" placeholder="단위" value="${unit}" style="width:100%; padding:6px 20px 6px 8px; border:1px solid var(--gray-300); border-radius:4px; font-size:12px; text-align:center;">
+                <i class='bx bx-chevron-down combo-icon' style="right:4px;"></i>
+                <select onchange="this.previousElementSibling.previousElementSibling.value = this.value; this.value=''" style="width:20px;">
                     <option value="">(선택)</option>
                     <option value="EA">EA</option><option value="SET">SET</option><option value="M">M</option>
                     <option value="KG">KG</option><option value="BOX">BOX</option><option value="ROLL">ROLL</option>
                 </select>
             </div>
-            <button type="button" class="btn btn-sm btn-icon" style="color:var(--red-500); border:1px solid var(--red-200); background:#fff;" onclick="document.getElementById('${rowId}').remove()"><i class='bx bx-trash'></i></button>
-        </div>
+        </td>
     `;
-    list.insertAdjacentHTML('beforeend', html);
+    
+    initialSupplierIds.forEach(colId => {
+        html += `
+        <td class="matrix-supplier-col" data-col-id="${colId}" style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
+            <input type="number" class="initial-supplier-price" placeholder="단가(원)" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px; text-align:right;">
+        </td>
+        `;
+    });
+    
+    html += `
+        <td style="padding:4px; border-bottom:1px solid var(--gray-200);">
+            <button type="button" class="btn btn-sm btn-icon" style="color:var(--red-500); background:#fff; border:1px solid var(--red-200);" onclick="document.getElementById('${rowId}').remove()"><i class='bx bx-trash'></i></button>
+        </td>
+    `;
+    
+    tr.innerHTML = html;
+    list.appendChild(tr);
 }
 
 // --- Item Modals ---
@@ -512,10 +606,14 @@ function openItemModal(item = null) {
     }
 
     document.getElementById('initialVariantList').innerHTML = '';
+    initialSupplierIds = [];
+    document.querySelectorAll('.matrix-supplier-col').forEach(el => el.remove());
+
     if (item) {
         document.getElementById('itemInitialVariantsWrapper').style.display = 'none'; // 수정 시에는 개별 탭에서 수정
     } else {
         document.getElementById('itemInitialVariantsWrapper').style.display = 'block';
+        addInitialSupplier('판매사 1');
         addInitialVariantRow(); // Add one default empty row
     }
 
@@ -547,7 +645,34 @@ async function saveItem() {
     };
 
     try {
-        if (id) {
+        let initialVariants = [];
+        const item = !!id;
+        if (!item) {
+            const supplierNames = {};
+            document.querySelectorAll('#initialMatrixHeader .matrix-supplier-col').forEach(th => {
+                const colId = th.dataset.colId;
+                const name = th.querySelector('.initial-supplier-name').value.trim();
+                if(name) supplierNames[colId] = name;
+            });
+            
+            document.querySelectorAll('#initialVariantList tr').forEach(tr => {
+                const spec = tr.querySelector('.iv-spec').value.trim();
+                const unit = tr.querySelector('.iv-unit').value.trim();
+                if (spec) {
+                    const quotes = [];
+                    tr.querySelectorAll('.matrix-supplier-col').forEach(td => {
+                        const colId = td.dataset.colId;
+                        const price = td.querySelector('.initial-supplier-price').value.trim();
+                        if (price && supplierNames[colId]) {
+                            quotes.push({ supplier: supplierNames[colId], unitPrice: parseInt(price, 10) });
+                        }
+                    });
+                    initialVariants.push({ spec, unit, quotes });
+                }
+            });
+        }
+
+        if (item) {
             await authFetch(`${API_BASE}/${id}`, {
                 method: 'PUT', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
@@ -558,20 +683,19 @@ async function saveItem() {
                 body: JSON.stringify(payload)
             });
             const newItem = await res.json();
-            if (newItem && newItem.id) {
-                selectedItemId = newItem.id;
-                
-                // Add initial variants sequentially
-                const ivSpecs = document.querySelectorAll('#initialVariantList .iv-spec');
-                const ivUnits = document.querySelectorAll('#initialVariantList .iv-unit');
-                for (let i = 0; i < ivSpecs.length; i++) {
-                    const s = ivSpecs[i].value.trim();
-                    const u = ivUnits[i].value.trim();
-                    if (s) {
-                        await authFetch(`${API_BASE}/variants`, {
+            for (let i = 0; i < initialVariants.length; i++) {
+                const v = initialVariants[i];
+                const vRes = await authFetch(`${API_BASE}/variants`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ itemId: newItem.id, spec: v.spec, unit: v.unit, sortOrder: i })
+                });
+                if(vRes.ok && v.quotes.length > 0) {
+                    const newVar = await vRes.json();
+                    for(const q of v.quotes) {
+                        await authFetch(`${API_BASE}/quotes`, {
                             method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ itemId: newItem.id, spec: s, unit: u })
-                        }).catch(e => console.error("Variant save error:", e));
+                            body: JSON.stringify({ variantId: newVar.id, supplier: q.supplier, unitPrice: q.unitPrice })
+                        });
                     }
                 }
             }
