@@ -1271,16 +1271,32 @@ function setupAuth() {
     var logoutBtn = document.getElementById('logoutBtn');
     
     // Auth Listener
-    onAuthStateChanged(auth, function(user) {
+    onAuthStateChanged(auth, async function(user) {
         if (user) {
             // Logged in
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (mainApp) mainApp.classList.remove('hidden');
+            
+            // Check admin role
+            try {
+                const adminDoc = await getDoc(doc(db, "admin_users", user.email));
+                const adminMenu = document.getElementById('adminDashboardMenu');
+                if (adminDoc.exists() && adminMenu) {
+                    adminMenu.classList.remove('hidden');
+                } else if (adminMenu) {
+                    adminMenu.classList.add('hidden');
+                }
+            } catch (err) {
+                console.error("Error checking admin role:", err);
+            }
+
             initFirebase(); // Initialize bindings ONLY after login
         } else {
             // Logged out
             if (loginOverlay) loginOverlay.classList.remove('hidden');
             if (mainApp) mainApp.classList.add('hidden');
+            const adminMenu = document.getElementById('adminDashboardMenu');
+            if (adminMenu) adminMenu.classList.add('hidden');
         }
     });
 
