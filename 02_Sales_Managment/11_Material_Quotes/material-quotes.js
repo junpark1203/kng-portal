@@ -556,11 +556,11 @@ function addInitialVariantRow(spec = '', unit = '') {
             <i class='bx bx-menu' style="color:var(--gray-400); font-size:16px;"></i>
         </td>
         <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
-            <input type="text" class="iv-spec" placeholder="규격 입력" value="${spec}" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px;" required>
+            <input type="text" class="iv-spec" placeholder="규격 입력" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px;" required>
         </td>
         <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
             <div class="combo-box-wrapper" style="width:100%;">
-                <input type="text" class="iv-unit" placeholder="단위" value="${unit}" style="width:100%; padding:6px 20px 6px 8px; border:1px solid var(--gray-300); border-radius:4px; font-size:12px; text-align:center;">
+                <input type="text" class="iv-unit" placeholder="단위" style="width:100%; padding:6px 20px 6px 8px; border:1px solid var(--gray-300); border-radius:4px; font-size:12px; text-align:center;">
                 <i class='bx bx-chevron-down combo-icon' style="right:4px;"></i>
                 <select onchange="this.previousElementSibling.previousElementSibling.value = this.value; this.value=''" style="width:20px;">
                     <option value="">(선택)</option>
@@ -587,6 +587,10 @@ function addInitialVariantRow(spec = '', unit = '') {
     
     tr.innerHTML = html;
     list.appendChild(tr);
+
+    // Safely set the values to prevent issues with quotes (") in HTML attributes
+    if (spec) tr.querySelector('.iv-spec').value = spec;
+    if (unit) tr.querySelector('.iv-unit').value = unit;
 }
 
 // --- Item Modals ---
