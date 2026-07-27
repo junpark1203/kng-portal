@@ -138,6 +138,11 @@ const CONTRACT_UPLOAD_DIR = path.join(UPLOAD_DIR, 'contracts');
 if (!fs.existsSync(CONTRACT_UPLOAD_DIR)) fs.mkdirSync(CONTRACT_UPLOAD_DIR, { recursive: true });
 app.use('/api/contracts/uploads', express.static(CONTRACT_UPLOAD_DIR, { fallthrough: false }));
 
+// 품목별 견적 비교 첨부파일 — 인증 없이 다운로드 허용 (이미지 렌더링용)
+const MQ_UPLOAD_DIR = path.join(UPLOAD_DIR, 'mat-quotes');
+if (!fs.existsSync(MQ_UPLOAD_DIR)) fs.mkdirSync(MQ_UPLOAD_DIR, { recursive: true });
+app.use('/api/mat-quotes/uploads', express.static(MQ_UPLOAD_DIR, { fallthrough: false }));
+
 // 현장별 소모품 첨부파일 (도면 등) — 인증 없이 다운로드 허용 (미리보기용)
 const SITE_CONSUMABLE_UPLOAD_DIR = path.join(UPLOAD_DIR, 'site-consumables');
 if (!fs.existsSync(SITE_CONSUMABLE_UPLOAD_DIR)) fs.mkdirSync(SITE_CONSUMABLE_UPLOAD_DIR, { recursive: true });
