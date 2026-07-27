@@ -282,5 +282,8 @@
 .swal2-container {
     z-index: 10000 !important;
 }
-. m o d a l - o p e n   {   o v e r f l o w :   h i d d e n   ! i m p o r t a n t ;   }  
- 
+
+body.modal-open,
+body.modal-open .main-content {
+    overflow: hidden !important;
+}
