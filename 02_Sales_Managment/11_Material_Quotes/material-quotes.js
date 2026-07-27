@@ -552,6 +552,9 @@ function addInitialVariantRow(spec = '', unit = '') {
     tr.id = rowId;
     
     let html = `
+        <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); text-align:center; vertical-align:middle; cursor:grab;" class="drag-handle">
+            <i class='bx bx-menu' style="color:var(--gray-400); font-size:16px;"></i>
+        </td>
         <td style="padding:4px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">
             <input type="text" class="iv-spec" placeholder="규격 입력" value="${spec}" style="width:100%; border:1px solid var(--gray-300); border-radius:4px; padding:6px; box-sizing:border-box; font-size:12px;" required>
         </td>
@@ -646,6 +649,7 @@ function openItemModal(item = null) {
         addInitialVariantRow();
     }
 
+    initSortable();
     document.getElementById('itemModal').classList.add('active');
     document.body.style.overflow = 'hidden';
 }
@@ -911,5 +915,19 @@ function closeImgViewer(e) {
     if (e.target === overlay || e.target.classList.contains('bx-x') || e.target.classList.contains('modal-close')) {
         overlay.classList.remove('active');
         document.body.style.overflow = '';
+    }
+}
+
+// Initialize drag and drop for variant rows
+let variantSortable = null;
+function initSortable() {
+    const list = document.getElementById('initialVariantList');
+    if (list && typeof Sortable !== 'undefined') {
+        if (variantSortable) variantSortable.destroy();
+        variantSortable = new Sortable(list, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost'
+        });
     }
 }

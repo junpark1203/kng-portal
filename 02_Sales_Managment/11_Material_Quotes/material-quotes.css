@@ -290,3 +290,5 @@ body.modal-open,
 body.modal-open .main-content {
     overflow: hidden !important;
 }
+
+.sortable-ghost { opacity: 0.4; background-color: #f1f5f9; }
