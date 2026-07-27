@@ -518,9 +518,9 @@ function addInitialSupplier(defaultName = '') {
     th.style.borderRight = '1px solid var(--gray-200)';
     th.dataset.colId = colId;
     th.innerHTML = `
-        <div style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--gray-300); border-radius:4px; padding:2px 4px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-            <input type="text" placeholder="판매사명" value="${defaultName}" class="initial-supplier-name" style="width:70px; border:none; outline:none; font-size:12px; font-weight:700; text-align:center; color:var(--primary);">
-            <button type="button" class="btn btn-sm btn-icon" style="padding:2px; color:var(--red-500);" onclick="removeInitialSupplier('${colId}')"><i class='bx bx-x' style="font-size:16px;"></i></button>
+        <div style="display:flex; align-items:center; background:#fff; border:1px solid var(--gray-300); border-radius:4px; padding:2px 4px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            <input type="text" placeholder="판매사명" value="${defaultName}" class="initial-supplier-name" style="flex:1; width:100%; min-width:80px; border:none; outline:none; font-size:13px; font-weight:700; text-align:center; color:var(--primary);">
+            <button type="button" class="btn btn-sm btn-icon" style="padding:2px; flex-shrink:0; color:var(--red-500); margin-left:4px;" onclick="removeInitialSupplier('${colId}')"><i class='bx bx-x' style="font-size:16px;"></i></button>
         </div>
     `;
     headerRow.insertBefore(th, headerRow.lastElementChild);
