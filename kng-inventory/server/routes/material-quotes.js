@@ -230,6 +230,21 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// --- Delete all variants for an item ---
+router.delete('/:id/variants-all', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const variants = await dbAll('SELECT id FROM mat_quote_variants WHERE itemId = ?', [id]);
+        for (let v of variants) {
+            await dbRun('DELETE FROM mat_quote_supplier_quotes WHERE variantId = ?', [v.id]);
+        }
+        await dbRun('DELETE FROM mat_quote_variants WHERE itemId = ?', [id]);
+        res.json({ message: 'All variants deleted' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── Variants ──
 router.post('/variants', async (req, res) => {
     try {

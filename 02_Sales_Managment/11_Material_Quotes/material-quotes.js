@@ -420,7 +420,6 @@ function renderPDP(id) {
             </div>
         ` : ''}
         
-        <button class="btn btn-primary" style="width:100%; padding:14px; font-size:16px; font-weight:700; border-radius:8px; background:#f97316; border:none; box-shadow:0 4px 10px rgba(249,115,22,0.3);" onclick="openVariantModal('${item.id}')">새 규격 추가</button>
     `;
     
     // Bottom Section (Matrix Table)
@@ -613,12 +612,38 @@ function openItemModal(item = null) {
     initialSupplierIds = [];
     document.querySelectorAll('.matrix-supplier-col').forEach(el => el.remove());
 
-    if (item) {
-        document.getElementById('itemInitialVariantsWrapper').style.display = 'none'; // 수정 시에는 개별 탭에서 수정
+    document.getElementById('itemInitialVariantsWrapper').style.display = 'block';
+
+    if (item && item.variants && item.variants.length > 0) {
+        const suppliers = new Set();
+        item.variants.forEach(v => {
+            v.quotes.forEach(q => suppliers.add(q.supplier));
+        });
+        const supplierArray = Array.from(suppliers).sort();
+        
+        if (supplierArray.length === 0) {
+            addInitialSupplier('판매사 1');
+            addInitialVariantRow();
+        } else {
+            supplierArray.forEach(s => addInitialSupplier(s));
+            item.variants.forEach(v => {
+                addInitialVariantRow(v.spec, v.unit);
+                const trs = document.querySelectorAll('#initialVariantList tr');
+                const tr = trs[trs.length - 1];
+                
+                v.quotes.forEach(q => {
+                    const thIndex = supplierArray.indexOf(q.supplier);
+                    const colId = initialSupplierIds[thIndex];
+                    if (colId) {
+                        const input = tr.querySelector(`td[data-col-id="${colId}"] input.initial-supplier-price`);
+                        if (input) input.value = q.unitPrice;
+                    }
+                });
+            });
+        }
     } else {
-        document.getElementById('itemInitialVariantsWrapper').style.display = 'block';
         addInitialSupplier('판매사 1');
-        addInitialVariantRow(); // Add one default empty row
+        addInitialVariantRow();
     }
 
     document.getElementById('itemModal').classList.add('active');
@@ -653,56 +678,66 @@ async function saveItem() {
     try {
         let initialVariants = [];
         const item = !!id;
-        if (!item) {
-            const supplierNames = {};
-            document.querySelectorAll('#initialMatrixHeader .matrix-supplier-col').forEach(th => {
-                const colId = th.dataset.colId;
-                const name = th.querySelector('.initial-supplier-name').value.trim();
-                if(name) supplierNames[colId] = name;
-            });
-            
-            document.querySelectorAll('#initialVariantList tr').forEach(tr => {
-                const spec = tr.querySelector('.iv-spec').value.trim();
-                const unit = tr.querySelector('.iv-unit').value.trim();
-                if (spec) {
-                    const quotes = [];
-                    tr.querySelectorAll('.matrix-supplier-col').forEach(td => {
-                        const colId = td.dataset.colId;
-                        const price = td.querySelector('.initial-supplier-price').value.trim();
-                        if (price && supplierNames[colId]) {
-                            quotes.push({ supplier: supplierNames[colId], unitPrice: parseInt(price, 10) });
-                        }
-                    });
-                    initialVariants.push({ spec, unit, quotes });
-                }
-            });
-        }
+        
+        const supplierNames = {};
+        document.querySelectorAll('#initialMatrixHeader .matrix-supplier-col').forEach(th => {
+            const colId = th.dataset.colId;
+            const name = th.querySelector('.initial-supplier-name').value.trim();
+            if(name) supplierNames[colId] = name;
+        });
+        
+        document.querySelectorAll('#initialVariantList tr').forEach(tr => {
+            const spec = tr.querySelector('.iv-spec').value.trim();
+            const unit = tr.querySelector('.iv-unit').value.trim();
+            if (spec) {
+                const quotes = [];
+                tr.querySelectorAll('.matrix-supplier-col').forEach(td => {
+                    const colId = td.dataset.colId;
+                    const price = td.querySelector('.initial-supplier-price').value.trim();
+                    if (price && supplierNames[colId]) {
+                        quotes.push({ supplier: supplierNames[colId], unitPrice: parseInt(price, 10) });
+                    }
+                });
+                initialVariants.push({ spec, unit, quotes });
+            }
+        });
+
+        let targetItemId = id;
 
         if (item) {
+            // Update existing item basic details
             await authFetch(`${API_BASE}/${id}`, {
                 method: 'PUT', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
+            // Wipe existing variants and quotes
+            await authFetch(`${API_BASE}/${id}/variants-all`, {
+                method: 'DELETE'
+            });
         } else {
+            // Create new item
             const res = await authFetch(`${API_BASE}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
             const newItem = await res.json();
-            for (let i = 0; i < initialVariants.length; i++) {
-                const v = initialVariants[i];
-                const vRes = await authFetch(`${API_BASE}/variants`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ itemId: newItem.id, spec: v.spec, unit: v.unit, sortOrder: i })
-                });
-                if(vRes.ok && v.quotes.length > 0) {
-                    const newVar = await vRes.json();
-                    for(const q of v.quotes) {
-                        await authFetch(`${API_BASE}/quotes`, {
-                            method: 'POST', headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ variantId: newVar.id, supplier: q.supplier, unitPrice: q.unitPrice })
-                        });
-                    }
+            targetItemId = newItem.id;
+        }
+
+        // Post all variants and quotes
+        for (let i = 0; i < initialVariants.length; i++) {
+            const v = initialVariants[i];
+            const vRes = await authFetch(`${API_BASE}/variants`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ itemId: targetItemId, spec: v.spec, unit: v.unit, sortOrder: i })
+            });
+            if(vRes.ok && v.quotes.length > 0) {
+                const newVar = await vRes.json();
+                for(const q of v.quotes) {
+                    await authFetch(`${API_BASE}/quotes`, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ variantId: newVar.id, supplier: q.supplier, unitPrice: q.unitPrice })
+                    });
                 }
             }
         }
