@@ -4,7 +4,7 @@ let pendingImages = [];
 let currentSearchTerm = '';
 let currentCategoryFilter = '';
 
-const API_BASE = 'https://kng.junparks.com/api/mat-quotes';
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api/mat-quotes' : 'https://kng.junparks.com/api/mat-quotes';
 
 // --- Auth Fetch (with retry for iframe auth race condition) ---
 async function authFetch(url, opts = {}, _retries = 3) {
