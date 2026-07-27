@@ -544,6 +544,14 @@ function removeInitialSupplier(colId) {
 
 function addInitialVariantRow(spec = '', unit = '') {
     const list = document.getElementById('initialVariantList');
+    
+    if (!unit && list.lastElementChild) {
+        const lastUnitInput = list.lastElementChild.querySelector('.iv-unit');
+        if (lastUnitInput && lastUnitInput.value.trim()) {
+            unit = lastUnitInput.value.trim();
+        }
+    }
+
     const rowId = 'ivRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
     const tr = document.createElement('tr');
     tr.id = rowId;
