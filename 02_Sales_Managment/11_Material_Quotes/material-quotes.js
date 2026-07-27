@@ -365,6 +365,19 @@ function renderPDP(id) {
         
         ${item.remarks ? `<div class="pdp-remarks">${item.remarks}</div>` : ''}
         
+        ${item.customFields && item.customFields.length > 0 ? `
+            <div class="pdp-custom-fields" style="margin-bottom: 20px;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px; border:1px solid var(--gray-200); border-radius:8px; overflow:hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    ${item.customFields.map((cf, idx) => `
+                        <tr>
+                            <td style="width:35%; padding:8px 12px; background:var(--gray-50); color:var(--gray-600); font-weight:600; border-bottom:${idx === item.customFields.length - 1 ? 'none' : '1px solid var(--gray-200)'}; border-right:1px solid var(--gray-200);">${cf.key}</td>
+                            <td style="padding:8px 12px; color:var(--gray-800); border-bottom:${idx === item.customFields.length - 1 ? 'none' : '1px solid var(--gray-200)'};">${cf.val}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            </div>
+        ` : ''}
+        
         <div class="pdp-section-title">
             <span>규격 및 견적 단가</span>
             <button class="btn btn-primary btn-sm" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 규격 추가</button>
@@ -432,6 +445,20 @@ function renderPDPVariant(variant) {
     `;
 }
 
+// --- Dynamic Custom Fields ---
+function addCustomFieldRow(key = '', val = '') {
+    const list = document.getElementById('customFieldList');
+    const rowId = 'cfRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const html = `
+        <div id="${rowId}" style="display:flex; gap:6px; align-items:center;">
+            <input type="text" class="cf-key" placeholder="속성명 (예: 재질)" value="${key}" style="flex:1; padding:6px 10px; border:1px solid var(--gray-300); border-radius:4px; font-size:12px;">
+            <input type="text" class="cf-val" placeholder="내용 (예: 알루미늄)" value="${val}" style="flex:2; padding:6px 10px; border:1px solid var(--gray-300); border-radius:4px; font-size:12px;">
+            <button type="button" class="btn btn-sm btn-icon" style="color:var(--gray-500); padding:4px;" onclick="document.getElementById('${rowId}').remove()"><i class='bx bx-x' style="font-size:18px;"></i></button>
+        </div>
+    `;
+    list.insertAdjacentHTML('beforeend', html);
+}
+
 // --- Dynamic Initial Variants ---
 function addInitialVariantRow(spec = '', unit = '') {
     const list = document.getElementById('initialVariantList');
@@ -471,6 +498,11 @@ function openItemModal(item = null) {
     pendingImages = item && item.images ? [...item.images] : [];
     renderPreviewImages();
 
+    document.getElementById('customFieldList').innerHTML = '';
+    if (item && item.customFields) {
+        item.customFields.forEach(cf => addCustomFieldRow(cf.key, cf.val));
+    }
+
     document.getElementById('initialVariantList').innerHTML = '';
     if (item) {
         document.getElementById('itemInitialVariantsWrapper').style.display = 'none'; // 수정 시에는 개별 탭에서 수정
@@ -491,11 +523,19 @@ async function saveItem() {
     const itemName = document.getElementById('itemItemName').value.trim();
     if (!itemName) return Swal.fire('경고', '품목명을 입력하세요.', 'warning');
     
+    const customFields = [];
+    document.querySelectorAll('#customFieldList > div').forEach(row => {
+        const key = row.querySelector('.cf-key').value.trim();
+        const val = row.querySelector('.cf-val').value.trim();
+        if(key || val) customFields.push({ key, val });
+    });
+
     const payload = {
         itemName,
         category: document.getElementById('itemCategory').value.trim(),
         remarks: document.getElementById('itemRemarks').value.trim(),
-        images: pendingImages
+        images: pendingImages,
+        customFields
     };
 
     try {

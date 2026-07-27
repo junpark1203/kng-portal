@@ -80,10 +80,15 @@ function initMaterialQuotesTables(database) {
                     category TEXT DEFAULT '',
                     images TEXT DEFAULT '[]',
                     remarks TEXT DEFAULT '',
+                    customFields TEXT DEFAULT '[]',
                     createdAt TEXT,
                     updatedAt TEXT
                 )
             `);
+            // Add column if it doesn't exist (for existing DBs)
+            database.run(`ALTER TABLE mat_quote_items ADD COLUMN customFields TEXT DEFAULT '[]'`, (err) => {
+                // Ignore error if column already exists
+            });
             database.run(`
                 CREATE TABLE IF NOT EXISTS mat_quote_variants (
                     id TEXT PRIMARY KEY,
@@ -134,6 +139,7 @@ router.get('/', async (req, res) => {
         const itemsMap = {};
         items.forEach(item => {
             try { item.images = JSON.parse(item.images); } catch (e) { item.images = []; }
+            try { item.customFields = JSON.parse(item.customFields); } catch (e) { item.customFields = []; }
             item.variants = [];
             itemsMap[item.id] = item;
         });
@@ -177,12 +183,13 @@ router.post('/', async (req, res) => {
         const id = 'MQI-' + Date.now();
         const now = new Date().toISOString();
         const imagesStr = JSON.stringify(p.images || []);
+        const cfStr = JSON.stringify(p.customFields || []);
         
-        const sql = `INSERT INTO mat_quote_items (id, itemName, category, images, remarks, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        await dbRun(sql, [id, p.itemName || '', p.category || '', imagesStr, p.remarks || '', now, now]);
+        const sql = `INSERT INTO mat_quote_items (id, itemName, category, images, remarks, customFields, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        await dbRun(sql, [id, p.itemName || '', p.category || '', imagesStr, p.remarks || '', cfStr, now, now]);
         
         // Return created item
-        res.status(201).json({ id, itemName: p.itemName, category: p.category, images: p.images || [], remarks: p.remarks, createdAt: now, updatedAt: now, variants: [] });
+        res.status(201).json({ id, itemName: p.itemName, category: p.category, images: p.images || [], remarks: p.remarks, customFields: p.customFields || [], createdAt: now, updatedAt: now, variants: [] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -194,9 +201,10 @@ router.put('/:id', async (req, res) => {
         const p = req.body;
         const now = new Date().toISOString();
         const imagesStr = JSON.stringify(p.images || []);
+        const cfStr = JSON.stringify(p.customFields || []);
 
-        const sql = `UPDATE mat_quote_items SET itemName = ?, category = ?, images = ?, remarks = ?, updatedAt = ? WHERE id = ?`;
-        const result = await dbRun(sql, [p.itemName || '', p.category || '', imagesStr, p.remarks || '', now, id]);
+        const sql = `UPDATE mat_quote_items SET itemName = ?, category = ?, images = ?, remarks = ?, customFields = ?, updatedAt = ? WHERE id = ?`;
+        const result = await dbRun(sql, [p.itemName || '', p.category || '', imagesStr, p.remarks || '', cfStr, now, id]);
 
         if (result.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
         res.json({ message: '수정 성공' });
