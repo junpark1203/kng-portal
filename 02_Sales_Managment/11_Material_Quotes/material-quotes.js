@@ -453,10 +453,7 @@ function renderPDP(id) {
                                 <tr>
                                     <td style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); text-align:left; font-weight:600; color:var(--gray-800);">
                                         ${v.spec}
-                                        <div style="margin-top:6px; display:flex; gap:4px;">
-                                            <button class="btn btn-sm btn-outline" style="padding:2px 6px; font-size:11px;" onclick="editVariant('${v.id}')"><i class='bx bx-edit'></i> 수정</button>
-                                            <button class="btn btn-sm btn-outline" style="padding:2px 6px; font-size:11px;" onclick="openQuoteModal('${v.id}')"><i class='bx bx-plus'></i> 단가</button>
-                                        </div>
+
                                     </td>
                                     <td style="padding:12px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200); color:var(--gray-600);">${v.unit || '-'}</td>
                                     ${allSuppliers.map(s => {
@@ -468,10 +465,7 @@ function renderPDP(id) {
                                             return `
                                             <td style="padding:12px; border-bottom:1px solid var(--gray-200); position:relative;">
                                                 <div style="font-weight:${isVarLowest ? '700' : 'normal'}; color:${isVarLowest ? 'var(--red-600)' : 'var(--gray-800)'};">${formatCurrency(q.unitPrice, q.currency)}</div>
-                                                <div style="margin-top:6px; display:flex; gap:4px; justify-content:center;">
-                                                    <button class="btn btn-sm btn-icon" style="padding:0px; font-size:16px; color:var(--gray-400);" onclick="editQuote('${q.id}')"><i class='bx bx-edit'></i></button>
-                                                    <button class="btn btn-sm btn-icon" style="padding:0px; font-size:16px; color:var(--red-400);" onclick="deleteQuote('${q.id}')"><i class='bx bx-trash'></i></button>
-                                                </div>
+
                                             </td>
                                             `;
                                         } else {
