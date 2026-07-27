@@ -3,10 +3,11 @@ let categories = [];
 let pendingImages = [];
 let currentSearchTerm = '';
 let currentCategoryFilter = '';
+let selectedItemId = null;
 
 const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api/mat-quotes' : 'https://kng.junparks.com/api/mat-quotes';
 
-// --- Auth Fetch (with retry for iframe auth race condition) ---
+// --- Auth Fetch ---
 async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
     try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
@@ -53,7 +54,7 @@ function setupEventListeners() {
         renderList();
     });
 
-    // Category Dropdown logic (fuzzy search)
+    // Category Dropdown
     const catInput = document.getElementById('itemCategory');
     const catDropdown = document.getElementById('categoryDropdown');
     
@@ -63,7 +64,6 @@ function setupEventListeners() {
             catDropdown.style.display = 'none';
             return;
         }
-        // fuzzy match: includes
         const matched = categories.filter(c => c.toLowerCase().includes(val));
         if (matched.length > 0) {
             catDropdown.innerHTML = matched.map(c => `<div class="cat-dropdown-item" style="padding: 8px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid #eee;" onclick="selectCategory('${c}')">${c}</div>`).join('');
@@ -123,8 +123,10 @@ async function loadItems() {
     try {
         const res = await authFetch(`${API_BASE}`);
         itemsData = await res.json();
-        updateKPIs();
         renderList();
+        if (selectedItemId) {
+            renderDetailPanel(selectedItemId);
+        }
     } catch (err) {
         console.error('Failed to load items', err);
         Swal.fire('에러', '데이터를 불러오는 중 오류가 발생했습니다.', 'error');
@@ -140,8 +142,7 @@ async function handleFiles(files) {
     try {
         const res = await authFetch(`${API_BASE}/files/upload`, {
             method: 'POST',
-            body: formData,
-            headers: {} // let browser set multipart boundary
+            body: formData
         });
         const data = await res.json();
         if(data.urls) {
@@ -193,9 +194,9 @@ function removeImage(idx) {
 // --- UI Rendering ---
 function renderCategoryFilters() {
     const container = document.getElementById('categoryFilters');
-    let html = `<span class="drawer-cat-chip ${currentCategoryFilter === '' ? 'active' : ''}" onclick="setCategoryFilter('')">전체</span>`;
+    let html = `<span class="cat-chip ${currentCategoryFilter === '' ? 'active' : ''}" onclick="setCategoryFilter('')">전체</span>`;
     categories.forEach(cat => {
-        html += `<span class="drawer-cat-chip ${currentCategoryFilter === cat ? 'active' : ''}" onclick="setCategoryFilter('${cat}')">${cat}</span>`;
+        html += `<span class="cat-chip ${currentCategoryFilter === cat ? 'active' : ''}" onclick="setCategoryFilter('${cat}')">${cat}</span>`;
     });
     container.innerHTML = html;
 }
@@ -204,15 +205,6 @@ function setCategoryFilter(cat) {
     currentCategoryFilter = cat;
     renderCategoryFilters();
     renderList();
-}
-
-function updateKPIs() {
-    document.getElementById('kpiTotalItems').textContent = itemsData.length;
-    let quoteCount = 0;
-    itemsData.forEach(item => {
-        item.variants.forEach(v => quoteCount += v.quotes.length);
-    });
-    document.getElementById('kpiTotalQuotes').textContent = quoteCount;
 }
 
 function formatCurrency(amount, currency = 'KRW') {
@@ -230,8 +222,7 @@ function renderList() {
         const term = currentSearchTerm.toLowerCase();
         filtered = filtered.filter(item => {
             if (item.itemName.toLowerCase().includes(term)) return true;
-            if (item.category.toLowerCase().includes(term)) return true;
-            // search in variants/quotes
+            if (item.category && item.category.toLowerCase().includes(term)) return true;
             let matchedInNested = false;
             for(let v of item.variants) {
                 if(v.spec.toLowerCase().includes(term)) matchedInNested = true;
@@ -244,46 +235,111 @@ function renderList() {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--gray-400);">검색 결과가 없습니다.</div>`;
+        container.innerHTML = `<div class="empty-state"><i class='bx bx-search'></i><p>검색 결과가 없습니다.</p></div>`;
         return;
     }
 
     container.innerHTML = filtered.map(item => {
         const thumb = item.images && item.images.length > 0 ? item.images[0] : null;
+        const totalQuotes = item.variants.reduce((sum, v) => sum + v.quotes.length, 0);
+        const isActive = item.id === selectedItemId ? 'active' : '';
         
         return `
-        <div class="mat-card">
-            <div class="mat-header">
-                ${thumb 
-                    ? `<img src="${thumb}" class="mat-img" onclick="openImgViewer('${thumb}')">` 
-                    : `<div class="mat-img-placeholder"><i class='bx bx-image'></i></div>`
-                }
-                <div class="mat-info">
-                    ${item.category ? `<div class="mat-cat-badge">${item.category}</div>` : ''}
-                    <h3>${item.itemName}</h3>
-                    ${item.remarks ? `<div class="mat-remarks">${item.remarks}</div>` : ''}
+        <div class="mat-item-row ${isActive}" onclick="selectItem('${item.id}')">
+            ${thumb 
+                ? `<img src="${thumb}" class="mat-thumb">` 
+                : `<div class="mat-thumb-placeholder"><i class='bx bx-image'></i></div>`
+            }
+            <div class="mat-list-info">
+                <div class="mat-list-name">${item.itemName}</div>
+                <div class="mat-list-meta">
+                    ${item.category ? `<span class="cat-badge">${item.category}</span>` : ''}
+                    <span>규격 ${item.variants.length}</span>
+                    <span>견적 ${totalQuotes}</span>
                 </div>
-                <div class="mat-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editItem('${item.id}')"><i class='bx bx-edit'></i> 수정</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteItem('${item.id}')"><i class='bx bx-trash'></i></button>
-                </div>
-            </div>
-            <div class="mat-body">
-                ${item.variants.length > 0 ? item.variants.map(v => renderVariant(v)).join('') : '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;">등록된 규격이 없습니다.</div>'}
-                <button class="btn-add-variant" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 이 품목에 새로운 규격 추가</button>
             </div>
         </div>
         `;
     }).join('');
 }
 
+function selectItem(id) {
+    selectedItemId = id;
+    renderList(); // Update active row styling
+    renderDetailPanel(id);
+    
+    // Mobile view switch
+    if (window.innerWidth <= 768) {
+        document.getElementById('listView').classList.remove('active');
+        document.getElementById('detailView').classList.add('active');
+        document.getElementById('btnBackToList').style.display = 'inline-flex';
+    }
+}
+
+function goBackToList() {
+    selectedItemId = null;
+    renderList();
+    document.getElementById('listView').classList.add('active');
+    document.getElementById('detailView').classList.remove('active');
+    document.getElementById('btnBackToList').style.display = 'none';
+}
+
+function renderDetailPanel(id) {
+    const container = document.getElementById('detailContent');
+    const item = itemsData.find(i => i.id === id);
+    
+    if (!item) {
+        container.innerHTML = `<div class="empty-state"><i class='bx bx-mouse'></i><p>좌측 목록에서 품목을 선택해주세요.</p></div>`;
+        return;
+    }
+
+    const mainThumb = item.images && item.images.length > 0 ? item.images[0] : null;
+
+    let variantsHtml = item.variants.length > 0 
+        ? item.variants.map(v => renderVariant(v)).join('') 
+        : '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;background:#fff;border-radius:8px;border:1px dashed var(--gray-300);">등록된 규격이 없습니다.</div>';
+
+    container.innerHTML = `
+        <div class="detail-card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 16px;">
+                <div class="detail-header-info">
+                    ${mainThumb 
+                        ? `<img src="${mainThumb}" class="detail-main-img" onclick="openImgViewer('${mainThumb}')">` 
+                        : `<div class="detail-img-placeholder"><i class='bx bx-image'></i></div>`
+                    }
+                    <div class="detail-text">
+                        ${item.category ? `<span class="cat-badge" style="margin-bottom:8px;display:inline-block;">${item.category}</span>` : ''}
+                        <h3 class="detail-title">${item.itemName}</h3>
+                        <div style="margin-top: 12px;">
+                            <button class="btn btn-sm btn-outline" onclick="editItem('${item.id}')"><i class='bx bx-edit'></i> 정보 수정</button>
+                            <button class="btn btn-sm btn-outline" style="color:var(--red-500); border-color:var(--red-200);" onclick="deleteItem('${item.id}')"><i class='bx bx-trash'></i> 삭제</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${item.remarks ? `<div class="detail-remarks">${item.remarks}</div>` : ''}
+            
+            ${item.images && item.images.length > 1 ? `
+                <div class="detail-gallery">
+                    ${item.images.map(img => `<img src="${img}" onclick="openImgViewer('${img}')">`).join('')}
+                </div>
+            ` : ''}
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+            <h4 style="margin:0; font-size:14px; font-weight:700; color:var(--gray-800);">규격 및 견적 내역</h4>
+            <button class="btn btn-sm btn-primary" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 규격 추가</button>
+        </div>
+        
+        ${variantsHtml}
+    `;
+}
+
 function renderVariant(variant) {
-    // Find lowest price
     let minPrice = Infinity;
     variant.quotes.forEach(q => {
-        // Here we could add currency conversion if necessary, but assuming KRW for lowest price highlighting usually
-        // For simplicity, we just compare raw unitPrice if currency is same, else ignore for 'min' calculation or assume KRW
-        const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350; // dummy conversion for now
+        const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
         if (krwPrice < minPrice) minPrice = krwPrice;
     });
 
@@ -297,7 +353,7 @@ function renderVariant(variant) {
                         <th style="width:20%; text-align:right;">단가</th>
                         <th style="width:15%;">견적일</th>
                         <th style="width:30%;">비고/조건</th>
-                        <th style="width:10%;">관리</th>
+                        <th style="width:10%; text-align:right;">관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -329,27 +385,32 @@ function renderVariant(variant) {
     return `
         <div class="variant-block">
             <div class="variant-header">
-                <div class="variant-title"><i class='bx bx-check-square'></i> ${variant.spec} <span class="variant-unit">(${variant.unit})</span></div>
+                <div class="variant-title"><i class='bx bx-check-square'></i> ${variant.spec} <span class="variant-unit">${variant.unit ? '('+variant.unit+')' : ''}</span></div>
                 <div style="display:flex; gap:6px;">
-                    <button class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editVariant('${variant.id}')"><i class='bx bx-edit'></i></button>
-                    <button class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:11px;" onclick="openQuoteModal('${variant.id}')"><i class='bx bx-plus'></i> 견적 추가</button>
+                    <button class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editVariant('${variant.id}')"><i class='bx bx-edit'></i> 수정</button>
                 </div>
             </div>
             ${quotesHtml}
+            <button class="btn-add-quote" onclick="openQuoteModal('${variant.id}')"><i class='bx bx-plus'></i> 이 규격에 견적 추가</button>
         </div>
     `;
 }
 
 // --- Item Modals ---
+function editItem(id) {
+    const item = itemsData.find(i => i.id === id);
+    if(item) openItemModal(item);
+}
+
 function openItemModal(item = null) {
     document.getElementById('itemModalTitle').textContent = item ? '품목 수정' : '품목 등록';
     document.getElementById('itemId').value = item ? item.id : '';
     document.getElementById('itemItemName').value = item ? item.itemName : '';
-    document.getElementById('itemCategory').value = item ? item.category : '';
-    document.getElementById('itemRemarks').value = item ? item.remarks : '';
+    document.getElementById('itemCategory').value = item ? (item.category || '') : '';
+    document.getElementById('itemRemarks').value = item ? (item.remarks || '') : '';
     document.getElementById('itemImgUrl').value = '';
     
-    pendingImages = item ? [...item.images] : [];
+    pendingImages = item && item.images ? [...item.images] : [];
     renderPreviewImages();
     document.getElementById('itemModal').classList.add('active');
 }
@@ -377,10 +438,13 @@ async function saveItem() {
                 body: JSON.stringify(payload)
             });
         } else {
-            await authFetch(`${API_BASE}`, {
+            const res = await authFetch(`${API_BASE}`, {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             });
+            const newItem = await res.json();
+            // Automatically select the newly created item
+            if (newItem && newItem.id) selectedItemId = newItem.id;
         }
         closeItemModal();
         await loadCategories();
@@ -394,6 +458,14 @@ async function deleteItem(id) {
     if(!confirm('이 품목과 포함된 모든 규격/견적을 삭제하시겠습니까?')) return;
     try {
         await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+        if (selectedItemId === id) {
+            selectedItemId = null;
+            if (window.innerWidth <= 768) {
+                goBackToList();
+            } else {
+                renderDetailPanel(null);
+            }
+        }
         await loadItems();
     } catch(err) {
         Swal.fire('실패', err.message, 'error');
@@ -406,7 +478,7 @@ function openVariantModal(itemId, variant = null) {
     document.getElementById('variantId').value = variant ? variant.id : '';
     document.getElementById('variantItemId').value = itemId;
     document.getElementById('variantSpec').value = variant ? variant.spec : '';
-    document.getElementById('variantUnit').value = variant ? variant.unit : '';
+    document.getElementById('variantUnit').value = variant ? (variant.unit || '') : '';
     
     document.getElementById('variantModal').classList.add('active');
 }
@@ -465,7 +537,7 @@ function openQuoteModal(variantId, quote = null) {
     
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('quoteDate').value = quote ? quote.quoteDate : today;
-    document.getElementById('quoteRemarks').value = quote ? quote.remarks : '';
+    document.getElementById('quoteRemarks').value = quote ? (quote.remarks || '') : '';
     document.getElementById('quoteIsSelected').checked = quote ? quote.isSelected === 1 : false;
     
     document.getElementById('quoteModal').classList.add('active');
