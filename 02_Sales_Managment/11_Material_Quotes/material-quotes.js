@@ -4,8 +4,18 @@ let pendingImages = [];
 let currentSearchTerm = '';
 let currentCategoryFilter = '';
 let selectedItemId = null;
+let currentPDPImage = null;
 
 const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api/mat-quotes' : 'https://kng.junparks.com/api/mat-quotes';
+
+function getImgSrc(url) {
+    if (!url) return '';
+    if (url.startsWith('/api/mat-quotes')) {
+        const base = API_BASE.replace('/api/mat-quotes', '');
+        return base + url;
+    }
+    return url;
+}
 
 // --- Auth Fetch ---
 async function authFetch(url, opts = {}, _retries = 3) {
@@ -195,7 +205,7 @@ function renderPreviewImages() {
     const container = document.getElementById('itemImgPreview');
     container.innerHTML = pendingImages.map((url, idx) => `
         <div class="img-preview-item">
-            <img src="${url}">
+            <img src="${getImgSrc(url)}">
             <button class="btn-remove" onclick="removeImage(${idx})"><i class='bx bx-x'></i></button>
         </div>
     `).join('');
@@ -268,7 +278,8 @@ function renderGrid() {
     }
 
     container.innerHTML = filtered.map(item => {
-        const thumb = item.images && item.images.length > 0 ? item.images[0] : null;
+        let thumb = item.images && item.images.length > 0 ? item.images[0] : null;
+        if(thumb) thumb = getImgSrc(thumb);
         const totalQuotes = item.variants.reduce((sum, v) => sum + v.quotes.length, 0);
         
         return `
@@ -296,7 +307,6 @@ function renderGrid() {
 }
 
 // --- PDP (Product Detail Page) ---
-let currentPDPImage = null;
 
 function openPDP(id) {
     selectedItemId = id;
@@ -311,13 +321,10 @@ function closePDP() {
 
 function setPDPMainImage(src) {
     currentPDPImage = src;
-    const imgEl = document.getElementById('pdpMainImgEl');
-    if(imgEl) {
-        imgEl.src = src;
-    }
+    document.getElementById('pdpMainImage').style.backgroundImage = `url('${getImgSrc(src)}')`;
     // Update active thumb
-    document.querySelectorAll('.pdp-thumb-list img').forEach(el => {
-        if(el.src === src || el.getAttribute('src') === src) el.classList.add('active');
+    document.querySelectorAll('.pdp-gallery-thumbs img').forEach(el => {
+        if(el.src === getImgSrc(src) || el.getAttribute('src') === src) el.classList.add('active');
         else el.classList.remove('active');
     });
 }
@@ -333,26 +340,27 @@ function renderPDP(id) {
     const infoCol = document.getElementById('pdpInfoCol');
     
     // Setup Gallery
-    let galleryHtml = '';
     if (item.images && item.images.length > 0) {
         if (!currentPDPImage || !item.images.includes(currentPDPImage)) {
             currentPDPImage = item.images[0];
         }
-        galleryHtml += `
-            <img id="pdpMainImgEl" src="${currentPDPImage}" class="pdp-main-img" onclick="openImgViewer(this.src)">
+        galleryCol.innerHTML = `
+            <div id="pdpMainImage" class="pdp-main-img" style="background-image: url('${getImgSrc(currentPDPImage)}');" onclick="openImgViewer('${currentPDPImage}')"></div>
+            <div id="pdpGallery"></div>
         `;
+        
         if (item.images.length > 1) {
-            galleryHtml += `<div class="pdp-thumb-list">`;
+            let galleryHtml = `<div class="pdp-gallery-thumbs">`;
             item.images.forEach(img => {
                 const active = img === currentPDPImage ? 'active' : '';
-                galleryHtml += `<img src="${img}" class="${active}" onclick="setPDPMainImage('${img}')">`;
+                galleryHtml += `<img src="${getImgSrc(img)}" class="${active}" onclick="setPDPMainImage('${img}')">`;
             });
             galleryHtml += `</div>`;
+            document.getElementById('pdpGallery').innerHTML = galleryHtml;
         }
     } else {
-        galleryHtml += `<div class="pdp-main-img-placeholder"><i class='bx bx-image'></i></div>`;
+        galleryCol.innerHTML = `<div class="pdp-main-img-placeholder"><i class='bx bx-image'></i></div>`;
     }
-    galleryCol.innerHTML = galleryHtml;
 
     // Setup Info & Variants
     let variantsHtml = item.variants.length > 0 
@@ -725,7 +733,7 @@ async function deleteQuote(id) {
 // --- Img Viewer ---
 function openImgViewer(src) {
     const overlay = document.getElementById('imgViewerOverlay');
-    document.getElementById('imgViewerTarget').src = src;
+    document.getElementById('imgViewerTarget').src = getImgSrc(src);
     overlay.classList.add('active');
 }
 function closeImgViewer(e) {
