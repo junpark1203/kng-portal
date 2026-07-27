@@ -312,10 +312,12 @@ function openPDP(id) {
     selectedItemId = id;
     renderPDP(id);
     document.getElementById('pdpOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closePDP() {
     document.getElementById('pdpOverlay').classList.remove('active');
+    document.body.style.overflow = '';
     selectedItemId = null;
 }
 
@@ -626,10 +628,12 @@ function openItemModal(item = null) {
     }
 
     document.getElementById('itemModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeItemModal() {
     document.getElementById('itemModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 async function saveItem() {
@@ -739,10 +743,12 @@ function openVariantModal(itemId, variant = null) {
     document.getElementById('variantUnit').value = variant ? (variant.unit || '') : '';
     
     document.getElementById('variantModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeVariantModal() {
     document.getElementById('variantModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 async function saveVariant() {
@@ -799,10 +805,12 @@ function openQuoteModal(variantId, quote = null) {
     document.getElementById('quoteIsSelected').checked = quote ? quote.isSelected === 1 : false;
     
     document.getElementById('quoteModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeQuoteModal() {
     document.getElementById('quoteModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 async function saveQuote() {
@@ -867,10 +875,12 @@ function openImgViewer(src) {
     const overlay = document.getElementById('imgViewerOverlay');
     document.getElementById('imgViewerTarget').src = getImgSrc(src);
     overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 function closeImgViewer(e) {
     const overlay = document.getElementById('imgViewerOverlay');
     if (e.target === overlay || e.target.classList.contains('bx-x') || e.target.classList.contains('modal-close')) {
         overlay.classList.remove('active');
+        document.body.style.overflow = '';
     }
 }
