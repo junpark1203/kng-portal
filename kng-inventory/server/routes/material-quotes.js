@@ -343,7 +343,7 @@ router.post('/files/upload-url', async (req, res) => {
         const { url } = req.body;
         if (!url) return res.status(400).json({ error: 'URL is required' });
 
-        const fetch = (await import('node-fetch')).default;
+        // Node 18+ has native fetch, no need for node-fetch
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
 
