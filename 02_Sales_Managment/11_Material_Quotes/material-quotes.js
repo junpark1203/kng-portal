@@ -46,12 +46,7 @@ function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
     searchInput.addEventListener('input', (e) => {
         currentSearchTerm = e.target.value;
-        renderList();
-    });
-    document.getElementById('searchClear').addEventListener('click', () => {
-        searchInput.value = '';
-        currentSearchTerm = '';
-        renderList();
+        renderGrid();
     });
 
     // Category Dropdown
@@ -123,9 +118,11 @@ async function loadItems() {
     try {
         const res = await authFetch(`${API_BASE}`);
         itemsData = await res.json();
-        renderList();
-        if (selectedItemId) {
-            renderDetailPanel(selectedItemId);
+        renderGrid();
+        
+        // If PDP is already open, refresh its content
+        if (selectedItemId && document.getElementById('pdpOverlay').classList.contains('active')) {
+            renderPDP(selectedItemId);
         }
     } catch (err) {
         console.error('Failed to load items', err);
@@ -204,15 +201,28 @@ function renderCategoryFilters() {
 function setCategoryFilter(cat) {
     currentCategoryFilter = cat;
     renderCategoryFilters();
-    renderList();
+    renderGrid();
 }
 
 function formatCurrency(amount, currency = 'KRW') {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: currency }).format(amount);
 }
 
-function renderList() {
-    const container = document.getElementById('matList');
+function getLowestPriceString(item) {
+    let minKrw = Infinity;
+    item.variants.forEach(v => {
+        v.quotes.forEach(q => {
+            const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
+            if (krwPrice < minKrw) minKrw = krwPrice;
+        });
+    });
+    
+    if (minKrw === Infinity) return '<span style="color:var(--gray-400);font-size:14px;font-weight:600;">견적 없음</span>';
+    return `<small>최저</small> ${formatCurrency(minKrw, 'KRW')} <small>~</small>`;
+}
+
+function renderGrid() {
+    const container = document.getElementById('matGrid');
     
     let filtered = itemsData;
     if (currentCategoryFilter) {
@@ -235,27 +245,31 @@ function renderList() {
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state"><i class='bx bx-search'></i><p>검색 결과가 없습니다.</p></div>`;
+        container.innerHTML = `<div class="empty-state"><i class='bx bx-search'></i><p>등록된 상품이 없거나 검색 결과가 없습니다.</p></div>`;
         return;
     }
 
     container.innerHTML = filtered.map(item => {
         const thumb = item.images && item.images.length > 0 ? item.images[0] : null;
         const totalQuotes = item.variants.reduce((sum, v) => sum + v.quotes.length, 0);
-        const isActive = item.id === selectedItemId ? 'active' : '';
         
         return `
-        <div class="mat-item-row ${isActive}" onclick="selectItem('${item.id}')">
-            ${thumb 
-                ? `<img src="${thumb}" class="mat-thumb">` 
-                : `<div class="mat-thumb-placeholder"><i class='bx bx-image'></i></div>`
-            }
-            <div class="mat-list-info">
-                <div class="mat-list-name">${item.itemName}</div>
-                <div class="mat-list-meta">
-                    ${item.category ? `<span class="cat-badge">${item.category}</span>` : ''}
-                    <span>규격 ${item.variants.length}</span>
-                    <span>견적 ${totalQuotes}</span>
+        <div class="mat-card" onclick="openPDP('${item.id}')">
+            <div class="mat-card-img-wrapper">
+                ${thumb 
+                    ? `<img src="${thumb}" loading="lazy" alt="${item.itemName}">` 
+                    : `<div class="mat-card-placeholder"><i class='bx bx-image'></i></div>`
+                }
+            </div>
+            <div class="mat-card-body">
+                <div class="mat-card-cat">${item.category || '미분류'}</div>
+                <div class="mat-card-title">${item.itemName}</div>
+                <div class="mat-card-meta">
+                    <span>규격 ${item.variants.length}개</span>
+                    <span>견적 ${totalQuotes}건</span>
+                </div>
+                <div class="mat-card-price">
+                    ${getLowestPriceString(item)}
                 </div>
             </div>
         </div>
@@ -263,80 +277,86 @@ function renderList() {
     }).join('');
 }
 
-function selectItem(id) {
+// --- PDP (Product Detail Page) ---
+let currentPDPImage = null;
+
+function openPDP(id) {
     selectedItemId = id;
-    renderList(); // Update active row styling
-    renderDetailPanel(id);
-    
-    // Mobile view switch
-    if (window.innerWidth <= 768) {
-        document.getElementById('listView').classList.remove('active');
-        document.getElementById('detailView').classList.add('active');
-        document.getElementById('btnBackToList').style.display = 'inline-flex';
-    }
+    renderPDP(id);
+    document.getElementById('pdpOverlay').classList.add('active');
 }
 
-function goBackToList() {
+function closePDP() {
+    document.getElementById('pdpOverlay').classList.remove('active');
     selectedItemId = null;
-    renderList();
-    document.getElementById('listView').classList.add('active');
-    document.getElementById('detailView').classList.remove('active');
-    document.getElementById('btnBackToList').style.display = 'none';
 }
 
-function renderDetailPanel(id) {
-    const container = document.getElementById('detailContent');
+function setPDPMainImage(src) {
+    currentPDPImage = src;
+    const imgEl = document.getElementById('pdpMainImgEl');
+    if(imgEl) {
+        imgEl.src = src;
+    }
+    // Update active thumb
+    document.querySelectorAll('.pdp-thumb-list img').forEach(el => {
+        if(el.src === src || el.getAttribute('src') === src) el.classList.add('active');
+        else el.classList.remove('active');
+    });
+}
+
+function renderPDP(id) {
     const item = itemsData.find(i => i.id === id);
-    
     if (!item) {
-        container.innerHTML = `<div class="empty-state"><i class='bx bx-mouse'></i><p>좌측 목록에서 품목을 선택해주세요.</p></div>`;
+        closePDP();
         return;
     }
 
-    const mainThumb = item.images && item.images.length > 0 ? item.images[0] : null;
+    const galleryCol = document.getElementById('pdpGalleryCol');
+    const infoCol = document.getElementById('pdpInfoCol');
+    
+    // Setup Gallery
+    let galleryHtml = '';
+    if (item.images && item.images.length > 0) {
+        if (!currentPDPImage || !item.images.includes(currentPDPImage)) {
+            currentPDPImage = item.images[0];
+        }
+        galleryHtml += `
+            <img id="pdpMainImgEl" src="${currentPDPImage}" class="pdp-main-img" onclick="openImgViewer(this.src)">
+        `;
+        if (item.images.length > 1) {
+            galleryHtml += `<div class="pdp-thumb-list">`;
+            item.images.forEach(img => {
+                const active = img === currentPDPImage ? 'active' : '';
+                galleryHtml += `<img src="${img}" class="${active}" onclick="setPDPMainImage('${img}')">`;
+            });
+            galleryHtml += `</div>`;
+        }
+    } else {
+        galleryHtml += `<div class="pdp-main-img-placeholder"><i class='bx bx-image'></i></div>`;
+    }
+    galleryCol.innerHTML = galleryHtml;
 
+    // Setup Info & Variants
     let variantsHtml = item.variants.length > 0 
-        ? item.variants.map(v => renderVariant(v)).join('') 
-        : '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;background:#fff;border-radius:8px;border:1px dashed var(--gray-300);">등록된 규격이 없습니다.</div>';
+        ? item.variants.map(v => renderPDPVariant(v)).join('') 
+        : '<div style="padding:40px;text-align:center;color:var(--gray-400);font-size:14px;background:#f8fafc;border-radius:12px;border:2px dashed var(--gray-200);margin-bottom:24px;">등록된 규격(옵션)이 없습니다.</div>';
 
-    container.innerHTML = `
-        <div class="detail-card">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 16px;">
-                <div class="detail-header-info">
-                    ${mainThumb 
-                        ? `<img src="${mainThumb}" class="detail-main-img" onclick="openImgViewer('${mainThumb}')">` 
-                        : `<div class="detail-img-placeholder"><i class='bx bx-image'></i></div>`
-                    }
-                    <div class="detail-text">
-                        ${item.category ? `<span class="cat-badge" style="margin-bottom:8px;display:inline-block;">${item.category}</span>` : ''}
-                        <h3 class="detail-title">${item.itemName}</h3>
-                        <div style="margin-top: 12px;">
-                            <button class="btn btn-sm btn-outline" onclick="editItem('${item.id}')"><i class='bx bx-edit'></i> 정보 수정</button>
-                            <button class="btn btn-sm btn-outline" style="color:var(--red-500); border-color:var(--red-200);" onclick="deleteItem('${item.id}')"><i class='bx bx-trash'></i> 삭제</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            ${item.remarks ? `<div class="detail-remarks">${item.remarks}</div>` : ''}
-            
-            ${item.images && item.images.length > 1 ? `
-                <div class="detail-gallery">
-                    ${item.images.map(img => `<img src="${img}" onclick="openImgViewer('${img}')">`).join('')}
-                </div>
-            ` : ''}
-        </div>
+    infoCol.innerHTML = `
+        ${item.category ? `<span class="pdp-cat">${item.category}</span>` : ''}
+        <h1 class="pdp-title">${item.itemName}</h1>
         
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-            <h4 style="margin:0; font-size:14px; font-weight:700; color:var(--gray-800);">규격 및 견적 내역</h4>
-            <button class="btn btn-sm btn-primary" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 규격 추가</button>
+        ${item.remarks ? `<div class="pdp-remarks">${item.remarks}</div>` : ''}
+        
+        <div class="pdp-section-title">
+            <span>규격 및 견적 단가</span>
+            <button class="btn btn-primary btn-sm" onclick="openVariantModal('${item.id}')"><i class='bx bx-plus'></i> 규격 추가</button>
         </div>
         
         ${variantsHtml}
     `;
 }
 
-function renderVariant(variant) {
+function renderPDPVariant(variant) {
     let minPrice = Infinity;
     variant.quotes.forEach(q => {
         const krwPrice = q.currency === 'KRW' ? q.unitPrice : q.unitPrice * 1350;
@@ -350,10 +370,9 @@ function renderVariant(variant) {
                 <thead>
                     <tr>
                         <th style="width:25%;">공급업체</th>
-                        <th style="width:20%; text-align:right;">단가</th>
-                        <th style="width:15%;">견적일</th>
-                        <th style="width:30%;">비고/조건</th>
-                        <th style="width:10%; text-align:right;">관리</th>
+                        <th style="width:25%; text-align:right;">단가</th>
+                        <th style="width:35%;">비고 / 조건</th>
+                        <th style="width:15%; text-align:right;">관리</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -364,12 +383,11 @@ function renderVariant(variant) {
                         <tr class="${isLowest ? 'lowest-price' : ''}">
                             <td>
                                 <strong>${q.supplier}</strong>
-                                ${isLowest ? '<span class="badge-lowest">최저가</span>' : ''}
+                                ${isLowest ? '<span class="badge-crown"><i class="bx bxs-crown"></i> 최저가</span>' : ''}
                                 ${q.isSelected ? '<span class="badge-selected"><i class="bx bx-check"></i> 채택</span>' : ''}
                             </td>
                             <td class="col-price">${formatCurrency(q.unitPrice, q.currency)}</td>
-                            <td>${q.quoteDate}</td>
-                            <td><span style="color:var(--gray-600); font-size:11px;">${q.remarks}</span></td>
+                            <td><span style="color:var(--gray-500); font-size:12px;">${q.remarks || '-'}</span></td>
                             <td class="col-actions">
                                 <button class="btn btn-sm btn-icon" onclick="editQuote('${q.id}')"><i class='bx bx-edit'></i></button>
                                 <button class="btn btn-sm btn-icon" style="color:var(--red-500);" onclick="deleteQuote('${q.id}')"><i class='bx bx-trash'></i></button>
@@ -383,15 +401,15 @@ function renderVariant(variant) {
     }
 
     return `
-        <div class="variant-block">
-            <div class="variant-header">
-                <div class="variant-title"><i class='bx bx-check-square'></i> ${variant.spec} <span class="variant-unit">${variant.unit ? '('+variant.unit+')' : ''}</span></div>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editVariant('${variant.id}')"><i class='bx bx-edit'></i> 수정</button>
+        <div class="pdp-variant-block">
+            <div class="pdp-variant-header">
+                <div class="pdp-variant-title">${variant.spec} <span style="font-size:13px; color:var(--gray-500); font-weight:normal;">${variant.unit ? '('+variant.unit+')' : ''}</span></div>
+                <div>
+                    <button class="btn btn-sm btn-outline" style="padding:4px 8px;" onclick="editVariant('${variant.id}')"><i class='bx bx-edit'></i> 수정</button>
                 </div>
             </div>
             ${quotesHtml}
-            <button class="btn-add-quote" onclick="openQuoteModal('${variant.id}')"><i class='bx bx-plus'></i> 이 규격에 견적 추가</button>
+            <button class="btn-add-quote-full" onclick="openQuoteModal('${variant.id}')"><i class='bx bx-plus'></i> 이 규격에 새 견적 추가</button>
         </div>
     `;
 }
@@ -403,7 +421,7 @@ function editItem(id) {
 }
 
 function openItemModal(item = null) {
-    document.getElementById('itemModalTitle').textContent = item ? '품목 수정' : '품목 등록';
+    document.getElementById('itemModalTitle').textContent = item ? '품목 수정' : '새 품목 등록';
     document.getElementById('itemId').value = item ? item.id : '';
     document.getElementById('itemItemName').value = item ? item.itemName : '';
     document.getElementById('itemCategory').value = item ? (item.category || '') : '';
@@ -443,12 +461,12 @@ async function saveItem() {
                 body: JSON.stringify(payload)
             });
             const newItem = await res.json();
-            // Automatically select the newly created item
             if (newItem && newItem.id) selectedItemId = newItem.id;
         }
         closeItemModal();
         await loadCategories();
         await loadItems();
+        if(!id && selectedItemId) openPDP(selectedItemId);
     } catch(err) {
         Swal.fire('실패', err.message, 'error');
     }
@@ -459,12 +477,7 @@ async function deleteItem(id) {
     try {
         await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
         if (selectedItemId === id) {
-            selectedItemId = null;
-            if (window.innerWidth <= 768) {
-                goBackToList();
-            } else {
-                renderDetailPanel(null);
-            }
+            closePDP();
         }
         await loadItems();
     } catch(err) {
@@ -474,7 +487,7 @@ async function deleteItem(id) {
 
 // --- Variant Modals ---
 function openVariantModal(itemId, variant = null) {
-    document.getElementById('variantModalTitle').textContent = variant ? '규격 수정' : '규격 추가';
+    document.getElementById('variantModalTitle').textContent = variant ? '규격 수정' : '새 규격(옵션) 추가';
     document.getElementById('variantId').value = variant ? variant.id : '';
     document.getElementById('variantItemId').value = itemId;
     document.getElementById('variantSpec').value = variant ? variant.spec : '';
@@ -528,7 +541,7 @@ function editVariant(id) {
 
 // --- Quote Modals ---
 function openQuoteModal(variantId, quote = null) {
-    document.getElementById('quoteModalTitle').textContent = quote ? '견적 수정' : '견적 추가';
+    document.getElementById('quoteModalTitle').textContent = quote ? '견적 수정' : '새 견적 추가';
     document.getElementById('quoteId').value = quote ? quote.id : '';
     document.getElementById('quoteVariantId').value = variantId;
     document.getElementById('quoteSupplier').value = quote ? quote.supplier : '';
