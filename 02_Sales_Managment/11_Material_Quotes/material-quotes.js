@@ -96,6 +96,24 @@ function setupEventListeners() {
             handleFiles(e.target.files);
         }
     });
+
+    // Clipboard paste event for images
+    window.addEventListener('paste', (e) => {
+        const modal = document.getElementById('itemModal');
+        if (modal && modal.classList.contains('active')) {
+            const items = e.clipboardData.items;
+            const files = [];
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    files.push(items[i].getAsFile());
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                handleFiles(files);
+            }
+        }
+    });
 }
 
 function selectCategory(cat) {
@@ -414,6 +432,28 @@ function renderPDPVariant(variant) {
     `;
 }
 
+// --- Dynamic Initial Variants ---
+function addInitialVariantRow(spec = '', unit = '') {
+    const list = document.getElementById('initialVariantList');
+    const rowId = 'ivRow_' + Date.now() + Math.random().toString(36).substr(2, 5);
+    const html = `
+        <div id="${rowId}" style="display:flex; gap:8px; align-items:center;">
+            <input type="text" class="iv-spec" placeholder="규격/옵션명 (필수)" value="${spec}" style="flex:2; padding:8px 12px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;" required>
+            <div class="combo-box-wrapper" style="flex:1;">
+                <input type="text" class="iv-unit" placeholder="단위" value="${unit}" style="width:100%; padding:8px 24px 8px 12px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
+                <i class='bx bx-chevron-down combo-icon' style="right:8px;"></i>
+                <select onchange="this.previousElementSibling.previousElementSibling.value = this.value; this.value=''" style="width:24px;">
+                    <option value="">(선택)</option>
+                    <option value="EA">EA</option><option value="SET">SET</option><option value="M">M</option>
+                    <option value="KG">KG</option><option value="BOX">BOX</option><option value="ROLL">ROLL</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-sm btn-icon" style="color:var(--red-500); border:1px solid var(--red-200); background:#fff;" onclick="document.getElementById('${rowId}').remove()"><i class='bx bx-trash'></i></button>
+        </div>
+    `;
+    list.insertAdjacentHTML('beforeend', html);
+}
+
 // --- Item Modals ---
 function editItem(id) {
     const item = itemsData.find(i => i.id === id);
@@ -430,6 +470,15 @@ function openItemModal(item = null) {
     
     pendingImages = item && item.images ? [...item.images] : [];
     renderPreviewImages();
+
+    document.getElementById('initialVariantList').innerHTML = '';
+    if (item) {
+        document.getElementById('itemInitialVariantsWrapper').style.display = 'none'; // 수정 시에는 개별 탭에서 수정
+    } else {
+        document.getElementById('itemInitialVariantsWrapper').style.display = 'block';
+        addInitialVariantRow(); // Add one default empty row
+    }
+
     document.getElementById('itemModal').classList.add('active');
 }
 
@@ -461,7 +510,23 @@ async function saveItem() {
                 body: JSON.stringify(payload)
             });
             const newItem = await res.json();
-            if (newItem && newItem.id) selectedItemId = newItem.id;
+            if (newItem && newItem.id) {
+                selectedItemId = newItem.id;
+                
+                // Add initial variants sequentially
+                const ivSpecs = document.querySelectorAll('#initialVariantList .iv-spec');
+                const ivUnits = document.querySelectorAll('#initialVariantList .iv-unit');
+                for (let i = 0; i < ivSpecs.length; i++) {
+                    const s = ivSpecs[i].value.trim();
+                    const u = ivUnits[i].value.trim();
+                    if (s) {
+                        await authFetch(`${API_BASE}/variants`, {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ itemId: newItem.id, spec: s, unit: u })
+                        }).catch(e => console.error("Variant save error:", e));
+                    }
+                }
+            }
         }
         closeItemModal();
         await loadCategories();

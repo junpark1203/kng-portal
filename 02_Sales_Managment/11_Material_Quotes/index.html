@@ -104,11 +104,11 @@
                         <textarea id="itemRemarks" placeholder="특이사항 및 상세 설명을 입력하세요"></textarea>
                     </div>
                     <div class="fg fg-full">
-                        <label>사진 (드래그 앤 드롭 또는 URL)</label>
+                        <label>사진 (드래그 앤 드롭, 클립보드 붙여넣기, URL)</label>
                         <div class="dropzone" id="itemDropzone">
                             <i class='bx bx-cloud-upload'></i>
                             <p style="margin:0; font-size:13px; font-weight:600;">클릭하거나 파일을 드래그하여 업로드하세요</p>
-                            <p style="margin:4px 0 0 0; font-size:11px;">JPG, PNG 형식 지원</p>
+                            <p style="margin:4px 0 0 0; font-size:11px;">(Ctrl+V 로 클립보드 이미지 붙여넣기 지원)</p>
                             <input type="file" id="itemFileInput" multiple style="display:none;" accept="image/*">
                         </div>
                         <div style="display:flex; gap:8px; margin-bottom:10px;">
@@ -116,6 +116,16 @@
                             <button type="button" class="btn btn-outline" onclick="uploadImgUrl()">추가</button>
                         </div>
                         <div class="img-preview-list" id="itemImgPreview"></div>
+                    </div>
+                    <!-- 초기 규격 일괄 등록 영역 -->
+                    <div class="fg fg-full" id="itemInitialVariantsWrapper" style="margin-top: 10px; border-top: 1px dashed var(--gray-300); padding-top: 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                            <label style="margin:0;">초기 규격(옵션) 일괄 등록</label>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="addInitialVariantRow()"><i class='bx bx-plus'></i> 행 추가</button>
+                        </div>
+                        <div id="initialVariantList" style="display:flex; flex-direction:column; gap:8px;">
+                            <!-- JS로 행 추가됨 -->
+                        </div>
                     </div>
                 </div>
             </div>
