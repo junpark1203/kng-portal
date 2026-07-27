@@ -4,7 +4,26 @@ let pendingImages = [];
 let currentSearchTerm = '';
 let currentCategoryFilter = '';
 
-const API_BASE = '/api/mat-quotes';
+const API_BASE = 'https://kng.junparks.com/api/mat-quotes';
+
+// --- Auth Fetch (with retry for iframe auth race condition) ---
+async function authFetch(url, opts = {}, _retries = 3) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!opts.headers) opts.headers = {};
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, opts);
+    if (!res.ok && res.status === 401 && _retries > 0) {
+        await new Promise(r => setTimeout(r, 800));
+        return authFetch(url, opts, _retries - 1);
+    }
+    if (!res.ok) {
+        let errStr = res.statusText;
+        try { const errObj = await res.json(); errStr = errObj.error || errStr; } catch(e){}
+        throw new Error(errStr);
+    }
+    return res;
+}
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', async () => {
