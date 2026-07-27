@@ -345,7 +345,7 @@ router.post('/files/upload-url', async (req, res) => {
 
         const fetch = (await import('node-fetch')).default;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(\`Failed to fetch image: \${response.statusText}\`);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.startsWith('image/')) {
@@ -364,7 +364,7 @@ router.post('/files/upload-url', async (req, res) => {
         const filepath = path.join(UPLOAD_DIR, filename);
         fs.writeFileSync(filepath, buffer);
 
-        res.json({ urls: [\`/api/mat-quotes/uploads/\${filename}\`] });
+        res.json({ urls: [`/api/mat-quotes/uploads/${filename}`] });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
