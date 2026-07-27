@@ -102,22 +102,9 @@
                             <div id="categoryDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--gray-200); border-radius:4px; max-height:150px; overflow-y:auto; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
                         </div>
                     </div>
-                      <div class="fg fg-full">
-                          <label>비고 / 제품 설명</label>
-                          <textarea id="itemRemarks" placeholder="특이사항 및 상세 설명을 입력하세요"></textarea>
-                      </div>
-                      <!-- 커스텀 필드 영역 -->
-                      <div class="fg fg-full custom-fields-section" id="itemCustomFieldsWrapper" style="margin-top: 10px; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; background: #fafafa;">
-                          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                              <label style="margin:0; font-weight:700; color:var(--primary);"><i class='bx bx-list-plus'></i> 추가 속성 (옵션)</label>
-                              <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addCustomFieldRow()"><i class='bx bx-plus'></i> 속성 추가</button>
-                          </div>
-                          <div id="customFieldList" style="display:flex; flex-direction:column; gap:6px;">
-                              <!-- JS로 행 추가됨 -->
-                          </div>
-                      </div>
-                      <div class="fg fg-full">
-                          <label>사진 (드래그 앤 드롭, 클립보드 붙여넣기, URL)</label>
+
+                    <div class="fg fg-full">
+                        <label>사진 (드래그 앤 드롭, 클립보드 붙여넣기, URL)</label>
                         <div class="dropzone" id="itemDropzone">
                             <i class='bx bx-cloud-upload'></i>
                             <p style="margin:0; font-size:13px; font-weight:600;">클릭하거나 파일을 드래그하여 업로드하세요</p>
@@ -130,6 +117,7 @@
                         </div>
                         <div class="img-preview-list" id="itemImgPreview"></div>
                     </div>
+
                     <!-- 초기 규격/견적 일괄 등록 영역 (Matrix) -->
                     <div class="fg fg-full" id="itemInitialVariantsWrapper" style="margin-top: 10px; border-top: 1px dashed var(--gray-300); padding-top: 16px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
@@ -154,6 +142,22 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- 커스텀 필드 영역 -->
+                    <div class="fg fg-full custom-fields-section" id="itemCustomFieldsWrapper" style="margin-top: 10px; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; background: #fafafa;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                            <label style="margin:0; font-weight:700; color:var(--primary);"><i class='bx bx-list-plus'></i> 추가 속성 (옵션)</label>
+                            <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addCustomFieldRow()"><i class='bx bx-plus'></i> 속성 추가</button>
+                        </div>
+                        <div id="customFieldList" style="display:flex; flex-direction:column; gap:6px;">
+                            <!-- JS로 행 추가됨 -->
+                        </div>
+                    </div>
+
+                    <div class="fg fg-full">
+                        <label>비고 / 제품 설명</label>
+                        <textarea id="itemRemarks" placeholder="특이사항 및 상세 설명을 입력하세요"></textarea>
                     </div>
                 </div>
             </div>
