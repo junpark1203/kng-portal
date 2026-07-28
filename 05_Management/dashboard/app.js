@@ -176,6 +176,7 @@ function renderApprovals(expenses, exhibitions) {
             if (c === 'USD') return '$';
             if (c === 'EUR') return '€';
             if (c === 'JPY') return '¥';
+            if (c === 'CNY') return '¥';
             return '₩';
         };
         const curSym = getCurrencySymbol(doc.currency);
