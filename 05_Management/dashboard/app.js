@@ -153,12 +153,22 @@ async function loadCalendarEvents() {
             return;
         }
         
-        container.innerHTML = events.map(ev => `
+        container.innerHTML = events.map(ev => {
+            let dateStr = '';
+            if (ev.start.dateTime) {
+                const d = new Date(ev.start.dateTime);
+                dateStr = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(d);
+            } else if (ev.start.date) {
+                const d = new Date(ev.start.date);
+                dateStr = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(d) + ' (종일)';
+            }
+            return `
             <div class="event-item">
-                <div class="event-date">${ev.start.date || (ev.start.dateTime ? ev.start.dateTime.split('T')[0] : '')}</div>
+                <div class="event-date" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">${dateStr}</div>
                 <div class="event-title">${ev.summary}</div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
         container.innerHTML = `<div class="empty-state" style="color:red">${err.message}</div>`;
     }
