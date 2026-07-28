@@ -8,6 +8,12 @@ async function authFetch(url, options = {}) {
     try {
         if (window.parent && window.parent !== window && window.parent.getAuthToken) {
             token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
         }
     } catch(e) {}
     
