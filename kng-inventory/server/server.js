@@ -58,6 +58,12 @@ const { initWorkLogsTables } = workLogsRoutes;
 const materialQuotesRoutes = require('./routes/material-quotes');
 const { initMaterialQuotesTables } = materialQuotesRoutes;
 
+// 대시보드 모듈
+const dashboardRoutes = require('./routes/dashboard');
+
+// 캘린더 모듈
+const calendarRoutes = require('./routes/calendar');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -281,6 +287,8 @@ const db = new sqlite3.Database(dbFile, (err) => {
             materialQuotesRoutes.setDb(db);
             console.log('material_quotes API 준비 완료');
         });
+        // 대시보드
+        dashboardRoutes.setDb(db);
     }
 });
 
@@ -1003,9 +1011,9 @@ app.use('/api/exhibition-report', exhibitionReportRoutes.router);
 
 // 지출결의서
 app.use('/api/expense-resolution', expenseResolutionRoutes.router);
-
-// 품목별 견적 비교
 app.use('/api/mat-quotes', materialQuotesRoutes.router);
+app.use('/api/dashboard', dashboardRoutes.router);
+app.use('/api/calendar', calendarRoutes);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

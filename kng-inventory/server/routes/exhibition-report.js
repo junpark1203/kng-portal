@@ -22,6 +22,7 @@ const initExhibitionReportTables = (dbInstance) => {
                 exhibitionName TEXT,
                 visitDate TEXT,
                 booths TEXT, -- JSON Array of booth visits
+                status TEXT DEFAULT '임시작성',
                 createdAt TEXT,
                 updatedAt TEXT
             )
@@ -30,6 +31,7 @@ const initExhibitionReportTables = (dbInstance) => {
                 console.error('exhibition_reports 테이블 생성 오류:', err.message);
                 reject(err);
             } else {
+                dbInstance.run(`ALTER TABLE exhibition_reports ADD COLUMN status TEXT DEFAULT '임시작성'`, () => {});
                 console.log('exhibition_reports 테이블 확인 완료');
                 resolve();
             }
@@ -142,14 +144,14 @@ router.post('/', (req, res) => {
     const now = new Date().toISOString();
     const sql = `
         INSERT INTO exhibition_reports (
-            id, exhibitionName, visitDate, booths, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            id, exhibitionName, visitDate, booths, status, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
     const boothsJson = typeof p.booths === 'string' ? p.booths : JSON.stringify(p.booths || []);
     
     const params = [
-        id, p.exhibitionName || '', p.visitDate || '', boothsJson, now, now
+        id, p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || '임시작성', now, now
     ];
     
     db.run(sql, params, function(err) {
@@ -165,20 +167,31 @@ router.put('/:id', (req, res) => {
     const now = new Date().toISOString();
     const sql = `
         UPDATE exhibition_reports SET
-            exhibitionName = ?, visitDate = ?, booths = ?, updatedAt = ?
+            exhibitionName = ?, visitDate = ?, booths = ?, status = ?, updatedAt = ?
         WHERE id = ?
     `;
     
     const boothsJson = typeof p.booths === 'string' ? p.booths : JSON.stringify(p.booths || []);
     
     const params = [
-        p.exhibitionName || '', p.visitDate || '', boothsJson, now, id
+        p.exhibitionName || '', p.visitDate || '', boothsJson, p.status || '임시작성', now, id
     ];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '보고서를 찾을 수 없습니다.' });
         res.json({ message: '수정 성공' });
+    });
+});
+
+// 보고서 상태 수정
+router.put('/:id/status', (req, res) => {
+    const sql = `UPDATE exhibition_reports SET status=?, updatedAt=? WHERE id=?`;
+    const now = new Date().toISOString();
+    db.run(sql, [req.body.status, now, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '보고서를 찾을 수 없습니다.' });
+        res.json({ message: '상태 수정 성공' });
     });
 });
 

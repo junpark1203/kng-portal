@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1><i class='bx bx-grid-alt'></i> 관리자 대시보드</h1>
+            <button id="refreshBtn" class="refresh-btn"><i class='bx bx-refresh'></i> 새로고침</button>
+        </header>
+        
+        <div class="dashboard-grid">
+            <!-- 1. 결재 대기함 -->
+            <section class="widget">
+                <h2><i class='bx bx-edit-alt'></i> 결재 대기함</h2>
+                <div class="widget-content" id="approvalWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 2. 진행 중 인보이스 -->
+            <section class="widget">
+                <h2><i class='bx bx-file'></i> 진행 중 인보이스</h2>
+                <div class="widget-content" id="invoiceWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 3. 구글 캘린더 -->
+            <section class="widget calendar-widget">
+                <h2>
+                    <i class='bx bx-calendar'></i> 이번달 일정 
+                    <button class="add-btn" id="addEventBtn"><i class='bx bx-plus'></i> 새 일정</button>
+                </h2>
+                <div class="widget-content" id="calendarWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 일정을 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 4. 재고 경고 (본사) -->
+            <section class="widget">
+                <h2><i class='bx bx-error-circle'></i> 안전재고 미달 품목 (본사)</h2>
+                <div class="widget-content" id="lowStockWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 5. 셀러K 최근 매입 변동 -->
+            <section class="widget">
+                <h2><i class='bx bx-store'></i> 셀러K 최근 상품 변동 (5일)</h2>
+                <div class="widget-content" id="recentSellerKWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- 이벤트 추가 모달 -->
+    <div id="eventModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn" id="closeEventModal">&times;</span>
+            <h2>새 일정 추가</h2>
+            <form id="eventForm">
+                <div class="form-group">
+                    <label>일정 제목</label>
+                    <input type="text" id="eventSummary" required placeholder="예: 팀 회의">
+                </div>
+                <div class="form-group">
+                    <label>시작일</label>
+                    <input type="date" id="eventStart" required>
+                </div>
+                <div class="form-group">
+                    <label>종료일</label>
+                    <input type="date" id="eventEnd" required>
+                </div>
+                <button type="submit" class="submit-btn">저장하기</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

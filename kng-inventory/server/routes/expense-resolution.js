@@ -34,6 +34,7 @@ const initExpenseResolutionTables = (dbInstance) => {
                 taxInvoiceDate TEXT,
                 content TEXT,
                 personInCharge TEXT,
+                status TEXT DEFAULT '임시작성',
                 createdAt TEXT,
                 updatedAt TEXT
             )
@@ -43,6 +44,7 @@ const initExpenseResolutionTables = (dbInstance) => {
                 reject(err);
                 return;
             }
+            dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN status TEXT DEFAULT '임시작성'`, () => {});
             console.log('expense_resolutions 테이블 확인 완료');
 
             // 거래처 프리셋 테이블
@@ -188,8 +190,8 @@ router.post('/', (req, res) => {
             vendorId, vendorName, representative, bizRegNumber,
             bankName, accountNumber, accountHolder,
             paymentMethod, title, taxInvoiceDate, content, personInCharge,
-            createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            status, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
         id, p.createdDate || '', p.paymentDate || '', p.currency || 'KRW',
@@ -197,7 +199,7 @@ router.post('/', (req, res) => {
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
         p.bankName || '', p.accountNumber || '', p.accountHolder || '',
         p.paymentMethod || 'cash', p.title || '', p.taxInvoiceDate || '',
-        p.content || '', p.personInCharge || '',
+        p.content || '', p.personInCharge || '', p.status || '임시작성',
         now, now
     ];
 
@@ -218,7 +220,7 @@ router.put('/:id', (req, res) => {
             vendorId=?, vendorName=?, representative=?, bizRegNumber=?,
             bankName=?, accountNumber=?, accountHolder=?,
             paymentMethod=?, title=?, taxInvoiceDate=?, content=?, personInCharge=?,
-            updatedAt=?
+            status=?, updatedAt=?
         WHERE id=?
     `;
     const params = [
@@ -227,7 +229,7 @@ router.put('/:id', (req, res) => {
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
         p.bankName || '', p.accountNumber || '', p.accountHolder || '',
         p.paymentMethod || 'cash', p.title || '', p.taxInvoiceDate || '',
-        p.content || '', p.personInCharge || '',
+        p.content || '', p.personInCharge || '', p.status || '임시작성',
         now, id
     ];
 
@@ -235,6 +237,17 @@ router.put('/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: '지출결의서를 찾을 수 없습니다.' });
         res.json({ message: '수정 성공' });
+    });
+});
+
+// 상태 수정
+router.put('/:id/status', (req, res) => {
+    const sql = `UPDATE expense_resolutions SET status=?, updatedAt=? WHERE id=?`;
+    const now = new Date().toISOString();
+    db.run(sql, [req.body.status, now, req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: '지출결의서를 찾을 수 없습니다.' });
+        res.json({ message: '상태 수정 성공' });
     });
 });
 

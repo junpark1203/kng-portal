@@ -72,7 +72,7 @@ function initInvoicePackingTables(database) {
                     totalGrossWeight REAL DEFAULT 0,
                     totalMeasurement REAL DEFAULT 0,
                     totalQty REAL DEFAULT 0,
-                    
+                    status TEXT DEFAULT '진행중',
                     createdAt TEXT,
                     updatedAt TEXT
                 )
@@ -101,6 +101,7 @@ function initInvoicePackingTables(database) {
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN countryOfOrigin TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN departureDate TEXT DEFAULT ''`, () => {});
                     database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN packingItems TEXT DEFAULT '[]'`, () => {});
+                    database.run(`ALTER TABLE invoice_packing_docs ADD COLUMN status TEXT DEFAULT '진행중'`, () => {});
 
                     console.log('invoice_packing_docs / invoice_packing_partners 테이블 확인 및 마이그레이션 완료');
                     resolve();
@@ -161,8 +162,8 @@ router.post('/documents', async (req, res) => {
             paymentTerms, incoterms, currency, countryOfOrigin, departureDate,
             items, packingItems, remarks,
             totalAmount, totalNetWeight, totalGrossWeight, totalMeasurement, totalQty,
-            createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            status, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.invoiceNo || '',
@@ -188,6 +189,7 @@ router.post('/documents', async (req, res) => {
             p.totalGrossWeight || 0,
             p.totalMeasurement || 0,
             p.totalQty || 0,
+            p.status || '진행중',
             now, now
         ];
         await dbRun(sql, params);
@@ -210,7 +212,7 @@ router.put('/documents/:id', async (req, res) => {
             paymentTerms=?, incoterms=?, currency=?, countryOfOrigin=?, departureDate=?,
             items=?, packingItems=?, remarks=?,
             totalAmount=?, totalNetWeight=?, totalGrossWeight=?, totalMeasurement=?, totalQty=?,
-            updatedAt=?
+            status=?, updatedAt=?
         WHERE id=?`;
         const params = [
             p.invoiceNo || '',
@@ -236,11 +238,27 @@ router.put('/documents/:id', async (req, res) => {
             p.totalGrossWeight || 0,
             p.totalMeasurement || 0,
             p.totalQty || 0,
+            p.status || '진행중',
             now, id
         ];
         const result = await dbRun(sql, params);
         if (result.changes === 0) return res.status(404).json({ error: '문서를 찾을 수 없습니다.' });
         res.json({ message: '수정 성공' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 상태 수정
+router.put('/documents/:id/status', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const status = req.body.status;
+        const now = new Date().toISOString();
+        const sql = `UPDATE invoice_packing_docs SET status=?, updatedAt=? WHERE id=?`;
+        const result = await dbRun(sql, [status, now, id]);
+        if (result.changes === 0) return res.status(404).json({ error: '문서를 찾을 수 없습니다.' });
+        res.json({ message: '상태 수정 성공' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
