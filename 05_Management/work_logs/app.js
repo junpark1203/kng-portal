@@ -31,6 +31,10 @@ const btnBack = document.getElementById('btnBack');
 const btnSave = document.getElementById('btnSave');
 const btnSaveDraft = document.getElementById('btnSaveDraft');
 const btnDelete = document.getElementById('btnDelete');
+const btnToggleHistory = document.getElementById('btnToggleHistory');
+const pastHistoryPanel = document.getElementById('pastHistoryPanel');
+const btnCloseHistory = document.getElementById('btnCloseHistory');
+const historyList = document.getElementById('historyList');
 
 // Filter Elements
 const searchInput = document.getElementById('searchInput');
@@ -53,6 +57,76 @@ const editorNext = document.getElementById('editorNext');
 const imageDropzone = document.getElementById('imageDropzone');
 const fileInput = document.getElementById('fileInput');
 const attachmentGallery = document.getElementById('attachmentGallery');
+
+// ----------------------------------------------------
+// Past History Panel Logic
+// ----------------------------------------------------
+let historyLoaded = false;
+
+function toggleHistoryPanel() {
+    if (pastHistoryPanel.style.display === 'flex') {
+        pastHistoryPanel.style.display = 'none';
+        btnToggleHistory.classList.remove('active');
+    } else {
+        pastHistoryPanel.style.display = 'flex';
+        btnToggleHistory.classList.add('active');
+        if (!historyLoaded) {
+            loadPastHistory();
+        }
+    }
+}
+
+function loadPastHistory() {
+    const authorName = inputAuthorName.value.trim();
+    if (!authorName) {
+        historyList.innerHTML = '<div style="padding: 20px; color: var(--text-muted); text-align: center;">작성자를 먼저 입력해주세요.</div>';
+        return;
+    }
+
+    // Filter logs by current author and sort by date descending
+    const myLogs = currentLogs
+        .filter(log => log.authorName === authorName && log.id !== currentEditingId)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (myLogs.length === 0) {
+        historyList.innerHTML = '<div style="padding: 20px; color: var(--text-muted); text-align: center;">과거 내역이 없습니다.</div>';
+        historyLoaded = true;
+        return;
+    }
+
+    historyList.innerHTML = myLogs.map((log, index) => {
+        const todayText = (log.todayTasks || '내용 없음').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const nextText = (log.nextTasks || '내용 없음').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Open the first one by default
+        const activeClass = index === 0 ? 'active' : '';
+        return `
+            <div class="history-item ${activeClass}" onclick="this.classList.toggle('active')">
+                <div class="history-item-header">
+                    <div class="date"><i class="fa-regular fa-calendar"></i> ${log.date} [${log.logType}]</div>
+                    <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="history-item-body" onclick="event.stopPropagation()">
+                    <h4 class="today"><i class="fa-solid fa-sun"></i> 금일사항</h4>
+                    <div class="content">${todayText}</div>
+                    
+                    <h4 class="next"><i class="fa-solid fa-moon"></i> 차일사항</h4>
+                    <div class="content">${nextText}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    historyLoaded = true;
+}
+
+inputAuthorName.addEventListener('change', () => {
+    if (pastHistoryPanel.style.display === 'flex') {
+        loadPastHistory();
+    } else {
+        historyLoaded = false;
+    }
+});
 
 // ----------------------------------------------------
 // File Upload & Drag and Drop
@@ -410,6 +484,9 @@ btnBack.addEventListener('click', () => {
 btnSave.addEventListener('click', () => saveLog(false));
 btnSaveDraft.addEventListener('click', () => saveLog(true));
 btnDelete.addEventListener('click', deleteLog);
+
+btnToggleHistory.addEventListener('click', toggleHistoryPanel);
+btnCloseHistory.addEventListener('click', toggleHistoryPanel);
 
 // Filter Events
 const filterInputs = [searchInput, filterStartDate, filterEndDate, filterLogType, filterCategory, filterDraft];
