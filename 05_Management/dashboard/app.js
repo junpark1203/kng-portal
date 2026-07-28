@@ -1,3 +1,22 @@
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api'
+    : 'https://kng.junparks.com/api';
+
+async function authFetch(url, options = {}) {
+    let token = null;
+    try {
+        if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+        }
+    } catch(e) {}
+    
+    if (!options.headers) options.headers = {};
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, options);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardData();
     loadCalendarEvents();
@@ -19,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const end = document.getElementById('eventEnd').value;
         
         try {
-            const res = await fetch('/api/calendar/events', {
+            const res = await authFetch(`${API_BASE}/calendar/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -41,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDashboardData() {
     try {
-        const res = await fetch('/api/dashboard/summary');
+        const res = await authFetch(`${API_BASE}/dashboard/summary`);
         if (!res.ok) throw new Error('데이터 불러오기 실패');
         const data = await res.json();
         
@@ -57,7 +76,7 @@ async function loadDashboardData() {
 async function loadCalendarEvents() {
     const container = document.getElementById('calendarWidget');
     try {
-        const res = await fetch('/api/calendar/events');
+        const res = await authFetch(`${API_BASE}/calendar/events`);
         if (!res.ok) throw new Error('일정 불러오기 실패');
         const events = await res.json();
         
@@ -191,7 +210,7 @@ function renderRecentSellerK(products) {
 
 async function updateStatus(apiEndpoint, id, newStatus) {
     try {
-        const res = await fetch(`/api/${apiEndpoint}/${id}/status`, {
+        const res = await authFetch(`${API_BASE}/${apiEndpoint}/${id}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
