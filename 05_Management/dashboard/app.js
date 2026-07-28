@@ -2,6 +2,33 @@ const API_BASE = (window.location.hostname === 'localhost' || window.location.ho
     ? 'http://localhost:3000/api'
     : 'https://kng.junparks.com/api';
 
+let _authReady = null;
+function waitForAuth(timeout = 8000) {
+    if (_authReady) return _authReady;
+    _authReady = new Promise((res) => {
+        const s = Date.now();
+        (function poll() {
+            try {
+                if (window.parent && window.parent.getAuthToken) {
+                    window.parent.getAuthToken().then(t => {
+                        if (t) { res(t); }
+                        else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                        else { _authReady = null; res(null); }
+                    }).catch(() => {
+                        if (Date.now() - s < timeout) setTimeout(poll, 400);
+                        else { _authReady = null; res(null); }
+                    });
+                } else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                else { _authReady = null; res(null); }
+            } catch (e) {
+                if (Date.now() - s < timeout) setTimeout(poll, 400);
+                else { _authReady = null; res(null); }
+            }
+        })();
+    });
+    return _authReady;
+}
+
 async function authFetch(url, options = {}) {
     let token = null;
     try {
@@ -9,6 +36,10 @@ async function authFetch(url, options = {}) {
             token = await window.parent.getAuthToken();
         }
     } catch(e) {}
+    
+    if (!token) {
+        try { token = await waitForAuth(); } catch(e) {}
+    }
     
     if (!options.headers) options.headers = {};
     if (token) {
