@@ -15,19 +15,26 @@ try {
             serviceAccount = require('./firebase-service-account.json');
         } else if (fs.existsSync(dataPath)) {
             serviceAccount = require('./data/firebase-service-account.json');
-        } else {
-            throw new Error('Firebase service account key not found in root or data directory');
         }
     }
 
     if (!admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-        console.log('[Auth] Firebase Admin SDK initialized successfully.');
+        if (serviceAccount) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('[Auth] Firebase Admin SDK initialized with Service Account.');
+        } else {
+            // Service Account 파일이 없어도, 프로젝트 ID만으로 토큰 검증이 가능합니다.
+            // verifyIdToken()은 Google의 공개 서명 키를 사용하여 토큰을 검증합니다.
+            admin.initializeApp({
+                projectId: 'kng-inventory'
+            });
+            console.log('[Auth] Firebase Admin SDK initialized with Project ID only (token verification available).');
+        }
     }
 } catch (error) {
-    console.warn('[Auth Warning] Failed to load Firebase Service Account. API calls will fail if token validation is required.', error.message);
+    console.warn('[Auth Warning] Failed to initialize Firebase Admin SDK:', error.message);
 }
 
 const verifyToken = async (req, res, next) => {
@@ -46,11 +53,6 @@ const verifyToken = async (req, res, next) => {
 
     const token = authHeader.split('Bearer ')[1];
     try {
-        if (!admin.apps.length) {
-            // Firebase secret이 없어 초기화되지 않은 로컬 환경용 바이패스
-            req.user = { email: 'localdev@kng.com', uid: 'localdev' };
-            return next();
-        }
         const decodedToken = await admin.auth().verifyIdToken(token);
         req.user = decodedToken;
         next();
