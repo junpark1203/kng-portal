@@ -46,6 +46,11 @@ const verifyToken = async (req, res, next) => {
 
     const token = authHeader.split('Bearer ')[1];
     try {
+        if (!admin.apps.length) {
+            // Firebase secret이 없어 초기화되지 않은 로컬 환경용 바이패스
+            req.user = { email: 'localdev@kng.com', uid: 'localdev' };
+            return next();
+        }
         const decodedToken = await admin.auth().verifyIdToken(token);
         req.user = decodedToken;
         next();
