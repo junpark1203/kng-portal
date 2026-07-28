@@ -12,10 +12,16 @@ const CALENDAR_ID = 'jpark120325@gmail.com';
 // 1. 달력 일정 조회
 router.get('/events', async (req, res) => {
     try {
-        if (!fs.existsSync(KEYFILEPATH)) {
-            return res.status(500).json({ error: '구글 캘린더 키 파일이 없습니다.' });
+        let auth;
+        if (process.env.GOOGLE_CALENDAR_CREDENTIALS_BASE64) {
+            const decoded = Buffer.from(process.env.GOOGLE_CALENDAR_CREDENTIALS_BASE64, 'base64').toString('utf8');
+            auth = new google.auth.GoogleAuth({ credentials: JSON.parse(decoded), scopes: SCOPES });
+        } else if (fs.existsSync(KEYFILEPATH)) {
+            auth = new google.auth.GoogleAuth({ keyFile: KEYFILEPATH, scopes: SCOPES });
+        } else {
+            return res.status(500).json({ error: '구글 캘린더 인증 정보가 없습니다.' });
         }
-        const auth = new google.auth.GoogleAuth({ keyFile: KEYFILEPATH, scopes: SCOPES });
+        
         const calendar = google.calendar({ version: 'v3', auth });
         
         // 이달의 일정 가져오기
@@ -41,10 +47,16 @@ router.get('/events', async (req, res) => {
 // 2. 새 일정 등록
 router.post('/events', async (req, res) => {
     try {
-        if (!fs.existsSync(KEYFILEPATH)) {
-            return res.status(500).json({ error: '구글 캘린더 키 파일이 없습니다.' });
+        let auth;
+        if (process.env.GOOGLE_CALENDAR_CREDENTIALS_BASE64) {
+            const decoded = Buffer.from(process.env.GOOGLE_CALENDAR_CREDENTIALS_BASE64, 'base64').toString('utf8');
+            auth = new google.auth.GoogleAuth({ credentials: JSON.parse(decoded), scopes: SCOPES });
+        } else if (fs.existsSync(KEYFILEPATH)) {
+            auth = new google.auth.GoogleAuth({ keyFile: KEYFILEPATH, scopes: SCOPES });
+        } else {
+            return res.status(500).json({ error: '구글 캘린더 인증 정보가 없습니다.' });
         }
-        const auth = new google.auth.GoogleAuth({ keyFile: KEYFILEPATH, scopes: SCOPES });
+        
         const calendar = google.calendar({ version: 'v3', auth });
         
         const event = {
