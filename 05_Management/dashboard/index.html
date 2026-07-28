@@ -32,7 +32,36 @@
                 </div>
             </section>
 
-            <!-- 3. 구글 캘린더 -->
+            <!-- 3. 주요 증시 및 환율 (TradingView) -->
+            <section class="widget calendar-widget">
+                <h2><i class='bx bx-line-chart'></i> 국내외 증시 및 환율</h2>
+                <div class="widget-content" style="overflow: hidden; padding: 0;">
+                    <!-- TradingView Ticker Tape Widget BEGIN -->
+                    <div class="tradingview-widget-container">
+                      <div class="tradingview-widget-container__widget"></div>
+                      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                      {
+                      "symbols": [
+                        { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
+                        { "proName": "FOREXCOM:NSXUSD", "title": "US 100" },
+                        { "description": "KOSPI", "proName": "KRX:KOSPI" },
+                        { "description": "USD/KRW", "proName": "FX_IDC:USDKRW" },
+                        { "description": "EUR/KRW", "proName": "FX_IDC:EURKRW" },
+                        { "description": "JPY/KRW", "proName": "FX_IDC:JPYKRW" }
+                      ],
+                      "showSymbolLogo": true,
+                      "isTransparent": false,
+                      "displayMode": "adaptive",
+                      "colorTheme": "light",
+                      "locale": "kr"
+                    }
+                      </script>
+                    </div>
+                    <!-- TradingView Widget END -->
+                </div>
+            </section>
+
+            <!-- 4. 구글 캘린더 -->
             <section class="widget calendar-widget">
                 <h2>
                     <i class='bx bx-calendar'></i> 이번달 일정 
@@ -43,7 +72,23 @@
                 </div>
             </section>
 
-            <!-- 4. 재고 경고 (본사) -->
+            <!-- 5. 최근 업무일지 -->
+            <section class="widget">
+                <h2><i class='bx bx-notepad'></i> 이전 업무일지 요약</h2>
+                <div class="widget-content" id="workLogWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 6. 날씨 정보 -->
+            <section class="widget">
+                <h2><i class='bx bx-cloud'></i> 오늘의 날씨 (서울)</h2>
+                <div class="widget-content" id="weatherWidget">
+                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 날씨를 불러오는 중...</div>
+                </div>
+            </section>
+
+            <!-- 7. 재고 경고 (본사) -->
             <section class="widget">
                 <h2><i class='bx bx-error-circle'></i> 안전재고 미달 품목 (본사)</h2>
                 <div class="widget-content" id="lowStockWidget">
@@ -51,7 +96,7 @@
                 </div>
             </section>
 
-            <!-- 5. 셀러K 최근 매입 변동 -->
+            <!-- 8. 셀러K 최근 매입 변동 -->
             <section class="widget">
                 <h2><i class='bx bx-store'></i> 셀러K 최근 상품 변동 (5일)</h2>
                 <div class="widget-content" id="recentSellerKWidget">

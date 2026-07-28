@@ -62,6 +62,22 @@ router.get('/summary', async (req, res) => {
             LIMIT 15
         `, [fiveDaysAgo.toISOString()]);
 
+        // 6. 나의 최근 업무일지 (어제 작성분 등 가장 최근 제출된 문서)
+        const authorId = req.user ? (req.user.email || req.user.uid) : null;
+        let yesterdayLog = null;
+        if (authorId) {
+            const logs = await dbAll(`
+                SELECT id, date, todayTasks, nextTasks, createdAt 
+                FROM work_logs 
+                WHERE authorId = ? AND isDraft = 0 
+                ORDER BY date DESC 
+                LIMIT 1
+            `, [authorId]);
+            if (logs.length > 0) {
+                yesterdayLog = logs[0];
+            }
+        }
+
         res.json({
             pendingExpenses,
             pendingExhibitions,
@@ -71,7 +87,8 @@ router.get('/summary', async (req, res) => {
                 return inv;
             }),
             lowStockHqProducts,
-            recentSellerKProducts
+            recentSellerKProducts,
+            yesterdayLog
         });
     } catch (err) {
         console.error('대시보드 에러:', err);

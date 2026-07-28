@@ -20,10 +20,12 @@ async function authFetch(url, options = {}) {
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboardData();
     loadCalendarEvents();
+    loadWeather();
 
     document.getElementById('refreshBtn').addEventListener('click', () => {
         loadDashboardData();
         loadCalendarEvents();
+        loadWeather();
     });
 
     // 이벤트 모달 처리
@@ -68,8 +70,34 @@ async function loadDashboardData() {
         renderInvoices(data.pendingInvoices);
         renderLowStock(data.lowStockHqProducts);
         renderRecentSellerK(data.recentSellerKProducts);
+        renderWorkLog(data.yesterdayLog);
     } catch (err) {
         console.error(err);
+    }
+}
+
+async function loadWeather() {
+    const container = document.getElementById('weatherWidget');
+    try {
+        // 서울 날씨 좌표: 위도 37.5665, 경도 126.9780 (Open-Meteo 무료 API)
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true');
+        if (!res.ok) throw new Error('날씨 API 오류');
+        const data = await res.json();
+        const current = data.current_weather;
+        
+        container.innerHTML = `
+            <div class="list-item" style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color);">
+                        ${current.temperature}°C
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 14px;">풍속: ${current.windspeed} km/h</div>
+                </div>
+                <i class='bx bx-sun' style="font-size: 48px; color: #f59e0b;"></i>
+            </div>
+        `;
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state">날씨 정보를 불러올 수 없습니다.</div>`;
     }
 }
 
@@ -170,6 +198,48 @@ function renderInvoices(invoices) {
             </div>
         </div>
     `).join('');
+}
+
+function renderWorkLog(log) {
+    const container = document.getElementById('workLogWidget');
+    if (!log) {
+        container.innerHTML = '<div class="empty-state">최근 작성된 업무일지가 없습니다.</div>';
+        return;
+    }
+
+    // JSON 배열 파싱 시도 (금일 진행 업무)
+    let tasks = [];
+    try { tasks = JSON.parse(log.todayTasks || '[]'); } catch(e) {}
+    
+    // JSON 배열 파싱 시도 (명일 예정 업무)
+    let next = [];
+    try { next = JSON.parse(log.nextTasks || '[]'); } catch(e) {}
+
+    const tasksHtml = tasks.length > 0 
+        ? tasks.map(t => `<li><i class='bx bx-check'></i> ${t.content}</li>`).join('') 
+        : '<li>진행한 업무가 없습니다.</li>';
+        
+    const nextHtml = next.length > 0 
+        ? next.map(t => `<li><i class='bx bx-right-arrow-alt'></i> ${t.content}</li>`).join('') 
+        : '<li>예정된 업무가 없습니다.</li>';
+
+    container.innerHTML = `
+        <div class="list-item">
+            <div class="item-header">
+                <span class="item-title">작성일자: ${log.date}</span>
+            </div>
+            <div style="font-size: 13px; margin-top: 8px;">
+                <strong>[금일 진행 업무]</strong>
+                <ul style="list-style:none; padding:0; margin: 4px 0 12px 0; color: var(--text-muted);">
+                    ${tasksHtml}
+                </ul>
+                <strong>[명일 예정 업무]</strong>
+                <ul style="list-style:none; padding:0; margin: 4px 0 0 0; color: var(--text-muted);">
+                    ${nextHtml}
+                </ul>
+            </div>
+        </div>
+    `;
 }
 
 function renderLowStock(products) {
