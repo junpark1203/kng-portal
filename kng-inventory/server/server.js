@@ -198,9 +198,6 @@ app.delete('/api/happysafety/saves/:id', (req, res) => {
     });
 });
 
-// 업무일지 API 라우트 등록 (인증 적용)
-app.use('/api/work-logs', workLogsRoutes.router);
-
 app.use('/api/', verifyToken);
 
 // 데이터 디렉터리 확인 및 생성
@@ -1011,6 +1008,7 @@ app.use('/api/exhibition-report', exhibitionReportRoutes.router);
 
 // 지출결의서
 app.use('/api/expense-resolution', expenseResolutionRoutes.router);
+app.use('/api/work-logs', workLogsRoutes.router);
 app.use('/api/mat-quotes', materialQuotesRoutes.router);
 app.use('/api/dashboard', dashboardRoutes.router);
 app.use('/api/calendar', calendarRoutes);
