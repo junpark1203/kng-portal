@@ -16,26 +16,26 @@
         </header>
         
         <div class="dashboard-grid">
-            <!-- 1. 결재 대기함 -->
-            <section class="widget">
-                <h2><i class='bx bx-edit-alt'></i> 결재 대기함</h2>
-                <div class="widget-content" id="approvalWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+            
+            <!-- 1. 오늘의 날씨 (상단) -->
+            <section class="widget widget-weather">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-cloud'></i> 오늘의 날씨 (서울)</div>
+                </h2>
+                <div class="widget-content" id="weatherWidget">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item" style="height: 100px; border-radius: 50%;"></div>
+                        <div class="skeleton-item" style="height: 24px; width: 60%; margin: 16px auto;"></div>
+                    </div>
                 </div>
             </section>
 
-            <!-- 2. 진행 중 인보이스 -->
-            <section class="widget">
-                <h2><i class='bx bx-file'></i> 진행 중 인보이스</h2>
-                <div class="widget-content" id="invoiceWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
-                </div>
-            </section>
-
-            <!-- 3. 주요 증시 및 환율 (TradingView) -->
-            <section class="widget calendar-widget">
-                <h2><i class='bx bx-line-chart'></i> 국내외 증시 및 환율</h2>
-                <div class="widget-content" style="overflow: hidden; padding: 0;">
+            <!-- 2. 증시 및 환율 (상단 넓게) -->
+            <section class="widget widget-stock">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-line-chart'></i> 국내외 증시 및 환율</div>
+                </h2>
+                <div class="widget-content">
                     <!-- TradingView Ticker Tape Widget BEGIN -->
                     <div class="tradingview-widget-container">
                       <div class="tradingview-widget-container__widget"></div>
@@ -61,55 +61,93 @@
                 </div>
             </section>
 
-            <!-- 4. 구글 캘린더 -->
-            <section class="widget calendar-widget">
+            <!-- 3. 이번달 일정 (중단 왼쪽) -->
+            <section class="widget widget-calendar">
                 <h2>
-                    <i class='bx bx-calendar'></i> 이번달 일정 
+                    <div class="icon-wrapper"><i class='bx bx-calendar'></i> 이번달 일정</div> 
                     <button class="add-btn" id="addEventBtn"><i class='bx bx-plus'></i> 새 일정</button>
                 </h2>
                 <div class="widget-content" id="calendarWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 일정을 불러오는 중...</div>
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
                 </div>
             </section>
 
-            <!-- 5. 최근 업무일지 -->
-            <section class="widget">
-                <h2><i class='bx bx-notepad'></i> 이전 업무일지 요약</h2>
+            <!-- 4. 결재 대기함 (중단 오른쪽) -->
+            <section class="widget widget-approvals">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-edit-alt'></i> 결재 대기함</div>
+                </h2>
+                <div class="widget-content" id="approvalWidget">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. 진행 중 인보이스 (하단 1열) -->
+            <section class="widget widget-invoices">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-file'></i> 진행 중 인보이스</div>
+                </h2>
+                <div class="widget-content" id="invoiceWidget">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. 최근 업무일지 (하단 2열) -->
+            <section class="widget widget-worklogs">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-notepad'></i> 최근 업무일지</div>
+                </h2>
                 <div class="widget-content" id="workLogWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
                 </div>
             </section>
 
-            <!-- 6. 날씨 정보 -->
-            <section class="widget">
-                <h2><i class='bx bx-cloud'></i> 오늘의 날씨 (서울)</h2>
-                <div class="widget-content" id="weatherWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 날씨를 불러오는 중...</div>
-                </div>
-            </section>
-
-            <!-- 7. 재고 경고 (본사) -->
-            <section class="widget">
-                <h2><i class='bx bx-error-circle'></i> 안전재고 미달 품목 (본사)</h2>
+            <!-- 7. 안전재고 미달 품목 (하단 3열) -->
+            <section class="widget widget-inventory">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-error-circle'></i> 본사 재고 경고</div>
+                </h2>
                 <div class="widget-content" id="lowStockWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
                 </div>
             </section>
 
-            <!-- 8. 셀러K 최근 매입 변동 -->
-            <section class="widget">
-                <h2><i class='bx bx-store'></i> 셀러K 최근 상품 변동 (5일)</h2>
+            <!-- 8. 셀러K 최근 매입 변동 (하단 4열) -->
+            <section class="widget widget-sellerk">
+                <h2>
+                    <div class="icon-wrapper"><i class='bx bx-store'></i> 셀러K 매입 변동</div>
+                </h2>
                 <div class="widget-content" id="recentSellerKWidget">
-                    <div class="loading"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중...</div>
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
                 </div>
             </section>
+
         </div>
     </div>
 
     <!-- 이벤트 추가 모달 -->
     <div id="eventModal" class="modal hidden">
         <div class="modal-content">
-            <span class="close-btn" id="closeEventModal">&times;</span>
+            <span class="close-btn" id="closeEventModal"><i class='bx bx-x'></i></span>
             <h2>새 일정 추가</h2>
             <form id="eventForm">
                 <div class="form-group">

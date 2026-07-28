@@ -106,8 +106,8 @@ async function loadDashboardData() {
         console.error(err);
         const errorHtml = `<div class="empty-state" style="color: #ef4444;"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다. (서버 연결 실패)</div>`;
         document.querySelectorAll('.widget-content:not(#calendarWidget):not(#weatherWidget)').forEach(el => {
-            // TradingView 뷰어 등은 건드리지 않기 위해 loading 클래스가 있는 곳만 덮어씌움
-            if (el.querySelector('.loading')) {
+            // TradingView 뷰어 등은 건드리지 않기 위해 skeleton-loader 클래스가 있는 곳만 덮어씌움
+            if (el.querySelector('.skeleton-loader')) {
                 el.innerHTML = errorHtml;
             }
         });
@@ -124,14 +124,16 @@ async function loadWeather() {
         const current = data.current_weather;
         
         container.innerHTML = `
-            <div class="list-item" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px;">
+                <i class='bx bx-sun' style="font-size: 64px; color: #f59e0b; filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.4));"></i>
                 <div>
-                    <div style="font-size: 32px; font-weight: 700; color: var(--primary-color);">
+                    <div style="font-size: 42px; font-weight: 700; color: var(--text-main); line-height: 1.2;">
                         ${current.temperature}°C
                     </div>
-                    <div style="color: var(--text-muted); font-size: 14px;">풍속: ${current.windspeed} km/h</div>
+                    <div style="color: var(--text-muted); font-size: 15px; font-weight: 500;">
+                        풍속: ${current.windspeed} km/h
+                    </div>
                 </div>
-                <i class='bx bx-sun' style="font-size: 48px; color: #f59e0b;"></i>
             </div>
         `;
     } catch (err) {
