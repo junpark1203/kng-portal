@@ -213,7 +213,7 @@ function renderTable() {
     }
     
     if (docs.length === 0) {
-        els.docTableBody.innerHTML = `<tr><td colspan="9" class="inv-table-empty">
+        els.docTableBody.innerHTML = `<tr><td colspan="10" class="inv-table-empty">
             <i class='bx bx-file'></i>검색된 문서가 없습니다.
         </td></tr>`;
         return;
@@ -228,6 +228,10 @@ function renderTable() {
         if (d.invoiceNo) docHtml.push(`<div class="inv-doc-badge inv">INV: ${d.invoiceNo}</div>`);
         if (d.packingListNo) docHtml.push(`<div class="inv-doc-badge pl">PL: ${d.packingListNo}</div>`);
         
+        let statusBadge = `<span class="badge" style="background:#e2e8f0;color:#475569;font-size:11px;padding:2px 6px;border-radius:4px;">${d.status||'임시작성'}</span>`;
+        if (d.status === '진행중') statusBadge = `<span class="badge" style="background:#dbeafe;color:#2563eb;font-size:11px;padding:2px 6px;border-radius:4px;">진행중</span>`;
+        else if (d.status === '완료') statusBadge = `<span class="badge" style="background:#dcfce7;color:#16a34a;font-size:11px;padding:2px 6px;border-radius:4px;">완료</span>`;
+        
         return `<tr data-id="${d.id}">
             <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-check" value="${d.id}"></td>
             <td><div style="display:flex;flex-direction:column;gap:4px;">${docHtml.join('')}</div></td>
@@ -237,6 +241,7 @@ function renderTable() {
             <td>${d.currency || 'USD'}</td>
             <td class="inv-amount">${amtStr}</td>
             <td style="color:var(--gray-500);font-size:11px;">${(d.createdAt||'').split('T')[0]}</td>
+            <td>${statusBadge}</td>
             <td class="col-actions" onclick="event.stopPropagation()">
                 <div class="inv-row-actions">
                     <button type="button" class="btn-preview" onclick="openPreview('${d.id}')" title="미리보기/인쇄"><i class='bx bx-printer'></i></button>
@@ -382,6 +387,7 @@ function openDocModal(doc = null) {
     if (doc) {
         els.modalTitle.textContent = '거래 내역 수정';
         document.getElementById('editId').value = doc.id;
+        document.getElementById('inpStatus').value = doc.status || '임시작성';
         
         document.getElementById('inpInvoiceNo').value = doc.invoiceNo || '';
         document.getElementById('inpPackingListNo').value = doc.packingListNo || '';
@@ -444,6 +450,7 @@ function openDocModal(doc = null) {
     } else {
         els.modalTitle.textContent = '신규 거래 생성';
         document.getElementById('editId').value = '';
+        document.getElementById('inpStatus').value = '임시작성';
         document.getElementById('inpCountryOfOrigin').value = '';
         document.getElementById('inpDepartureDate').value = '';
         createInvItemLine();
@@ -493,6 +500,7 @@ els.saveDocBtn.addEventListener('click', async () => {
     const isEdit = !!id;
     
     const payload = {
+        status: document.getElementById('inpStatus').value,
         invoiceNo: document.getElementById('inpInvoiceNo').value.trim(),
         packingListNo: document.getElementById('inpPackingListNo').value.trim(),
         docDate: document.getElementById('inpDocDate').value,

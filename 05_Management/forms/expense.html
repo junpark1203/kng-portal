@@ -67,11 +67,12 @@
                                         <th data-sort="amount" style="cursor: pointer;">집행 금액 <i class='bx bx-sort'></i></th>
                                         <th data-sort="paymentMethod" style="cursor: pointer;">지불조건 <i class='bx bx-sort'></i></th>
                                         <th data-sort="personInCharge" style="cursor: pointer;">담당 <i class='bx bx-sort'></i></th>
+                                        <th data-sort="status" style="cursor: pointer;">상태 <i class='bx bx-sort'></i></th>
                                         <th class="col-action">관리</th>
                                     </tr>
                                 </thead>
                                 <tbody id="expenseListBody">
-                                    <tr class="loading-row"><td colspan="9"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="10"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -93,6 +94,17 @@
                     <div class="modal-body" style="overflow-y: auto; flex: 1; padding-right: 10px;">
                         <form id="expenseForm" onsubmit="return false;">
                             <div class="expense-form-grid">
+                                <!-- 진행 상태 -->
+                                <div class="fg">
+                                    <label for="fStatus">진행 상태 <span class="required">*</span></label>
+                                    <select id="fStatus">
+                                        <option value="임시작성">임시작성</option>
+                                        <option value="결재대기">결재대기</option>
+                                        <option value="결재상신">결재상신</option>
+                                        <option value="결재보류">결재보류</option>
+                                        <option value="결재완료">결재완료</option>
+                                    </select>
+                                </div>
                                 <!-- 작성일자 -->
                                 <div class="fg">
                                     <label for="fCreatedDate">작성일자 <span class="required">*</span></label>

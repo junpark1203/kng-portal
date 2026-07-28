@@ -43,6 +43,7 @@ const vendorListBody = document.getElementById('vendorListBody');
 
 // Form Elements
 const expenseForm = document.getElementById('expenseForm');
+const fStatus = document.getElementById('fStatus');
 const fCreatedDate = document.getElementById('fCreatedDate');
 const fPaymentDate = document.getElementById('fPaymentDate');
 const fCurrency = document.getElementById('fCurrency');
@@ -281,6 +282,12 @@ function renderExpenseList() {
         const currencySym = getCurrencySymbol(exp.currency);
         let amountText = exp.amount.toLocaleString(undefined, { minimumFractionDigits: isForeignCurrency(exp.currency) ? 2 : 0 });
         
+        let statusBadge = `<span class="badge" style="background:#e2e8f0;color:#475569;">${exp.status||'임시작성'}</span>`;
+        if (exp.status === '결재대기') statusBadge = `<span class="badge" style="background:#fef3c7;color:#d97706;">결재대기</span>`;
+        else if (exp.status === '결재상신') statusBadge = `<span class="badge" style="background:#dbeafe;color:#2563eb;">결재상신</span>`;
+        else if (exp.status === '결재완료') statusBadge = `<span class="badge" style="background:#dcfce7;color:#16a34a;">결재완료</span>`;
+        else if (exp.status === '결재보류') statusBadge = `<span class="badge" style="background:#fee2e2;color:#dc2626;">결재보류</span>`;
+        
         tr.innerHTML = `
             <td class="col-check"><input type="checkbox" class="check-row" value="${exp.id}" onclick="event.stopPropagation()"></td>
             <td>${exp.createdDate || '-'}</td>
@@ -290,6 +297,7 @@ function renderExpenseList() {
             <td style="text-align:right;">${currencySym} ${Number(Number(exp.amount) + (isForeignCurrency(exp.currency) ? 0 : Number(exp.vatAmount || 0))).toLocaleString()}</td>
             <td>${exp.paymentMethod === 'cash' ? '현금' : '어음'}</td>
             <td>${exp.personInCharge || '-'}</td>
+            <td>${statusBadge}</td>
             <td class="col-action" onclick="event.stopPropagation()">
                 <div style="display: flex; gap: 4px; justify-content: center; align-items: center;">
                     <button class="btn-outline btn-sm" onclick="duplicateExpense('${exp.id}')">복사</button>
@@ -307,6 +315,7 @@ function showNewExpenseForm() {
     expenseForm.reset();
     
     // Default values
+    fStatus.value = '임시작성';
     fCreatedDate.value = new Date().toISOString().split('T')[0];
     fPaymentDate.value = new Date().toISOString().split('T')[0];
     fCurrency.value = 'KRW';
@@ -335,6 +344,7 @@ async function editExpense(id) {
         editingExpenseId = exp.id;
         document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 지출결의서 수정";
         
+        fStatus.value = exp.status || '임시작성';
         fCreatedDate.value = exp.createdDate || '';
         fPaymentDate.value = exp.paymentDate || '';
         fCurrency.value = exp.currency || 'KRW';
@@ -384,6 +394,7 @@ async function duplicateExpense(id) {
         document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지출결의서 작성 (복사됨)";
         
         // 작성일자와 지급일자는 오늘로 초기화
+        fStatus.value = '임시작성';
         fCreatedDate.value = new Date().toISOString().split('T')[0];
         fPaymentDate.value = new Date().toISOString().split('T')[0];
         
@@ -448,6 +459,7 @@ async function saveExpense() {
     }
 
     const payload = {
+        status: fStatus.value,
         createdDate: fCreatedDate.value,
         paymentDate: fPaymentDate.value,
         currency: fCurrency.value,

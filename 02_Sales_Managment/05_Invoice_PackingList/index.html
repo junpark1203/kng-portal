@@ -81,11 +81,12 @@
                                             <th>통화</th>
                                             <th>총액</th>
                                             <th>생성일</th>
+                                            <th>상태</th>
                                             <th class="col-actions">관리</th>
                                         </tr>
                                     </thead>
                                     <tbody id="docTableBody">
-                                        <tr><td colspan="9" class="inv-table-empty">
+                                        <tr><td colspan="10" class="inv-table-empty">
                                             <i class='bx bx-file'></i>
                                             등록된 거래가 없습니다.<br>상단의 <b>신규 거래 생성</b> 버튼을 클릭하세요.
                                         </td></tr>
@@ -112,6 +113,14 @@
                     <div class="inv-form-grid">
                         <!-- Document Info -->
                         <div class="inv-section-title">문서 정보</div>
+                        <div class="inv-fg">
+                            <label for="inpStatus">진행 상태</label>
+                            <select id="inpStatus">
+                                <option value="임시작성">임시작성</option>
+                                <option value="진행중">진행중</option>
+                                <option value="완료">완료</option>
+                            </select>
+                        </div>
                         <div class="inv-fg">
                             <label for="inpInvoiceNo">Invoice No.</label>
                             <input type="text" id="inpInvoiceNo" placeholder="예: KNG-2026-001">

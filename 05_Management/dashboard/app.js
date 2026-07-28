@@ -172,6 +172,15 @@ function renderApprovals(expenses, exhibitions) {
     }
 
     expenses.forEach(doc => {
+        const getCurrencySymbol = (c) => {
+            if (c === 'USD') return '$';
+            if (c === 'EUR') return '€';
+            if (c === 'JPY') return '¥';
+            return '₩';
+        };
+        const curSym = getCurrencySymbol(doc.currency);
+        const amtText = Number(doc.amount || 0).toLocaleString(undefined, { minimumFractionDigits: (doc.currency === 'KRW' || !doc.currency) ? 0 : 2 });
+        
         html += `
             <div class="list-item">
                 <div class="item-header">
@@ -185,7 +194,7 @@ function renderApprovals(expenses, exhibitions) {
                     </select>
                 </div>
                 <div class="item-meta">
-                    기안자: ${doc.personInCharge || '-'} | 금액: ₩${doc.amount.toLocaleString()} | 작성일: ${doc.createdAt.split('T')[0]}
+                    기안자: ${doc.personInCharge || '-'} | 금액: ${curSym} ${amtText} | 작성일: ${doc.createdAt.split('T')[0]}
                 </div>
             </div>
         `;

@@ -155,6 +155,8 @@ router.post('/', (req, res) => {
     const p = req.body;
     const id = p.id || ('WL-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6));
     const now = new Date().toISOString();
+    const userEmail = (req.user && (req.user.email || req.user.uid)) || '';
+    const actualAuthorId = userEmail || p.authorId || '';
     const sql = `
         INSERT INTO work_logs (
             id, date, department, company, authorId, authorName, logType, category, isDraft, todayTasks, nextTasks, attachedImages, createdAt, updatedAt
@@ -162,7 +164,7 @@ router.post('/', (req, res) => {
     `;
     
     const params = [
-        id, p.date || '', p.department || '', p.company || '', p.authorId || '', p.authorName || '', 
+        id, p.date || '', p.department || '', p.company || '', actualAuthorId, p.authorName || '', 
         p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', p.attachedImages || '[]', now, now
     ];
     
@@ -177,6 +179,8 @@ router.put('/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
     const now = new Date().toISOString();
+    const userEmail = (req.user && (req.user.email || req.user.uid)) || '';
+    const actualAuthorId = userEmail || p.authorId || '';
     const sql = `
         UPDATE work_logs SET
             date = ?, department = ?, company = ?, authorId = ?, authorName = ?, logType = ?, category = ?, isDraft = ?, todayTasks = ?, nextTasks = ?, attachedImages = ?, updatedAt = ?
@@ -184,7 +188,7 @@ router.put('/:id', (req, res) => {
     `;
     
     const params = [
-        p.date || '', p.department || '', p.company || '', p.authorId || '', p.authorName || '', 
+        p.date || '', p.department || '', p.company || '', actualAuthorId, p.authorName || '', 
         p.logType || '', p.category || '', p.isDraft ? 1 : 0, p.todayTasks || '', p.nextTasks || '', p.attachedImages || '[]', now, id
     ];
     

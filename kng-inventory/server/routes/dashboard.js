@@ -20,7 +20,7 @@ router.get('/summary', async (req, res) => {
     try {
         // 1. 진행중인 지출결의서
         const pendingExpenses = await dbAll(`
-            SELECT id, title, amount, status, createdAt, personInCharge 
+            SELECT id, title, amount, currency, status, createdAt, personInCharge 
             FROM expense_resolutions 
             WHERE status NOT IN ('결재보류', '결재완료')
             ORDER BY createdAt DESC
