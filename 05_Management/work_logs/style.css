@@ -451,6 +451,7 @@ button {
 
 /* Accordion Item */
 .history-item {
+    flex-shrink: 0;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     overflow: hidden;
