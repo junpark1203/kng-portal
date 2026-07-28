@@ -1,5 +1,5 @@
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3000/api'
+    ? 'http://localhost:8788/api'
     : 'https://kng.junparks.com/api';
 
 async function authFetch(url, options = {}) {
@@ -73,6 +73,13 @@ async function loadDashboardData() {
         renderWorkLog(data.yesterdayLog);
     } catch (err) {
         console.error(err);
+        const errorHtml = `<div class="empty-state" style="color: #ef4444;"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다. (서버 연결 실패)</div>`;
+        document.querySelectorAll('.widget-content:not(#calendarWidget):not(#weatherWidget)').forEach(el => {
+            // TradingView 뷰어 등은 건드리지 않기 위해 loading 클래스가 있는 곳만 덮어씌움
+            if (el.querySelector('.loading')) {
+                el.innerHTML = errorHtml;
+            }
+        });
     }
 }
 
