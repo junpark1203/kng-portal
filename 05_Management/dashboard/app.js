@@ -267,20 +267,34 @@ function renderWorkLog(log) {
         return;
     }
 
-    // JSON 배열 파싱 시도 (금일 진행 업무)
-    let tasks = [];
-    try { tasks = JSON.parse(log.todayTasks || '[]'); } catch(e) {}
-    
-    // JSON 배열 파싱 시도 (명일 예정 업무)
-    let next = [];
-    try { next = JSON.parse(log.nextTasks || '[]'); } catch(e) {}
+    const stripHtml = (html) => {
+        let tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || "";
+    };
+
+    const parseTasks = (taskData) => {
+        if (!taskData) return [];
+        try {
+            if (taskData.trim().startsWith('[')) {
+                return JSON.parse(taskData);
+            }
+        } catch(e) {}
+        
+        // JSON 파싱 실패시 일반 텍스트로 처리 (HTML 태그 제거 후 줄바꿈 기준 분리)
+        const text = stripHtml(taskData);
+        return text.split('\n').filter(t => t.trim()).map(t => ({ content: t.trim() }));
+    };
+
+    const tasks = parseTasks(log.todayTasks);
+    const next = parseTasks(log.nextTasks);
 
     const tasksHtml = tasks.length > 0 
-        ? tasks.map(t => `<li><i class='bx bx-check'></i> ${t.content}</li>`).join('') 
+        ? tasks.map(t => `<li style="margin-bottom: 3px;"><i class='bx bx-check'></i> ${t.content}</li>`).join('') 
         : '<li>진행한 업무가 없습니다.</li>';
         
     const nextHtml = next.length > 0 
-        ? next.map(t => `<li><i class='bx bx-right-arrow-alt'></i> ${t.content}</li>`).join('') 
+        ? next.map(t => `<li style="margin-bottom: 3px;"><i class='bx bx-right-arrow-alt'></i> ${t.content}</li>`).join('') 
         : '<li>예정된 업무가 없습니다.</li>';
 
     container.innerHTML = `
