@@ -34,6 +34,16 @@ const stripHTMLAndExtractImages = (htmlStr) => {
 
 // 기존 데이터 마이그레이션 함수
 const migrateData = () => {
+    // 1. 기존 '박준영' 작성자의 누락된 authorId 업데이트 (일회성 복구)
+    db.run(
+        "UPDATE work_logs SET authorId = 'jpark120325@gmail.com' WHERE authorName = '박준영' AND (authorId = '' OR authorId IS NULL)",
+        [],
+        (err) => {
+            if (err) console.error("작성자 ID 마이그레이션 에러:", err);
+            else console.log("박준영 작성자의 기존 업무일지 ID 복구 완료");
+        }
+    );
+
     db.all("PRAGMA table_info(work_logs)", [], (err, cols) => {
         if (err) return console.error('PRAGMA 에러:', err);
         const hasAttachedImages = cols.some(c => c.name === 'attachedImages');
