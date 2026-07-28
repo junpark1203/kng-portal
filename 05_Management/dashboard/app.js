@@ -1,5 +1,5 @@
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8788/api'
+    ? 'http://localhost:3000/api'
     : 'https://kng.junparks.com/api';
 
 async function authFetch(url, options = {}) {
