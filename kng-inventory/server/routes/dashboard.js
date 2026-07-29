@@ -102,7 +102,9 @@ router.get('/market-indices', async (req, res) => {
         const symbols = ['^KS11', '^KQ11', '^DJI', '^IXIC', '^GSPC', '^N225', '000001.SS'];
         
         // Dynamic import for ESM package
-        const { default: yahooFinance } = await import('yahoo-finance2');
+        const { default: YahooFinance } = await import('yahoo-finance2');
+        const yahooFinance = new YahooFinance();
+        yahooFinance.suppressNotices(['yahooSurvey']);
         const results = await yahooFinance.quote(symbols);
         
         const nameMap = {
