@@ -320,10 +320,20 @@ function renderForm() {
                     const img = document.createElement('img');
                     img.src = getImgSrc(imgUrl);
                     img.title = "클릭하여 삭제";
-                    img.onclick = () => {
+                    img.onclick = async () => {
                         if(confirm('이 사진을 지우시겠습니까?')) {
+                            const urlToDelete = row[col.id][imgIndex];
                             row[col.id].splice(imgIndex, 1);
                             renderForm();
+                            
+                            // 서버에 실제 파일 삭제 요청
+                            try {
+                                await authFetch(`${API_BASE}/file`, {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ url: urlToDelete })
+                                });
+                            } catch(e) { console.error('파일 삭제 실패', e); }
                         }
                     };
                     gridDiv.appendChild(img);

@@ -125,6 +125,29 @@ router.delete('/:id', (req, res) => {
     });
 });
 
+// 특정 파일(사진) 삭제
+router.delete('/file', (req, res) => {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    try {
+        // url에서 파일명만 추출 (예: /api/report-builder/uploads/1234.jpg -> 1234.jpg)
+        const filename = url.split('/').pop();
+        const uploadDir = path.join(__dirname, '..', 'uploads', 'report-builder');
+        const filePath = path.join(uploadDir, filename);
+
+        // 보안: 상위 폴더 접근 차단
+        if (filePath.startsWith(uploadDir) && fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            return res.json({ success: true, message: 'File deleted' });
+        }
+        res.status(404).json({ error: 'File not found' });
+    } catch (err) {
+        console.error('파일 삭제 오류:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = {
     router,
     setDb,
