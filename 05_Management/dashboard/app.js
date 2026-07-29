@@ -1,7 +1,12 @@
+/* ════════════════════════════════════════════
+   K&G 관리자 대시보드 — App Logic
+   ════════════════════════════════════════════ */
+
 const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:3000/api'
     : 'https://kng.junparks.com/api';
 
+// ── Auth 헬퍼 ──
 let _authReady = null;
 function waitForAuth(timeout = 8000) {
     if (_authReady) return _authReady;
@@ -36,40 +41,76 @@ async function authFetch(url, options = {}) {
             token = await window.parent.getAuthToken();
         }
     } catch(e) {}
-    
     if (!token) {
         try { token = await waitForAuth(); } catch(e) {}
     }
-    
     if (!options.headers) options.headers = {};
-    if (token) {
-        options.headers['Authorization'] = 'Bearer ' + token;
-    }
+    if (token) options.headers['Authorization'] = 'Bearer ' + token;
     return fetch(url, options);
 }
 
+
+// ── WMO Weather Code → 아이콘/설명 매핑 ──
+const WMO_MAP = {
+    0:  { icon: '☀️', desc: '맑음' },
+    1:  { icon: '🌤️', desc: '대체로 맑음' },
+    2:  { icon: '⛅', desc: '구름 조금' },
+    3:  { icon: '☁️', desc: '흐림' },
+    45: { icon: '🌫️', desc: '안개' },
+    48: { icon: '🌫️', desc: '짙은 안개' },
+    51: { icon: '🌦️', desc: '이슬비' },
+    53: { icon: '🌦️', desc: '이슬비' },
+    55: { icon: '🌦️', desc: '이슬비' },
+    56: { icon: '🌧️', desc: '빙결 이슬비' },
+    57: { icon: '🌧️', desc: '빙결 이슬비' },
+    61: { icon: '🌧️', desc: '약한 비' },
+    63: { icon: '🌧️', desc: '비' },
+    65: { icon: '🌧️', desc: '강한 비' },
+    66: { icon: '🌧️', desc: '빙결 비' },
+    67: { icon: '🌧️', desc: '빙결 비' },
+    71: { icon: '🌨️', desc: '약한 눈' },
+    73: { icon: '🌨️', desc: '눈' },
+    75: { icon: '🌨️', desc: '강한 눈' },
+    77: { icon: '🌨️', desc: '싸라기눈' },
+    80: { icon: '🌦️', desc: '소나기' },
+    81: { icon: '🌧️', desc: '소나기' },
+    82: { icon: '🌧️', desc: '강한 소나기' },
+    85: { icon: '🌨️', desc: '눈 소나기' },
+    86: { icon: '🌨️', desc: '눈 소나기' },
+    95: { icon: '⛈️', desc: '뇌우' },
+    96: { icon: '⛈️', desc: '뇌우 (우박)' },
+    99: { icon: '⛈️', desc: '뇌우 (강한 우박)' },
+};
+
+function getWeatherInfo(code) {
+    return WMO_MAP[code] || { icon: '🌡️', desc: '알 수 없음' };
+}
+
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+
+// ── DOM Ready ──
 document.addEventListener('DOMContentLoaded', () => {
-    loadDashboardData();
-    loadCalendarEvents();
-    loadWeather();
+    updateTimestamp();
+    loadAll();
 
     document.getElementById('refreshBtn').addEventListener('click', () => {
-        loadDashboardData();
-        loadCalendarEvents();
-        loadWeather();
+        const btn = document.getElementById('refreshBtn');
+        btn.querySelector('i').style.animation = 'spin 0.5s linear';
+        setTimeout(() => btn.querySelector('i').style.animation = '', 500);
+        loadAll();
     });
 
     // 이벤트 모달 처리
     const modal = document.getElementById('eventModal');
     document.getElementById('addEventBtn').addEventListener('click', () => modal.classList.remove('hidden'));
     document.getElementById('closeEventModal').addEventListener('click', () => modal.classList.add('hidden'));
-    
+
     document.getElementById('eventForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const summary = document.getElementById('eventSummary').value;
         const start = document.getElementById('eventStart').value;
         const end = document.getElementById('eventEnd').value;
-        
         try {
             const res = await authFetch(`${API_BASE}/calendar/events`, {
                 method: 'POST',
@@ -91,12 +132,140 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function loadAll() {
+    updateTimestamp();
+    loadExchangeData();
+    loadWeather();
+    loadCalendarEvents();
+    loadDashboardData();
+    // 증시는 TradingView 위젯이 자동 관리 (새로고침 불필요)
+}
+
+function updateTimestamp() {
+    const el = document.getElementById('headerTimestamp');
+    if (el) {
+        const now = new Date();
+        el.textContent = new Intl.DateTimeFormat('ko-KR', {
+            month: 'long', day: 'numeric', weekday: 'short',
+            hour: '2-digit', minute: '2-digit'
+        }).format(now);
+    }
+}
+
+
+/* ════════════════════════════════
+   환율 데이터 (Frankfurter API — 프론트엔드 직접 호출)
+   ════════════════════════════════ */
+async function loadExchangeData() {
+    const container = document.getElementById('exchangeGrid');
+    try {
+        const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,EUR,JPY,CNY');
+        if (!res.ok) throw new Error('환율 API 오류');
+        const data = await res.json();
+
+        const usdToKrw = data.rates.KRW;
+
+        const rates = [
+            { currency: 'USD', name: '미국 달러', rate: usdToKrw,                                     flag: '🇺🇸', unit: '1 USD' },
+            { currency: 'EUR', name: '유로',     rate: usdToKrw / data.rates.EUR,                     flag: '🇪🇺', unit: '1 EUR' },
+            { currency: 'JPY', name: '일본 엔',   rate: (usdToKrw / data.rates.JPY) * 100,            flag: '🇯🇵', unit: '100 JPY' },
+            { currency: 'CNY', name: '중국 위안',  rate: usdToKrw / data.rates.CNY,                    flag: '🇨🇳', unit: '1 CNY' },
+        ];
+
+        container.innerHTML = rates.map(r => `
+            <div class="exchange-item">
+                <span class="fx-flag">${r.flag}</span>
+                <span class="fx-label">${r.currency}/KRW</span>
+                <span class="fx-rate">₩${formatNumber(r.rate, 2)}</span>
+                <span class="fx-sub">${r.unit}</span>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('환율 오류:', err);
+        container.innerHTML = `
+            <div class="exchange-item" style="grid-column: 1 / -1; padding: 16px;">
+                <span class="fx-label" style="color: var(--text-tertiary);">환율 정보를 불러올 수 없습니다</span>
+            </div>
+        `;
+    }
+}
+
+
+/* ════════════════════════════════
+   날씨 (오늘 + 주간 예보)
+   ════════════════════════════════ */
+async function loadWeather() {
+    const container = document.getElementById('weatherWidget');
+    try {
+        const res = await fetch(
+            'https://api.open-meteo.com/v1/forecast' +
+            '?latitude=37.5665&longitude=126.9780' +
+            '&current_weather=true' +
+            '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+            '&timezone=Asia/Seoul' +
+            '&forecast_days=7'
+        );
+        if (!res.ok) throw new Error('날씨 API 오류');
+        const data = await res.json();
+        const current = data.current_weather;
+        const daily = data.daily;
+
+        // 오늘 날씨
+        const todayInfo = getWeatherInfo(current.weathercode);
+        const todayMax = Math.round(daily.temperature_2m_max[0]);
+        const todayMin = Math.round(daily.temperature_2m_min[0]);
+        const todayPrecip = daily.precipitation_probability_max[0] ?? 0;
+
+        // 주간 예보
+        let weeklyHtml = '';
+        const todayStr = new Date().toISOString().split('T')[0];
+        for (let i = 0; i < daily.time.length; i++) {
+            const d = new Date(daily.time[i] + 'T00:00:00');
+            const dayName = DAY_NAMES[d.getDay()];
+            const info = getWeatherInfo(daily.weather_code[i]);
+            const max = Math.round(daily.temperature_2m_max[i]);
+            const min = Math.round(daily.temperature_2m_min[i]);
+            const isToday = daily.time[i] === todayStr;
+
+            weeklyHtml += `
+                <div class="weather-day ${isToday ? 'today' : ''}">
+                    <span class="weather-day-label">${isToday ? '오늘' : dayName}</span>
+                    <span class="weather-day-icon">${info.icon}</span>
+                    <span class="weather-day-temp">${max}°</span>
+                    <span class="weather-day-temp-min">${min}°</span>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div class="weather-today">
+                <div class="weather-icon">${todayInfo.icon}</div>
+                <div class="weather-main">
+                    <div class="weather-temp">${Math.round(current.temperature)}°C</div>
+                    <div class="weather-desc">${todayInfo.desc}</div>
+                    <div class="weather-meta">
+                        <span><i class='bx bx-up-arrow-alt'></i>${todayMax}° / <i class='bx bx-down-arrow-alt'></i>${todayMin}°</span>
+                        <span><i class='bx bx-droplet'></i>${todayPrecip}%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="weather-weekly">${weeklyHtml}</div>
+        `;
+    } catch (err) {
+        container.innerHTML = `<div class="empty-state"><i class='bx bx-cloud-drizzle'></i> 날씨 정보를 불러올 수 없습니다.</div>`;
+    }
+}
+
+
+/* ════════════════════════════════
+   대시보드 데이터 (결재, 인보이스, 재고, 셀러K, 업무일지)
+   ════════════════════════════════ */
 async function loadDashboardData() {
     try {
         const res = await authFetch(`${API_BASE}/dashboard/summary`);
         if (!res.ok) throw new Error('데이터 불러오기 실패');
         const data = await res.json();
-        
+
         renderApprovals(data.pendingExpenses, data.pendingExhibitions);
         renderInvoices(data.pendingInvoices);
         renderLowStock(data.lowStockHqProducts);
@@ -104,82 +273,80 @@ async function loadDashboardData() {
         renderWorkLog(data.yesterdayLog);
     } catch (err) {
         console.error(err);
-        const errorHtml = `<div class="empty-state" style="color: #ef4444;"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다. (서버 연결 실패)</div>`;
-        document.querySelectorAll('.widget-content:not(#calendarWidget):not(#weatherWidget)').forEach(el => {
-            // TradingView 뷰어 등은 건드리지 않기 위해 skeleton-loader 클래스가 있는 곳만 덮어씌움
-            if (el.querySelector('.skeleton-loader')) {
-                el.innerHTML = errorHtml;
-            }
+        const errorHtml = `<div class="error-state"><i class='bx bx-error'></i> 데이터를 불러오지 못했습니다.</div>`;
+        ['approvalWidget', 'invoiceWidget', 'lowStockWidget', 'recentSellerKWidget', 'workLogWidget'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.querySelector('.skeleton-loader')) el.innerHTML = errorHtml;
         });
     }
 }
 
-async function loadWeather() {
-    const container = document.getElementById('weatherWidget');
-    try {
-        // 서울 날씨 좌표: 위도 37.5665, 경도 126.9780 (Open-Meteo 무료 API)
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true');
-        if (!res.ok) throw new Error('날씨 API 오류');
-        const data = await res.json();
-        const current = data.current_weather;
-        
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px;">
-                <i class='bx bx-sun' style="font-size: 64px; color: #f59e0b; filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.4));"></i>
-                <div>
-                    <div style="font-size: 42px; font-weight: 700; color: var(--text-main); line-height: 1.2;">
-                        ${current.temperature}°C
-                    </div>
-                    <div style="color: var(--text-muted); font-size: 15px; font-weight: 500;">
-                        풍속: ${current.windspeed} km/h
-                    </div>
-                </div>
-            </div>
-        `;
-    } catch (err) {
-        container.innerHTML = `<div class="empty-state">날씨 정보를 불러올 수 없습니다.</div>`;
-    }
-}
 
+/* ════════════════════════════════
+   캘린더 이벤트
+   ════════════════════════════════ */
 async function loadCalendarEvents() {
     const container = document.getElementById('calendarWidget');
     try {
         const res = await authFetch(`${API_BASE}/calendar/events`);
         if (!res.ok) throw new Error('일정 불러오기 실패');
         const events = await res.json();
-        
+
         if (events.length === 0) {
-            container.innerHTML = '<div class="empty-state">이번 달 일정이 없습니다.</div>';
+            container.innerHTML = '<div class="empty-state"><i class="bx bx-calendar-x"></i> 이번 달 일정이 없습니다.</div>';
             return;
         }
-        
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
         container.innerHTML = events.map(ev => {
             let dateStr = '';
+            let eventDateStr = '';
             if (ev.start.dateTime) {
                 const d = new Date(ev.start.dateTime);
-                dateStr = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(d);
+                eventDateStr = d.toISOString().split('T')[0];
+                dateStr = new Intl.DateTimeFormat('ko-KR', {
+                    month: 'numeric', day: 'numeric', weekday: 'short',
+                    hour: 'numeric', minute: '2-digit'
+                }).format(d);
             } else if (ev.start.date) {
+                eventDateStr = ev.start.date;
                 const d = new Date(ev.start.date);
-                dateStr = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }).format(d) + ' (종일)';
+                dateStr = new Intl.DateTimeFormat('ko-KR', {
+                    month: 'numeric', day: 'numeric', weekday: 'short'
+                }).format(d) + ' (종일)';
             }
+
+            let extra = '';
+            if (eventDateStr === todayStr) extra = 'today-event';
+            else if (eventDateStr === tomorrowStr) extra = 'tomorrow-event';
+
             return `
-            <div class="event-item">
-                <div class="event-date" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px;">${dateStr}</div>
-                <div class="event-title">${ev.summary}</div>
-            </div>
+                <div class="event-item ${extra}">
+                    <span class="event-dot"></span>
+                    <span class="event-date">${dateStr}</span>
+                    <span class="event-title">${ev.summary}</span>
+                </div>
             `;
         }).join('');
     } catch (err) {
-        container.innerHTML = `<div class="empty-state" style="color:red">${err.message}</div>`;
+        container.innerHTML = `<div class="error-state"><i class='bx bx-error'></i> ${err.message}</div>`;
     }
 }
 
+
+/* ════════════════════════════════
+   결재 대기함
+   ════════════════════════════════ */
 function renderApprovals(expenses, exhibitions) {
     const container = document.getElementById('approvalWidget');
     let html = '';
-    
+
     if (expenses.length === 0 && exhibitions.length === 0) {
-        container.innerHTML = '<div class="empty-state">대기 중인 결재 문서가 없습니다.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="bx bx-check-circle"></i> 대기 중인 결재 문서가 없습니다.</div>';
         return;
     }
 
@@ -192,8 +359,10 @@ function renderApprovals(expenses, exhibitions) {
             return '₩';
         };
         const curSym = getCurrencySymbol(doc.currency);
-        const amtText = Number(doc.amount || 0).toLocaleString(undefined, { minimumFractionDigits: (doc.currency === 'KRW' || !doc.currency) ? 0 : 2 });
-        
+        const amtText = Number(doc.amount || 0).toLocaleString(undefined, {
+            minimumFractionDigits: (doc.currency === 'KRW' || !doc.currency) ? 0 : 2
+        });
+
         html += `
             <div class="list-item">
                 <div class="item-header">
@@ -207,7 +376,9 @@ function renderApprovals(expenses, exhibitions) {
                     </select>
                 </div>
                 <div class="item-meta">
-                    기안자: ${doc.personInCharge || '-'} | 금액: ${curSym} ${amtText} | 작성일: ${doc.createdAt.split('T')[0]}
+                    <span>기안: ${doc.personInCharge || '-'}</span>
+                    <span>${curSym} ${amtText}</span>
+                    <span>${doc.createdAt.split('T')[0]}</span>
                 </div>
             </div>
         `;
@@ -227,7 +398,8 @@ function renderApprovals(expenses, exhibitions) {
                     </select>
                 </div>
                 <div class="item-meta">
-                    방문일: ${doc.visitDate || '-'} | 작성일: ${doc.createdAt.split('T')[0]}
+                    <span>방문: ${doc.visitDate || '-'}</span>
+                    <span>${doc.createdAt.split('T')[0]}</span>
                 </div>
             </div>
         `;
@@ -236,10 +408,14 @@ function renderApprovals(expenses, exhibitions) {
     container.innerHTML = html;
 }
 
+
+/* ════════════════════════════════
+   인보이스
+   ════════════════════════════════ */
 function renderInvoices(invoices) {
     const container = document.getElementById('invoiceWidget');
     if (invoices.length === 0) {
-        container.innerHTML = '<div class="empty-state">진행 중인 인보이스가 없습니다.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="bx bx-file"></i> 진행 중인 인보이스가 없습니다.</div>';
         return;
     }
 
@@ -254,16 +430,21 @@ function renderInvoices(invoices) {
                 </select>
             </div>
             <div class="item-meta">
-                작성일: ${inv.docDate || inv.createdAt.split('T')[0]} | Shipper: ${inv.shipper?.name || '-'}
+                <span>${inv.docDate || inv.createdAt.split('T')[0]}</span>
+                <span>${inv.shipper?.name || '-'}</span>
             </div>
         </div>
     `).join('');
 }
 
+
+/* ════════════════════════════════
+   업무일지
+   ════════════════════════════════ */
 function renderWorkLog(log) {
     const container = document.getElementById('workLogWidget');
     if (!log) {
-        container.innerHTML = '<div class="empty-state">최근 작성된 업무일지가 없습니다.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="bx bx-notepad"></i> 최근 작성된 업무일지가 없습니다.</div>';
         return;
     }
 
@@ -280,8 +461,6 @@ function renderWorkLog(log) {
                 return JSON.parse(taskData);
             }
         } catch(e) {}
-        
-        // JSON 파싱 실패시 일반 텍스트로 처리 (HTML 태그 제거 후 줄바꿈 기준 분리)
         const text = stripHtml(taskData);
         return text.split('\n').filter(t => t.trim()).map(t => ({ content: t.trim() }));
     };
@@ -289,26 +468,26 @@ function renderWorkLog(log) {
     const tasks = parseTasks(log.todayTasks);
     const next = parseTasks(log.nextTasks);
 
-    const tasksHtml = tasks.length > 0 
-        ? tasks.map(t => `<li style="margin-bottom: 3px;"><i class='bx bx-check'></i> ${t.content}</li>`).join('') 
-        : '<li>진행한 업무가 없습니다.</li>';
-        
-    const nextHtml = next.length > 0 
-        ? next.map(t => `<li style="margin-bottom: 3px;"><i class='bx bx-right-arrow-alt'></i> ${t.content}</li>`).join('') 
-        : '<li>예정된 업무가 없습니다.</li>';
+    const tasksHtml = tasks.length > 0
+        ? tasks.map(t => `<li><i class='bx bx-check' style="color: var(--success); margin-right: 4px;"></i>${t.content}</li>`).join('')
+        : '<li style="color: var(--text-tertiary);">진행한 업무가 없습니다.</li>';
+
+    const nextHtml = next.length > 0
+        ? next.map(t => `<li><i class='bx bx-right-arrow-alt' style="color: var(--accent); margin-right: 4px;"></i>${t.content}</li>`).join('')
+        : '<li style="color: var(--text-tertiary);">예정된 업무가 없습니다.</li>';
 
     container.innerHTML = `
         <div class="list-item">
             <div class="item-header">
-                <span class="item-title">작성일자: ${log.date}</span>
+                <span class="item-title">작성일: ${log.date}</span>
             </div>
-            <div style="font-size: 13px; margin-top: 8px;">
-                <strong>[금일 진행 업무]</strong>
-                <ul style="list-style:none; padding:0; margin: 4px 0 12px 0; color: var(--text-muted);">
+            <div style="font-size: 13px; margin-top: 4px;">
+                <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">[금일 진행 업무]</div>
+                <ul style="list-style:none; padding:0; margin: 0 0 12px 0; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
                     ${tasksHtml}
                 </ul>
-                <strong>[명일 예정 업무]</strong>
-                <ul style="list-style:none; padding:0; margin: 4px 0 0 0; color: var(--text-muted);">
+                <div style="font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">[명일 예정 업무]</div>
+                <ul style="list-style:none; padding:0; margin: 0; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
                     ${nextHtml}
                 </ul>
             </div>
@@ -316,10 +495,14 @@ function renderWorkLog(log) {
     `;
 }
 
+
+/* ════════════════════════════════
+   재고 경고
+   ════════════════════════════════ */
 function renderLowStock(products) {
     const container = document.getElementById('lowStockWidget');
     if (products.length === 0) {
-        container.innerHTML = '<div class="empty-state">안전재고 미달 품목이 없습니다.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="bx bx-check-shield"></i> 안전재고 미달 품목이 없습니다.</div>';
         return;
     }
 
@@ -329,15 +512,22 @@ function renderLowStock(products) {
                 <span class="item-title">${p.name} (${p.color}, ${p.size})</span>
                 <span class="badge danger">재고: ${p.stock}</span>
             </div>
-            <div class="item-meta">공급사: ${p.supplier} | 브랜드: ${p.brand}</div>
+            <div class="item-meta">
+                <span>${p.supplier}</span>
+                <span>${p.brand}</span>
+            </div>
         </div>
     `).join('');
 }
 
+
+/* ════════════════════════════════
+   셀러K 매입 변동
+   ════════════════════════════════ */
 function renderRecentSellerK(products) {
     const container = document.getElementById('recentSellerKWidget');
     if (products.length === 0) {
-        container.innerHTML = '<div class="empty-state">최근 5일 이내 변동 내역이 없습니다.</div>';
+        container.innerHTML = '<div class="empty-state"><i class="bx bx-store"></i> 최근 5일 이내 변동 내역이 없습니다.</div>';
         return;
     }
 
@@ -345,13 +535,19 @@ function renderRecentSellerK(products) {
         <div class="list-item">
             <div class="item-header">
                 <span class="item-title">${p.name}</span>
-                <span class="badge">수정일: ${p.updatedAt.split('T')[0]}</span>
+                <span class="badge info">${p.updatedAt.split('T')[0]}</span>
             </div>
-            <div class="item-meta">옵션: ${p.color} / ${p.size}</div>
+            <div class="item-meta">
+                <span>${p.color} / ${p.size}</span>
+            </div>
         </div>
     `).join('');
 }
 
+
+/* ════════════════════════════════
+   상태 업데이트
+   ════════════════════════════════ */
 async function updateStatus(apiEndpoint, id, newStatus) {
     try {
         const res = await authFetch(`${API_BASE}/${apiEndpoint}/${id}/status`, {
@@ -360,13 +556,23 @@ async function updateStatus(apiEndpoint, id, newStatus) {
             body: JSON.stringify({ status: newStatus })
         });
         if (!res.ok) throw new Error('상태 변경 실패');
-        
-        // 보류나 완료 등 화면에서 사라져야 할 상태면 목록 새로고침
         if (newStatus === '결재완료' || newStatus === '결재보류' || newStatus === '완료') {
             loadDashboardData();
         }
     } catch (err) {
         alert(err.message);
-        loadDashboardData(); // 롤백
+        loadDashboardData();
     }
+}
+
+
+/* ════════════════════════════════
+   유틸리티
+   ════════════════════════════════ */
+function formatNumber(num, decimals = 2) {
+    if (num == null || isNaN(num)) return '—';
+    return Number(num).toLocaleString('ko-KR', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
 }

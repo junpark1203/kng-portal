@@ -4,95 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>관리자 대시보드</title>
+    <meta name="description" content="K&G 관리자 대시보드 - 증시, 환율, 일정, 결재, 재고 현황을 한눈에 확인합니다.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <header class="dashboard-header">
+        <header class="dashboard-header" id="dashboardHeader">
             <h1><i class='bx bx-grid-alt'></i> 관리자 대시보드</h1>
-            <button id="refreshBtn" class="refresh-btn"><i class='bx bx-refresh'></i> 새로고침</button>
+            <div class="header-actions">
+                <span class="header-timestamp" id="headerTimestamp"></span>
+                <button id="refreshBtn" class="refresh-btn" title="새로고침"><i class='bx bx-refresh'></i></button>
+            </div>
         </header>
-        
+
+        <!-- ═══ 1행: 증시 (TradingView Tickers) + 환율 ═══ -->
+        <div class="market-bar">
+            <div class="market-stocks">
+                <div class="market-label"><i class='bx bx-line-chart'></i> 주요 증시</div>
+                <div class="tradingview-widget-container" id="tvTickersContainer">
+                    <div class="tradingview-widget-container__widget"></div>
+                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-tickers.js" async>
+                    {
+                        "symbols": [
+                            { "proName": "KRX:KOSPI", "title": "코스피" },
+                            { "proName": "KRX:KOSDAQ", "title": "코스닥" },
+                            { "proName": "TVC:DJI", "title": "다우" },
+                            { "proName": "NASDAQ:NDX", "title": "나스닥" },
+                            { "proName": "TVC:NI225", "title": "니케이225" },
+                            { "proName": "SSE:000001", "title": "상해종합" }
+                        ],
+                        "isTransparent": true,
+                        "showSymbolLogo": false,
+                        "colorTheme": "light",
+                        "locale": "kr"
+                    }
+                    </script>
+                </div>
+            </div>
+            <div class="market-divider"></div>
+            <div class="market-exchange">
+                <div class="market-label"><i class='bx bx-dollar-circle'></i> 환율</div>
+                <div class="exchange-grid" id="exchangeGrid">
+                    <div class="exchange-item skeleton-fx"><span class="fx-label">USD</span><span class="fx-rate">—</span></div>
+                    <div class="exchange-item skeleton-fx"><span class="fx-label">EUR</span><span class="fx-rate">—</span></div>
+                    <div class="exchange-item skeleton-fx"><span class="fx-label">JPY</span><span class="fx-rate">—</span></div>
+                    <div class="exchange-item skeleton-fx"><span class="fx-label">CNY</span><span class="fx-rate">—</span></div>
+                </div>
+            </div>
+        </div>
+
         <div class="dashboard-grid">
-            
-            <!-- 1. 오늘의 날씨 (상단) -->
-            <section class="widget widget-weather">
+            <!-- ═══ 2행: 날씨 + 일정 + 결재 ═══ -->
+            <section class="widget widget-weather" id="weatherSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-cloud'></i> 오늘의 날씨 (서울)</div>
+                    <div class="widget-title"><i class='bx bx-sun'></i> 날씨 <span class="widget-subtitle">서울</span></div>
                 </h2>
                 <div class="widget-content" id="weatherWidget">
                     <div class="skeleton-loader">
-                        <div class="skeleton-item" style="height: 100px; border-radius: 50%;"></div>
-                        <div class="skeleton-item" style="height: 24px; width: 60%; margin: 16px auto;"></div>
+                        <div class="skeleton-item" style="height: 80px;"></div>
+                        <div class="skeleton-item" style="height: 48px; margin-top: 12px;"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- 2. 증시 및 환율 (상단 넓게) -->
-            <section class="widget widget-stock">
+            <section class="widget widget-calendar" id="calendarSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-line-chart'></i> 국내외 증시 및 환율</div>
-                </h2>
-                <div class="widget-content">
-                    <!-- TradingView Ticker Tape Widget BEGIN -->
-                    <div class="tradingview-widget-container">
-                      <div class="tradingview-widget-container__widget"></div>
-                      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-                      {
-                      "symbols": [
-                        { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
-                        { "proName": "FOREXCOM:NSXUSD", "title": "US 100" },
-                        { "description": "KOSPI", "proName": "KRX:KOSPI" },
-                        { "description": "USD/KRW", "proName": "FX_IDC:USDKRW" },
-                        { "description": "EUR/KRW", "proName": "FX_IDC:EURKRW" },
-                        { "description": "JPY/KRW", "proName": "FX_IDC:JPYKRW" }
-                      ],
-                      "showSymbolLogo": true,
-                      "isTransparent": false,
-                      "displayMode": "adaptive",
-                      "colorTheme": "light",
-                      "locale": "kr"
-                    }
-                      </script>
-                    </div>
-                    <!-- TradingView Widget END -->
-                </div>
-            </section>
-
-            <!-- 3. 이번달 일정 (중단 왼쪽) -->
-            <section class="widget widget-calendar">
-                <h2>
-                    <div class="icon-wrapper"><i class='bx bx-calendar'></i> 이번달 일정</div> 
+                    <div class="widget-title"><i class='bx bx-calendar'></i> 이번달 일정</div>
                     <button class="add-btn" id="addEventBtn"><i class='bx bx-plus'></i> 새 일정</button>
                 </h2>
                 <div class="widget-content" id="calendarWidget">
                     <div class="skeleton-loader">
                         <div class="skeleton-item"></div>
                         <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- 4. 결재 대기함 (중단 오른쪽) -->
-            <section class="widget widget-approvals">
+            <section class="widget widget-approvals" id="approvalSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-edit-alt'></i> 결재 대기함</div>
+                    <div class="widget-title"><i class='bx bx-edit-alt'></i> 결재 대기함</div>
                 </h2>
                 <div class="widget-content" id="approvalWidget">
                     <div class="skeleton-loader">
                         <div class="skeleton-item"></div>
                         <div class="skeleton-item"></div>
-                        <div class="skeleton-item"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- 5. 진행 중 인보이스 (하단 1열) -->
-            <section class="widget widget-invoices">
+            <!-- ═══ 3행: 인보이스 + 업무일지 + 재고 + 셀러K ═══ -->
+            <section class="widget widget-invoices" id="invoiceSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-file'></i> 진행 중 인보이스</div>
+                    <div class="widget-title"><i class='bx bx-file'></i> 진행 중 인보이스</div>
                 </h2>
                 <div class="widget-content" id="invoiceWidget">
                     <div class="skeleton-loader">
@@ -102,10 +108,9 @@
                 </div>
             </section>
 
-            <!-- 6. 최근 업무일지 (하단 2열) -->
-            <section class="widget widget-worklogs">
+            <section class="widget widget-worklogs" id="worklogSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-notepad'></i> 최근 업무일지</div>
+                    <div class="widget-title"><i class='bx bx-notepad'></i> 최근 업무일지</div>
                 </h2>
                 <div class="widget-content" id="workLogWidget">
                     <div class="skeleton-loader">
@@ -115,10 +120,9 @@
                 </div>
             </section>
 
-            <!-- 7. 안전재고 미달 품목 (하단 3열) -->
-            <section class="widget widget-inventory">
+            <section class="widget widget-inventory" id="inventorySection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-error-circle'></i> 본사 재고 경고</div>
+                    <div class="widget-title"><i class='bx bx-error-circle'></i> 본사 재고 경고</div>
                 </h2>
                 <div class="widget-content" id="lowStockWidget">
                     <div class="skeleton-loader">
@@ -128,10 +132,9 @@
                 </div>
             </section>
 
-            <!-- 8. 셀러K 최근 매입 변동 (하단 4열) -->
-            <section class="widget widget-sellerk">
+            <section class="widget widget-sellerk" id="sellerkSection">
                 <h2>
-                    <div class="icon-wrapper"><i class='bx bx-store'></i> 셀러K 매입 변동</div>
+                    <div class="widget-title"><i class='bx bx-store'></i> 셀러K 매입 변동</div>
                 </h2>
                 <div class="widget-content" id="recentSellerKWidget">
                     <div class="skeleton-loader">
@@ -140,7 +143,6 @@
                     </div>
                 </div>
             </section>
-
         </div>
     </div>
 
