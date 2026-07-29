@@ -19,7 +19,7 @@
             </div>
         </header>
 
-        <!-- ═══ 1행: 증시 (TradingView Tickers) + 환율 ═══ -->
+        <!-- 섹션 1: 주요 증시 (TradingView Tickers) -->
         <div class="market-bar">
             <div class="market-stocks">
                 <div class="market-label"><i class='bx bx-line-chart'></i> 주요 증시</div>
@@ -27,20 +27,10 @@
                     <div class="market-loading">데이터를 불러오는 중...</div>
                 </div>
             </div>
-            <div class="market-divider"></div>
-            <div class="market-exchange">
-                <div class="market-label"><i class='bx bx-dollar-circle'></i> 환율</div>
-                <div class="exchange-grid" id="exchangeGrid">
-                    <div class="exchange-item skeleton-fx"><span class="fx-label">USD</span><span class="fx-rate">—</span></div>
-                    <div class="exchange-item skeleton-fx"><span class="fx-label">EUR</span><span class="fx-rate">—</span></div>
-                    <div class="exchange-item skeleton-fx"><span class="fx-label">JPY</span><span class="fx-rate">—</span></div>
-                    <div class="exchange-item skeleton-fx"><span class="fx-label">CNY</span><span class="fx-rate">—</span></div>
-                </div>
-            </div>
         </div>
 
         <div class="dashboard-grid">
-            <!-- ═══ 2행: 날씨 + 일정 + 결재 ═══ -->
+            <!-- 섹션 2: 날씨 + 환율 -->
             <section class="widget widget-weather" id="weatherSection">
                 <h2>
                     <div class="widget-title"><i class='bx bx-sun'></i> 날씨 <span class="widget-subtitle">서울</span></div>
@@ -53,6 +43,21 @@
                 </div>
             </section>
 
+            <section class="widget widget-exchange" id="exchangeSection">
+                <h2>
+                    <div class="widget-title"><i class='bx bx-dollar-circle'></i> 환율</div>
+                </h2>
+                <div class="widget-content">
+                    <div class="exchange-grid" id="exchangeGrid">
+                        <div class="exchange-item skeleton-fx"><span class="fx-label">USD</span><span class="fx-rate"></span></div>
+                        <div class="exchange-item skeleton-fx"><span class="fx-label">EUR</span><span class="fx-rate"></span></div>
+                        <div class="exchange-item skeleton-fx"><span class="fx-label">JPY</span><span class="fx-rate"></span></div>
+                        <div class="exchange-item skeleton-fx"><span class="fx-label">CNY</span><span class="fx-rate"></span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 섹션 3: 이번달 일정 + 결재대기함 -->
             <section class="widget widget-calendar" id="calendarSection">
                 <h2>
                     <div class="widget-title"><i class='bx bx-calendar'></i> 이번달 일정</div>
@@ -79,19 +84,7 @@
                 </div>
             </section>
 
-            <!-- ═══ 3행: 인보이스 + 업무일지 + 재고 + 셀러K ═══ -->
-            <section class="widget widget-invoices" id="invoiceSection">
-                <h2>
-                    <div class="widget-title"><i class='bx bx-file'></i> 진행 중 인보이스</div>
-                </h2>
-                <div class="widget-content" id="invoiceWidget">
-                    <div class="skeleton-loader">
-                        <div class="skeleton-item"></div>
-                        <div class="skeleton-item"></div>
-                    </div>
-                </div>
-            </section>
-
+            <!-- 섹션 4: 최근 업무일지 + 본사재고 경고 -->
             <section class="widget widget-worklogs" id="worklogSection">
                 <h2>
                     <div class="widget-title"><i class='bx bx-notepad'></i> 최근 업무일지</div>
@@ -109,6 +102,19 @@
                     <div class="widget-title"><i class='bx bx-error-circle'></i> 본사 재고 경고</div>
                 </h2>
                 <div class="widget-content" id="lowStockWidget">
+                    <div class="skeleton-loader">
+                        <div class="skeleton-item"></div>
+                        <div class="skeleton-item"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 섹션 5: 진행 중 인보이스 + 셀러K 매입 변동 -->
+            <section class="widget widget-invoices" id="invoiceSection">
+                <h2>
+                    <div class="widget-title"><i class='bx bx-file'></i> 진행 중 인보이스</div>
+                </h2>
+                <div class="widget-content" id="invoiceWidget">
                     <div class="skeleton-loader">
                         <div class="skeleton-item"></div>
                         <div class="skeleton-item"></div>

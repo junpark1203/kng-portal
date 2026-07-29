@@ -273,11 +273,10 @@ body {
 }
 
 .exchange-grid {
-    flex: 1;
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1px;
-    padding: 8px 12px 12px;
+    gap: 8px;
+    padding-top: 4px;
 }
 
 .exchange-item {
@@ -285,15 +284,14 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 8px 6px;
+    padding: 12px;
     border-radius: var(--radius-xs);
+    background: var(--bg-body);
     transition: background 0.15s;
-    gap: 2px;
-    text-align: center;
 }
 
 .exchange-item:hover {
-    background: #F9FAFB;
+    background: var(--bg-hover);
 }
 
 .fx-flag {
@@ -347,14 +345,17 @@ body {
    ════════════════════════════════ */
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     grid-template-areas:
-        "weather calendar approvals approvals"
-        "invoices worklogs inventory sellerk";
+        "weather exchange"
+        "calendar approvals"
+        "worklogs inventory"
+        "invoices sellerk";
     gap: var(--gap);
 }
 
 .widget-weather   { grid-area: weather; }
+.widget-exchange  { grid-area: exchange; }
 .widget-calendar  { grid-area: calendar; }
 .widget-approvals { grid-area: approvals; }
 .widget-invoices  { grid-area: invoices; }
@@ -363,18 +364,7 @@ body {
 .widget-sellerk   { grid-area: sellerk; }
 
 @media (max-width: 1400px) {
-    .dashboard-grid {
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-areas:
-            "weather calendar"
-            "approvals approvals"
-            "invoices worklogs"
-            "inventory sellerk";
-    }
     .market-stocks { grid-template-columns: repeat(3, 1fr); }
-    .market-bar { flex-direction: column; }
-    .market-divider { width: auto; height: 1px; margin: 0 12px; }
-    .market-exchange { min-width: unset; }
 }
 
 @media (max-width: 768px) {
@@ -383,15 +373,15 @@ body {
         grid-template-columns: 1fr;
         grid-template-areas:
             "weather"
+            "exchange"
             "calendar"
             "approvals"
-            "invoices"
             "worklogs"
             "inventory"
+            "invoices"
             "sellerk";
     }
     .market-stocks { grid-template-columns: repeat(3, 1fr); }
-    .market-exchange { grid-template-columns: repeat(2, 1fr); }
 }
 
 
