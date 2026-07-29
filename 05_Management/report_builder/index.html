@@ -12,12 +12,12 @@
 <body>
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- 뷰어/리스트 모드 -->
+    <!-- 1. 리스트 뷰 -->
     <div id="listView" class="container">
         <header class="header">
             <div class="header-content">
                 <h1><i class='bx bx-images'></i> 사진 첨부형 보고서</h1>
-                <p class="subtitle">사진과 텍스트를 활용한 A4 규격의 보고서(스펙/수정 요청서)를 작성하고 관리합니다.</p>
+                <p class="subtitle">웹폼에 항목별로 입력하고, 인쇄할 때 자동으로 깔끔한 A4 표가 생성되는 스마트 보고서입니다.</p>
             </div>
             <button class="primary-btn" id="createNewBtn"><i class='bx bx-plus'></i> 새 보고서 작성</button>
         </header>
@@ -27,20 +27,67 @@
         </div>
     </div>
 
-    <!-- 에디터 모드 -->
-    <div id="editorView" class="container hidden">
-        <header class="editor-header no-print">
+    <!-- 2. 에디터 뷰 (폼 형태) -->
+    <div id="editorView" class="container hidden no-print">
+        <header class="editor-header">
             <div class="editor-actions-left">
                 <button class="secondary-btn" id="backToListBtn"><i class='bx bx-arrow-back'></i> 목록으로</button>
-                <input type="text" id="reportTitleInput" class="report-title-input" placeholder="보고서 제목을 입력하세요" value="제목 없는 보고서">
+            </div>
+            <div class="editor-actions-center">
+                <h2>보고서 작성 (Form)</h2>
             </div>
             <div class="editor-actions-right">
                 <button class="secondary-btn" id="saveBtn"><i class='bx bx-save'></i> 저장</button>
-                <button class="primary-btn" id="printBtn"><i class='bx bx-printer'></i> A4 인쇄</button>
+                <button class="primary-btn" id="printBtn"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
             </div>
         </header>
 
-        <!-- A4 인쇄 영역 (도화지) -->
+        <div class="editor-layout">
+            <!-- 좌측: 보고서 기본 설정 및 표 양식 세팅 -->
+            <div class="editor-sidebar">
+                <div class="card">
+                    <h3>보고서 기본 정보</h3>
+                    <div class="form-group">
+                        <label>보고서 제목</label>
+                        <input type="text" id="reportTitleInput" class="form-input" placeholder="예: [안전모] 불량 샘플 입고 보고서">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header-flex">
+                        <h3>항목(열) 양식 설정</h3>
+                        <button class="btn-icon" id="openColModalBtn" title="항목 추가"><i class='bx bx-plus'></i></button>
+                    </div>
+                    <p class="help-text">출력될 표의 제목(칸)을 자유롭게 구성하세요.</p>
+                    <ul class="column-list" id="columnSettingList">
+                        <!-- 동적 렌더링 -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 우측: 항목 데이터 입력 폼 -->
+            <div class="editor-main">
+                <div class="card main-form-card">
+                    <h3>데이터 입력</h3>
+                    <p class="help-text">설정하신 항목(열) 양식에 맞춰 아래에 데이터를 추가해주세요.</p>
+                    
+                    <div id="formDataContainer" class="form-data-list">
+                        <!-- 동적 렌더링 (카드 형태의 Row 입력 폼) -->
+                    </div>
+
+                    <button class="add-row-btn" id="addRowBtn"><i class='bx bx-plus-circle'></i> 내용(행) 추가하기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 인쇄 전용 뷰 (A4 표 레이아웃) -->
+    <div id="printLayout" class="print-layout">
+        <div class="print-actions no-print">
+            <button class="secondary-btn" id="closePrintBtn"><i class='bx bx-x'></i> 닫기 (폼으로 돌아가기)</button>
+            <button class="primary-btn" id="doPrintBtn"><i class='bx bx-printer'></i> A4 인쇄하기</button>
+        </div>
+        
         <div class="a4-page" id="printArea">
             <div class="document-header">
                 <h1 class="document-title" id="displayTitle">제목 없는 보고서</h1>
@@ -49,52 +96,42 @@
                 </div>
             </div>
 
-            <!-- 동적 테이블 영역 -->
-            <div class="table-controls no-print">
-                <div class="col-controls" id="colControls">
-                    <!-- 자바스크립트로 열 추가 버튼들 렌더링 -->
-                </div>
-            </div>
-
+            <!-- 사용자가 폼에 입력한 데이터를 조립해서 출력할 테이블 -->
             <table class="report-table" id="reportTable">
                 <thead id="tableHead">
-                    <!-- 기본 헤더 (No, 사진, 텍스트) -->
+                    <!-- JS로 동적 렌더링 -->
                 </thead>
                 <tbody id="tableBody">
-                    <!-- 내용 -->
+                    <!-- JS로 동적 렌더링 -->
                 </tbody>
             </table>
-
-            <div class="table-actions no-print">
-                <button class="add-row-btn" id="addRowBtn"><i class='bx bx-plus-circle'></i> 항목(행) 추가</button>
-            </div>
         </div>
     </div>
 
-    <!-- 모달 템플릿 -->
-    <div id="colModal" class="modal hidden">
+    <!-- 모달: 열(Column) 양식 추가 -->
+    <div id="colModal" class="modal hidden no-print">
         <div class="modal-content">
             <span class="close-btn" id="closeColModal"><i class='bx bx-x'></i></span>
-            <h2>새로운 열(Column) 추가</h2>
+            <h2>새로운 항목(열) 추가</h2>
             <form id="addColForm">
                 <div class="form-group">
-                    <label>열 이름 (예: 현재 샘플, 요청사항)</label>
-                    <input type="text" id="colName" required>
+                    <label>항목 이름 (예: 현재 샘플, 요청사항, 비고)</label>
+                    <input type="text" id="colName" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label>열 타입</label>
-                    <select id="colType" required>
-                        <option value="image">사진 (이미지 업로드)</option>
+                    <label>입력 타입</label>
+                    <select id="colType" class="form-input" required>
                         <option value="text">텍스트 (글 입력)</option>
+                        <option value="image">사진 (여러 장 추가 가능)</option>
                     </select>
                 </div>
-                <button type="submit" class="primary-btn">추가하기</button>
+                <button type="submit" class="primary-btn w-full">추가하기</button>
             </form>
         </div>
     </div>
 
     <!-- 글로벌 로딩 -->
-    <div id="globalLoading" class="global-loading hidden">
+    <div id="globalLoading" class="global-loading hidden no-print">
         <i class='bx bx-loader-alt bx-spin'></i>
         <span>처리 중...</span>
     </div>

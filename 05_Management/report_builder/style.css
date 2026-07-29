@@ -1,4 +1,4 @@
-/* 기본 공통 스타일 (guidelines.css 등과 함께 사용) */
+/* 기본 공통 스타일 (styles.css와 함께 사용) */
 body {
     background-color: var(--bg-body, #F3F4F6);
     margin: 0;
@@ -15,7 +15,7 @@ body {
     display: none !important;
 }
 
-/* 리스트 뷰 스타일 */
+/* 리스트 뷰 */
 .report-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -68,196 +68,219 @@ body {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     margin-bottom: 24px;
 }
-
+.editor-actions-center h2 {
+    margin: 0;
+    font-size: 18px;
+}
 .editor-actions-left, .editor-actions-right {
     display: flex;
     align-items: center;
     gap: 12px;
 }
 
-.report-title-input {
-    border: none;
-    font-size: 18px;
-    font-weight: 600;
-    padding: 8px;
-    border-bottom: 2px solid transparent;
-    transition: border-color 0.2s;
-    width: 300px;
-}
-.report-title-input:focus {
-    outline: none;
-    border-bottom-color: #2563EB;
+/* 에디터 레이아웃 (폼 뷰) */
+.editor-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 24px;
+    align-items: start;
 }
 
-/* A4 캔버스 (도화지) */
-.a4-page {
+.card {
     background: white;
-    width: 210mm;
-    min-height: 297mm;
-    margin: 0 auto;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    padding: 20mm;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 24px;
+}
+
+.card h3 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: #374151;
+}
+
+.card-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.card-header-flex h3 { margin: 0; }
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: #2563EB;
+    cursor: pointer;
+    font-size: 20px;
+}
+.btn-icon:hover { color: #1D4ED8; }
+
+.help-text {
+    font-size: 12px;
+    color: #6B7280;
+    margin: 0 0 16px 0;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4B5563;
+}
+.form-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-family: inherit;
     box-sizing: border-box;
 }
 
-.document-header {
-    text-align: center;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #111827;
-    padding-bottom: 10px;
+/* 양식 설정 리스트 */
+.column-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
-
-.document-title {
-    font-size: 24px;
-    margin: 0 0 8px 0;
-    color: #111827;
-}
-
-.document-meta {
-    font-size: 12px;
-    color: #4b5563;
-    text-align: right;
-}
-
-/* 동적 테이블 제어 버튼 */
-.table-controls {
+.column-item {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    background: #F9FAFB;
+    padding: 10px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
     margin-bottom: 8px;
 }
-
-/* 표 (Table) 기본 디자인 */
-.report-table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed; /* 중요: 열 너비 고정 */
-}
-
-.report-table th, .report-table td {
-    border: 1px solid #d1d5db;
-    padding: 8px;
-    vertical-align: top;
-    position: relative;
-}
-
-.report-table th {
-    background-color: #f9fafb;
-    font-weight: 600;
+.column-item .col-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 13px;
-    text-align: center;
 }
-
-/* 셀 내부 컨트롤 (삭제 버튼 등) */
-.col-delete-btn, .row-delete-btn {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: #fee2e2;
-    color: #dc2626;
-    border: none;
+.column-item .col-badge {
+    background: #E0E7FF;
+    color: #4338CA;
+    font-size: 11px;
+    padding: 2px 6px;
     border-radius: 4px;
-    cursor: pointer;
-    padding: 2px 4px;
-    font-size: 12px;
-    display: none;
 }
-
-th:hover .col-delete-btn,
-td:hover .row-delete-btn {
-    display: block;
-}
-
-/* 텍스트 셀 (Textarea) */
-textarea.auto-resize {
-    width: 100%;
-    min-height: 80px;
+.btn-delete-col {
+    background: none;
     border: none;
-    resize: none;
-    overflow: hidden;
-    font-family: inherit;
-    font-size: 13px;
-    line-height: 1.5;
-    background: transparent;
+    color: #EF4444;
+    cursor: pointer;
+    font-size: 16px;
 }
 
-textarea.auto-resize:focus {
-    outline: none;
-    background: #f3f4f6;
-}
-
-/* 이미지 셀 (Dropzone & Grid) */
-.image-cell {
-    min-height: 100px;
+/* 데이터 입력 폼 */
+.form-data-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.data-row-card {
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px;
+    background: #F9FAFB;
+    position: relative;
+}
+.data-row-card .row-delete-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #FEE2E2;
+    color: #DC2626;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+}
+.data-row-card .row-delete-btn:hover { background: #FECACA; }
+.data-row-header {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #E5E7EB;
 }
 
-/* 여러 사진 바둑판 배열 (CSS Grid) */
+/* 폼 내 사진 드롭존 & 그리드 */
+.image-upload-wrapper {
+    background: white;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    padding: 8px;
+}
 .image-grid {
     display: grid;
-    gap: 4px;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    margin-bottom: 8px;
 }
-
 .image-grid img {
     width: 100%;
-    max-height: 200px;
-    object-fit: contain; /* 비율 유지 */
-    border: 1px solid #e5e7eb;
+    height: 100px;
+    object-fit: contain;
+    border: 1px solid #E5E7EB;
     border-radius: 4px;
+    cursor: pointer;
 }
-
+.image-grid img:hover {
+    opacity: 0.8;
+}
 .image-dropzone {
-    border: 2px dashed #d1d5db;
+    border: 2px dashed #D1D5DB;
     border-radius: 4px;
-    padding: 16px 8px;
+    padding: 20px 8px;
     text-align: center;
-    color: #9ca3af;
+    color: #9CA3AF;
     font-size: 12px;
     cursor: pointer;
     transition: background 0.2s, border-color 0.2s;
+    background: #F9FAFB;
 }
-
 .image-dropzone.dragover {
-    background: #eff6ff;
-    border-color: #3b82f6;
-    color: #2563eb;
+    background: #EFF6FF;
+    border-color: #3B82F6;
+    color: #2563EB;
 }
-
 .image-dropzone i {
-    font-size: 20px;
+    font-size: 24px;
     display: block;
-    margin-bottom: 4px;
-}
-
-/* 표 하단 버튼 */
-.table-actions {
-    margin-top: 16px;
-    text-align: center;
+    margin-bottom: 8px;
 }
 
 .add-row-btn {
-    background: transparent;
-    border: 1px dashed #d1d5db;
-    color: #6b7280;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
     width: 100%;
+    padding: 14px;
+    background: white;
+    border: 1px dashed #D1D5DB;
+    border-radius: 8px;
+    color: #6B7280;
     font-size: 14px;
-    transition: background 0.2s;
+    cursor: pointer;
+    transition: all 0.2s;
 }
-
 .add-row-btn:hover {
-    background: #f9fafb;
-    color: #111827;
+    background: #F9FAFB;
+    color: #374151;
+    border-color: #9CA3AF;
 }
 
 /* 모달 */
 .modal {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    inset: 0;
     background: rgba(0,0,0,0.5);
     display: flex;
     align-items: center;
@@ -270,16 +293,23 @@ textarea.auto-resize:focus {
     border-radius: 8px;
     width: 400px;
     max-width: 90%;
+    position: relative;
 }
-.modal h2 { margin-top: 0; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; }
-.form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; }
+.modal h2 { margin-top: 0; font-size: 18px; margin-bottom: 16px; }
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    cursor: pointer;
+    font-size: 20px;
+    color: #6B7280;
+}
+.w-full { width: 100%; }
 
-/* 글로벌 로딩 */
+/* 로딩 */
 .global-loading {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    inset: 0;
     background: rgba(255,255,255,0.8);
     display: flex;
     flex-direction: column;
@@ -292,14 +322,93 @@ textarea.auto-resize:focus {
 .global-loading i { font-size: 32px; margin-bottom: 8px; }
 
 /* -------------------------------------
-   A4 프린트 모드 CSS
+   A4 인쇄 레이아웃 (Print Preview & Print)
 ------------------------------------- */
+.print-layout {
+    display: none; /* JS로 제어 */
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    background: #6B7280; /* 뒷배경 어둡게 */
+    min-height: 100vh;
+}
+.print-actions {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 12px;
+    z-index: 100;
+}
+.a4-page {
+    background: white;
+    width: 210mm;
+    min-height: 297mm;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    padding: 15mm; /* 인쇄 여백 고려 */
+    box-sizing: border-box;
+}
+
+.document-header {
+    text-align: center;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #111827;
+    padding-bottom: 10px;
+}
+.document-title {
+    font-size: 24px;
+    margin: 0 0 8px 0;
+    color: #111827;
+}
+.document-meta {
+    font-size: 12px;
+    color: #4B5563;
+    text-align: right;
+}
+
+/* 인쇄용 표: 너비 자동 조절! (table-layout: auto) */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto; /* 중요: 내용물에 맞춰 너비 자동 조정됨 */
+}
+.report-table th, .report-table td {
+    border: 1px solid #374151; /* 인쇄용은 진한 테두리 */
+    padding: 8px;
+    vertical-align: top;
+    font-size: 13px;
+    color: #111827;
+}
+.report-table th {
+    background-color: #F3F4F6;
+    font-weight: 600;
+    text-align: center;
+}
+
+/* 짧은 단어(헤더) 줄바꿈 방지 */
+.nowrap {
+    white-space: nowrap;
+}
+
+/* 표 내부의 인쇄용 이미지 그리드 */
+.print-image-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+}
+.print-image-grid img {
+    max-width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+/* 진짜 종이 인쇄될 때 적용되는 CSS */
 @media print {
     @page {
         size: A4 portrait;
-        margin: 15mm;
+        margin: 10mm;
     }
-    
     body {
         background-color: white;
         margin: 0;
@@ -307,11 +416,16 @@ textarea.auto-resize:focus {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
-
     .no-print {
         display: none !important;
     }
-
+    
+    /* 인쇄 뷰 레이아웃 초기화 */
+    .print-layout {
+        display: block !important;
+        background: white;
+        padding: 0;
+    }
     .a4-page {
         box-shadow: none;
         width: 100%;
@@ -319,25 +433,11 @@ textarea.auto-resize:focus {
         padding: 0;
         min-height: auto;
     }
-
-    /* 페이지 잘림 방지 */
     .report-table {
         page-break-inside: auto;
     }
-    
     .report-table tr {
         page-break-inside: avoid;
         page-break-after: auto;
-    }
-    
-    /* 빈 입력칸은 선을 없애거나 깔끔하게 처리 */
-    textarea.auto-resize {
-        resize: none;
-        border: none;
-        background: transparent;
-    }
-    
-    .image-dropzone {
-        display: none !important; /* 인쇄 시 점선 박스 숨김 */
     }
 }

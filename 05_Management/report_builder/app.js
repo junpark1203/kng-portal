@@ -14,31 +14,36 @@ let state = {
     rows: []
 };
 
-// DOM 요소
+// DOM
 const listView = document.getElementById('listView');
 const editorView = document.getElementById('editorView');
+const printLayout = document.getElementById('printLayout');
 const reportList = document.getElementById('reportList');
+
 const reportTitleInput = document.getElementById('reportTitleInput');
+const columnSettingList = document.getElementById('columnSettingList');
+const formDataContainer = document.getElementById('formDataContainer');
+
 const displayTitle = document.getElementById('displayTitle');
 const displayDate = document.getElementById('displayDate');
 const tableHead = document.getElementById('tableHead');
 const tableBody = document.getElementById('tableBody');
-const colControls = document.getElementById('colControls');
+
 const colModal = document.getElementById('colModal');
 const globalLoading = document.getElementById('globalLoading');
 
-// 유틸리티: ID 생성
-function generateId() {
-    return Math.random().toString(36).substr(2, 9);
-}
-
-// 오늘 날짜 포맷
+// 유틸
+function generateId() { return Math.random().toString(36).substr(2, 9); }
 function getTodayFormat() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+function showLoading(show) {
+    if(show) globalLoading.classList.remove('hidden');
+    else globalLoading.classList.add('hidden');
+}
 
-// --- Auth Fetch ---
+// Auth Fetch
 async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
     try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
@@ -52,20 +57,14 @@ async function authFetch(url, opts = {}, _retries = 3) {
     return res;
 }
 
-// 로딩 표시
-function showLoading(show) {
-    if(show) globalLoading.classList.remove('hidden');
-    else globalLoading.classList.add('hidden');
-}
-
 // 초기화
 async function init() {
     bindEvents();
     await loadReportList();
 }
 
-// 이벤트 바인딩
 function bindEvents() {
+    // 뷰 전환 버튼
     document.getElementById('createNewBtn').addEventListener('click', createNewReport);
     document.getElementById('backToListBtn').addEventListener('click', () => {
         editorView.classList.add('hidden');
@@ -73,32 +72,45 @@ function bindEvents() {
         loadReportList();
     });
     
+    // 저장
     document.getElementById('saveBtn').addEventListener('click', saveReport);
-    document.getElementById('printBtn').addEventListener('click', () => window.print());
     
-    document.getElementById('addRowBtn').addEventListener('click', () => {
-        state.rows.push(createEmptyRow());
-        renderTable();
+    // 인쇄 모드 전환
+    document.getElementById('printBtn').addEventListener('click', openPrintPreview);
+    document.getElementById('closePrintBtn').addEventListener('click', () => {
+        printLayout.style.display = 'none';
+        editorView.classList.remove('hidden');
     });
+    document.getElementById('doPrintBtn').addEventListener('click', () => window.print());
     
-    reportTitleInput.addEventListener('input', (e) => {
-        displayTitle.textContent = e.target.value || '제목 없는 보고서';
+    // 열(Column) 설정
+    document.getElementById('openColModalBtn').addEventListener('click', () => {
+        document.getElementById('colName').value = '';
+        colModal.classList.remove('hidden');
     });
-    
     document.getElementById('closeColModal').addEventListener('click', () => colModal.classList.add('hidden'));
+    
     document.getElementById('addColForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const name = document.getElementById('colName').value;
         const type = document.getElementById('colType').value;
-        state.columns.push({ id: 'col_' + generateId(), name, type });
-        // 기존 행들에 빈 데이터 추가
-        state.rows.forEach(row => { row[state.columns[state.columns.length-1].id] = type === 'image' ? [] : ''; });
+        const newColId = 'col_' + generateId();
+        state.columns.push({ id: newColId, name, type });
+        // 기존 행 데이터에 새 열 필드 추가
+        state.rows.forEach(row => { row[newColId] = type === 'image' ? [] : ''; });
+        
         colModal.classList.add('hidden');
-        renderTable();
+        renderColumnSettings();
+        renderForm(); // 폼 갱신
+    });
+
+    // 행 추가
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+        state.rows.push(createEmptyRow());
+        renderForm();
     });
 }
 
-// 빈 행 생성
 function createEmptyRow() {
     const row = { id: 'row_' + generateId() };
     state.columns.forEach(col => {
@@ -107,7 +119,7 @@ function createEmptyRow() {
     return row;
 }
 
-// 보고서 목록 불러오기
+// API: 로드
 async function loadReportList() {
     try {
         const res = await authFetch(API_BASE);
@@ -119,7 +131,6 @@ async function loadReportList() {
             reportList.innerHTML = '<p style="color: #6b7280;">저장된 보고서가 없습니다.</p>';
             return;
         }
-        
         list.forEach(item => {
             const date = new Date(item.updatedAt).toLocaleDateString();
             const card = document.createElement('div');
@@ -140,29 +151,26 @@ async function loadReportList() {
     }
 }
 
-// 새 보고서 작성
+// API: 새 보고서
 function createNewReport() {
     state.currentDocId = null;
-    // 초기 컬럼 복구
     state.columns = [
         { id: 'col_no', name: 'No.', type: 'text' },
         { id: 'col_sample', name: '현재 샘플', type: 'image' },
         { id: 'col_example', name: '예시', type: 'image' },
         { id: 'col_request', name: '요청사항', type: 'text' }
     ];
-    state.rows = [createEmptyRow()]; // 기본 1줄
+    state.rows = [createEmptyRow()];
     
-    reportTitleInput.value = '제목 없는 보고서';
-    displayTitle.textContent = '제목 없는 보고서';
-    displayDate.textContent = getTodayFormat();
-    
-    renderTable();
-    
+    reportTitleInput.value = '';
     listView.classList.add('hidden');
     editorView.classList.remove('hidden');
+    
+    renderColumnSettings();
+    renderForm();
 }
 
-// 보고서 열기
+// API: 열기
 async function openReport(id) {
     showLoading(true);
     try {
@@ -172,60 +180,53 @@ async function openReport(id) {
         
         state.currentDocId = doc.id;
         reportTitleInput.value = doc.title;
-        displayTitle.textContent = doc.title;
-        displayDate.textContent = new Date(doc.createdAt).toLocaleDateString();
         
         const content = JSON.parse(doc.content_json);
         state.columns = content.columns || [];
         state.rows = content.rows || [];
         
-        renderTable();
         listView.classList.add('hidden');
         editorView.classList.remove('hidden');
+        
+        renderColumnSettings();
+        renderForm();
     } catch (err) {
-        console.error(err);
         alert('보고서를 불러올 수 없습니다.');
     } finally {
         showLoading(false);
     }
 }
 
-// 저장
+// API: 저장
 async function saveReport() {
     showLoading(true);
-    // 현재 행 데이터 동기화 (텍스트는 실시간 반영 중, 이미지는 배열에 있음)
     const payload = {
-        title: reportTitleInput.value,
+        title: reportTitleInput.value || '제목 없는 보고서',
         content_json: JSON.stringify({ columns: state.columns, rows: state.rows })
     };
-    
     try {
         const method = state.currentDocId ? 'PUT' : 'POST';
         const url = state.currentDocId ? `${API_BASE}/${state.currentDocId}` : API_BASE;
-        
         const res = await authFetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        
         if (!res.ok) throw new Error('저장 실패');
         const data = await res.json();
-        if (data.id) state.currentDocId = data.id; // 새로 생성된 경우 ID 업데이트
+        if (data.id) state.currentDocId = data.id;
         alert('저장되었습니다.');
     } catch (err) {
-        console.error(err);
         alert('저장 중 오류가 발생했습니다.');
     } finally {
         showLoading(false);
     }
 }
 
-// 삭제
+// API: 삭제
 async function deleteReport(id, e) {
     e.stopPropagation();
     if(!confirm('정말 삭제하시겠습니까?')) return;
-    
     try {
         const res = await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('삭제 실패');
@@ -235,120 +236,162 @@ async function deleteReport(id, e) {
     }
 }
 
-// -------------------------------------
-// 테이블 렌더링 로직
-// -------------------------------------
-function renderTable() {
-    // 1. 헤더 렌더링
-    let headHtml = '<tr>';
+// -----------------------------------------
+// UI: 항목(열) 설정 렌더링
+// -----------------------------------------
+function renderColumnSettings() {
+    columnSettingList.innerHTML = '';
     state.columns.forEach((col, index) => {
-        headHtml += `
-            <th>
-                ${col.name}
-                ${index > 0 ? `<button class="col-delete-btn no-print" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>` : ''}
-            </th>
+        const li = document.createElement('li');
+        li.className = 'column-item';
+        
+        const typeLabel = col.type === 'text' ? '텍스트' : '사진';
+        li.innerHTML = `
+            <div class="col-info">
+                <strong>${col.name}</strong>
+                <span class="col-badge">${typeLabel}</span>
+            </div>
+            ${index > 0 ? `<button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>` : ''}
         `;
+        columnSettingList.appendChild(li);
     });
-    headHtml += '</tr>';
-    tableHead.innerHTML = headHtml;
+}
+window.deleteCol = function(colId) {
+    if(!confirm('이 항목을 삭제하시겠습니까? 데이터도 함께 지워집니다.')) return;
+    state.columns = state.columns.filter(c => c.id !== colId);
+    state.rows.forEach(r => delete r[colId]);
+    renderColumnSettings();
+    renderForm();
+};
 
-    // 2. 컨트롤 버튼 렌더링
-    colControls.innerHTML = `<button class="secondary-btn btn-sm" onclick="openAddColModal()"><i class='bx bx-plus'></i> 새 열(Column) 추가</button>`;
-
-    // 3. 본문 렌더링
-    tableBody.innerHTML = '';
-    state.rows.forEach((row, rIndex) => {
-        const tr = document.createElement('tr');
-        state.columns.forEach((col, cIndex) => {
-            const td = document.createElement('td');
-            if (cIndex === 0) { // 삭제 버튼은 첫번째 컬럼에만
-                td.innerHTML += `<button class="row-delete-btn no-print" onclick="deleteRow('${row.id}')"><i class='bx bx-x'></i></button>`;
-            }
+// -----------------------------------------
+// UI: 웹 폼(Form) 에디터 렌더링
+// -----------------------------------------
+function renderForm() {
+    formDataContainer.innerHTML = '';
+    state.rows.forEach((row, rowIndex) => {
+        const card = document.createElement('div');
+        card.className = 'data-row-card';
+        
+        // 헤더 및 삭제 버튼
+        card.innerHTML = `
+            <div class="data-row-header">
+                [항목 ${rowIndex + 1}]
+                ${rowIndex > 0 ? `<button class="row-delete-btn" onclick="deleteRow('${row.id}')">삭제</button>` : ''}
+            </div>
+        `;
+        
+        // 폼 내용물
+        state.columns.forEach(col => {
+            const fg = document.createElement('div');
+            fg.className = 'form-group';
+            fg.innerHTML = `<label>${col.name}</label>`;
             
             if (col.type === 'text') {
                 const ta = document.createElement('textarea');
-                ta.className = 'auto-resize';
-                ta.placeholder = '텍스트 입력...';
+                ta.className = 'form-input';
+                ta.placeholder = `${col.name} 입력...`;
+                ta.rows = 2;
                 ta.value = row[col.id] || '';
                 ta.oninput = (e) => {
+                    row[col.id] = e.target.value; // 상태 실시간 갱신
                     e.target.style.height = 'auto';
                     e.target.style.height = (e.target.scrollHeight) + 'px';
-                    row[col.id] = e.target.value; // 상태 동기화
                 };
-                // 초기 높이 조절
-                setTimeout(() => {
-                    ta.style.height = 'auto';
-                    ta.style.height = (ta.scrollHeight) + 'px';
-                }, 0);
-                td.appendChild(ta);
+                fg.appendChild(ta);
             } else if (col.type === 'image') {
-                const cellDiv = document.createElement('div');
-                cellDiv.className = 'image-cell';
+                const wrap = document.createElement('div');
+                wrap.className = 'image-upload-wrapper';
                 
-                // 그리드 래퍼
+                // 미리보기 그리드
                 const gridDiv = document.createElement('div');
                 gridDiv.className = 'image-grid';
-                
-                // 기존 이미지 렌더링
                 const images = row[col.id] || [];
                 images.forEach((imgUrl, imgIndex) => {
                     const img = document.createElement('img');
                     img.src = imgUrl;
-                    // 클릭시 삭제 기능 (선택)
                     img.title = "클릭하여 삭제";
                     img.onclick = () => {
-                        if(confirm('이미지를 지우시겠습니까?')) {
+                        if(confirm('이 사진을 지우시겠습니까?')) {
                             row[col.id].splice(imgIndex, 1);
-                            renderTable();
+                            renderForm();
                         }
                     };
                     gridDiv.appendChild(img);
                 });
+                wrap.appendChild(gridDiv);
                 
-                // 드롭존 렌더링
-                const dropzone = document.createElement('div');
-                dropzone.className = 'image-dropzone no-print';
-                dropzone.innerHTML = `<i class='bx bx-image-add'></i>사진 붙여넣기(Ctrl+V) 또는 드래그`;
-                dropzone.tabIndex = 0; // 포커스 가능하게
+                // 드롭존 (복붙/드래그)
+                const dz = document.createElement('div');
+                dz.className = 'image-dropzone';
+                dz.innerHTML = `<i class='bx bx-image-add'></i>클릭 후 <b>Ctrl+V</b>로 붙여넣기 또는 사진 드래그`;
+                dz.tabIndex = 0;
+                setupImageUploadEvents(dz, row, col.id);
                 
-                // 이벤트 설정 (드래그앤드롭 및 페이스트)
-                setupImageCellEvents(dropzone, row, col.id);
-                
-                cellDiv.appendChild(gridDiv);
-                cellDiv.appendChild(dropzone);
-                td.appendChild(cellDiv);
+                wrap.appendChild(dz);
+                fg.appendChild(wrap);
             }
-            tr.appendChild(td);
+            card.appendChild(fg);
         });
-        tableBody.appendChild(tr);
+        formDataContainer.appendChild(card);
     });
 }
-
-// 컬럼 추가 모달 열기
-function openAddColModal() {
-    document.getElementById('colName').value = '';
-    colModal.classList.remove('hidden');
-}
-
-// 컬럼 삭제
-function deleteCol(colId) {
-    if(!confirm('이 열을 삭제하시겠습니까? 데이터도 함께 지워집니다.')) return;
-    state.columns = state.columns.filter(c => c.id !== colId);
-    state.rows.forEach(r => delete r[colId]);
-    renderTable();
-}
-
-// 행 삭제
-function deleteRow(rowId) {
+window.deleteRow = function(rowId) {
     state.rows = state.rows.filter(r => r.id !== rowId);
-    renderTable();
+    renderForm();
+};
+
+// -----------------------------------------
+// UI: 인쇄 미리보기 (표 생성)
+// -----------------------------------------
+function openPrintPreview() {
+    // 1. 레이아웃 전환
+    editorView.classList.add('hidden');
+    printLayout.style.display = 'flex';
+    
+    // 2. 제목/날짜
+    displayTitle.textContent = reportTitleInput.value || '제목 없는 보고서';
+    displayDate.textContent = state.currentDocId ? new Date().toLocaleDateString() : getTodayFormat(); // 임시 날짜
+    
+    // 3. 표 헤더 조립
+    let headHtml = '<tr>';
+    state.columns.forEach(col => {
+        // 짧은 단어일 가능성이 높은 이름(No, 날짜 등)은 nowrap 클래스 추가 (자동 너비 최적화)
+        const isShort = col.name.toLowerCase().includes('no') || col.name.includes('번호') || col.name.includes('날짜');
+        headHtml += `<th class="${isShort ? 'nowrap' : ''}">${col.name}</th>`;
+    });
+    headHtml += '</tr>';
+    tableHead.innerHTML = headHtml;
+    
+    // 4. 표 본문 조립
+    let bodyHtml = '';
+    state.rows.forEach(row => {
+        bodyHtml += '<tr>';
+        state.columns.forEach(col => {
+            if (col.type === 'text') {
+                // 텍스트 출력 (줄바꿈 처리)
+                const textStr = (row[col.id] || '').replace(/\n/g, '<br>');
+                bodyHtml += `<td>${textStr}</td>`;
+            } else if (col.type === 'image') {
+                // 이미지 그리드 출력
+                const images = row[col.id] || [];
+                let imgHtml = '<div class="print-image-grid">';
+                images.forEach(imgUrl => {
+                    imgHtml += `<img src="${imgUrl}">`;
+                });
+                imgHtml += '</div>';
+                bodyHtml += `<td>${imgHtml}</td>`;
+            }
+        });
+        bodyHtml += '</tr>';
+    });
+    tableBody.innerHTML = bodyHtml;
 }
 
-// -------------------------------------
-// 파일 업로드 및 클립보드 이벤트
-// -------------------------------------
-function setupImageCellEvents(element, rowObj, colId) {
-    // 1. 드래그 앤 드롭
+// -----------------------------------------
+// 이미지 업로드 공통 이벤트 (Drop, Paste)
+// -----------------------------------------
+function setupImageUploadEvents(element, rowObj, colId) {
     element.addEventListener('dragover', (e) => {
         e.preventDefault();
         element.classList.add('dragover');
@@ -360,43 +403,34 @@ function setupImageCellEvents(element, rowObj, colId) {
         e.preventDefault();
         element.classList.remove('dragover');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            Array.from(e.dataTransfer.files).forEach(file => handleFileUpload(file, rowObj, colId));
+            Array.from(e.dataTransfer.files).forEach(f => uploadImage(f, rowObj, colId));
         }
     });
-
-    // 2. 클립보드 붙여넣기 (포커스가 있을 때)
     element.addEventListener('paste', async (e) => {
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
-                handleFileUpload(blob, rowObj, colId);
+                uploadImage(blob, rowObj, colId);
             }
         }
     });
-    
-    // 3. 클릭 시 포커스 강제 (붙여넣기 편의)
     element.addEventListener('click', () => element.focus());
 }
 
-async function handleFileUpload(file, rowObj, colId) {
-    // 로딩 표시기 추가
+async function uploadImage(file, rowObj, colId) {
     showLoading(true);
     const formData = new FormData();
     formData.append('image', file);
     
     try {
-        const res = await authFetch(`${API_BASE}/upload`, {
-            method: 'POST',
-            body: formData
-        });
+        const res = await authFetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
         if (!res.ok) throw new Error('업로드 실패');
         const data = await res.json();
         
-        // 상태 업데이트 및 리렌더링
         if (!rowObj[colId]) rowObj[colId] = [];
         rowObj[colId].push(data.url);
-        renderTable();
+        renderForm(); // 폼 갱신 (이미지 미리보기 보임)
     } catch (err) {
         console.error(err);
         alert('이미지 업로드에 실패했습니다.');
