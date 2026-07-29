@@ -43,6 +43,15 @@ function showLoading(show) {
     else globalLoading.classList.add('hidden');
 }
 
+function getImgSrc(url) {
+    if (!url) return '';
+    if (url.startsWith('/api/report-builder')) {
+        const base = API_BASE.replace('/api/report-builder', '');
+        return base + url;
+    }
+    return url;
+}
+
 // Auth Fetch
 async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
@@ -309,7 +318,7 @@ function renderForm() {
                 const images = row[col.id] || [];
                 images.forEach((imgUrl, imgIndex) => {
                     const img = document.createElement('img');
-                    img.src = imgUrl;
+                    img.src = getImgSrc(imgUrl);
                     img.title = "클릭하여 삭제";
                     img.onclick = () => {
                         if(confirm('이 사진을 지우시겠습니까?')) {
@@ -377,7 +386,7 @@ function openPrintPreview() {
                 const images = row[col.id] || [];
                 let imgHtml = '<div class="print-image-grid">';
                 images.forEach(imgUrl => {
-                    imgHtml += `<img src="${imgUrl}">`;
+                    imgHtml += `<img src="${getImgSrc(imgUrl)}">`;
                 });
                 imgHtml += '</div>';
                 bodyHtml += `<td>${imgHtml}</td>`;
