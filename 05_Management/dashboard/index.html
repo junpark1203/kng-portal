@@ -30,8 +30,8 @@
                         "symbols": [
                             { "proName": "KRX:KOSPI", "title": "코스피" },
                             { "proName": "KRX:KOSDAQ", "title": "코스닥" },
-                            { "proName": "TVC:DJI", "title": "다우" },
-                            { "proName": "NASDAQ:NDX", "title": "나스닥" },
+                            { "proName": "DJ:DJI", "title": "다우" },
+                            { "proName": "NASDAQ:IXIC", "title": "나스닥" },
                             { "proName": "TVC:NI225", "title": "니케이225" },
                             { "proName": "SSE:000001", "title": "상해종합" }
                         ],
@@ -156,13 +156,23 @@
                     <label>일정 제목</label>
                     <input type="text" id="eventSummary" required placeholder="예: 팀 회의">
                 </div>
-                <div class="form-group">
-                    <label>시작일</label>
-                    <input type="date" id="eventStart" required>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <input type="checkbox" id="eventAllDay" checked>
+                    <label for="eventAllDay" style="margin: 0;">종일 일정</label>
                 </div>
                 <div class="form-group">
-                    <label>종료일</label>
-                    <input type="date" id="eventEnd" required>
+                    <label>시작</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="date" id="eventStartDate" required style="flex: 1;">
+                        <input type="time" id="eventStartTime" style="flex: 1; display: none;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>종료</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="date" id="eventEndDate" required style="flex: 1;">
+                        <input type="time" id="eventEndTime" style="flex: 1; display: none;">
+                    </div>
                 </div>
                 <button type="submit" class="submit-btn">저장하기</button>
             </form>

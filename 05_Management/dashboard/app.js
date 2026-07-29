@@ -106,19 +106,84 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addEventBtn').addEventListener('click', () => modal.classList.remove('hidden'));
     document.getElementById('closeEventModal').addEventListener('click', () => modal.classList.add('hidden'));
 
+    const allDayCheckbox = document.getElementById('eventAllDay');
+    const startTimeInput = document.getElementById('eventStartTime');
+    const endTimeInput = document.getElementById('eventEndTime');
+    const startDateInput = document.getElementById('eventStartDate');
+    const endDateInput = document.getElementById('eventEndDate');
+
+    allDayCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            startTimeInput.style.display = 'none';
+            endTimeInput.style.display = 'none';
+            startTimeInput.required = false;
+            endTimeInput.required = false;
+        } else {
+            startTimeInput.style.display = 'block';
+            endTimeInput.style.display = 'block';
+            startTimeInput.required = true;
+            endTimeInput.required = true;
+        }
+    });
+
+    startDateInput.addEventListener('change', (e) => {
+        if (!endDateInput.value) {
+            endDateInput.value = e.target.value;
+        }
+    });
+
     document.getElementById('eventForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const summary = document.getElementById('eventSummary').value;
-        const start = document.getElementById('eventStart').value;
-        const end = document.getElementById('eventEnd').value;
+        const isAllDay = document.getElementById('eventAllDay').checked;
+        const startDate = document.getElementById('eventStartDate').value;
+        const endDate = document.getElementById('eventEndDate').value;
+        const startTime = document.getElementById('eventStartTime').value;
+        const endTime = document.getElementById('eventEndTime').value;
+
+        let startPayload, endPayload;
+
+        if (isAllDay) {
+            const endD = new Date(endDate);
+            endD.setDate(endD.getDate() + 1);
+            const endStr = endD.toISOString().split('T')[0];
+
+            startPayload = { date: startDate };
+            endPayload = { date: endStr };
+        } else {
+            // Local timezone is applied when creating Date objects
+            const startDt = new Date(`${startDate}T${startTime}:00`);
+            const endDt = new Date(`${endDate}T${endTime}:00`);
+            
+            // Format dateTime for Google Calendar
+            const formatToRFC3339 = (date) => {
+                const pad = (n) => (n < 10 ? '0' + n : n);
+                const offset = -date.getTimezoneOffset();
+                const sign = offset >= 0 ? '+' : '-';
+                const offHours = pad(Math.floor(Math.abs(offset) / 60));
+                const offMinutes = pad(Math.abs(offset) % 60);
+                
+                return date.getFullYear() +
+                    '-' + pad(date.getMonth() + 1) +
+                    '-' + pad(date.getDate()) +
+                    'T' + pad(date.getHours()) +
+                    ':' + pad(date.getMinutes()) +
+                    ':' + pad(date.getSeconds()) +
+                    sign + offHours + ':' + offMinutes;
+            };
+
+            startPayload = { dateTime: formatToRFC3339(startDt), timeZone: 'Asia/Seoul' };
+            endPayload = { dateTime: formatToRFC3339(endDt), timeZone: 'Asia/Seoul' };
+        }
+
         try {
             const res = await authFetch(`${API_BASE}/calendar/events`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     summary,
-                    start: { date: start },
-                    end: { date: end }
+                    start: startPayload,
+                    end: endPayload
                 })
             });
             if (!res.ok) throw new Error('일정 등록 실패');
@@ -159,7 +224,7 @@ function updateTimestamp() {
 async function loadExchangeData() {
     const container = document.getElementById('exchangeGrid');
     try {
-        const res = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,EUR,JPY,CNY');
+        const res = await fetch('https://open.er-api.com/v6/latest/USD');
         if (!res.ok) throw new Error('환율 API 오류');
         const data = await res.json();
 
