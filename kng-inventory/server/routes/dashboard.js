@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const yahooFinance = require('yahoo-finance2').default;
 
 let db;
 
@@ -102,6 +101,8 @@ router.get('/market-indices', async (req, res) => {
     try {
         const symbols = ['^KS11', '^KQ11', '^DJI', '^IXIC', '^GSPC', '^N225', '000001.SS'];
         
+        // Dynamic import for ESM package
+        const { default: yahooFinance } = await import('yahoo-finance2');
         const results = await yahooFinance.quote(symbols);
         
         const nameMap = {
