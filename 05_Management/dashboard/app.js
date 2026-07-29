@@ -203,7 +203,42 @@ function loadAll() {
     loadWeather();
     loadCalendarEvents();
     loadDashboardData();
-    // 증시는 TradingView 위젯이 자동 관리 (새로고침 불필요)
+    loadMarketIndices();
+}
+
+async function loadMarketIndices() {
+    const container = document.getElementById('customMarketWidget');
+    if (!container) return;
+
+    try {
+        const res = await authFetch(`${API_BASE}/dashboard/market-indices`);
+        if (!res.ok) throw new Error('API 오류');
+        const data = await res.json();
+
+        container.innerHTML = '';
+        data.forEach(idx => {
+            if (!idx.price) return;
+            const isUp = idx.change > 0;
+            const colorClass = isUp ? 'up' : (idx.change < 0 ? 'down' : '');
+            const icon = isUp ? "<i class='bx bx-caret-up'></i>" : (idx.change < 0 ? "<i class='bx bx-caret-down'></i>" : "");
+            
+            const html = `
+                <div class="market-index-item">
+                    <div class="market-index-name">${idx.name}</div>
+                    <div class="market-index-data">
+                        <span class="market-index-price">${idx.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        <span class="market-index-change ${colorClass}">
+                            ${icon} ${idx.changePercent > 0 ? '+' : ''}${idx.changePercent.toFixed(2)}%
+                        </span>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        });
+    } catch (err) {
+        console.error('증시 데이터 로딩 실패:', err);
+        container.innerHTML = '<div class="market-error">데이터를 불러올 수 없습니다.</div>';
+    }
 }
 
 function updateTimestamp() {

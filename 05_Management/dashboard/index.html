@@ -23,24 +23,8 @@
         <div class="market-bar">
             <div class="market-stocks">
                 <div class="market-label"><i class='bx bx-line-chart'></i> 주요 증시</div>
-                <div class="tradingview-widget-container" id="tvTickersContainer">
-                    <div class="tradingview-widget-container__widget"></div>
-                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-tickers.js" async>
-                    {
-                        "symbols": [
-                            { "proName": "AMEX:EWY", "title": "한국 증시(EWY)" },
-                            { "proName": "FOREXCOM:SPXUSD", "title": "S&P 500" },
-                            { "proName": "FOREXCOM:DJI", "title": "다우" },
-                            { "proName": "FOREXCOM:NSXUSD", "title": "나스닥" },
-                            { "proName": "TVC:NI225", "title": "니케이225" },
-                            { "proName": "TVC:SHCOMP", "title": "상해종합" }
-                        ],
-                        "isTransparent": true,
-                        "showSymbolLogo": false,
-                        "colorTheme": "light",
-                        "locale": "kr"
-                    }
-                    </script>
+                <div class="custom-market-widget" id="customMarketWidget">
+                    <div class="market-loading">데이터를 불러오는 중...</div>
                 </div>
             </div>
             <div class="market-divider"></div>

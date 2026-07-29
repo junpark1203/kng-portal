@@ -96,4 +96,51 @@ router.get('/summary', async (req, res) => {
     }
 });
 
+// 증시 데이터 조회 (Yahoo Finance API)
+router.get('/market-indices', async (req, res) => {
+    try {
+        const symbols = ['^KS11', '^KQ11', '^DJI', '^IXIC', '^GSPC', '^N225', '000001.SS'];
+        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`;
+        
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Yahoo Finance API 에러: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        const nameMap = {
+            '^KS11': '코스피',
+            '^KQ11': '코스닥',
+            '^DJI': '다우존스',
+            '^IXIC': '나스닥',
+            '^GSPC': 'S&P 500',
+            '^N225': '닛케이 225',
+            '000001.SS': '상해종합'
+        };
+
+        const indices = data.quoteResponse.result.map(q => ({
+            symbol: q.symbol,
+            price: q.regularMarketPrice,
+            change: q.regularMarketChange,
+            changePercent: q.regularMarketChangePercent,
+            name: nameMap[q.symbol] || q.symbol
+        }));
+        
+        // 정렬 순서를 nameMap 순서와 동일하게 보장
+        const sortedIndices = symbols.map(sym => indices.find(i => i.symbol === sym)).filter(Boolean);
+        
+        res.json(sortedIndices);
+    } catch (err) {
+        console.error('증시 API 에러:', err);
+        res.status(500).json({ error: '증시 데이터를 불러오는데 실패했습니다.' });
+    }
+});
+
 module.exports = { router, setDb };
