@@ -101,10 +101,19 @@ router.get('/market-indices', async (req, res) => {
     try {
         const symbols = ['^KS11', '^KQ11', '^DJI', '^IXIC', '^GSPC', '^N225', '000001.SS'];
         
-        // Dynamic import for ESM package
-        const { default: YahooFinance } = await import('yahoo-finance2');
-        const yahooFinance = new YahooFinance();
-        const results = await yahooFinance.quote(symbols);
+        const results = await Promise.all(symbols.map(async (sym) => {
+            const res = await fetch('https://query2.finance.yahoo.com/v8/finance/chart/' + sym);
+            if (!res.ok) throw new Error('API Error for ' + sym);
+            const data = await res.json();
+            const meta = data.chart.result[0].meta;
+            const change = meta.regularMarketPrice - meta.chartPreviousClose;
+            return {
+                symbol: sym,
+                price: meta.regularMarketPrice,
+                change: change,
+                changePercent: (change / meta.chartPreviousClose) * 100
+            };
+        }));
         
         const nameMap = {
             '^KS11': '코스피',
@@ -118,9 +127,9 @@ router.get('/market-indices', async (req, res) => {
 
         const indices = results.map(q => ({
             symbol: q.symbol,
-            price: q.regularMarketPrice,
-            change: q.regularMarketChange,
-            changePercent: q.regularMarketChangePercent,
+            price: q.price,
+            change: q.change,
+            changePercent: q.changePercent,
             name: nameMap[q.symbol] || q.symbol
         }));
         
@@ -130,7 +139,7 @@ router.get('/market-indices', async (req, res) => {
         res.json(sortedIndices);
     } catch (err) {
         console.error('증시 API 에러:', err);
-        res.status(500).json({ error: '증시 데이터를 불러오는데 실패했습니다.' });
+        res.status(500).json({ error: '증시 데이터를 불러오는데 실패했습니다. 사유: ' + err.message });
     }
 });
 
