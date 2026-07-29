@@ -1,5 +1,5 @@
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? `http://${window.location.hostname}:8788/api/report-builder`
+    ? `http://${window.location.hostname}:3000/api/report-builder`
     : 'https://kng.junparks.com/api/report-builder';
 
 // 앱 상태
@@ -36,6 +36,20 @@ function generateId() {
 function getTodayFormat() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// --- Auth Fetch ---
+async function authFetch(url, opts = {}, _retries = 3) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!opts.headers) opts.headers = {};
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, opts);
+    if (!res.ok && res.status === 401 && _retries > 0) {
+        await new Promise(r => setTimeout(r, 800));
+        return authFetch(url, opts, _retries - 1);
+    }
+    return res;
 }
 
 // 로딩 표시
@@ -96,7 +110,7 @@ function createEmptyRow() {
 // 보고서 목록 불러오기
 async function loadReportList() {
     try {
-        const res = await fetch(API_BASE);
+        const res = await authFetch(API_BASE);
         if (!res.ok) throw new Error('목록 조회 실패');
         const list = await res.json();
         
@@ -152,7 +166,7 @@ function createNewReport() {
 async function openReport(id) {
     showLoading(true);
     try {
-        const res = await fetch(`${API_BASE}/${id}`);
+        const res = await authFetch(`${API_BASE}/${id}`);
         if (!res.ok) throw new Error('보고서 로드 실패');
         const doc = await res.json();
         
@@ -189,7 +203,7 @@ async function saveReport() {
         const method = state.currentDocId ? 'PUT' : 'POST';
         const url = state.currentDocId ? `${API_BASE}/${state.currentDocId}` : API_BASE;
         
-        const res = await fetch(url, {
+        const res = await authFetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -213,7 +227,7 @@ async function deleteReport(id, e) {
     if(!confirm('정말 삭제하시겠습니까?')) return;
     
     try {
-        const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
         if (!res.ok) throw new Error('삭제 실패');
         loadReportList();
     } catch (err) {
@@ -372,7 +386,7 @@ async function handleFileUpload(file, rowObj, colId) {
     formData.append('image', file);
     
     try {
-        const res = await fetch(`${API_BASE}/upload`, {
+        const res = await authFetch(`${API_BASE}/upload`, {
             method: 'POST',
             body: formData
         });
