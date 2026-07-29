@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const yahooFinance = require('yahoo-finance2').default;
 
 let db;
 
@@ -100,20 +101,8 @@ router.get('/summary', async (req, res) => {
 router.get('/market-indices', async (req, res) => {
     try {
         const symbols = ['^KS11', '^KQ11', '^DJI', '^IXIC', '^GSPC', '^N225', '000001.SS'];
-        const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}`;
         
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'application/json'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Yahoo Finance API 에러: ${response.status}`);
-        }
-        
-        const data = await response.json();
+        const results = await yahooFinance.quote(symbols);
         
         const nameMap = {
             '^KS11': '코스피',
@@ -125,7 +114,7 @@ router.get('/market-indices', async (req, res) => {
             '000001.SS': '상해종합'
         };
 
-        const indices = data.quoteResponse.result.map(q => ({
+        const indices = results.map(q => ({
             symbol: q.symbol,
             price: q.regularMarketPrice,
             change: q.regularMarketChange,
