@@ -244,7 +244,7 @@ async function loadMarketIndices() {
         });
     } catch (err) {
         console.error('증시 데이터 로딩 실패:', err);
-        container.innerHTML = '<div class="market-error">데이터를 불러올 수 없습니다.</div>';
+        container.innerHTML = `<div class="market-error">${err.message || '데이터를 불러올 수 없습니다.'}</div>`;
     }
 }
 
