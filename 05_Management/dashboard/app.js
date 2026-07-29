@@ -212,7 +212,14 @@ async function loadMarketIndices() {
 
     try {
         const res = await authFetch(`${API_BASE}/dashboard/market-indices`);
-        if (!res.ok) throw new Error('API 오류');
+        if (!res.ok) {
+            let errMsg = 'API 오류';
+            try {
+                const errData = await res.json();
+                if (errData.error) errMsg = errData.error;
+            } catch (e) {}
+            throw new Error(errMsg);
+        }
         const data = await res.json();
 
         container.innerHTML = '';
