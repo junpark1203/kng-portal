@@ -251,7 +251,7 @@ function renderColumnSettings() {
                 <strong>${col.name}</strong>
                 <span class="col-badge">${typeLabel}</span>
             </div>
-            ${index > 0 ? `<button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>` : ''}
+            <button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>
         `;
         columnSettingList.appendChild(li);
     });
