@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사진 첨부형 보고서 (Visual Report Builder)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../05_Management/guidelines/guidelines.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- 뷰어/리스트 모드 -->
+    <div id="listView" class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class='bx bx-images'></i> 사진 첨부형 보고서</h1>
+                <p class="subtitle">사진과 텍스트를 활용한 A4 규격의 보고서(스펙/수정 요청서)를 작성하고 관리합니다.</p>
+            </div>
+            <button class="primary-btn" id="createNewBtn"><i class='bx bx-plus'></i> 새 보고서 작성</button>
+        </header>
+        
+        <div class="report-list" id="reportList">
+            <div class="loading-spinner"><i class='bx bx-loader-alt bx-spin'></i> 목록을 불러오는 중...</div>
+        </div>
+    </div>
+
+    <!-- 에디터 모드 -->
+    <div id="editorView" class="container hidden">
+        <header class="editor-header no-print">
+            <div class="editor-actions-left">
+                <button class="secondary-btn" id="backToListBtn"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                <input type="text" id="reportTitleInput" class="report-title-input" placeholder="보고서 제목을 입력하세요" value="제목 없는 보고서">
+            </div>
+            <div class="editor-actions-right">
+                <button class="secondary-btn" id="saveBtn"><i class='bx bx-save'></i> 저장</button>
+                <button class="primary-btn" id="printBtn"><i class='bx bx-printer'></i> A4 인쇄</button>
+            </div>
+        </header>
+
+        <!-- A4 인쇄 영역 (도화지) -->
+        <div class="a4-page" id="printArea">
+            <div class="document-header">
+                <h1 class="document-title" id="displayTitle">제목 없는 보고서</h1>
+                <div class="document-meta">
+                    <span>작성일: <span id="displayDate">-</span></span>
+                </div>
+            </div>
+
+            <!-- 동적 테이블 영역 -->
+            <div class="table-controls no-print">
+                <div class="col-controls" id="colControls">
+                    <!-- 자바스크립트로 열 추가 버튼들 렌더링 -->
+                </div>
+            </div>
+
+            <table class="report-table" id="reportTable">
+                <thead id="tableHead">
+                    <!-- 기본 헤더 (No, 사진, 텍스트) -->
+                </thead>
+                <tbody id="tableBody">
+                    <!-- 내용 -->
+                </tbody>
+            </table>
+
+            <div class="table-actions no-print">
+                <button class="add-row-btn" id="addRowBtn"><i class='bx bx-plus-circle'></i> 항목(행) 추가</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 템플릿 -->
+    <div id="colModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-btn" id="closeColModal"><i class='bx bx-x'></i></span>
+            <h2>새로운 열(Column) 추가</h2>
+            <form id="addColForm">
+                <div class="form-group">
+                    <label>열 이름 (예: 현재 샘플, 요청사항)</label>
+                    <input type="text" id="colName" required>
+                </div>
+                <div class="form-group">
+                    <label>열 타입</label>
+                    <select id="colType" required>
+                        <option value="image">사진 (이미지 업로드)</option>
+                        <option value="text">텍스트 (글 입력)</option>
+                    </select>
+                </div>
+                <button type="submit" class="primary-btn">추가하기</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 글로벌 로딩 -->
+    <div id="globalLoading" class="global-loading hidden">
+        <i class='bx bx-loader-alt bx-spin'></i>
+        <span>처리 중...</span>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

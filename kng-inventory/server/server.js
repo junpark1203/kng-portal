@@ -58,6 +58,10 @@ const { initWorkLogsTables } = workLogsRoutes;
 const materialQuotesRoutes = require('./routes/material-quotes');
 const { initMaterialQuotesTables } = materialQuotesRoutes;
 
+// 사진 첨부형 보고서 (Visual Report Builder) 모듈
+const reportBuilderRoutes = require('./routes/report-builder');
+const { initReportBuilderTables } = reportBuilderRoutes;
+
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
 
@@ -163,6 +167,12 @@ app.use('/api/exhibition-report/uploads', express.static(EXHIBITION_REPORT_UPLOA
 const WORK_LOGS_UPLOAD_DIR = path.join(UPLOAD_DIR, 'work-logs');
 if (!fs.existsSync(WORK_LOGS_UPLOAD_DIR)) fs.mkdirSync(WORK_LOGS_UPLOAD_DIR, { recursive: true });
 app.use('/api/work-logs/uploads', express.static(WORK_LOGS_UPLOAD_DIR, { fallthrough: false }));
+
+// 사진 첨부형 보고서 (Visual Report Builder) 첨부파일
+const REPORT_BUILDER_UPLOAD_DIR = path.join(UPLOAD_DIR, 'report-builder');
+if (!fs.existsSync(REPORT_BUILDER_UPLOAD_DIR)) fs.mkdirSync(REPORT_BUILDER_UPLOAD_DIR, { recursive: true });
+app.use('/api/report-builder/uploads', express.static(REPORT_BUILDER_UPLOAD_DIR, { fallthrough: false }));
+
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -274,11 +284,18 @@ const db = new sqlite3.Database(dbFile, (err) => {
             expenseResolutionRoutes.setDb(db);
             console.log('expense_resolution API 준비 완료');
         });
-        // 업무일지 테이블 초기화 + 라우트에 DB 주입
+        // 업무일지 테이블 초기화 + 라우터에 DB 주입
         initWorkLogsTables(db).then(() => {
             workLogsRoutes.setDb(db);
             console.log('work_logs API 준비 완료');
         });
+        // 사진 첨부형 보고서 테이블 초기화 + 라우터에 DB 주입
+        if (typeof initReportBuilderTables === 'function') {
+            initReportBuilderTables(db).then(() => {
+                if (typeof reportBuilderRoutes.setDb === 'function') reportBuilderRoutes.setDb(db);
+                console.log('report_builder API 준비 완료');
+            }).catch(err => console.error('report_builder 초기화 실패:', err));
+        }
         // 품목별 견적 비교 테이블 초기화 + 라우트에 DB 주입
         initMaterialQuotesTables(db).then(() => {
             materialQuotesRoutes.setDb(db);
@@ -1012,6 +1029,7 @@ app.use('/api/work-logs', workLogsRoutes.router);
 app.use('/api/mat-quotes', materialQuotesRoutes.router);
 app.use('/api/dashboard', dashboardRoutes.router);
 app.use('/api/calendar', calendarRoutes);
+app.use('/api/report-builder', reportBuilderRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
