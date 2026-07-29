@@ -104,7 +104,6 @@ router.get('/market-indices', async (req, res) => {
         // Dynamic import for ESM package
         const { default: YahooFinance } = await import('yahoo-finance2');
         const yahooFinance = new YahooFinance();
-        yahooFinance.suppressNotices(['yahooSurvey']);
         const results = await yahooFinance.quote(symbols);
         
         const nameMap = {
