@@ -43,6 +43,7 @@ const headerStatus = document.getElementById('headerStatus');
 const logForm = document.getElementById('logForm');
 const logInput = document.getElementById('logInput');
 const logTypeSelect = document.getElementById('logTypeSelect');
+const logDateInput = document.getElementById('logDateInput');
 const fileInput = document.getElementById('fileInput');
 const inputAttachments = document.getElementById('inputAttachments');
 const btnAttach = document.getElementById('btnAttach');
@@ -388,12 +389,17 @@ function bindEvents() {
         }
 
         // 2. Post Log
+        let finalDate = new Date().toISOString();
+        if (logDateInput.value) {
+            finalDate = new Date(logDateInput.value).toISOString();
+        }
+
         const logPayload = {
             id: generateLogId(),
             content: content,
             logType: logTypeSelect.value,
             attachments: attachmentUrls,
-            createdAt: new Date().toISOString()
+            createdAt: finalDate
         };
 
         try {
@@ -406,6 +412,7 @@ function bindEvents() {
             if (data.success) {
                 logInput.value = '';
                 logTypeSelect.value = 'info';
+                logDateInput.value = '';
                 selectedFiles = [];
                 renderSelectedFiles();
                 renderProjectView(currentProjectId); // reload timeline
