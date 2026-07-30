@@ -469,3 +469,86 @@ body {
         page-break-after: auto;
     }
 }
+
+/* 아름다운 액션 버튼 커스텀 스타일 */
+.btn-save {
+    background-color: #10B981;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-save:hover { background-color: #059669; }
+
+.btn-print {
+    background-color: #6366F1;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-print:hover { background-color: #4F46E5; }
+
+.btn-new {
+    background-color: #3B82F6;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-new:hover { background-color: #2563EB; }
+
+.btn-back {
+    background-color: white;
+    color: #4B5563;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #D1D5DB;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-back:hover { background-color: #F3F4F6; }
+
+.btn-apply {
+    background-color: #2563EB;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 12px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.btn-apply:hover { background-color: #1D4ED8; }
