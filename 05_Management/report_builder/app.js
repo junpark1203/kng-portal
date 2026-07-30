@@ -438,14 +438,57 @@ function setupImageUploadEvents(element, rowObj, colId) {
         }
     });
     element.addEventListener('click', () => element.focus());
+// 이미지 압축 유틸리티
+function compressImage(file) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) return resolve(file);
+        
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+            const MAX_SIZE = 1920;
+            
+            if (width > height && width > MAX_SIZE) {
+                height = Math.round((height * MAX_SIZE) / width);
+                width = MAX_SIZE;
+            } else if (height >= width && height > MAX_SIZE) {
+                width = Math.round((width * MAX_SIZE) / height);
+                height = MAX_SIZE;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+                if (!blob) return resolve(file);
+                let originalName = file.name || 'pasted-image.png';
+                originalName = originalName.replace(/\.[^/.]+$/, "") + ".jpg";
+                const compressedFile = new File([blob], originalName, { type: 'image/jpeg' });
+                resolve(compressedFile);
+            }, 'image/jpeg', 0.8);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+        };
+        img.src = objectUrl;
+    });
 }
 
 async function uploadImage(file, rowObj, colId) {
     showLoading(true);
-    const formData = new FormData();
-    formData.append('image', file, file.name || 'pasted-image.png');
     
     try {
+        const compressedFile = await compressImage(file);
+        const formData = new FormData();
+        formData.append('image', compressedFile, compressedFile.name);
+        
         const res = await authFetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
         if (!res.ok) {
             const errText = await res.text().catch(() => '');
