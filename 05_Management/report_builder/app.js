@@ -6,10 +6,10 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 let state = {
     currentDocId: null,
     columns: [
-        { id: 'col_no', name: 'No.', type: 'text', width: 5 },
-        { id: 'col_sample', name: '현재 샘플', type: 'image', width: 30 },
-        { id: 'col_example', name: '예시', type: 'image', width: 35 },
-        { id: 'col_request', name: '요청사항', type: 'text', width: 30 }
+        { id: 'col_no', name: 'No.', type: 'text', width: 5, hAlign: 'left', vAlign: 'top' },
+        { id: 'col_sample', name: '현재 샘플', type: 'image', width: 30, hAlign: 'center', vAlign: 'middle' },
+        { id: 'col_example', name: '예시', type: 'image', width: 35, hAlign: 'center', vAlign: 'middle' },
+        { id: 'col_request', name: '요청사항', type: 'text', width: 30, hAlign: 'left', vAlign: 'top' }
     ],
     rows: []
 };
@@ -105,7 +105,9 @@ function bindEvents() {
         const type = document.getElementById('colType').value;
         const newColId = 'col_' + generateId();
         const widthVal = document.getElementById('colWidth') ? parseInt(document.getElementById('colWidth').value) : 20;
-        state.columns.push({ id: newColId, name, type, width: widthVal || 20 });
+        const defaultHAlign = type === 'image' ? 'center' : 'left';
+        const defaultVAlign = type === 'image' ? 'middle' : 'top';
+        state.columns.push({ id: newColId, name, type, width: widthVal || 20, hAlign: defaultHAlign, vAlign: defaultVAlign });
         // 기존 행 데이터에 새 열 필드 추가
         state.rows.forEach(row => { row[newColId] = type === 'image' ? [] : ''; });
         
@@ -258,12 +260,25 @@ function renderColumnSettings() {
         const typeLabel = col.type === 'text' ? '텍스트' : '사진';
         // 너비 속성이 없으면 기본값(예: 20) 부여
         const colWidth = col.width || 20;
+        const hAlign = col.hAlign || (col.type === 'image' ? 'center' : 'left');
+        const vAlign = col.vAlign || (col.type === 'image' ? 'middle' : 'top');
+        
         li.innerHTML = `
             <div class="col-info" style="flex:1;">
                 <strong>${col.name}</strong>
                 <span class="col-badge">${typeLabel}</span>
             </div>
             <div class="col-width-control" style="display:flex; align-items:center; gap:4px; margin-right:12px;">
+                <select class="form-input align-select" onchange="updateColAlign('${col.id}', 'hAlign', this.value)" style="padding:4px; font-size:12px; width:70px;">
+                    <option value="left" ${hAlign === 'left' ? 'selected' : ''}>가로:좌</option>
+                    <option value="center" ${hAlign === 'center' ? 'selected' : ''}>가로:중</option>
+                    <option value="right" ${hAlign === 'right' ? 'selected' : ''}>가로:우</option>
+                </select>
+                <select class="form-input align-select" onchange="updateColAlign('${col.id}', 'vAlign', this.value)" style="padding:4px; font-size:12px; width:70px;">
+                    <option value="top" ${vAlign === 'top' ? 'selected' : ''}>세로:상</option>
+                    <option value="middle" ${vAlign === 'middle' ? 'selected' : ''}>세로:중</option>
+                    <option value="bottom" ${vAlign === 'bottom' ? 'selected' : ''}>세로:하</option>
+                </select>
                 <input type="number" min="1" max="100" class="form-input col-width-input" value="${colWidth}" onchange="updateColWidth('${col.id}', this.value)" style="width:60px; text-align:center;"> %
             </div>
             <button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>
@@ -288,6 +303,13 @@ window.updateColWidth = function(colId, newWidth) {
     const col = state.columns.find(c => c.id === colId);
     if (col) {
         col.width = parseInt(newWidth) || 0;
+        renderColumnSettings();
+    }
+};
+window.updateColAlign = function(colId, alignProp, val) {
+    const col = state.columns.find(c => c.id === colId);
+    if (col) {
+        col[alignProp] = val;
         renderColumnSettings();
     }
 };
@@ -414,19 +436,24 @@ function openPrintPreview() {
     state.rows.forEach(row => {
         bodyHtml += '<tr>';
         state.columns.forEach(col => {
+            const hAlign = col.hAlign || (col.type === 'image' ? 'center' : 'left');
+            const vAlign = col.vAlign || (col.type === 'image' ? 'middle' : 'top');
+            const styleAttr = `style="text-align: ${hAlign}; vertical-align: ${vAlign};"`;
+            
             if (col.type === 'text') {
                 // 텍스트 출력 (줄바꿈 처리)
                 const textStr = (row[col.id] || '').replace(/\n/g, '<br>');
-                bodyHtml += `<td>${textStr}</td>`;
+                bodyHtml += `<td ${styleAttr}>${textStr}</td>`;
             } else if (col.type === 'image') {
-                // 이미지 그리드 출력
+                // 이미지 그리드 출력 (flex 정렬 적용)
                 const images = row[col.id] || [];
-                let imgHtml = '<div class="print-image-grid">';
+                const justifyVal = hAlign === 'left' ? 'flex-start' : (hAlign === 'right' ? 'flex-end' : 'center');
+                let imgHtml = `<div class="print-image-grid" style="justify-content: ${justifyVal};">`;
                 images.forEach(imgUrl => {
                     imgHtml += `<img src="${getImgSrc(imgUrl)}">`;
                 });
                 imgHtml += '</div>';
-                bodyHtml += `<td>${imgHtml}</td>`;
+                bodyHtml += `<td ${styleAttr}>${imgHtml}</td>`;
             }
         });
         bodyHtml += '</tr>';
