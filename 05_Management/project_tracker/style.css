@@ -379,6 +379,10 @@ body {
     outline: none;
     box-sizing: border-box;
 }
+select.linear-input {
+    height: 42px;
+    padding: 0 12px;
+}
 
 /* Modals */
 .modal {
