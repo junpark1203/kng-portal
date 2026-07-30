@@ -608,13 +608,13 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
                 originalYyyymmdd = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,10);
             }
             
-            // 날짜를 변경한 경우에만 00:00:00 시간으로 적용 (또는 해당 날짜)
-            if (rawDate !== originalYyyymmdd) {
-                dateToSave = new Date(rawDate).toISOString();
+            // 날짜가 변경되었거나, 기존에도 '시간 없는 날짜'였으면 YYYY-MM-DD 포맷 그대로 저장
+            if (rawDate !== originalYyyymmdd || (log.createdAt && log.createdAt.length === 10)) {
+                dateToSave = rawDate;
             }
         } else {
-            // 날짜를 완전히 지운 경우, 현재 시간으로 처리
-            dateToSave = new Date().toISOString();
+            // 날짜를 완전히 지운 경우, 기존 시간 유지
+            dateToSave = log.createdAt;
         }
 
         const payload = {
