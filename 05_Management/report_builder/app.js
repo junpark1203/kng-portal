@@ -83,6 +83,7 @@ function bindEvents() {
     
     // 저장
     document.getElementById('saveBtn').addEventListener('click', saveReport);
+    document.getElementById('saveCopyBtn').addEventListener('click', saveAsCopy);
     
     // 인쇄 모드 전환
     document.getElementById('printBtn').addEventListener('click', openPrintPreview);
@@ -175,6 +176,7 @@ function createNewReport() {
     state.rows = [createEmptyRow()];
     
     reportTitleInput.value = '';
+    document.getElementById('saveCopyBtn').style.display = 'none'; // 새 보고서는 복사 불가
     listView.classList.add('hidden');
     editorView.classList.remove('hidden');
     
@@ -196,6 +198,8 @@ async function openReport(id) {
         const content = JSON.parse(doc.content_json);
         state.columns = content.columns || [];
         state.rows = content.rows || [];
+        
+        document.getElementById('saveCopyBtn').style.display = 'inline-flex'; // 복사본 저장 버튼 표시
         
         listView.classList.add('hidden');
         editorView.classList.remove('hidden');
@@ -227,9 +231,38 @@ async function saveReport() {
         if (!res.ok) throw new Error('저장 실패');
         const data = await res.json();
         if (data.id) state.currentDocId = data.id;
+        document.getElementById('saveCopyBtn').style.display = 'inline-flex'; // 저장 후엔 복사 가능
         alert('저장되었습니다.');
     } catch (err) {
         alert('저장 중 오류가 발생했습니다.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// API: 복사본으로 저장
+async function saveAsCopy() {
+    if (!state.currentDocId) return;
+    showLoading(true);
+    const payload = {
+        title: reportTitleInput.value || '제목 없는 보고서',
+        content_json: JSON.stringify({ columns: state.columns, rows: state.rows })
+    };
+    try {
+        const res = await authFetch(`${API_BASE}/copy`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('복사본 저장 실패');
+        const data = await res.json();
+        if (data.id) {
+            state.currentDocId = data.id;
+            reportTitleInput.value = data.title;
+        }
+        alert('복사본으로 저장되었습니다.');
+    } catch (err) {
+        alert('복사본 저장 중 오류가 발생했습니다.');
     } finally {
         showLoading(false);
     }
