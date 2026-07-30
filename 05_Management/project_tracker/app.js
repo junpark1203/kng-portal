@@ -515,11 +515,11 @@ window.openEditLogModal = function(logId) {
     document.getElementById('editLogContent').value = log.content;
     
     if (log.createdAt && log.createdAt.length === 10) {
-        document.getElementById('editLogDate').value = log.createdAt + "T09:00"; // default to 09:00 for old YYYY-MM-DD
+        document.getElementById('editLogDate').value = log.createdAt; 
     } else {
         const d = new Date(log.createdAt);
-        const iso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
-        document.getElementById('editLogDate').value = iso;
+        const yyyymmdd = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,10);
+        document.getElementById('editLogDate').value = yyyymmdd;
     }
 
     currentEditRetainedAttachments = [];
@@ -596,9 +596,25 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
         const rawDate = document.getElementById('editLogDate').value;
         const text = document.getElementById('editLogContent').value;
         
-        let dateToSave = new Date().toISOString();
+        const log = currentLogs.find(l => l.id === logId);
+        let dateToSave = log.createdAt; // 기본적으로 기존 작성일시 유지
+        
         if (rawDate) {
-            dateToSave = new Date(rawDate).toISOString();
+            let originalYyyymmdd = '';
+            if (log.createdAt && log.createdAt.length === 10) {
+                originalYyyymmdd = log.createdAt;
+            } else {
+                const d = new Date(log.createdAt);
+                originalYyyymmdd = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,10);
+            }
+            
+            // 날짜를 변경한 경우에만 00:00:00 시간으로 적용 (또는 해당 날짜)
+            if (rawDate !== originalYyyymmdd) {
+                dateToSave = new Date(rawDate).toISOString();
+            }
+        } else {
+            // 날짜를 완전히 지운 경우, 현재 시간으로 처리
+            dateToSave = new Date().toISOString();
         }
 
         const payload = {
