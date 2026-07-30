@@ -426,11 +426,14 @@ function setupImageUploadEvents(element, rowObj, colId) {
         }
     });
     element.addEventListener('paste', async (e) => {
+        e.preventDefault();
         const items = e.clipboardData.items;
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
-                uploadImage(blob, rowObj, colId);
+                if (blob) {
+                    uploadImage(blob, rowObj, colId);
+                }
             }
         }
     });
@@ -440,11 +443,14 @@ function setupImageUploadEvents(element, rowObj, colId) {
 async function uploadImage(file, rowObj, colId) {
     showLoading(true);
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', file, file.name || 'pasted-image.png');
     
     try {
         const res = await authFetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('업로드 실패');
+        if (!res.ok) {
+            const errText = await res.text().catch(() => '');
+            throw new Error(`업로드 실패 (${res.status}): ${errText}`);
+        }
         const data = await res.json();
         
         if (!rowObj[colId]) rowObj[colId] = [];
@@ -452,7 +458,7 @@ async function uploadImage(file, rowObj, colId) {
         renderForm(); // 폼 갱신 (이미지 미리보기 보임)
     } catch (err) {
         console.error(err);
-        alert('이미지 업로드에 실패했습니다.');
+        alert(`이미지 업로드에 실패했습니다.\n상세: ${err.message}`);
     } finally {
         showLoading(false);
     }

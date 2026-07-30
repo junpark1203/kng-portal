@@ -52,7 +52,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ 
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 // 이미지 업로드 API
