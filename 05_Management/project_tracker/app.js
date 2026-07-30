@@ -619,10 +619,12 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
             document.getElementById('editLogModal').classList.add('hidden');
             renderProjectView(currentProjectId);
         } else {
-            throw new Error("저장 실패");
+            console.error("Server returned error:", data);
+            throw new Error(data.error || "서버 저장 실패");
         }
     } catch(e) {
-        Swal.fire('오류', '로그 수정 실패', 'error');
+        console.error("Edit log error:", e);
+        Swal.fire('오류', '로그 수정 실패: ' + e.message, 'error');
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
