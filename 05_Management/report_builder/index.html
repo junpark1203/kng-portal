@@ -86,8 +86,8 @@
     <!-- 3. 인쇄 전용 뷰 (A4 표 레이아웃) -->
     <div id="printLayout" class="print-layout">
         <div class="print-actions no-print">
-            <button class="secondary-btn" id="closePrintBtn"><i class='bx bx-x'></i> 닫기 (폼으로 돌아가기)</button>
-            <button class="primary-btn" id="doPrintBtn"><i class='bx bx-printer'></i> A4 인쇄하기</button>
+            <button class="btn-back" id="closePrintBtn"><i class='bx bx-x'></i> 닫기 (폼으로 돌아가기)</button>
+            <button class="btn-print" id="doPrintBtn"><i class='bx bx-printer'></i> A4 인쇄하기</button>
         </div>
         
         <div class="a4-page" id="printArea">
@@ -131,7 +131,7 @@
                     <label>너비 (비율 %)</label>
                     <input type="number" id="colWidth" class="form-input" min="1" max="100" value="20" required>
                 </div>
-                <button type="submit" class="primary-btn w-full">추가하기</button>
+                <button type="submit" class="btn-apply w-full">추가하기</button>
             </form>
         </div>
     </div>
@@ -143,6 +143,6 @@
     </div>
 
     <script src="../../app.js"></script>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>

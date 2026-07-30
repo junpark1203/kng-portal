@@ -151,7 +151,7 @@ async function loadReportList() {
                 <h3>${item.title || '제목 없음'}</h3>
                 <p>최근 수정: ${date}</p>
                 <div class="report-card-actions">
-                    <button class="secondary-btn btn-sm" onclick="deleteReport('${item.id}', event)">삭제</button>
+                    <button class="btn-back btn-sm" onclick="deleteReport('${item.id}', event)">삭제</button>
                 </div>
             `;
             card.addEventListener('click', () => openReport(item.id));
