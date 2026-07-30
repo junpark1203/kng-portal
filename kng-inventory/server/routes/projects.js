@@ -110,13 +110,32 @@ router.put('/:id', (req, res) => {
 
 // DELETE: 프로젝트 마스터 삭제 (관련 로그도 함께 삭제)
 router.delete('/:id', (req, res) => {
-    db.serialize(() => {
-        db.run(`DELETE FROM project_logs WHERE projectId = ?`, [req.params.id], (err) => {
-            if (err) console.error("로그 삭제 에러", err);
-        });
-        db.run(`DELETE FROM projects WHERE id = ?`, [req.params.id], function(err) {
-            if (err) return res.status(500).json({ success: false, error: err.message });
-            res.json({ success: true });
+    db.all(`SELECT attachments FROM project_logs WHERE projectId = ?`, [req.params.id], (err, rows) => {
+        if (!err && rows) {
+            rows.forEach(row => {
+                if(row.attachments) {
+                    try {
+                        const atts = JSON.parse(row.attachments);
+                        atts.forEach(fileUrl => {
+                            const filename = fileUrl.split('/').pop();
+                            const filePath = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'projects', filename);
+                            if (fs.existsSync(filePath)) {
+                                fs.unlinkSync(filePath);
+                            }
+                        });
+                    } catch(e) { console.error("File deletion error", e); }
+                }
+            });
+        }
+        
+        db.serialize(() => {
+            db.run(`DELETE FROM project_logs WHERE projectId = ?`, [req.params.id], (err) => {
+                if (err) console.error("로그 삭제 에러", err);
+            });
+            db.run(`DELETE FROM projects WHERE id = ?`, [req.params.id], function(err) {
+                if (err) return res.status(500).json({ success: false, error: err.message });
+                res.json({ success: true });
+            });
         });
     });
 });
@@ -148,9 +167,25 @@ router.post('/:projectId/logs', (req, res) => {
 
 // DELETE: 타임라인 로그 삭제
 router.delete('/:projectId/logs/:logId', (req, res) => {
-    db.run(`DELETE FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], function(err) {
+    db.get(`SELECT attachments FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], (err, row) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
-        res.json({ success: true });
+        if (row && row.attachments) {
+            try {
+                const atts = JSON.parse(row.attachments);
+                atts.forEach(fileUrl => {
+                    const filename = fileUrl.split('/').pop();
+                    const filePath = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'projects', filename);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                });
+            } catch(e) { console.error("File deletion error", e); }
+        }
+        
+        db.run(`DELETE FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], function(err) {
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            res.json({ success: true });
+        });
     });
 });
 
