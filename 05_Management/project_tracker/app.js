@@ -1,6 +1,27 @@
-// 05_Management/project_tracker/app.js
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8788/api/projects'
+    : 'https://kng.junparks.com/api/projects';
 
-const API_BASE = '/api/projects';
+async function authFetch(url, options = {}) {
+    let token = null;
+    try {
+        if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 10) {
+                await new Promise(r => setTimeout(r, 500));
+                token = await window.parent.getAuthToken();
+                retries++;
+            }
+        }
+    } catch(e) {}
+    
+    if (!options.headers) options.headers = {};
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, options);
+}
 
 let projects = [];
 let currentProjectId = null;
@@ -49,7 +70,7 @@ function generateLogId() {
 // Fetch Projects
 async function loadProjects() {
     try {
-        const res = await fetch(API_BASE);
+        const res = await authFetch(API_BASE);
         const data = await res.json();
         if (data.success) {
             projects = data.data;
@@ -138,7 +159,7 @@ async function renderProjectView(id) {
 
     // Load logs
     try {
-        const res = await fetch(`${API_BASE}/${id}/logs`);
+        const res = await authFetch(`${API_BASE}/${id}/logs`);
         const data = await res.json();
         if (data.success) {
             renderTimeline(data.data);
@@ -252,7 +273,7 @@ function bindEvents() {
         const url = pid ? `${API_BASE}/${pid}` : API_BASE;
 
         try {
-            const res = await fetch(url, {
+            const res = await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -287,7 +308,7 @@ function bindEvents() {
 
         if (result.isConfirmed) {
             try {
-                const res = await fetch(`${API_BASE}/${currentProjectId}`, { method: 'DELETE' });
+                const res = await authFetch(`${API_BASE}/${currentProjectId}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
                     currentProjectId = null;
@@ -308,7 +329,7 @@ function bindEvents() {
         if(!project) return;
         
         try {
-            const res = await fetch(`${API_BASE}/${currentProjectId}`, {
+            const res = await authFetch(`${API_BASE}/${currentProjectId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...project, status: newStatus, updatedAt: new Date().toISOString() })
@@ -350,7 +371,7 @@ function bindEvents() {
             const formData = new FormData();
             selectedFiles.forEach(f => formData.append('files', f));
             try {
-                const uploadRes = await fetch(`${API_BASE}/upload`, {
+                const uploadRes = await authFetch(`${API_BASE}/upload`, {
                     method: 'POST',
                     body: formData
                 });
@@ -376,7 +397,7 @@ function bindEvents() {
         };
 
         try {
-            const res = await fetch(`${API_BASE}/${currentProjectId}/logs`, {
+            const res = await authFetch(`${API_BASE}/${currentProjectId}/logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(logPayload)
@@ -429,7 +450,7 @@ window.deleteLog = async function(logId) {
     });
     if(result.isConfirmed) {
         try {
-            const res = await fetch(`${API_BASE}/${currentProjectId}/logs/${logId}`, { method: 'DELETE' });
+            const res = await authFetch(`${API_BASE}/${currentProjectId}/logs/${logId}`, { method: 'DELETE' });
             const data = await res.json();
             if(data.success) {
                 renderProjectView(currentProjectId);
