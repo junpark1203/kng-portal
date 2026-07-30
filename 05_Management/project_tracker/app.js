@@ -27,6 +27,7 @@ async function authFetch(url, options = {}) {
 
 let projects = [];
 let currentProjectId = null;
+let currentLogs = [];
 let selectedFiles = [];
 
 // DOM Elements
@@ -165,7 +166,8 @@ async function renderProjectView(id) {
         const res = await authFetch(`${API_BASE}/${id}/logs`);
         const data = await res.json();
         if (data.success) {
-            renderTimeline(data.data);
+            currentLogs = data.data;
+            renderTimeline(currentLogs);
         }
     } catch (e) {
         console.error("Failed to load logs", e);
@@ -505,7 +507,7 @@ let currentEditRetainedAttachments = [];
 let currentEditNewFiles = [];
 
 window.openEditLogModal = function(logId) {
-    const log = logsData.find(l => l.id === logId);
+    const log = currentLogs.find(l => l.id === logId);
     if(!log) return;
 
     document.getElementById('editLogId').value = log.id;
