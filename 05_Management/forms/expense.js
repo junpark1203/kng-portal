@@ -436,7 +436,7 @@ async function duplicateExpense(id) {
 }
 
 async function saveExpense() {
-    if (!fCreatedDate.value || !fPaymentDate.value || !fAmount.value || !fTitle.value || !fVendorId.value) {
+    if (!fCreatedDate.value || !fPaymentDate.value || !fTitle.value || !fVendorId.value) {
         showToast('필수 항목(* 표시)을 모두 입력해주세요.', 'warning');
         return;
     }
@@ -854,7 +854,7 @@ function getCurrencyKoreanText(curr, amount) {
 }
 
 async function showPrintPreview() {
-    if (!fCreatedDate.value || !fAmount.value || !fTitle.value || !fVendorId.value) {
+    if (!fCreatedDate.value || !fTitle.value || !fVendorId.value) {
         showToast('필수 항목을 모두 입력 후 미리보기가 가능합니다.', 'warning');
         return;
     }
