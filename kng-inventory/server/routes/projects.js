@@ -55,7 +55,7 @@ const initProjectsTables = (dbInstance) => {
 // 파일 업로드 (Multer 설정)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const dir = path.join(__dirname, '..', '..', '..', 'uploads', 'projects');
+        const dir = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'projects');
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
