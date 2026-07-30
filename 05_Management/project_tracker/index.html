@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>프로젝트 관리 - K&G 통합 업무 포털</title>
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="../../styles.css">
+    <!-- Local CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar: 프로젝트 리스트 -->
+        <div class="projects-sidebar">
+            <div class="sidebar-header">
+                <h2>프로젝트 목록</h2>
+                <button id="btnNewProject" class="btn-icon" title="새 프로젝트 생성">
+                    <i class='bx bx-plus'></i>
+                </button>
+            </div>
+            <div class="sidebar-filters">
+                <select id="filterStatus" class="linear-select">
+                    <option value="">모든 상태</option>
+                    <option value="진행중" selected>진행중</option>
+                    <option value="보류">보류</option>
+                    <option value="완료">완료</option>
+                </select>
+                <select id="filterCategory" class="linear-select">
+                    <option value="">모든 카테고리</option>
+                    <option value="수입">수입</option>
+                    <option value="국내">국내</option>
+                    <option value="영업">영업</option>
+                    <option value="개발">개발</option>
+                </select>
+            </div>
+            <div class="projects-list" id="projectsList">
+                <!-- 프로젝트 아이템 렌더링 -->
+            </div>
+        </div>
+
+        <!-- Main Content: 타임라인 뷰 -->
+        <div class="main-content">
+            <div id="emptyState" class="empty-state">
+                <i class='bx bx-briefcase-alt-2'></i>
+                <h3>프로젝트를 선택해주세요</h3>
+                <p>또는 좌측 상단의 + 버튼을 눌러 새 프로젝트를 시작하세요.</p>
+            </div>
+
+            <div id="projectView" class="project-view hidden">
+                <div class="project-header">
+                    <div class="header-info">
+                        <span id="headerCategory" class="badge">수입</span>
+                        <h1 id="headerTitle">완샹 표면경화제 수입건</h1>
+                        <span id="headerManager" class="manager-text"><i class='bx bx-user'></i> 박준영</span>
+                    </div>
+                    <div class="header-actions">
+                        <select id="headerStatus" class="linear-select status-select">
+                            <option value="진행중">진행중</option>
+                            <option value="보류">보류</option>
+                            <option value="완료">완료</option>
+                        </select>
+                        <button id="btnEditProject" class="btn-icon" title="프로젝트 수정"><i class='bx bx-edit-alt'></i></button>
+                        <button id="btnDeleteProject" class="btn-icon text-danger" title="프로젝트 삭제"><i class='bx bx-trash'></i></button>
+                    </div>
+                </div>
+
+                <!-- 타임라인 피드 영역 -->
+                <div class="timeline-container" id="timelineContainer">
+                    <!-- 타임라인 항목 렌더링 -->
+                </div>
+
+                <!-- 하단 입력 바 -->
+                <div class="input-bar-container">
+                    <form id="logForm" class="input-form">
+                        <div class="input-attachments" id="inputAttachments"></div>
+                        <div class="input-row">
+                            <button type="button" id="btnAttach" class="btn-icon" title="파일 첨부 (또는 드래그 앤 드롭)"><i class='bx bx-paperclip'></i></button>
+                            <input type="file" id="fileInput" multiple hidden>
+                            
+                            <select id="logTypeSelect" class="linear-select log-type-select" title="로그 유형">
+                                <option value="info">일반</option>
+                                <option value="warning">중요/주의</option>
+                                <option value="success">성공/완료</option>
+                            </select>
+
+                            <textarea id="logInput" placeholder="새로운 진행 상황을 기록하세요... (Ctrl+Enter로 전송)" rows="1"></textarea>
+                            
+                            <button type="submit" id="btnSend" class="btn-send"><i class='bx bx-send'></i></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 프로젝트 생성/수정 모달 -->
+    <div id="projectModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">새 프로젝트</h3>
+                <button class="close-modal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="projectForm">
+                    <input type="hidden" id="projectId">
+                    <div class="form-group">
+                        <label>프로젝트명</label>
+                        <input type="text" id="projectTitle" class="linear-input" required placeholder="예: 24년 7월 완샹 수입건">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>카테고리</label>
+                            <select id="projectCategory" class="linear-input" required>
+                                <option value="수입">수입</option>
+                                <option value="국내">국내</option>
+                                <option value="영업">영업</option>
+                                <option value="개발">개발</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>담당자</label>
+                            <input type="text" id="projectManager" class="linear-input" required placeholder="담당자 이름">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel close-modal">취소</button>
+                <button type="button" id="btnSaveProject" class="btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

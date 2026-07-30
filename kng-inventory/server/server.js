@@ -65,6 +65,10 @@ const { initReportBuilderTables } = reportBuilderRoutes;
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
 
+// 프로젝트 관리 모듈
+const projectsRoutes = require('./routes/projects');
+const { initProjectsTables } = projectsRoutes;
+
 // 캘린더 모듈
 const calendarRoutes = require('./routes/calendar');
 
@@ -172,6 +176,11 @@ app.use('/api/work-logs/uploads', express.static(WORK_LOGS_UPLOAD_DIR, { fallthr
 const REPORT_BUILDER_UPLOAD_DIR = path.join(UPLOAD_DIR, 'report-builder');
 if (!fs.existsSync(REPORT_BUILDER_UPLOAD_DIR)) fs.mkdirSync(REPORT_BUILDER_UPLOAD_DIR, { recursive: true });
 app.use('/api/report-builder/uploads', express.static(REPORT_BUILDER_UPLOAD_DIR, { fallthrough: false }));
+
+// 프로젝트 및 타임라인 트래커 첨부파일
+const PROJECTS_UPLOAD_DIR = path.join(UPLOAD_DIR, 'projects');
+if (!fs.existsSync(PROJECTS_UPLOAD_DIR)) fs.mkdirSync(PROJECTS_UPLOAD_DIR, { recursive: true });
+app.use('/api/projects/uploads', express.static(PROJECTS_UPLOAD_DIR, { fallthrough: false }));
 
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
@@ -296,6 +305,10 @@ const db = new sqlite3.Database(dbFile, (err) => {
                 console.log('report_builder API 준비 완료');
             }).catch(err => console.error('report_builder 초기화 실패:', err));
         }
+        // 프로젝트 관리 테이블 초기화
+        initProjectsTables(db).then(() => {
+            console.log('projects API 준비 완료');
+        }).catch(err => console.error('projects 초기화 실패:', err));
         // 품목별 견적 비교 테이블 초기화 + 라우트에 DB 주입
         initMaterialQuotesTables(db).then(() => {
             materialQuotesRoutes.setDb(db);
@@ -1030,6 +1043,7 @@ app.use('/api/mat-quotes', materialQuotesRoutes.router);
 app.use('/api/dashboard', dashboardRoutes.router);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/report-builder', reportBuilderRoutes.router);
+app.use('/api/projects', projectsRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
