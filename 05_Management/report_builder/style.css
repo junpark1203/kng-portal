@@ -178,6 +178,28 @@ body {
     cursor: pointer;
     font-size: 16px;
 }
+.width-summary {
+    margin-top: 12px;
+    padding: 12px;
+    background: #F3F4F6;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #374151;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.width-summary.warning {
+    background: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FCA5A5;
+}
+.col-width-input {
+    border: 1px solid #D1D5DB;
+    border-radius: 4px;
+    padding: 4px;
+    font-size: 13px;
+}
 
 /* 데이터 입력 폼 */
 .form-data-list {
@@ -370,7 +392,7 @@ body {
 .report-table {
     width: 100%;
     border-collapse: collapse;
-    table-layout: auto; /* 중요: 내용물에 맞춰 너비 자동 조정됨 */
+    table-layout: fixed;
 }
 .report-table th, .report-table td {
     border: 1px solid #374151; /* 인쇄용은 진한 테두리 */

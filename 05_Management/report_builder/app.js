@@ -6,10 +6,10 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 let state = {
     currentDocId: null,
     columns: [
-        { id: 'col_no', name: 'No.', type: 'text' },
-        { id: 'col_sample', name: '현재 샘플', type: 'image' },
-        { id: 'col_example', name: '예시', type: 'image' },
-        { id: 'col_request', name: '요청사항', type: 'text' }
+        { id: 'col_no', name: 'No.', type: 'text', width: 5 },
+        { id: 'col_sample', name: '현재 샘플', type: 'image', width: 30 },
+        { id: 'col_example', name: '예시', type: 'image', width: 35 },
+        { id: 'col_request', name: '요청사항', type: 'text', width: 30 }
     ],
     rows: []
 };
@@ -104,7 +104,8 @@ function bindEvents() {
         const name = document.getElementById('colName').value;
         const type = document.getElementById('colType').value;
         const newColId = 'col_' + generateId();
-        state.columns.push({ id: newColId, name, type });
+        const widthVal = document.getElementById('colWidth') ? parseInt(document.getElementById('colWidth').value) : 20;
+        state.columns.push({ id: newColId, name, type, width: widthVal || 20 });
         // 기존 행 데이터에 새 열 필드 추가
         state.rows.forEach(row => { row[newColId] = type === 'image' ? [] : ''; });
         
@@ -255,16 +256,41 @@ function renderColumnSettings() {
         li.className = 'column-item';
         
         const typeLabel = col.type === 'text' ? '텍스트' : '사진';
+        // 너비 속성이 없으면 기본값(예: 20) 부여
+        const colWidth = col.width || 20;
         li.innerHTML = `
-            <div class="col-info">
+            <div class="col-info" style="flex:1;">
                 <strong>${col.name}</strong>
                 <span class="col-badge">${typeLabel}</span>
+            </div>
+            <div class="col-width-control" style="display:flex; align-items:center; gap:4px; margin-right:12px;">
+                <input type="number" min="1" max="100" class="form-input col-width-input" value="${colWidth}" onchange="updateColWidth('${col.id}', this.value)" style="width:60px; text-align:center;"> %
             </div>
             <button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>
         `;
         columnSettingList.appendChild(li);
     });
+    
+    // 합계 계산 및 표시
+    const totalWidth = state.columns.reduce((sum, col) => sum + (parseInt(col.width) || 0), 0);
+    const widthSumEl = document.getElementById('widthSum');
+    if (widthSumEl) {
+        widthSumEl.innerHTML = `현재 총 너비 합계: <strong>${totalWidth}%</strong> / 100%`;
+        if (totalWidth > 100) {
+            widthSumEl.className = 'width-summary warning';
+            widthSumEl.innerHTML += ` <span><i class='bx bx-error'></i> 합계가 100%를 초과하여 표가 잘릴 수 있습니다!</span>`;
+        } else {
+            widthSumEl.className = 'width-summary';
+        }
+    }
 }
+window.updateColWidth = function(colId, newWidth) {
+    const col = state.columns.find(c => c.id === colId);
+    if (col) {
+        col.width = parseInt(newWidth) || 0;
+        renderColumnSettings();
+    }
+};
 window.deleteCol = function(colId) {
     if(!confirm('이 항목을 삭제하시겠습니까? 데이터도 함께 지워집니다.')) return;
     state.columns = state.columns.filter(c => c.id !== colId);
@@ -375,9 +401,10 @@ function openPrintPreview() {
     // 3. 표 헤더 조립
     let headHtml = '<tr>';
     state.columns.forEach(col => {
-        // 짧은 단어일 가능성이 높은 이름(No, 날짜 등)은 nowrap 클래스 추가 (자동 너비 최적화)
+        // 기존 nowrap 로직은 유지하되, width 비율 추가 적용
         const isShort = col.name.toLowerCase().includes('no') || col.name.includes('번호') || col.name.includes('날짜');
-        headHtml += `<th class="${isShort ? 'nowrap' : ''}">${col.name}</th>`;
+        const widthAttr = col.width ? `width="${col.width}%"` : '';
+        headHtml += `<th class="${isShort ? 'nowrap' : ''}" ${widthAttr}>${col.name}</th>`;
     });
     headHtml += '</tr>';
     tableHead.innerHTML = headHtml;
