@@ -65,8 +65,11 @@ body {
     background: white;
     padding: 16px 24px;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     margin-bottom: 24px;
+    position: sticky;
+    top: 16px;
+    z-index: 100;
 }
 .editor-actions-center h2 {
     margin: 0;
@@ -80,10 +83,9 @@ body {
 
 /* 에디터 레이아웃 (폼 뷰) */
 .editor-layout {
-    display: grid;
-    grid-template-columns: 350px 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 24px;
-    align-items: start;
 }
 
 .card {
@@ -164,12 +166,16 @@ body {
     gap: 8px;
     font-size: 13px;
 }
+.column-item .col-info strong {
+    white-space: nowrap;
+}
 .column-item .col-badge {
     background: #E0E7FF;
     color: #4338CA;
     font-size: 11px;
     padding: 2px 6px;
     border-radius: 4px;
+    white-space: nowrap;
 }
 .btn-delete-col {
     background: none;

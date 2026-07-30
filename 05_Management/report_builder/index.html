@@ -19,7 +19,7 @@
                 <h1><i class='bx bx-images'></i> 사진 첨부형 보고서</h1>
                 <p class="subtitle">웹폼에 항목별로 입력하고, 인쇄할 때 자동으로 깔끔한 A4 표가 생성되는 스마트 보고서입니다.</p>
             </div>
-            <button class="primary-btn" id="createNewBtn"><i class='bx bx-plus'></i> 새 보고서 작성</button>
+            <button class="btn-new" id="createNewBtn"><i class='bx bx-plus'></i> 새 보고서 작성</button>
         </header>
         
         <div class="report-list" id="reportList">
@@ -31,14 +31,14 @@
     <div id="editorView" class="container hidden no-print">
         <header class="editor-header">
             <div class="editor-actions-left">
-                <button class="secondary-btn" id="backToListBtn"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                <button class="btn-back" id="backToListBtn"><i class='bx bx-arrow-back'></i> 목록으로</button>
             </div>
             <div class="editor-actions-center">
                 <h2>보고서 작성 (Form)</h2>
             </div>
             <div class="editor-actions-right">
-                <button class="secondary-btn" id="saveBtn"><i class='bx bx-save'></i> 저장</button>
-                <button class="primary-btn" id="printBtn"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
+                <button class="btn-save" id="saveBtn"><i class='bx bx-save'></i> 저장</button>
+                <button class="btn-print" id="printBtn"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
             </div>
         </header>
 
@@ -63,6 +63,7 @@
                         <!-- 동적 렌더링 -->
                     </ul>
                     <div id="widthSum" class="width-summary"></div>
+                    <button id="applyColBtn" class="btn-apply" onclick="applyColumnSettings()"><i class='bx bx-check'></i> 설정 반영하기</button>
                 </div>
             </div>
 
@@ -142,6 +143,6 @@
     </div>
 
     <script src="../../app.js"></script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
 </body>
 </html>

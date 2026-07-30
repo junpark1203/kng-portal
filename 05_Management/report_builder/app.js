@@ -256,6 +256,7 @@ function renderColumnSettings() {
     state.columns.forEach((col, index) => {
         const li = document.createElement('li');
         li.className = 'column-item';
+        li.setAttribute('data-col-id', col.id);
         
         const typeLabel = col.type === 'text' ? '텍스트' : '사진';
         // 너비 속성이 없으면 기본값(예: 20) 부여
@@ -269,26 +270,37 @@ function renderColumnSettings() {
                 <span class="col-badge">${typeLabel}</span>
             </div>
             <div class="col-width-control" style="display:flex; align-items:center; gap:4px; margin-right:12px;">
-                <select class="form-input align-select" onchange="updateColAlign('${col.id}', 'hAlign', this.value)" style="padding:4px; font-size:12px; width:70px;">
+                <select class="form-input align-select hAlign-select" oninput="calculateDraftSum()" style="padding:4px; font-size:12px; width:70px;">
                     <option value="left" ${hAlign === 'left' ? 'selected' : ''}>가로:좌</option>
                     <option value="center" ${hAlign === 'center' ? 'selected' : ''}>가로:중</option>
                     <option value="right" ${hAlign === 'right' ? 'selected' : ''}>가로:우</option>
                 </select>
-                <select class="form-input align-select" onchange="updateColAlign('${col.id}', 'vAlign', this.value)" style="padding:4px; font-size:12px; width:70px;">
+                <select class="form-input align-select vAlign-select" oninput="calculateDraftSum()" style="padding:4px; font-size:12px; width:70px;">
                     <option value="top" ${vAlign === 'top' ? 'selected' : ''}>세로:상</option>
                     <option value="middle" ${vAlign === 'middle' ? 'selected' : ''}>세로:중</option>
                     <option value="bottom" ${vAlign === 'bottom' ? 'selected' : ''}>세로:하</option>
                 </select>
-                <input type="number" min="1" max="100" class="form-input col-width-input" value="${colWidth}" onchange="updateColWidth('${col.id}', this.value)" style="width:60px; text-align:center;"> %
+                <input type="number" min="1" max="100" class="form-input col-width-input" value="${colWidth}" oninput="calculateDraftSum()" style="width:60px; text-align:center;"> %
             </div>
             <button class="btn-delete-col" onclick="deleteCol('${col.id}')"><i class='bx bx-trash'></i></button>
         `;
         columnSettingList.appendChild(li);
     });
     
-    // 합계 계산 및 표시
-    const totalWidth = state.columns.reduce((sum, col) => sum + (parseInt(col.width) || 0), 0);
+    // 초기 렌더링 시 합계 계산
+    calculateDraftSum();
+}
+
+window.calculateDraftSum = function() {
+    const widthInputs = document.querySelectorAll('.col-width-input');
+    let totalWidth = 0;
+    widthInputs.forEach(input => {
+        totalWidth += parseInt(input.value) || 0;
+    });
+    
     const widthSumEl = document.getElementById('widthSum');
+    const applyBtn = document.getElementById('applyColBtn');
+    
     if (widthSumEl) {
         widthSumEl.innerHTML = `현재 총 너비 합계: <strong>${totalWidth}%</strong> / 100%`;
         if (totalWidth > 100) {
@@ -298,20 +310,41 @@ function renderColumnSettings() {
             widthSumEl.className = 'width-summary';
         }
     }
-}
-window.updateColWidth = function(colId, newWidth) {
-    const col = state.columns.find(c => c.id === colId);
-    if (col) {
-        col.width = parseInt(newWidth) || 0;
-        renderColumnSettings();
+    
+    if (applyBtn) {
+        // 입력이 변하면 버튼 색상을 조금 강조
+        applyBtn.style.backgroundColor = '#4F46E5';
+        applyBtn.innerHTML = "<i class='bx bx-edit-alt'></i> 설정 반영하기 (변경됨)";
     }
 };
-window.updateColAlign = function(colId, alignProp, val) {
-    const col = state.columns.find(c => c.id === colId);
-    if (col) {
-        col[alignProp] = val;
-        renderColumnSettings();
+
+window.applyColumnSettings = function() {
+    const items = document.querySelectorAll('.column-item');
+    items.forEach(item => {
+        const colId = item.getAttribute('data-col-id');
+        const hAlignVal = item.querySelector('.hAlign-select').value;
+        const vAlignVal = item.querySelector('.vAlign-select').value;
+        const widthVal = item.querySelector('.col-width-input').value;
+        
+        const col = state.columns.find(c => c.id === colId);
+        if (col) {
+            col.hAlign = hAlignVal;
+            col.vAlign = vAlignVal;
+            col.width = parseInt(widthVal) || 0;
+        }
+    });
+    
+    const applyBtn = document.getElementById('applyColBtn');
+    if (applyBtn) {
+        applyBtn.style.backgroundColor = '#10B981'; // Green success
+        applyBtn.innerHTML = "<i class='bx bx-check-double'></i> 적용 완료!";
+        setTimeout(() => {
+            applyBtn.style.backgroundColor = '';
+            applyBtn.innerHTML = "<i class='bx bx-check'></i> 설정 반영하기";
+        }, 2000);
     }
+    
+    // 반영 후 폼은 다시 렌더링 할 필요가 크게 없으나, 필요시 renderForm() 호출 가능.
 };
 window.deleteCol = function(colId) {
     if(!confirm('이 항목을 삭제하시겠습니까? 데이터도 함께 지워집니다.')) return;
