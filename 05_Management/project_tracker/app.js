@@ -391,7 +391,8 @@ function bindEvents() {
         // 2. Post Log
         let finalDate = new Date().toISOString();
         if (logDateInput.value) {
-            finalDate = new Date(logDateInput.value).toISOString();
+            const timeString = new Date().toISOString().split('T')[1];
+            finalDate = new Date(`${logDateInput.value}T${timeString}`).toISOString();
         }
 
         const logPayload = {
