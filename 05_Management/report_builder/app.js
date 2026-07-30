@@ -251,12 +251,62 @@ async function deleteReport(id, e) {
 // -----------------------------------------
 // UI: 항목(열) 설정 렌더링
 // -----------------------------------------
+let draggedItemIndex = null;
+
 function renderColumnSettings() {
     columnSettingList.innerHTML = '';
     state.columns.forEach((col, index) => {
         const li = document.createElement('li');
         li.className = 'column-item';
         li.setAttribute('data-col-id', col.id);
+        li.draggable = true;
+        
+        // 드래그 앤 드랍 이벤트 설정
+        li.addEventListener('dragstart', (e) => {
+            draggedItemIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            // Drag Preview를 위해 setTimeout 사용
+            setTimeout(() => li.classList.add('dragging'), 0);
+        });
+        
+        li.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (index !== draggedItemIndex) li.classList.add('drag-over');
+        });
+        
+        li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        
+        li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+        
+        li.addEventListener('drop', (e) => {
+            e.preventDefault();
+            li.classList.remove('drag-over');
+            
+            if (draggedItemIndex !== null && draggedItemIndex !== index) {
+                // state.columns 순서 변경
+                const item = state.columns.splice(draggedItemIndex, 1)[0];
+                state.columns.splice(index, 0, item);
+                
+                // 재렌더링
+                renderColumnSettings();
+                renderForm();
+                
+                // 설정 적용 버튼 업데이트 처리
+                const applyBtn = document.getElementById('applyColBtn');
+                if (applyBtn) {
+                    applyBtn.style.backgroundColor = '#4F46E5';
+                    applyBtn.innerHTML = "<i class='bx bx-edit-alt'></i> 설정 반영하기 (순서 변경됨)";
+                }
+            }
+        });
+        
+        li.addEventListener('dragend', () => {
+            li.classList.remove('dragging');
+            draggedItemIndex = null;
+        });
         
         const typeLabel = col.type === 'text' ? '텍스트' : '사진';
         // 너비 속성이 없으면 기본값(예: 20) 부여
@@ -265,6 +315,7 @@ function renderColumnSettings() {
         const vAlign = col.vAlign || (col.type === 'image' ? 'middle' : 'top');
         
         li.innerHTML = `
+            <div class="drag-handle"><i class='bx bx-grid-vertical'></i></div>
             <div class="col-info" style="flex:1;">
                 <strong>${col.name}</strong>
                 <span class="col-badge">${typeLabel}</span>
