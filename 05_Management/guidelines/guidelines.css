@@ -309,6 +309,8 @@ h3.ce-header { font-size: 1.25em; }
 }
 .guideline-search-input {
     width: 100%;
+    height: 42px !important;
+    box-sizing: border-box !important;
     padding: 10px 14px 10px 40px !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
@@ -324,7 +326,9 @@ h3.ce-header { font-size: 1.25em; }
     outline: none;
 }
 .guideline-filter-select {
-    padding: 10px 36px 10px 14px !important;
+    height: 42px !important;
+    box-sizing: border-box !important;
+    padding: 0 36px 0 14px !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
     font-size: 14px !important;
