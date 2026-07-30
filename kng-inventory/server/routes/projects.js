@@ -165,6 +165,46 @@ router.post('/:projectId/logs', (req, res) => {
     });
 });
 
+// PUT: 타임라인 로그 수정
+router.put('/:projectId/logs/:logId', (req, res) => {
+    const { content, logType, attachments, createdAt } = req.body;
+    const logId = req.params.logId;
+    const projectId = req.params.projectId;
+
+    db.get(`SELECT attachments FROM project_logs WHERE id = ? AND projectId = ?`, [logId, projectId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (row && row.attachments) {
+            try {
+                const oldAtts = JSON.parse(row.attachments);
+                const newAtts = attachments || [];
+                // 삭제된 파일 찾기: 기존에는 있었는데, 새 목록에는 없는 파일
+                oldAtts.forEach(fileUrl => {
+                    if (!newAtts.includes(fileUrl)) {
+                        const filename = fileUrl.split('/').pop();
+                        const filePath = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'projects', filename);
+                        if (fs.existsSync(filePath)) {
+                            fs.unlinkSync(filePath);
+                        }
+                    }
+                });
+            } catch (e) { console.error("File deletion error during update", e); }
+        }
+
+        db.run(`
+            UPDATE project_logs 
+            SET content = ?, logType = ?, attachments = ?, createdAt = ? 
+            WHERE id = ? AND projectId = ?
+        `, [content, logType, JSON.stringify(attachments || []), createdAt, logId, projectId], function(err) {
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            
+            // Update project updatedAt
+            db.run(`UPDATE projects SET updatedAt = ? WHERE id = ?`, [createdAt, projectId]);
+            
+            res.json({ success: true });
+        });
+    });
+});
+
 // DELETE: 타임라인 로그 삭제
 router.delete('/:projectId/logs/:logId', (req, res) => {
     db.get(`SELECT attachments FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], (err, row) => {
