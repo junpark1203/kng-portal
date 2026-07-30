@@ -212,9 +212,15 @@ function renderTimeline(logs) {
             }
         } catch(e) {}
 
-        const dateStr = new Date(log.createdAt).toLocaleString('ko-KR', {
-            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-        });
+        let dateStr = '';
+        if (log.createdAt && log.createdAt.length === 10) {
+            const parts = log.createdAt.split('-');
+            dateStr = `${parseInt(parts[1])}월 ${parseInt(parts[2])}일`;
+        } else {
+            dateStr = new Date(log.createdAt).toLocaleString('ko-KR', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+        }
 
         item.innerHTML = `
             <div class="timeline-icon ${iconClass}">
@@ -391,8 +397,7 @@ function bindEvents() {
         // 2. Post Log
         let finalDate = new Date().toISOString();
         if (logDateInput.value) {
-            const timeString = new Date().toISOString().split('T')[1];
-            finalDate = new Date(`${logDateInput.value}T${timeString}`).toISOString();
+            finalDate = logDateInput.value;
         }
 
         const logPayload = {
