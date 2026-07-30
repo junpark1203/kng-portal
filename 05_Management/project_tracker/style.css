@@ -480,3 +480,66 @@ select.linear-input {
     cursor: pointer;
     color: var(--danger);
 }
+
+/* 로그 수정 모달 첨부파일 관리 스타일 */
+.attachments-manage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.manage-attachment-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    background: #f1f3f5;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #495057;
+}
+.manage-attachment-item i.bx-file {
+    margin-right: 6px;
+    color: #868e96;
+}
+.manage-attachment-item button.remove-attachment {
+    background: none;
+    border: none;
+    color: #fa5252;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.manage-attachment-item button.remove-attachment:hover {
+    background: #ffe3e3;
+}
+.timeline-item-actions {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    gap: 8px;
+}
+.timeline-item-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+.timeline-item-actions button:hover {
+    background: rgba(0,0,0,0.05);
+}
+.timeline-item-actions button.btn-edit-log:hover {
+    color: var(--primary-color);
+}
+.timeline-item-actions button.btn-delete-log:hover {
+    color: var(--danger);
+}

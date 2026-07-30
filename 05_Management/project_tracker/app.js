@@ -236,7 +236,10 @@ function renderTimeline(logs) {
             <div class="timeline-content">
                 <div class="timeline-meta">
                     <span>${dateStr}</span>
-                    <i class='bx bx-trash' style="cursor:pointer;" onclick="deleteLog('${log.id}')" title="삭제"></i>
+                    <div class="timeline-item-actions">
+                        <button class="btn-edit-log" onclick="openEditLogModal('${log.id}')" title="수정"><i class='bx bx-edit-alt'></i></button>
+                        <button class="btn-delete-log" onclick="deleteLog('${log.id}')" title="삭제"><i class='bx bx-trash'></i></button>
+                    </div>
                 </div>
                 <div class="timeline-text">${log.content}</div>
                 ${attachHtml}
@@ -268,6 +271,22 @@ function bindEvents() {
             projectModal.classList.add('hidden');
         });
     });
+
+    // Edit Log Modal Close
+    document.querySelectorAll('.close-edit-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('editLogModal').classList.add('hidden');
+        });
+    });
+
+    // Edit Log Files Change
+    const editLogNewFiles = document.getElementById('editLogNewFiles');
+    if (editLogNewFiles) {
+        editLogNewFiles.addEventListener('change', (e) => {
+            currentEditNewFiles = Array.from(e.target.files);
+            document.getElementById('editLogNewFilesCount').textContent = currentEditNewFiles.length > 0 ? `${currentEditNewFiles.length}개 파일 선택됨` : '';
+        });
+    }
 
     // Save Project
     btnSaveProject.addEventListener('click', async () => {
@@ -480,3 +499,130 @@ window.deleteLog = async function(logId) {
         }
     }
 };
+
+// Edit Log Feature
+let currentEditRetainedAttachments = [];
+let currentEditNewFiles = [];
+
+window.openEditLogModal = function(logId) {
+    const log = logsData.find(l => l.id === logId);
+    if(!log) return;
+
+    document.getElementById('editLogId').value = log.id;
+    document.getElementById('editLogType').value = log.logType || 'info';
+    document.getElementById('editLogContent').value = log.content;
+    
+    if (log.createdAt && log.createdAt.length === 10) {
+        document.getElementById('editLogDate').value = log.createdAt + "T09:00"; // default to 09:00 for old YYYY-MM-DD
+    } else {
+        const d = new Date(log.createdAt);
+        const iso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0,16);
+        document.getElementById('editLogDate').value = iso;
+    }
+
+    currentEditRetainedAttachments = [];
+    try {
+        currentEditRetainedAttachments = JSON.parse(log.attachments || '[]');
+    } catch(e) {}
+
+    currentEditNewFiles = [];
+    document.getElementById('editLogNewFiles').value = '';
+    document.getElementById('editLogNewFilesCount').textContent = '';
+
+    renderEditModalAttachments();
+    
+    document.getElementById('editLogModal').classList.remove('hidden');
+};
+
+window.removeEditAttachment = function(idx) {
+    currentEditRetainedAttachments.splice(idx, 1);
+    renderEditModalAttachments();
+};
+
+function renderEditModalAttachments() {
+    const listEl = document.getElementById('editLogAttachmentsList');
+    listEl.innerHTML = '';
+    currentEditRetainedAttachments.forEach((url, idx) => {
+        let finalUrl = url;
+        if (finalUrl.startsWith('/uploads/projects/')) {
+            finalUrl = `/api/projects/uploads/${finalUrl.split('/').pop()}`;
+        }
+        const filename = finalUrl.split('/').pop().split('-').slice(1).join('-') || finalUrl.split('/').pop();
+        const item = document.createElement('div');
+        item.className = 'manage-attachment-item';
+        item.innerHTML = `
+            <span><i class='bx bx-file'></i> ${filename}</span>
+            <button type="button" class="remove-attachment" onclick="removeEditAttachment(${idx})" title="삭제"><i class='bx bx-x'></i></button>
+        `;
+        listEl.appendChild(item);
+    });
+}
+
+document.getElementById('btnSaveEditLog').addEventListener('click', async () => {
+    const form = document.getElementById('editLogForm');
+    if (!form.reportValidity()) return;
+
+    const btn = document.getElementById('btnSaveEditLog');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> 저장 중...';
+    btn.disabled = true;
+
+    try {
+        const logId = document.getElementById('editLogId').value;
+        let uploadedPaths = [];
+
+        // 1. 새 파일 업로드
+        if (currentEditNewFiles.length > 0) {
+            const formData = new FormData();
+            currentEditNewFiles.forEach(f => formData.append('files', f));
+            const uploadRes = await authFetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const uploadData = await uploadRes.json();
+            if (uploadData.success) {
+                uploadedPaths = uploadData.filePaths;
+            } else {
+                throw new Error("파일 업로드 실패");
+            }
+        }
+
+        // 2. 최종 첨부파일 병합
+        const finalAttachments = [...currentEditRetainedAttachments, ...uploadedPaths];
+        
+        const type = document.getElementById('editLogType').value;
+        const rawDate = document.getElementById('editLogDate').value;
+        const text = document.getElementById('editLogContent').value;
+        
+        let dateToSave = new Date().toISOString();
+        if (rawDate) {
+            dateToSave = new Date(rawDate).toISOString();
+        }
+
+        const payload = {
+            content: text,
+            logType: type,
+            attachments: finalAttachments,
+            createdAt: dateToSave
+        };
+
+        const res = await authFetch(`${API_BASE}/${currentProjectId}/logs/${logId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('editLogModal').classList.add('hidden');
+            renderProjectView(currentProjectId);
+        } else {
+            throw new Error("저장 실패");
+        }
+    } catch(e) {
+        Swal.fire('오류', '로그 수정 실패', 'error');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
