@@ -438,6 +438,8 @@ function setupImageUploadEvents(element, rowObj, colId) {
         }
     });
     element.addEventListener('click', () => element.focus());
+}
+
 // 이미지 압축 유틸리티
 function compressImage(file) {
     return new Promise((resolve) => {
