@@ -70,7 +70,7 @@ const upload = multer({ storage: storage });
 // API: 첨부파일 업로드 엔드포인트
 router.post('/upload', upload.array('files', 10), (req, res) => {
     try {
-        const filePaths = req.files.map(file => `/uploads/projects/${file.filename}`);
+        const filePaths = req.files.map(file => `/api/projects/uploads/${file.filename}`);
         res.json({ success: true, filePaths });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

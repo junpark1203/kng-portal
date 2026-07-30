@@ -205,8 +205,12 @@ function renderTimeline(logs) {
             if (atts.length > 0) {
                 attachHtml = '<div class="timeline-attachments">';
                 atts.forEach(url => {
-                    const filename = url.split('/').pop().split('-').slice(1).join('-') || url.split('/').pop();
-                    attachHtml += `<a href="${url}" target="_blank" class="attachment-item"><i class='bx bx-file'></i> ${filename}</a>`;
+                    let finalUrl = url;
+                    if (finalUrl.startsWith('/uploads/projects/')) {
+                        finalUrl = `/api/projects/uploads/${finalUrl.split('/').pop()}`;
+                    }
+                    const filename = finalUrl.split('/').pop().split('-').slice(1).join('-') || finalUrl.split('/').pop();
+                    attachHtml += `<a href="${finalUrl}" target="_blank" class="attachment-item"><i class='bx bx-file'></i> ${filename}</a>`;
                 });
                 attachHtml += '</div>';
             }
