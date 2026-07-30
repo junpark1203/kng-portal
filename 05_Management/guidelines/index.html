@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="guidelines.css?v=6">
+    <link rel="stylesheet" href="guidelines.css?v=7">
     
     <!-- Toast UI Editor (for fallback rendering of old markdown) -->
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
@@ -25,13 +25,13 @@
                                 <button id="btnNewGuideline" class="btn-primary"><i class='bx bx-plus'></i> 새 지침 작성</button>
                             </div>
                         </div>
-                        <div class="search-filter" style="padding: 0 20px 15px 20px;">
-                            <div class="advanced-filter-grid" style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                <div class="input-with-icon" style="position: relative; flex: 1; min-width: 200px;">
-                                    <i class='bx bx-search' style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
-                                    <input type="text" id="searchInput" placeholder="제목, 내용, 태그 검색..." style="width: 100%; padding: 8px 10px 8px 35px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <div class="search-filter guideline-search-filter">
+                            <div class="advanced-filter-grid guideline-filter-grid">
+                                <div class="input-with-icon guideline-search-wrap">
+                                    <i class='bx bx-search'></i>
+                                    <input type="text" id="searchInput" class="guideline-search-input" placeholder="제목, 내용, 태그 검색...">
                                 </div>
-                                <select id="categoryFilter" style="padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 4px; width: 150px;">
+                                <select id="categoryFilter" class="guideline-filter-select">
                                     <option value="">모든 카테고리</option>
                                     <option value="공통">공통</option>
                                     <option value="셀러K">셀러K</option>

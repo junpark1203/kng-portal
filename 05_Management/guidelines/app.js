@@ -316,7 +316,7 @@ function renderGuidelines() {
             <td>${item.authorName || '관리자'}</td>
             <td>${dateStr}</td>
             <td>
-                <button class="btn-outline btn-outline-danger btn-delete" style="padding: 4px 8px; font-size: 12px;"><i class='bx bx-trash'></i> 삭제</button>
+                <button class="btn-delete-subtle btn-delete"><i class='bx bx-trash'></i> 삭제</button>
             </td>
         `;
         

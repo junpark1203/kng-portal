@@ -279,3 +279,132 @@ h3.ce-header { font-size: 1.25em; }
     background-color: #e2e8f0;
     color: #3b82f6;
 }
+
+/* =========================================
+   Guidelines Design Overrides (SaaS Style)
+   ========================================= */
+
+/* Search & Filter Area */
+.guideline-search-filter {
+    padding: 0 10px 20px 10px;
+}
+.guideline-filter-grid {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.guideline-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+}
+.guideline-search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 18px;
+}
+.guideline-search-input {
+    width: 100%;
+    padding: 10px 14px 10px 40px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    color: #334155 !important;
+    background-color: #f8fafc !important;
+    transition: all 0.2s ease !important;
+}
+.guideline-search-input:focus {
+    background-color: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+    outline: none;
+}
+.guideline-filter-select {
+    padding: 10px 36px 10px 14px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    color: #475569 !important;
+    background-color: #f8fafc !important;
+    width: 160px;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+}
+.guideline-filter-select:focus {
+    background-color: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+    outline: none;
+}
+
+/* Data Table Overrides */
+.view-section .data-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+.view-section .data-table th {
+    background-color: #f1f5f9;
+    color: #64748b;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 12px;
+    padding: 14px;
+}
+.view-section .data-table tbody tr {
+    border-radius: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background-color: transparent !important;
+}
+/* Disable Zebra Striping */
+.view-section .data-table tbody tr:nth-child(even) td {
+    background-color: transparent;
+}
+.view-section .data-table tbody tr td {
+    padding: 16px 14px;
+    background-color: transparent !important;
+    transition: background-color 0.2s ease;
+}
+.view-section .data-table tbody tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* Badge Enhancements */
+.badge-category {
+    background-color: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #e0e7ff;
+    border-radius: 12px;
+    padding: 4px 12px;
+    font-weight: 600;
+}
+.badge-tag {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 500;
+}
+
+/* Subtle Delete Button */
+.btn-delete-subtle {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.btn-delete-subtle:hover {
+    background: #fef2f2;
+    color: #ef4444;
+    border-color: #fecaca;
+}
