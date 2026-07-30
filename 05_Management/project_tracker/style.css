@@ -481,6 +481,11 @@ select.linear-input {
     color: var(--danger);
 }
 
+/* Edit Log Modal Specific Size */
+#editLogModal .modal-content {
+    width: 600px;
+}
+
 /* 로그 수정 모달 첨부파일 관리 스타일 */
 .attachments-manage-list {
     display: flex;
