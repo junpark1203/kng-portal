@@ -1,6 +1,8 @@
-const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:8788/api/projects'
-    : 'https://kng.junparks.com/api/projects';
+const DOMAIN_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8788'
+    : 'https://kng.junparks.com';
+
+const API_BASE = `${DOMAIN_BASE}/api/projects`;
 
 async function authFetch(url, options = {}) {
     let token = null;
@@ -209,8 +211,9 @@ function renderTimeline(logs) {
                     if (finalUrl.startsWith('/uploads/projects/')) {
                         finalUrl = `/api/projects/uploads/${finalUrl.split('/').pop()}`;
                     }
+                    const fullUrl = DOMAIN_BASE + finalUrl;
                     const filename = finalUrl.split('/').pop().split('-').slice(1).join('-') || finalUrl.split('/').pop();
-                    attachHtml += `<a href="${finalUrl}" target="_blank" class="attachment-item"><i class='bx bx-file'></i> ${filename}</a>`;
+                    attachHtml += `<a href="${fullUrl}" target="_blank" class="attachment-item"><i class='bx bx-file'></i> ${filename}</a>`;
                 });
                 attachHtml += '</div>';
             }
