@@ -408,16 +408,49 @@ window.deleteCol = function(colId) {
 // -----------------------------------------
 // UI: 웹 폼(Form) 에디터 렌더링
 // -----------------------------------------
+let draggedRowIndex = null;
+
 function renderForm() {
     formDataContainer.innerHTML = '';
     state.rows.forEach((row, rowIndex) => {
         const card = document.createElement('div');
         card.className = 'data-row-card';
+        card.draggable = true;
+        
+        // 데이터 항목 드래그 앤 드랍 이벤트
+        card.addEventListener('dragstart', (e) => {
+            draggedRowIndex = rowIndex;
+            e.dataTransfer.effectAllowed = 'move';
+            setTimeout(() => card.classList.add('dragging'), 0);
+        });
+        card.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            if (rowIndex !== draggedRowIndex) card.classList.add('drag-over');
+        });
+        card.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', (e) => {
+            e.preventDefault();
+            card.classList.remove('drag-over');
+            if (draggedRowIndex !== null && draggedRowIndex !== rowIndex) {
+                const item = state.rows.splice(draggedRowIndex, 1)[0];
+                state.rows.splice(rowIndex, 0, item);
+                renderForm(); // 재렌더링
+            }
+        });
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            draggedRowIndex = null;
+        });
         
         // 헤더 및 삭제 버튼
         card.innerHTML = `
-            <div class="data-row-header">
-                [항목 ${rowIndex + 1}]
+            <div class="data-row-header" style="display:flex; align-items:center;">
+                <div class="drag-handle" style="margin-right: 8px;"><i class='bx bx-grid-vertical'></i></div>
+                <div style="flex:1;">[항목 ${rowIndex + 1}]</div>
                 ${rowIndex > 0 ? `<button class="row-delete-btn" onclick="deleteRow('${row.id}')">삭제</button>` : ''}
             </div>
         `;
