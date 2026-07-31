@@ -458,8 +458,7 @@ router.get('/files/:consumableId', (req, res) => {
     });
 });
 
-router.post('/files/:consumableId', upload.array('files', 10), (req, res) => {
-    const consumableId = req.params.consumableId;
+router.post('/files/:consumableId', upload.array('files', 50), (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: '업로드된 파일이 없습니다.' });
     }
