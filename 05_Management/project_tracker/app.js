@@ -231,6 +231,30 @@ function renderTimeline(logs) {
             });
         }
 
+        // Comments
+        let commentsHtml = '';
+        if (log.comments && log.comments.length > 0) {
+            commentsHtml = '<div class="timeline-comments-list">';
+            const topLevelComments = log.comments.filter(c => !c.parentId);
+            const childComments = log.comments.filter(c => c.parentId);
+
+            topLevelComments.forEach(c => {
+                commentsHtml += window.renderCommentItem(c, log.id);
+                const replies = childComments.filter(child => child.parentId === c.id);
+                replies.forEach(reply => {
+                    commentsHtml += window.renderCommentItem(reply, log.id, true);
+                });
+            });
+            commentsHtml += '</div>';
+        }
+
+        const addCommentHtml = `
+            <div class="add-comment-box" id="add-comment-box-${log.id}">
+                <textarea class="comment-input linear-input" id="comment-input-${log.id}" rows="1" placeholder="댓글 달기..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter') submitComment('${log.id}')"></textarea>
+                <button class="btn btn-sm btn-outline" onclick="submitComment('${log.id}')">전송</button>
+            </div>
+        `;
+
         item.innerHTML = `
             <div class="timeline-icon ${iconClass}">
                 ${iconHtml}
@@ -245,6 +269,10 @@ function renderTimeline(logs) {
                 </div>
                 <div class="timeline-text">${log.content}</div>
                 ${attachHtml}
+                <div class="timeline-comments-wrapper">
+                    ${commentsHtml}
+                    ${addCommentHtml}
+                </div>
             </div>
         `;
         timelineContainer.appendChild(item);
@@ -255,6 +283,112 @@ function renderTimeline(logs) {
         timelineContainer.scrollTop = timelineContainer.scrollHeight;
     }, 100);
 }
+
+// Comment Rendering and Actions
+window.renderCommentItem = function(comment, logId, isReply = false) {
+    let dateStr = new Date(comment.createdAt).toLocaleString('ko-KR', {
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    
+    const replyBtnHtml = isReply ? '' : `<button class="btn-reply-comment" onclick="toggleReplyBox('${comment.id}')">답글 달기</button>`;
+    const deleteBtnHtml = `<button class="btn-delete-comment" onclick="deleteComment('${logId}', '${comment.id}')" title="삭제"><i class='bx bx-x'></i></button>`;
+
+    const replyBoxHtml = isReply ? '' : `
+        <div class="add-reply-box hidden" id="reply-box-${comment.id}">
+            <textarea class="comment-input linear-input" id="reply-input-${comment.id}" rows="1" placeholder="답글 달기..." oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter') submitComment('${logId}', '${comment.id}')"></textarea>
+            <button class="btn btn-sm btn-outline" onclick="submitComment('${logId}', '${comment.id}')">전송</button>
+        </div>
+    `;
+
+    const authorTooltip = comment.authorEmail ? `title="${comment.authorEmail}"` : '';
+
+    return `
+        <div class="comment-item ${isReply ? 'comment-reply' : ''}">
+            <div class="comment-header">
+                <span class="comment-author" ${authorTooltip}>${comment.authorName}</span>
+                <span class="comment-date">${dateStr}</span>
+                ${deleteBtnHtml}
+            </div>
+            <div class="comment-body">${comment.content}</div>
+            <div class="comment-actions">
+                ${replyBtnHtml}
+            </div>
+            ${replyBoxHtml}
+        </div>
+    `;
+};
+
+window.toggleReplyBox = function(commentId) {
+    const box = document.getElementById(`reply-box-${commentId}`);
+    if (box) {
+        box.classList.toggle('hidden');
+        if (!box.classList.contains('hidden')) {
+            document.getElementById(`reply-input-${commentId}`).focus();
+        }
+    }
+};
+
+window.submitComment = async function(logId, parentId = null) {
+    if (!currentProjectId) return;
+    
+    const inputId = parentId ? `reply-input-${parentId}` : `comment-input-${logId}`;
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    
+    const content = inputEl.value.trim();
+    if (!content) return;
+
+    try {
+        const payload = {
+            id: generateLogId(),
+            content: content,
+            parentId: parentId,
+            createdAt: new Date().toISOString()
+        };
+
+        const res = await authFetch(`${API_BASE}/${currentProjectId}/logs/${logId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            renderProjectView(currentProjectId); // reload timeline
+        } else {
+            Swal.fire('오류', data.error || '댓글 등록 실패', 'error');
+        }
+    } catch(e) {
+        console.error(e);
+        Swal.fire('오류', '댓글 등록 중 오류 발생', 'error');
+    }
+};
+
+window.deleteComment = async function(logId, commentId) {
+    const result = await Swal.fire({
+        title: '댓글 삭제',
+        text: '이 댓글을 삭제하시겠습니까? (대댓글이 있다면 함께 삭제됩니다)',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '삭제',
+        cancelButtonText: '취소'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const res = await authFetch(`${API_BASE}/${currentProjectId}/logs/${logId}/comments/${commentId}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                renderProjectView(currentProjectId); // reload timeline
+            } else {
+                Swal.fire('오류', data.error || '삭제 실패', 'error');
+            }
+        } catch (e) {
+            Swal.fire('오류', '삭제 중 오류 발생', 'error');
+        }
+    }
+};
 
 // Bind Events
 function bindEvents() {

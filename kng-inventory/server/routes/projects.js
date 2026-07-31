@@ -43,10 +43,28 @@ const initProjectsTables = (dbInstance) => {
             `, (err) => {
                 if (err) {
                     console.error('project_logs 테이블 생성 오류:', err.message);
-                    reject(err);
-                } else {
-                    resolve();
+                    return reject(err);
                 }
+                
+                dbInstance.run(`
+                    CREATE TABLE IF NOT EXISTS project_log_comments (
+                        id TEXT PRIMARY KEY,
+                        logId TEXT NOT NULL,
+                        parentId TEXT,
+                        authorName TEXT,
+                        authorEmail TEXT,
+                        content TEXT,
+                        createdAt TEXT,
+                        FOREIGN KEY (logId) REFERENCES project_logs(id),
+                        FOREIGN KEY (parentId) REFERENCES project_log_comments(id)
+                    )
+                `, (err2) => {
+                    if (err2) {
+                        console.error('project_log_comments 테이블 생성 오류:', err2.message);
+                        return reject(err2);
+                    }
+                    resolve();
+                });
             });
         });
     });
@@ -140,11 +158,28 @@ router.delete('/:id', (req, res) => {
     });
 });
 
-// GET: 특정 프로젝트의 로그 목록 조회
+// GET: 특정 프로젝트의 로그 목록 조회 (댓글 포함)
 router.get('/:projectId/logs', (req, res) => {
-    db.all(`SELECT * FROM project_logs WHERE projectId = ? ORDER BY createdAt ASC`, [req.params.projectId], (err, rows) => {
+    db.all(`SELECT * FROM project_logs WHERE projectId = ? ORDER BY createdAt ASC`, [req.params.projectId], (err, logs) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
-        res.json({ success: true, data: rows });
+        
+        if (logs.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        const logIds = logs.map(l => l.id);
+        const placeholders = logIds.map(() => '?').join(',');
+        
+        db.all(`SELECT * FROM project_log_comments WHERE logId IN (${placeholders}) ORDER BY createdAt ASC`, logIds, (err2, comments) => {
+            if (err2) return res.status(500).json({ success: false, error: err2.message });
+            
+            // 각 로그 객체에 comments 배열 추가
+            logs.forEach(log => {
+                log.comments = comments.filter(c => c.logId === log.id);
+            });
+            
+            res.json({ success: true, data: logs });
+        });
     });
 });
 
@@ -206,12 +241,11 @@ router.put('/:projectId/logs/:logId', (req, res) => {
 });
 
 // DELETE: 타임라인 로그 삭제
-router.delete('/:projectId/logs/:logId', (req, res) => {
-    db.get(`SELECT attachments FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], (err, row) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        if (row && row.attachments) {
+router.delete('/:projectId/logs/:id', (req, res) => {
+    db.all(`SELECT attachments FROM project_logs WHERE id = ?`, [req.params.id], (err, rows) => {
+        if (!err && rows && rows.length > 0) {
             try {
-                const atts = JSON.parse(row.attachments);
+                const atts = JSON.parse(rows[0].attachments);
                 atts.forEach(fileUrl => {
                     const filename = fileUrl.split('/').pop();
                     const filePath = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'projects', filename);
@@ -219,12 +253,63 @@ router.delete('/:projectId/logs/:logId', (req, res) => {
                         fs.unlinkSync(filePath);
                     }
                 });
-            } catch(e) { console.error("File deletion error", e); }
+            } catch(e) {}
         }
         
-        db.run(`DELETE FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.logId, req.params.projectId], function(err) {
-            if (err) return res.status(500).json({ success: false, error: err.message });
-            res.json({ success: true });
+        db.serialize(() => {
+            db.run(`DELETE FROM project_log_comments WHERE logId = ?`, [req.params.id]);
+            db.run(`DELETE FROM project_logs WHERE id = ? AND projectId = ?`, [req.params.id, req.params.projectId], function(err) {
+                if (err) return res.status(500).json({ success: false, error: err.message });
+                res.json({ success: true });
+            });
+        });
+    });
+});
+
+// POST: 댓글 및 대댓글 추가
+router.post('/:projectId/logs/:logId/comments', (req, res) => {
+    const { id, parentId, content, createdAt } = req.body;
+    const logId = req.params.logId;
+    
+    // 이메일에서 유저 정보 추출
+    let authorName = req.user && req.user.name ? req.user.name : null;
+    let authorEmail = req.user && req.user.email ? req.user.email : null;
+    
+    if (!authorName && authorEmail) {
+        authorName = authorEmail.split('@')[0];
+    }
+    if (!authorName) authorName = 'Anonymous';
+
+    db.run(`
+        INSERT INTO project_log_comments (id, logId, parentId, authorName, authorEmail, content, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [id, logId, parentId || null, authorName, authorEmail, content, createdAt || new Date().toISOString()], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, message: '댓글이 추가되었습니다.', authorName, authorEmail });
+    });
+});
+
+// DELETE: 댓글 삭제
+router.delete('/:projectId/logs/:logId/comments/:commentId', (req, res) => {
+    const commentId = req.params.commentId;
+    const authorEmail = req.user && req.user.email ? req.user.email : null;
+
+    db.get(`SELECT authorEmail FROM project_log_comments WHERE id = ?`, [commentId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (!row) return res.status(404).json({ success: false, error: '댓글을 찾을 수 없습니다.' });
+
+        // 작성자 본인인지 확인 (이메일 비교)
+        if (row.authorEmail && row.authorEmail !== authorEmail) {
+            return res.status(403).json({ success: false, error: '본인이 작성한 댓글만 삭제할 수 있습니다.' });
+        }
+
+        // 해당 댓글 및 모든 하위 대댓글 삭제
+        db.serialize(() => {
+            db.run(`DELETE FROM project_log_comments WHERE parentId = ?`, [commentId]); // 하위 대댓글 삭제
+            db.run(`DELETE FROM project_log_comments WHERE id = ?`, [commentId], function(err2) {
+                if (err2) return res.status(500).json({ success: false, error: err2.message });
+                res.json({ success: true, message: '댓글이 삭제되었습니다.' });
+            });
         });
     });
 });

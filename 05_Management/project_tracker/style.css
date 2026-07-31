@@ -548,3 +548,116 @@ select.linear-input {
 .timeline-item-actions button.btn-delete-log:hover {
     color: var(--danger);
 }
+/* Timeline Comments */
+.timeline-comments-wrapper {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.timeline-comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.comment-item {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    border: 1px solid #f1f5f9;
+}
+
+.comment-reply {
+    margin-left: 24px;
+    border-left: 3px solid #cbd5e1;
+    background: #f1f5f9;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: #334155;
+    cursor: help;
+}
+
+.comment-date {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.btn-delete-comment {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px;
+    border-radius: 4px;
+}
+.btn-delete-comment:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+.comment-body {
+    color: #475569;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.comment-actions {
+    margin-top: 6px;
+}
+
+.btn-reply-comment {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+}
+.btn-reply-comment:hover {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+/* Comment Input Box */
+.add-comment-box, .add-reply-box {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+.add-reply-box {
+    margin-top: 10px;
+}
+
+.comment-input {
+    flex: 1;
+    min-height: 20px;
+    max-height: 100px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    resize: none;
+    overflow-y: auto;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.comment-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
