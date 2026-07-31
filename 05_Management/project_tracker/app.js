@@ -445,6 +445,7 @@ function bindEvents() {
             const data = await res.json();
             if (data.success) {
                 logInput.value = '';
+                logInput.style.height = 'auto'; // Reset height
                 logTypeSelect.value = 'info';
                 logDateInput.value = '';
                 selectedFiles = [];
@@ -462,6 +463,12 @@ function bindEvents() {
             e.preventDefault();
             btnSend.click();
         }
+    });
+
+    // Auto-resize logInput
+    logInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
     });
 }
 
