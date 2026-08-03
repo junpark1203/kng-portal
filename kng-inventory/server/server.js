@@ -337,6 +337,8 @@ function initDb() {
             sellPrice INTEGER DEFAULT 0,
             sellShipping INTEGER DEFAULT 0,
             isLowestPrice INTEGER DEFAULT 0,
+            isSoldOut INTEGER DEFAULT 0,
+            remarks TEXT,
             createdAt TEXT,
             updatedAt TEXT
         )
@@ -345,6 +347,8 @@ function initDb() {
         else {
             console.log('seller_k_products 테이블 확인 완료');
             db.run('ALTER TABLE seller_k_products ADD COLUMN isLowestPrice INTEGER DEFAULT 0', () => {});
+            db.run('ALTER TABLE seller_k_products ADD COLUMN isSoldOut INTEGER DEFAULT 0', () => {});
+            db.run('ALTER TABLE seller_k_products ADD COLUMN remarks TEXT', () => {});
         }
     });
 
@@ -486,13 +490,13 @@ app.post('/api/seller-k/products', (req, res) => {
     const sql = `
         INSERT INTO seller_k_products (
             id, supplier, brand, name, color, size, uploadDate, 
-            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
         p.id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
         p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
-        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
+        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
     ];
     
     db.run(sql, params, function(err) {
@@ -509,13 +513,13 @@ app.put('/api/seller-k/products/:id', (req, res) => {
         UPDATE seller_k_products SET
             supplier = ?, brand = ?, name = ?, color = ?, size = ?, uploadDate = ?,
             buyPrice = ?, buyShipping = ?, shippingBasis = ?, shippingQty = ?, 
-            sellPrice = ?, sellShipping = ?, isLowestPrice = ?, updatedAt = ?
+            sellPrice = ?, sellShipping = ?, isLowestPrice = ?, isSoldOut = ?, remarks = ?, updatedAt = ?
         WHERE id = ?
     `;
     const params = [
         p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
         p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
-        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, new Date().toISOString(), id
+        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', new Date().toISOString(), id
     ];
     
     db.run(sql, params, function(err) {
@@ -552,8 +556,8 @@ app.post('/api/seller-k/products/bulk', (req, res) => {
     const sql = `
         INSERT OR IGNORE INTO seller_k_products (
             id, supplier, brand, name, color, size, uploadDate, 
-            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            buyPrice, buyShipping, shippingBasis, shippingQty, sellPrice, sellShipping, isLowestPrice, isSoldOut, remarks, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     let inserted = 0;
@@ -564,7 +568,7 @@ app.post('/api/seller-k/products/bulk', (req, res) => {
         stmt.run([
             id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
             p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
-            p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, now, now
+            p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', now, now
         ], function(err) {
             if (!err && this.changes > 0) inserted++;
         });
