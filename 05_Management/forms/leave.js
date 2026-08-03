@@ -1,3 +1,26 @@
+const API_URL = 'https://kng.junparks.com/api/leave-request';
+
+async function authFetch(url, options = {}) {
+    let token = null;
+    try {
+        if (window.parent && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+            let retries = 0;
+            while (!token && retries < 10) { 
+                await new Promise(r => setTimeout(r, 500)); 
+                token = await window.parent.getAuthToken(); 
+                retries++; 
+            }
+        }
+    } catch(e) {}
+    
+    if (!options.headers) options.headers = {};
+    if (token && !options.headers['Authorization']) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, options);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     let leaveRequests = [];
     let currentEditId = null;
@@ -40,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 데이터 로드
     function loadLeaveRequests() {
         els.leaveListBody.innerHTML = '<tr class="loading-row"><td colspan="8"><div class="skeleton"></div></td></tr>';
-        authFetch('/api/leave-request')
+        authFetch(API_URL)
             .then(res => res.json())
             .then(data => {
                 leaveRequests = data;
@@ -175,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const method = currentEditId ? 'PUT' : 'POST';
-        const url = currentEditId ? `/api/leave-request/${currentEditId}` : '/api/leave-request';
+        const url = currentEditId ? `${API_URL}/${currentEditId}` : API_URL;
 
         authFetch(url, {
             method: method,
@@ -215,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cancelButtonText: '취소'
         }).then((result) => {
             if (result.isConfirmed) {
-                authFetch(`/api/leave-request/${id}`, { method: 'DELETE' })
+                authFetch(`${API_URL}/${id}`, { method: 'DELETE' })
                     .then(res => res.json())
                     .then(() => {
                         showToast('삭제되었습니다.', 'success');
@@ -246,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let errorCount = 0;
                 
                 const deletePromises = Array.from(checked).map(cb => {
-                    return authFetch(`/api/leave-request/${cb.value}`, { method: 'DELETE' })
+                    return authFetch(`${API_URL}/${cb.value}`, { method: 'DELETE' })
                         .then(res => { if(res.ok) deletedCount++; else errorCount++; })
                         .catch(() => errorCount++);
                 });
