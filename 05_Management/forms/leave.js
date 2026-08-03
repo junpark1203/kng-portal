@@ -21,6 +21,18 @@ async function authFetch(url, options = {}) {
     return fetch(url, options);
 }
 
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true
+});
+
+function showToast(title, icon = 'success') {
+    Toast.fire({ icon, title });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     let leaveRequests = [];
     let currentEditId = null;
