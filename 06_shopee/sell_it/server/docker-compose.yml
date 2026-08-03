@@ -16,22 +16,22 @@ services:
       - "com.centurylinklabs.watchtower.scope=sell-it"
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: mirror.gcr.io/cloudflare/cloudflared:latest
     container_name: sell_it_cloudflared
     restart: always
     command: tunnel run
     environment:
-      - TUNNEL_TOKEN=eyJhIjoiZDk3YWNjYzU2MjdmODIwYmY5OTlkNzVkMTZlNGNkY2YiLCJ0IjoiZjc2NTNiM2ItMWM1NC00YTg4LThjNzgtMTA5Njg4OWUwMDZlIiwicyI6Ik56a3lORGxpTldFdE9ETmxNeTAwTnpJeExXSTJNR010TWpWbVlUQmpNbUppWWpjeCJ9
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
     depends_on:
       sell-it-server:
         condition: service_healthy
 
   watchtower:
-    image: containrrr/watchtower
+    image: ghcr.io/containrrr/watchtower:1.7.1
     container_name: sell_it_watchtower
     restart: always
     environment:
-      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_POLL_INTERVAL=86400
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCOPE=sell-it
     volumes:

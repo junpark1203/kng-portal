@@ -72,6 +72,10 @@ const { initProjectsTables } = projectsRoutes;
 // 캘린더 모듈
 const calendarRoutes = require('./routes/calendar');
 
+// 휴가원 모듈
+const leaveRequestRoutes = require('./routes/leave-request');
+const { initLeaveRequestTables } = leaveRequestRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -292,6 +296,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initExpenseResolutionTables(db).then(() => {
             expenseResolutionRoutes.setDb(db);
             console.log('expense_resolution API 준비 완료');
+        });
+        // 휴가원 테이블 초기화 + 라우트에 DB 주입
+        initLeaveRequestTables(db).then(() => {
+            leaveRequestRoutes.setDb(db);
+            console.log('leave_request API 준비 완료');
         });
         // 업무일지 테이블 초기화 + 라우터에 DB 주입
         initWorkLogsTables(db).then(() => {
@@ -1048,6 +1057,7 @@ app.use('/api/dashboard', dashboardRoutes.router);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/report-builder', reportBuilderRoutes.router);
 app.use('/api/projects', projectsRoutes.router);
+app.use('/api/leave-request', leaveRequestRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

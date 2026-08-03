@@ -21,7 +21,7 @@ services:
       - "com.centurylinklabs.watchtower.scope=kng-inventory"
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: mirror.gcr.io/cloudflare/cloudflared:latest
     container_name: kng_cloudflared
     restart: always
     command: tunnel run
@@ -32,11 +32,11 @@ services:
         condition: service_healthy
 
   watchtower:
-    image: containrrr/watchtower
+    image: ghcr.io/containrrr/watchtower:1.7.1
     container_name: kng_watchtower
     restart: always
     environment:
-      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_POLL_INTERVAL=3600
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCOPE=kng-inventory
     volumes:

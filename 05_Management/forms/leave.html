@@ -6,20 +6,227 @@
     <title>휴가원</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../../styles.css">
-    <style>
-        body { padding: 40px; text-align: center; background-color: var(--bg-body); }
-        .coming-soon { background: #fff; padding: 60px 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); max-width: 600px; margin: 0 auto; }
-        .coming-soon i { font-size: 64px; color: var(--primary); margin-bottom: 20px; }
-        .coming-soon h1 { font-size: 24px; color: var(--gray-800); margin-bottom: 10px; }
-        .coming-soon p { color: var(--gray-500); }
-    </style>
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="leave.css">
 </head>
 <body>
-    <div class="coming-soon">
-        <i class='bx bx-calendar-event'></i>
-        <h1>휴가원</h1>
-        <p>해당 양식 관리 기능은 현재 준비 중입니다.</p>
+    <div class="app-container">
+        <main class="main-content">
+            <!-- ═══ 목록 뷰 ═══ -->
+            <div id="listView" class="view-section active">
+                <div class="section-block">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2><i class='bx bx-calendar-event'></i> 휴가원 목록</h2>
+                            <div class="header-actions">
+                                <button id="btnNewLeave" class="btn-primary"><i class='bx bx-plus'></i> 새 휴가원</button>
+                                <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+                            </div>
+                        </div>
+                        <div class="print-warning">
+                            <i class='bx bx-info-circle'></i>
+                            <span>출력 버튼 클릭 후 브라우저 인쇄 설정에서 <b>여백: 기본값 또는 없음</b>, <b>용지: A4</b>로 설정해 주세요.</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                                        <th>작성일자</th>
+                                        <th>소속</th>
+                                        <th>직급</th>
+                                        <th>성명</th>
+                                        <th>기간</th>
+                                        <th>구분</th>
+                                        <th class="col-action">관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaveListBody">
+                                    <tr class="loading-row"><td colspan="8"><div class="skeleton"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ 편집/작성 모달 ═══ -->
+            <div id="leaveEditModal" class="modal">
+                <div class="modal-content" style="width: 95%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; padding: 20px;">
+                    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
+                        <h2 id="editViewTitle" style="margin: 0;"><i class='bx bx-edit'></i> 휴가원 작성</h2>
+                        <div class="header-actions" style="display: flex; gap: 8px;">
+                            <button type="button" id="btnSaveLeave" class="btn-primary"><i class='bx bx-check'></i> 저장</button>
+                            <button type="button" id="btnPrintLeave" class="btn-outline btn-outline-success"><i class='bx bx-printer'></i> 인쇄</button>
+                            <button type="button" id="btnCloseEdit" class="btn-outline"><i class='bx bx-x'></i> 닫기</button>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-body" style="overflow-y: auto; flex: 1; padding-right: 10px; display: flex; gap: 20px;">
+                        <!-- 좌측: 입력 폼 -->
+                        <div style="flex: 1; border-right: 1px solid #e2e8f0; padding-right: 20px;">
+                            <form id="leaveForm" onsubmit="return false;">
+                                <div class="leave-form-grid">
+                                    <div class="fg">
+                                        <label for="fDepartment">소속</label>
+                                        <input type="text" id="fDepartment" value="주식회사 케앤지">
+                                    </div>
+                                    <div class="fg">
+                                        <label for="fRank">직급</label>
+                                        <input type="text" id="fRank" placeholder="예: 차장">
+                                    </div>
+                                    <div class="fg full-width">
+                                        <label for="fName">성명</label>
+                                        <input type="text" id="fName" placeholder="예: 박준영">
+                                    </div>
+                                    <div class="fg">
+                                        <label for="fLeaveStart">휴가 시작일</label>
+                                        <input type="date" id="fLeaveStart">
+                                    </div>
+                                    <div class="fg">
+                                        <label for="fLeaveEnd">휴가 종료일</label>
+                                        <input type="date" id="fLeaveEnd">
+                                    </div>
+                                    <div class="fg">
+                                        <label for="fLeaveType">구분 (연차/반차)</label>
+                                        <input type="text" id="fLeaveType" placeholder="예: 반차-오전">
+                                    </div>
+                                    <div class="fg">
+                                        <label for="fSubmitDate">작성일자</label>
+                                        <input type="date" id="fSubmitDate">
+                                    </div>
+                                    <div class="fg full-width">
+                                        <label for="fReason">사유</label>
+                                        <input type="text" id="fReason" placeholder="예: 개인일정 (잔여일수 7.5/13일)">
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- 우측: 인쇄 미리보기 레이아웃 (축소해서 보여줌) -->
+                        <div style="flex: 1; background: #e2e8f0; padding: 20px; display: flex; justify-content: center; overflow: hidden; border-radius: 8px;">
+                            <div style="transform: scale(0.45); transform-origin: top center; pointer-events: none;">
+                                <!-- 인쇄 양식 영역 (여기에 실시간 렌더링) -->
+                                <div id="printPreviewClone"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- ═══ 인쇄용 화면 (화면엔 안 보이고 인쇄 시에만 나타남) ═══ -->
+    <div id="printArea" class="print-preview-container">
+        <div class="print-page">
+            <div class="doc-border">
+                <div class="doc-title">휴 가 원</div>
+                
+                <div class="doc-info-block">
+                    <div class="doc-info-row">
+                        <div class="doc-info-label">소 속</div>
+                        <div>:</div>
+                        <div class="doc-info-value" id="pDepartment" style="margin-left: 10px;">주식회사 케앤지</div>
+                    </div>
+                    <div class="doc-info-row">
+                        <div class="doc-info-label">직 급</div>
+                        <div>:</div>
+                        <div class="doc-info-value" id="pRank" style="margin-left: 10px;"></div>
+                    </div>
+                    <div class="doc-info-row">
+                        <div class="doc-info-label">성 명</div>
+                        <div>:</div>
+                        <div class="doc-info-value" id="pName" style="margin-left: 10px;"></div>
+                    </div>
+                </div>
+                
+                <div class="doc-statement">
+                    상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기<br>바랍니다.
+                </div>
+                
+                <div class="doc-detail-block">
+                    <div class="doc-info-row">
+                        <div class="doc-info-label">기 간</div>
+                        <div>:</div>
+                        <div class="doc-info-value" id="pPeriod" style="margin-left: 10px;"></div>
+                    </div>
+                    <div class="doc-info-row">
+                        <div class="doc-info-label">사 유</div>
+                        <div>:</div>
+                        <div class="doc-info-value" id="pReason" style="margin-left: 10px;"></div>
+                    </div>
+                </div>
+                
+                <div class="doc-date" id="pDate">
+                    YYYY. MM. DD.
+                </div>
+                
+                <div class="doc-sign-block">
+                    <div class="doc-sign-row">
+                        <div class="doc-sign-label">성 명</div>
+                        <div>:</div>
+                        <div class="doc-sign-value"><span id="pSignName"></span> (印)</div>
+                    </div>
+                    <div class="doc-sign-row">
+                        <div class="doc-sign-label">부 서 장</div>
+                        <div>:</div>
+                        <div class="doc-sign-value">(印)</div>
+                    </div>
+                    <div class="doc-sign-row">
+                        <div class="doc-sign-label">담당임원</div>
+                        <div>:</div>
+                        <div class="doc-sign-value">(印)</div>
+                    </div>
+                </div>
+                
+                <div class="doc-approval-wrap">
+                    <div class="doc-approval-header">결재</div>
+                    <table class="doc-approval-table">
+                        <tr>
+                            <th>담당</th>
+                            <th>대리</th>
+                            <th>과장</th>
+                            <th>차장</th>
+                            <th>부장</th>
+                            <th>이사</th>
+                            <th>상무</th>
+                            <th>전무</th>
+                            <th>부사장</th>
+                            <th>사장</th>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="doc-recipient">
+                    주식회사 케앤지 대표이사 귀하
+                </div>
+                
+                <div class="doc-remarks">
+                    <div class="doc-remarks-grid">
+                        <div class="doc-remarks-label">비고</div>
+                        <div>1. 취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은<br>&nbsp;&nbsp;&nbsp;&nbsp;무급을 원칙으로 한다.<br>2. 모든 서류는 원본으로 제출한다.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="doc-id">KG-A4-A15-0</div>
+        </div>
+    </div>
+
+    <!-- ═══ Scripts ═══ -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../app.js"></script>
+    <script src="leave.js"></script>
 </body>
 </html>

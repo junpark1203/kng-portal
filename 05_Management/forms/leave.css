@@ -1,0 +1,275 @@
+/* ====================================================
+   휴가원 공통 UI 스타일
+   ==================================================== */
+.print-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 10px 15px;
+    margin: 0 20px 15px 20px;
+    border-radius: 4px;
+    border-left: 4px solid #ffeeba;
+    font-size: 14px;
+}
+
+/* 휴가원 작성 폼 (화면용) */
+.leave-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+}
+
+.leave-form-grid .fg.full-width {
+    grid-column: 1 / -1;
+}
+
+/* ====================================================
+   휴가원 인쇄용 (A4) 스타일
+   ==================================================== */
+.print-only {
+    display: none;
+}
+
+/* 인쇄 뷰 컨테이너 (화면에서 미리보기) */
+.print-preview-container {
+    background: #525659; /* PDF 뷰어 느낌의 배경 */
+    padding: 20px;
+    display: none;
+    justify-content: center;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.print-page {
+    background: white;
+    width: 210mm;
+    min-height: 297mm;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    padding: 25mm 20mm;
+    box-sizing: border-box;
+    font-family: 'Malgun Gothic', '맑은 고딕', 'Apple SD Gothic Neo', sans-serif;
+    color: #000;
+    position: relative;
+    /* 인쇄 시 실제 A4 사이즈 유지를 위한 속성 */
+    margin: 0 auto;
+}
+
+/* 인쇄용 양식 내부 레이아웃 */
+.doc-border {
+    border: 1px solid #000;
+    width: 100%;
+    height: 100%;
+    padding: 30px 40px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 제목 */
+.doc-title {
+    text-align: center;
+    font-size: 32pt;
+    font-weight: bold;
+    letter-spacing: 25px;
+    margin-top: 20px;
+    margin-bottom: 60px;
+    text-decoration: underline;
+    text-underline-offset: 8px;
+}
+
+/* 상단 인적사항 */
+.doc-info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    font-size: 14pt;
+    margin-bottom: 40px;
+}
+.doc-info-row {
+    display: flex;
+}
+.doc-info-label {
+    width: 80px;
+    letter-spacing: 15px; /* 소 속, 직 급 등 띄어쓰기 효과 */
+}
+.doc-info-value {
+    flex: 1;
+}
+
+/* 본문 문구 */
+.doc-statement {
+    font-size: 14pt;
+    line-height: 2;
+    margin-bottom: 40px;
+    padding-left: 20px;
+    word-break: keep-all;
+}
+
+/* 기간/사유 블록 */
+.doc-detail-block {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    font-size: 14pt;
+    margin-bottom: 70px;
+}
+
+/* 작성일자 */
+.doc-date {
+    text-align: right;
+    font-size: 14pt;
+    margin-bottom: 30px;
+    padding-right: 20px;
+    letter-spacing: 2px;
+}
+
+/* 서명란 (우측) */
+.doc-sign-block {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    font-size: 14pt;
+    align-items: flex-end;
+    margin-bottom: 50px;
+    padding-right: 20px;
+}
+.doc-sign-row {
+    display: flex;
+    justify-content: flex-start;
+    width: 250px;
+}
+.doc-sign-label {
+    width: 120px;
+    letter-spacing: 5px;
+}
+.doc-sign-value {
+    flex: 1;
+    text-align: right;
+}
+
+/* 결재선 (좌측 하단) */
+.doc-approval-wrap {
+    display: flex;
+    margin-bottom: 15px;
+}
+.doc-approval-header {
+    width: 30px;
+    border: 1px solid #000;
+    border-right: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 5px;
+    font-weight: bold;
+    font-size: 12pt;
+}
+.doc-approval-table {
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 11pt;
+}
+.doc-approval-table th, .doc-approval-table td {
+    border: 1px solid #000;
+    width: 55px;
+}
+.doc-approval-table th {
+    height: 25px;
+    font-weight: normal;
+}
+.doc-approval-table td {
+    height: 60px;
+}
+
+/* 수신자 */
+.doc-recipient {
+    font-size: 15pt;
+    font-weight: bold;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+/* 하단 비고 */
+.doc-remarks {
+    border: 1px solid #000;
+    padding: 15px;
+    font-size: 10pt;
+    line-height: 1.6;
+    margin-top: auto; /* Push to bottom of doc-border */
+}
+.doc-remarks-grid {
+    display: flex;
+}
+.doc-remarks-label {
+    width: 40px;
+}
+
+/* 문서 번호 */
+.doc-id {
+    font-size: 11pt;
+    margin-top: 5px;
+    font-family: serif;
+}
+
+
+/* ====================================================
+   실제 인쇄(Ctrl+P) 시 동작할 미디어 쿼리
+   ==================================================== */
+@media print {
+    @page {
+        size: A4;
+        margin: 0; /* 브라우저 기본 여백 제거 */
+    }
+    
+    body * {
+        visibility: hidden;
+    }
+    
+    /* 화면용 모달이나 컨테이너 등 숨김 */
+    .app-container, .sidebar, .header, .modal-header, .print-warning {
+        display: none !important;
+    }
+
+    /* 프린트 영역만 보이게 처리 */
+    #printArea, #printArea * {
+        visibility: visible;
+    }
+    
+    #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+    
+    /* 인쇄 미리보기 컨테이너 배경 제거 */
+    .print-preview-container {
+        display: block !important;
+        background: none !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .print-page {
+        box-shadow: none;
+        margin: 0;
+        padding: 20mm; /* A4 용지 상하좌우 여백 */
+        width: 210mm;
+        height: 297mm;
+        page-break-after: always;
+    }
+    
+    /* 폰트 강제 검정색 */
+    .print-page * {
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
