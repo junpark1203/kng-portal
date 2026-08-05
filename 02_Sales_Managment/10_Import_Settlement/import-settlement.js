@@ -316,11 +316,6 @@ function fillFormFromState() {
     document.getElementById('roForwarder').innerText = snap.forwarderName || '-';
     document.getElementById('roIncoterm').innerText = snap.incoterm || '-';
     
-    // 견적 환율 (읽기 전용)
-    const qRates = snap.exchangeRates || {};
-    ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
-        document.getElementById(`roRate${curr}`).innerText = formatNum(qRates[curr] || 0, 2);
-    });
 
     renderSettlementGrid();
     calculateAll();
