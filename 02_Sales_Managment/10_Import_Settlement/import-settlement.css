@@ -1,9 +1,9 @@
 /* import-settlement.css */
 
 .is-container {
-    max-width: 1400px;
-    margin: 0 auto;
     padding: 20px;
+    height: 100%;
+    overflow-y: auto;
 }
 
 .view-panel {
@@ -44,34 +44,55 @@
 }
 
 /* 정산 기본 정보 및 연동 정보 */
-.edit-section {
-    background: #fff;
-    border: 1px solid var(--border-color);
+.editor-body {
+    background: var(--bg-primary);
     border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.edit-section {
+    margin-bottom: 40px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edit-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .edit-section h3 {
-    font-size: 1.1rem;
-    color: var(--text-color);
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 1.1rem;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
+.section-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.section-header-flex h3 {
+    margin-bottom: 0;
+}
+
 .highlight-section {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: rgba(79, 70, 229, 0.03);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(79, 70, 229, 0.1);
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    gap: 16px;
 }
 
 .fg label {
@@ -98,11 +119,11 @@
 }
 
 .readonly-quote-info {
-    margin-top: 20px;
-    background: #f1f5f9;
-    border: 1px solid #cbd5e1;
+    margin-top: 24px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: 16px;
 }
 
 .readonly-quote-info h4 {
@@ -140,12 +161,11 @@
 
 .dash-card {
     flex: 1;
-    background: #fff;
+    background: var(--bg-secondary);
     padding: 15px;
     border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
     text-align: center;
-    border: 1px solid #e2e8f0;
 }
 
 .dash-card.primary-card {
@@ -157,19 +177,19 @@
 .dash-label {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--text-secondary);
     margin-bottom: 5px;
 }
 
 .dash-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text-primary);
 }
 
 .dash-sub {
     font-size: 0.75rem;
-    color: #94a3b8;
+    color: var(--text-tertiary);
     margin-top: 5px;
 }
 
@@ -183,17 +203,16 @@
     flex: 1;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: 16px;
+    background: var(--bg-secondary);
 }
 
 .rates-box.readonly-box {
-    background: #f8fafc;
+    background: var(--bg-tertiary);
 }
 
 .rates-box.active-box {
-    background: #fff;
-    border-color: #cbd5e1;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    background: var(--bg-secondary);
 }
 
 .ex-header h4 {
@@ -275,20 +294,20 @@
     font-size: 0.95rem;
 }
 
-.group-basic { background: #f1f5f9; color: #334155; }
-.group-quoted { background: #e2e8f0; color: #475569; }
-.group-billed { background: #e0f2fe; color: #0369a1; }
-.group-analysis { background: #f0fdf4; color: #15803d; }
+.group-basic { background: var(--bg-tertiary); color: var(--text-primary); }
+.group-quoted { background: var(--gray-100); color: var(--text-primary); }
+.group-billed { background: rgba(79, 70, 229, 0.05); color: var(--brand-color); }
+.group-analysis { background: rgba(16, 185, 129, 0.05); color: #059669; }
 
 .header-sub th {
-    background: #f8fafc;
-    color: #475569;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
     font-size: 0.85rem;
 }
 
 .header-sub th.editable-col {
-    background: #bae6fd;
-    color: #0c4a6e;
+    background: rgba(79, 70, 229, 0.03);
+    color: var(--brand-color);
 }
 
 .settlement-table tbody tr:hover {
@@ -300,8 +319,8 @@
 }
 
 .settlement-table td.col-readonly {
-    background: #f8fafc;
-    color: #475569;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
 }
 
 .settlement-table input[type="number"], 
@@ -343,7 +362,7 @@
 /* 사용자가 입력해야 하는 셀을 강조 */
 .settlement-table td:has(input),
 .settlement-table td:has(select) {
-    background-color: #fefce8; /* 아주 옅은 노란색 */
+    background-color: transparent; /* 옅은 노란색 제거 */
 }
 
 .val-variance {
