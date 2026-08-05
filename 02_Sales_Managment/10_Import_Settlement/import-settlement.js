@@ -115,7 +115,6 @@ function initEvents() {
     document.getElementById('btnNewSettlement').addEventListener('click', openQuoteModal);
     document.getElementById('btnCancelEdit').addEventListener('click', () => switchView('list'));
     document.getElementById('btnCancelEditBottom').addEventListener('click', () => switchView('list'));
-    document.getElementById('btnAddCustomCost').addEventListener('click', window.addCustomCost);
     
     document.getElementById('btnSaveSettlement').addEventListener('click', saveSettlement);
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
@@ -344,144 +343,188 @@ const COST_GROUPS = [
 ];
 
 function renderSettlementGrid() {
-    const tbody = document.getElementById('settlementTableBody');
-    let html = '';
-    
+    const container = document.getElementById('settlementCardContainer');
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
 
+    // Group costs by their group key
+    const grouped = {};
+    COST_GROUPS.forEach(g => { grouped[g.key] = []; });
+    
     state.doc.actualCosts.forEach((cost, idx) => {
-        const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
-        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+        const grpKey = cost.group || 'other';
+        if (!grouped[grpKey]) grouped[grpKey] = [];
+        grouped[grpKey].push({ cost, idx });
+    });
 
-        let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
-        let qKrw = cost.quotedForeign * qRate;
+    let html = '';
 
-        // 1. 그룹 선택
-        let groupHtml = '';
-        if (cost.isCustom) {
-            groupHtml = `<select class="calc-input" style="width:100%;" onchange="updateCost(${idx}, 'group', this.value)">`;
-            COST_GROUPS.forEach(g => {
-                groupHtml += `<option value="${g.key}" ${cost.group === g.key ? 'selected' : ''}>${g.label}</option>`;
-            });
-            groupHtml += `</select>`;
-        } else {
-            const grp = COST_GROUPS.find(g => g.key === cost.group);
-            groupHtml = grp ? grp.label : (cost.group === 'ocean' ? '해상 운임' : cost.group);
-        }
-
-        // 2. 항목명 선택/입력
-        let labelHtml = cost.label;
-        if (cost.isCustom) {
-            const isDirectInput = cost.key.startsWith('CUSTOM_');
-            let optsHtml = `<option value="">-- 직접 입력 --</option>`;
-            DEFAULT_COSTS.filter(c => c.group === cost.group).forEach(c => {
-                optsHtml += `<option value="${c.key}" ${cost.key === c.key ? 'selected' : ''}>${c.label}</option>`;
-            });
-            
-            labelHtml = `
-                <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-                    <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)">
-                        ${optsHtml}
-                    </select>
-                    <input type="text" class="calc-input" value="${cost.label}" placeholder="항목명 직접 입력" style="display: ${isDirectInput ? 'block' : 'none'};" oninput="updateCost(${idx}, 'label', this.value)">
-                </div>
-            `;
-        }
-
-        // 3. 단위 / 통화
-        let unitHtml = `<input type="text" class="calc-input" value="${cost.unit}" style="width:100%; text-align:center; padding:4px; margin-bottom:4px;" oninput="updateCost(${idx}, 'unit', this.value)">`;
-        let currHtml = `
-            <select class="calc-input curr-select" style="padding:4px; width:100%; text-align:center; cursor:pointer;" onchange="updateCost(${idx}, 'billedCurrency', this.value)">
-                <option value="KRW" ${bCurr==='KRW'?'selected':''}>KRW</option>
-                <option value="USD" ${bCurr==='USD'?'selected':''}>USD</option>
-                <option value="CNY" ${bCurr==='CNY'?'selected':''}>CNY</option>
-                <option value="EUR" ${bCurr==='EUR'?'selected':''}>EUR</option>
-                <option value="JPY" ${bCurr==='JPY'?'selected':''}>JPY</option>
-            </select>
-        `;
-
-        // 4. 합계
-        let amt = parseFloat(cost.amount) || 0;
-        let qty = parseFloat(cost.unitQty) || 1;
-        let billedForeign = amt * qty;
+    COST_GROUPS.forEach(grp => {
+        const items = grouped[grp.key];
+        if (!items || items.length === 0) return;
 
         html += `
-            <tr class="draggable-row" draggable="true" data-idx="${idx}"
-                ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)"
-                ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)">
-                
-                <!-- 1. 그룹 -->
-                <td class="col-readonly">
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
-                        <button class="btn-icon" style="color:var(--danger-color); padding:0; display:flex; align-items:center;" onclick="removeCost(${idx})" title="항목 삭제"><i class='bx bx-trash'></i></button>
-                        ${groupHtml}
+        <div class="cost-group" id="grp_${grp.key}">
+            <div class="cost-group-header" onclick="toggleGroup('${grp.key}')">
+                <div class="group-title">
+                    <i class='bx bx-chevron-down'></i>
+                    ${grp.label} <span style="font-weight:400; color:#94a3b8; font-size:0.85em;">(${items.length})</span>
+                </div>
+                <div class="group-subtotal">
+                    <div class="subtotal-item">
+                        <span class="subtotal-label">견적</span>
+                        <span class="subtotal-value" id="grpEst_${grp.key}">₩ 0</span>
                     </div>
-                </td>
-                
-                <!-- 2. 항목명 -->
-                <td class="col-readonly">${labelHtml}</td>
-                
-                <!-- 3. 예상 통화 -->
-                <td class="col-readonly" style="text-align:center; background:#f8fafc; font-weight:500;">
-                    ${cost.isCustom ? '-' : qCurr}
-                </td>
-                
-                <!-- 4. 예상 외화 -->
-                <td class="col-num col-readonly" style="background:#f8fafc;">
-                    ${formatNum(cost.quotedForeign, 2)}
-                </td>
-                
-                <!-- 4.5. 예상 환율 -->
-                <td class="col-num col-readonly" style="background:#f8fafc;">
-                    ${cost.isCustom ? '-' : formatNum(qRate, 2)}
-                </td>
-                
-                <!-- 5. 예상 원화 -->
-                <td class="col-num col-readonly" style="font-weight:600; background:#f8fafc;">
-                    ${formatNum(qKrw)}
-                </td>
-                
-                <!-- 6. 실제 입력: 단위/통화 -->
-                <td class="col-readonly" style="text-align:center; background:#f0f9ff;">
-                    ${unitHtml}
-                    ${currHtml}
-                </td>
-                
-                <!-- 7. 실제 입력: 수량 -->
-                <td style="background:#f0f9ff;">
-                    <input type="number" class="calc-input" step="0.01" value="${qty}" oninput="updateCost(${idx}, 'unitQty', this.value)" style="width:100%; text-align:right;">
-                </td>
-                
-                <!-- 8. 실제 입력: 단가 -->
-                <td style="background:#f0f9ff;">
-                    <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)" style="width:100%; text-align:right;">
-                </td>
-                
-                <!-- 9. 실제 청구 외화 -->
-                <td class="col-num" style="background:#e0f2fe; color:#0369a1; font-weight:600;">
-                    ${formatNum(billedForeign, 2)}
-                </td>
-                
-                <!-- 10. 실제 입력: 인보이스 환율 -->
-                <td style="background:#f0f9ff;">
-                    <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
-                </td>
-                
-                <!-- 11. 최종 원화 -->
-                <td class="col-num" style="font-weight:600; background:#fff1f2;" id="krw_${idx}">0</td>
-                
-                <!-- 12. 분석 -->
-                <td class="col-num" style="line-height:1.4; background:#fff1f2;">
-                    <div class="val-variance" id="var_${idx}">0</div>
-                    <div class="val-gainloss" id="gl_${idx}" style="font-size:0.85em;">0</div>
-                </td>
-            </tr>
-        `;
+                    <div class="subtotal-item">
+                        <span class="subtotal-label">실제</span>
+                        <span class="subtotal-value" id="grpAct_${grp.key}">₩ 0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cost-group-body">`;
+
+        items.forEach(({ cost, idx }) => {
+            const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+            const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+            let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
+            let qKrw = cost.quotedForeign * qRate;
+            let amt = parseFloat(cost.amount) || 0;
+            let qty = parseFloat(cost.unitQty) || 1;
+            let billedForeign = amt * qty;
+
+            // Label HTML
+            let labelHtml = '';
+            if (cost.isCustom) {
+                const isDirectInput = cost.key.startsWith('CUSTOM_');
+                let optsHtml = `<option value="">-- 직접 입력 --</option>`;
+                DEFAULT_COSTS.filter(c => c.group === cost.group).forEach(c => {
+                    optsHtml += `<option value="${c.key}" ${cost.key === c.key ? 'selected' : ''}>${c.label}</option>`;
+                });
+                labelHtml = `
+                    <div class="item-label-custom">
+                        <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)" style="font-size:0.85rem;">${optsHtml}</select>
+                        <input type="text" class="calc-input" value="${cost.label}" placeholder="항목명 직접 입력" style="display:${isDirectInput ? 'block' : 'none'}; font-size:0.85rem;" oninput="updateCost(${idx}, 'label', this.value)">
+                    </div>`;
+            } else {
+                labelHtml = `<span class="item-label">${cost.label}</span>`;
+            }
+
+            // Currency select HTML
+            const currOptions = ['KRW','USD','CNY','EUR','JPY'].map(c =>
+                `<option value="${c}" ${bCurr===c?'selected':''}>${c}</option>`
+            ).join('');
+
+            html += `
+            <div class="cost-item-card" draggable="true" data-idx="${idx}"
+                ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)"
+                ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"
+                ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)">
+
+                <div class="card-top">
+                    <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
+                    ${labelHtml}
+                    <button class="btn-delete-item" onclick="removeCost(${idx})" title="항목 삭제"><i class='bx bx-trash'></i></button>
+                </div>
+
+                <div class="card-body">
+                    <!-- 좌측: 예상 견적 (Read-only) -->
+                    <div class="panel-quote">
+                        <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
+                        <div class="panel-row">
+                            <span class="p-label">통화</span>
+                            <span class="p-value">${cost.isCustom ? '-' : qCurr}</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">총액</span>
+                            <span class="p-value">${formatNum(cost.quotedForeign, 2)}</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">환율</span>
+                            <span class="p-value">${cost.isCustom ? '-' : formatNum(qRate, 2)}</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">원화(KRW)</span>
+                            <span class="p-value" style="font-weight:700;">₩ ${formatNum(qKrw)}</span>
+                        </div>
+                    </div>
+
+                    <!-- 우측: 실제 청구 (Editable) -->
+                    <div class="panel-billed">
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
+                        <div class="panel-row">
+                            <span class="p-label">단위</span>
+                            <div class="p-input-wide">
+                                <input type="text" class="calc-input" value="${cost.unit}" style="text-align:center;" oninput="updateCost(${idx}, 'unit', this.value)">
+                            </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">통화</span>
+                            <div class="p-input">
+                                <select class="calc-input curr-select" onchange="updateCost(${idx}, 'billedCurrency', this.value)">${currOptions}</select>
+                            </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">수량</span>
+                            <div class="p-input">
+                                <input type="number" class="calc-input" step="0.01" value="${qty}" oninput="updateCost(${idx}, 'unitQty', this.value)">
+                            </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">단가</span>
+                            <div class="p-input">
+                                <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)">
+                            </div>
+                        </div>
+                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px -4px; padding:6px 12px; border-radius:0 0 6px 6px;">
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
+                            <span class="p-value" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
+                        </div>
+                        <div class="panel-row" style="margin-top:4px;">
+                            <span class="p-label">청구환율</span>
+                            <div class="p-input">
+                                <input type="number" class="calc-input" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단: 결과 -->
+                <div class="card-result">
+                    <div class="result-item">
+                        <div class="r-label">실제 원화(KRW)</div>
+                        <div class="r-value" id="krw_${idx}">₩ 0</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="r-label">비용증감</div>
+                        <div class="r-value" id="var_${idx}">0</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="r-label">환차익/손</div>
+                        <div class="r-value" id="gl_${idx}">0</div>
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        html += `
+            </div>
+            <div class="cost-group-footer">
+                <button class="btn-add-in-group" onclick="addCustomCost('${grp.key}')">
+                    <i class='bx bx-plus'></i> ${grp.label} 항목 추가
+                </button>
+            </div>
+        </div>`;
     });
-    
-    tbody.innerHTML = html;
+
+    container.innerHTML = html;
 }
+
+// ─────────────────────────────────────────────────────────────
+// 아코디언 토글
+// ─────────────────────────────────────────────────────────────
+window.toggleGroup = function(key) {
+    const el = document.getElementById(`grp_${key}`);
+    if (el) el.classList.toggle('collapsed');
+};
 
 window.onCostKeyChange = function(idx, key) {
     const cost = state.doc.actualCosts[idx];
@@ -533,7 +576,7 @@ window.addCustomCost = function(group) {
         group: group || 'import',
         label: '사용자 추가 항목',
         unit: 'Lump Sum',
-        currency: 'KRW', // Legacy
+        currency: 'KRW',
         quotedCurrency: 'KRW',
         billedCurrency: 'KRW',
         quotedForeign: 0,
@@ -552,7 +595,7 @@ window.removeCost = function(idx) {
     calculateAll();
 };
 
-// --- Drag and Drop Handlers ---
+// --- Drag and Drop Handlers (updated for cards) ---
 window.handleDragStart = function(e) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', e.currentTarget.dataset.idx);
@@ -566,21 +609,21 @@ window.handleDragOver = function(e) {
 
 window.handleDragEnter = function(e) {
     e.preventDefault();
-    const tr = e.target.closest('tr');
-    if (tr) tr.classList.add('drag-over');
+    const card = e.target.closest('.cost-item-card');
+    if (card) card.classList.add('drag-over');
 };
 
 window.handleDragLeave = function(e) {
-    const tr = e.target.closest('tr');
-    if (tr && !tr.contains(e.relatedTarget)) {
-        tr.classList.remove('drag-over');
+    const card = e.target.closest('.cost-item-card');
+    if (card && !card.contains(e.relatedTarget)) {
+        card.classList.remove('drag-over');
     }
 };
 
 window.handleDrop = function(e, toIdx) {
     e.preventDefault();
-    const tr = e.target.closest('tr');
-    if (tr) tr.classList.remove('drag-over');
+    const card = e.target.closest('.cost-item-card');
+    if (card) card.classList.remove('drag-over');
     
     const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
     if (isNaN(fromIdx) || fromIdx === toIdx) return;
@@ -606,6 +649,11 @@ function calculateAll() {
     let totalExchangeVariance = 0;
     
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+    
+    // Per-group accumulators
+    const grpEst = {};
+    const grpAct = {};
+    COST_GROUPS.forEach(g => { grpEst[g.key] = 0; grpAct[g.key] = 0; });
 
     state.doc.actualCosts.forEach((cost, idx) => {
         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -616,12 +664,10 @@ function calculateAll() {
         let qty = parseFloat(cost.unitQty) || 1;
         let billedForeign = amt * qty;
         
-        // 1. 견적 예상 원화
         let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
         let qKrw = cost.quotedForeign * qRate;
         totalEstKrw += qKrw;
         
-        // 2. 인보이스 실제 원화 (청구 기준)
         let bRate = isKrw ? 1 : cost.billedRate;
         let bKrw = billedForeign * bRate;
         totalBilledKrw += bKrw;
@@ -630,16 +676,17 @@ function calculateAll() {
             totalDutiableKrw += bKrw;
         }
         
-        // 3. 분석 분리: 순수 물류비 증감 vs 환차익손
+        // Group subtotals
+        const gk = cost.group || 'other';
+        if (grpEst[gk] !== undefined) { grpEst[gk] += qKrw; grpAct[gk] += bKrw; }
+        
         let varKrw = 0;
         let glKrw = 0;
         
         if (qCurr === bCurr) {
-            // 통화가 같은 경우 분리 가능
             varKrw = (billedForeign - cost.quotedForeign) * qRate;
             glKrw = (bRate - qRate) * billedForeign;
         } else {
-            // 통화가 다르면 통폐합
             varKrw = bKrw - qKrw;
             glKrw = 0;
         }
@@ -652,23 +699,39 @@ function calculateAll() {
         const varEl = document.getElementById(`var_${idx}`);
         const glEl = document.getElementById(`gl_${idx}`);
         
-        if (krwEl) krwEl.innerText = formatNum(bKrw);
+        if (krwEl) krwEl.innerText = '₩ ' + formatNum(bKrw);
         
         if (varEl) {
             varEl.innerText = varKrw > 0 ? '+' + formatNum(varKrw) : formatNum(varKrw);
-            varEl.className = 'col-num val-variance ' + (varKrw > 0 ? 'positive' : (varKrw < 0 ? 'negative' : ''));
+            varEl.className = 'r-value ' + (varKrw > 0 ? 'positive' : (varKrw < 0 ? 'negative' : ''));
         }
         
         if (glEl) {
             glEl.innerText = glKrw > 0 ? '+' + formatNum(glKrw) : formatNum(glKrw);
-            // 양수면 환율이 오른 것이므로 손실(loss)
-            glEl.className = 'col-num val-gainloss ' + (glKrw > 0 ? 'loss' : (glKrw < 0 ? 'gain' : ''));
+            glEl.className = 'r-value ' + (glKrw > 0 ? 'loss' : (glKrw < 0 ? 'gain' : ''));
         }
+    });
+    
+    // Group subtotal UI
+    COST_GROUPS.forEach(g => {
+        const estEl = document.getElementById(`grpEst_${g.key}`);
+        const actEl = document.getElementById(`grpAct_${g.key}`);
+        if (estEl) estEl.innerText = '₩ ' + formatNum(grpEst[g.key]);
+        if (actEl) actEl.innerText = '₩ ' + formatNum(grpAct[g.key]);
     });
     
     // 대시보드 업데이트
     document.getElementById('dashTotalEstimated').innerText = '₩ ' + formatNum(totalEstKrw);
     document.getElementById('dashTotalBilled').innerText = '₩ ' + formatNum(totalBilledKrw);
+    
+    // 퍼센티지
+    const pctEl = document.getElementById('dashBilledPct');
+    if (pctEl && totalEstKrw > 0) {
+        const pct = ((totalBilledKrw - totalEstKrw) / totalEstKrw * 100);
+        const icon = pct > 0 ? '▲' : (pct < 0 ? '▼' : '');
+        pctEl.innerText = `${icon} ${Math.abs(pct).toFixed(1)}%`;
+        pctEl.className = 'dash-pct ' + (pct > 0 ? 'over' : (pct < 0 ? 'under' : 'neutral'));
+    }
     
     const dVar = document.getElementById('dashCostVariance');
     dVar.innerText = (totalCostVariance > 0 ? '+₩ ' : '₩ ') + formatNum(totalCostVariance);
@@ -676,9 +739,8 @@ function calculateAll() {
     
     const dGl = document.getElementById('dashExchangeGainLoss');
     dGl.innerText = (totalExchangeVariance > 0 ? '+₩ ' : '₩ ') + formatNum(totalExchangeVariance);
-    // 대시보드 환차익/손 텍스트 색상 (흰색 베이스에 부호로 구분)
     
-    // 5. 관세/부가세 계산 (실제 청구 비용 기준)
+    // 5. 관세/부가세 계산
     renderCostResultTable(totalBilledKrw, totalDutiableKrw);
 }
 

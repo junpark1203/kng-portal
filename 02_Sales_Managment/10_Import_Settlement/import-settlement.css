@@ -138,233 +138,370 @@
     gap: 10px;
 }
 
-.info-item {
-    font-size: 0.9rem;
+.info-item { font-size: 0.9rem; }
+.info-item span { color: #64748b; margin-right: 5px; }
+.info-item strong { color: #0f172a; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 대시보드 (Sticky) */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sticky-dashboard {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    margin: 0 -24px;
+    padding: 16px 24px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    transition: box-shadow 0.3s;
 }
 
-.info-item span {
-    color: #64748b;
-    margin-right: 5px;
+.sticky-dashboard.scrolled {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
-.info-item strong {
-    color: #0f172a;
-}
-
-/* 대시보드 */
 .dashboard-grid {
-    display: flex;
-    justify-content: space-between;
-    align-items: stretch;
-    gap: 15px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
 }
 
 .dash-card {
-    flex: 1;
     background: #ffffff;
-    padding: 20px 15px;
+    padding: 16px 14px;
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
     text-align: center;
     transition: transform 0.2s;
 }
-
-.dash-card:hover {
-    transform: translateY(-2px);
-}
+.dash-card:hover { transform: translateY(-2px); }
 
 .dash-card.primary-card {
-    background: var(--primary);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     border: none;
-    box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 .dash-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 5px;
-}
-
-.dash-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.dash-sub {
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
-    margin-top: 5px;
-}
-
-/* 환율 설정 */
-.rates-container {
-    display: flex;
-    gap: 20px;
-}
-
-.rates-box {
-    flex: 1;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 16px;
-    background: var(--bg-secondary);
-}
-
-.rates-box.readonly-box {
-    background: var(--bg-tertiary);
-}
-
-.rates-box.active-box {
-    background: var(--bg-secondary);
-}
-
-.ex-header h4 {
-    margin: 0 0 15px 0;
-    font-size: 0.95rem;
-    color: var(--text-color);
-}
-
-.ex-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-}
-
-.ex-item label {
-    display: block;
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-secondary);
-    margin-bottom: 5px;
+    margin-bottom: 6px;
 }
 
-.ex-item .val {
-    padding: 8px;
-    background: #e2e8f0;
-    border-radius: 4px;
+.dash-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-sub {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+}
+
+.dash-pct {
+    font-size: 0.8rem;
     font-weight: 600;
-    color: #334155;
-    text-align: right;
-}
-
-.input-with-symbol {
-    position: relative;
+    margin-top: 6px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    gap: 4px;
 }
+.dash-pct.over { color: #dc2626; }
+.dash-pct.under { color: #16a34a; }
+.dash-pct.neutral { color: #64748b; }
 
-.input-with-symbol span {
-    position: absolute;
-    left: 10px;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.input-with-symbol input {
-    width: 100%;
-    padding: 8px 8px 8px 25px;
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 그룹 아코디언 */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cost-group {
+    margin-bottom: 16px;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    text-align: right;
-    font-weight: 600;
-}
-
-/* 비용 정산 테이블 (와이드 그리드) */
-.table-responsive {
-    overflow-x: auto;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    border: 1px solid var(--border-color);
-    margin-bottom: 20px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     background: #ffffff;
 }
 
-.settlement-table {
-    width: 100%;
-    min-width: 1100px;
-    border-collapse: collapse;
+.cost-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f1f5f9;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+.cost-group-header:hover { background: #e2e8f0; }
+
+.cost-group-header .group-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.cost-group-header .group-title i {
+    font-size: 1.2rem;
+    color: #64748b;
+    transition: transform 0.3s;
+}
+
+.cost-group.collapsed .cost-group-header .group-title i.bx-chevron-down {
+    transform: rotate(-90deg);
+}
+
+.cost-group-header .group-subtotal {
+    display: flex;
+    gap: 20px;
     font-size: 0.85rem;
-    border-style: hidden;
+    font-variant-numeric: tabular-nums;
 }
 
-.settlement-table th, .settlement-table td {
-    border: 1px solid var(--border-color);
-    padding: 8px 6px;
-    vertical-align: middle;
-    word-break: keep-all;
+.cost-group-header .subtotal-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
 
-.settlement-table th {
+.cost-group-header .subtotal-label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+.cost-group-header .subtotal-value {
+    font-weight: 700;
+    color: #334155;
+}
+
+.cost-group-body {
+    padding: 0;
+    transition: max-height 0.3s ease;
+    overflow: hidden;
+}
+
+.cost-group.collapsed .cost-group-body {
+    max-height: 0 !important;
+    padding: 0;
+}
+
+.cost-group-footer {
+    padding: 8px 16px;
+    border-top: 1px solid #e2e8f0;
+    background: #fafbfc;
+}
+
+.btn-add-in-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: transparent;
+    border: 1px dashed #94a3b8;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-add-in-group:hover {
+    background: #f0f9ff;
+    border-color: #3b82f6;
+    color: #2563eb;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 비용 항목 카드 */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.cost-item-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.15s;
+}
+.cost-item-card:last-child { border-bottom: none; }
+.cost-item-card:hover { background: rgba(59, 130, 246, 0.02); }
+.cost-item-card.dragging { opacity: 0.5; background: #f8fafc; }
+.cost-item-card.drag-over { border-top: 2px solid var(--primary, #2563eb); }
+
+.card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.card-top .drag-handle {
+    cursor: grab;
+    color: #cbd5e1;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.card-top .drag-handle:active { cursor: grabbing; }
+
+.card-top .item-label {
     font-weight: 600;
-    text-align: center;
-}
-
-.header-group th {
-    padding: 10px;
     font-size: 0.9rem;
+    color: #1e293b;
+    flex: 1;
+    min-width: 0;
 }
 
-.group-basic { background: var(--bg-tertiary); color: var(--text-primary); }
-.group-quoted { background: var(--gray-100); color: var(--text-primary); }
-.group-billed { background: rgba(79, 70, 229, 0.05); color: var(--brand-color); }
-.group-analysis { background: rgba(16, 185, 129, 0.05); color: #059669; }
+.card-top .item-label-custom {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
 
-.header-sub th {
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+.card-top .btn-delete-item {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    transition: all 0.15s;
+}
+.card-top .btn-delete-item:hover { color: #dc2626; background: #fef2f2; }
+
+.card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.panel-quote, .panel-billed {
+    border-radius: 8px;
+    padding: 12px;
     font-size: 0.85rem;
 }
 
-.header-sub th.editable-col {
-    background: rgba(79, 70, 229, 0.03);
-    color: var(--brand-color);
+.panel-quote {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
-.settlement-table tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.03); /* Subtle blue hover */
+.panel-billed {
+    background: #f0f7ff;
+    border: 1px solid #bfdbfe;
 }
 
-.settlement-table td.col-num {
+.panel-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.panel-quote .panel-title { color: #94a3b8; }
+.panel-billed .panel-title { color: #2563eb; }
+
+.panel-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+.panel-row + .panel-row { border-top: 1px solid rgba(0,0,0,0.04); }
+
+.panel-row .p-label {
+    color: #64748b;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    margin-right: 8px;
+}
+
+.panel-row .p-value {
+    font-weight: 600;
+    color: #1e293b;
     text-align: right;
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
 }
 
-.settlement-table td.col-readonly {
-    background: #f8fafc;
-    color: var(--text-secondary);
+.panel-row .p-input { flex: 1; max-width: 120px; }
+.panel-row .p-input-wide { flex: 1; max-width: 160px; }
+
+.card-result {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fafbfc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.82rem;
 }
 
-.settlement-table input:focus,
-.settlement-table select:focus {
-    background-color: #ffffff;
+.result-item { text-align: center; }
+.result-item .r-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+.result-item .r-value {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92rem;
+}
+.result-item .r-value.positive { color: #dc2626; }
+.result-item .r-value.negative { color: #16a34a; }
+.result-item .r-value.gain { color: #16a34a; }
+.result-item .r-value.loss { color: #dc2626; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Editable Input Styling */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.calc-input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #ffffff;
+    font-size: 0.85rem;
+    font-family: inherit;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+.calc-input:focus {
+    outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
-    outline: none;
 }
-
-/* 사용자가 입력해야 하는 셀을 강조 */
-.settlement-table td:has(input),
-.settlement-table td:has(select) {
-    background-color: transparent; /* 옅은 노란색 제거 */
+.calc-input:read-only, .calc-input[readonly] {
+    background: #f1f5f9 !important;
+    border-color: transparent !important;
+    color: #475569 !important;
+    cursor: default;
+    box-shadow: none !important;
 }
+.calc-input[type="number"] { text-align: right; }
+.calc-input.curr-select { text-align: center; cursor: pointer; }
 
-.val-variance {
-    font-weight: 600;
-}
-
-.val-variance.positive { color: #dc2626; } /* 비용 초과 */
-.val-variance.negative { color: #16a34a; } /* 비용 절감 */
-
-.val-gainloss {
-    font-weight: 600;
-}
-.val-gainloss.gain { color: #16a34a; } /* 이익 */
-.val-gainloss.loss { color: #dc2626; } /* 손실 */
-
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* 기타 공통 */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .bottom-actions {
     display: flex;
     justify-content: flex-end;
@@ -373,34 +510,8 @@
     padding-top: 20px;
     border-top: 1px solid var(--border-color);
 }
+.btn-large { padding: 12px 24px; font-size: 1rem; }
 
-.btn-large {
-    padding: 12px 24px;
-    font-size: 1rem;
-}
-
-/* Drag and Drop */
-.draggable-row.dragging {
-    opacity: 0.5;
-    background: #f8fafc;
-}
-
-.draggable-row.drag-over {
-    border-top: 2px solid var(--primary);
-}
-
-.drag-handle {
-    cursor: grab;
-    color: #94a3b8;
-    font-size: 1.2rem;
-    margin-right: 5px;
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-}
-
-/* Toast 알림 */
 .toast-container {
     position: fixed;
     bottom: 20px;
@@ -410,7 +521,6 @@
     flex-direction: column;
     gap: 10px;
 }
-
 .toast {
     background: #333;
     color: white;
@@ -422,113 +532,44 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transition: opacity 0.3s;
 }
-
 .toast.success { background: #10b981; }
 .toast.error { background: #ef4444; }
 .toast i { font-size: 1.2rem; }
 
-/* 툴팁 */
-.tooltip-icon {
-    color: var(--text-tertiary);
-    cursor: help;
-    position: relative;
-    margin-left: 6px;
-}
+.tooltip-icon { color: var(--text-tertiary); cursor: help; position: relative; margin-left: 6px; }
 .tooltip-text {
-    visibility: hidden;
-    width: 250px;
-    background-color: #333;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 10px;
-    position: absolute;
-    z-index: 10;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -125px;
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.8rem;
-    font-family: var(--font-family);
-    font-weight: normal;
-    line-height: 1.4;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    visibility: hidden; width: 250px; background-color: #333; color: #fff;
+    text-align: left; border-radius: 6px; padding: 10px; position: absolute;
+    z-index: 10; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0;
+    transition: opacity 0.3s; font-size: 0.8rem; font-family: var(--font-family);
+    font-weight: normal; line-height: 1.4; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
 }
-.tooltip-icon:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
-}
+.tooltip-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
 .tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
+    content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+    border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;
 }
 
-/* 원가 산출 테이블 */
-.cost-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-}
-
-.cost-table th, .cost-table td {
+/* 원가 산출 테이블 (하단 유지) */
+.table-responsive {
+    overflow-x: auto; border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
     border: 1px solid var(--border-color);
-    padding: 8px 6px;
-    vertical-align: middle;
-    word-break: keep-all;
+    margin-bottom: 20px; background: #ffffff;
 }
-
-.cost-table td.col-num {
-    text-align: right;
-    white-space: nowrap;
+.cost-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.cost-table th, .cost-table td {
+    border: 1px solid var(--border-color); padding: 8px 6px;
+    vertical-align: middle; word-break: keep-all;
 }
-
+.cost-table td.col-num { text-align: right; white-space: nowrap; }
 .cost-table th {
-    font-weight: 600;
-    text-align: center;
-    background: #f1f5f9;
-    color: #334155;
-    padding: 12px;
+    font-weight: 600; text-align: center;
+    background: #f1f5f9; color: #334155; padding: 12px;
 }
+.highlight-col { background: rgba(79, 70, 229, 0.05) !important; font-weight: 700; }
 
-.highlight-col {
-    background: rgba(79, 70, 229, 0.05) !important;
-    font-weight: 700;
+@media print {
+    .sticky-dashboard { position: static; }
+    .cost-group { break-inside: avoid; }
 }
-
-/* Editable Input Styling */
-.calc-input {
-    width: 100%;
-    padding: 4px 6px;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    background: #ffffff;
-    font-size: 0.85rem;
-    font-family: inherit;
-    color: var(--text-color, #1e293b);
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-}
-
-.calc-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.calc-input:read-only,
-.calc-input[readonly] {
-    background: #f8fafc !important;
-    border-color: transparent !important;
-    color: #475569 !important;
-    cursor: default;
-    box-shadow: none !important;
-}
-
-

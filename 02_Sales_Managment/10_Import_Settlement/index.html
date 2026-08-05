@@ -98,9 +98,9 @@
                     </div>
                 </section>
 
-                <!-- SECTION 2: 종합 요약 대시보드 -->
-                <section class="edit-section highlight-section">
-                    <h3><i class='bx bx-bar-chart-alt-2'></i> 종합 요약 대시보드</h3>
+                <!-- SECTION 2: 종합 요약 대시보드 (Sticky) -->
+                <section class="sticky-dashboard" id="stickyDashboard">
+                    <h3 style="margin-bottom:12px;"><i class='bx bx-bar-chart-alt-2'></i> 종합 요약 대시보드</h3>
                     <div class="dashboard-grid">
                         <div class="dash-card">
                             <div class="dash-label">예상 총 부대비용 (견적)</div>
@@ -109,69 +109,32 @@
                         <div class="dash-card">
                             <div class="dash-label">실제 총 청구비용</div>
                             <div class="dash-value" id="dashTotalBilled">₩ 0</div>
+                            <div class="dash-pct neutral" id="dashBilledPct">-</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">순수 물류비 증감 (차액)</div>
+                            <div class="dash-label">순수 물류비 증감</div>
                             <div class="dash-value" id="dashCostVariance">₩ 0</div>
-                            <div class="dash-sub" id="dashCostVarianceSub">(청구 외화 - 예상 외화) * 견적환율</div>
+                            <div class="dash-sub" id="dashCostVarianceSub">(청구금액 - 예상금액) × 견적환율</div>
                         </div>
                         <div class="dash-card primary-card">
                             <div class="dash-label" style="color:rgba(255,255,255,0.8);">총 환차익 / 환차손</div>
                             <div class="dash-value" id="dashExchangeGainLoss" style="color:#fff;">₩ 0</div>
-                            <div class="dash-sub" style="color:rgba(255,255,255,0.7);">(청구환율 - 견적환율) * 청구외화</div>
+                            <div class="dash-sub" style="color:rgba(255,255,255,0.7);">(청구환율 - 견적환율) × 청구금액</div>
                         </div>
                     </div>
                 </section>
 
-                <!-- SECTION 4: 부대비용 정산 비교 그리드 -->
+                <!-- SECTION 3: 항목별 비용 정산 (카드형 아코디언) -->
                 <section class="edit-section">
                     <div class="section-header-flex">
                         <div>
                             <h3 style="margin:0;">3. 항목별 비용 정산 및 분석</h3>
-                            <p class="help-text" style="margin:5px 0 0 0;">* 각 항목별로 인보이스에 찍힌 <strong>실제 외화 금액</strong>과 <strong>적용 환율</strong>을 입력하세요.</p>
+                            <p class="help-text" style="margin:5px 0 0 0;">* 각 항목의 <strong>우측 파란 패널</strong>에서 실제 청구 내역을 입력하세요.</p>
                         </div>
-                        <button id="btnAddCustomCost" class="btn-outline btn-outline-primary"><i class='bx bx-plus'></i> 항목 추가</button>
                     </div>
                     
-                    <div class="table-responsive">
-                        <table class="settlement-table" id="settlementTable">
-                            <thead>
-                                <tr class="header-group">
-                                    <th colspan="2" class="group-basic">항목 구분</th>
-                                    <th colspan="4" class="group-quoted" style="background:#f8fafc;">예상 견적 (비교 기준)</th>
-                                    <th colspan="5" class="group-billed" style="background:#f0f9ff;">실제 청구 내역 (인보이스)</th>
-                                    <th colspan="2" class="group-analysis" style="background:#fff1f2;">최종 결과 및 분석</th>
-                                </tr>
-                                <tr class="header-sub">
-                                    <!-- 항목 구분 -->
-                                    <th style="width:110px;">그룹</th>
-                                    <th style="width:170px;">항목명</th>
-                                    
-                                    <!-- 예상 견적 (Read-only) -->
-                                    <th style="background:#f8fafc; width:50px;">통화</th>
-                                    <th style="background:#f8fafc; min-width:70px;">총액</th>
-                                    <th style="background:#f8fafc; width:60px;">견적 환율</th>
-                                    <th style="background:#f8fafc; min-width:90px;">원화(KRW)</th>
-                                    
-                                    <!-- 실제 청구 (Editable) -->
-                                    <th class="editable-col" style="background:#f0f9ff; width:110px;"><i class='bx bx-edit-alt'></i> 통화 / 단위</th>
-                                    <th class="editable-col" style="background:#f0f9ff; width:65px;"><i class='bx bx-edit-alt'></i> 수량</th>
-                                    <th class="editable-col" style="background:#f0f9ff; width:85px;"><i class='bx bx-edit-alt'></i> 단가 (Amt)</th>
-                                    <th style="background:#f0f9ff; color:#0369a1; min-width:80px;">청구금액</th>
-                                    <th class="editable-col" style="background:#f0f9ff; width:75px;"><i class='bx bx-edit-alt'></i> 청구 환율</th>
-                                    
-                                    <!-- 최종 결과 -->
-                                    <th style="background:#fff1f2; min-width:95px;">실제 원화(KRW)</th>
-                                    <th style="background:#fff1f2; min-width:110px;">비용증감 / 환차익손</th>
-                                </tr>
-                            </thead>
-                            <tbody id="settlementTableBody">
-                                <!-- JS 동적 렌더링 -->
-                            </tbody>
-                            <tfoot id="settlementTableFoot">
-                                <!-- 총계 렌더링 -->
-                            </tfoot>
-                        </table>
+                    <div id="settlementCardContainer">
+                        <!-- JS 동적 렌더링 -->
                     </div>
                 </section>
 
