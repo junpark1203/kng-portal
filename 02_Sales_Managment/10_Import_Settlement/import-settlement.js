@@ -451,46 +451,57 @@ function renderSettlementGrid() {
                 <!-- 2. 항목명 -->
                 <td class="col-readonly">${labelHtml}</td>
                 
-                <!-- 3. 입력: 단위/통화 -->
-                <td class="col-readonly" style="text-align:center;">
+                <!-- 3. 예상 통화 -->
+                <td class="col-readonly" style="text-align:center; background:#f8fafc; font-weight:500;">
+                    ${cost.isCustom ? '-' : qCurr}
+                </td>
+                
+                <!-- 4. 예상 외화 -->
+                <td class="col-num col-readonly" style="background:#f8fafc;">
+                    ${formatNum(cost.quotedForeign, 2)}
+                </td>
+                
+                <!-- 5. 예상 원화 -->
+                <td class="col-num col-readonly" style="font-weight:600; background:#f8fafc;">
+                    ${formatNum(qKrw)}
+                </td>
+                
+                <!-- 6. 실제 입력: 단위/통화 -->
+                <td class="col-readonly" style="text-align:center; background:#f0f9ff;">
                     ${unitHtml}
                     ${currHtml}
                 </td>
                 
-                <!-- 4. 입력: 수량 -->
-                <td>
+                <!-- 7. 실제 입력: 수량 -->
+                <td style="background:#f0f9ff;">
                     <input type="number" class="calc-input" step="0.01" value="${qty}" oninput="updateCost(${idx}, 'unitQty', this.value)" style="width:100%; text-align:right;">
                 </td>
                 
-                <!-- 5. 입력: 단가 -->
-                <td>
+                <!-- 8. 실제 입력: 단가 -->
+                <td style="background:#f0f9ff;">
                     <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)" style="width:100%; text-align:right;">
                 </td>
                 
-                <!-- 6. 예상 -->
-                <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : qCurr}</td>
-                <td class="col-num col-readonly" style="font-weight:600;">${formatNum(qKrw)}</td>
-                
-                <!-- 7. 실제 청구 외화 -->
+                <!-- 9. 실제 청구 외화 -->
                 <td class="col-num" style="background:#e0f2fe; color:#0369a1; font-weight:600;">
                     ${formatNum(billedForeign, 2)}
                 </td>
                 
-                <!-- 8. 인보이스 환율 -->
-                <td>
+                <!-- 10. 실제 입력: 인보이스 환율 -->
+                <td style="background:#f0f9ff;">
                     <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
                 </td>
                 
-                <!-- 8-1. 송금 환율 -->
-                <td>
+                <!-- 11. 실제 입력: 송금 환율 -->
+                <td style="background:#f0f9ff;">
                     <input type="number" class="calc-input paid-rate" step="0.01" value="${cost.paidRate !== undefined ? cost.paidRate : cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'paidRate', this.value)">
                 </td>
                 
-                <!-- 9. 실제 원화 -->
-                <td class="col-num" style="font-weight:600; background:#f8fafc;" id="krw_${idx}">0</td>
+                <!-- 12. 최종 원화 -->
+                <td class="col-num" style="font-weight:600; background:#fff1f2;" id="krw_${idx}">0</td>
                 
-                <!-- 10. 분석 -->
-                <td class="col-num" style="line-height:1.4;">
+                <!-- 13. 분석 -->
+                <td class="col-num" style="line-height:1.4; background:#fff1f2;">
                     <div class="val-variance" id="var_${idx}">0</div>
                     <div class="val-gainloss" id="gl_${idx}" style="font-size:0.85em;">0</div>
                 </td>

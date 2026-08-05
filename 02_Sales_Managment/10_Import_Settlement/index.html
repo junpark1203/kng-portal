@@ -185,33 +185,31 @@
                             <thead>
                                 <tr class="header-group">
                                     <th colspan="2" class="group-basic">항목 구분</th>
-                                    <th colspan="3" class="group-billed">단가 및 수량 입력</th>
-                                    <th colspan="2" class="group-quoted">예상 비용 (기준)</th>
-                                    <th colspan="3" class="group-billed">실제 청구</th>
-                                    <th colspan="2" class="group-analysis">분석 (차이)</th>
+                                    <th colspan="3" class="group-quoted" style="background:#f8fafc;">예상 견적 (비교 기준)</th>
+                                    <th colspan="6" class="group-billed" style="background:#f0f9ff;">실제 청구 내역 (인보이스)</th>
+                                    <th colspan="2" class="group-analysis" style="background:#fff1f2;">최종 결과 및 분석</th>
                                 </tr>
                                 <tr class="header-sub">
                                     <!-- 항목 구분 -->
                                     <th style="width:120px;">그룹</th>
                                     <th style="width:200px;">항목명</th>
                                     
-                                    <!-- 입력 -->
-                                    <th class="editable-col">단위 / 통화</th>
-                                    <th class="editable-col" style="width:100px;">수량 (Qty)</th>
-                                    <th class="editable-col" style="width:120px;">단가 (Amount)</th>
+                                    <!-- 예상 견적 (Read-only) -->
+                                    <th style="background:#f8fafc; width:80px;">통화</th>
+                                    <th style="background:#f8fafc;">외화 총액</th>
+                                    <th style="background:#f8fafc;">원화(KRW)</th>
                                     
-                                    <!-- 예상 -->
-                                    <th>예상 총액(외화)</th>
-                                    <th>예상 원화(KRW)</th>
+                                    <!-- 실제 청구 (Editable) -->
+                                    <th class="editable-col" style="background:#f0f9ff;">통화 / 단위</th>
+                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">수량 (Qty)</th>
+                                    <th class="editable-col" style="background:#f0f9ff; width:100px;">단가 (Amt)</th>
+                                    <th style="background:#f0f9ff; color:#0369a1;">청구 외화</th>
+                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">인보이스 환율</th>
+                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">송금 환율</th>
                                     
-                                    <!-- 실제 청구 -->
-                                    <th>실제 총액(외화)</th>
-                                    <th class="editable-col" style="width:100px;">인보이스 환율</th>
-                                    <th class="editable-col" style="width:100px;">송금 환율</th>
-                                    
-                                    <!-- 정산 -->
-                                    <th>실제 원화(KRW)</th>
-                                    <th>비용증감 / 환차익손</th>
+                                    <!-- 최종 결과 -->
+                                    <th style="background:#fff1f2;">실제 원화(KRW)</th>
+                                    <th style="background:#fff1f2;">비용증감 / 환차익손</th>
                                 </tr>
                             </thead>
                             <tbody id="settlementTableBody">
