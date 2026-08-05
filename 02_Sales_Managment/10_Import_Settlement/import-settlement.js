@@ -140,7 +140,8 @@ function initEvents() {
             
             // 일괄 적용 (Override row level)
             state.doc.actualCosts.forEach(cost => {
-                if (cost.currency === curr) {
+                const bCurr = cost.billedCurrency || cost.currency;
+                if (bCurr === curr) {
                     cost.paidRate = newVal;
                 }
             });
@@ -296,7 +297,9 @@ function loadSelectedQuote() {
             group: c.group || 'import', // 추가: 과세표준 구분을 위해 그룹 저장
             label: c.label,
             unit: c.unit,
-            currency: c.currency,
+            currency: c.currency, // Legacy
+            quotedCurrency: c.currency,
+            billedCurrency: c.currency,
             quotedForeign: quotedTotalForeign,
             amount: amt,
             unitQty: qty,
@@ -377,7 +380,10 @@ function renderSettlementGrid() {
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
 
     state.doc.actualCosts.forEach((cost, idx) => {
-        let qRate = cost.currency === 'KRW' ? 1 : (snapRates[cost.currency] || 0);
+        const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+
+        let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
         let qKrw = cost.quotedForeign * qRate;
 
         // 1. 그룹 선택
@@ -414,12 +420,12 @@ function renderSettlementGrid() {
         // 3. 단위 / 통화
         let unitHtml = `<input type="text" class="calc-input" value="${cost.unit}" style="width:100%; text-align:center; padding:4px; margin-bottom:4px;" oninput="updateCost(${idx}, 'unit', this.value)">`;
         let currHtml = `
-            <select class="calc-input curr-select" style="padding:4px; width:100%; text-align:center; cursor:pointer;" onchange="updateCost(${idx}, 'currency', this.value)">
-                <option value="KRW" ${cost.currency==='KRW'?'selected':''}>KRW</option>
-                <option value="USD" ${cost.currency==='USD'?'selected':''}>USD</option>
-                <option value="CNY" ${cost.currency==='CNY'?'selected':''}>CNY</option>
-                <option value="EUR" ${cost.currency==='EUR'?'selected':''}>EUR</option>
-                <option value="JPY" ${cost.currency==='JPY'?'selected':''}>JPY</option>
+            <select class="calc-input curr-select" style="padding:4px; width:100%; text-align:center; cursor:pointer;" onchange="updateCost(${idx}, 'billedCurrency', this.value)">
+                <option value="KRW" ${bCurr==='KRW'?'selected':''}>KRW</option>
+                <option value="USD" ${bCurr==='USD'?'selected':''}>USD</option>
+                <option value="CNY" ${bCurr==='CNY'?'selected':''}>CNY</option>
+                <option value="EUR" ${bCurr==='EUR'?'selected':''}>EUR</option>
+                <option value="JPY" ${bCurr==='JPY'?'selected':''}>JPY</option>
             </select>
         `;
 
@@ -462,7 +468,7 @@ function renderSettlementGrid() {
                 </td>
                 
                 <!-- 6. 예상 -->
-                <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : cost.currency}</td>
+                <td class="col-num col-readonly">${formatNum(cost.quotedForeign, 2)} ${cost.isCustom ? '-' : qCurr}</td>
                 <td class="col-num col-readonly" style="font-weight:600;">${formatNum(qKrw)}</td>
                 
                 <!-- 7. 실제 청구 외화 -->
@@ -472,12 +478,12 @@ function renderSettlementGrid() {
                 
                 <!-- 8. 인보이스 환율 -->
                 <td>
-                    <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${cost.currency === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
+                    <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
                 </td>
                 
                 <!-- 8-1. 송금 환율 -->
                 <td>
-                    <input type="number" class="calc-input paid-rate" step="0.01" value="${cost.paidRate !== undefined ? cost.paidRate : cost.billedRate}" ${cost.currency === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'paidRate', this.value)">
+                    <input type="number" class="calc-input paid-rate" step="0.01" value="${cost.paidRate !== undefined ? cost.paidRate : cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'paidRate', this.value)">
                 </td>
                 
                 <!-- 9. 실제 원화 -->
@@ -526,7 +532,7 @@ window.updateCost = function(idx, field, value) {
         renderSettlementGrid();
     }
     
-    if (field === 'currency') {
+    if (field === 'billedCurrency') {
         if (value === 'KRW') {
             cost.billedRate = 1;
             cost.paidRate = 1;
@@ -548,7 +554,9 @@ window.addCustomCost = function(group) {
         group: group || 'import',
         label: '사용자 추가 항목',
         unit: 'Lump Sum',
-        currency: 'KRW',
+        currency: 'KRW', // Legacy
+        quotedCurrency: 'KRW',
+        billedCurrency: 'KRW',
         quotedForeign: 0,
         amount: 0,
         unitQty: 1,
@@ -621,14 +629,16 @@ function calculateAll() {
     const paidRates = state.doc.paidRates || {};
 
     state.doc.actualCosts.forEach((cost, idx) => {
-        const isKrw = cost.currency === 'KRW';
+        const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+        const isKrw = bCurr === 'KRW';
         
         let amt = parseFloat(cost.amount) || 0;
         let qty = parseFloat(cost.unitQty) || 1;
         let billedForeign = amt * qty;
         
         // 1. 견적 예상 원화
-        let qRate = isKrw ? 1 : (snapRates[cost.currency] || 0);
+        let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
         let qKrw = cost.quotedForeign * qRate;
         totalEstKrw += qKrw;
         
