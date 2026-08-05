@@ -161,11 +161,17 @@
 
 .dash-card {
     flex: 1;
-    background: var(--bg-secondary);
-    padding: 15px;
-    border-radius: 8px;
+    background: #ffffff;
+    padding: 20px 15px;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     text-align: center;
+    transition: transform 0.2s;
+}
+
+.dash-card:hover {
+    transform: translateY(-2px);
 }
 
 .dash-card.primary-card {
@@ -269,6 +275,11 @@
 /* 비용 정산 테이블 (와이드 그리드) */
 .table-responsive {
     overflow-x: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    background: #ffffff;
 }
 
 .settlement-table {
@@ -276,6 +287,7 @@
     min-width: 1200px;
     border-collapse: collapse;
     font-size: 0.9rem;
+    border-style: hidden;
 }
 
 .settlement-table th, .settlement-table td {
@@ -311,44 +323,17 @@
 }
 
 .settlement-table tbody tr:hover {
-    background-color: rgba(0,0,0,0.01);
+    background-color: rgba(59, 130, 246, 0.03); /* Subtle blue hover */
 }
 
 .settlement-table td.col-num {
     text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .settlement-table td.col-readonly {
-    background: var(--bg-secondary);
+    background: #f8fafc;
     color: var(--text-secondary);
-}
-
-.settlement-table input[type="number"], 
-.settlement-table input[type="text"], 
-.settlement-table select {
-    width: 100%;
-    padding: 6px 8px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    background-color: transparent;
-    transition: all 0.2s ease;
-}
-
-.settlement-table input[type="number"] {
-    text-align: right;
-}
-.settlement-table input[type="text"] {
-    text-align: center;
-}
-.settlement-table select {
-    text-align: center;
-    cursor: pointer;
-}
-
-.settlement-table input:hover,
-.settlement-table select:hover {
-    background-color: rgba(255, 255, 255, 0.5);
-    border-color: #cbd5e1;
 }
 
 .settlement-table input:focus,
@@ -499,8 +484,9 @@
 .cost-table th {
     font-weight: 600;
     text-align: center;
-    background: #f8fafc;
-    color: #475569;
+    background: #f1f5f9;
+    color: #334155;
+    padding: 12px;
 }
 
 .highlight-col {
