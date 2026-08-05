@@ -120,7 +120,7 @@
     <div id="printArea" class="print-preview-container">
         <style type="text/css">
          #printArea .pdf-content * { margin:0; padding:0; text-indent:0; }
-         #printArea .pdf-content h1 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 24pt; letter-spacing: 0; }
+         #printArea .pdf-content h1 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: underline; font-size: 24pt; letter-spacing: 0; }
          #printArea .pdf-content .s1 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; }
          #printArea .pdf-content p { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; margin:0pt; }
          #printArea .pdf-content .s2 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: normal; text-decoration: none; font-size: 10pt; }
@@ -128,90 +128,25 @@
          #printArea .pdf-content table, #printArea .pdf-content tbody {vertical-align: top; overflow: visible; }
         </style>
 
-        <div class="print-page pdf-content" style="border: none; padding: 15mm 20mm; margin: 0 auto; box-sizing: border-box; width: 210mm; height: 297mm; position: relative; font-family: 'Gulim', '굴림체', monospace;">
-            <div style="border: 2px solid black; width: 100%; height: 255mm; display: flex; flex-direction: column; box-sizing: border-box;">
+        <!-- 배경 PDF가 깔릴 인쇄 영역 (A4 사이즈 고정) -->
+        <div class="print-page pdf-content" style="border: none; padding: 0; margin: 0 auto; box-sizing: border-box; width: 210mm; height: 297mm; position: relative; font-family: 'Gulim', '굴림체', monospace;">
+            
+            <!-- 백그라운드 PDF 레이어 -->
+            <iframe src="leave_bg.pdf#toolbar=0&navpanes=0&scrollbar=0" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 0; pointer-events: none;"></iframe>
+            
+            <!-- 텍스트 데이터 오버레이 레이어 (z-index 10) -->
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; font-size: 12pt; font-weight: bold; color: black;">
+                <span id="pDepartment" style="position: absolute; top: 226px; left: 240px; font-size: 13pt;"></span>
+                <span id="pRank" style="position: absolute; top: 260px; left: 240px; font-size: 13pt;"></span>
+                <span id="pName" style="position: absolute; top: 294px; left: 240px; font-size: 13pt;"></span>
                 
-                <!-- 상단 컨텐츠 영역 (가변 높이) -->
-                <div style="flex: 1; padding-top: 5pt; position: relative; display: flex; flex-direction: column;">
-                <h1 style="padding-top: 5pt;text-indent: 0pt;text-align: center;"><span style="text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px;">휴&nbsp;&nbsp;&nbsp;&nbsp;가&nbsp;&nbsp;&nbsp;&nbsp;원</span></h1>
-                <p style="text-indent: 0pt;text-align: left;"><br/></p>
-                <table style="border-collapse:collapse;margin-left:15.79pt" cellspacing="0">
-                    <tr style="height:19pt">
-                        <td style="width:33pt"><p class="s1" style="padding-left: 2pt;text-indent: 0pt;line-height: 14pt;text-align: left;">소</p></td>
-                        <td style="width:48pt"><p class="s1" style="padding-right: 5pt;text-indent: 0pt;line-height: 14pt;text-align: right;">속 :</p></td>
-                        <td colspan="2" style="width:130pt; white-space:nowrap;"><p class="s1" id="pDepartment" style="padding-left: 5pt;text-indent: 0pt;line-height: 14pt;text-align: left;">주식회사 케앤지</p></td>
-                    </tr>
-                    <tr style="height:25pt">
-                        <td style="width:33pt"><p class="s1" style="padding-top: 4pt;padding-left: 2pt;text-indent: 0pt;text-align: left;">직</p></td>
-                        <td style="width:48pt"><p class="s1" style="padding-top: 4pt;padding-right: 5pt;text-indent: 0pt;text-align: right;">급 :</p></td>
-                        <td colspan="2" style="width:98pt"><p class="s1" id="pRank" style="padding-top: 4pt;padding-left: 5pt;text-indent: 0pt;text-align: left;"></p></td>
-                    </tr>
-                    <tr style="height:19pt">
-                        <td style="width:33pt"><p class="s1" style="padding-top: 4pt;padding-left: 2pt;text-indent: 0pt;line-height: 13pt;text-align: left;">성</p></td>
-                        <td style="width:48pt"><p class="s1" style="padding-top: 4pt;padding-right: 5pt;text-indent: 0pt;line-height: 13pt;text-align: right;">명 :</p></td>
-                        <td colspan="2" style="width:98pt"><p class="s1" id="pName" style="padding-top: 4pt;padding-left: 5pt;text-indent: 0pt;line-height: 13pt;text-align: left;"></p></td>
-                    </tr>
-                </table>
-                <p style="text-indent: 0pt;text-align: left;"><br/></p>
-                <p style="padding-top: 25pt;padding-bottom: 25pt;padding-left: 24pt;text-indent: 47pt;line-height: 158%;text-align: left;">상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기 바랍니다.</p>
-                <p style="text-indent: 0pt;text-align: left;"><br/></p>
-                <p style="padding-left: 18pt;text-indent: 0pt;text-align: left;">기   간 : <span id="pPeriod"></span></p>
-                <p style="padding-top: 10pt;padding-left: 18pt;text-indent: 0pt;text-align: left;">사   유 : <span id="pReason"></span></p>
+                <span id="pPeriod" style="position: absolute; top: 433px; left: 198px; font-size: 13pt;"></span>
+                <span id="pReason" style="position: absolute; top: 468px; left: 198px; font-size: 13pt;"></span>
                 
-                <!-- 결재 및 하단 서명 영역 (flex를 통해 자동으로 아래로 밀려남) -->
-                <div style="margin-top: auto;">
-                    <p style="padding-top: 15pt;text-indent: 0pt;text-align: right; padding-right: 40pt;" id="pDate">YYYY. MM. DD.</p>
-                    <p style="padding-top: 10pt;text-indent: 0pt;text-align: right; padding-right: 40pt;">성  명 : <span id="pSignName"></span> (印)</p>
-                    <p style="padding-top: 5pt;text-indent: 0pt;text-align: right; padding-right: 40pt;">부 서 장 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(印)</p>
-                    <p style="padding-top: 5pt;text-indent: 0pt;text-align: right; padding-right: 40pt;">담당임원 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(印)</p>
-                    
-                    <table style="border-collapse:collapse;margin-left:29.7745pt; margin-top: 10pt;" cellspacing="0">
-                        <tr style="height:18pt">
-                            <td style="width:21pt;border:1.5pt solid black;" rowspan="2">
-                                <p style="text-indent: 0pt;text-align: left;"><br/></p>
-                                <p class="s1" style="padding-left: 4pt;text-indent: 0pt;line-height: 117%;text-align: left;">결<br>재</p>
-                            </td>
-                            <td style="width:45pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">담당</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">대리</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">과장</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">차장</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">부장</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">이사</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">상무</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">전무</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">부사장</p></td>
-                            <td style="width:44pt;border:1pt solid black;"><p class="s1" style="padding-top: 1pt;text-align: center;">사장</p></td>
-                        </tr>
-                        <tr style="height:43pt">
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                            <td style="border:1pt solid black;"></td>
-                        </tr>
-                    </table>
-                    <p style="padding-top: 10pt;padding-left: 26pt;padding-bottom: 5pt;text-indent: 0pt;text-align: left;">주식회사 케앤지 대표이사 귀하</p>
-                </div>
-                </div> <!-- 상단 컨텐츠 영역 끝 -->
+                <span id="pDate" style="position: absolute; top: 620px; left: 593px; font-size: 13pt;"></span>
                 
-                <!-- 하단 비고 영역 (항상 바닥에 붙음) -->
-                <div style="width: 100%; border-top: 1px solid black; padding: 10pt 15pt; box-sizing: border-box; margin-top: auto;">
-                    <div style="display: flex;">
-                        <div style="width: 42pt;" class="s2">비고 1.</div>
-                        <div style="flex: 1; line-height: 140%;" class="s2">취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은 무급을 원칙으로 한다.</div>
-                    </div>
-                    <div style="display: flex; margin-top: 2pt;">
-                        <div style="width: 42pt;" class="s2"></div>
-                        <div style="flex: 1; line-height: 140%;" class="s2">2. 모든 서류는 원본으로 제출한다.</div>
-                    </div>
-                </div>
+                <span id="pSignName" style="position: absolute; top: 654px; left: 593px; font-size: 13pt; letter-spacing: 4px;"></span>
             </div>
-            <p class="s3" style="padding-top: 6pt;text-indent: 0pt;text-align: left; margin-left: -5pt;">KG-A4-A15-0</p>
         </div>
     </div>
 
