@@ -426,7 +426,7 @@ function renderSettlementGrid() {
                 <td class="col-readonly">
                     <div style="display:flex; align-items:center; gap:5px;">
                         <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
-                        ${cost.isCustom ? `<button class="btn-icon" style="color:var(--danger-color); padding:0; display:flex; align-items:center;" onclick="removeCost(${idx})"><i class='bx bx-trash'></i></button>` : ''}
+                        <button class="btn-icon" style="color:var(--danger-color); padding:0; display:flex; align-items:center;" onclick="removeCost(${idx})" title="항목 삭제"><i class='bx bx-trash'></i></button>
                         ${groupHtml}
                     </div>
                 </td>
