@@ -372,17 +372,18 @@ function renderSettlementGrid() {
         // 2. 항목명 선택/입력
         let labelHtml = cost.label;
         if (cost.isCustom) {
+            const isDirectInput = cost.key.startsWith('CUSTOM_');
             let optsHtml = `<option value="">-- 직접 입력 --</option>`;
             DEFAULT_COSTS.filter(c => c.group === cost.group).forEach(c => {
                 optsHtml += `<option value="${c.key}" ${cost.key === c.key ? 'selected' : ''}>${c.label}</option>`;
             });
             
             labelHtml = `
-                <div style="display:flex; flex-direction:column; gap:4px; width:100%;">
+                <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
                     <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)">
                         ${optsHtml}
                     </select>
-                    <input type="text" class="calc-input" value="${cost.label}" style="width:100%; padding:4px;" oninput="updateCost(${idx}, 'label', this.value)">
+                    <input type="text" class="calc-input" value="${cost.label}" placeholder="항목명 직접 입력" style="display: ${isDirectInput ? 'block' : 'none'};" oninput="updateCost(${idx}, 'label', this.value)">
                 </div>
             `;
         }
