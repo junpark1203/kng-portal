@@ -262,7 +262,7 @@
     .print-page {
         box-shadow: none;
         margin: 0;
-        padding: 20mm; /* A4 용지 상하좌우 여백 */
+        padding: 0; /* 배경 PDF를 꽉 채우기 위해 여백 제거 */
         width: 210mm;
         height: 297mm;
         page-break-after: always;
