@@ -131,25 +131,6 @@ function initEvents() {
             state.doc[key.charAt(0).toLowerCase() + key.slice(1)] = e.target.value;
         });
     });
-
-    // 송금 환율 입력
-    ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
-        document.getElementById(`paidRate${curr}`).addEventListener('input', e => {
-            const newVal = parseFloat(e.target.value) || 0;
-            state.doc.paidRates[curr] = newVal;
-            
-            // 일괄 적용 (Override row level)
-            state.doc.actualCosts.forEach(cost => {
-                const bCurr = cost.billedCurrency || cost.currency;
-                if (bCurr === curr) {
-                    cost.paidRate = newVal;
-                }
-            });
-            
-            renderSettlementGrid();
-            calculateAll();
-        });
-    });
     
     // 엑셀, 인쇄
     document.getElementById('btnPrint').addEventListener('click', () => window.print());
@@ -304,7 +285,6 @@ function loadSelectedQuote() {
             amount: amt,
             unitQty: qty,
             billedRate: (quote.exchangeRates && quote.exchangeRates[c.currency]) ? quote.exchangeRates[c.currency] : 0,
-            paidRate: (quote.exchangeRates && quote.exchangeRates[c.currency]) ? quote.exchangeRates[c.currency] : 0,
         });
     });
 
@@ -340,11 +320,6 @@ function fillFormFromState() {
     const qRates = snap.exchangeRates || {};
     ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
         document.getElementById(`roRate${curr}`).innerText = formatNum(qRates[curr] || 0, 2);
-    });
-    
-    // 실제 송금 환율
-    ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
-        document.getElementById(`paidRate${curr}`).value = (doc.paidRates[curr] || 0).toFixed(2);
     });
 
     renderSettlementGrid();
@@ -492,15 +467,10 @@ function renderSettlementGrid() {
                     <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
                 </td>
                 
-                <!-- 11. 실제 입력: 송금 환율 -->
-                <td style="background:#f0f9ff;">
-                    <input type="number" class="calc-input paid-rate" step="0.01" value="${cost.paidRate !== undefined ? cost.paidRate : cost.billedRate}" ${bCurr === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'paidRate', this.value)">
-                </td>
-                
-                <!-- 12. 최종 원화 -->
+                <!-- 11. 최종 원화 -->
                 <td class="col-num" style="font-weight:600; background:#fff1f2;" id="krw_${idx}">0</td>
                 
-                <!-- 13. 분석 -->
+                <!-- 12. 분석 -->
                 <td class="col-num" style="line-height:1.4; background:#fff1f2;">
                     <div class="val-variance" id="var_${idx}">0</div>
                     <div class="val-gainloss" id="gl_${idx}" style="font-size:0.85em;">0</div>
@@ -531,7 +501,7 @@ window.onCostKeyChange = function(idx, key) {
 
 window.updateCost = function(idx, field, value) {
     const cost = state.doc.actualCosts[idx];
-    if (['amount', 'unitQty', 'billedRate', 'paidRate'].includes(field)) {
+    if (['amount', 'unitQty', 'billedRate'].includes(field)) {
         cost[field] = parseFloat(value) || 0;
     } else {
         cost[field] = value;
@@ -546,12 +516,9 @@ window.updateCost = function(idx, field, value) {
     if (field === 'billedCurrency') {
         if (value === 'KRW') {
             cost.billedRate = 1;
-            cost.paidRate = 1;
         } else {
             const snap = state.doc.quotationSnapshot.exchangeRates || {};
-            const paid = state.doc.paidRates || {};
             cost.billedRate = snap[value] || 0;
-            cost.paidRate = paid[value] || snap[value] || 0;
         }
         renderSettlementGrid();
     }
@@ -572,7 +539,6 @@ window.addCustomCost = function(group) {
         amount: 0,
         unitQty: 1,
         billedRate: 1,
-        paidRate: 1,
         isCustom: true
     });
     renderSettlementGrid();
@@ -633,11 +599,12 @@ window.handleDragEnd = function(e) {
 function calculateAll() {
     let totalEstKrw = 0;
     let totalBilledKrw = 0;
-    let totalPaidKrw = 0;
     let totalDutiableKrw = 0;
     
+    let totalCostVariance = 0;
+    let totalExchangeVariance = 0;
+    
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
-    const paidRates = state.doc.paidRates || {};
 
     state.doc.actualCosts.forEach((cost, idx) => {
         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -653,28 +620,31 @@ function calculateAll() {
         let qKrw = cost.quotedForeign * qRate;
         totalEstKrw += qKrw;
         
-        // 2. 인보이스 실제 원화
+        // 2. 인보이스 실제 원화 (청구 기준)
         let bRate = isKrw ? 1 : cost.billedRate;
         let bKrw = billedForeign * bRate;
         totalBilledKrw += bKrw;
         
-        // 3. 실제 송금 원화 (송금 환율 적용)
-        let pRate = isKrw ? 1 : (cost.paidRate !== undefined && cost.paidRate !== 0 ? cost.paidRate : cost.billedRate);
-        if (pRate === 0 && !isKrw) pRate = bRate; 
-        let pKrw = billedForeign * pRate;
-        totalPaidKrw += pKrw;
-        
         if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
-            totalDutiableKrw += pKrw;
+            totalDutiableKrw += bKrw;
         }
         
-        // 4. 분석: 물류비 증감액 (Cost Variance) = 청구 원화 - 예상 원화
-        let variance = bKrw - qKrw;
+        // 3. 분석 분리: 순수 물류비 증감 vs 환차익손
+        let varKrw = 0;
+        let glKrw = 0;
         
-        // 5. 분석: 환차익/손 (Gain/Loss) = (송금 환율 - 인보이스 환율) * 외화 금액
-        // (내가 지불한 원화 - 청구된 원화) = pKrw - bKrw 
-        // 양수면 손실(더 냄), 음수면 이익(덜 냄). 일반적으로 이익을 양수로 표현하므로:
-        let gainLoss = bKrw - pKrw; 
+        if (qCurr === bCurr) {
+            // 통화가 같은 경우 분리 가능
+            varKrw = (billedForeign - cost.quotedForeign) * qRate;
+            glKrw = (bRate - qRate) * billedForeign;
+        } else {
+            // 통화가 다르면 통폐합
+            varKrw = bKrw - qKrw;
+            glKrw = 0;
+        }
+        
+        totalCostVariance += varKrw;
+        totalExchangeVariance += glKrw;
 
         // UI 업데이트
         const krwEl = document.getElementById(`krw_${idx}`);
@@ -684,36 +654,34 @@ function calculateAll() {
         if (krwEl) krwEl.innerText = formatNum(bKrw);
         
         if (varEl) {
-            varEl.innerText = variance > 0 ? '+' + formatNum(variance) : formatNum(variance);
-            varEl.className = 'col-num val-variance ' + (variance > 0 ? 'positive' : (variance < 0 ? 'negative' : ''));
+            varEl.innerText = varKrw > 0 ? '+' + formatNum(varKrw) : formatNum(varKrw);
+            varEl.className = 'col-num val-variance ' + (varKrw > 0 ? 'positive' : (varKrw < 0 ? 'negative' : ''));
         }
         
         if (glEl) {
-            glEl.innerText = gainLoss > 0 ? '+' + formatNum(gainLoss) : formatNum(gainLoss);
-            glEl.className = 'col-num val-gainloss ' + (gainLoss > 0 ? 'gain' : (gainLoss < 0 ? 'loss' : ''));
+            glEl.innerText = glKrw > 0 ? '+' + formatNum(glKrw) : formatNum(glKrw);
+            // 양수면 환율이 오른 것이므로 손실(loss)
+            glEl.className = 'col-num val-gainloss ' + (glKrw > 0 ? 'loss' : (glKrw < 0 ? 'gain' : ''));
         }
     });
     
     // 대시보드 업데이트
-    const totalVariance = totalBilledKrw - totalEstKrw;
-    const totalGainLoss = totalBilledKrw - totalPaidKrw; // 양수: 이익(환율 내림), 음수: 손실(환율 오름)
-    
     document.getElementById('dashTotalEstimated').innerText = '₩ ' + formatNum(totalEstKrw);
     document.getElementById('dashTotalBilled').innerText = '₩ ' + formatNum(totalBilledKrw);
-    document.getElementById('dashTotalPaid').innerText = '₩ ' + formatNum(totalPaidKrw);
     
-    const dashVar = document.getElementById('dashCostVariance');
-    dashVar.innerText = totalVariance > 0 ? '+ ₩ ' + formatNum(totalVariance) : '₩ ' + formatNum(totalVariance);
-    dashVar.style.color = totalVariance > 0 ? '#dc2626' : (totalVariance < 0 ? '#16a34a' : '#0f172a');
+    const dVar = document.getElementById('dashCostVariance');
+    dVar.innerText = (totalCostVariance > 0 ? '+₩ ' : '₩ ') + formatNum(totalCostVariance);
+    dVar.style.color = totalCostVariance > 0 ? '#dc2626' : (totalCostVariance < 0 ? '#16a34a' : 'inherit');
     
-    const dashGl = document.getElementById('dashExchangeGainLoss');
-    dashGl.innerText = totalGainLoss > 0 ? '+ ₩ ' + formatNum(totalGainLoss) : '₩ ' + formatNum(totalGainLoss);
-    dashGl.style.color = totalGainLoss > 0 ? '#a7f3d0' : (totalGainLoss < 0 ? '#fecaca' : '#fff'); // Primary BG 위에 표시되므로 밝은 톤
-
-    renderCostResultTable(totalPaidKrw, totalDutiableKrw);
+    const dGl = document.getElementById('dashExchangeGainLoss');
+    dGl.innerText = (totalExchangeVariance > 0 ? '+₩ ' : '₩ ') + formatNum(totalExchangeVariance);
+    // 대시보드 환차익/손 텍스트 색상 (흰색 베이스에 부호로 구분)
+    
+    // 5. 관세/부가세 계산 (실제 청구 비용 기준)
+    renderCostResultTable(totalBilledKrw, totalDutiableKrw);
 }
 
-function renderCostResultTable(totalPaidKrw, totalDutiableAncillaryKrw) {
+function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
     const tbodyValue = document.getElementById('costTableBodyValue');
     const tbodyVolume = document.getElementById('costTableBodyVolume');
     const section = document.getElementById('costResultSection');
@@ -729,18 +697,17 @@ function renderCostResultTable(totalPaidKrw, totalDutiableAncillaryKrw) {
     const term = state.doc.quotationSnapshot.incoterm;
     const isLCL = state.doc.quotationSnapshot.shipmentType === 'LCL';
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
-    const paidRates = state.doc.paidRates || {};
 
     let totalInvoiceKrw = 0;
     items.forEach(item => {
         const p = item.prices && item.prices[term] ? item.prices[term] : null;
         if (p && p.currency && p.unitPrice) {
-            const pRate = paidRates[p.currency] || snapRates[p.currency] || 1;
+            const pRate = snapRates[p.currency] || 1;
             totalInvoiceKrw += (p.unitPrice * (item.qty || 0) * pRate);
         }
     });
 
-    const allocationRatio = totalInvoiceKrw > 0 ? (totalPaidKrw / totalInvoiceKrw) : 0;
+    const allocationRatio = totalInvoiceKrw > 0 ? (totalBilledKrw / totalInvoiceKrw) : 0;
     let htmlValue = '';
 
     let totalModulus = 0;

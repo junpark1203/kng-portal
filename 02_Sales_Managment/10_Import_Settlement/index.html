@@ -111,61 +111,14 @@
                             <div class="dash-value" id="dashTotalBilled">₩ 0</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">물류비 증감 (차액)</div>
+                            <div class="dash-label">순수 물류비 증감 (차액)</div>
                             <div class="dash-value" id="dashCostVariance">₩ 0</div>
-                            <div class="dash-sub" id="dashCostVarianceSub">실제 청구 - 예상 비용</div>
-                        </div>
-                        <div class="dash-card" style="border-left: 1px solid rgba(0,0,0,0.1);">
-                            <div class="dash-label">실 송금액 (결제환율 적용)</div>
-                            <div class="dash-value" id="dashTotalPaid">₩ 0</div>
+                            <div class="dash-sub" id="dashCostVarianceSub">(청구 외화 - 예상 외화) * 견적환율</div>
                         </div>
                         <div class="dash-card primary-card">
                             <div class="dash-label" style="color:rgba(255,255,255,0.8);">총 환차익 / 환차손</div>
                             <div class="dash-value" id="dashExchangeGainLoss" style="color:#fff;">₩ 0</div>
-                            <div class="dash-sub" style="color:rgba(255,255,255,0.7);">(실 송금환율 - 인보이스환율) * 외화</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- SECTION 3: 환율 설정 -->
-                <section class="edit-section">
-                    <h3>2. 환율 설정</h3>
-                    <div class="rates-container">
-                        <!-- 견적 환율 (Read Only) -->
-                        <div class="rates-box readonly-box">
-                            <div class="ex-header">
-                                <h4><i class='bx bx-bookmark'></i> 견적 환율 (기준)</h4>
-                            </div>
-                            <div class="ex-grid">
-                                <div class="ex-item"><label>USD</label><div class="val">₩ <span id="roRateUSD">0.00</span></div></div>
-                                <div class="ex-item"><label>CNY</label><div class="val">₩ <span id="roRateCNY">0.00</span></div></div>
-                                <div class="ex-item"><label>EUR</label><div class="val">₩ <span id="roRateEUR">0.00</span></div></div>
-                                <div class="ex-item"><label>JPY (100엔)</label><div class="val">₩ <span id="roRateJPY">0.00</span></div></div>
-                            </div>
-                        </div>
-                        <!-- 실제 송금 환율 (Editable) -->
-                        <div class="rates-box active-box">
-                            <div class="ex-header">
-                                <h4><i class='bx bx-money'></i> 실제 송금/결제 환율 (은행 전신환매도율)</h4>
-                            </div>
-                            <div class="ex-grid">
-                                <div class="ex-item">
-                                    <label>USD</label>
-                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateUSD" step="0.01" value="0"></div>
-                                </div>
-                                <div class="ex-item">
-                                    <label>CNY</label>
-                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateCNY" step="0.01" value="0"></div>
-                                </div>
-                                <div class="ex-item">
-                                    <label>EUR</label>
-                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateEUR" step="0.01" value="0"></div>
-                                </div>
-                                <div class="ex-item">
-                                    <label>JPY (100엔당)</label>
-                                    <div class="input-with-symbol"><span>₩</span><input type="number" id="paidRateJPY" step="0.01" value="0"></div>
-                                </div>
-                            </div>
+                            <div class="dash-sub" style="color:rgba(255,255,255,0.7);">(청구환율 - 견적환율) * 청구외화</div>
                         </div>
                     </div>
                 </section>
@@ -185,8 +138,8 @@
                             <thead>
                                 <tr class="header-group">
                                     <th colspan="2" class="group-basic">항목 구분</th>
-                                    <th colspan="3" class="group-quoted" style="background:#f8fafc;">예상 견적 (비교 기준)</th>
-                                    <th colspan="6" class="group-billed" style="background:#f0f9ff;">실제 청구 내역 (인보이스)</th>
+                                    <th colspan="4" class="group-quoted" style="background:#f8fafc;">예상 견적 (비교 기준)</th>
+                                    <th colspan="5" class="group-billed" style="background:#f0f9ff;">실제 청구 내역 (인보이스)</th>
                                     <th colspan="2" class="group-analysis" style="background:#fff1f2;">최종 결과 및 분석</th>
                                 </tr>
                                 <tr class="header-sub">
@@ -197,6 +150,7 @@
                                     <!-- 예상 견적 (Read-only) -->
                                     <th style="background:#f8fafc; width:80px;">통화</th>
                                     <th style="background:#f8fafc;">외화 총액</th>
+                                    <th style="background:#f8fafc; width:80px;">견적 환율</th>
                                     <th style="background:#f8fafc;">원화(KRW)</th>
                                     
                                     <!-- 실제 청구 (Editable) -->
@@ -204,8 +158,7 @@
                                     <th class="editable-col" style="background:#f0f9ff; width:90px;">수량 (Qty)</th>
                                     <th class="editable-col" style="background:#f0f9ff; width:100px;">단가 (Amt)</th>
                                     <th style="background:#f0f9ff; color:#0369a1;">청구 외화</th>
-                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">인보이스 환율</th>
-                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">송금 환율</th>
+                                    <th class="editable-col" style="background:#f0f9ff; width:90px;">청구 환율</th>
                                     
                                     <!-- 최종 결과 -->
                                     <th style="background:#fff1f2;">실제 원화(KRW)</th>
