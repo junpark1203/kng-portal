@@ -135,7 +135,17 @@ function initEvents() {
     // 송금 환율 입력
     ['USD', 'CNY', 'EUR', 'JPY'].forEach(curr => {
         document.getElementById(`paidRate${curr}`).addEventListener('input', e => {
-            state.doc.paidRates[curr] = parseFloat(e.target.value) || 0;
+            const newVal = parseFloat(e.target.value) || 0;
+            state.doc.paidRates[curr] = newVal;
+            
+            // 일괄 적용 (Override row level)
+            state.doc.actualCosts.forEach(cost => {
+                if (cost.currency === curr) {
+                    cost.paidRate = newVal;
+                }
+            });
+            
+            renderSettlementGrid();
             calculateAll();
         });
     });
@@ -291,6 +301,7 @@ function loadSelectedQuote() {
             amount: amt,
             unitQty: qty,
             billedRate: (quote.exchangeRates && quote.exchangeRates[c.currency]) ? quote.exchangeRates[c.currency] : 0,
+            paidRate: (quote.exchangeRates && quote.exchangeRates[c.currency]) ? quote.exchangeRates[c.currency] : 0,
         });
     });
 
@@ -464,6 +475,11 @@ function renderSettlementGrid() {
                     <input type="number" class="calc-input billed-rate" step="0.01" value="${cost.billedRate}" ${cost.currency === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
                 </td>
                 
+                <!-- 8-1. 송금 환율 -->
+                <td>
+                    <input type="number" class="calc-input paid-rate" step="0.01" value="${cost.paidRate !== undefined ? cost.paidRate : cost.billedRate}" ${cost.currency === 'KRW' ? 'readonly style="background:#f1f5f9;"' : ''} oninput="updateCost(${idx}, 'paidRate', this.value)">
+                </td>
+                
                 <!-- 9. 실제 원화 -->
                 <td class="col-num" style="font-weight:600; background:#f8fafc;" id="krw_${idx}">0</td>
                 
@@ -498,7 +514,7 @@ window.onCostKeyChange = function(idx, key) {
 
 window.updateCost = function(idx, field, value) {
     const cost = state.doc.actualCosts[idx];
-    if (['amount', 'unitQty', 'billedRate'].includes(field)) {
+    if (['amount', 'unitQty', 'billedRate', 'paidRate'].includes(field)) {
         cost[field] = parseFloat(value) || 0;
     } else {
         cost[field] = value;
@@ -511,11 +527,14 @@ window.updateCost = function(idx, field, value) {
     }
     
     if (field === 'currency') {
-        if (value === 'KRW') cost.billedRate = 1;
-        else {
+        if (value === 'KRW') {
+            cost.billedRate = 1;
+            cost.paidRate = 1;
+        } else {
             const snap = state.doc.quotationSnapshot.exchangeRates || {};
             const paid = state.doc.paidRates || {};
-            cost.billedRate = paid[value] || snap[value] || 0;
+            cost.billedRate = snap[value] || 0;
+            cost.paidRate = paid[value] || snap[value] || 0;
         }
         renderSettlementGrid();
     }
@@ -534,6 +553,7 @@ window.addCustomCost = function(group) {
         amount: 0,
         unitQty: 1,
         billedRate: 1,
+        paidRate: 1,
         isCustom: true
     });
     renderSettlementGrid();
@@ -618,7 +638,7 @@ function calculateAll() {
         totalBilledKrw += bKrw;
         
         // 3. 실제 송금 원화 (송금 환율 적용)
-        let pRate = isKrw ? 1 : (paidRates[cost.currency] || bRate); // 송금 환율이 0이면 인보이스 환율 기준
+        let pRate = isKrw ? 1 : (cost.paidRate !== undefined && cost.paidRate !== 0 ? cost.paidRate : cost.billedRate);
         if (pRate === 0 && !isKrw) pRate = bRate; 
         let pKrw = billedForeign * pRate;
         totalPaidKrw += pKrw;
