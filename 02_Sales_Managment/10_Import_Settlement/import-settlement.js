@@ -727,7 +727,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
         }
 
         const unitPriceFC = p.unitPrice;
-        const exRate = paidRates[p.currency] || snapRates[p.currency] || 1;
+        const exRate = snapRates[p.currency] || 1;
         const dutyRate = item.dutyRate || 0;
 
         // 가치비례 배분
@@ -769,7 +769,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
                     volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
                 }
             }
-            const itemTotalAncillaryKrw = totalPaidKrw * volumeShareRatio;
+            const itemTotalAncillaryKrw = totalBilledKrw * volumeShareRatio;
             const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
 
             allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
