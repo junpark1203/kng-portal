@@ -143,8 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
         els.pReason.textContent = els.fReason.value;
         els.pDate.textContent = submitDateStr;
         
-        // 서명란 이름은 띄어쓰기 적용 (예: 박 준 영)
-        els.pSignName.textContent = els.fName.value.split('').join(' ');
+        // 서명란 이름 (원본 간격 유지를 위해 띄어쓰기 로직 제거)
+        els.pSignName.textContent = els.fName.value;
 
         // 클론 업데이트 (화면 미리보기용)
         els.printPreviewClone.innerHTML = els.printArea.innerHTML;
