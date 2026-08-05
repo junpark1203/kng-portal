@@ -129,15 +129,18 @@
         </style>
 
         <div class="print-page pdf-content" style="border: none; padding: 25mm 20mm; margin: 0 auto; box-sizing: border-box; width: 210mm; height: 297mm; position: relative; font-family: 'Gulim', '굴림체', monospace;">
-            <div style="border: 2px solid black; width: 100%; height: 240mm; padding-top: 10pt; position: relative;">
-                <p style="text-indent: 0pt;text-align: left;"><br/></p>
+            <div style="border: 2px solid black; width: 100%; height: 240mm; display: flex; flex-direction: column; box-sizing: border-box;">
+                
+                <!-- 상단 컨텐츠 영역 (가변 높이) -->
+                <div style="flex: 1; padding-top: 10pt; position: relative;">
+                    <p style="text-indent: 0pt;text-align: left;"><br/></p>
                 <h1 style="padding-top: 8pt;text-indent: 0pt;text-align: center;">휴&nbsp;&nbsp;가&nbsp;&nbsp;원</h1>
                 <p style="text-indent: 0pt;text-align: left;"><br/></p><br/>
                 <table style="border-collapse:collapse;margin-left:15.79pt" cellspacing="0">
                     <tr style="height:19pt">
                         <td style="width:33pt"><p class="s1" style="padding-left: 2pt;text-indent: 0pt;line-height: 14pt;text-align: left;">소</p></td>
                         <td style="width:48pt"><p class="s1" style="padding-right: 5pt;text-indent: 0pt;line-height: 14pt;text-align: right;">속 :</p></td>
-                        <td colspan="2" style="width:98pt"><p class="s1" id="pDepartment" style="padding-left: 5pt;text-indent: 0pt;line-height: 14pt;text-align: left;">주식회사 케앤지</p></td>
+                        <td colspan="2" style="width:130pt; white-space:nowrap;"><p class="s1" id="pDepartment" style="padding-left: 5pt;text-indent: 0pt;line-height: 14pt;text-align: left;">주식회사 케앤지</p></td>
                     </tr>
                     <tr style="height:25pt">
                         <td style="width:33pt"><p class="s1" style="padding-top: 4pt;padding-left: 2pt;text-indent: 0pt;text-align: left;">직</p></td>
@@ -196,8 +199,10 @@
                     </tr>
                 </table>
                 <p style="padding-top: 10pt;padding-left: 26pt;text-indent: 0pt;text-align: left;">주식회사 케앤지 대표이사 귀하</p>
+                </div> <!-- 상단 컨텐츠 영역 끝 -->
                 
-                <div style="position: absolute; bottom: 0; left: 0; width: 100%; border-top: 1px solid black; padding: 10pt 15pt; box-sizing: border-box;">
+                <!-- 하단 비고 영역 (항상 바닥에 붙음) -->
+                <div style="width: 100%; border-top: 1px solid black; padding: 10pt 15pt; box-sizing: border-box; margin-top: auto;">
                     <p class="s2" style="text-indent: -42pt;line-height: 140%;text-align: left; padding-left: 42pt;">비고 1. 취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은 무급을 원칙으로 한다.</p>
                     <p class="s2" style="padding-left: 42pt;text-indent: 0pt;line-height: 140%;text-align: left;">2. 모든 서류는 원본으로 제출한다.</p>
                 </div>
