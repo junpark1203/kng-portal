@@ -432,6 +432,11 @@ function renderSettlementGrid() {
                     ${formatNum(cost.quotedForeign, 2)}
                 </td>
                 
+                <!-- 4.5. 예상 환율 -->
+                <td class="col-num col-readonly" style="background:#f8fafc;">
+                    ${cost.isCustom ? '-' : formatNum(qRate, 2)}
+                </td>
+                
                 <!-- 5. 예상 원화 -->
                 <td class="col-num col-readonly" style="font-weight:600; background:#f8fafc;">
                     ${formatNum(qKrw)}
