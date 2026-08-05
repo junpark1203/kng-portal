@@ -603,6 +603,10 @@ function calculateAll() {
     state.doc.actualCosts.forEach((cost, idx) => {
         const isKrw = cost.currency === 'KRW';
         
+        let amt = parseFloat(cost.amount) || 0;
+        let qty = parseFloat(cost.unitQty) || 1;
+        let billedForeign = amt * qty;
+        
         // 1. 견적 예상 원화
         let qRate = isKrw ? 1 : (snapRates[cost.currency] || 0);
         let qKrw = cost.quotedForeign * qRate;
@@ -610,13 +614,13 @@ function calculateAll() {
         
         // 2. 인보이스 실제 원화
         let bRate = isKrw ? 1 : cost.billedRate;
-        let bKrw = cost.billedForeign * bRate;
+        let bKrw = billedForeign * bRate;
         totalBilledKrw += bKrw;
         
         // 3. 실제 송금 원화 (송금 환율 적용)
         let pRate = isKrw ? 1 : (paidRates[cost.currency] || bRate); // 송금 환율이 0이면 인보이스 환율 기준
         if (pRate === 0 && !isKrw) pRate = bRate; 
-        let pKrw = cost.billedForeign * pRate;
+        let pKrw = billedForeign * pRate;
         totalPaidKrw += pKrw;
         
         if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
