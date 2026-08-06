@@ -35,6 +35,7 @@ const initExpenseResolutionTables = (dbInstance) => {
                 content TEXT,
                 personInCharge TEXT,
                 status TEXT DEFAULT '임시작성',
+                isProxy TEXT DEFAULT 'false',
                 createdAt TEXT,
                 updatedAt TEXT
             )
@@ -45,6 +46,7 @@ const initExpenseResolutionTables = (dbInstance) => {
                 return;
             }
             dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN status TEXT DEFAULT '임시작성'`, () => {});
+            dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN isProxy TEXT DEFAULT 'false'`, () => {});
             console.log('expense_resolutions 테이블 확인 완료');
 
             // 거래처 프리셋 테이블
@@ -188,19 +190,17 @@ router.post('/', (req, res) => {
         INSERT INTO expense_resolutions (
             id, createdDate, paymentDate, currency, amount, vatAmount,
             vendorId, vendorName, representative, bizRegNumber,
-            bankName, accountNumber, accountHolder,
-            paymentMethod, title, taxInvoiceDate, content, personInCharge,
-            status, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            bankName, accountNumber, accountHolder, paymentMethod,
+            title, taxInvoiceDate, content, personInCharge, status, isProxy, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
         id, p.createdDate || '', p.paymentDate || '', p.currency || 'KRW',
         p.amount || 0, p.vatAmount || 0,
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
-        p.bankName || '', p.accountNumber || '', p.accountHolder || '',
-        p.paymentMethod || 'cash', p.title || '', p.taxInvoiceDate || '',
-        p.content || '', p.personInCharge || '', p.status || '임시작성',
-        now, now
+        p.bankName || '', p.accountNumber || '', p.accountHolder || '', p.paymentMethod || 'cash',
+        p.title || '', p.taxInvoiceDate || '', p.content || '', p.personInCharge || '',
+        p.status || '임시작성', p.isProxy || 'false', now, now
     ];
 
     db.run(sql, params, function(err) {
@@ -218,19 +218,18 @@ router.put('/:id', (req, res) => {
         UPDATE expense_resolutions SET
             createdDate=?, paymentDate=?, currency=?, amount=?, vatAmount=?,
             vendorId=?, vendorName=?, representative=?, bizRegNumber=?,
-            bankName=?, accountNumber=?, accountHolder=?,
-            paymentMethod=?, title=?, taxInvoiceDate=?, content=?, personInCharge=?,
-            status=?, updatedAt=?
+            bankName=?, accountNumber=?, accountHolder=?, paymentMethod=?,
+            title=?, taxInvoiceDate=?, content=?, personInCharge=?,
+            status=?, isProxy=?, updatedAt=?
         WHERE id=?
     `;
     const params = [
         p.createdDate || '', p.paymentDate || '', p.currency || 'KRW',
         p.amount || 0, p.vatAmount || 0,
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
-        p.bankName || '', p.accountNumber || '', p.accountHolder || '',
-        p.paymentMethod || 'cash', p.title || '', p.taxInvoiceDate || '',
-        p.content || '', p.personInCharge || '', p.status || '임시작성',
-        now, id
+        p.bankName || '', p.accountNumber || '', p.accountHolder || '', p.paymentMethod || 'cash',
+        p.title || '', p.taxInvoiceDate || '', p.content || '', p.personInCharge || '',
+        p.status || '임시작성', p.isProxy || 'false', now, id
     ];
 
     db.run(sql, params, function(err) {

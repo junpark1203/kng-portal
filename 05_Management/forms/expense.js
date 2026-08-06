@@ -59,6 +59,13 @@ const fVendorList = document.getElementById('fVendorList');
 const fAccountSelect = document.getElementById('fAccountSelect');
 const accountSelectWrap = document.getElementById('accountSelectWrap');
 const vendorInfoDisplay = document.getElementById('vendorInfoDisplay');
+const fIsProxy = document.getElementById('fIsProxy');
+const proxyInputWrap = document.getElementById('proxyInputWrap');
+const fProxyVendorName = document.getElementById('fProxyVendorName');
+const fProxyRepresentative = document.getElementById('fProxyRepresentative');
+const fProxyBankName = document.getElementById('fProxyBankName');
+const fProxyAccountNumber = document.getElementById('fProxyAccountNumber');
+const fProxyAccountHolder = document.getElementById('fProxyAccountHolder');
 const fTitle = document.getElementById('fTitle');
 const fContent = document.getElementById('fContent');
 
@@ -143,6 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const checks = document.querySelectorAll('.check-row');
         checks.forEach(c => c.checked = e.target.checked);
     });
+
+    if (fIsProxy) {
+        fIsProxy.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                proxyInputWrap.style.display = 'block';
+                accountSelectWrap.style.display = 'none';
+                vendorInfoDisplay.style.display = 'none';
+            } else {
+                proxyInputWrap.style.display = 'none';
+                if (fVendorId.value) {
+                    vendorInfoDisplay.style.display = 'grid';
+                    const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
+                    if (selectedVendor && selectedVendor.accounts && selectedVendor.accounts.length > 1) {
+                        accountSelectWrap.style.display = 'block';
+                    }
+                }
+            }
+        });
+    }
 
     // Form Events
     const calcTotal = () => {
@@ -328,6 +354,14 @@ function showNewExpenseForm() {
     
     vendorInfoDisplay.style.display = 'none';
     accountSelectWrap.style.display = 'none';
+    fIsProxy.checked = false;
+    proxyInputWrap.style.display = 'none';
+    fProxyVendorName.value = '';
+    fProxyRepresentative.value = '';
+    fProxyBankName.value = '';
+    fProxyAccountNumber.value = '';
+    fProxyAccountHolder.value = '';
+
     handleCurrencyChange();
     fAmount.dispatchEvent(new Event('input')); // Trigger calcTotal
 
@@ -371,10 +405,22 @@ async function editExpense(id) {
         updateVendorDropdown();
         handleVendorSelect();
         
-        // After handleVendorSelect, accounts are populated. Select the right one if multiple.
-        if (exp.accountNumber) {
-            const accVal = `${exp.bankName}|${exp.accountNumber}|${exp.accountHolder}`;
-            fAccountSelect.value = accVal;
+        if (exp.isProxy === 'true') {
+            fIsProxy.checked = true;
+            fProxyVendorName.value = exp.vendorName || '';
+            fProxyRepresentative.value = exp.representative || '';
+            fProxyBankName.value = exp.bankName || '';
+            fProxyAccountNumber.value = exp.accountNumber || '';
+            fProxyAccountHolder.value = exp.accountHolder || '';
+            fIsProxy.dispatchEvent(new Event('change'));
+        } else {
+            fIsProxy.checked = false;
+            fIsProxy.dispatchEvent(new Event('change'));
+            // After handleVendorSelect, accounts are populated. Select the right one if multiple.
+            if (exp.accountNumber) {
+                const accVal = `${exp.bankName}|${exp.accountNumber}|${exp.accountHolder}`;
+                fAccountSelect.value = accVal;
+            }
         }
         
         initialFormData = getFormDataString();
@@ -423,9 +469,21 @@ async function duplicateExpense(id) {
         updateVendorDropdown();
         handleVendorSelect();
         
-        if (exp.accountNumber) {
-            const accVal = `${exp.bankName}|${exp.accountNumber}|${exp.accountHolder}`;
-            fAccountSelect.value = accVal;
+        if (exp.isProxy === 'true') {
+            fIsProxy.checked = true;
+            fProxyVendorName.value = exp.vendorName || '';
+            fProxyRepresentative.value = exp.representative || '';
+            fProxyBankName.value = exp.bankName || '';
+            fProxyAccountNumber.value = exp.accountNumber || '';
+            fProxyAccountHolder.value = exp.accountHolder || '';
+            fIsProxy.dispatchEvent(new Event('change'));
+        } else {
+            fIsProxy.checked = false;
+            fIsProxy.dispatchEvent(new Event('change'));
+            if (exp.accountNumber) {
+                const accVal = `${exp.bankName}|${exp.accountNumber}|${exp.accountHolder}`;
+                fAccountSelect.value = accVal;
+            }
         }
         
         initialFormData = getFormDataString();
@@ -444,17 +502,34 @@ async function saveExpense() {
     const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
     if (!selectedVendor) return;
 
+    let vendorName = selectedVendor.vendorName;
+    let representative = selectedVendor.representative;
+    let bizRegNumber = selectedVendor.bizRegNumber;
     let bankName = '', accountNumber = '', accountHolder = '';
-    if (selectedVendor.accounts && selectedVendor.accounts.length === 1) {
-        bankName = selectedVendor.accounts[0].bankName;
-        accountNumber = selectedVendor.accounts[0].accountNumber;
-        accountHolder = selectedVendor.accounts[0].accountHolder;
-    } else if (selectedVendor.accounts && selectedVendor.accounts.length > 1) {
-        const parts = fAccountSelect.value.split('|');
-        if (parts.length === 3) {
-            bankName = parts[0];
-            accountNumber = parts[1];
-            accountHolder = parts[2];
+    const isProxyVal = fIsProxy.checked ? 'true' : 'false';
+
+    if (fIsProxy.checked) {
+        if (!fProxyVendorName.value || !fProxyBankName.value || !fProxyAccountNumber.value || !fProxyAccountHolder.value) {
+            showToast('대납(직접 입력) 시 지급처명, 은행명, 계좌번호, 예금주는 필수 항목입니다.', 'warning');
+            return;
+        }
+        vendorName = fProxyVendorName.value;
+        representative = fProxyRepresentative.value;
+        bankName = fProxyBankName.value;
+        accountNumber = fProxyAccountNumber.value;
+        accountHolder = fProxyAccountHolder.value;
+    } else {
+        if (selectedVendor.accounts && selectedVendor.accounts.length === 1) {
+            bankName = selectedVendor.accounts[0].bankName;
+            accountNumber = selectedVendor.accounts[0].accountNumber;
+            accountHolder = selectedVendor.accounts[0].accountHolder;
+        } else if (selectedVendor.accounts && selectedVendor.accounts.length > 1) {
+            const parts = fAccountSelect.value.split('|');
+            if (parts.length === 3) {
+                bankName = parts[0];
+                accountNumber = parts[1];
+                accountHolder = parts[2];
+            }
         }
     }
 
@@ -466,12 +541,13 @@ async function saveExpense() {
         amount: parseFloat(fAmount.value) || 0,
         vatAmount: isForeignCurrency(fCurrency.value) ? 0 : (parseFloat(fVatAmount.value) || 0),
         vendorId: selectedVendor.id,
-        vendorName: selectedVendor.vendorName,
-        representative: selectedVendor.representative,
-        bizRegNumber: selectedVendor.bizRegNumber,
+        vendorName: vendorName,
+        representative: representative,
+        bizRegNumber: bizRegNumber,
         bankName: bankName,
         accountNumber: accountNumber,
         accountHolder: accountHolder,
+        isProxy: isProxyVal,
         paymentMethod: document.querySelector('input[name="paymentMethod"]:checked').value,
         title: fTitle.value,
         taxInvoiceDate: fTaxInvoiceDate.value,
@@ -596,7 +672,14 @@ function handleVendorSelect() {
         return;
     }
 
+    if (fIsProxy.checked) {
+        vendorInfoDisplay.style.display = 'none';
+        accountSelectWrap.style.display = 'none';
+        return;
+    }
+
     vendorInfoDisplay.style.display = 'grid';
+    
     vendorInfoDisplay.innerHTML = `
         <div class="vi-item"><span class="vi-label">대표자:</span> <span class="vi-value">${vendor.representative || '-'}</span></div>
         <div class="vi-item"><span class="vi-label">사업자번호:</span> <span class="vi-value">${vendor.bizRegNumber || '-'}</span></div>
