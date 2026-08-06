@@ -669,6 +669,7 @@ function calculateAll() {
     let totalEstKrw = 0;
     let totalBilledKrw = 0;
     let totalDutiableKrw = 0;
+    let totalDutiableEstKrw = 0;
     
     let totalCostVariance = 0;
     let totalExchangeVariance = 0;
@@ -699,6 +700,7 @@ function calculateAll() {
         
         if (cost.group === 'ocean' || cost.group === 'export' || cost.key === 'INS') {
             totalDutiableKrw += bKrw;
+            totalDutiableEstKrw += qKrw;
         }
         
         // Group subtotals
@@ -767,10 +769,10 @@ function calculateAll() {
     dGl.style.color = totalExchangeVariance > 0 ? '#dc2626' : (totalExchangeVariance < 0 ? '#16a34a' : 'inherit');
     
     // 5. 관세/부가세 계산
-    renderCostResultTable(totalBilledKrw, totalDutiableKrw);
+    renderCostResultTable(totalBilledKrw, totalDutiableKrw, totalEstKrw, totalDutiableEstKrw);
 }
 
-function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
+function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalEstKrw, totalDutiableEstKrw) {
     const tbodyValue = document.getElementById('costTableBodyValue');
     const tbodyVolume = document.getElementById('costTableBodyVolume');
     const section = document.getElementById('costResultSection');
@@ -796,7 +798,11 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
         }
     });
 
+    // 실청구 기준 배분비율
     const allocationRatio = totalInvoiceKrw > 0 ? (totalBilledKrw / totalInvoiceKrw) : 0;
+    // 견적 기준 배분비율
+    const estAllocationRatio = totalInvoiceKrw > 0 ? (totalEstKrw / totalInvoiceKrw) : 0;
+
     let htmlValue = '';
 
     let totalModulus = 0;
@@ -815,8 +821,8 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
     items.forEach(item => {
         const p = item.prices && item.prices[term] ? item.prices[term] : null;
         if (!p || !p.unitPrice || p.unitPrice === 0) {
-            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
-            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
             return;
         }
 
@@ -824,7 +830,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
         const exRate = snapRates[p.currency] || 1;
         const dutyRate = item.dutyRate || 0;
 
-        // 가치비례 배분
+        // === 실청구 기준 (가치비례 배분) ===
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
         const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
@@ -832,11 +838,28 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
         const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
         const baseCostKrw_Value = baseCostFC_Value * exRate;
 
-        // 관세 산출
         const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * exRate;
         const dutyKrw_Value = cifValueKrw_Value * (dutyRate / 100);
 
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
+
+        // === 견적 기준 (가치비례 배분) ===
+        const estAllocatedFC_Value_Total = unitPriceFC * estAllocationRatio;
+        const estDutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableEstKrw / totalInvoiceKrw) : 0;
+        const estAllocatedFC_Value_Dutiable = unitPriceFC * estDutiableAllocationRatio;
+
+        const estBaseCostFC_Value = unitPriceFC + estAllocatedFC_Value_Total;
+        const estBaseCostKrw_Value = estBaseCostFC_Value * exRate;
+
+        const estCifValueKrw_Value = (unitPriceFC + estAllocatedFC_Value_Dutiable) * exRate;
+        const estDutyKrw_Value = estCifValueKrw_Value * (dutyRate / 100);
+
+        const estCostKrw_Value = estBaseCostKrw_Value + estDutyKrw_Value;
+
+        // 증감
+        const diffValue = realCostKrw_Value - estCostKrw_Value;
+        const diffColorValue = diffValue > 0 ? '#dc2626' : (diffValue < 0 ? '#16a34a' : 'inherit');
+        const diffTextValue = diffValue > 0 ? `+₩ ${formatNum(diffValue)}` : `₩ ${formatNum(diffValue)}`;
 
         htmlValue += `
             <tr>
@@ -846,11 +869,13 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num" style="background:#f0fdf4;">₩ ${formatNum(estCostKrw_Value)}</td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
+                <td class="col-num" style="color:${diffColorValue}; font-weight:600;">${diffTextValue}</td>
             </tr>
         `;
 
-        // 체적/운임톤 배분
+        // === 실청구 기준 (체적/운임톤 배분) ===
         let allocatedFC_Volume_Total = 0;
         let allocatedFC_Volume_Dutiable = 0;
         let volumeShareRatio = 0;
@@ -878,6 +903,31 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
 
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
 
+        // === 견적 기준 (체적/운임톤 배분) ===
+        let estAllocatedFC_Volume_Total = 0;
+        let estAllocatedFC_Volume_Dutiable = 0;
+
+        if (totalModulus > 0 && item.qty > 0) {
+            const estItemTotalAncillaryKrw = totalEstKrw * volumeShareRatio;
+            const estItemDutiableAncillaryKrw = totalDutiableEstKrw * volumeShareRatio;
+
+            estAllocatedFC_Volume_Total = (estItemTotalAncillaryKrw / exRate) / item.qty;
+            estAllocatedFC_Volume_Dutiable = (estItemDutiableAncillaryKrw / exRate) / item.qty;
+        }
+
+        const estBaseCostFC_Volume = unitPriceFC + estAllocatedFC_Volume_Total;
+        const estBaseCostKrw_Volume = estBaseCostFC_Volume * exRate;
+
+        const estCifValueKrw_Volume = (unitPriceFC + estAllocatedFC_Volume_Dutiable) * exRate;
+        const estDutyKrw_Volume = estCifValueKrw_Volume * (dutyRate / 100);
+
+        const estCostKrw_Volume = estBaseCostKrw_Volume + estDutyKrw_Volume;
+
+        // 증감
+        const diffVolume = realCostKrw_Volume - estCostKrw_Volume;
+        const diffColorVolume = diffVolume > 0 ? '#dc2626' : (diffVolume < 0 ? '#16a34a' : 'inherit');
+        const diffTextVolume = diffVolume > 0 ? `+₩ ${formatNum(diffVolume)}` : `₩ ${formatNum(diffVolume)}`;
+
         const shareText = isLCL ? 
             ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
             (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
@@ -890,7 +940,9 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw) {
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num" style="background:#f0fdf4;">₩ ${formatNum(estCostKrw_Volume)}</td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
+                <td class="col-num" style="color:${diffColorVolume}; font-weight:600;">${diffTextVolume}</td>
             </tr>
         `;
     });

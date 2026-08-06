@@ -140,7 +140,7 @@
 
                 <!-- SECTION 5: 품목별 실수입원가 산출 -->
                 <section class="edit-section" id="costResultSection" style="display:none;">
-                    <h3>4. 품목별 실수입원가 산출 (실 청구비용 기준)</h3>
+                    <h3>4. 품목별 실수입원가 산출</h3>
                     
                     <h4 style="margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
                         4-1. 실수입원가 (가치비례 배분법)
@@ -163,7 +163,9 @@
                                             <span class="tooltip-text" style="width:250px;">과세표준(CIF 가액) 기준 산출:<br>(물품대금 + 과세대상 부대비용) × 관세율<br>*정산 시 입력된 실제 송금 환율이 적용됩니다.</span>
                                         </i>
                                     </th>
-                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                    <th class="col-num" style="background:#f0fdf4;">예상원가 (KRW)</th>
+                                    <th class="col-num highlight-col">실청구원가 (KRW)</th>
+                                    <th class="col-num">증감</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyValue">
@@ -187,7 +189,9 @@
                                     <th class="col-num">배분된 부대비용 (외화)</th>
                                     <th class="col-num">실수입원가 (외화)</th>
                                     <th class="col-num">관세 (KRW)</th>
-                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                    <th class="col-num" style="background:#f0fdf4;">예상원가 (KRW)</th>
+                                    <th class="col-num highlight-col">실청구원가 (KRW)</th>
+                                    <th class="col-num">증감</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyVolume">
