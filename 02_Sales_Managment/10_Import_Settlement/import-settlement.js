@@ -106,8 +106,23 @@ const showToast = (msg, isError = false) => {
 
 function generateId() { return Math.random().toString(36).substr(2, 9); }
 
+window.toggleSummaryDetails = function(key) {
+    const rows = document.querySelectorAll(`.detail-row-${key}`);
+    const icon = document.getElementById(`icon_${key}`);
+    
+    let isHidden = false;
+    rows.forEach((row, idx) => {
+        if (idx === 0) isHidden = row.style.display === 'none';
+        row.style.display = isHidden ? 'table-row' : 'none';
+    });
+    
+    if (icon) {
+        icon.className = isHidden ? 'bx bx-minus-square' : 'bx bx-plus-square';
+    }
+};
+
 // ─────────────────────────────────────────────────────────────
-// 초기화 및 이벤트 바인딩
+// 버튼 동작 (엑셀 다운로드 등)바인딩
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
@@ -1065,14 +1080,51 @@ function calculateAll() {
             const diffColor = diff > 0 ? '#dc2626' : (diff < 0 ? '#16a34a' : 'inherit');
             const diffStr = diff > 0 ? '+₩ ' + formatNum(diff) : (diff < 0 ? '-₩ ' + formatNum(Math.abs(diff)) : '₩ 0');
             
+            const hasDetails = (g.key !== 'invoice');
+            const toggleIcon = hasDetails ? `<i class='bx bx-plus-square' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer;" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
+            
             htmlBody += `
-                <tr>
-                    <td style="padding:10px 12px;">${g.label} ${g.key !== 'invoice' && g.key !== 'other' ? '[+]' : ''}</td>
+                <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}>
+                    <td style="padding:10px 12px; font-weight:500;">${g.label} ${toggleIcon}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(est)}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(act)}</td>
-                    <td class="col-num" style="padding:10px 12px; color:${diffColor};">${diffStr}</td>
+                    <td class="col-num" style="padding:10px 12px; color:${diffColor}; font-weight:500;">${diffStr}</td>
                 </tr>
             `;
+
+            if (hasDetails) {
+                let detailRows = '';
+                const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+                state.doc.actualCosts.forEach(cost => {
+                    const gk = cost.group || 'other';
+                    if (gk === g.key && cost.key !== 'INTEREST') {
+                        const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+                        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+                        let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
+                        let qKrw = cost.quotedForeign * qRate;
+                        
+                        let amt = parseFloat(cost.amount) || 0;
+                        let qty = parseFloat(cost.unitQty) || 1;
+                        let billedForeign = amt * qty;
+                        let bRate = bCurr === 'KRW' ? 1 : cost.billedRate;
+                        let bKrw = billedForeign * bRate;
+                        
+                        let itemDiff = bKrw - qKrw;
+                        let itemDiffColor = itemDiff > 0 ? '#dc2626' : (itemDiff < 0 ? '#16a34a' : 'inherit');
+                        let itemDiffStr = itemDiff > 0 ? '+₩ ' + formatNum(itemDiff) : (itemDiff < 0 ? '-₩ ' + formatNum(Math.abs(itemDiff)) : '₩ 0');
+                        
+                        detailRows += `
+                            <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:6px 12px 6px 30px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
+                                <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
+                                <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
+                                <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
+                            </tr>
+                        `;
+                    }
+                });
+                htmlBody += detailRows;
+            }
             
             // "통관/관세" 직후에 포워더 소계 출력
             if (g.key === 'customs') {
