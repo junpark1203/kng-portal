@@ -494,7 +494,7 @@ function renderSettlementGrid() {
                         </div>
                         <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px;">
                             <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
-                            <span class="p-value" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
+                            <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
                         </div>
                         <div class="panel-row">
                             <span class="p-label">환율</span>
@@ -504,7 +504,7 @@ function renderSettlementGrid() {
                         </div>
                         <div class="panel-row">
                             <span class="p-label">원화(KRW)</span>
-                            <span class="p-value" style="font-weight:700;">₩ ${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
+                            <span class="p-value" id="billedKrw_${idx}" style="font-weight:700;">₩ ${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
                         </div>
                     </div>
                 </div>
@@ -722,10 +722,14 @@ function calculateAll() {
         totalExchangeVariance += glKrw;
 
         // UI 업데이트
+        const bfEl = document.getElementById(`billedForeign_${idx}`);
+        const bkEl = document.getElementById(`billedKrw_${idx}`);
         const krwEl = document.getElementById(`krw_${idx}`);
         const varEl = document.getElementById(`var_${idx}`);
         const glEl = document.getElementById(`gl_${idx}`);
         
+        if (bfEl) bfEl.innerText = formatNum(billedForeign, 2);
+        if (bkEl) bkEl.innerText = '₩ ' + formatNum(bKrw);
         if (krwEl) krwEl.innerText = '₩ ' + formatNum(bKrw);
         
         if (varEl) {
