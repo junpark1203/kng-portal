@@ -868,6 +868,8 @@ function calculateAll() {
 
     let totalBilledAncillaryKrw = 0;
     let totalEstAncillaryKrw = 0;
+    let interestEst = 0;
+    let interestAct = 0;
 
     state.doc.actualCosts.forEach((cost, idx) => {
         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -897,8 +899,13 @@ function calculateAll() {
         }
         
         // Group subtotals
-        const gk = cost.group || 'other';
-        if (grpEst[gk] !== undefined) { grpEst[gk] += qKrw; grpAct[gk] += bKrw; }
+        if (cost.key === 'INTEREST') {
+            interestEst += qKrw;
+            interestAct += bKrw;
+        } else {
+            const gk = cost.group || 'other';
+            if (grpEst[gk] !== undefined) { grpEst[gk] += qKrw; grpAct[gk] += bKrw; }
+        }
         
         let varKrw = 0;
         let glKrw = 0;
