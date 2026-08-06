@@ -320,7 +320,7 @@ router.post('/export-excel', async (req, res) => {
         const payStr = paymentDate ? `${String(paymentDate.getMonth() + 1).padStart(2, '0')}/${String(paymentDate.getDate()).padStart(2, '0')}` : '';
 
         const taxDate = data.taxInvoiceDate ? new Date(data.taxInvoiceDate) : null;
-        const taxStr = taxDate ? `${taxDate.getFullYear()}-${String(taxDate.getMonth() + 1).padStart(2, '0')}-${String(taxDate.getDate()).padStart(2, '0')}` : '';
+        const taxStr = taxDate ? `${String(taxDate.getMonth() + 1).padStart(2, '0')}/${String(taxDate.getDate()).padStart(2, '0')}` : '';
 
         // Format amount
         const isForeign = ['USD', 'CNY', 'EUR', 'JPY'].includes(data.currency);

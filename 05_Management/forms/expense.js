@@ -61,8 +61,6 @@ const accountSelectWrap = document.getElementById('accountSelectWrap');
 const vendorInfoDisplay = document.getElementById('vendorInfoDisplay');
 const fIsProxy = document.getElementById('fIsProxy');
 const proxyInputWrap = document.getElementById('proxyInputWrap');
-const fProxyVendorName = document.getElementById('fProxyVendorName');
-const fProxyRepresentative = document.getElementById('fProxyRepresentative');
 const fProxyBankName = document.getElementById('fProxyBankName');
 const fProxyAccountNumber = document.getElementById('fProxyAccountNumber');
 const fProxyAccountHolder = document.getElementById('fProxyAccountHolder');
@@ -356,8 +354,6 @@ function showNewExpenseForm() {
     accountSelectWrap.style.display = 'none';
     fIsProxy.checked = false;
     proxyInputWrap.style.display = 'none';
-    fProxyVendorName.value = '';
-    fProxyRepresentative.value = '';
     fProxyBankName.value = '';
     fProxyAccountNumber.value = '';
     fProxyAccountHolder.value = '';
@@ -407,8 +403,6 @@ async function editExpense(id) {
         
         if (exp.isProxy === 'true') {
             fIsProxy.checked = true;
-            fProxyVendorName.value = exp.vendorName || '';
-            fProxyRepresentative.value = exp.representative || '';
             fProxyBankName.value = exp.bankName || '';
             fProxyAccountNumber.value = exp.accountNumber || '';
             fProxyAccountHolder.value = exp.accountHolder || '';
@@ -471,8 +465,6 @@ async function duplicateExpense(id) {
         
         if (exp.isProxy === 'true') {
             fIsProxy.checked = true;
-            fProxyVendorName.value = exp.vendorName || '';
-            fProxyRepresentative.value = exp.representative || '';
             fProxyBankName.value = exp.bankName || '';
             fProxyAccountNumber.value = exp.accountNumber || '';
             fProxyAccountHolder.value = exp.accountHolder || '';
@@ -509,12 +501,10 @@ async function saveExpense() {
     const isProxyVal = fIsProxy.checked ? 'true' : 'false';
 
     if (fIsProxy.checked) {
-        if (!fProxyVendorName.value || !fProxyBankName.value || !fProxyAccountNumber.value || !fProxyAccountHolder.value) {
-            showToast('대납(직접 입력) 시 지급처명, 은행명, 계좌번호, 예금주는 필수 항목입니다.', 'warning');
+        if (!fProxyBankName.value || !fProxyAccountNumber.value || !fProxyAccountHolder.value) {
+            showToast('대납(직접 입력) 시 은행명, 계좌번호, 예금주는 필수 항목입니다.', 'warning');
             return;
         }
-        vendorName = fProxyVendorName.value;
-        representative = fProxyRepresentative.value;
         bankName = fProxyBankName.value;
         accountNumber = fProxyAccountNumber.value;
         accountHolder = fProxyAccountHolder.value;
@@ -965,8 +955,6 @@ async function showPrintPreview() {
         bizRegNumber = selectedVendor.bizRegNumber;
         
         if (fIsProxy && fIsProxy.checked) {
-            vendorName = fProxyVendorName.value;
-            representative = fProxyRepresentative.value;
             bankName = fProxyBankName.value;
             accountNumber = fProxyAccountNumber.value;
             accountHolder = fProxyAccountHolder.value;
