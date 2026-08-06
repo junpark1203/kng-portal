@@ -102,6 +102,7 @@ router.get('/', async (req, res) => {
             try { r.incoterms = JSON.parse(r.incoterms || '[]'); } catch(e) { r.incoterms = []; }
             try { r.items = JSON.parse(r.items || '[]'); } catch(e) { r.items = []; }
             try { r.forwarders = JSON.parse(r.forwarders || '[]'); } catch(e) { r.forwarders = []; }
+            try { r.otherCosts = JSON.parse(r.otherCosts || '[]'); } catch(e) { r.otherCosts = []; }
             return r;
         });
         res.json(result);
