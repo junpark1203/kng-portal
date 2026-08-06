@@ -279,6 +279,9 @@ function loadSelectedQuote() {
             unit: c.unit,
             currency: c.currency, // Legacy
             quotedCurrency: c.currency,
+            quotedUnit: c.unit,       // 견적 원본 단위 보존
+            quotedQty: qty,           // 견적 원본 수량 보존
+            quotedAmount: amt,        // 견적 원본 단가 보존
             billedCurrency: c.currency,
             quotedForeign: quotedTotalForeign,
             amount: amt,
@@ -430,16 +433,28 @@ function renderSettlementGrid() {
                     <div class="panel-quote">
                         <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
                         <div class="panel-row">
+                            <span class="p-label">단위</span>
+                            <span class="p-value">${cost.isCustom ? '-' : (cost.quotedUnit || cost.unit || '-')}</span>
+                        </div>
+                        <div class="panel-row">
                             <span class="p-label">통화</span>
                             <span class="p-value">${cost.isCustom ? '-' : qCurr}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">총액</span>
-                            <span class="p-value">${formatNum(cost.quotedForeign, 2)}</span>
+                            <span class="p-label">수량</span>
+                            <span class="p-value">${cost.isCustom ? '-' : (cost.quotedQty || '-')}</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">단가</span>
+                            <span class="p-value">${cost.isCustom ? '-' : formatNum(cost.quotedAmount, 2)}</span>
+                        </div>
+                        <div class="panel-row" style="background:rgba(100,116,139,0.06); margin:4px -12px; padding:6px 12px;">
+                            <span class="p-label" style="font-weight:600;">견적금액</span>
+                            <span class="p-value" style="font-weight:600;">${cost.isCustom ? '-' : formatNum(cost.quotedForeign, 2)}</span>
                         </div>
                         <div class="panel-row">
                             <span class="p-label">환율</span>
-                            <span class="p-value">${cost.isCustom ? '-' : formatNum(qRate, 2)}</span>
+                            <span class="p-value">${cost.isCustom ? '-' : (qCurr === 'KRW' ? '-' : formatNum(qRate, 2))}</span>
                         </div>
                         <div class="panel-row">
                             <span class="p-label">원화(KRW)</span>
@@ -474,15 +489,19 @@ function renderSettlementGrid() {
                                 <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)">
                             </div>
                         </div>
-                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px -4px; padding:6px 12px; border-radius:0 0 6px 6px;">
+                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px;">
                             <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
                             <span class="p-value" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
                         </div>
-                        <div class="panel-row" style="margin-top:4px;">
-                            <span class="p-label">청구환율</span>
+                        <div class="panel-row">
+                            <span class="p-label">환율</span>
                             <div class="p-input">
-                                <input type="number" class="calc-input" step="0.01" value="${cost.billedRate}" ${bCurr === 'KRW' ? 'readonly' : ''} oninput="updateCost(${idx}, 'billedRate', this.value)">
+                                ${bCurr === 'KRW' ? '<span class="p-value">-</span>' : `<input type="number" class="calc-input" step="0.01" value="${cost.billedRate}" oninput="updateCost(${idx}, 'billedRate', this.value)">`}
                             </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">원화(KRW)</span>
+                            <span class="p-value" style="font-weight:700;">₩ ${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
                         </div>
                     </div>
                 </div>
@@ -578,6 +597,9 @@ window.addCustomCost = function(group) {
         unit: 'Lump Sum',
         currency: 'KRW',
         quotedCurrency: 'KRW',
+        quotedUnit: '-',
+        quotedQty: 0,
+        quotedAmount: 0,
         billedCurrency: 'KRW',
         quotedForeign: 0,
         amount: 0,
