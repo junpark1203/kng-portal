@@ -616,6 +616,7 @@ function renderSettlementGrid() {
                     ` : `
                     <div class="panel-quote">
                         <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
+                        ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
                             <span class="p-label">단위</span>
                             <span class="p-value">${cost.isCustom ? '-' : (cost.quotedUnit || cost.unit || '-')}</span>
@@ -632,7 +633,8 @@ function renderSettlementGrid() {
                             <span class="p-label">단가</span>
                             <span class="p-value">${cost.isCustom ? '-' : formatNum(cost.quotedAmount, 2)}</span>
                         </div>
-                        <div class="panel-row" style="background:rgba(100,116,139,0.06); margin:4px -12px; padding:6px 12px;">
+                        `}
+                        <div class="panel-row" style="background:rgba(100,116,139,0.06); margin:4px -12px; padding:6px 12px; ${cost.group === 'invoice' ? 'margin-top:20px;' : ''}">
                             <span class="p-label" style="font-weight:600;">견적금액</span>
                             <span class="p-value" style="font-weight:600;">${cost.isCustom ? '-' : formatNum(cost.quotedForeign, 2)}</span>
                         </div>
@@ -680,6 +682,7 @@ function renderSettlementGrid() {
                     ` : `
                     <div class="panel-billed">
                         <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
+                        ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
                             <span class="p-label">단위</span>
                             <div class="p-input-wide">
@@ -704,7 +707,8 @@ function renderSettlementGrid() {
                                 <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)">
                             </div>
                         </div>
-                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px;">
+                        `}
+                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; ${cost.group === 'invoice' ? 'margin-top:20px;' : ''}">
                             <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
                             <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
                         </div>
