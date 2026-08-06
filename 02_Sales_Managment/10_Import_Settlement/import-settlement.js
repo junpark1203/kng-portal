@@ -315,12 +315,13 @@ function loadSelectedQuote() {
 
         quote.otherCosts.forEach((oc, ocIdx) => {
             let amt = parseFloat(oc.amount) || 0;
+            let duration = 0, colDays = 0, rate = 0;
             
-            // 이자비용 자동 계산 (견적 기준)
+            // 이자비용 (견적 기준 초기 원금)
             if (oc.type === 'calculated' && oc.id === 'interest') {
-                const duration = parseFloat(oc.durationMonths) || 0;
-                const colDays = parseFloat(oc.collectionDays) || 0;
-                const rate = parseFloat(oc.interestRate) || 0;
+                duration = parseFloat(oc.durationMonths) || 0;
+                colDays = parseFloat(oc.collectionDays) || 0;
+                rate = parseFloat(oc.interestRate) || 0;
                 const avgMonths = ((duration + 1) / 2) + (colDays / 30);
                 const principal = invKrw + subKrw;
                 amt = principal * (avgMonths / 12) * (rate / 100);
@@ -329,7 +330,7 @@ function loadSelectedQuote() {
             state.doc.actualCosts.push({
                 id: generateId(),
                 key: oc.id === 'interest' ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
-                group: 'other', // 기타비용 탭 (새로 정의된 키가 없으면 other)
+                group: 'other', // 기타비용 탭
                 label: oc.name || oc.label || '기타비용',
                 unit: 'Lump Sum',
                 currency: 'KRW',
@@ -342,7 +343,10 @@ function loadSelectedQuote() {
                 amount: amt,
                 unitQty: 1,
                 billedRate: 1,
-                isCustom: true
+                isCustom: false, // 견적서에서 불러온 항목은 모두 고정 텍스트로 처리
+                durationMonths: duration,
+                collectionDays: colDays,
+                interestRate: rate
             });
         });
     }
@@ -487,6 +491,27 @@ function renderSettlementGrid() {
 
                 <div class="card-body">
                     <!-- 좌측: 예상 견적 (Read-only) -->
+                    ${cost.key === 'INTEREST' ? `
+                    <div class="panel-quote">
+                        <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
+                        <div class="panel-row">
+                            <span class="p-label">사업기간</span>
+                            <span class="p-value">${cost.durationMonths || 0} 개월</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">대금회수</span>
+                            <span class="p-value">${cost.collectionDays || 0} 일</span>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label">연이자율</span>
+                            <span class="p-value">${cost.interestRate || 0} %</span>
+                        </div>
+                        <div class="panel-row" style="background:rgba(100,116,139,0.06); margin:4px -12px; padding:6px 12px; margin-top:20px;">
+                            <span class="p-label" style="font-weight:600;">견적금액</span>
+                            <span class="p-value" style="font-weight:600;">₩ ${formatNum(cost.quotedAmount)}</span>
+                        </div>
+                    </div>
+                    ` : `
                     <div class="panel-quote">
                         <div class="panel-title"><i class='bx bx-file'></i> 예상 견적</div>
                         <div class="panel-row">
@@ -518,8 +543,39 @@ function renderSettlementGrid() {
                             <span class="p-value" style="font-weight:700;">₩ ${formatNum(qKrw)}</span>
                         </div>
                     </div>
+                    `}
 
                     <!-- 우측: 실제 청구 (Editable) -->
+                    ${cost.key === 'INTEREST' ? `
+                    <div class="panel-billed">
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
+                        <div class="panel-row">
+                            <span class="p-label" style="flex:0 0 70px;">사업기간</span>
+                            <div class="p-input-wide" style="display:flex; align-items:center;">
+                                <input type="number" class="calc-input" style="text-align:right;" value="${cost.durationMonths || 0}" oninput="updateCost(${idx}, 'durationMonths', this.value)">
+                                <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">개월</span>
+                            </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label" style="flex:0 0 70px;">대금회수</span>
+                            <div class="p-input-wide" style="display:flex; align-items:center;">
+                                <input type="number" class="calc-input" style="text-align:right;" value="${cost.collectionDays || 0}" oninput="updateCost(${idx}, 'collectionDays', this.value)">
+                                <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">일</span>
+                            </div>
+                        </div>
+                        <div class="panel-row">
+                            <span class="p-label" style="flex:0 0 70px;">연이자율</span>
+                            <div class="p-input-wide" style="display:flex; align-items:center;">
+                                <input type="number" class="calc-input" step="0.1" style="text-align:right;" value="${cost.interestRate || 0}" oninput="updateCost(${idx}, 'interestRate', this.value)">
+                                <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">%</span>
+                            </div>
+                        </div>
+                        <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; margin-top:20px;">
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">청구금액</span>
+                            <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem; font-weight:700;">₩ ${formatNum(amt)}</span>
+                        </div>
+                    </div>
+                    ` : `
                     <div class="panel-billed">
                         <div class="panel-title"><i class='bx bx-edit-alt'></i> 실제 청구 (입력)</div>
                         <div class="panel-row">
@@ -561,6 +617,7 @@ function renderSettlementGrid() {
                             <span class="p-value" id="billedKrw_${idx}" style="font-weight:700;">₩ ${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
                         </div>
                     </div>
+                    `}
                 </div>
 
                 <!-- 하단: 결과 -->
@@ -621,7 +678,7 @@ window.onCostKeyChange = function(idx, key) {
 
 window.updateCost = function(idx, field, value) {
     const cost = state.doc.actualCosts[idx];
-    if (['amount', 'unitQty', 'billedRate'].includes(field)) {
+    if (['amount', 'unitQty', 'billedRate', 'durationMonths', 'collectionDays', 'interestRate'].includes(field)) {
         cost[field] = parseFloat(value) || 0;
     } else {
         cost[field] = value;
@@ -730,6 +787,44 @@ function calculateAll() {
     
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
     
+    // --- 2-Pass 이자비용 실시간 산출 로직 ---
+    // 1. 물품대 원화 환산액(invKrw) 산출
+    let invKrw = 0;
+    const term = state.doc.quotationSnapshot.incoterm;
+    (state.doc.quotationSnapshot.items || []).forEach(item => {
+        const p = item.prices && item.prices[term] ? item.prices[term] : null;
+        if (p && p.currency && p.unitPrice) {
+            const exRate = snapRates[p.currency] || 1;
+            invKrw += p.unitPrice * (item.qty || 0) * exRate;
+        }
+    });
+
+    // 2. 이자비용을 제외한 나머지 실제 부대비용 원화 합산액(subKrw) 산출
+    let subKrw = 0;
+    state.doc.actualCosts.forEach(cost => {
+        if (cost.key === 'INTEREST') return;
+        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+        let amt = parseFloat(cost.amount) || 0;
+        let qty = parseFloat(cost.unitQty) || 1;
+        let bRate = (bCurr === 'KRW') ? 1 : (parseFloat(cost.billedRate) || 0);
+        subKrw += (amt * qty) * bRate;
+    });
+
+    // 3. 이자비용 항목의 실제 청구금액 업데이트
+    state.doc.actualCosts.forEach(cost => {
+        if (cost.key === 'INTEREST') {
+            const duration = parseFloat(cost.durationMonths) || 0;
+            const colDays = parseFloat(cost.collectionDays) || 0;
+            const rate = parseFloat(cost.interestRate) || 0;
+            const avgMonths = ((duration + 1) / 2) + (colDays / 30);
+            const principal = invKrw + subKrw;
+            cost.amount = principal * (avgMonths / 12) * (rate / 100);
+            cost.unitQty = 1;
+            cost.billedRate = 1;
+        }
+    });
+    // ------------------------------------------
+
     // Per-group accumulators
     const grpEst = {};
     const grpAct = {};
