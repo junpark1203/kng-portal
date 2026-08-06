@@ -293,6 +293,60 @@ function loadSelectedQuote() {
         });
     });
 
+    // 기타 비용 (이자비용 등) 가져오기
+    if (quote.otherCosts && Array.isArray(quote.otherCosts)) {
+        // 이자비용 계산을 위한 원본 견적 금액(원금) 산출
+        let invKrw = 0;
+        (quote.items || []).forEach(item => {
+            const p = item.prices && item.prices[term] ? item.prices[term] : null;
+            if (p && p.currency && p.unitPrice) {
+                const exRate = quote.exchangeRates[p.currency] || 1;
+                invKrw += p.unitPrice * (item.qty || 0) * exRate;
+            }
+        });
+
+        let subKrw = 0;
+        state.doc.quotationSnapshot.costs.forEach(c => {
+            let amt = parseFloat(c.amount) || 0;
+            let qty = parseFloat(c.unitQty) || 1;
+            let exRate = quote.exchangeRates[c.currency] || 1;
+            subKrw += (amt * qty) * exRate;
+        });
+
+        quote.otherCosts.forEach((oc, ocIdx) => {
+            let amt = parseFloat(oc.amount) || 0;
+            
+            // 이자비용 자동 계산 (견적 기준)
+            if (oc.type === 'calculated' && oc.id === 'interest') {
+                const duration = parseFloat(oc.durationMonths) || 0;
+                const colDays = parseFloat(oc.collectionDays) || 0;
+                const rate = parseFloat(oc.interestRate) || 0;
+                const avgMonths = ((duration + 1) / 2) + (colDays / 30);
+                const principal = invKrw + subKrw;
+                amt = principal * (avgMonths / 12) * (rate / 100);
+            }
+            
+            state.doc.actualCosts.push({
+                id: generateId(),
+                key: oc.id === 'interest' ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
+                group: 'other', // 기타비용 탭 (새로 정의된 키가 없으면 other)
+                label: oc.name || oc.label || '기타비용',
+                unit: 'Lump Sum',
+                currency: 'KRW',
+                quotedCurrency: 'KRW',
+                quotedUnit: 'Lump Sum',
+                quotedQty: 1,
+                quotedAmount: amt,
+                billedCurrency: 'KRW',
+                quotedForeign: amt,
+                amount: amt,
+                unitQty: 1,
+                billedRate: 1,
+                isCustom: true
+            });
+        });
+    }
+
     // 화면 갱신
     document.getElementById('quoteModal').classList.remove('active');
     fillFormFromState();
