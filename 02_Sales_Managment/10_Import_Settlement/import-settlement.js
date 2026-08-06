@@ -511,6 +511,73 @@ function renderSettlementGrid() {
                 `<option value="${c}" ${bCurr===c?'selected':''}>${c}</option>`
             ).join('');
 
+            // Invoice 아이템 리스트 HTML 생성
+            let invoiceItemsHtml = '';
+            if (cost.group === 'invoice') {
+                const term = state.doc.quotationSnapshot.incoterm || 'FOB';
+                const snapItems = state.doc.quotationSnapshot.items || [];
+                
+                let trs = '';
+                let totalForeignSum = 0;
+                let totalQty = 0;
+                
+                snapItems.forEach(sItem => {
+                    const p = sItem.prices && sItem.prices[term] ? sItem.prices[term] : null;
+                    if (p && p.currency === qCurr) {
+                        const rowForeign = p.unitPrice * (sItem.qty || 0);
+                        totalForeignSum += rowForeign;
+                        totalQty += (sItem.qty || 0);
+                        
+                        trs += `
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding:8px; color:#334155;">${sItem.name || '-'}</td>
+                                <td style="padding:8px; text-align:center;">${sItem.qty || 0}</td>
+                                <td style="padding:8px; text-align:center;">${sItem.unit || '-'}</td>
+                                <td style="padding:8px; text-align:center;">${sItem.dutyRate || 0}%</td>
+                                <td style="padding:8px; text-align:center;">${p.currency}</td>
+                                <td style="padding:8px; text-align:right;">${formatNum(p.unitPrice, 2)}</td>
+                                <td style="padding:8px; text-align:right; font-weight:600;">${formatNum(rowForeign, 2)}</td>
+                            </tr>
+                        `;
+                    }
+                });
+                
+                if (trs) {
+                    trs += `
+                        <tr style="background: #f8fafc; font-weight: 600;">
+                            <td style="padding:8px; text-align:center;">합계</td>
+                            <td style="padding:8px; text-align:center;">${formatNum(totalQty)}</td>
+                            <td colspan="4"></td>
+                            <td style="padding:8px; text-align:right;">${qCurr} ${formatNum(totalForeignSum, 2)}</td>
+                        </tr>
+                    `;
+                }
+
+                invoiceItemsHtml = `
+                    <div style="grid-column: 1 / -1; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
+                        <div style="background: #f8fafc; padding: 10px 12px; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; font-size:14px;">
+                            <i class='bx bx-list-ul'></i> 수입 대상 품목 내역 (예상 견적)
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;">
+                            <thead>
+                                <tr style="background: #f1f5f9; color: #475569; text-align: left; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="padding: 8px;">품명</th>
+                                    <th style="padding: 8px; text-align:center;">수량</th>
+                                    <th style="padding: 8px; text-align:center;">단위</th>
+                                    <th style="padding: 8px; text-align:center;">관세율</th>
+                                    <th style="padding: 8px; text-align:center;">통화</th>
+                                    <th style="padding: 8px; text-align:right;">단가</th>
+                                    <th style="padding: 8px; text-align:right;">총액</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${trs || '<tr><td colspan="7" style="text-align:center; padding:12px; color:#64748b;">항목이 없습니다.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
             html += `
             <div class="cost-item-card" draggable="true" data-idx="${idx}"
                 ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)"
@@ -524,6 +591,7 @@ function renderSettlementGrid() {
                 </div>
 
                 <div class="card-body">
+                    ${invoiceItemsHtml}
                     <!-- 좌측: 예상 견적 (Read-only) -->
                     ${cost.key === 'INTEREST' ? `
                     <div class="panel-quote">
