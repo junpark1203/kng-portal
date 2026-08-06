@@ -956,18 +956,32 @@ async function showPrintPreview() {
     
     // Vendor Info
     const selectedVendor = currentVendors.find(v => v.id === fVendorId.value);
+    let vendorName = '', representative = '', bizRegNumber = '';
     let bankName = '', accountNumber = '', accountHolder = '';
+
     if (selectedVendor) {
-        if (selectedVendor.accounts && selectedVendor.accounts.length === 1) {
-            bankName = selectedVendor.accounts[0].bankName;
-            accountNumber = selectedVendor.accounts[0].accountNumber;
-            accountHolder = selectedVendor.accounts[0].accountHolder;
-        } else if (selectedVendor.accounts && selectedVendor.accounts.length > 1) {
-            const parts = fAccountSelect.value.split('|');
-            if (parts.length === 3) {
-                bankName = parts[0];
-                accountNumber = parts[1];
-                accountHolder = parts[2];
+        vendorName = selectedVendor.vendorName;
+        representative = selectedVendor.representative;
+        bizRegNumber = selectedVendor.bizRegNumber;
+        
+        if (fIsProxy && fIsProxy.checked) {
+            vendorName = fProxyVendorName.value;
+            representative = fProxyRepresentative.value;
+            bankName = fProxyBankName.value;
+            accountNumber = fProxyAccountNumber.value;
+            accountHolder = fProxyAccountHolder.value;
+        } else {
+            if (selectedVendor.accounts && selectedVendor.accounts.length === 1) {
+                bankName = selectedVendor.accounts[0].bankName;
+                accountNumber = selectedVendor.accounts[0].accountNumber;
+                accountHolder = selectedVendor.accounts[0].accountHolder;
+            } else if (selectedVendor.accounts && selectedVendor.accounts.length > 1) {
+                const parts = fAccountSelect.value.split('|');
+                if (parts.length === 3) {
+                    bankName = parts[0];
+                    accountNumber = parts[1];
+                    accountHolder = parts[2];
+                }
             }
         }
     }
@@ -988,9 +1002,9 @@ async function showPrintPreview() {
         amount: amount,
         vatAmount: vat,
         vendorId: selectedVendor ? selectedVendor.id : '',
-        vendorName: selectedVendor ? selectedVendor.vendorName : '',
-        representative: selectedVendor ? selectedVendor.representative : '',
-        bizRegNumber: selectedVendor ? selectedVendor.bizRegNumber : '',
+        vendorName: vendorName,
+        representative: representative,
+        bizRegNumber: bizRegNumber,
         bankName: bankName,
         accountNumber: accountNumber,
         accountHolder: accountHolder,
