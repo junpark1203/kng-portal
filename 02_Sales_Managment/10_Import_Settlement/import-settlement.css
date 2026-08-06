@@ -499,7 +499,8 @@
     border: 1px solid #3b82f6;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
-.calc-input:read-only, .calc-input[readonly] {
+input.calc-input:read-only, input.calc-input[readonly],
+textarea.calc-input:read-only, textarea.calc-input[readonly] {
     border-bottom: none;
     color: #64748b;
     pointer-events: none;
