@@ -764,6 +764,7 @@ function calculateAll() {
     
     const dGl = document.getElementById('dashExchangeGainLoss');
     dGl.innerText = (totalExchangeVariance > 0 ? '+₩ ' : '₩ ') + formatNum(totalExchangeVariance);
+    dGl.style.color = totalExchangeVariance > 0 ? '#dc2626' : (totalExchangeVariance < 0 ? '#16a34a' : 'inherit');
     
     // 5. 관세/부가세 계산
     renderCostResultTable(totalBilledKrw, totalDutiableKrw);
