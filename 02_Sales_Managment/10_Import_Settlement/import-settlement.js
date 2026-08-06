@@ -86,7 +86,10 @@ async function authFetch(url, opts = {}) {
     return res.json();
 }
 
-const formatNum = (num, decimals = 0) => Number(num).toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+const formatNum = (num, decimals = 0) => {
+    if (num == null || isNaN(Number(num))) return '-';
+    return Number(num).toLocaleString('ko-KR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
 
 const showToast = (msg, isError = false) => {
     const container = document.getElementById('toastContainer');
@@ -442,7 +445,7 @@ function renderSettlementGrid() {
                         </div>
                         <div class="panel-row">
                             <span class="p-label">수량</span>
-                            <span class="p-value">${cost.isCustom ? '-' : (cost.quotedQty || '-')}</span>
+                            <span class="p-value">${cost.isCustom ? '-' : (cost.quotedQty != null ? cost.quotedQty : '-')}</span>
                         </div>
                         <div class="panel-row">
                             <span class="p-label">단가</span>

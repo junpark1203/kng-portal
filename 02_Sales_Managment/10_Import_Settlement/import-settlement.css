@@ -421,6 +421,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 4px 0;
+    min-height: 36px;
 }
 .panel-row + .panel-row { border-top: 1px solid rgba(0,0,0,0.04); }
 
