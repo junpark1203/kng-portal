@@ -78,9 +78,6 @@
                                 <option value="completed">정산 완료 (Completed)</option>
                             </select>
                         </div>
-                        <div class="fg">
-                            <label>비고</label>
-                            <input type="text" id="docRemarks" placeholder="추가 메모 입력">
                         </div>
                     </div>
 
@@ -200,6 +197,13 @@
                     </div>
                 </section>
 
+                <!-- SECTION 5: 특이사항 및 비고 -->
+                <section class="edit-section" id="remarksSection" style="margin-bottom: 2rem;">
+                    <h3>5. 특이사항 및 비고 (Remarks)</h3>
+                    <div style="margin-top: 15px;">
+                        <textarea id="docRemarks" class="calc-input" style="height: 120px; resize: vertical; padding: 10px; width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; background: #ffffff;" placeholder="단가 변동 사유, 화물 지연 사유 등 표에 입력할 수 없는 특이사항을 자유롭게 기재해 주세요."></textarea>
+                    </div>
+                </section>
                 <div class="bottom-actions">
                     <button class="btn-outline btn-large" id="btnCancelEditBottom">취소</button>
                     <button class="btn-primary btn-large" id="btnSaveSettlementBottom"><i class='bx bx-save'></i> 정산 저장</button>
