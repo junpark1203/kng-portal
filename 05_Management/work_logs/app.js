@@ -3,6 +3,15 @@ const API_BASE = (window.location.hostname === 'localhost' || window.location.ho
     ? 'http://localhost:8788/api/work-logs'
     : 'https://kng.junparks.com/api/work-logs';
 
+function getImgSrc(url) {
+    if (!url) return '';
+    if (url.startsWith('/api/work-logs')) {
+        const base = API_BASE.split('/api/work-logs')[0];
+        return base + url;
+    }
+    return url;
+}
+
 async function authFetch(url, options = {}) {
     let token = null;
     try {
@@ -194,8 +203,9 @@ function renderGallery() {
     attachedImages.forEach((url, index) => {
         const item = document.createElement('div');
         item.className = 'attachment-item';
+        const absoluteUrl = getImgSrc(url);
         item.innerHTML = `
-            <img src="${url}" alt="attachment" onclick="window.open('${url}', '_blank')">
+            <img src="${absoluteUrl}" alt="attachment" onclick="window.open('${absoluteUrl}', '_blank')">
             <button class="btn-remove" data-index="${index}"><i class="fa-solid fa-xmark"></i></button>
         `;
         attachmentGallery.appendChild(item);
@@ -364,7 +374,10 @@ function renderList() {
                 const imgs = JSON.parse(log.attachedImages);
                 if (imgs.length > 0) {
                     imagesHtml = `<div class="log-attachments">` + 
-                        imgs.map(url => `<img src="${url}" onclick="window.open('${url}', '_blank')">`).join('') +
+                        imgs.map(url => {
+                            const absUrl = getImgSrc(url);
+                            return `<img src="${absUrl}" onclick="window.open('${absUrl}', '_blank')">`;
+                        }).join('') +
                         `</div>`;
                 }
             } catch(e) {}
