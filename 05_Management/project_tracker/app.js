@@ -38,6 +38,30 @@ const timelineContainer = document.getElementById('timelineContainer');
 const filterStatus = document.getElementById('filterStatus');
 const filterCategory = document.getElementById('filterCategory');
 
+const projectSearch = document.getElementById('projectSearch');
+const logSearchContainer = document.getElementById('logSearchContainer');
+const logSearch = document.getElementById('logSearch');
+
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe.toString()
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+function highlightText(text, keyword) {
+    if (!text) return '';
+    const escapedText = escapeHtml(text);
+    if (!keyword || !keyword.trim()) return escapedText;
+    
+    const escapedKeyword = escapeHtml(keyword.trim()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedKeyword})`, 'gi');
+    return escapedText.replace(regex, '<mark class="highlight">$1</mark>');
+}
+
 const headerTitle = document.getElementById('headerTitle');
 const headerCategory = document.getElementById('headerCategory');
 const headerManager = document.getElementById('headerManager');
@@ -106,6 +130,14 @@ function renderProjectsList() {
     if (sStatus) filtered = filtered.filter(p => p.status === sStatus);
     if (sCat) filtered = filtered.filter(p => p.category === sCat);
 
+    const searchKeyword = projectSearch ? projectSearch.value.trim().toLowerCase() : '';
+    if (searchKeyword) {
+        filtered = filtered.filter(p => 
+            (p.title && p.title.toLowerCase().includes(searchKeyword)) || 
+            (p.manager && p.manager.toLowerCase().includes(searchKeyword))
+        );
+    }
+
     projectsListEl.innerHTML = '';
     
     if (filtered.length === 0) {
@@ -122,13 +154,13 @@ function renderProjectsList() {
 
         div.innerHTML = `
             <div class="project-item-header">
-                <div class="project-item-title">${p.title}</div>
+                <div class="project-item-title">${highlightText(p.title, projectSearch ? projectSearch.value : '')}</div>
                 <div style="width:8px; height:8px; border-radius:50%; background:${statusColor};" title="${p.status}"></div>
             </div>
             <div class="project-item-meta">
                 <span>${p.category}</span>
                 <span>•</span>
-                <span>${p.manager}</span>
+                <span>${highlightText(p.manager, projectSearch ? projectSearch.value : '')}</span>
             </div>
         `;
         projectsListEl.appendChild(div);
@@ -143,6 +175,7 @@ function selectProject(id) {
 
 function showEmptyState() {
     emptyStateEl.classList.remove('hidden');
+    if(logSearchContainer) logSearchContainer.style.display='none';
     projectViewEl.classList.add('hidden');
 }
 
@@ -167,6 +200,8 @@ async function renderProjectView(id) {
         const data = await res.json();
         if (data.success) {
             currentLogs = data.data;
+            if (logSearch) logSearch.value = '';
+            if (logSearchContainer) logSearchContainer.style.display = 'flex';
             renderTimeline(currentLogs);
         }
     } catch (e) {
@@ -177,17 +212,28 @@ async function renderProjectView(id) {
 function renderTimeline(logs) {
     timelineContainer.innerHTML = '';
     
-    if (logs.length === 0) {
+    let filteredLogs = logs;
+    const searchKeyword = logSearch ? logSearch.value.trim().toLowerCase() : '';
+    
+    if (searchKeyword) {
+        filteredLogs = logs.filter(log => {
+            const contentMatch = log.content && log.content.toLowerCase().includes(searchKeyword);
+            const commentsMatch = log.comments && log.comments.some(c => c.content && c.content.toLowerCase().includes(searchKeyword));
+            return contentMatch || commentsMatch;
+        });
+    }
+
+    if (filteredLogs.length === 0) {
         timelineContainer.innerHTML = `
             <div style="text-align:center; padding: 40px; color:#94a3b8;">
                 <i class='bx bx-message-square-dots' style="font-size:32px; margin-bottom:10px;"></i>
-                <p>아직 기록된 로그가 없습니다.<br>하단에서 첫 이벤트를 등록해보세요.</p>
+                <p>아직 기록된 로그가 없습니다.<br>하단에서 첫 이벤트를 기록해보세요.</p>
             </div>
         `;
         return;
     }
 
-    logs.forEach(log => {
+    filteredLogs.forEach(log => {
         const item = document.createElement('div');
         item.className = 'timeline-item';
         
@@ -267,7 +313,7 @@ function renderTimeline(logs) {
                         <button class="btn-delete-log" onclick="deleteLog('${log.id}')" title="삭제"><i class='bx bx-trash'></i></button>
                     </div>
                 </div>
-                <div class="timeline-text">${log.content}</div>
+                <div class="timeline-text">${highlightText(log.content, logSearch ? logSearch.value : '')}</div>
                 ${attachHtml}
                 <div class="timeline-comments-wrapper">
                     ${commentsHtml}
@@ -309,7 +355,7 @@ window.renderCommentItem = function(comment, logId, isReply = false) {
                 <span class="comment-date">${dateStr}</span>
                 ${deleteBtnHtml}
             </div>
-            <div class="comment-body">${comment.content}</div>
+            <div class="comment-body">${highlightText(comment.content, logSearch ? logSearch.value : '').replace(/\n/g, '<br>')}</div>
             <div class="comment-actions">
                 ${replyBtnHtml}
             </div>
@@ -394,6 +440,12 @@ window.deleteComment = async function(logId, commentId) {
 function bindEvents() {
     filterStatus.addEventListener('change', renderProjectsList);
     filterCategory.addEventListener('change', renderProjectsList);
+    if (projectSearch) {
+        projectSearch.addEventListener('input', renderProjectsList);
+    }
+    if (logSearch) {
+        logSearch.addEventListener('input', () => renderTimeline(currentLogs));
+    }
 
     // New Project Modal
     btnNewProject.addEventListener('click', () => {

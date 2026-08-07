@@ -29,6 +29,12 @@
                     <i class='bx bx-plus'></i>
                 </button>
             </div>
+            <div class="sidebar-search">
+                <div class="search-box">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="projectSearch" class="search-input" placeholder="프로젝트명 또는 담당자 검색...">
+                </div>
+            </div>
             <div class="sidebar-filters">
                 <select id="filterStatus" class="linear-select">
                     <option value="">모든 상태</option>
@@ -65,6 +71,10 @@
                         <span id="headerManager" class="manager-text"><i class='bx bx-user'></i> 박준영</span>
                     </div>
                     <div class="header-actions">
+                        <div class="search-box header-search" id="logSearchContainer" style="display:none;">
+                            <i class='bx bx-search'></i>
+                            <input type="text" id="logSearch" class="search-input" placeholder="대화 로그 및 댓글 검색...">
+                        </div>
                         <select id="headerStatus" class="linear-select status-select">
                             <option value="진행중">진행중</option>
                             <option value="보류">보류</option>
