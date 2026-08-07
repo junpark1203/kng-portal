@@ -70,56 +70,57 @@ const fRemarks = document.getElementById('fRemarks');
 const fAttachments = document.getElementById('fAttachments');
 const attachmentsPreview = document.getElementById('attachmentsPreview');
 let currentAttachments = [];
-let newFiles = [];
 
 function renderAttachmentsPreview() {
     attachmentsPreview.innerHTML = '';
-    
-    // 1. 기존 업로드된 파일
     currentAttachments.forEach((filePath, idx) => {
         const fileName = filePath.split('-').slice(1).join('-') || filePath.split('/').pop();
         const div = document.createElement('div');
         div.className = 'attachment-item';
         div.innerHTML = `
             <a href="${filePath}" target="_blank"><i class='bx bx-file'></i> ${fileName}</a>
-            <button type="button" class="btn-remove" onclick="removeAttachment(${idx})" title="삭제"><i class='bx bx-trash'></i></button>
+            <button type="button" class="btn-remove" onclick="removeAttachment(${idx})"><i class='bx bx-trash'></i></button>
         `;
         attachmentsPreview.appendChild(div);
     });
+}
+window.removeAttachment = function(idx) {
+    currentAttachments.splice(idx, 1);
+    renderAttachmentsPreview();
+};
 
-    // 2. 새로 추가된 파일
+let newFiles = [];
+const newAttachmentsPreview = document.getElementById('newAttachmentsPreview');
+
+function renderNewFilesPreview() {
+    if (!newAttachmentsPreview) return;
+    newAttachmentsPreview.innerHTML = '';
     newFiles.forEach((file, idx) => {
         const div = document.createElement('div');
-        div.className = 'attachment-item';
-        div.style.backgroundColor = '#f0f9ff'; // 옅은 파란 배경으로 신규 파일 구분
+        div.className = 'attachment-item new-file';
+        div.style.backgroundColor = '#f0fdf4';
+        div.style.borderColor = '#bbf7d0';
         div.innerHTML = `
-            <span style="display:flex; align-items:center; gap:6px; color:#0369a1;"><i class='bx bx-cloud-upload'></i> ${file.name} (대기중)</span>
-            <button type="button" class="btn-remove" onclick="removeNewFile(${idx})" title="업로드 취소"><i class='bx bx-x'></i></button>
+            <span><i class='bx bx-upload'></i> ${file.name} <span class="web-only-badge" style="background:#dcfce7; color:#166534">새 파일</span></span>
+            <button type="button" class="btn-remove" onclick="removeNewFile(${idx})"><i class='bx bx-trash'></i></button>
         `;
-        attachmentsPreview.appendChild(div);
+        newAttachmentsPreview.appendChild(div);
     });
 
-    // 드롭존 텍스트 업데이트
     const dropZoneContent = document.getElementById('dropZoneContent');
     if (dropZoneContent) {
         const p = dropZoneContent.querySelector('p');
-        const total = currentAttachments.length + newFiles.length;
-        if (total > 0) {
-            p.innerHTML = `총 <strong>${total}개</strong>의 파일이 첨부되었습니다. 더 추가하려면 클릭하거나 드래그하세요.`;
+        if (newFiles.length > 0) {
+            p.innerHTML = `새 파일 <strong>${newFiles.length}개</strong> 대기 중. 더 추가하려면 드롭하거나 클릭하세요.`;
         } else {
             p.innerHTML = `파일을 드래그 앤 드롭하거나 <strong>클릭</strong>하여 선택하세요`;
         }
     }
 }
 
-window.removeAttachment = function(idx) {
-    currentAttachments.splice(idx, 1);
-    renderAttachmentsPreview();
-};
-
 window.removeNewFile = function(idx) {
     newFiles.splice(idx, 1);
-    renderAttachmentsPreview();
+    renderNewFilesPreview();
 };
 
 
@@ -276,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                 Array.from(e.dataTransfer.files).forEach(file => newFiles.push(file));
-                renderAttachmentsPreview();
+                renderNewFilesPreview();
             }
         });
 
@@ -287,8 +288,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fAttachments.addEventListener('change', () => {
             if (fAttachments.files && fAttachments.files.length > 0) {
                 Array.from(fAttachments.files).forEach(file => newFiles.push(file));
-                renderAttachmentsPreview();
-                fAttachments.value = ''; // 같은 파일을 다시 선택할 수 있도록 초기화
+                renderNewFilesPreview();
+                fAttachments.value = ''; // clear input so same file can be selected again
             }
         });
     }
@@ -433,7 +434,6 @@ function showNewExpenseForm() {
     editingExpenseId = null;
     document.getElementById('editViewTitle').innerHTML = "<i class='bx bx-edit'></i> 새 지출결의서 작성";
     expenseForm.reset();
-    newFiles = [];
     
     // Default values
     fStatus.value = '임시작성';
@@ -459,6 +459,11 @@ function showNewExpenseForm() {
     fAmount.dispatchEvent(new Event('input')); // Trigger calcTotal
 
     initialFormData = getFormDataString();
+    currentAttachments = [];
+    newFiles = [];
+    renderAttachmentsPreview();
+    renderNewFilesPreview();
+    
     openExpenseModal();
 }
 
@@ -496,6 +501,7 @@ async function editExpense(id) {
         }
         newFiles = [];
         renderAttachmentsPreview();
+        renderNewFilesPreview();
         
         // Vendor setup
         fVendorSearch.value = '';
@@ -567,6 +573,7 @@ async function duplicateExpense(id) {
         }
         newFiles = [];
         renderAttachmentsPreview();
+        renderNewFilesPreview();
         
         // Vendor setup
         fVendorSearch.value = '';
