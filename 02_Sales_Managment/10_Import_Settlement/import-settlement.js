@@ -1244,12 +1244,12 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
 
         const unitPriceFC = p.unitPrice;
         
-        // [버그 수정] 견적 환율 대신 실제 청구 환율을 우선 적용
-        let exRate = snapRates[p.currency] || 1;
+        const quotedExRate = snapRates[p.currency] || 1;
+        let billedExRate = quotedExRate;
         if (state.doc && state.doc.actualCosts) {
             const invoiceCost = state.doc.actualCosts.find(c => c.group === 'invoice' && (c.billedCurrency === p.currency || c.currency === p.currency));
             if (invoiceCost && invoiceCost.billedRate) {
-                exRate = parseFloat(invoiceCost.billedRate);
+                billedExRate = parseFloat(invoiceCost.billedRate);
             }
         }
         
@@ -1261,9 +1261,9 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
 
         const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
-        const baseCostKrw_Value = baseCostFC_Value * exRate;
+        const baseCostKrw_Value = baseCostFC_Value * billedExRate;
 
-        const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * exRate;
+        const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * billedExRate;
         const dutyKrw_Value = cifValueKrw_Value * (dutyRate / 100);
 
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
@@ -1274,9 +1274,9 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         const estAllocatedFC_Value_Dutiable = unitPriceFC * estDutiableAllocationRatio;
 
         const estBaseCostFC_Value = unitPriceFC + estAllocatedFC_Value_Total;
-        const estBaseCostKrw_Value = estBaseCostFC_Value * exRate;
+        const estBaseCostKrw_Value = estBaseCostFC_Value * quotedExRate;
 
-        const estCifValueKrw_Value = (unitPriceFC + estAllocatedFC_Value_Dutiable) * exRate;
+        const estCifValueKrw_Value = (unitPriceFC + estAllocatedFC_Value_Dutiable) * quotedExRate;
         const estDutyKrw_Value = estCifValueKrw_Value * (dutyRate / 100);
 
         const estCostKrw_Value = estBaseCostKrw_Value + estDutyKrw_Value;
@@ -1316,14 +1316,14 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
             const itemTotalAncillaryKrw = totalBilledKrw * volumeShareRatio;
             const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
 
-            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
-            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / billedExRate) / item.qty;
+            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / billedExRate) / item.qty;
         }
 
         const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume_Total;
-        const baseCostKrw_Volume = baseCostFC_Volume * exRate;
+        const baseCostKrw_Volume = baseCostFC_Volume * billedExRate;
 
-        const cifValueKrw_Volume = (unitPriceFC + allocatedFC_Volume_Dutiable) * exRate;
+        const cifValueKrw_Volume = (unitPriceFC + allocatedFC_Volume_Dutiable) * billedExRate;
         const dutyKrw_Volume = cifValueKrw_Volume * (dutyRate / 100);
 
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
@@ -1336,14 +1336,14 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
             const estItemTotalAncillaryKrw = totalEstKrw * volumeShareRatio;
             const estItemDutiableAncillaryKrw = totalDutiableEstKrw * volumeShareRatio;
 
-            estAllocatedFC_Volume_Total = (estItemTotalAncillaryKrw / exRate) / item.qty;
-            estAllocatedFC_Volume_Dutiable = (estItemDutiableAncillaryKrw / exRate) / item.qty;
+            estAllocatedFC_Volume_Total = (estItemTotalAncillaryKrw / quotedExRate) / item.qty;
+            estAllocatedFC_Volume_Dutiable = (estItemDutiableAncillaryKrw / quotedExRate) / item.qty;
         }
 
         const estBaseCostFC_Volume = unitPriceFC + estAllocatedFC_Volume_Total;
-        const estBaseCostKrw_Volume = estBaseCostFC_Volume * exRate;
+        const estBaseCostKrw_Volume = estBaseCostFC_Volume * quotedExRate;
 
-        const estCifValueKrw_Volume = (unitPriceFC + estAllocatedFC_Volume_Dutiable) * exRate;
+        const estCifValueKrw_Volume = (unitPriceFC + estAllocatedFC_Volume_Dutiable) * quotedExRate;
         const estDutyKrw_Volume = estCifValueKrw_Volume * (dutyRate / 100);
 
         const estCostKrw_Volume = estBaseCostKrw_Volume + estDutyKrw_Volume;
