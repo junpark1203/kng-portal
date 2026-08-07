@@ -613,7 +613,7 @@ async function saveExpense() {
         });
         
         try {
-            const uploadRes = await fetch('/api/expense-resolution/upload', {
+            const uploadRes = await authFetch(`${API_URL}/upload`, {
                 method: 'POST',
                 body: formData
             });
