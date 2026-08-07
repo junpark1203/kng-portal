@@ -257,7 +257,7 @@ function getFormDataString() {
         taxInvoiceDate: fTaxInvoiceDate.value,
         content: fContent.value,
         remarks: fRemarks.value,
-        attachments: JSON.stringify(finalAttachments),
+        attachments: JSON.stringify(currentAttachments),
         personInCharge: fPersonInCharge.value
     });
 }
