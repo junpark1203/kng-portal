@@ -219,10 +219,11 @@
                                 <!-- 첨부파일 (웹 전용) -->
                                 <div class="fg full-width">
                                     <label for="fAttachments">첨부파일 <span class="web-only-badge">웹 전용</span></label>
-                                    <div class="attachment-upload-area">
-                                        <div class="file-input-wrapper">
-                                            <input type="file" id="fAttachments" multiple>
-                                            <button type="button" class="btn-outline btn-sm"><i class='bx bx-upload'></i> 파일 선택</button>
+                                    <div class="attachment-upload-area" id="dropZone">
+                                        <div class="drop-zone-content" id="dropZoneContent">
+                                            <i class='bx bx-cloud-upload'></i>
+                                            <p>파일을 드래그 앤 드롭하거나 <strong>클릭</strong>하여 선택하세요</p>
+                                            <input type="file" id="fAttachments" multiple class="hidden-file-input">
                                         </div>
                                         <div id="attachmentsPreview" class="attachments-list"></div>
                                     </div>

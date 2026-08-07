@@ -221,6 +221,47 @@ document.addEventListener('DOMContentLoaded', () => {
         printLayout.style.display = 'none';
         document.body.style.overflow = 'hidden'; // Keep modal scroll hidden
     });
+
+    // File Drag and Drop Events
+    const dropZone = document.getElementById('dropZone');
+    const dropZoneContent = document.getElementById('dropZoneContent');
+
+    if (dropZone && fAttachments) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                fAttachments.files = e.dataTransfer.files;
+                // Dispatch change event to trigger preview or any logic
+                fAttachments.dispatchEvent(new Event('change'));
+            }
+        });
+
+        dropZoneContent.addEventListener('click', () => {
+            fAttachments.click();
+        });
+        
+        fAttachments.addEventListener('change', () => {
+            const fileCount = fAttachments.files.length;
+            const p = dropZoneContent.querySelector('p');
+            if (fileCount > 0) {
+                p.innerHTML = `<strong>${fileCount}개</strong>의 파일이 선택되었습니다. 추가하려면 클릭하세요.`;
+            } else {
+                p.innerHTML = `파일을 드래그 앤 드롭하거나 <strong>클릭</strong>하여 선택하세요`;
+            }
+        });
+    }
 });
 
 // ==========================================
