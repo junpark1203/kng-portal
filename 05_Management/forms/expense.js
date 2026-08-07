@@ -689,7 +689,9 @@ async function saveExpense() {
         title: fTitle.value,
         taxInvoiceDate: fTaxInvoiceDate.value,
         content: fContent.value,
-        personInCharge: fPersonInCharge.value
+        personInCharge: fPersonInCharge.value,
+        remarks: fRemarks.value,
+        attachments: JSON.stringify(finalAttachments)
     };
 
     const method = editingExpenseId ? 'PUT' : 'POST';
