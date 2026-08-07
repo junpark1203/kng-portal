@@ -11,22 +11,14 @@
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="04_Seller K/margin_calculator/styles.css">
+    <style>
+        /* 포털 전용: 사이드바 없이 전체 너비 사용 */
+        .main-content { margin-left: 0; padding-top: 20px; }
+    </style>
 </head>
 <body>
-    <!-- 상단 툴바 -->
-    <div class="topbar">
-        <div class="topbar-left">
-            <h1 id="topbarTitle">마진 계산기</h1>
-        </div>
-        <div class="topbar-right">
-            <div class="user-profile">
-                <div class="user-avatar">
-                    <i class='bx bx-user'></i>
-                </div>
-                <span>관리자</span>
-            </div>
-        </div>
-    </div>
+    <!-- 메인 앱 (포털 iframe 전용 — 네비게이션은 포털 사이드바에서 처리) -->
+    <div class="app-container" id="mainApp">
 
     <!-- 메인 컨텐츠 영역 -->
     <div class="main-content" id="mainContent">
@@ -151,6 +143,7 @@
             </div>
 
         </div>
+    </div>
     </div>
 
     <script src="04_Seller K/margin_calculator/app.js"></script>
