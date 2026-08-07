@@ -77,10 +77,11 @@ function initEvents() {
     // Modal
     $('closeModalBtn').addEventListener('click', closeModal);
     $('cancelBtn').addEventListener('click', closeModal);
-    window.addEventListener('click', e => {
-        if (e.target === itemModal) closeModal();
-        if (e.target === historyModal) closeHistoryModal();
-    });
+    // 모달창 밖을 클릭해도 닫히지 않도록 막음 (드래그 시 실수 방지)
+    // window.addEventListener('click', e => {
+    //     if (e.target === itemModal) closeModal();
+    //     if (e.target === historyModal) closeHistoryModal();
+    // });
     $('closeHistoryModalBtn').addEventListener('click', closeHistoryModal);
     itemForm.addEventListener('submit', async e => { e.preventDefault(); await saveItem(); });
 
