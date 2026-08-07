@@ -1,3 +1,20 @@
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? `http://${window.location.hostname}:3000/api/margin-calculator`
+    : 'https://kng.junparks.com/api/margin-calculator';
+
+async function authFetch(url, opts = {}, _retries = 3) {
+    let token = null;
+    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    if (!opts.headers) opts.headers = {};
+    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, opts);
+    if (!res.ok && res.status === 401 && _retries > 0) {
+        await new Promise(r => setTimeout(r, 800));
+        return authFetch(url, opts, _retries - 1);
+    }
+    return res;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Inputs
     const fldProductName = document.getElementById('fldProductName');
@@ -160,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadHistory() {
         try {
-            const res = await fetch('/api/margin-calculator');
+            const res = await authFetch(API_BASE);
             if (res.ok) {
                 const data = await res.json();
                 renderHistoryTable(data);
@@ -207,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const id = this.getAttribute('data-id');
                 if (confirm('이 계산 내역을 삭제하시겠습니까?')) {
                     try {
-                        const res = await fetch('/api/margin-calculator/' + id, { method: 'DELETE' });
+                        const res = await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
                         if (res.ok) {
                             showSnackbar('삭제되었습니다.');
                             loadHistory();
@@ -252,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btnSaveHistory.disabled = true;
 
         try {
-            const res = await fetch('/api/margin-calculator', {
+            const res = await authFetch(API_BASE, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

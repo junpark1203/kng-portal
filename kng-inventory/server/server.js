@@ -1072,6 +1072,7 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/report-builder', reportBuilderRoutes.router);
 app.use('/api/projects', projectsRoutes.router);
 app.use('/api/leave-request', leaveRequestRoutes.router);
+app.use('/api/margin-calculator', marginCalculatorRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
