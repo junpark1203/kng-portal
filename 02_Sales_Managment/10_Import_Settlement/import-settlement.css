@@ -581,6 +581,47 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 .highlight-col { background: rgba(79, 70, 229, 0.05) !important; font-weight: 700; }
 
 @media print {
-    .sticky-dashboard { position: static; }
-    .cost-group { break-inside: avoid; }
+    /* 공통 기본 세팅 */
+    body { background: #fff !important; }
+    .is-container { padding: 0 !important; overflow: visible !important; height: auto !important; }
+    .editor-body { box-shadow: none !important; padding: 0 !important; border: none !important; background: #fff !important; }
+    
+    /* 불필요한 UI 요소 숨김 */
+    .panel-header, .bottom-actions, .help-text, .tooltip-icon, .btn-add-in-group, .btn-delete-item, .drag-handle { display: none !important; }
+    .modal { display: none !important; }
+    #toastContainer { display: none !important; }
+    
+    /* 입력창을 일반 텍스트처럼 표시 */
+    .calc-input { border: none !important; background: transparent !important; resize: none !important; padding: 0 !important; }
+    select.calc-input { appearance: none !important; -webkit-appearance: none; }
+    
+    /* 인쇄 레이아웃 최적화 */
+    .sticky-dashboard { position: static !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 20px 0 !important; border-bottom: none !important; }
+    .dash-card { border: 1px solid #e2e8f0 !important; box-shadow: none !important; break-inside: avoid; }
+    .cost-group { break-inside: avoid; border: 1px solid #e2e8f0 !important; margin-bottom: 15px !important; box-shadow: none !important; }
+    .cost-item-card { break-inside: avoid; }
+    .edit-section { break-inside: avoid; margin-bottom: 30px !important; padding-bottom: 15px !important; border-bottom: 1px solid #cbd5e1 !important; }
+    
+    h3 { font-size: 14pt !important; margin-bottom: 10px !important; color: #000 !important; }
+    
+    /* 백그라운드 색상 인쇄 강제 */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    /* [요약 모드] print-mode-summary */
+    body.print-mode-summary #ancillarySection,
+    body.print-mode-summary #costResultSection,
+    body.print-mode-summary #remarksSection {
+        display: none !important;
+    }
+    
+    /* [상세 모드] print-mode-detailed */
+    /* 기본적으로 모두 보이므로 추가 제어 없음 */
+    
+    /* [사용자 정의 모드] print-mode-custom */
+    body.print-hide-info #basicInfoSection,
+    body.print-hide-info #remarksSection { display: none !important; }
+    body.print-hide-dash #stickyDashboard { display: none !important; }
+    body.print-hide-ancillary #ancillarySection { display: none !important; }
+    body.print-hide-summary #summaryTableSection { display: none !important; }
+    body.print-hide-items #costResultSection { display: none !important; }
 }

@@ -137,6 +137,16 @@ function initEvents() {
     document.getElementById('btnSaveSettlement').addEventListener('click', saveSettlement);
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
     
+    document.getElementById('btnPrint').addEventListener('click', () => document.getElementById('printOptionModal').classList.add('active'));
+    document.getElementById('btnClosePrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
+    document.getElementById('btnCancelPrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
+    document.getElementById('btnExecutePrint').addEventListener('click', executePrint);
+    
+    const printModeRadios = document.querySelectorAll('input[name="printMode"]');
+    printModeRadios.forEach(radio => radio.addEventListener('change', e => {
+        document.getElementById('customPrintOptions').style.display = e.target.value === 'custom' ? 'block' : 'none';
+    }));
+
     document.getElementById('btnCloseQuoteModal').addEventListener('click', () => document.getElementById('quoteModal').classList.remove('active'));
     document.getElementById('btnCancelQuoteModal').addEventListener('click', () => document.getElementById('quoteModal').classList.remove('active'));
     document.getElementById('btnConfirmQuote').addEventListener('click', loadSelectedQuote);
@@ -1233,7 +1243,16 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         }
 
         const unitPriceFC = p.unitPrice;
-        const exRate = snapRates[p.currency] || 1;
+        
+        // [버그 수정] 견적 환율 대신 실제 청구 환율을 우선 적용
+        let exRate = snapRates[p.currency] || 1;
+        if (state.doc && state.doc.actualCosts) {
+            const invoiceCost = state.doc.actualCosts.find(c => c.group === 'invoice' && (c.billedCurrency === p.currency || c.currency === p.currency));
+            if (invoiceCost && invoiceCost.billedRate) {
+                exRate = parseFloat(invoiceCost.billedRate);
+            }
+        }
+        
         const dutyRate = item.dutyRate || 0;
 
         // === 실청구 기준 (가치비례 배분) ===
@@ -1406,4 +1425,39 @@ async function deleteSelected() {
 function exportExcel() {
     showToast('엑셀 내보내기 기능은 준비 중입니다.', false);
     // 추후 구현
+}
+
+function executePrint() {
+    const mode = document.querySelector('input[name="printMode"]:checked').value;
+    const body = document.body;
+    
+    // 초기화
+    body.classList.remove('print-mode-summary', 'print-mode-detailed', 'print-mode-custom');
+    body.classList.remove('print-hide-info', 'print-hide-dash', 'print-hide-ancillary', 'print-hide-summary', 'print-hide-items');
+    
+    if (mode === 'summary') {
+        body.classList.add('print-mode-summary');
+    } else if (mode === 'detailed') {
+        body.classList.add('print-mode-detailed');
+    } else if (mode === 'custom') {
+        body.classList.add('print-mode-custom');
+        if (!document.getElementById('chkPrintInfo').checked) body.classList.add('print-hide-info');
+        if (!document.getElementById('chkPrintDash').checked) body.classList.add('print-hide-dash');
+        if (!document.getElementById('chkPrintAncillary').checked) body.classList.add('print-hide-ancillary');
+        if (!document.getElementById('chkPrintSummary').checked) body.classList.add('print-hide-summary');
+        if (!document.getElementById('chkPrintItems').checked) body.classList.add('print-hide-items');
+    }
+
+    // 모달 닫기
+    document.getElementById('printOptionModal').classList.remove('active');
+    
+    // 약간의 딜레이 후 인쇄 다이얼로그 호출 (DOM 업데이트 대기)
+    setTimeout(() => {
+        window.print();
+        // 인쇄 후 클래스 초기화
+        setTimeout(() => {
+            body.classList.remove('print-mode-summary', 'print-mode-detailed', 'print-mode-custom');
+            body.classList.remove('print-hide-info', 'print-hide-dash', 'print-hide-ancillary', 'print-hide-summary', 'print-hide-items');
+        }, 500);
+    }, 100);
 }

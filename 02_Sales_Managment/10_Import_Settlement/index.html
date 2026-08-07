@@ -60,7 +60,7 @@
 
             <div class="editor-body">
                 <!-- SECTION 1: 정산 기본 정보 및 연동된 견적 정보 -->
-                <section class="edit-section">
+                <section class="edit-section" id="basicInfoSection">
                     <h3>1. 정산 및 연동 정보</h3>
                     <div class="form-grid">
                         <div class="fg">
@@ -100,11 +100,11 @@
                     <h3 style="margin-bottom:12px;"><i class='bx bx-bar-chart-alt-2'></i> 종합 요약 대시보드</h3>
                     <div class="dashboard-grid">
                         <div class="dash-card">
-                            <div class="dash-label">예상 총 부대비용 (견적)</div>
+                            <div class="dash-label">예상 총 견적비용</div>
                             <div class="dash-value" id="dashTotalEstimated">₩ 0</div>
                         </div>
                         <div class="dash-card">
-                            <div class="dash-label">실제 총 청구비용</div>
+                            <div class="dash-label">실제 총 투입비용</div>
                             <div class="dash-value" id="dashTotalBilled">₩ 0</div>
                             <div class="dash-pct neutral" id="dashBilledPct">-</div>
                         </div>
@@ -122,7 +122,7 @@
                 </section>
 
                 <!-- SECTION 3: 항목별 비용 정산 (카드형 아코디언) -->
-                <section class="edit-section">
+                <section class="edit-section" id="ancillarySection">
                     <div class="section-header-flex">
                         <div>
                             <h3 style="margin:0;">3. 항목별 비용 정산 및 분석</h3>
@@ -136,7 +136,7 @@
                 </section>
 
                 <!-- SECTION 4: 비용 요약 -->
-                <section class="settlement-section" style="margin-top:30px;">
+                <section class="settlement-section" id="summaryTableSection" style="margin-top:30px;">
                     <div class="section-header">
                         <div class="section-title">
                             <h3 style="margin:0;">4. 비용 요약 (예상 견적 vs 실제 청구)</h3>
@@ -268,6 +268,55 @@
             <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px;">
                 <button class="btn-outline" id="btnCancelQuoteModal" style="margin-right: 10px;">취소</button>
                 <button class="btn-primary" id="btnConfirmQuote">불러오기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달: 인쇄 옵션 -->
+    <div id="printOptionModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; width: 90%;">
+            <div class="modal-header">
+                <h2>인쇄 옵션 선택</h2>
+                <button class="btn-close" id="btnClosePrintModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div class="print-mode-options" style="display:flex; flex-direction:column; gap:12px;">
+                    <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
+                        <input type="radio" name="printMode" value="summary" checked style="margin-top:4px;">
+                        <div class="print-mode-text">
+                            <strong style="display:block; margin-bottom:4px; color:#1e293b;">[요약] 경영진 보고 및 결재용</strong>
+                            <p style="margin:0; font-size:0.85rem; color:#64748b;">복잡한 세부 내역은 생략하고 핵심 결과와 지표만 깔끔하게 출력합니다.</p>
+                        </div>
+                    </label>
+                    <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
+                        <input type="radio" name="printMode" value="detailed" style="margin-top:4px;">
+                        <div class="print-mode-text">
+                            <strong style="display:block; margin-bottom:4px; color:#1e293b;">[상세] 실무자 검토 및 보관용</strong>
+                            <p style="margin:0; font-size:0.85rem; color:#64748b;">발생한 모든 비용과 품목 내역을 누락 없이 빠짐없이 출력합니다.</p>
+                        </div>
+                    </label>
+                    <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
+                        <input type="radio" name="printMode" value="custom" style="margin-top:4px;">
+                        <div class="print-mode-text">
+                            <strong style="display:block; margin-bottom:4px; color:#1e293b;">[사용자 정의] 선택적 정보 추출용</strong>
+                            <p style="margin:0; font-size:0.85rem; color:#64748b;">원하는 섹션만 골라서 출력할 수 있습니다.</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <div id="customPrintOptions" class="custom-print-options" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <label style="font-size:0.9rem; cursor:pointer;"><input type="checkbox" id="chkPrintInfo" checked> 문서 및 견적 기본 정보 (비고 포함)</label>
+                        <label style="font-size:0.9rem; cursor:pointer;"><input type="checkbox" id="chkPrintDash" checked> 종합 요약 대시보드 지표</label>
+                        <label style="font-size:0.9rem; cursor:pointer;"><input type="checkbox" id="chkPrintAncillary" checked> 부대비용 항목별 개별 상세 내역</label>
+                        <label style="font-size:0.9rem; cursor:pointer;"><input type="checkbox" id="chkPrintSummary" checked> 그룹별 비용 요약 표 (예상 vs 실제)</label>
+                        <label style="font-size:0.9rem; cursor:pointer;"><input type="checkbox" id="chkPrintItems" checked> 품목별 실수입원가 상세 내역 표</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px;">
+                <button class="btn-outline" id="btnCancelPrintModal" style="margin-right: 10px;">취소</button>
+                <button class="btn-primary" id="btnExecutePrint"><i class='bx bx-printer'></i> 인쇄 실행</button>
             </div>
         </div>
     </div>
