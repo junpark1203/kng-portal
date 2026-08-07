@@ -280,7 +280,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 fldProductName.value = ''; // clear product name
                 loadHistory();
             } else {
-                showSnackbar('저장에 실패했습니다.', true);
+                const errText = await res.text();
+                console.error("Save error:", res.status, errText);
+                showSnackbar(`저장에 실패했습니다. (${res.status} ${res.statusText}) ${errText}`, true);
             }
         } catch (error) {
             console.error('Error saving history:', error);
