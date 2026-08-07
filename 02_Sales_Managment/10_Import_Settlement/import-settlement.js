@@ -160,7 +160,6 @@ function initEvents() {
     });
     
     // 엑셀, 인쇄
-    document.getElementById('btnPrint').addEventListener('click', () => window.print());
     document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
     
     // 목록 전체 선택
