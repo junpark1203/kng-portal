@@ -209,6 +209,24 @@
                                     <label for="fContent">내용</label>
                                     <textarea id="fContent" rows="6" placeholder="내용을 입력하세요. 줄바꿈이 그대로 출력됩니다."></textarea>
                                 </div>
+
+                                <!-- 비고 (웹 전용) -->
+                                <div class="fg full-width">
+                                    <label for="fRemarks">비고 <span class="web-only-badge">웹 전용</span></label>
+                                    <textarea id="fRemarks" rows="3" placeholder="엑셀 문서에는 포함되지 않는 내부용 기록입니다."></textarea>
+                                </div>
+
+                                <!-- 첨부파일 (웹 전용) -->
+                                <div class="fg full-width">
+                                    <label for="fAttachments">첨부파일 <span class="web-only-badge">웹 전용</span></label>
+                                    <div class="attachment-upload-area">
+                                        <div class="file-input-wrapper">
+                                            <input type="file" id="fAttachments" multiple>
+                                            <button type="button" class="btn-outline btn-sm"><i class='bx bx-upload'></i> 파일 선택</button>
+                                        </div>
+                                        <div id="attachmentsPreview" class="attachments-list"></div>
+                                    </div>
+                                </div>
                             </div>
                         </form>
                     </div>

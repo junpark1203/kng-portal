@@ -66,6 +66,29 @@ const fProxyAccountNumber = document.getElementById('fProxyAccountNumber');
 const fProxyAccountHolder = document.getElementById('fProxyAccountHolder');
 const fTitle = document.getElementById('fTitle');
 const fContent = document.getElementById('fContent');
+const fRemarks = document.getElementById('fRemarks');
+const fAttachments = document.getElementById('fAttachments');
+const attachmentsPreview = document.getElementById('attachmentsPreview');
+let currentAttachments = [];
+
+function renderAttachmentsPreview() {
+    attachmentsPreview.innerHTML = '';
+    currentAttachments.forEach((filePath, idx) => {
+        const fileName = filePath.split('-').slice(1).join('-') || filePath.split('/').pop();
+        const div = document.createElement('div');
+        div.className = 'attachment-item';
+        div.innerHTML = `
+            <a href="${filePath}" target="_blank"><i class='bx bx-file'></i> ${fileName}</a>
+            <button type="button" class="btn-remove" onclick="removeAttachment(${idx})"><i class='bx bx-trash'></i></button>
+        `;
+        attachmentsPreview.appendChild(div);
+    });
+}
+window.removeAttachment = function(idx) {
+    currentAttachments.splice(idx, 1);
+    renderAttachmentsPreview();
+};
+
 
 document.addEventListener('DOMContentLoaded', () => {
     loadVendors().then(() => loadExpenses());
@@ -233,6 +256,8 @@ function getFormDataString() {
         title: fTitle.value,
         taxInvoiceDate: fTaxInvoiceDate.value,
         content: fContent.value,
+        remarks: fRemarks.value,
+        attachments: JSON.stringify(finalAttachments),
         personInCharge: fPersonInCharge.value
     });
 }
@@ -390,6 +415,14 @@ async function editExpense(id) {
         fTaxInvoiceDate.value = exp.taxInvoiceDate || '';
         fTitle.value = exp.title || '';
         fContent.value = exp.content || '';
+        fRemarks.value = exp.remarks || '';
+        fAttachments.value = '';
+        try {
+            currentAttachments = exp.attachments ? JSON.parse(exp.attachments) : [];
+        } catch(e) {
+            currentAttachments = [];
+        }
+        renderAttachmentsPreview();
         
         // Vendor setup
         fVendorSearch.value = '';
@@ -452,6 +485,14 @@ async function duplicateExpense(id) {
         fTaxInvoiceDate.value = exp.taxInvoiceDate || '';
         fTitle.value = exp.title || '';
         fContent.value = exp.content || '';
+        fRemarks.value = exp.remarks || '';
+        fAttachments.value = '';
+        try {
+            currentAttachments = exp.attachments ? JSON.parse(exp.attachments) : [];
+        } catch(e) {
+            currentAttachments = [];
+        }
+        renderAttachmentsPreview();
         
         // Vendor setup
         fVendorSearch.value = '';
@@ -522,6 +563,31 @@ async function saveExpense() {
             }
         }
     }
+
+    let uploadedFilePaths = [];
+    if (fAttachments.files.length > 0) {
+        const formData = new FormData();
+        Array.from(fAttachments.files).forEach(file => {
+            formData.append('files', file);
+        });
+        
+        try {
+            const uploadRes = await fetch('/api/expense-resolution/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const uploadData = await uploadRes.json();
+            if (uploadData.success) {
+                uploadedFilePaths = uploadData.filePaths;
+            } else {
+                throw new Error('파일 업로드 실패: ' + uploadData.error);
+            }
+        } catch(e) {
+            showToast(e.message, 'error');
+            return;
+        }
+    }
+    const finalAttachments = [...currentAttachments, ...uploadedFilePaths];
 
     const payload = {
         status: fStatus.value,

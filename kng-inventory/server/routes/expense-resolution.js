@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const ExcelJS = require('exceljs');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 let db;
 
@@ -47,6 +49,8 @@ const initExpenseResolutionTables = (dbInstance) => {
             }
             dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN status TEXT DEFAULT '임시작성'`, () => {});
             dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN isProxy TEXT DEFAULT 'false'`, () => {});
+            dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN remarks TEXT DEFAULT ''`, () => {});
+            dbInstance.run(`ALTER TABLE expense_resolutions ADD COLUMN attachments TEXT DEFAULT '[]'`, () => {});
             console.log('expense_resolutions 테이블 확인 완료');
 
             // 거래처 프리셋 테이블
@@ -74,7 +78,34 @@ const initExpenseResolutionTables = (dbInstance) => {
 };
 
 // ==========================================
-// 거래처 프리셋 API (/:id 보다 먼저 선언)
+// 파일 업로드 (Multer 설정)
+// ==========================================
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const dir = path.join(process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads'), 'expense-resolution');
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + Buffer.from(file.originalname, 'latin1').toString('utf8'));
+    }
+});
+const upload = multer({ storage: storage });
+
+// API: 첨부파일 업로드 엔드포인트
+router.post('/upload', upload.array('files', 20), (req, res) => {
+    try {
+        const filePaths = req.files.map(file => `/api/expense-resolution/uploads/${file.filename}`);
+        res.json({ success: true, filePaths });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ==========================================
+// 거래처 관리 API (/:id 보다 먼저 선언)
 // ==========================================
 
 // 거래처 목록 조회
@@ -191,8 +222,8 @@ router.post('/', (req, res) => {
             id, createdDate, paymentDate, currency, amount, vatAmount,
             vendorId, vendorName, representative, bizRegNumber,
             bankName, accountNumber, accountHolder, paymentMethod,
-            title, taxInvoiceDate, content, personInCharge, status, isProxy, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            title, taxInvoiceDate, content, personInCharge, status, isProxy, remarks, attachments, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
         id, p.createdDate || '', p.paymentDate || '', p.currency || 'KRW',
@@ -200,7 +231,7 @@ router.post('/', (req, res) => {
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
         p.bankName || '', p.accountNumber || '', p.accountHolder || '', p.paymentMethod || 'cash',
         p.title || '', p.taxInvoiceDate || '', p.content || '', p.personInCharge || '',
-        p.status || '임시작성', p.isProxy || 'false', now, now
+        p.status || '임시작성', p.isProxy || 'false', p.remarks || '', p.attachments || '[]', now, now
     ];
 
     db.run(sql, params, function(err) {
@@ -220,7 +251,7 @@ router.put('/:id', (req, res) => {
             vendorId=?, vendorName=?, representative=?, bizRegNumber=?,
             bankName=?, accountNumber=?, accountHolder=?, paymentMethod=?,
             title=?, taxInvoiceDate=?, content=?, personInCharge=?,
-            status=?, isProxy=?, updatedAt=?
+            status=?, isProxy=?, remarks=?, attachments=?, updatedAt=?
         WHERE id=?
     `;
     const params = [
@@ -229,7 +260,7 @@ router.put('/:id', (req, res) => {
         p.vendorId || '', p.vendorName || '', p.representative || '', p.bizRegNumber || '',
         p.bankName || '', p.accountNumber || '', p.accountHolder || '', p.paymentMethod || 'cash',
         p.title || '', p.taxInvoiceDate || '', p.content || '', p.personInCharge || '',
-        p.status || '임시작성', p.isProxy || 'false', now, id
+        p.status || '임시작성', p.isProxy || 'false', p.remarks || '', p.attachments || '[]', now, id
     ];
 
     db.run(sql, params, function(err) {

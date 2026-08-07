@@ -186,6 +186,11 @@ const PROJECTS_UPLOAD_DIR = path.join(UPLOAD_DIR, 'projects');
 if (!fs.existsSync(PROJECTS_UPLOAD_DIR)) fs.mkdirSync(PROJECTS_UPLOAD_DIR, { recursive: true });
 app.use('/api/projects/uploads', express.static(PROJECTS_UPLOAD_DIR, { fallthrough: false }));
 
+// 지출결의서 첨부파일
+const EXPENSE_RESOLUTION_UPLOAD_DIR = path.join(UPLOAD_DIR, 'expense-resolution');
+if (!fs.existsSync(EXPENSE_RESOLUTION_UPLOAD_DIR)) fs.mkdirSync(EXPENSE_RESOLUTION_UPLOAD_DIR, { recursive: true });
+app.use('/api/expense-resolution/uploads', express.static(EXPENSE_RESOLUTION_UPLOAD_DIR, { fallthrough: false }));
+
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
