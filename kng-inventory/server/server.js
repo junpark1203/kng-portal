@@ -76,6 +76,10 @@ const calendarRoutes = require('./routes/calendar');
 const leaveRequestRoutes = require('./routes/leave-request');
 const { initLeaveRequestTables } = leaveRequestRoutes;
 
+// 마진 계산기 모듈
+const marginCalculatorRoutes = require('./routes/margin-calculator');
+const { initMarginCalculatorTables } = marginCalculatorRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -327,6 +331,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initMaterialQuotesTables(db).then(() => {
             materialQuotesRoutes.setDb(db);
             console.log('material_quotes API 준비 완료');
+        });
+        // 마진 계산기 테이블 초기화 + 라우트에 DB 주입
+        initMarginCalculatorTables(db).then(() => {
+            marginCalculatorRoutes.setDb(db);
+            console.log('margin_calculator API 준비 완료');
         });
         // 대시보드
         dashboardRoutes.setDb(db);
