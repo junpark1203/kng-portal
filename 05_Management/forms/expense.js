@@ -75,10 +75,12 @@ function renderAttachmentsPreview() {
     attachmentsPreview.innerHTML = '';
     currentAttachments.forEach((filePath, idx) => {
         const fileName = filePath.split('-').slice(1).join('-') || filePath.split('/').pop();
+        const BASE_URL = API_URL.split('/api/')[0];
+        const fullUrl = filePath.startsWith('http') ? filePath : BASE_URL + filePath;
         const div = document.createElement('div');
         div.className = 'attachment-item';
         div.innerHTML = `
-            <a href="${filePath}" target="_blank"><i class='bx bx-file'></i> ${fileName}</a>
+            <a href="${fullUrl}" target="_blank"><i class='bx bx-file'></i> ${fileName}</a>
             <button type="button" class="btn-remove" onclick="removeAttachment(${idx})"><i class='bx bx-trash'></i></button>
         `;
         attachmentsPreview.appendChild(div);
