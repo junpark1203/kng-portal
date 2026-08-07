@@ -1,0 +1,48 @@
+/* Margin Calculator Styles */
+.calculator-container {
+    margin-bottom: 24px;
+}
+
+.calc-card {
+    transition: all 0.2s ease;
+}
+
+.calc-card:hover {
+    border-color: var(--primary-light, #a5b4fc);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.calc-card h3 {
+    margin: 0;
+}
+
+.calc-card .fg {
+    margin-bottom: 12px;
+}
+
+.calc-card .fg:last-child {
+    margin-bottom: 0;
+}
+
+.calc-card input[type="number"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.calc-card input[type="number"]:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.calc-card input[type="checkbox"] {
+    cursor: pointer;
+}
+
+#resMarginAmount, #resMarginRate, #resCommission, #resTotalCost {
+    transition: color 0.3s ease;
+}

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <base href="../../">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마진 계산기 - K&G 포털</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="04_Seller K/margin_calculator/styles.css">
+</head>
+<body>
+    <!-- 상단 툴바 -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1 id="topbarTitle">마진 계산기</h1>
+        </div>
+        <div class="topbar-right">
+            <div class="user-profile">
+                <div class="user-avatar">
+                    <i class='bx bx-user'></i>
+                </div>
+                <span>관리자</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <div class="main-content" id="mainContent">
+        <div class="page-body" style="max-width: 800px; margin: 0 auto; padding-top: 40px;">
+            
+            <!-- 페이지 헤더 -->
+            <div style="margin-bottom:24px;">
+                <h2 style="font-size:24px; font-weight:700; color:var(--on-background);">마진 및 판매가 계산기</h2>
+                <p style="color:var(--gray-500); font-size:14px; margin-top:4px;">매입원가와 수수료를 반영하여 최적의 판매가를 시뮬레이션 해보세요.</p>
+            </div>
+
+            <!-- 계산기 컨테이너 -->
+            <div class="calculator-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                
+                <!-- 왼쪽: 매입 섹션 -->
+                <div class="calc-card" style="background:var(--surface-container); padding:20px; border-radius:12px; border:1px solid var(--border);">
+                    <h3 style="font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:6px;">
+                        <i class='bx bx-purchase-tag' style="color:var(--primary); font-size:20px;"></i> 매입 정보
+                    </h3>
+                    
+                    <div class="fg">
+                        <label>매입가 <span style="font-size:11px; color:var(--gray-400);">(기본: 공급가)</span></label>
+                        <input type="number" id="fldBuyPrice" placeholder="0" min="0">
+                    </div>
+
+                    <div class="fg">
+                        <label>매입 배송비 <span style="font-size:11px; color:var(--gray-400);">(기본: 공급가)</span></label>
+                        <input type="number" id="fldBuyShipping" placeholder="0" min="0">
+                    </div>
+
+                    <div class="fg" style="margin-top:16px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="chkBuyVat" style="width:16px; height:16px; accent-color:var(--primary);">
+                            <span style="font-size:13px; color:var(--gray-700);">매입 부가세 10% 포함하여 입력 (공급대가)</span>
+                        </label>
+                    </div>
+
+                    <!-- 옵션 추가 비용 -->
+                    <div class="fg" style="margin-top:24px; border-top:1px dashed var(--border); padding-top:16px;">
+                        <label>기타 고정 지출 (포장비, 광고비 등) <span style="font-size:11px; color:var(--gray-400);">(선택)</span></label>
+                        <input type="number" id="fldExtraCost" placeholder="0" min="0">
+                    </div>
+                </div>
+
+                <!-- 오른쪽: 판매 및 마진 목표 섹션 -->
+                <div class="calc-card" style="background:var(--surface-container); padding:20px; border-radius:12px; border:1px solid var(--border);">
+                    <h3 style="font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:6px;">
+                        <i class='bx bx-store-alt' style="color:#d97706; font-size:20px;"></i> 판매 및 시뮬레이션
+                    </h3>
+                    
+                    <div class="fg">
+                        <label>판매 배송비 <span style="font-size:11px; color:var(--gray-400);">(기본: 부가세 포함)</span></label>
+                        <input type="number" id="fldSaleShipping" placeholder="3000" min="0">
+                    </div>
+
+                    <div class="fg" style="margin-top:16px; margin-bottom:16px;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="chkSaleVat" checked style="width:16px; height:16px; accent-color:var(--primary);">
+                            <span style="font-size:13px; color:var(--gray-700);">판매가/배송비에 부가세 10% 포함</span>
+                        </label>
+                    </div>
+
+                    <div style="background:var(--surface-container-low); padding:16px; border-radius:8px; border:1px solid var(--border);">
+                        <!-- 목표 마진 입력 -->
+                        <div class="fg" style="margin-bottom:16px;">
+                            <label style="color:var(--primary); font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+                                <span>목표 마진율 (%) 입력</span>
+                                <span style="font-size:10px; padding:2px 6px; background:var(--primary); color:white; border-radius:4px;">역산</span>
+                            </label>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <input type="number" id="fldTargetMarginRate" placeholder="예: 30" min="0" step="0.1" style="flex:1;">
+                                <span style="font-size:16px; font-weight:600; color:var(--gray-500);">%</span>
+                            </div>
+                        </div>
+
+                        <div style="text-align:center; color:var(--gray-400); font-size:18px; margin-bottom:16px;">
+                            <i class='bx bx-transfer-alt'></i>
+                        </div>
+
+                        <!-- 직접 판매가 입력 -->
+                        <div class="fg">
+                            <label style="color:#d97706; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+                                <span>판매가 직접 입력</span>
+                                <span style="font-size:10px; padding:2px 6px; background:#d97706; color:white; border-radius:4px;">정산</span>
+                            </label>
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <input type="number" id="fldSalePrice" placeholder="0" min="0" style="flex:1;">
+                                <span style="font-size:16px; font-weight:600; color:var(--gray-500);">원</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 하단 결과 대시보드 -->
+            <div style="margin-top:24px; padding:24px; background:var(--surface-container); border-radius:12px; border:1px solid var(--border); box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                <h3 style="font-size:18px; font-weight:700; margin-bottom:20px; text-align:center;">시뮬레이션 결과</h3>
+                
+                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; text-align:center;">
+                    <div style="padding:16px; background:var(--surface-container-low); border-radius:8px;">
+                        <div style="font-size:12px; color:var(--gray-500); margin-bottom:8px;">최종 마진액</div>
+                        <div id="resMarginAmount" style="font-size:24px; font-weight:700; color:var(--primary);">0원</div>
+                    </div>
+                    <div style="padding:16px; background:var(--surface-container-low); border-radius:8px;">
+                        <div style="font-size:12px; color:var(--gray-500); margin-bottom:8px;">최종 마진율</div>
+                        <div id="resMarginRate" style="font-size:24px; font-weight:700; color:var(--primary);">0.0%</div>
+                    </div>
+                    <div style="padding:16px; background:var(--surface-container-low); border-radius:8px;">
+                        <div style="font-size:12px; color:var(--gray-500); margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:4px;">
+                            스토어 수수료
+                            <i class='bx bx-help-circle' style="cursor:help;" title="[수수료 산출]&#10;주문연동수수료 (3.63%): (판매가 + 판매배송비) × 3.63%&#10;판매수수료 (3.00%): 판매가 × 3.00%&#10;&#10;[최종 마진] 순매출(VAT제외) - 총매입원가 - 수수료"></i>
+                        </div>
+                        <div id="resCommission" style="font-size:20px; font-weight:600; color:var(--danger);">0원</div>
+                    </div>
+                    <div style="padding:16px; background:var(--surface-container-low); border-radius:8px;">
+                        <div style="font-size:12px; color:var(--gray-500); margin-bottom:8px;">총 매입 원가</div>
+                        <div id="resTotalCost" style="font-size:20px; font-weight:600; color:var(--gray-700);">0원</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script src="04_Seller K/margin_calculator/app.js"></script>
+</body>
+</html>
