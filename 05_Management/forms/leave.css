@@ -60,13 +60,14 @@
 
 /* 인쇄용 양식 내부 레이아웃 */
 .doc-border {
+    width: 210mm;
+    /* height: 297mm; */
     border: 2px solid #000;
-    width: 100%;
-    flex: 1; /* print-page 내 남은 공간을 모두 채움 */
-    padding: 10mm 18mm 8mm 18mm;
+    padding: 36mm 22mm 26mm 25mm; /* 상, 우, 하, 좌 여백 (실제 용지에 맞게 조절) */
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    font-family: 'Batang', '바탕', serif;
     overflow: hidden;
 }
 
@@ -97,22 +98,24 @@
     align-items: baseline;
 }
 .doc-info-label {
-    width: 100px;
+    width: 80px;
     flex-shrink: 0;
     white-space: nowrap;
 }
 .doc-info-value {
     flex: 1;
+    white-space: nowrap;
 }
 
 /* 본문 문구 */
 .doc-statement {
-    font-size: 13pt;
+    text-align: left;
+    font-size: 12pt;
     font-weight: bold;
     line-height: 2.0;
     margin-bottom: 2mm;
-    padding-left: 15px;
     word-break: keep-all;
+    text-indent: 1.5em;
 }
 
 /* 기간/사유 블록 */
@@ -120,7 +123,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 13pt;
+    font-size: 12pt;
     font-weight: bold;
     margin-bottom: 8mm;
 }
@@ -165,28 +168,30 @@
 .doc-approval-wrap {
     display: flex;
     margin-bottom: 8px;
+    width: 100%;
 }
 .doc-approval-header {
     width: 30px;
     border: 1px solid #000;
     border-right: none;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    writing-mode: vertical-rl;
-    text-orientation: upright;
-    letter-spacing: 5px;
+    gap: 15px;
+    text-align: center;
     font-weight: bold;
-    font-size: 12pt;
+    font-size: 11pt;
 }
 .doc-approval-table {
     border-collapse: collapse;
     text-align: center;
     font-size: 11pt;
+    flex: 1;
+    table-layout: fixed;
 }
 .doc-approval-table th, .doc-approval-table td {
     border: 1px solid #000;
-    width: 50px;
 }
 .doc-approval-table th {
     height: 22px;
@@ -208,7 +213,7 @@
 .doc-remarks {
     border: 1px solid #000;
     padding: 8px 12px;
-    font-size: 9pt;
+    font-size: 8.5pt;
     line-height: 1.5;
     margin-top: auto; /* 박스 바닥에 붙이기 */
 }
@@ -216,7 +221,7 @@
     display: flex;
 }
 .doc-remarks-label {
-    width: 36px;
+    width: 30px;
     flex-shrink: 0;
 }
 
@@ -255,9 +260,13 @@
         position: absolute;
         left: 0;
         top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
+        width: 210mm;
+        /* height: 297mm; */ 
+        background: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        font-family: 'Batang', '바탕', serif;
     }
     
     /* 인쇄 미리보기 컨테이너 배경 제거 */
