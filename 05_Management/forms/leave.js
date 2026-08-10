@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fReason: document.getElementById('fReason'),
         
         // Print preview fields
+        pDepartment: document.getElementById('pDepartment'),
         pRank: document.getElementById('pRank'),
         pName: document.getElementById('pName'),
         pPeriod: document.getElementById('pPeriod'),
@@ -137,14 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 값 할당
+        els.pDepartment.textContent = els.fDepartment.value;
         els.pRank.textContent = els.fRank.value;
         els.pName.textContent = els.fName.value;
         els.pPeriod.textContent = periodStr;
         els.pReason.textContent = els.fReason.value;
         els.pDate.textContent = submitDateStr;
         
-        // 서명란 이름 (원본 간격 유지를 위해 띄어쓰기 로직 제거)
+        // 서명란 이름
         els.pSignName.textContent = els.fName.value;
+        
+        // 성명 : OOO (印) 란
+        const signStamp = document.getElementById('pSignNameStamp');
+        if (signStamp) {
+            signStamp.innerHTML = els.fName.value ? `${els.fName.value}&emsp;&emsp;(印)` : '&emsp;&emsp;&emsp;&emsp;(印)';
+        }
 
         // 클론 업데이트 (화면 미리보기용)
         els.printPreviewClone.innerHTML = els.printArea.innerHTML;

@@ -118,35 +118,103 @@
 
     <!-- ═══ 인쇄용 화면 (화면엔 안 보이고 인쇄 시에만 나타남) ═══ -->
     <div id="printArea" class="print-preview-container">
-        <style type="text/css">
-         #printArea .pdf-content * { margin:0; padding:0; text-indent:0; }
-         #printArea .pdf-content h1 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: underline; font-size: 24pt; letter-spacing: 0; }
-         #printArea .pdf-content .s1 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; }
-         #printArea .pdf-content p { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; margin:0pt; }
-         #printArea .pdf-content .s2 { color: black; font-family: 'Gulim', '굴림체', monospace; font-style: normal; font-weight: normal; text-decoration: none; font-size: 10pt; }
-         #printArea .pdf-content .s3 { color: black; font-family: 'Century', serif; font-style: normal; font-weight: normal; text-decoration: none; font-size: 13pt; }
-         #printArea .pdf-content table, #printArea .pdf-content tbody {vertical-align: top; overflow: visible; }
-        </style>
+        <div class="print-page">
+            <div class="doc-border">
+                <!-- 제목 -->
+                <div class="doc-title">휴 가 원</div>
 
-        <!-- 배경 PDF가 깔릴 인쇄 영역 (A4 사이즈 고정) -->
-        <div class="print-page pdf-content" style="border: none; padding: 0; margin: 0 auto; box-sizing: border-box; width: 210mm; height: 297mm; position: relative; font-family: 'Gulim', '굴림체', monospace;">
-            
-            <!-- 백그라운드 PDF 레이어 -->
-            <iframe src="leave_bg.pdf#toolbar=0&navpanes=0&scrollbar=0" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 0; pointer-events: none;"></iframe>
-            
-            <!-- 텍스트 데이터 오버레이 레이어 (z-index 10) -->
-            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; font-size: 12pt; font-weight: bold; color: black;">
-                <span id="pDepartment" style="position: absolute; top: 286px; left: 240px; font-size: 13pt;"></span>
-                <span id="pRank" style="position: absolute; top: 303px; left: 240px; font-size: 13pt;"></span>
-                <span id="pName" style="position: absolute; top: 320px; left: 240px; font-size: 13pt;"></span>
-                
-                <span id="pPeriod" style="position: absolute; top: 553px; left: 198px; font-size: 13pt;"></span>
-                <span id="pReason" style="position: absolute; top: 587px; left: 198px; font-size: 13pt;"></span>
-                
-                <span id="pDate" style="position: absolute; top: 688px; left: 593px; font-size: 13pt;"></span>
-                
-                <span id="pSignName" style="position: absolute; top: 722px; left: 593px; font-size: 13pt; letter-spacing: 4px;"></span>
+                <!-- 인적사항 -->
+                <div class="doc-info-block">
+                    <div class="doc-info-row">
+                        <span class="doc-info-label">소&emsp;&emsp;속 :</span>
+                        <span class="doc-info-value" id="pDepartment"></span>
+                    </div>
+                    <div class="doc-info-row">
+                        <span class="doc-info-label">직&emsp;&emsp;급 :</span>
+                        <span class="doc-info-value" id="pRank"></span>
+                    </div>
+                    <div class="doc-info-row">
+                        <span class="doc-info-label">성&emsp;&emsp;명 :</span>
+                        <span class="doc-info-value" id="pName"></span>
+                    </div>
+                </div>
+
+                <!-- 본문 -->
+                <div class="doc-statement">
+                    상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기 바랍니다.
+                    <br><br>
+                    <span id="pPeriod"></span>
+                    <br>
+                    <span id="pReason"></span>
+                </div>
+
+                <!-- 기간 / 사유 -->
+                <div class="doc-detail-block">
+                    <div class="doc-info-row">
+                        <span class="doc-info-label">기&emsp;&emsp;간 :</span>
+                        <span class="doc-info-value"></span>
+                    </div>
+                    <div class="doc-info-row">
+                        <span class="doc-info-label">사&emsp;&emsp;유 :</span>
+                        <span class="doc-info-value"></span>
+                    </div>
+                </div>
+
+                <!-- 날짜 + 서명 -->
+                <div class="doc-date" id="pDate"></div>
+                <div class="doc-sign-block">
+                    <div class="doc-sign-row" id="pSignName"></div>
+                </div>
+                <div class="doc-sign-block">
+                    <div class="doc-sign-row">
+                        <span class="doc-sign-label">성&emsp;&emsp;명 :</span>
+                        <span class="doc-sign-value" id="pSignNameStamp">&emsp;&emsp;&emsp;&emsp;(印)</span>
+                    </div>
+                    <div class="doc-sign-row">
+                        <span class="doc-sign-label">부 서 장 :</span>
+                        <span class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</span>
+                    </div>
+                    <div class="doc-sign-row">
+                        <span class="doc-sign-label">담당임원 :</span>
+                        <span class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</span>
+                    </div>
+                </div>
+
+                <!-- 결재란 -->
+                <div class="doc-approval-wrap">
+                    <div class="doc-approval-header">결재</div>
+                    <table class="doc-approval-table">
+                        <thead>
+                            <tr>
+                                <th>담당</th><th>대리</th><th>과장</th><th>차장</th><th>부장</th>
+                                <th>이사</th><th>상무</th><th>전무</th><th>부사장</th><th>사장</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td></td><td></td><td></td><td></td><td></td>
+                                <td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 수신자 -->
+                <div class="doc-recipient">주식회사 케앤지&emsp;대표이사 귀하</div>
+
+                <!-- 비고 -->
+                <div class="doc-remarks">
+                    <div class="doc-remarks-grid">
+                        <span class="doc-remarks-label">비 고</span>
+                        <span>
+                            1. 취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은 무급을 원칙으로 한다.<br>
+                            &emsp;&emsp;&emsp;2. 모든 서류는 원본으로 제출한다.
+                        </span>
+                    </div>
+                </div>
             </div>
+            <!-- 문서번호 -->
+            <div class="doc-id">KG-A4-A15-0</div>
         </div>
     </div>
 
