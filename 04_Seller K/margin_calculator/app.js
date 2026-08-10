@@ -262,12 +262,42 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td style="color:${marginColor}; font-weight:600;">${item.marginRate.toFixed(1)}%</td>
                 <td style="color:#ef4444;">${formatCurrency(item.commission)}원</td>
                 <td style="text-align:center;">
-                    <button class="btn-delete" data-id="${item.id}" title="삭제">
-                        <i class='bx bx-trash'></i>
-                    </button>
+                    <div style="display:flex; justify-content:center; gap:6px;">
+                        <button class="btn-load" data-id="${item.id}" title="불러오기">
+                            <i class='bx bx-upload'></i>
+                        </button>
+                        <button class="btn-delete" data-id="${item.id}" title="삭제">
+                            <i class='bx bx-trash'></i>
+                        </button>
+                    </div>
                 </td>
             `;
             historyTableBody.appendChild(tr);
+        });
+
+        // Attach load events
+        document.querySelectorAll('.btn-load').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = parseInt(this.getAttribute('data-id'));
+                const item = data.find(d => d.id === id);
+                if (item) {
+                    fldProductName.value = item.productName || '';
+                    fldBuyPrice.value = item.buyPrice || 0;
+                    fldBuyShipping.value = item.buyShipping || 0;
+                    fldExtraCost.value = item.extraCost || 0;
+                    chkBuyPriceVat.checked = item.buyPriceVat === 1;
+                    chkBuyShippingVat.checked = item.buyShippingVat === 1;
+                    chkExtraCostVat.checked = item.extraCostVat === 1;
+                    
+                    fldSaleShipping.value = item.saleShipping || 0;
+                    chkSaleVat.checked = item.saleVatIncluded === undefined ? true : (item.saleVatIncluded === 1);
+                    fldSalePrice.value = item.salePrice || 0;
+                    
+                    calculateForward();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    showSnackbar('시뮬레이션 내역을 불러왔습니다.');
+                }
+            });
         });
 
         // Attach delete events
@@ -309,8 +339,13 @@ document.addEventListener('DOMContentLoaded', function() {
             productName: productName,
             buyPrice: parseInt(fldBuyPrice.value) || 0,
             buyShipping: parseInt(fldBuyShipping.value) || 0,
+            extraCost: parseInt(fldExtraCost.value) || 0,
+            buyPriceVat: chkBuyPriceVat.checked ? 1 : 0,
+            buyShippingVat: chkBuyShippingVat.checked ? 1 : 0,
+            extraCostVat: chkExtraCostVat.checked ? 1 : 0,
             salePrice: salePrice,
             saleShipping: parseInt(fldSaleShipping.value) || 0,
+            saleVatIncluded: chkSaleVat.checked ? 1 : 0,
             marginAmount: currentMarginAmount,
             marginRate: currentMarginRate,
             commission: currentCommission

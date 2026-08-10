@@ -29,6 +29,18 @@ function initMarginCalculatorTables(database) {
                 console.error('Error creating margin_calculator_history table:', err.message);
                 reject(err);
             } else {
+                // Add new columns for load feature if they don't exist
+                const alterQueries = [
+                    'ALTER TABLE margin_calculator_history ADD COLUMN extraCost INTEGER DEFAULT 0',
+                    'ALTER TABLE margin_calculator_history ADD COLUMN buyPriceVat INTEGER DEFAULT 0',
+                    'ALTER TABLE margin_calculator_history ADD COLUMN buyShippingVat INTEGER DEFAULT 0',
+                    'ALTER TABLE margin_calculator_history ADD COLUMN extraCostVat INTEGER DEFAULT 0',
+                    'ALTER TABLE margin_calculator_history ADD COLUMN saleVatIncluded INTEGER DEFAULT 1'
+                ];
+                alterQueries.forEach(q => {
+                    db.run(q, (alterErr) => { /* Ignore errors as column might already exist */ });
+                });
+
                 console.log('margin_calculator_history table ready.');
                 resolve();
             }
@@ -50,17 +62,28 @@ router.get('/', (req, res) => {
 
 // POST: 새로운 계산 내역 저장
 router.post('/', (req, res) => {
-    const { productName, buyPrice, buyShipping, salePrice, saleShipping, marginAmount, marginRate, commission } = req.body;
+    const { 
+        productName, buyPrice, buyShipping, extraCost, 
+        buyPriceVat, buyShippingVat, extraCostVat, 
+        salePrice, saleShipping, saleVatIncluded, 
+        marginAmount, marginRate, commission 
+    } = req.body;
     
     if (!productName) {
         return res.status(400).json({ error: 'Product name is required' });
     }
 
     const query = `
-        INSERT INTO margin_calculator_history (productName, buyPrice, buyShipping, salePrice, saleShipping, marginAmount, marginRate, commission)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO margin_calculator_history 
+        (productName, buyPrice, buyShipping, extraCost, buyPriceVat, buyShippingVat, extraCostVat, salePrice, saleShipping, saleVatIncluded, marginAmount, marginRate, commission)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const params = [productName, buyPrice, buyShipping, salePrice, saleShipping, marginAmount, marginRate, commission];
+    const params = [
+        productName, buyPrice, buyShipping, extraCost || 0, 
+        buyPriceVat || 0, buyShippingVat || 0, extraCostVat || 0, 
+        salePrice, saleShipping, saleVatIncluded === undefined ? 1 : saleVatIncluded, 
+        marginAmount, marginRate, commission
+    ];
 
     db.run(query, params, function(err) {
         if (err) {

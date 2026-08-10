@@ -421,6 +421,25 @@ body {
     background-color: #f8fafc;
 }
 
+.btn-load {
+    background: #e0e7ff;
+    color: var(--mc-primary);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-load:hover {
+    background: #c7d2fe;
+    color: var(--mc-primary-hover);
+}
+
 .btn-delete {
     background: #fee2e2;
     color: #ef4444;
