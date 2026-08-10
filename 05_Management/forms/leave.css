@@ -80,7 +80,7 @@
     margin-top: 3mm;
     margin-bottom: 8mm;
     text-decoration: underline;
-    text-underline-offset: 8px;
+    text-underline-offset: 4px;
     padding-left: 30px;
 }
 
@@ -90,7 +90,6 @@
     flex-direction: column;
     gap: 8px;
     font-size: 13pt;
-    font-weight: bold;
     margin-bottom: 8mm;
 }
 .doc-info-row {
@@ -98,7 +97,9 @@
     align-items: baseline;
 }
 .doc-info-label {
-    width: 80px;
+    display: flex;
+    justify-content: space-between;
+    width: 65px;
     flex-shrink: 0;
     white-space: nowrap;
 }
@@ -111,11 +112,10 @@
 .doc-statement {
     text-align: left;
     font-size: 12pt;
-    font-weight: bold;
     line-height: 2.0;
     margin-bottom: 2mm;
     word-break: keep-all;
-    text-indent: 1.5em;
+    text-indent: 2.5em;
 }
 
 /* 기간/사유 블록 */
@@ -124,17 +124,15 @@
     flex-direction: column;
     gap: 8px;
     font-size: 12pt;
-    font-weight: bold;
     margin-bottom: 8mm;
 }
 
 /* 작성일자 */
 .doc-date {
     text-align: right;
-    font-size: 13pt;
-    font-weight: bold;
+    font-size: 12pt;
     margin-bottom: 3mm;
-    padding-right: 15px;
+    padding-right: 30px;
     letter-spacing: 2px;
 }
 
@@ -143,19 +141,20 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    font-size: 13pt;
-    font-weight: bold;
+    font-size: 12pt;
     align-items: flex-end;
     margin-bottom: 3mm;
-    padding-right: 15px;
+    padding-right: 30px;
 }
 .doc-sign-row {
     display: flex;
     justify-content: flex-start;
-    width: 250px;
+    width: 260px;
 }
 .doc-sign-label {
-    width: 110px;
+    display: flex;
+    justify-content: space-between;
+    width: 65px;
     flex-shrink: 0;
     white-space: nowrap;
 }
@@ -180,7 +179,6 @@
     justify-content: center;
     gap: 15px;
     text-align: center;
-    font-weight: bold;
     font-size: 11pt;
 }
 .doc-approval-table {
@@ -194,17 +192,16 @@
     border: 1px solid #000;
 }
 .doc-approval-table th {
-    height: 22px;
+    height: 25px;
     font-weight: normal;
 }
 .doc-approval-table td {
-    height: 35px;
+    height: 45px;
 }
 
 /* 수신자 */
 .doc-recipient {
     font-size: 14pt;
-    font-weight: bold;
     margin-bottom: 8px;
     letter-spacing: 1px;
 }
