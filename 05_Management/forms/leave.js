@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pPeriod: document.getElementById('pPeriod'),
         pReason: document.getElementById('pReason'),
         pDate: document.getElementById('pDate'),
-        pSignName: document.getElementById('pSignName'),
         
         printPreviewClone: document.getElementById('printPreviewClone'),
         printArea: document.getElementById('printArea')
@@ -144,9 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
         els.pPeriod.textContent = periodStr;
         els.pReason.textContent = els.fReason.value;
         els.pDate.textContent = submitDateStr;
-        
-        // 서명란 이름
-        els.pSignName.textContent = els.fName.value;
         
         // 성명 : OOO (印) 란
         const signStamp = document.getElementById('pSignNameStamp');
