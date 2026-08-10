@@ -404,17 +404,37 @@ async function loadCalendarEvents() {
             return;
         }
 
-        const todayStr = new Date().toISOString().split('T')[0];
+        const getLocalYMD = (d) => {
+            const offset = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - offset).toISOString().split('T')[0];
+        };
+        
+        const todayStr = getLocalYMD(new Date());
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const tomorrowStr = getLocalYMD(tomorrow);
 
-        container.innerHTML = events.map(ev => {
+        const filteredEvents = events.filter(ev => {
+            let eventDateStr = '';
+            if (ev.start.dateTime) {
+                eventDateStr = getLocalYMD(new Date(ev.start.dateTime));
+            } else if (ev.start.date) {
+                eventDateStr = ev.start.date;
+            }
+            return eventDateStr >= todayStr;
+        });
+
+        if (filteredEvents.length === 0) {
+            container.innerHTML = '<div class="empty-state"><i class="bx bx-calendar-x"></i> 예정된 일정이 없습니다.</div>';
+            return;
+        }
+
+        container.innerHTML = filteredEvents.map(ev => {
             let dateStr = '';
             let eventDateStr = '';
             if (ev.start.dateTime) {
                 const d = new Date(ev.start.dateTime);
-                eventDateStr = d.toISOString().split('T')[0];
+                eventDateStr = getLocalYMD(d);
                 dateStr = new Intl.DateTimeFormat('ko-KR', {
                     month: 'numeric', day: 'numeric', weekday: 'short',
                     hour: 'numeric', minute: '2-digit'
