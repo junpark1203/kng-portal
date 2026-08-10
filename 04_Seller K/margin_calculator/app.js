@@ -20,12 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const fldProductName = document.getElementById('fldProductName');
     const fldBuyPrice = document.getElementById('fldBuyPrice');
     const fldBuyShipping = document.getElementById('fldBuyShipping');
-    const chkBuyVat = document.getElementById('chkBuyVat');
+    const chkBuyPriceVat = document.getElementById('chkBuyPriceVat');
+    const chkBuyShippingVat = document.getElementById('chkBuyShippingVat');
     const fldExtraCost = document.getElementById('fldExtraCost');
+    const chkExtraCostVat = document.getElementById('chkExtraCostVat');
     
     const fldSaleShipping = document.getElementById('fldSaleShipping');
     const chkSaleVat = document.getElementById('chkSaleVat');
     const fldTargetMarginRate = document.getElementById('fldTargetMarginRate');
+    const fldTargetMarginAmount = document.getElementById('fldTargetMarginAmount');
     const fldSalePrice = document.getElementById('fldSalePrice');
 
     // Outputs
@@ -57,14 +60,17 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(function(){ snackbar.className = snackbar.className.replace('show', ''); }, 3000);
     }
 
-    function calculateForward() {
+    function calculateForward(skipRateUpdate = false, skipAmountUpdate = false) {
         if (isCalculating) return;
         isCalculating = true;
 
-        const buyPrice = parseInt(fldBuyPrice.value) || 0;
-        const buyShipping = parseInt(fldBuyShipping.value) || 0;
-        const extraCost = parseInt(fldExtraCost.value) || 0;
-        const buyVatIncluded = chkBuyVat.checked;
+        const buyPriceInput = parseInt(fldBuyPrice.value) || 0;
+        const buyShippingInput = parseInt(fldBuyShipping.value) || 0;
+        const extraCostInput = parseInt(fldExtraCost.value) || 0;
+        
+        const buyPrice = chkBuyPriceVat.checked ? Math.round(buyPriceInput / 1.1) : buyPriceInput;
+        const buyShipping = chkBuyShippingVat.checked ? Math.round(buyShippingInput / 1.1) : buyShippingInput;
+        const extraCost = chkExtraCostVat.checked ? Math.round(extraCostInput / 1.1) : extraCostInput;
 
         const salePrice = parseInt(fldSalePrice.value) || 0;
         const saleShipping = parseInt(fldSaleShipping.value) || 0;
@@ -72,9 +78,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 매입 원가 계산
         let totalBuy = buyPrice + buyShipping + extraCost;
-        if (buyVatIncluded) {
-            totalBuy = Math.round(totalBuy / 1.1);
-        }
 
         resTotalCost.textContent = formatCurrency(totalBuy) + '원';
 
@@ -101,7 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
             resMarginAmount.textContent = formatCurrency(margin) + '원';
             resMarginRate.textContent = marginRate.toFixed(1) + '%';
             
-            fldTargetMarginRate.value = marginRate.toFixed(1);
+            if (!skipRateUpdate) fldTargetMarginRate.value = marginRate.toFixed(1);
+            if (!skipAmountUpdate) fldTargetMarginAmount.value = margin;
 
             // 색상 업데이트
             resMarginAmount.style.color = margin >= 0 ? 'var(--mc-primary)' : '#ef4444';
@@ -116,29 +120,32 @@ document.addEventListener('DOMContentLoaded', function() {
             resMarginRate.textContent = '0.0%';
             resMarginAmount.style.color = 'var(--mc-primary)';
             resMarginRate.style.color = 'var(--mc-primary)';
+            
+            if (!skipRateUpdate) fldTargetMarginRate.value = '';
+            if (!skipAmountUpdate) fldTargetMarginAmount.value = '';
         }
 
         isCalculating = false;
     }
 
-    function calculateReverse() {
+    function calculateReverseRate() {
         if (isCalculating) return;
         isCalculating = true;
 
         const targetMarginRate = parseFloat(fldTargetMarginRate.value) || 0;
         
-        const buyPrice = parseInt(fldBuyPrice.value) || 0;
-        const buyShipping = parseInt(fldBuyShipping.value) || 0;
-        const extraCost = parseInt(fldExtraCost.value) || 0;
-        const buyVatIncluded = chkBuyVat.checked;
+        const buyPriceInput = parseInt(fldBuyPrice.value) || 0;
+        const buyShippingInput = parseInt(fldBuyShipping.value) || 0;
+        const extraCostInput = parseInt(fldExtraCost.value) || 0;
+        
+        const buyPrice = chkBuyPriceVat.checked ? Math.round(buyPriceInput / 1.1) : buyPriceInput;
+        const buyShipping = chkBuyShippingVat.checked ? Math.round(buyShippingInput / 1.1) : buyShippingInput;
+        const extraCost = chkExtraCostVat.checked ? Math.round(extraCostInput / 1.1) : extraCostInput;
 
         const saleShipping = parseInt(fldSaleShipping.value) || 0;
         const saleVatIncluded = chkSaleVat.checked;
 
         let totalBuy = buyPrice + buyShipping + extraCost;
-        if (buyVatIncluded) {
-            totalBuy = Math.round(totalBuy / 1.1);
-        }
 
         resTotalCost.textContent = formatCurrency(totalBuy) + '원';
 
@@ -170,7 +177,52 @@ document.addEventListener('DOMContentLoaded', function() {
         
         isCalculating = false;
         
-        calculateForward();
+        calculateForward(true, false);
+    }
+
+    function calculateReverseAmount() {
+        if (isCalculating) return;
+        isCalculating = true;
+
+        const targetMarginAmount = parseInt(fldTargetMarginAmount.value) || 0;
+        
+        const buyPriceInput = parseInt(fldBuyPrice.value) || 0;
+        const buyShippingInput = parseInt(fldBuyShipping.value) || 0;
+        const extraCostInput = parseInt(fldExtraCost.value) || 0;
+        
+        const buyPrice = chkBuyPriceVat.checked ? Math.round(buyPriceInput / 1.1) : buyPriceInput;
+        const buyShipping = chkBuyShippingVat.checked ? Math.round(buyShippingInput / 1.1) : buyShippingInput;
+        const extraCost = chkExtraCostVat.checked ? Math.round(extraCostInput / 1.1) : extraCostInput;
+
+        const saleShipping = parseInt(fldSaleShipping.value) || 0;
+        const saleVatIncluded = chkSaleVat.checked;
+
+        let totalBuy = buyPrice + buyShipping + extraCost;
+
+        resTotalCost.textContent = formatCurrency(totalBuy) + '원';
+
+        if (totalBuy > 0 && targetMarginAmount > 0) {
+            const taxDivider = saleVatIncluded ? 1.1 : 1.0;
+            const commRate = 0.033;       // 3.63% / 1.1
+            const salesRate = 0.02727;    // 3% / 1.1
+            const totalCommRate = commRate + salesRate;
+            
+            let num = targetMarginAmount + totalBuy - saleShipping * (1/taxDivider - commRate);
+            let den = 1/taxDivider - totalCommRate;
+            let recommendedSalePrice = num / den;
+
+            if (recommendedSalePrice > 0) {
+                // 10원 단위 반올림
+                recommendedSalePrice = Math.round(recommendedSalePrice / 10) * 10;
+                fldSalePrice.value = recommendedSalePrice;
+            } else {
+                fldSalePrice.value = 0;
+            }
+        }
+        
+        isCalculating = false;
+        
+        calculateForward(false, true);
     }
 
     // ── API Functions ──
@@ -294,13 +346,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Event Listeners
-    [fldBuyPrice, fldBuyShipping, fldExtraCost, chkBuyVat, fldSaleShipping, chkSaleVat].forEach(el => {
-        el.addEventListener('input', calculateForward);
-        el.addEventListener('change', calculateForward);
+    [fldBuyPrice, fldBuyShipping, fldExtraCost, chkBuyPriceVat, chkBuyShippingVat, chkExtraCostVat, fldSaleShipping, chkSaleVat].forEach(el => {
+        el.addEventListener('input', () => calculateForward());
+        el.addEventListener('change', () => calculateForward());
     });
 
-    fldSalePrice.addEventListener('input', calculateForward);
-    fldTargetMarginRate.addEventListener('input', calculateReverse);
+    fldSalePrice.addEventListener('input', () => calculateForward());
+    fldTargetMarginRate.addEventListener('input', calculateReverseRate);
+    fldTargetMarginAmount.addEventListener('input', calculateReverseAmount);
     
     btnSaveHistory.addEventListener('click', saveHistory);
 
