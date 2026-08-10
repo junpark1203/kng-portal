@@ -47,43 +47,49 @@
                                 </div>
                                 <div class="card-body">
                                     <div class="fg">
-                                        <label>매입가 <span class="hint">(기본: 공급가)</span></label>
+                                        <div class="flex-between" style="margin-bottom: 8px; align-items: center;">
+                                            <label style="margin-bottom: 0;">매입가 <span class="hint">(기본: 공급가)</span></label>
+                                            <label class="toggle-checkbox" style="margin: 0;">
+                                                <input type="checkbox" id="chkBuyPriceVat">
+                                                <div class="toggle-switch" style="transform: scale(0.75); margin-right: 4px;"></div>
+                                                <span style="font-size: 0.85em; color: #64748b; font-weight: normal;">부가세 포함</span>
+                                            </label>
+                                        </div>
                                         <div class="input-wrapper">
                                             <input type="number" id="fldBuyPrice" placeholder="0" min="0">
                                             <span class="unit">원</span>
                                         </div>
-                                        <label class="toggle-checkbox" style="margin-top: 8px;">
-                                            <input type="checkbox" id="chkBuyPriceVat">
-                                            <div class="toggle-switch" style="transform: scale(0.8); transform-origin: left;"></div>
-                                            <span style="font-size: 0.9em;">부가세 10% 포함 (공급대가)</span>
-                                        </label>
                                     </div>
-                                    <div class="fg" style="margin-top: 15px;">
-                                        <label>매입 배송비 <span class="hint">(기본: 공급가)</span></label>
+                                    <div class="fg">
+                                        <div class="flex-between" style="margin-bottom: 8px; align-items: center;">
+                                            <label style="margin-bottom: 0;">매입 배송비 <span class="hint">(기본: 공급가)</span></label>
+                                            <label class="toggle-checkbox" style="margin: 0;">
+                                                <input type="checkbox" id="chkBuyShippingVat">
+                                                <div class="toggle-switch" style="transform: scale(0.75); margin-right: 4px;"></div>
+                                                <span style="font-size: 0.85em; color: #64748b; font-weight: normal;">부가세 포함</span>
+                                            </label>
+                                        </div>
                                         <div class="input-wrapper">
                                             <input type="number" id="fldBuyShipping" placeholder="0" min="0">
                                             <span class="unit">원</span>
                                         </div>
-                                        <label class="toggle-checkbox" style="margin-top: 8px;">
-                                            <input type="checkbox" id="chkBuyShippingVat">
-                                            <div class="toggle-switch" style="transform: scale(0.8); transform-origin: left;"></div>
-                                            <span style="font-size: 0.9em;">부가세 10% 포함 (공급대가)</span>
-                                        </label>
                                     </div>
                                     
                                     <div class="divider"></div>
                                     
                                     <div class="fg">
-                                        <label>기타 고정 지출 <span class="hint">(선택)</span></label>
+                                        <div class="flex-between" style="margin-bottom: 8px; align-items: center;">
+                                            <label style="margin-bottom: 0;">기타 고정 지출 <span class="hint">(선택)</span></label>
+                                            <label class="toggle-checkbox" style="margin: 0;">
+                                                <input type="checkbox" id="chkExtraCostVat">
+                                                <div class="toggle-switch" style="transform: scale(0.75); margin-right: 4px;"></div>
+                                                <span style="font-size: 0.85em; color: #64748b; font-weight: normal;">부가세 포함</span>
+                                            </label>
+                                        </div>
                                         <div class="input-wrapper">
                                             <input type="number" id="fldExtraCost" placeholder="포장비, 광고비 등" min="0">
                                             <span class="unit">원</span>
                                         </div>
-                                        <label class="toggle-checkbox" style="margin-top: 8px;">
-                                            <input type="checkbox" id="chkExtraCostVat">
-                                            <div class="toggle-switch" style="transform: scale(0.8); transform-origin: left;"></div>
-                                            <span style="font-size: 0.9em;">부가세 10% 포함 (공급대가)</span>
-                                        </label>
                                     </div>
                                 </div>
                             </div>
