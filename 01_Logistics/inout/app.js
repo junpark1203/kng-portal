@@ -185,7 +185,7 @@ const app = {
                 <td><strong>${r.item}</strong></td>
                 <td>${r.spec}</td>
                 <td>${r.unit}</td>
-                <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${isOut ? '-' : '+'}${r.qty}</td>
+                <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="${delFn}"><i class='bx bx-trash'></i></button>
@@ -239,7 +239,7 @@ const app = {
                 <td><strong>${r.item}</strong></td>
                 <td>${r.spec}</td>
                 <td>${r.unit}</td>
-                <td class="text-success fw-bold">+${r.qty}</td>
+                <td class="text-success fw-bold">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteInbound(${r.id})"><i class='bx bx-trash'></i></button>
@@ -266,7 +266,7 @@ const app = {
                 <td><strong>${r.item}</strong></td>
                 <td>${r.spec}</td>
                 <td>${r.unit}</td>
-                <td class="text-danger fw-bold">-${r.qty}</td>
+                <td class="text-danger fw-bold">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteOutbound(${r.id})"><i class='bx bx-trash'></i></button>
