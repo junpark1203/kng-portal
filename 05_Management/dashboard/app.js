@@ -326,6 +326,36 @@ async function loadExchangeData() {
 
 
 /* ════════════════════════════════
+   날짜 스트립 렌더링
+   ════════════════════════════════ */
+function renderDateStrip() {
+    const container = document.getElementById('dateStripContainer');
+    if (!container) return;
+    
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    let html = '<div class="weather-weekly">';
+    
+    for (let i = 0; i < 7; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        
+        const isToday = i === 0;
+        const label = isToday ? '오늘' : days[d.getDay()];
+        const dayNum = d.getDate();
+        
+        html += `
+            <div class="weather-day ${isToday ? 'today' : ''}">
+                <span class="weather-day-label">${label}</span>
+                <span style="font-size: 14px; font-weight: 700; color: ${isToday ? 'var(--accent)' : 'var(--text-primary)'}; margin-top: 4px;">${dayNum}</span>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/* ════════════════════════════════
    날씨 (오늘 + 주간 예보)
    ════════════════════════════════ */
 async function loadWeather() {
