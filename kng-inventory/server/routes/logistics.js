@@ -87,8 +87,16 @@ function initLogisticsTables(database) {
                     FOREIGN KEY (inbound_id) REFERENCES logistics_inbound(id)
                 )
             `, (err) => {
-                if (err) reject(err);
-                else resolve();
+                if (err) return reject(err);
+                
+                // 인덱스 추가 (조회 성능 최적화)
+                database.run(`CREATE INDEX IF NOT EXISTS idx_inbound_date ON logistics_inbound(date DESC)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_inbound_created ON logistics_inbound(created_at DESC)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_date ON logistics_outbound(date DESC)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_created ON logistics_outbound(created_at DESC)`, (err2) => {
+                    if (err2) reject(err2);
+                    else resolve();
+                });
             });
         });
     });
@@ -300,22 +308,67 @@ router.post('/outbound', (req, res) => {
 
 // --- History (입출고 전체 내역) ---
 router.get('/history', (req, res) => {
-    const sql = `
-        SELECT 
-            'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
-            i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at
-        FROM logistics_inbound i
-        UNION ALL
-        SELECT 
-            'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
-            o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at
-        FROM logistics_outbound o
-        ORDER BY date DESC, created_at DESC
-        LIMIT 1000
+    let { page = 1, limit = 50, type = 'all', search = '' } = req.query;
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 50;
+    const offset = (page - 1) * limit;
+
+    let whereClauses = [];
+    let params = [];
+
+    if (type === 'inbound') {
+        whereClauses.push("type = 'inbound'");
+    } else if (type === 'outbound') {
+        whereClauses.push("type = 'outbound'");
+    }
+
+    const searchTerms = search.trim().split(/\s+/).filter(Boolean);
+    if (searchTerms.length > 0) {
+        searchTerms.forEach(term => {
+            whereClauses.push(`(date LIKE ? OR party LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ?)`);
+            const likeTerm = `%${term}%`;
+            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+        });
+    }
+
+    const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const baseSql = `
+        WITH combined AS (
+            SELECT 
+                'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
+                i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at
+            FROM logistics_inbound i
+            UNION ALL
+            SELECT 
+                'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
+                o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at
+            FROM logistics_outbound o
+        )
+        SELECT * FROM combined
+        ${whereStr}
     `;
-    db.all(sql, [], (err, rows) => {
+
+    const countSql = `SELECT COUNT(*) as total FROM (${baseSql})`;
+    const dataSql = `
+        ${baseSql}
+        ORDER BY date DESC, created_at DESC
+        LIMIT ? OFFSET ?
+    `;
+
+    db.get(countSql, params, (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        const total = row.total;
+
+        db.all(dataSql, [...params, limit, offset], (err2, rows) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            res.json({
+                data: rows,
+                total,
+                page,
+                limit
+            });
+        });
     });
 });
 

@@ -55,18 +55,26 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="btn-group" role="group">
-                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.filterHistory()">
-                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">전체 보기</label>
-                            
-                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.filterHistory()">
-                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">입고만 보기</label>
-                            
-                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.filterHistory()">
-                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고만 보기</label>
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">전체 보기</label>
+                                
+                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.resetPageAndLoadHistory()">
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">입고만 보기</label>
+                                
+                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고만 보기</label>
+                            </div>
+                            <select class="form-select form-select-sm w-auto" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
+                                <option value="50">50개씩 보기</option>
+                                <option value="100">100개씩 보기</option>
+                                <option value="150">150개씩 보기</option>
+                                <option value="200">200개씩 보기</option>
+                            </select>
                         </div>
                         <div class="w-25">
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="품목명, 매입/출고처 검색..." onkeyup="app.filterHistory()">
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="품목명, 매입/출고처 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
                         </div>
                     </div>
                     
@@ -89,6 +97,13 @@
                                 <tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- 페이지네이션 -->
+                    <div class="d-flex justify-content-center mt-3">
+                        <ul class="pagination pagination-sm mb-0" id="historyPagination">
+                            <!-- JS 렌더링 영역 -->
+                        </ul>
                     </div>
                 </div>
             </div>

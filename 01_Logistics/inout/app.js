@@ -92,37 +92,78 @@ const app = {
     // ----------------------------------------
     // History & Deletion (내역 및 삭제)
     // ----------------------------------------
-    historyData: [],
+    currentPage: 1,
+
+    resetPageAndLoadHistory: function() {
+        this.currentPage = 1;
+        this.loadHistory();
+    },
+
+    changeHistoryPage: function(page) {
+        this.currentPage = page;
+        this.loadHistory();
+    },
 
     loadHistory: async function() {
+        const typeFilter = document.querySelector('input[name="historyFilter"]:checked').value;
+        const searchRaw = $('historySearch').value.trim();
+        const limit = parseInt($('historyLimit').value) || 50;
+
+        const params = new URLSearchParams({
+            page: this.currentPage,
+            limit: limit,
+            type: typeFilter,
+            search: searchRaw
+        });
+
         try {
-            this.historyData = await authFetch(`${API_BASE}/history`);
-            this.filterHistory();
+            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            
+            const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
+            this.renderHistoryTable(res.data);
+            this.renderPagination(res.total, res.page, res.limit);
         } catch (err) {
             console.error('History load error:', err);
             $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
         }
     },
 
-    filterHistory: function() {
-        const typeFilter = document.querySelector('input[name="historyFilter"]:checked').value;
-        const searchRaw = $('historySearch').value.trim().toLowerCase();
-        // Allow multiple search terms separated by space
-        const searchTerms = searchRaw ? searchRaw.split(/\s+/) : [];
+    renderPagination: function(total, currentPage, limit) {
+        const totalPages = Math.ceil(total / limit) || 1;
+        const ul = $('historyPagination');
+        
+        let html = '';
+        
+        // Prev button
+        if (currentPage > 1) {
+            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage - 1})">이전</button></li>`;
+        } else {
+            html += `<li class="page-item disabled"><span class="page-link">이전</span></li>`;
+        }
 
-        const filtered = this.historyData.filter(row => {
-            if (typeFilter !== 'all' && row.type !== typeFilter) return false;
-            
-            if (searchTerms.length > 0) {
-                const combinedStr = `${row.date} ${row.party} ${row.item} ${row.spec} ${row.note}`.toLowerCase();
-                // Check if ALL terms are included in the combined string
-                const matchAll = searchTerms.every(term => combinedStr.includes(term));
-                if (!matchAll) return false;
+        // Display up to 5 page numbers around the current page
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                html += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+            } else {
+                html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${i})">${i}</button></li>`;
             }
-            return true;
-        });
+        }
 
-        this.renderHistoryTable(filtered);
+        // Next button
+        if (currentPage < totalPages) {
+            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage + 1})">다음</button></li>`;
+        } else {
+            html += `<li class="page-item disabled"><span class="page-link">다음</span></li>`;
+        }
+
+        ul.innerHTML = html;
     },
 
     renderHistoryTable: function(data) {
@@ -183,8 +224,8 @@ const app = {
     // ----------------------------------------
     loadRecentInbounds: async function() {
         try {
-            const data = await authFetch(`${API_BASE}/history`);
-            const inbounds = data.filter(d => d.type === 'inbound').slice(0, 30);
+            const res = await authFetch(`${API_BASE}/history?type=inbound&limit=30`);
+            const inbounds = res.data || [];
             
             const tbody = $('recentInboundTbody');
             if(inbounds.length === 0) {
@@ -205,13 +246,13 @@ const app = {
                 </td>
             </tr>
             `).join('');
-        } catch(e) {}
+        } catch(e) { console.error('Failed to load recent inbounds:', e); }
     },
 
     loadRecentOutbounds: async function() {
         try {
-            const data = await authFetch(`${API_BASE}/history`);
-            const outbounds = data.filter(d => d.type === 'outbound').slice(0, 30);
+            const res = await authFetch(`${API_BASE}/history?type=outbound&limit=30`);
+            const outbounds = res.data || [];
             
             const tbody = $('recentOutboundTbody');
             if(outbounds.length === 0) {
@@ -232,7 +273,7 @@ const app = {
                 </td>
             </tr>
             `).join('');
-        } catch(e) {}
+        } catch(e) { console.error('Failed to load recent outbounds:', e); }
     },
 
     initTodayDates: function() {
