@@ -1003,6 +1003,12 @@ body {
 .radio-group label input {
     margin: 0;
 }
+.radio-group label {
+    white-space: nowrap;
+}
+.hidden {
+    display: none !important;
+}
 
 /* Modal Actions */
 .modal-actions {
