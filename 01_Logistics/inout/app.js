@@ -105,15 +105,46 @@ const app = {
     // ----------------------------------------
     // Inbound (입고)
     // ----------------------------------------
-    setupInboundAutocomplete: function() {
-        const input = $('in_item');
-        const sug = $('in_item_suggestions');
+    addInboundItemRow: function() {
+        const container = $('inboundItemsContainer');
+        const rowId = 'in_row_' + Date.now();
+        const rowHtml = `
+            <div class="row g-2 mb-2 align-items-center inbound-item-row" id="${rowId}">
+                <div class="col-md-2 position-relative">
+                    <input type="text" class="form-control form-control-sm in-item" placeholder="품목명" autocomplete="off" required>
+                    <div class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm in-spec" placeholder="규격" required>
+                </div>
+                <div class="col-md-1">
+                    <input type="text" class="form-control form-control-sm in-unit" placeholder="단위" required>
+                </div>
+                <div class="col-md-1">
+                    <input type="number" class="form-control form-control-sm in-qty" placeholder="수량" min="0.01" step="0.01" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm in-price" placeholder="매입단가" min="0" step="1" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm in-note" placeholder="비고">
+                </div>
+                <div class="col-md-1 text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.removeInboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+        
+        // 새로 추가된 행의 품목 입력칸에 자동완성 이벤트 연결
+        const newRow = $(rowId);
+        const input = newRow.querySelector('.in-item');
+        const sug = newRow.querySelector('.autocomplete-suggestions');
         
         input.addEventListener('input', async (e) => {
             const val = e.target.value.trim();
             if (val.length < 1) { sug.style.display = 'none'; return; }
             try {
-                // 입고는 모든 품목 검색
                 const items = await authFetch(`${API_BASE}/items/all`);
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
@@ -131,26 +162,63 @@ const app = {
                 }
             } catch (err) { console.error(err); }
         });
+
+        // 외부 클릭 시 자동완성 닫기 처리
+        document.addEventListener('click', (e) => {
+            if (e.target !== input) sug.style.display = 'none';
+        });
+    },
+
+    removeInboundItemRow: function(rowId) {
+        const row = $(rowId);
+        if (row) row.remove();
+    },
+
+    setupInboundAutocomplete: function() {
+        // 초기화 시 기본으로 1개 행 추가
+        this.addInboundItemRow();
     },
 
     handleInboundSubmit: async function(e) {
         e.preventDefault();
+        
+        const rows = document.querySelectorAll('.inbound-item-row');
+        if (rows.length === 0) return alert('입고할 품목을 추가하세요.');
+
+        const items = [];
+        let hasError = false;
+
+        rows.forEach(row => {
+            const item = row.querySelector('.in-item').value.trim();
+            const spec = row.querySelector('.in-spec').value.trim();
+            const unit = row.querySelector('.in-unit').value.trim();
+            const qty = parseFloat(row.querySelector('.in-qty').value);
+            const unit_price = parseFloat(row.querySelector('.in-price').value);
+            const note = row.querySelector('.in-note').value.trim();
+
+            if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
+                hasError = true;
+            } else {
+                items.push({ item, spec, unit, qty, unit_price, note });
+            }
+        });
+
+        if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
+
         const payload = {
             date: $('in_date').value,
             supplier: $('in_supplier').value,
             location_id: $('in_location').value,
-            item: $('in_item').value.trim(),
-            spec: $('in_spec').value.trim(),
-            unit: $('in_unit').value.trim(),
-            qty: parseFloat($('in_qty').value),
-            unit_price: parseFloat($('in_unit_price').value)
+            items: items
         };
 
-        if (confirm(`[${payload.item}] ${payload.qty}${payload.unit} 입고하시겠습니까?`)) {
+        if (confirm(`총 ${items.length}건의 품목을 입고하시겠습니까?`)) {
             try {
                 await authFetch(`${API_BASE}/inbound`, { method: 'POST', body: JSON.stringify(payload) });
                 alert('입고 완료되었습니다.');
                 $('inboundForm').reset();
+                $('inboundItemsContainer').innerHTML = '';
+                this.addInboundItemRow();
                 this.initTodayDates();
             } catch (err) {
                 alert('입고 실패: ' + err.message);

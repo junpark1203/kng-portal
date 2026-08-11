@@ -47,10 +47,18 @@ function initLogisticsTables(database) {
                     qty_remaining REAL NOT NULL,
                     unit_price REAL NOT NULL,
                     location_id INTEGER,
+                    note TEXT,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (location_id) REFERENCES logistics_locations(id)
                 )
-            `);
+            `, (err) => {
+                if (!err) {
+                    // 테이블이 이미 존재할 수 있으므로 note 컬럼 추가 시도
+                    database.run("ALTER TABLE logistics_inbound ADD COLUMN note TEXT", (err2) => {
+                        // 중복 컬럼 에러는 무시
+                    });
+                }
+            });
 
             // 3. 출고 내역 테이블
             database.run(`
@@ -127,7 +135,7 @@ router.get('/inventory', (req, res) => {
             SELECT 
                 i.id, i.date, i.supplier, i.item, i.spec, i.unit, 
                 i.qty_initial, i.qty_remaining, i.unit_price, 
-                l.name as location_name
+                i.note, l.name as location_name
             FROM logistics_inbound i
             LEFT JOIN logistics_locations l ON i.location_id = l.id
             WHERE i.qty_remaining > 0
@@ -153,7 +161,7 @@ router.get('/inventory/item/:itemName', (req, res) => {
         SELECT 
             i.id, i.date, i.supplier, i.item, i.spec, i.unit, 
             i.qty_initial, i.qty_remaining, i.unit_price, 
-            l.name as location_name
+            i.note, l.name as location_name
         FROM logistics_inbound i
         LEFT JOIN logistics_locations l ON i.location_id = l.id
         WHERE i.item = ? AND i.qty_remaining > 0
@@ -185,15 +193,45 @@ router.get('/items/all', (req, res) => {
 
 // --- Inbound (입고) ---
 router.post('/inbound', (req, res) => {
-    const { date, supplier, item, spec, unit, qty, unit_price, location_id } = req.body;
-    const sql = `
-        INSERT INTO logistics_inbound 
-        (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    db.run(sql, [date, supplier, item, spec, unit, qty, qty, unit_price, location_id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.status(201).json({ message: 'Inbound success', id: this.lastID });
+    const { date, supplier, location_id, items } = req.body;
+    // items = [{item, spec, unit, qty, unit_price, note}, ...]
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        const sql = `
+            INSERT INTO logistics_inbound 
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        const stmt = db.prepare(sql);
+        
+        let hasError = false;
+        let errorMsg = '';
+        
+        try {
+            for (let i of items) {
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '');
+            }
+        } catch (e) {
+            hasError = true;
+            errorMsg = e.message;
+        } finally {
+            stmt.finalize();
+        }
+
+        if (hasError) {
+            db.run("ROLLBACK");
+            return res.status(500).json({ error: errorMsg });
+        } else {
+            db.run("COMMIT", (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.status(201).json({ message: 'Inbound success' });
+            });
+        }
     });
 });
 

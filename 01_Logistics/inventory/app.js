@@ -85,6 +85,7 @@ const app = {
                         <td>${lot.supplier}</td>
                         <td class="text-end">${lot.unit_price.toLocaleString()} ₩</td>
                         <td class="fw-bold text-primary">${lot.qty_remaining}</td>
+                        <td class="text-start text-muted">${lot.note || ''}</td>
                     </tr>
                 `).join('');
             }
@@ -112,6 +113,7 @@ const app = {
                                             <th>매입처</th>
                                             <th>매입단가</th>
                                             <th>잔여 수량</th>
+                                            <th>비고</th>
                                         </tr>
                                     </thead>
                                     <tbody>
