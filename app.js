@@ -1447,7 +1447,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var targetId = href.replace('#', '');
 
     // dashboard 클릭 시 모든 섹션 표시
-    if (targetId === 'dashboard') {
+    if (targetId === 'dashboard' || targetId === 'quickmenu') {
         internalSections.forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.style.display = '';
@@ -1463,7 +1463,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 검색바 / VAT 버튼: dashboard 포함해서 표시
-    var showControls = ['dashboard', 'forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
+    var showControls = ['dashboard', 'quickmenu', 'forms', 'inventory', 'transactions'].indexOf(targetId) !== -1;
     if (searchWrap) searchWrap.style.display = showControls ? '' : 'none';
     if (globalVatBtn) globalVatBtn.style.display = showControls ? '' : 'none';
 
@@ -1568,8 +1568,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 본사 매입 현황이 기본값
-    var lastNavHref = sessionStorage.getItem('lastNavHref') || 'hq-inventory.html';
+    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 퀵 메뉴(대시보드)가 기본값
+    var lastNavHref = sessionStorage.getItem('lastNavHref') || '#quickmenu';
     if (lastNavHref) {
         var savedLink = document.querySelector('.menu a[href="' + lastNavHref + '"]');
         if (savedLink) {
