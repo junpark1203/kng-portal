@@ -296,6 +296,114 @@ router.post('/outbound', (req, res) => {
             }
         });
     });
+// --- History (입출고 전체 내역) ---
+router.get('/history', (req, res) => {
+    const sql = `
+        SELECT 
+            'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
+            i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at
+        FROM logistics_inbound i
+        UNION ALL
+        SELECT 
+            'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
+            o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at
+        FROM logistics_outbound o
+        ORDER BY date DESC, created_at DESC
+        LIMIT 1000
+    `;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// --- Inbound Delete (입고 내역 삭제) ---
+router.delete('/inbound/:id', (req, res) => {
+    const id = req.params.id;
+    
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        
+        db.get(`SELECT qty_initial, qty_remaining FROM logistics_inbound WHERE id = ?`, [id], (err, row) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+            if (!row) {
+                db.run("ROLLBACK");
+                return res.status(404).json({ error: 'Record not found' });
+            }
+            
+            if (row.qty_initial !== row.qty_remaining) {
+                db.run("ROLLBACK");
+                return res.status(400).json({ error: '이미 출고 차감된 내역이 존재하여 삭제할 수 없습니다. 연결된 출고 내역을 먼저 삭제해주세요.' });
+            }
+            
+            db.run(`DELETE FROM logistics_inbound WHERE id = ?`, [id], function(err2) {
+                if (err2) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err2.message });
+                }
+                db.run("COMMIT", (err3) => {
+                    if (err3) return res.status(500).json({ error: err3.message });
+                    res.json({ message: 'Deleted successfully' });
+                });
+            });
+        });
+    });
+});
+
+// --- Outbound Delete (출고 내역 삭제 및 재고 복구) ---
+router.delete('/outbound/:id', (req, res) => {
+    const id = req.params.id;
+    
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        
+        db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+            
+            const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
+            let hasError = false;
+            
+            for (let lot of lots) {
+                stmtRestore.run(lot.consumed_qty, lot.inbound_id, function(err2) {
+                    if (err2) hasError = true;
+                });
+            }
+            
+            db.run("SELECT 1", function() {
+                stmtRestore.finalize();
+                
+                if (hasError) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: 'Failed to restore inbound inventory' });
+                }
+                
+                db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
+                    if (err3) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: err3.message });
+                    }
+                    
+                    db.run(`DELETE FROM logistics_outbound WHERE id = ?`, [id], function(err4) {
+                        if (err4) {
+                            db.run("ROLLBACK");
+                            return res.status(500).json({ error: err4.message });
+                        }
+                        
+                        db.run("COMMIT", (err5) => {
+                            if (err5) return res.status(500).json({ error: err5.message });
+                            res.json({ message: 'Deleted and inventory restored successfully' });
+                        });
+                    });
+                });
+            });
+        });
+    });
 });
 
 module.exports = {

@@ -37,7 +37,10 @@
     <!-- 탭 내비게이션 -->
     <ul class="nav nav-tabs mb-4" id="inoutTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab">입고 등록</button>
+            <button class="nav-link active" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" onclick="app.loadHistory()">입출고 내역</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab">입고 등록</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="outbound-tab" data-bs-toggle="tab" data-bs-target="#outbound" type="button" role="tab">출고 등록</button>
@@ -47,8 +50,52 @@
     <!-- 탭 콘텐츠 -->
     <div class="tab-content" id="inoutTabContent">
         
+        <!-- 내역 탭 -->
+        <div class="tab-pane fade show active" id="history" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.filterHistory()">
+                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">전체 보기</label>
+                            
+                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.filterHistory()">
+                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">입고만 보기</label>
+                            
+                            <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.filterHistory()">
+                            <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고만 보기</label>
+                        </div>
+                        <div class="w-25">
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="품목명, 매입/출고처 검색..." onkeyup="app.filterHistory()">
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+                        <table class="table table-hover align-middle" style="font-size: 0.9rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>구분</th>
+                                    <th>일자</th>
+                                    <th>거래처</th>
+                                    <th>품목명</th>
+                                    <th>규격</th>
+                                    <th>단위</th>
+                                    <th>수량</th>
+                                    <th>단가</th>
+                                    <th class="text-center">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTbody">
+                                <tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 입고 폼 -->
-        <div class="tab-pane fade show active" id="inbound" role="tabpanel">
+        <div class="tab-pane fade" id="inbound" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <form id="inboundForm">
@@ -85,6 +132,28 @@
                             <button type="submit" class="btn btn-primary px-4"><i class='bx bx-check'></i> 입고 처리</button>
                         </div>
                     </form>
+                    
+                    <div class="mt-5">
+                        <h6 class="fw-bold mb-3 text-secondary"><i class='bx bx-history'></i> 최근 입고 내역 (최대 30건)</h6>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle" style="font-size: 0.85rem;">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>입고일자</th>
+                                        <th>매입처</th>
+                                        <th>품목명</th>
+                                        <th>규격</th>
+                                        <th>단위</th>
+                                        <th>수량</th>
+                                        <th>단가</th>
+                                        <th class="text-center">삭제</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentInboundTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,9 +163,6 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <form id="outboundForm">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label">출고일자</label>
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">출고일자</label>
@@ -133,6 +199,28 @@
                             <button type="submit" class="btn btn-success px-4" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
                         </div>
                     </form>
+                    
+                    <div class="mt-5">
+                        <h6 class="fw-bold mb-3 text-secondary"><i class='bx bx-history'></i> 최근 출고 내역 (최대 30건)</h6>
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle" style="font-size: 0.85rem;">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>출고일자</th>
+                                        <th>출고처</th>
+                                        <th>품목명</th>
+                                        <th>규격</th>
+                                        <th>단위</th>
+                                        <th>수량</th>
+                                        <th>단가</th>
+                                        <th class="text-center">삭제</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentOutboundTbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

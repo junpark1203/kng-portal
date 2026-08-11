@@ -67,6 +67,9 @@ const app = {
         this.initTodayDates();
         this.setupInboundAutocomplete();
         this.setupOutboundAutocomplete();
+        this.loadHistory();
+        this.loadRecentInbounds();
+        this.loadRecentOutbounds();
     },
 
     bindEvents: function() {
@@ -78,9 +81,161 @@ const app = {
         
         // Hide autocomplete when clicking outside
         document.addEventListener('click', (e) => {
-            if (e.target.id !== 'in_item') $('in_item_suggestions').style.display = 'none';
-            if (e.target.id !== 'out_item') $('out_item_suggestions').style.display = 'none';
+            if (e.target.id !== 'in_item') {
+                const s = $('in_item_suggestions');
+                if(s) s.style.display = 'none';
+            }
+            if (e.target.id !== 'out_item') {
+                const s = $('out_item_suggestions');
+                if(s) s.style.display = 'none';
+            }
         });
+    },
+
+    // ----------------------------------------
+    // History & Deletion (내역 및 삭제)
+    // ----------------------------------------
+    historyData: [],
+
+    loadHistory: async function() {
+        try {
+            this.historyData = await authFetch(`${API_BASE}/history`);
+            this.filterHistory();
+        } catch (err) {
+            console.error('History load error:', err);
+            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
+        }
+    },
+
+    filterHistory: function() {
+        const typeFilter = document.querySelector('input[name="historyFilter"]:checked').value;
+        const searchRaw = $('historySearch').value.trim().toLowerCase();
+        // Allow multiple search terms separated by space
+        const searchTerms = searchRaw ? searchRaw.split(/\s+/) : [];
+
+        const filtered = this.historyData.filter(row => {
+            if (typeFilter !== 'all' && row.type !== typeFilter) return false;
+            
+            if (searchTerms.length > 0) {
+                const combinedStr = `${row.date} ${row.party} ${row.item} ${row.spec} ${row.note}`.toLowerCase();
+                // Check if ALL terms are included in the combined string
+                const matchAll = searchTerms.every(term => combinedStr.includes(term));
+                if (!matchAll) return false;
+            }
+            return true;
+        });
+
+        this.renderHistoryTable(filtered);
+    },
+
+    renderHistoryTable: function(data) {
+        const tbody = $('historyTbody');
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = data.map(r => {
+            const isOut = r.type === 'outbound';
+            const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
+            const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
+            return `
+            <tr>
+                <td>${badge}</td>
+                <td>${r.date}</td>
+                <td>${r.party}</td>
+                <td><strong>${r.item}</strong></td>
+                <td>${r.spec}</td>
+                <td>${r.unit}</td>
+                <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${isOut ? '-' : '+'}${r.qty}</td>
+                <td>${r.price.toLocaleString()}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="${delFn}"><i class='bx bx-trash'></i></button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    },
+
+    deleteInbound: async function(id) {
+        if (!confirm('이 입고 내역을 정말 삭제하시겠습니까? (이미 출고된 내역은 삭제할 수 없습니다)')) return;
+        try {
+            await authFetch(`${API_BASE}/inbound/${id}`, { method: 'DELETE' });
+            alert('입고 내역이 삭제되었습니다.');
+            this.loadHistory();
+            this.loadRecentInbounds();
+        } catch (err) {
+            alert('삭제 실패: ' + err.message);
+        }
+    },
+
+    deleteOutbound: async function(id) {
+        if (!confirm('이 출고 내역을 정말 삭제하시겠습니까? (차감되었던 입고 재고가 다시 복구됩니다)')) return;
+        try {
+            await authFetch(`${API_BASE}/outbound/${id}`, { method: 'DELETE' });
+            alert('출고 내역이 삭제되고 재고가 복구되었습니다.');
+            this.loadHistory();
+            this.loadRecentOutbounds();
+        } catch (err) {
+            alert('삭제 실패: ' + err.message);
+        }
+    },
+
+    // ----------------------------------------
+    // Recent Lists (최근 30건)
+    // ----------------------------------------
+    loadRecentInbounds: async function() {
+        try {
+            const data = await authFetch(`${API_BASE}/history`);
+            const inbounds = data.filter(d => d.type === 'inbound').slice(0, 30);
+            
+            const tbody = $('recentInboundTbody');
+            if(inbounds.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">내역이 없습니다.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = inbounds.map(r => `
+            <tr>
+                <td>${r.date}</td>
+                <td>${r.party}</td>
+                <td><strong>${r.item}</strong></td>
+                <td>${r.spec}</td>
+                <td>${r.unit}</td>
+                <td class="text-success fw-bold">+${r.qty}</td>
+                <td>${r.price.toLocaleString()}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteInbound(${r.id})"><i class='bx bx-trash'></i></button>
+                </td>
+            </tr>
+            `).join('');
+        } catch(e) {}
+    },
+
+    loadRecentOutbounds: async function() {
+        try {
+            const data = await authFetch(`${API_BASE}/history`);
+            const outbounds = data.filter(d => d.type === 'outbound').slice(0, 30);
+            
+            const tbody = $('recentOutboundTbody');
+            if(outbounds.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">내역이 없습니다.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = outbounds.map(r => `
+            <tr>
+                <td>${r.date}</td>
+                <td>${r.party}</td>
+                <td><strong>${r.item}</strong></td>
+                <td>${r.spec}</td>
+                <td>${r.unit}</td>
+                <td class="text-danger fw-bold">-${r.qty}</td>
+                <td>${r.price.toLocaleString()}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteOutbound(${r.id})"><i class='bx bx-trash'></i></button>
+                </td>
+            </tr>
+            `).join('');
+        } catch(e) {}
     },
 
     initTodayDates: function() {
@@ -252,6 +407,10 @@ const app = {
                 $('inboundItemsContainer').innerHTML = '';
                 this.addInboundItemRow();
                 this.initTodayDates();
+                
+                // Update history tables
+                this.loadHistory();
+                this.loadRecentInbounds();
             } catch (err) {
                 alert('입고 실패: ' + err.message);
             }
@@ -647,6 +806,10 @@ const app = {
                 this.outboundRows = {};
                 this.addOutboundItemRow();
                 this.initTodayDates();
+                
+                // Update history tables
+                this.loadHistory();
+                this.loadRecentOutbounds();
             } catch (err) {
                 alert('출고 실패: ' + err.message);
             }
