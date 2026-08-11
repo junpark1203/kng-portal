@@ -810,7 +810,7 @@ function renderBookmarks() {
         if (bm && bm.url) {
             // Filled slot
             return `
-                <a href="${bm.url}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-item filled" data-index="${index}" onclick="handleBookmarkClick(event, this)">
+                <a href="${bm.type === 'external' ? bm.url : '#'}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-item filled" data-index="${index}" onclick="handleBookmarkClick(event, this)">
                     <i class='bx ${bm.icon || 'bx-link'}'></i>
                     <span>${bm.title}</span>
                 </a>
@@ -828,13 +828,24 @@ function renderBookmarks() {
 }
 
 function handleBookmarkClick(e, el) {
-    // If right clicked or long pressed, we could open edit modal.
-    // For now, let's just let it act as a link.
-    // But if they hold Shift+Click or something, maybe delete?
-    // We'll add a context menu listener later, or just use normal click.
     if (e.type === 'contextmenu') {
         e.preventDefault();
         openBookmarkModal(parseInt(el.dataset.index), true);
+        return;
+    }
+    
+    const index = parseInt(el.dataset.index);
+    const bm = userBookmarks[index];
+    if (bm && bm.type === 'internal') {
+        e.preventDefault();
+        if (window.parent && window.parent.document) {
+            const parentLink = window.parent.document.querySelector(`.sidebar .menu a[href="${bm.url}"]`);
+            if (parentLink) {
+                parentLink.click();
+            } else {
+                console.warn('Parent link not found for URL:', bm.url);
+            }
+        }
     }
 }
 
