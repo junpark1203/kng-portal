@@ -158,10 +158,13 @@ router.get('/market-indices', async (req, res) => {
 router.get('/bookmarks', async (req, res) => {
     try {
         const userEmail = req.user.email;
-        const docRef = db.collection('user_bookmarks').doc(userEmail);
-        const snapshot = await docRef.get();
-        if (snapshot.exists) {
-            res.json(snapshot.data());
+        const row = await new Promise((resolve, reject) => {
+            db.get('SELECT data FROM user_bookmarks WHERE email = ?', [userEmail], (err, row) => {
+                if (err) reject(err); else resolve(row);
+            });
+        });
+        if (row && row.data) {
+            res.json({ bookmarks: JSON.parse(row.data) });
         } else {
             res.json({ bookmarks: [] });
         }
@@ -176,8 +179,12 @@ router.post('/bookmarks', async (req, res) => {
     try {
         const userEmail = req.user.email;
         const { bookmarks } = req.body;
-        const docRef = db.collection('user_bookmarks').doc(userEmail);
-        await docRef.set({ bookmarks }, { merge: true });
+        const dataStr = JSON.stringify(bookmarks);
+        await new Promise((resolve, reject) => {
+            db.run('INSERT INTO user_bookmarks (email, data) VALUES (?, ?) ON CONFLICT(email) DO UPDATE SET data = excluded.data', [userEmail, dataStr], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
         res.json({ success: true });
     } catch (err) {
         console.error('즐겨찾기 저장 실패:', err);
@@ -185,4 +192,17 @@ router.post('/bookmarks', async (req, res) => {
     }
 });
 
-module.exports = { router, setDb };
+function initDashboardTables(dbInstance) {
+    return new Promise((resolve, reject) => {
+        dbInstance.run(`
+            CREATE TABLE IF NOT EXISTS user_bookmarks (
+                email TEXT PRIMARY KEY,
+                data TEXT
+            )
+        `, (err) => {
+            if (err) reject(err); else resolve();
+        });
+    });
+}
+
+module.exports = { router, setDb, initDashboardTables };

@@ -64,6 +64,7 @@ const { initReportBuilderTables } = reportBuilderRoutes;
 
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
+const { initDashboardTables } = dashboardRoutes;
 
 // 프로젝트 관리 모듈
 const projectsRoutes = require('./routes/projects');
@@ -251,6 +252,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initMassUploadTables(db).then(() => {
             massUploadRoutes.setDb(db);
             console.log('mass_upload API 준비 완료');
+        });
+        // 대시보드 즐겨찾기 테이블 초기화 + 라우트에 DB 주입
+        initDashboardTables(db).then(() => {
+            dashboardRoutes.setDb(db);
+            console.log('dashboard API 준비 완료');
         });
         // HQ Inventory 테이블 초기화 + 라우트에 DB 주입
         initHqTables(db).then(() => {
