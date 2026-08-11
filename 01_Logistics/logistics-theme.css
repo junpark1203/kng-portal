@@ -52,19 +52,16 @@ h4 {
     background-color: #f8fafc !important;
     transition: all 0.2s ease !important;
     box-shadow: none !important;
+    height: 42px !important;
+    line-height: 1.5 !important;
 }
 
 .form-control {
-    padding: 0.6rem 1rem !important;
+    padding: 0.4rem 1rem !important;
 }
 
 .form-select {
-    padding-top: 0.6rem !important;
-    padding-bottom: 0.6rem !important;
-    padding-left: 1rem !important;
-    /* Bootstrap default arrow right-padding is retained */
-    min-height: calc(1.5em + 1.2rem + 2px) !important;
-    line-height: 1.5 !important;
+    padding: 0.4rem 2.25rem 0.4rem 1rem !important;
 }
 
 .form-control:focus, .form-select:focus {
