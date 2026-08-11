@@ -893,13 +893,21 @@ body {
     padding-top: 8px;
 }
 
-@media (min-width: 1401px) {
+.dashboard-grid.admin-layout .bookmarks-grid {
+    grid-template-columns: repeat(10, 1fr);
+}
+
+@media (max-width: 1200px) {
     .dashboard-grid.admin-layout .bookmarks-grid {
-        grid-template-columns: repeat(10, 1fr);
+        grid-template-columns: repeat(5, 1fr);
     }
 }
+
 @media (max-width: 768px) {
     .bookmarks-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .dashboard-grid.admin-layout .bookmarks-grid {
         grid-template-columns: repeat(4, 1fr);
     }
 }
