@@ -71,9 +71,14 @@
                                 🗂️ 도면/고유번호 기준으로 묶어보기
                             </label>
                         </div>
-                        <button class="btn-outline" style="border-color: #10b981; color: #10b981; display: flex; align-items: center; gap: 4px;" onclick="exportDashboardExcel()">
-                            <i class='bx bx-export'></i> 엑셀 다운로드
-                        </button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-primary" id="btnExportQuotes" style="display: none; align-items: center; gap: 4px; padding: 6px 12px; font-size: 13px;" onclick="exportToQuoteCompare()">
+                                <i class='bx bx-export'></i> 비교 견적 내보내기
+                            </button>
+                            <button class="btn-outline" style="border-color: #10b981; color: #10b981; display: flex; align-items: center; gap: 4px;" onclick="exportDashboardExcel()">
+                                <i class='bx bx-export'></i> 엑셀 다운로드
+                            </button>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <div style="flex: 1;">
@@ -121,7 +126,7 @@
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
-                            <tr>
+                            <tr id="tableHeaderRow">
                                 <th>구분(상위)</th>
                                 <th>구분(하위)</th>
                                 <th>품명</th>

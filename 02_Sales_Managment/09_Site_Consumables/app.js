@@ -103,6 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (toggleGroupView) {
         toggleGroupView.addEventListener('change', (e) => {
             isGroupedView = e.target.checked;
+            const btnExport = document.getElementById('btnExportQuotes');
+            if(btnExport) btnExport.style.display = isGroupedView ? 'flex' : 'none';
             loadDashboard(); // 테이블 헤더 및 바디 재렌더링
         });
     }
@@ -341,9 +343,10 @@ window.deleteSite = async () => {
 
 // ── Consumables CRUD ──
 async function loadDashboard() {
-    const theadTr = document.querySelector('.data-table thead tr');
+    const theadTr = document.getElementById('tableHeaderRow') || document.querySelector('.data-table thead tr');
     if (isGroupedView) {
         theadTr.innerHTML = `
+            <th style="width:40px; text-align:center;"><input type="checkbox" id="selectAllExport" style="cursor:pointer;" onchange="toggleAllExport(this.checked)"></th>
             <th>식별번호(도면/고유)</th>
             <th>품명</th>
             <th>규격</th>
@@ -451,7 +454,7 @@ function applyDashboardFilters() {
     tbody.innerHTML = '';
     
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isGroupedView ? 8 : 11}" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${isGroupedView ? 9 : 11}" style="text-align:center; padding: 30px; color: #94a3b8;">등록되거나 조건에 맞는 소모품이 없습니다.</td></tr>`;
         return;
     }
 
@@ -483,8 +486,20 @@ function applyDashboardFilters() {
 
             let identifier = isGrouped ? (item.drawingNumber || item.uniqueNumber) : '-';
             let siteHtml = Array.from(item.sites).map(s => `<span style="display:inline-block; padding:2px 8px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; margin:2px;">${escapeHtml(s)}</span>`).join('');
+            
+            // For export data, convert sets and maps to arrays/objects
+            const exportData = {
+                identifier: identifier,
+                name: item.name,
+                specification: item.specification,
+                sites: Array.from(item.sites),
+                totalQuantity: item.totalQuantity,
+                unit: item.unit,
+                files: Array.from(item.allFiles.values())
+            };
 
             tr.innerHTML = `
+                <td style="text-align:center;"><input type="checkbox" class="export-checkbox" value="${escapeHtml(JSON.stringify(exportData))}" style="cursor:pointer;"></td>
                 <td style="font-weight:600; color:#1e293b;">${escapeHtml(identifier)}</td>
                 <td style="font-weight:500;">${escapeHtml(item.name)}</td>
                 <td>${escapeHtml(item.specification || '-')}</td>
@@ -967,3 +982,27 @@ async function handleFiles(files) {
         dropZone.style.pointerEvents = 'auto';
     }
 }
+
+// ── Export to Quotes ──
+window.toggleAllExport = (checked) => {
+    document.querySelectorAll('.export-checkbox').forEach(cb => cb.checked = checked);
+};
+
+window.exportToQuoteCompare = () => {
+    const checkedBoxes = document.querySelectorAll('.export-checkbox:checked');
+    if(checkedBoxes.length === 0) {
+        showToast('내보낼 항목을 먼저 선택해주세요.', 'error');
+        return;
+    }
+    
+    const exportData = Array.from(checkedBoxes).map(cb => JSON.parse(cb.value));
+    localStorage.setItem('tbmQuoteExport', JSON.stringify(exportData));
+    
+    // Open the new TBM Quotes module in a new tab/iframe
+    // Since we are in an iframe, we want to change the parent's iframe src or just open a new tab.
+    // A simple new tab is safest, or we can use window.parent navigation if available.
+    // Let's open it in a new window/tab for the comparison.
+    window.open('../12_TBM_Material_Quotes/index.html', '_blank');
+    
+    showToast(checkedBoxes.length + '개 항목을 단가 비교 모듈로 내보냈습니다.');
+};

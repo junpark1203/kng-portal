@@ -58,6 +58,9 @@ const { initWorkLogsTables } = workLogsRoutes;
 const materialQuotesRoutes = require('./routes/material-quotes');
 const { initMaterialQuotesTables } = materialQuotesRoutes;
 
+const tbmMaterialQuotesRoutes = require('./routes/tbm-material-quotes');
+const { initMaterialQuotesTables: initTbmMaterialQuotesTables } = tbmMaterialQuotesRoutes;
+
 // 사진 첨부형 보고서 (Visual Report Builder) 모듈
 const reportBuilderRoutes = require('./routes/report-builder');
 const { initReportBuilderTables } = reportBuilderRoutes;
@@ -344,8 +347,14 @@ const db = new sqlite3.Database(dbFile, (err) => {
             console.log('projects API 준비 완료');
         }).catch(err => console.error('projects 초기화 실패:', err));
         // 품목별 견적 비교 테이블 초기화 + 라우트에 DB 주입
-        initMaterialQuotesTables(db).then(() => {
+        initMaterialQuotesTables(db);
+        initTbmMaterialQuotesTables(db);
+        Promise.all([
+            initMaterialQuotesTables(db),
+            initTbmMaterialQuotesTables(db)
+        ]).then(() => {
             materialQuotesRoutes.setDb(db);
+            tbmMaterialQuotesRoutes.setDb(db);
             console.log('material_quotes API 준비 완료');
         });
         // 마진 계산기 테이블 초기화 + 라우트에 DB 주입
@@ -1083,6 +1092,7 @@ app.use('/api/exhibition-report', exhibitionReportRoutes.router);
 app.use('/api/expense-resolution', expenseResolutionRoutes.router);
 app.use('/api/work-logs', workLogsRoutes.router);
 app.use('/api/mat-quotes', materialQuotesRoutes.router);
+app.use('/api/tbm-material-quotes', tbmMaterialQuotesRoutes.router);
 app.use('/api/dashboard', dashboardRoutes.router);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/report-builder', reportBuilderRoutes.router);

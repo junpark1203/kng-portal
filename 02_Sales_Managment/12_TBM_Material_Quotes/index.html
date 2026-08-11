@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TBM 자재 단가 비교">
+    <title>TBM 자재 스토어 (단가 비교)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../supply-common.css">
+    <link rel="stylesheet" href="../../Common/css/search-engine.css">
+    <link rel="stylesheet" href="tbm-material-quotes.css">
+    <!-- SortableJS for drag-and-drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</head>
+
+<body style="background: var(--gray-50);">
+    <!-- Top App Bar -->
+    <header class="app-bar" style="padding: 24px 32px 16px 32px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center;">
+        <div class="app-bar-left">
+            <div style="font-size: 13px; color: var(--gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;"><i class='bx bx-package'></i> TBM 자재 단가 비교</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px;">TBM 자재 스토어</h1>
+        </div>
+        <div class="app-bar-right">
+            <div class="user-profile" style="display: flex; align-items: center; gap: 8px; background: var(--gray-100); padding: 6px 16px 6px 6px; border-radius: 30px; border: 1px solid var(--gray-200);">
+                <div class="avatar" style="background: var(--primary); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class='bx bx-user'></i></div>
+                <span class="user-name" id="currentUser" style="font-size: 14px; font-weight: 700; color: var(--gray-800);">User</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content" style="padding: 24px 32px;">
+        
+        <!-- Catalog Toolbar -->
+        <div class="catalog-toolbar">
+            <div class="category-filter-wrap" id="categoryFilters" style="padding:0;">
+                <!-- JS로 카테고리 칩 렌더링 -->
+            </div>
+            <div class="catalog-actions">
+                <div class="catalog-search-wrap">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="searchInput" placeholder="품목명, 공급사 검색..." autocomplete="off">
+                </div>
+                <button class="btn btn-primary" onclick="openItemModal()">
+                    <i class='bx bx-plus'></i> 새 품목 등록
+                </button>
+            </div>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="mat-grid" id="matGrid">
+            <!-- 렌더링 영역 -->
+        </div>
+
+    </main>
+
+    <!-- PDP (Product Detail Page) Overlay -->
+    <div class="pdp-overlay" id="pdpOverlay">
+        <div class="pdp-content">
+            <div class="pdp-header">
+                <h2>제품 상세</h2>
+                <div class="pdp-header-actions">
+                    <button class="btn btn-sm btn-outline" onclick="editItem(selectedItemId)"><i class='bx bx-edit'></i> 제품 수정</button>
+                    <button class="btn btn-sm btn-outline" style="color:var(--red-500); border-color:var(--red-200);" onclick="deleteItem(selectedItemId)"><i class='bx bx-trash'></i> 삭제</button>
+                    <button class="pdp-close" onclick="closePDP()"><i class='bx bx-x'></i></button>
+                </div>
+            </div>
+            <div class="pdp-body">
+                <div class="pdp-gallery-col" id="pdpGalleryCol">
+                    <!-- Gallery rendered here -->
+                </div>
+                <div class="pdp-info-col" id="pdpInfoCol">
+                    <!-- Info and variants rendered here -->
+                </div>
+            </div>
+            <div class="pdp-bottom-section" id="pdpBottomSection" style="padding:0 32px 32px 32px;">
+                <!-- Matrix table rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Modal -->
+    <div class="modal-overlay" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="itemModalTitle">품목 등록</h2>
+                <button class="modal-close" onclick="closeItemModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="itemId">
+                <div class="modal-form-grid">
+                    <div class="fg">
+                        <label>품목명 <span class="text-danger">*</span></label>
+                        <input type="text" id="itemItemName" placeholder="예: LED 작업등" required>
+                    </div>
+                    <div class="fg">
+                        <label>분류</label>
+                        <div class="combo-box-wrapper">
+                            <input type="text" id="itemCategory" placeholder="분류 입력 (또는 선택)" autocomplete="off">
+                            <div id="categoryDropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--gray-200); border-radius:4px; max-height:150px; overflow-y:auto; z-index:10; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+                        </div>
+                    </div>
+
+                    <div class="fg fg-full">
+                        <label>사진 (드래그 앤 드롭, 클립보드 붙여넣기, URL)</label>
+                        <div class="dropzone" id="itemDropzone">
+                            <i class='bx bx-cloud-upload'></i>
+                            <p style="margin:0; font-size:13px; font-weight:600;">클릭하거나 파일을 드래그하여 업로드하세요</p>
+                            <p style="margin:4px 0 0 0; font-size:11px;">(Ctrl+V 로 클립보드 이미지 붙여넣기 지원)</p>
+                            <input type="file" id="itemFileInput" multiple style="display:none;" accept="image/*">
+                        </div>
+                        <div style="display:flex; gap:8px; margin-bottom:10px;">
+                            <input type="text" id="itemImgUrl" placeholder="이미지 주소(URL) 붙여넣기" style="flex:1;">
+                            <button type="button" class="btn btn-outline" onclick="uploadImgUrl()">추가</button>
+                        </div>
+                        <div class="img-preview-list" id="itemImgPreview"></div>
+                    </div>
+
+                    <!-- 초기 규격/견적 일괄 등록 영역 (Matrix) -->
+                    <div class="fg fg-full" id="itemInitialVariantsWrapper" style="margin-top: 10px; border-top: 1px dashed var(--gray-300); padding-top: 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                            <label style="margin:0; font-weight:700; color:var(--primary);"><i class='bx bx-table'></i> 초기 규격 및 단가 등록</label>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addInitialSupplier()"><i class='bx bx-store-alt'></i> 판매사 추가</button>
+                                <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addInitialVariantRow()"><i class='bx bx-plus'></i> 규격 추가</button>
+                            </div>
+                        </div>
+                        <div style="overflow-x:auto; border-radius:8px; border:1px solid var(--gray-200);">
+                            <table class="initial-matrix-table" id="initialMatrixTable" style="width:100%; border-collapse:collapse; text-align:center;">
+                                <thead style="background:var(--gray-100); font-size:12px; color:var(--gray-700);">
+                                    <tr id="initialMatrixHeader">
+                                        <th style="width:40px; padding:8px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);"></th>
+                                        <th style="min-width:120px; padding:8px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">규격 (필수)</th>
+                                        <th style="width:80px; padding:8px; border-bottom:1px solid var(--gray-200); border-right:1px solid var(--gray-200);">단위</th>
+                                        <!-- JS로 판매사(Supplier) 컬럼 추가됨 -->
+                                        <th class="matrix-action-col" style="width:40px; padding:8px; border-bottom:1px solid var(--gray-200);"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="initialVariantList">
+                                    <!-- JS로 규격(Row) 추가됨 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 커스텀 필드 영역 -->
+                    <div class="fg fg-full custom-fields-section" id="itemCustomFieldsWrapper" style="margin-top: 10px; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; background: #fafafa;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                            <label style="margin:0; font-weight:700; color:var(--primary);"><i class='bx bx-list-plus'></i> 추가 속성 (옵션)</label>
+                            <button type="button" class="btn btn-sm btn-outline" style="border-color:var(--gray-300); background:#fff;" onclick="addCustomFieldRow()"><i class='bx bx-plus'></i> 속성 추가</button>
+                        </div>
+                        <div id="customFieldList" style="display:flex; flex-direction:column; gap:6px;">
+                            <!-- JS로 행 추가됨 -->
+                        </div>
+                    </div>
+
+                    <div class="fg fg-full">
+                        <label>비고 / 제품 설명</label>
+                        <textarea id="itemRemarks" placeholder="특이사항 및 상세 설명을 입력하세요"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeItemModal()">취소</button>
+                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6;" onclick="saveItem('draft')">임시 저장</button>
+                <button class="btn btn-primary" onclick="saveItem('completed')">최종 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Variant Modal -->
+    <div class="modal-overlay" id="variantModal">
+        <div class="modal-content" style="width: 400px;">
+            <div class="modal-header">
+                <h2 id="variantModalTitle">규격(옵션) 추가</h2>
+                <button class="modal-close" onclick="closeVariantModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="variantId">
+                <input type="hidden" id="variantItemId">
+                <div class="modal-form-grid">
+                    <div class="fg fg-full">
+                        <label>규격/옵션명 <span class="text-danger">*</span></label>
+                        <input type="text" id="variantSpec" placeholder="예: 24V / 30W" required>
+                    </div>
+                    <div class="fg fg-full">
+                        <label>단위</label>
+                        <div class="combo-box-wrapper">
+                            <input type="text" id="variantUnit" placeholder="직접 입력 또는 선택" style="padding-right: 30px;">
+                            <i class='bx bx-chevron-down combo-icon'></i>
+                            <select onchange="document.getElementById('variantUnit').value = this.value; this.value=''">
+                                <option value="">(선택)</option>
+                                <option value="EA">EA</option>
+                                <option value="SET">SET</option>
+                                <option value="M">M</option>
+                                <option value="KG">KG</option>
+                                <option value="BOX">BOX</option>
+                                <option value="ROLL">ROLL</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeVariantModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveVariant()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quote Modal -->
+    <div class="modal-overlay" id="quoteModal">
+        <div class="modal-content" style="width: 500px;">
+            <div class="modal-header">
+                <h2 id="quoteModalTitle">견적 단가 등록</h2>
+                <button class="modal-close" onclick="closeQuoteModal()"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="quoteId">
+                <input type="hidden" id="quoteVariantId">
+                <div class="modal-form-grid">
+                    <div class="fg fg-full">
+                        <label>공급업체명 <span class="text-danger">*</span></label>
+                        <input type="text" id="quoteSupplier" placeholder="업체명 입력" required>
+                    </div>
+                    <div class="fg">
+                        <label>단가 <span class="text-danger">*</span></label>
+                        <input type="number" id="quoteUnitPrice" placeholder="0" required>
+                    </div>
+                    <div class="fg">
+                        <label>통화</label>
+                        <select id="quoteCurrency">
+                            <option value="KRW">KRW(₩)</option>
+                            <option value="USD">USD($)</option>
+                            <option value="EUR">EUR(€)</option>
+                            <option value="JPY">JPY(¥)</option>
+                            <option value="CNY">CNY(¥)</option>
+                        </select>
+                    </div>
+                    <div class="fg fg-full">
+                        <label>견적 접수일</label>
+                        <input type="date" id="quoteDate">
+                    </div>
+                    <div class="fg fg-full">
+                        <label>비고/조건</label>
+                        <input type="text" id="quoteRemarks" placeholder="예: 100개 이상 발주 시 적용 단가">
+                    </div>
+                    <div class="fg fg-full">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="quoteIsSelected" style="width:auto; margin:0;">
+                            이 업체를 우선 협력업체로 채택
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeQuoteModal()">취소</button>
+                <button class="btn btn-primary" onclick="saveQuote()">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Viewer -->
+    <div class="modal-overlay" id="imgViewerOverlay" onclick="closeImgViewer(event)">
+        <button class="modal-close" style="position: absolute; top: 20px; right: 20px; color: #fff; font-size: 40px;" onclick="closeImgViewer(event)"><i class='bx bx-x'></i></button>
+        <img id="imgViewerTarget" src="" alt="확대 이미지" onclick="event.stopPropagation()">
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../Common/js/auth.js"></script>
+    <script src="tbm-material-quotes.js"></script>
+</body>
+
+</html>
