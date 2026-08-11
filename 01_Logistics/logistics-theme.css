@@ -245,7 +245,7 @@ h4 {
     padding: 10px 12px;
     font-weight: 500;
 }
-.autocomplete-suggestion:hover {
+.autocomplete-suggestion:hover, .autocomplete-suggestion.active-suggestion {
     background-color: #eff6ff;
     color: #2563eb;
 }

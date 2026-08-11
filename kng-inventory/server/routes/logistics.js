@@ -237,58 +237,57 @@ router.post('/inbound', (req, res) => {
 
 // --- Outbound (출고) ---
 router.post('/outbound', (req, res) => {
-    const { date, destination, item, spec, unit, qty, selling_price, shipping_fee, consumed_lots } = req.body;
-    // consumed_lots = [ { inbound_id, consumed_qty }, ... ]
+    const { date, destination, items } = req.body;
     
     // 검증
-    if (!consumed_lots || !Array.isArray(consumed_lots) || consumed_lots.length === 0) {
-        return res.status(400).json({ error: 'Consumed lots are required' });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
     }
 
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
         
-        // 1. 출고 내역 기록
+        let hasError = false;
+        
         const outSql = `
             INSERT INTO logistics_outbound 
             (date, destination, item, spec, unit, qty, selling_price, shipping_fee)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.run(outSql, [date, destination, item, spec, unit, qty, selling_price, shipping_fee], function(err) {
-            if (err) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: err.message });
-            }
-            const outboundId = this.lastID;
-            
-            // 2. 각 Lot 차감 및 맵핑 테이블 기록
-            const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
-            const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
-            
-            const stmtLots = db.prepare(lotsSql);
-            const stmtUpdate = db.prepare(updateInboundSql);
-            
-            let hasError = false;
-            let errorMsg = '';
-            
-            // Promise 기반 순차 처리 (에러 핸들링 용이성)
-            // 간단하게 동기적 흉내를 내기 위해 즉시 호출
-            try {
-                for (let lot of consumed_lots) {
-                    stmtLots.run(outboundId, lot.inbound_id, lot.consumed_qty);
-                    stmtUpdate.run(lot.consumed_qty, lot.inbound_id);
-                }
-            } catch (e) {
-                hasError = true;
-                errorMsg = e.message;
-            } finally {
-                stmtLots.finalize();
-                stmtUpdate.finalize();
-            }
+        const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
+        const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
+        
+        const stmtOut = db.prepare(outSql);
+        const stmtLots = db.prepare(lotsSql);
+        const stmtUpdate = db.prepare(updateInboundSql);
 
+        for (let i of items) {
+            if (!i.consumed_lots || i.consumed_lots.length === 0) {
+                hasError = true;
+                continue;
+            }
+            stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee, function(err) {
+                if (err) {
+                    hasError = true;
+                    return;
+                }
+                const outboundId = this.lastID;
+                for (let lot of i.consumed_lots) {
+                    stmtLots.run(outboundId, lot.inbound_id, lot.consumed_qty, function(e) { if(e) hasError = true; });
+                    stmtUpdate.run(lot.consumed_qty, lot.inbound_id, function(e) { if(e) hasError = true; });
+                }
+            });
+        }
+        
+        // Statements finalize barrier
+        db.run("SELECT 1", function() {
+            stmtOut.finalize();
+            stmtLots.finalize();
+            stmtUpdate.finalize();
+            
             if (hasError) {
                 db.run("ROLLBACK");
-                return res.status(500).json({ error: errorMsg });
+                return res.status(500).json({ error: "Outbound transaction failed" });
             } else {
                 db.run("COMMIT", (err2) => {
                     if (err2) return res.status(500).json({ error: err2.message });

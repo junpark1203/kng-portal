@@ -97,72 +97,40 @@
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-label">출고일자</label>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">출고일자</label>
                                 <input type="date" class="form-control" id="out_date" required>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">출고처(고객/현장)</label>
                                 <input type="text" class="form-control" id="out_destination" placeholder="출고처 입력" required>
                             </div>
+                            <div class="col-md-6 text-end align-self-end">
+                                <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 품목 추가</button>
+                            </div>
                         </div>
 
                         <hr class="my-4 text-muted">
 
-                        <div class="row g-3">
-                            <div class="col-md-3 position-relative">
-                                <label class="form-label">품목 조회 <small class="text-muted">(재고 보유)</small></label>
-                                <input type="text" class="form-control" id="out_item" placeholder="재고가 있는 품목 검색" autocomplete="off" required>
-                                <div id="out_item_suggestions" class="autocomplete-suggestions"></div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label">규격 선택</label>
-                                <select class="form-select" id="out_spec" disabled required>
-                                    <option value="">품목을 먼저 선택하세요</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">총 출고 수량</label>
-                                <input type="number" class="form-control" id="out_qty" min="0.01" step="0.01" disabled required>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">판매단가 (₩)</label>
-                                <input type="number" class="form-control" id="out_selling_price" min="0" step="1" required>
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label">배송비 (₩)</label>
-                                <input type="number" class="form-control" id="out_shipping_fee" min="0" step="1" value="0" required>
-                            </div>
+                        <!-- 출고 품목 리스트 헤더 -->
+                        <div class="row g-2 mb-2 px-1 text-muted text-center" style="font-size: 0.85rem; font-weight: 600;">
+                            <div class="col-md-3 text-start">품목명</div>
+                            <div class="col-md-2 text-start">규격</div>
+                            <div class="col-md-1">단위</div>
+                            <div class="col-md-2">수량</div>
+                            <div class="col-md-2">판매단가/배송비</div>
+                            <div class="col-md-2">Lot/삭제</div>
                         </div>
 
-                        <!-- Lot 차감 정보 (자동 노출) -->
-                        <div id="lotDeductionSection" style="display: none;">
-                            <div class="lot-callout shadow-sm">
-                                <h6><i class='bx bx-list-ol'></i> Lot 차감 예정 내역 (자동 선입선출 추천)</h6>
-                                <div class="table-responsive bg-white rounded shadow-sm border border-light">
-                                    <table class="table mb-0">
-                                        <thead>
-                                                <tr>
-                                                    <th>입고일자</th>
-                                                    <th>위치</th>
-                                                    <th>매입처</th>
-                                                    <th>입고단가</th>
-                                                    <th>현재 잔여량</th>
-                                                    <th class="table-primary text-primary">출고 차감량</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="lotTbody">
-                                                <!-- JS Render -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-3">
-                                    <small class="text-muted"><i class='bx bx-info-circle'></i> 위 내역은 선입선출(FIFO) 기준으로 자동 계산되었습니다. 필요시 '출고 차감량'을 수동으로 조절할 수 있습니다.</small>
-                                    <div class="fw-bold text-danger px-3 py-1 bg-white rounded shadow-sm" id="lotErrorMsg" style="display: none;"><i class='bx bx-error'></i> 차감량 합계가 총 출고 수량과 불일치합니다.</div>
-                                </div>
-                            </div>
+                        <!-- 동적 품목 행 컨테이너 -->
+                        <div id="outboundItemsContainer">
+                            <!-- JS Render -->
                         </div>
 
-                        <div class="mt-4 text-end">
-                            <button type="submit" class="btn btn-success px-4" id="btnOutboundSubmit" disabled><i class='bx bx-check-double'></i> 출고 처리</button>
+                        <div class="mt-4 d-flex justify-content-between align-items-center">
+                            <small class="text-danger fw-bold" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
+                            <button type="submit" class="btn btn-success px-4" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
                         </div>
                     </form>
                 </div>
@@ -187,6 +155,46 @@
                     <input type="text" class="form-control form-control-sm" id="newLocationInput" placeholder="새 창고/현장 이름">
                     <button class="btn btn-primary btn-sm" onclick="app.addLocation()">추가</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lot 차감 조절 모달 -->
+<div class="modal fade" id="lotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fs-6 fw-bold"><span id="lotModalItemTitle"></span> Lot 설정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
+                    <span><strong>필요 수량: </strong><span id="lotModalReqQty">0</span></span>
+                    <span><strong>현재 할당량: </strong><span id="lotModalCurQty">0</span></span>
+                </div>
+                <div class="table-responsive bg-white rounded shadow-sm border border-light">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>입고일자</th>
+                                <th>위치</th>
+                                <th>매입처</th>
+                                <th>입고단가</th>
+                                <th>현재 잔여량</th>
+                                <th class="table-primary text-primary">출고 차감량</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lotModalTbody">
+                            <!-- JS Render -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="fw-bold text-danger mt-2" id="lotModalErrorMsg" style="display: none;"><i class='bx bx-error'></i> 차감량 합계가 총 출고 수량과 일치하지 않습니다.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-primary" onclick="app.saveLotModal()">저장 (확인)</button>
             </div>
         </div>
     </div>
