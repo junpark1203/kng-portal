@@ -225,12 +225,26 @@ async function loadAll() {
     loadMarketIndices();
     
     const isAdmin = await waitForAdminStatus();
+    
+    // 레이아웃 변경 (관리자 vs 일반)
+    const grid = document.querySelector('.dashboard-grid');
+    if (grid) {
+        if (isAdmin) {
+            grid.classList.add('admin-layout');
+        } else {
+            grid.classList.remove('admin-layout');
+        }
+    }
+
     if (isAdmin) {
         loadCalendarEvents();
     } else {
         const calSec = document.getElementById('calendarSection');
         if (calSec) calSec.style.display = 'none';
     }
+
+    // 즐겨찾기 로드
+    loadBookmarks();
 }
 
 async function loadMarketIndices() {
@@ -623,7 +637,7 @@ function renderInvoices(invoices) {
 
 
 /* ════════════════════════════════
-   업무일지
+   최근 업무일지
    ════════════════════════════════ */
 function renderWorkLog(log) {
     const container = document.getElementById('workLogWidget');
@@ -759,4 +773,200 @@ function formatNumber(num, decimals = 2) {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
     });
+}
+
+
+/* ════════════════════════════════
+   즐겨찾기 (Bookmarks)
+   ════════════════════════════════ */
+let userBookmarks = Array(10).fill(null);
+
+async function loadBookmarks() {
+    if (!auth.currentUser) return;
+    try {
+        const docRef = doc(db, 'user_bookmarks', auth.currentUser.email);
+        const snapshot = await getDoc(docRef);
+        if (snapshot.exists()) {
+            const data = snapshot.data();
+            if (data.bookmarks && Array.isArray(data.bookmarks)) {
+                userBookmarks = data.bookmarks;
+            }
+        }
+    } catch (e) {
+        console.error('즐겨찾기 로드 오류:', e);
+    }
+    
+    // Ensure array is size 10
+    while(userBookmarks.length < 10) userBookmarks.push(null);
+    userBookmarks = userBookmarks.slice(0, 10);
+    
+    renderBookmarks();
+    populateInternalMenus();
+}
+
+function renderBookmarks() {
+    const grid = document.getElementById('bookmarksGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = userBookmarks.map((bm, index) => {
+        if (bm && bm.url) {
+            // Filled slot
+            return `
+                <a href="${bm.url}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-item filled" data-index="${index}" onclick="handleBookmarkClick(event, this)">
+                    <i class='bx ${bm.icon || 'bx-link'}'></i>
+                    <span>${bm.title}</span>
+                </a>
+            `;
+        } else {
+            // Empty slot
+            return `
+                <div class="bookmark-item empty" data-index="${index}" onclick="openBookmarkModal(${index})">
+                    <i class='bx bx-plus'></i>
+                    <span>추가</span>
+                </div>
+            `;
+        }
+    }).join('');
+}
+
+function handleBookmarkClick(e, el) {
+    // If right clicked or long pressed, we could open edit modal.
+    // For now, let's just let it act as a link.
+    // But if they hold Shift+Click or something, maybe delete?
+    // We'll add a context menu listener later, or just use normal click.
+    if (e.type === 'contextmenu') {
+        e.preventDefault();
+        openBookmarkModal(parseInt(el.dataset.index), true);
+    }
+}
+
+// Add right-click listener for editing
+document.addEventListener('contextmenu', function(e) {
+    const bmItem = e.target.closest('.bookmark-item.filled');
+    if (bmItem) {
+        e.preventDefault();
+        openBookmarkModal(parseInt(bmItem.dataset.index), true);
+    }
+});
+
+let internalMenus = [];
+function populateInternalMenus() {
+    try {
+        // 부모 창(index.html)에서 메뉴 읽어오기
+        if (window.parent && window.parent.document) {
+            const links = window.parent.document.querySelectorAll('.sidebar .menu a[data-nav="iframe"]');
+            internalMenus = Array.from(links).map(link => {
+                const icon = link.querySelector('i') ? link.querySelector('i').className : 'bx bx-link';
+                const text = link.querySelector('span') ? link.querySelector('span').textContent.trim() : link.textContent.trim();
+                const url = link.getAttribute('href');
+                return { title: text, url: url, icon: icon };
+            });
+        }
+    } catch (e) {
+        console.error('메뉴 로드 실패 (CORS 등):', e);
+    }
+
+    const select = document.getElementById('bmInternalSelect');
+    if (select) {
+        select.innerHTML = internalMenus.map(m => `<option value="${m.url}">${m.title}</option>`).join('');
+    }
+}
+
+function openBookmarkModal(index, isEdit = false) {
+    document.getElementById('bmSlotIndex').value = index;
+    const modal = document.getElementById('bookmarkModalOverlay');
+    const form = document.getElementById('bookmarkForm');
+    const btnDelete = document.getElementById('btnDeleteBookmark');
+    
+    form.reset();
+    
+    if (isEdit && userBookmarks[index]) {
+        btnDelete.classList.remove('hidden');
+        const bm = userBookmarks[index];
+        if (bm.type === 'external') {
+            document.querySelector('input[name="bmType"][value="external"]').checked = true;
+            document.getElementById('bmExternalUrl').value = bm.url;
+            document.getElementById('bmExternalTitle').value = bm.title;
+        } else {
+            document.querySelector('input[name="bmType"][value="internal"]').checked = true;
+            document.getElementById('bmInternalSelect').value = bm.url;
+        }
+    } else {
+        btnDelete.classList.add('hidden');
+        document.querySelector('input[name="bmType"][value="internal"]').checked = true;
+    }
+    
+    toggleBookmarkType();
+    modal.classList.remove('hidden');
+}
+
+function toggleBookmarkType() {
+    const type = document.querySelector('input[name="bmType"]:checked').value;
+    if (type === 'internal') {
+        document.getElementById('bmInternalGroup').classList.remove('hidden');
+        document.getElementById('bmExternalGroup').classList.add('hidden');
+        document.getElementById('bmExternalUrl').required = false;
+        document.getElementById('bmExternalTitle').required = false;
+    } else {
+        document.getElementById('bmInternalGroup').classList.add('hidden');
+        document.getElementById('bmExternalGroup').classList.remove('hidden');
+        document.getElementById('bmExternalUrl').required = true;
+        document.getElementById('bmExternalTitle').required = true;
+    }
+}
+
+document.querySelectorAll('input[name="bmType"]').forEach(radio => {
+    radio.addEventListener('change', toggleBookmarkType);
+});
+
+document.getElementById('closeBookmarkModal')?.addEventListener('click', () => {
+    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
+});
+document.getElementById('btnCancelBookmark')?.addEventListener('click', () => {
+    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
+});
+
+document.getElementById('bookmarkForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const index = parseInt(document.getElementById('bmSlotIndex').value);
+    const type = document.querySelector('input[name="bmType"]:checked').value;
+    
+    let bm = { type };
+    if (type === 'internal') {
+        const url = document.getElementById('bmInternalSelect').value;
+        const menuObj = internalMenus.find(m => m.url === url);
+        if (!menuObj) return alert('메뉴를 선택해주세요.');
+        bm.url = menuObj.url;
+        bm.title = menuObj.title;
+        bm.icon = menuObj.icon;
+    } else {
+        bm.url = document.getElementById('bmExternalUrl').value;
+        bm.title = document.getElementById('bmExternalTitle').value || '새 탭';
+        // domain 추출해서 첫글자 아이콘이나 기본 아이콘 사용
+        bm.icon = 'bx-globe';
+    }
+    
+    userBookmarks[index] = bm;
+    await saveBookmarks();
+    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
+    renderBookmarks();
+});
+
+document.getElementById('btnDeleteBookmark')?.addEventListener('click', async () => {
+    const index = parseInt(document.getElementById('bmSlotIndex').value);
+    userBookmarks[index] = null;
+    await saveBookmarks();
+    document.getElementById('bookmarkModalOverlay').classList.add('hidden');
+    renderBookmarks();
+});
+
+async function saveBookmarks() {
+    if (!auth.currentUser) return;
+    try {
+        const docRef = doc(db, 'user_bookmarks', auth.currentUser.email);
+        await setDoc(docRef, { bookmarks: userBookmarks }, { merge: true });
+    } catch (e) {
+        console.error('즐겨찾기 저장 오류:', e);
+        alert('저장에 실패했습니다.');
+    }
 }

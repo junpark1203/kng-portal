@@ -62,6 +62,17 @@
                     </div>
                 </div>
             </section>
+            <!-- 섹션: 즐겨찾기 -->
+            <section class="widget widget-bookmarks" id="bookmarksSection">
+                <h2>
+                    <div class="widget-title"><i class='bx bx-star'></i> 즐겨찾기</div>
+                </h2>
+                <div class="widget-content">
+                    <div class="bookmarks-grid" id="bookmarksGrid">
+                        <!-- JS에서 렌더링 (최대 10개) -->
+                    </div>
+                </div>
+            </section>
 
             <!-- 섹션 3: 이번달 일정 + 결재대기함 -->
             <section class="widget widget-calendar" id="calendarSection">
@@ -172,6 +183,54 @@
                 </div>
                 <button type="submit" class="submit-btn">저장하기</button>
             </form>
+        </div>
+    </div>
+
+    <!-- 모달: 즐겨찾기 추가 -->
+    <div class="modal-overlay hidden" id="bookmarkModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class='bx bx-bookmark-plus'></i> 즐겨찾기 설정</h3>
+                <button class="close-btn" id="closeBookmarkModal"><i class='bx bx-x'></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookmarkForm">
+                    <input type="hidden" id="bmSlotIndex">
+                    <div class="form-group type-toggle">
+                        <label>링크 유형</label>
+                        <div class="radio-group" style="display: flex; gap: 16px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="bmType" value="internal" checked> 내부 메뉴
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="bmType" value="external"> 외부 웹 주소
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- 내부 메뉴 선택 -->
+                    <div class="form-group" id="bmInternalGroup">
+                        <label>메뉴 선택</label>
+                        <select id="bmInternalSelect" class="form-input" required>
+                            <!-- JS에서 자동 채움 -->
+                        </select>
+                    </div>
+
+                    <!-- 외부 주소 입력 -->
+                    <div class="form-group hidden" id="bmExternalGroup">
+                        <label>웹 주소 (URL)</label>
+                        <input type="url" id="bmExternalUrl" class="form-input" placeholder="https://..." >
+                        <label style="margin-top: 12px;">이름 (표시될 제목)</label>
+                        <input type="text" id="bmExternalTitle" class="form-input" placeholder="예: 구글, 네이버">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-danger hidden" id="btnDeleteBookmark" style="margin-right: auto;">삭제</button>
+                        <button type="button" class="btn btn-secondary" id="btnCancelBookmark">취소</button>
+                        <button type="submit" class="btn btn-primary">저장</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
