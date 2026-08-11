@@ -154,4 +154,35 @@ router.get('/market-indices', async (req, res) => {
     }
 });
 
+// GET /api/dashboard/bookmarks
+router.get('/bookmarks', async (req, res) => {
+    try {
+        const userEmail = req.user.email;
+        const docRef = db.collection('user_bookmarks').doc(userEmail);
+        const snapshot = await docRef.get();
+        if (snapshot.exists) {
+            res.json(snapshot.data());
+        } else {
+            res.json({ bookmarks: [] });
+        }
+    } catch (err) {
+        console.error('즐겨찾기 조회 실패:', err);
+        res.status(500).json({ error: '즐겨찾기 조회 실패' });
+    }
+});
+
+// POST /api/dashboard/bookmarks
+router.post('/bookmarks', async (req, res) => {
+    try {
+        const userEmail = req.user.email;
+        const { bookmarks } = req.body;
+        const docRef = db.collection('user_bookmarks').doc(userEmail);
+        await docRef.set({ bookmarks }, { merge: true });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('즐겨찾기 저장 실패:', err);
+        res.status(500).json({ error: '즐겨찾기 저장 실패' });
+    }
+});
+
 module.exports = { router, setDb };

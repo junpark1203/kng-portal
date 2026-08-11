@@ -782,12 +782,10 @@ function formatNumber(num, decimals = 2) {
 let userBookmarks = Array(10).fill(null);
 
 async function loadBookmarks() {
-    if (!auth.currentUser) return;
     try {
-        const docRef = doc(db, 'user_bookmarks', auth.currentUser.email);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-            const data = snapshot.data();
+        const res = await authFetch(`${API_BASE}/dashboard/bookmarks`);
+        if (res.ok) {
+            const data = await res.json();
             if (data.bookmarks && Array.isArray(data.bookmarks)) {
                 userBookmarks = data.bookmarks;
             }
@@ -961,10 +959,13 @@ document.getElementById('btnDeleteBookmark')?.addEventListener('click', async ()
 });
 
 async function saveBookmarks() {
-    if (!auth.currentUser) return;
     try {
-        const docRef = doc(db, 'user_bookmarks', auth.currentUser.email);
-        await setDoc(docRef, { bookmarks: userBookmarks }, { merge: true });
+        const res = await authFetch(`${API_BASE}/dashboard/bookmarks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookmarks: userBookmarks })
+        });
+        if (!res.ok) throw new Error('저장 실패');
     } catch (e) {
         console.error('즐겨찾기 저장 오류:', e);
         alert('저장에 실패했습니다.');
