@@ -1280,12 +1280,9 @@ function setupAuth() {
             // Check admin role
             try {
                 const adminDoc = await getDoc(doc(db, "admin_users", user.email));
-                const adminMenu = document.getElementById('adminDashboardMenu');
-                if (adminDoc.exists() && adminMenu) {
-                    adminMenu.classList.remove('hidden');
+                if (adminDoc.exists()) {
                     window.isAdminUser = true;
-                } else if (adminMenu) {
-                    adminMenu.classList.add('hidden');
+                } else {
                     window.isAdminUser = false;
                 }
             } catch (err) {
@@ -1297,8 +1294,6 @@ function setupAuth() {
             // Logged out
             if (loginOverlay) loginOverlay.classList.remove('hidden');
             if (mainApp) mainApp.classList.add('hidden');
-            const adminMenu = document.getElementById('adminDashboardMenu');
-            if (adminMenu) adminMenu.classList.add('hidden');
             window.isAdminUser = false;
         }
     });
