@@ -442,6 +442,20 @@ function showNewExpenseForm() {
     fCreatedDate.value = new Date().toISOString().split('T')[0];
     fPaymentDate.value = new Date().toISOString().split('T')[0];
     fCurrency.value = 'KRW';
+    const urlParams = new URLSearchParams(window.location.search);
+    let savedAuthor = urlParams.get('author');
+    if (!savedAuthor) {
+        try {
+            savedAuthor = (window.parent && window.parent.localStorage) ? window.parent.localStorage.getItem('kngCurrentUser') : localStorage.getItem('kngCurrentUser');
+        } catch(e) {
+            try {
+                savedAuthor = localStorage.getItem('kngCurrentUser');
+            } catch(err) {
+                savedAuthor = '';
+            }
+        }
+    }
+    if (savedAuthor && fPersonInCharge) fPersonInCharge.value = savedAuthor;
     
     handleCurrencyChange();
     

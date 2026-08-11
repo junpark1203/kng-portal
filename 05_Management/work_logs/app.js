@@ -242,14 +242,14 @@ window.addEventListener('popstate', () => {
 });
 
 function showList(pushState = true) {
-    if (pushState) history.pushState(null, '', window.location.pathname);
+    if (pushState) history.pushState(null, '', window.location.pathname + window.location.search);
     editView.classList.remove('active');
     listView.classList.add('active');
     loadLogs();
 }
 
 async function showEditor(id = null, pushState = true) {
-    if (pushState) history.pushState(null, '', id ? `#edit=${id}` : '#new');
+    if (pushState) history.pushState(null, '', window.location.search + (id ? `#edit=${id}` : '#new'));
     
     listView.classList.remove('active');
     editView.classList.add('active');
@@ -288,7 +288,20 @@ async function showEditor(id = null, pushState = true) {
         btnDelete.style.display = 'none';
         const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
         inputDate.value = today;
-        inputAuthorName.value = ''; // Should ideally fetch from auth profile
+        const urlParams = new URLSearchParams(window.location.search);
+        let savedAuthor = urlParams.get('author');
+        if (!savedAuthor) {
+            try {
+                savedAuthor = (window.parent && window.parent.localStorage) ? window.parent.localStorage.getItem('kngCurrentUser') : localStorage.getItem('kngCurrentUser');
+            } catch(e) {
+                try {
+                    savedAuthor = localStorage.getItem('kngCurrentUser');
+                } catch(err) {
+                    savedAuthor = '';
+                }
+            }
+        }
+        inputAuthorName.value = savedAuthor ? savedAuthor : '';
         inputLogType.value = '일일';
         inputCategory.value = '업무';
         

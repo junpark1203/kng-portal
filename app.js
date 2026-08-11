@@ -1277,6 +1277,22 @@ function setupAuth() {
             if (loginOverlay) loginOverlay.classList.add('hidden');
             if (mainApp) mainApp.classList.remove('hidden');
             
+            // 1. 빠른 접근을 위해 기존 캐시 또는 이메일 아이디 사용 (계정 불일치 방지)
+            var cachedEmail = localStorage.getItem('kngCurrentUserEmail');
+            var userName = (cachedEmail === user.email) 
+                ? (localStorage.getItem('kngCurrentUser') || user.email.split('@')[0])
+                : user.email.split('@')[0];
+                
+            localStorage.setItem('kngCurrentUser', userName);
+            localStorage.setItem('kngCurrentUserEmail', user.email);
+
+            // 2. 비동기로 Firestore 'users' 컬렉션에서 실제 이름 가져와서 업데이트
+            getDoc(doc(db, "users", user.email)).then(userDoc => {
+                if (userDoc.exists() && userDoc.data().name) {
+                    localStorage.setItem('kngCurrentUser', userDoc.data().name);
+                }
+            }).catch(err => console.error("Error fetching user profile:", err));
+
             // Check admin role
             try {
                 const adminDoc = await getDoc(doc(db, "admin_users", user.email));
@@ -1481,7 +1497,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var hashIdx = src.indexOf('#');
         var base = hashIdx !== -1 ? src.substring(0, hashIdx) : src;
         var hash = hashIdx !== -1 ? src.substring(hashIdx) : '';
-        var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true') + hash;
+        var userName = localStorage.getItem('kngCurrentUser') || '';
+        var timestamp = new Date().getTime();
+        var embedSrc = base + (base.indexOf('?') === -1 ? '?embed=true' : '&embed=true');
+        embedSrc += '&author=' + encodeURIComponent(userName) + '&_t=' + timestamp + hash;
 
         if (appIframe) {
             // 같은 base URL이 이미 로드되어 있으면 해시만 변경 (깜빡임 방지)

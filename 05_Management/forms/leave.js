@@ -183,6 +183,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // 새 작성 시 오늘 날짜 기본 세팅
             const today = new Date().toISOString().split('T')[0];
             els.fSubmitDate.value = today;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            let savedAuthor = urlParams.get('author');
+            if (!savedAuthor) {
+                try {
+                    savedAuthor = (window.parent && window.parent.localStorage) ? window.parent.localStorage.getItem('kngCurrentUser') : localStorage.getItem('kngCurrentUser');
+                } catch(e) {
+                    try {
+                        savedAuthor = localStorage.getItem('kngCurrentUser');
+                    } catch(err) {
+                        savedAuthor = '';
+                    }
+                }
+            }
+            if (savedAuthor && els.fName) els.fName.value = savedAuthor;
         }
         
         updatePreview();
