@@ -219,6 +219,7 @@ function waitForAdminStatus(timeout = 8000) {
 async function loadAll() {
     updateTimestamp();
     loadExchangeData();
+    renderDateStrip();
     loadWeather();
     loadDashboardData();
     loadMarketIndices();

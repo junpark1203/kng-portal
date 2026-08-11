@@ -347,7 +347,7 @@ body {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     grid-template-areas:
-        "weather exchange"
+        "exchange weather"
         "calendar approvals"
         "worklogs inventory"
         "invoices sellerk";
@@ -372,8 +372,8 @@ body {
     .dashboard-grid {
         grid-template-columns: 1fr;
         grid-template-areas:
-            "weather"
             "exchange"
+            "weather"
             "calendar"
             "approvals"
             "worklogs"

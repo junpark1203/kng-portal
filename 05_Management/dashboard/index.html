@@ -47,12 +47,18 @@
                 <h2>
                     <div class="widget-title"><i class='bx bx-dollar-circle'></i> 환율</div>
                 </h2>
-                <div class="widget-content">
+                <div class="widget-content" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
                     <div class="exchange-grid" id="exchangeGrid">
                         <div class="exchange-item skeleton-fx"><span class="fx-label">USD</span><span class="fx-rate"></span></div>
                         <div class="exchange-item skeleton-fx"><span class="fx-label">EUR</span><span class="fx-rate"></span></div>
                         <div class="exchange-item skeleton-fx"><span class="fx-label">JPY</span><span class="fx-rate"></span></div>
                         <div class="exchange-item skeleton-fx"><span class="fx-label">CNY</span><span class="fx-rate"></span></div>
+                    </div>
+                    
+                    <div style="height: 1px; background: var(--border-light); margin: 16px 0;"></div>
+                    
+                    <div id="dateStripContainer">
+                        <!-- Dates will be rendered here via JS -->
                     </div>
                 </div>
             </section>
