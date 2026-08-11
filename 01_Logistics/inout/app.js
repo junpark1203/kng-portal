@@ -122,7 +122,9 @@ const app = {
     },
 
     openDetailedSearch: function() {
-        const modal = new bootstrap.Modal(document.getElementById('detailedSearchModal'));
+        const modalEl = document.getElementById('detailedSearchModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
         modal.show();
     },
 
@@ -370,7 +372,10 @@ const app = {
     },
 
     openLocationsModal: function() {
-        new bootstrap.Modal($('locationsModal')).show();
+        const modalEl = $('locationsModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
     },
 
     addLocation: async function() {
@@ -769,7 +774,9 @@ const app = {
         }).join('');
         
         this.validateLotModalSum();
-        const modal = new bootstrap.Modal($('lotModal'));
+        const modalEl = $('lotModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
         modal.show();
     },
 
