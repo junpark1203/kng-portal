@@ -76,9 +76,6 @@ const app = {
         $('inboundForm').addEventListener('submit', this.handleInboundSubmit.bind(this));
         $('outboundForm').addEventListener('submit', this.handleOutboundSubmit.bind(this));
         
-        $('out_spec').addEventListener('change', this.handleOutboundSpecChange.bind(this));
-        $('out_qty').addEventListener('input', this.handleOutboundQtyChange.bind(this));
-        
         // Hide autocomplete when clicking outside
         document.addEventListener('click', (e) => {
             if (e.target.id !== 'in_item') {
