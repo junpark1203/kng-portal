@@ -1283,8 +1283,10 @@ function setupAuth() {
                 const adminMenu = document.getElementById('adminDashboardMenu');
                 if (adminDoc.exists() && adminMenu) {
                     adminMenu.classList.remove('hidden');
+                    window.isAdminUser = true;
                 } else if (adminMenu) {
                     adminMenu.classList.add('hidden');
+                    window.isAdminUser = false;
                 }
             } catch (err) {
                 console.error("Error checking admin role:", err);
@@ -1297,6 +1299,7 @@ function setupAuth() {
             if (mainApp) mainApp.classList.add('hidden');
             const adminMenu = document.getElementById('adminDashboardMenu');
             if (adminMenu) adminMenu.classList.add('hidden');
+            window.isAdminUser = false;
         }
     });
 

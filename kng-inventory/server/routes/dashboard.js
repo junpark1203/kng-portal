@@ -16,15 +16,27 @@ function dbAll(sql, params = []) {
     });
 }
 
+// 계정 이메일 -> 표시 이름(작성자명) 고정값 매핑
+const USER_NAME_MAP = {
+    'jpark120325@gmail.com': '박준용',
+    // 필요 시 아래에 '이메일': '작성자명' 을 추가하세요
+};
+
 router.get('/summary', async (req, res) => {
     try {
-        // 1. 진행중인 지출결의서
-        const pendingExpenses = await dbAll(`
-            SELECT id, title, amount, currency, status, createdAt, personInCharge 
-            FROM expense_resolutions 
-            WHERE status NOT IN ('결재보류', '결재완료')
-            ORDER BY createdAt DESC
-        `);
+        const userEmail = req.user ? req.user.email : null;
+        const authorName = userEmail ? (USER_NAME_MAP[userEmail] || userEmail) : null;
+
+        // 1. 진행중인 지출결의서 (본인 작성분만 필터링)
+        let pendingExpenses = [];
+        if (authorName) {
+            pendingExpenses = await dbAll(`
+                SELECT id, title, amount, currency, status, createdAt, personInCharge 
+                FROM expense_resolutions 
+                WHERE status NOT IN ('결재보류', '결재완료') AND (personInCharge = ? OR personInCharge = ?)
+                ORDER BY createdAt DESC
+            `, [userEmail, authorName]);
+        }
 
         // 2. 진행중인 전시회 참관 보고서
         const pendingExhibitions = await dbAll(`
@@ -63,16 +75,15 @@ router.get('/summary', async (req, res) => {
         `, [fiveDaysAgo.toISOString()]);
 
         // 6. 나의 최근 업무일지 (어제 작성분 등 가장 최근 제출된 문서)
-        const authorId = req.user ? (req.user.email || req.user.uid) : null;
         let yesterdayLog = null;
-        if (authorId) {
+        if (userEmail) {
             const logs = await dbAll(`
                 SELECT id, date, todayTasks, nextTasks, createdAt 
                 FROM work_logs 
-                WHERE authorId = ? AND isDraft = 0 
+                WHERE (authorId = ? OR authorId = ?) AND isDraft = 0 
                 ORDER BY date DESC 
                 LIMIT 1
-            `, [authorId]);
+            `, [userEmail, authorName]);
             if (logs.length > 0) {
                 yesterdayLog = logs[0];
             }

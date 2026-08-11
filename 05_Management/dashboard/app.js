@@ -197,13 +197,39 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function loadAll() {
+function waitForAdminStatus(timeout = 8000) {
+    return new Promise((res) => {
+        const s = Date.now();
+        (function poll() {
+            try {
+                if (window.parent && typeof window.parent.isAdminUser !== 'undefined') {
+                    res(window.parent.isAdminUser);
+                } else if (Date.now() - s < timeout) {
+                    setTimeout(poll, 400);
+                } else {
+                    res(false);
+                }
+            } catch (e) {
+                res(false);
+            }
+        })();
+    });
+}
+
+async function loadAll() {
     updateTimestamp();
     loadExchangeData();
     loadWeather();
-    loadCalendarEvents();
     loadDashboardData();
     loadMarketIndices();
+    
+    const isAdmin = await waitForAdminStatus();
+    if (isAdmin) {
+        loadCalendarEvents();
+    } else {
+        const calSec = document.getElementById('calendarSection');
+        if (calSec) calSec.style.display = 'none';
+    }
 }
 
 async function loadMarketIndices() {
