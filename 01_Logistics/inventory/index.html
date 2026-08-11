@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 재고 현황 (물류 관리)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css">
+    <style>
+        .accordion-button:not(.collapsed) {
+            background-color: #f8f9fa;
+            color: #0d6efd;
+            box-shadow: none;
+        }
+        .accordion-button:focus {
+            box-shadow: none;
+        }
+        .lot-detail-table th { background-color: #f1f3f5; font-size: 0.85rem; text-align: center; }
+        .lot-detail-table td { vertical-align: middle; font-size: 0.9rem; text-align: center; }
+        .badge-qty { font-size: 0.9rem; padding: 0.4em 0.6em; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0 fw-bold"><i class='bx bx-box text-primary'></i> 통합 물류 실시간 재고</h4>
+        <div>
+            <a href="../inout/index.html" class="btn btn-outline-primary btn-sm">
+                <i class='bx bx-transfer'></i> 입출고 등록하기
+            </a>
+        </div>
+    </div>
+
+    <!-- 필터 및 검색 -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                        <input type="text" class="form-control" id="searchInput" placeholder="품목명 또는 규격 검색...">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 재고 리스트 -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;"></th>
+                            <th>품목명</th>
+                            <th>규격</th>
+                            <th>단위</th>
+                            <th class="text-end pe-4">총 재고수량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTbody">
+                        <tr><td colspan="5" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+    // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가)
+</script>
+<script src="app.js?v=1"></script>
+</body>
+</html>

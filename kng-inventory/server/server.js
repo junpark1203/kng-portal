@@ -62,6 +62,10 @@ const { initMaterialQuotesTables } = materialQuotesRoutes;
 const reportBuilderRoutes = require('./routes/report-builder');
 const { initReportBuilderTables } = reportBuilderRoutes;
 
+// 통합 물류 재고 관리 모듈
+const logisticsRoutes = require('./routes/logistics');
+const { initLogisticsTables } = logisticsRoutes;
+
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
 const { initDashboardTables } = dashboardRoutes;
@@ -277,6 +281,12 @@ const db = new sqlite3.Database(dbFile, (err) => {
         initForwarderQuotationTables(db).then(() => {
             forwarderQuotationRoutes.setDb(db);
             console.log('forwarder_quotation API 준비 완료');
+        });
+        
+        // 통합 물류 관리 테이블 초기화 + 라우트에 DB 주입
+        initLogisticsTables(db).then(() => {
+            logisticsRoutes.setDb(db);
+            console.log('logistics API 준비 완료');
         });
         // 수입 견적 테이블 초기화 + 라우트에 DB 주입
         initImportQuotationTables(db).then(() => {
@@ -1079,6 +1089,7 @@ app.use('/api/report-builder', reportBuilderRoutes.router);
 app.use('/api/projects', projectsRoutes.router);
 app.use('/api/leave-request', leaveRequestRoutes.router);
 app.use('/api/margin-calculator', marginCalculatorRoutes.router);
+app.use('/api/logistics', logisticsRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
