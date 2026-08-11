@@ -299,7 +299,7 @@ router.post('/outbound', (req, res) => {
             } else {
                 db.run("COMMIT", (err2) => {
                     if (err2) return res.status(500).json({ error: err2.message });
-                    res.status(201).json({ message: 'Outbound success', id: outboundId });
+                    res.status(201).json({ message: 'Outbound success' });
                 });
             }
         });
