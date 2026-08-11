@@ -17,8 +17,18 @@ async function authFetch(url, opts = {}, _retries = 3) {
     }
     if (!res.ok) {
         let errStr = res.statusText;
-        try { const errObj = await res.json(); errStr = errObj.error || errStr; } catch(e){}
-        throw new Error(errStr);
+        try { 
+            const errObj = await res.json(); 
+            errStr = errObj.error || errStr; 
+        } catch(e) {
+            try {
+                const text = await res.text();
+                errStr = text ? text.substring(0, 100) : ('HTTP Error ' + res.status);
+            } catch (innerE) {
+                errStr = 'HTTP Error ' + res.status;
+            }
+        }
+        throw new Error(errStr || 'Unknown Error');
     }
     return res;
 }
