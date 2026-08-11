@@ -1568,8 +1568,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 퀵 메뉴(대시보드)가 기본값
-    var lastNavHref = sessionStorage.getItem('lastNavHref') || '#quickmenu';
+    // 새로고침(F5) 시 이전 접속 페이지 복원, 없으면 대시보드가 기본값
+    var lastNavHref = sessionStorage.getItem('lastNavHref') || './05_Management/dashboard/index.html';
     if (lastNavHref) {
         var savedLink = document.querySelector('.menu a[href="' + lastNavHref + '"]');
         if (savedLink) {
