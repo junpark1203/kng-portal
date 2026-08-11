@@ -810,15 +810,20 @@ function renderBookmarks() {
         if (bm && bm.url) {
             // Filled slot
             return `
-                <a href="${bm.type === 'external' ? bm.url : '#'}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-item filled" data-index="${index}" onclick="handleBookmarkClick(event, this)">
-                    <i class='bx ${bm.icon || 'bx-link'}'></i>
-                    <span>${bm.title}</span>
-                </a>
+                <div class="bookmark-item filled" draggable="true" data-index="${index}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                    <a href="${bm.type === 'external' ? bm.url : '#'}" target="${bm.type === 'external' ? '_blank' : '_self'}" class="bookmark-link" onclick="handleBookmarkClick(event, this, ${index})">
+                        <i class='bx ${bm.icon || 'bx-link'}'></i>
+                        <span>${bm.title}</span>
+                    </a>
+                    <button class="bookmark-edit-btn" onclick="openBookmarkModal(${index}, true)" title="수정/삭제" aria-label="수정/삭제">
+                        <i class='bx bx-dots-vertical-rounded'></i>
+                    </button>
+                </div>
             `;
         } else {
             // Empty slot
             return `
-                <div class="bookmark-item empty" data-index="${index}" onclick="openBookmarkModal(${index})">
+                <div class="bookmark-item empty" data-index="${index}" onclick="openBookmarkModal(${index})" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
                     <i class='bx bx-plus'></i>
                     <span>추가</span>
                 </div>
@@ -827,14 +832,13 @@ function renderBookmarks() {
     }).join('');
 }
 
-function handleBookmarkClick(e, el) {
+function handleBookmarkClick(e, el, index) {
     if (e.type === 'contextmenu') {
         e.preventDefault();
-        openBookmarkModal(parseInt(el.dataset.index), true);
+        openBookmarkModal(index, true);
         return;
     }
     
-    const index = parseInt(el.dataset.index);
     const bm = userBookmarks[index];
     if (bm && bm.type === 'internal') {
         e.preventDefault();
@@ -848,6 +852,45 @@ function handleBookmarkClick(e, el) {
         }
     }
 }
+
+// ════════════════════════════════
+// Drag & Drop
+// ════════════════════════════════
+let draggedBookmarkIndex = null;
+
+function handleDragStart(e) {
+    draggedBookmarkIndex = parseInt(e.currentTarget.dataset.index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.currentTarget.style.opacity = '0.4';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    const targetEl = e.currentTarget.closest('.bookmark-item');
+    if (!targetEl) return;
+    
+    targetEl.style.opacity = '1';
+    document.querySelectorAll('.bookmark-item').forEach(el => el.style.opacity = '1');
+
+    if (draggedBookmarkIndex === null) return;
+    
+    const targetIndex = parseInt(targetEl.dataset.index);
+    if (draggedBookmarkIndex === targetIndex) return;
+    
+    const temp = userBookmarks[draggedBookmarkIndex];
+    userBookmarks[draggedBookmarkIndex] = userBookmarks[targetIndex];
+    userBookmarks[targetIndex] = temp;
+    
+    renderBookmarks(); // Optimistic render
+    await saveBookmarks();
+    draggedBookmarkIndex = null;
+}
+
 
 // Add right-click listener for editing
 document.addEventListener('contextmenu', function(e) {
