@@ -296,6 +296,8 @@ router.post('/outbound', (req, res) => {
             }
         });
     });
+});
+
 // --- History (입출고 전체 내역) ---
 router.get('/history', (req, res) => {
     const sql = `
