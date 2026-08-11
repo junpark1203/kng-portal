@@ -74,7 +74,7 @@ function initMaterialQuotesTables(database) {
     return new Promise((resolve, reject) => {
         database.serialize(() => {
             database.run(`
-                CREATE TABLE IF NOT EXISTS mat_quote_items (
+                CREATE TABLE IF NOT EXISTS tbm_mat_quote_items (
                     id TEXT PRIMARY KEY,
                     itemName TEXT DEFAULT '',
                     category TEXT DEFAULT '',
@@ -86,22 +86,22 @@ function initMaterialQuotesTables(database) {
                 )
             `);
             // Add column if it doesn't exist (for existing DBs)
-            database.run(`ALTER TABLE mat_quote_items ADD COLUMN customFields TEXT DEFAULT '[]'`, (err) => {
+            database.run(`ALTER TABLE tbm_mat_quote_items ADD COLUMN customFields TEXT DEFAULT '[]'`, (err) => {
                 // Ignore error if column already exists
             });
             database.run(`
-                CREATE TABLE IF NOT EXISTS mat_quote_variants (
+                CREATE TABLE IF NOT EXISTS tbm_mat_quote_variants (
                     id TEXT PRIMARY KEY,
                     itemId TEXT NOT NULL,
                     spec TEXT DEFAULT '',
                     unit TEXT DEFAULT '',
                     sortOrder INTEGER DEFAULT 0,
                     createdAt TEXT,
-                    FOREIGN KEY(itemId) REFERENCES mat_quote_items(id) ON DELETE CASCADE
+                    FOREIGN KEY(itemId) REFERENCES tbm_mat_quote_items(id) ON DELETE CASCADE
                 )
             `);
             database.run(`
-                CREATE TABLE IF NOT EXISTS mat_quote_supplier_quotes (
+                CREATE TABLE IF NOT EXISTS tbm_mat_quote_supplier_quotes (
                     id TEXT PRIMARY KEY,
                     variantId TEXT NOT NULL,
                     supplier TEXT DEFAULT '',
@@ -111,7 +111,7 @@ function initMaterialQuotesTables(database) {
                     remarks TEXT DEFAULT '',
                     isSelected INTEGER DEFAULT 0,
                     createdAt TEXT,
-                    FOREIGN KEY(variantId) REFERENCES mat_quote_variants(id) ON DELETE CASCADE
+                    FOREIGN KEY(variantId) REFERENCES tbm_mat_quote_variants(id) ON DELETE CASCADE
                 )
             `, (err) => {
                 if (err) {
@@ -131,9 +131,9 @@ function initMaterialQuotesTables(database) {
 // 전체 데이터 조회 (Items + Variants + Quotes)
 router.get('/', async (req, res) => {
     try {
-        const items = await dbAll('SELECT * FROM mat_quote_items ORDER BY createdAt DESC');
-        const variants = await dbAll('SELECT * FROM mat_quote_variants ORDER BY sortOrder ASC, createdAt ASC');
-        const quotes = await dbAll('SELECT * FROM mat_quote_supplier_quotes ORDER BY createdAt ASC');
+        const items = await dbAll('SELECT * FROM tbm_mat_quote_items ORDER BY createdAt DESC');
+        const variants = await dbAll('SELECT * FROM tbm_mat_quote_variants ORDER BY sortOrder ASC, createdAt ASC');
+        const quotes = await dbAll('SELECT * FROM tbm_mat_quote_supplier_quotes ORDER BY createdAt ASC');
 
         // 트리 구조로 조립
         const itemsMap = {};
@@ -168,7 +168,7 @@ router.get('/', async (req, res) => {
 // 기존 카테고리 목록 가져오기 (자동완성 용도)
 router.get('/categories', async (req, res) => {
     try {
-        const rows = await dbAll('SELECT DISTINCT category FROM mat_quote_items WHERE category IS NOT NULL AND category != "" ORDER BY category ASC');
+        const rows = await dbAll('SELECT DISTINCT category FROM tbm_mat_quote_items WHERE category IS NOT NULL AND category != "" ORDER BY category ASC');
         const categories = rows.map(r => r.category);
         res.json(categories);
     } catch (err) {
@@ -185,7 +185,7 @@ router.post('/', async (req, res) => {
         const imagesStr = JSON.stringify(p.images || []);
         const cfStr = JSON.stringify(p.customFields || []);
         
-        const sql = `INSERT INTO mat_quote_items (id, itemName, category, images, remarks, customFields, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tbm_mat_quote_items (id, itemName, category, images, remarks, customFields, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
         await dbRun(sql, [id, p.itemName || '', p.category || '', imagesStr, p.remarks || '', cfStr, now, now]);
         
         // Return created item
@@ -203,7 +203,7 @@ router.put('/:id', async (req, res) => {
         const imagesStr = JSON.stringify(p.images || []);
         const cfStr = JSON.stringify(p.customFields || []);
 
-        const sql = `UPDATE mat_quote_items SET itemName = ?, category = ?, images = ?, remarks = ?, customFields = ?, updatedAt = ? WHERE id = ?`;
+        const sql = `UPDATE tbm_mat_quote_items SET itemName = ?, category = ?, images = ?, remarks = ?, customFields = ?, updatedAt = ? WHERE id = ?`;
         const result = await dbRun(sql, [p.itemName || '', p.category || '', imagesStr, p.remarks || '', cfStr, now, id]);
 
         if (result.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
@@ -216,13 +216,13 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const variants = await dbAll('SELECT id FROM mat_quote_variants WHERE itemId = ?', [id]);
+        const variants = await dbAll('SELECT id FROM tbm_mat_quote_variants WHERE itemId = ?', [id]);
         for (let v of variants) {
-            await dbRun('DELETE FROM mat_quote_supplier_quotes WHERE variantId = ?', [v.id]);
+            await dbRun('DELETE FROM tbm_mat_quote_supplier_quotes WHERE variantId = ?', [v.id]);
         }
-        await dbRun('DELETE FROM mat_quote_variants WHERE itemId = ?', [id]);
+        await dbRun('DELETE FROM tbm_mat_quote_variants WHERE itemId = ?', [id]);
         
-        const result = await dbRun('DELETE FROM mat_quote_items WHERE id = ?', [id]);
+        const result = await dbRun('DELETE FROM tbm_mat_quote_items WHERE id = ?', [id]);
         if (result.changes === 0) return res.status(404).json({ error: '항목을 찾을 수 없습니다.' });
         res.json({ message: '삭제 성공' });
     } catch (err) {
@@ -234,11 +234,11 @@ router.delete('/:id', async (req, res) => {
 router.delete('/:id/variants-all', async (req, res) => {
     try {
         const id = req.params.id;
-        const variants = await dbAll('SELECT id FROM mat_quote_variants WHERE itemId = ?', [id]);
+        const variants = await dbAll('SELECT id FROM tbm_mat_quote_variants WHERE itemId = ?', [id]);
         for (let v of variants) {
-            await dbRun('DELETE FROM mat_quote_supplier_quotes WHERE variantId = ?', [v.id]);
+            await dbRun('DELETE FROM tbm_mat_quote_supplier_quotes WHERE variantId = ?', [v.id]);
         }
-        await dbRun('DELETE FROM mat_quote_variants WHERE itemId = ?', [id]);
+        await dbRun('DELETE FROM tbm_mat_quote_variants WHERE itemId = ?', [id]);
         res.json({ message: 'All variants deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -254,7 +254,7 @@ router.post('/variants', async (req, res) => {
         const id = 'MQV-' + Date.now() + Math.floor(Math.random()*1000);
         const now = new Date().toISOString();
         
-        const sql = `INSERT INTO mat_quote_variants (id, itemId, spec, unit, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tbm_mat_quote_variants (id, itemId, spec, unit, sortOrder, createdAt) VALUES (?, ?, ?, ?, ?, ?)`;
         await dbRun(sql, [id, p.itemId, p.spec || '', p.unit || '', p.sortOrder || 0, now]);
         
         res.status(201).json({ id, itemId: p.itemId, spec: p.spec, unit: p.unit, sortOrder: p.sortOrder, createdAt: now, quotes: [] });
@@ -268,7 +268,7 @@ router.put('/variants/:id', async (req, res) => {
         const id = req.params.id;
         const p = req.body;
         
-        const sql = `UPDATE mat_quote_variants SET spec = ?, unit = ?, sortOrder = ? WHERE id = ?`;
+        const sql = `UPDATE tbm_mat_quote_variants SET spec = ?, unit = ?, sortOrder = ? WHERE id = ?`;
         const result = await dbRun(sql, [p.spec || '', p.unit || '', p.sortOrder || 0, id]);
         
         if (result.changes === 0) return res.status(404).json({ error: '규격을 찾을 수 없습니다.' });
@@ -281,8 +281,8 @@ router.put('/variants/:id', async (req, res) => {
 router.delete('/variants/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        await dbRun('DELETE FROM mat_quote_supplier_quotes WHERE variantId = ?', [id]);
-        const result = await dbRun('DELETE FROM mat_quote_variants WHERE id = ?', [id]);
+        await dbRun('DELETE FROM tbm_mat_quote_supplier_quotes WHERE variantId = ?', [id]);
+        const result = await dbRun('DELETE FROM tbm_mat_quote_variants WHERE id = ?', [id]);
         if (result.changes === 0) return res.status(404).json({ error: '규격을 찾을 수 없습니다.' });
         res.json({ message: '삭제 성공' });
     } catch (err) {
@@ -299,7 +299,7 @@ router.post('/quotes', async (req, res) => {
         const id = 'MQQ-' + Date.now() + Math.floor(Math.random()*1000);
         const now = new Date().toISOString();
         
-        const sql = `INSERT INTO mat_quote_supplier_quotes (id, variantId, supplier, unitPrice, currency, quoteDate, remarks, isSelected, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO tbm_mat_quote_supplier_quotes (id, variantId, supplier, unitPrice, currency, quoteDate, remarks, isSelected, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         await dbRun(sql, [id, p.variantId, p.supplier || '', p.unitPrice || 0, p.currency || 'KRW', p.quoteDate || '', p.remarks || '', p.isSelected ? 1 : 0, now]);
         
         res.status(201).json({ id, variantId: p.variantId, supplier: p.supplier, unitPrice: p.unitPrice, currency: p.currency, quoteDate: p.quoteDate, remarks: p.remarks, isSelected: p.isSelected ? 1 : 0, createdAt: now });
@@ -313,7 +313,7 @@ router.put('/quotes/:id', async (req, res) => {
         const id = req.params.id;
         const p = req.body;
         
-        const sql = `UPDATE mat_quote_supplier_quotes SET supplier = ?, unitPrice = ?, currency = ?, quoteDate = ?, remarks = ?, isSelected = ? WHERE id = ?`;
+        const sql = `UPDATE tbm_mat_quote_supplier_quotes SET supplier = ?, unitPrice = ?, currency = ?, quoteDate = ?, remarks = ?, isSelected = ? WHERE id = ?`;
         const result = await dbRun(sql, [p.supplier || '', p.unitPrice || 0, p.currency || 'KRW', p.quoteDate || '', p.remarks || '', p.isSelected ? 1 : 0, id]);
         
         if (result.changes === 0) return res.status(404).json({ error: '견적을 찾을 수 없습니다.' });
@@ -326,7 +326,7 @@ router.put('/quotes/:id', async (req, res) => {
 router.delete('/quotes/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const result = await dbRun('DELETE FROM mat_quote_supplier_quotes WHERE id = ?', [id]);
+        const result = await dbRun('DELETE FROM tbm_mat_quote_supplier_quotes WHERE id = ?', [id]);
         if (result.changes === 0) return res.status(404).json({ error: '견적을 찾을 수 없습니다.' });
         res.json({ message: '삭제 성공' });
     } catch (err) {
