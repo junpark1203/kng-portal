@@ -73,8 +73,9 @@
                                 <option value="200">200개씩 보기</option>
                             </select>
                         </div>
-                        <div class="w-25">
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="품목명, 매입/출고처 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
+                        <div class="d-flex w-25 gap-2">
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="단순 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
+                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.openDetailedSearch()"><i class='bx bx-slider-alt'></i> 상세검색</button>
                         </div>
                     </div>
                     
@@ -82,15 +83,15 @@
                         <table class="table table-hover align-middle" style="font-size: 0.9rem;">
                             <thead class="table-light sticky-top">
                                 <tr>
-                                    <th>구분</th>
-                                    <th>일자</th>
-                                    <th>거래처</th>
-                                    <th>품목명</th>
-                                    <th>규격</th>
-                                    <th>단위</th>
-                                    <th>수량</th>
-                                    <th>단가</th>
-                                    <th class="text-center">삭제</th>
+                                    <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
+                                    <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
+                                    <th id="th-party" style="cursor:pointer" onclick="app.toggleSort('party')" class="user-select-none">거래처<span class="sort-icon"></span></th>
+                                    <th id="th-item" style="cursor:pointer" onclick="app.toggleSort('item')" class="user-select-none">품목명<span class="sort-icon"></span></th>
+                                    <th id="th-spec" style="cursor:pointer" onclick="app.toggleSort('spec')" class="user-select-none">규격<span class="sort-icon"></span></th>
+                                    <th id="th-unit" style="cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none">단위<span class="sort-icon"></span></th>
+                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none">수량<span class="sort-icon"></span></th>
+                                    <th id="th-price" style="cursor:pointer" onclick="app.toggleSort('price')" class="user-select-none">단가<span class="sort-icon"></span></th>
+                                    <th class="text-center user-select-none">삭제</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTbody">
@@ -237,6 +238,48 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 상세 검색 모달 -->
+<div class="modal fade" id="detailedSearchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fs-6 fw-bold">상세 조건 검색</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="dsForm">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">시작 일자</label>
+                            <input type="date" class="form-control" id="ds_start_date">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">종료 일자</label>
+                            <input type="date" class="form-control" id="ds_end_date">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">거래처 (포함)</label>
+                            <input type="text" class="form-control" id="ds_party" placeholder="예: 동서울강남">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">품목명 (포함)</label>
+                            <input type="text" class="form-control" id="ds_item" placeholder="예: TMT-100">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">규격 (포함)</label>
+                            <input type="text" class="form-control" id="ds_spec" placeholder="예: 25KG">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" onclick="app.resetDetailedSearch()">초기화</button>
+                <button type="button" class="btn btn-primary" onclick="app.applyDetailedSearch()">검색 적용</button>
             </div>
         </div>
     </div>

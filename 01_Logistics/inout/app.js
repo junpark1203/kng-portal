@@ -93,6 +93,60 @@ const app = {
     // History & Deletion (내역 및 삭제)
     // ----------------------------------------
     currentPage: 1,
+    sortCol: 'date',
+    sortDir: 'desc',
+    detailedFilters: {
+        startDate: '',
+        endDate: '',
+        searchParty: '',
+        searchItem: '',
+        searchSpec: ''
+    },
+
+    toggleSort: function(colName) {
+        if (this.sortCol === colName) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortCol = colName;
+            this.sortDir = 'desc';
+        }
+        
+        document.querySelectorAll('.sort-icon').forEach(el => el.innerHTML = '');
+        const icon = this.sortDir === 'asc' ? ' 🔼' : ' 🔽';
+        const th = document.getElementById('th-' + colName);
+        if (th) {
+            th.querySelector('.sort-icon').innerHTML = icon;
+        }
+
+        this.resetPageAndLoadHistory();
+    },
+
+    openDetailedSearch: function() {
+        const modal = new bootstrap.Modal(document.getElementById('detailedSearchModal'));
+        modal.show();
+    },
+
+    applyDetailedSearch: function() {
+        this.detailedFilters.startDate = $('ds_start_date').value;
+        this.detailedFilters.endDate = $('ds_end_date').value;
+        this.detailedFilters.searchParty = $('ds_party').value.trim();
+        this.detailedFilters.searchItem = $('ds_item').value.trim();
+        this.detailedFilters.searchSpec = $('ds_spec').value.trim();
+
+        const modalEl = document.getElementById('detailedSearchModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        this.resetPageAndLoadHistory();
+    },
+
+    resetDetailedSearch: function() {
+        $('dsForm').reset();
+        this.detailedFilters = {
+            startDate: '', endDate: '', searchParty: '', searchItem: '', searchSpec: ''
+        };
+        this.resetPageAndLoadHistory();
+    },
 
     resetPageAndLoadHistory: function() {
         this.currentPage = 1;
@@ -113,7 +167,14 @@ const app = {
             page: this.currentPage,
             limit: limit,
             type: typeFilter,
-            search: searchRaw
+            search: searchRaw,
+            sortCol: this.sortCol,
+            sortDir: this.sortDir,
+            startDate: this.detailedFilters.startDate,
+            endDate: this.detailedFilters.endDate,
+            searchParty: this.detailedFilters.searchParty,
+            searchItem: this.detailedFilters.searchItem,
+            searchSpec: this.detailedFilters.searchSpec
         });
 
         try {

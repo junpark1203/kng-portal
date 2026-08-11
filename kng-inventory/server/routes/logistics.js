@@ -308,10 +308,20 @@ router.post('/outbound', (req, res) => {
 
 // --- History (입출고 전체 내역) ---
 router.get('/history', (req, res) => {
-    let { page = 1, limit = 50, type = 'all', search = '' } = req.query;
+    let { 
+        page = 1, limit = 50, type = 'all', search = '',
+        sortCol = 'date', sortDir = 'desc',
+        startDate = '', endDate = '',
+        searchParty = '', searchItem = '', searchSpec = ''
+    } = req.query;
+
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
+
+    const validSortCols = ['type', 'date', 'party', 'item', 'spec', 'unit', 'qty', 'price'];
+    const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
+    const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
     let whereClauses = [];
     let params = [];
@@ -322,6 +332,29 @@ router.get('/history', (req, res) => {
         whereClauses.push("type = 'outbound'");
     }
 
+    // Detailed search filters
+    if (startDate) {
+        whereClauses.push("date >= ?");
+        params.push(startDate);
+    }
+    if (endDate) {
+        whereClauses.push("date <= ?");
+        params.push(endDate);
+    }
+    if (searchParty) {
+        whereClauses.push("party LIKE ?");
+        params.push(`%${searchParty}%`);
+    }
+    if (searchItem) {
+        whereClauses.push("item LIKE ?");
+        params.push(`%${searchItem}%`);
+    }
+    if (searchSpec) {
+        whereClauses.push("spec LIKE ?");
+        params.push(`%${searchSpec}%`);
+    }
+
+    // General search (from the main search bar)
     const searchTerms = search.trim().split(/\s+/).filter(Boolean);
     if (searchTerms.length > 0) {
         searchTerms.forEach(term => {
@@ -352,7 +385,7 @@ router.get('/history', (req, res) => {
     const countSql = `SELECT COUNT(*) as total FROM (${baseSql})`;
     const dataSql = `
         ${baseSql}
-        ORDER BY date DESC, created_at DESC
+        ORDER BY ${safeSortCol} ${safeSortDir}, created_at DESC
         LIMIT ? OFFSET ?
     `;
 
