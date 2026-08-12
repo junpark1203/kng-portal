@@ -449,15 +449,35 @@ function bindEvents() {
 
     const btnPrint = document.getElementById('btnPrintProject');
     if (btnPrint) {
-        btnPrint.addEventListener('click', () => {
+        btnPrint.addEventListener('click', async () => {
             if (!currentProjectId) {
                 Swal.fire('알림', '인쇄할 프로젝트를 먼저 선택해주세요.', 'info');
                 return;
             }
             const project = projects.find(p => p.id === currentProjectId);
             if (!project) return;
-            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-            executePrintProjectLogs(project, printLogs);
+            
+            const { value: formValues } = await Swal.fire({
+                title: '인쇄 설정',
+                html:
+                    '<input id="swal-input1" class="swal2-input" placeholder="헤더명 (예: 프로젝트 로그 내역)" value="프로젝트 로그 내역">' +
+                    '<input id="swal-input2" class="swal2-input" placeholder="작성일 (예: 2026. 7. 30.)" value="' + new Date().toLocaleDateString() + '">',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: '인쇄',
+                cancelButtonText: '취소',
+                preConfirm: () => {
+                    return [
+                        document.getElementById('swal-input1').value,
+                        document.getElementById('swal-input2').value
+                    ]
+                }
+            });
+
+            if (formValues) {
+                let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                executePrintProjectLogs(project, printLogs, formValues[0], formValues[1]);
+            }
         });
     }
 
@@ -861,7 +881,7 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
 
 
 
-function executePrintProjectLogs(project, logs) {
+function executePrintProjectLogs(project, logs, headerTitle, createDate) {
     const container = document.getElementById('printContainer');
     if (!container) return;
 
@@ -876,7 +896,7 @@ function executePrintProjectLogs(project, logs) {
     // Header
     html += `
         <div class="print-header">
-            <h1 class="print-title">프로젝트 로그 내역</h1>
+            <h1 class="print-title">${headerTitle}</h1>
         </div>
     `;
 
@@ -884,20 +904,10 @@ function executePrintProjectLogs(project, logs) {
     html += `
         <table class="print-info-table">
             <tr>
-                <th>프로젝트명</th>
-                <td colspan="3" style="font-size:15px; font-weight:700;">${project.title}</td>
-            </tr>
-            <tr>
                 <th>담당자</th>
                 <td>${project.manager}</td>
-                <th>상태</th>
-                <td>${project.status}</td>
-            </tr>
-            <tr>
-                <th>구분</th>
-                <td>${project.category}</td>
-                <th>생성일</th>
-                <td>${new Date(project.createdAt).toLocaleDateString()}</td>
+                <th>작성일</th>
+                <td>${createDate}</td>
             </tr>
         </table>
     `;
@@ -908,51 +918,27 @@ function executePrintProjectLogs(project, logs) {
         <table class="print-log-table">
             <thead>
                 <tr>
-                    <th class="col-date">일자</th>
-                    <th class="col-type">유형</th>
-                    <th class="col-manager">작성자</th>
-                    <th class="col-content">내용</th>
+                    <th class="col-date" style="width: 20%; text-align: center;">일자</th>
+                    <th class="col-content" style="width: 80%;">내용</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     if (logs.length === 0) {
-        html += `<tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">등록된 로그가 없습니다.</td></tr>`;
+        html += `<tr><td colspan="2" style="text-align:center; padding: 20px; color: #64748b;">등록된 로그가 없습니다.</td></tr>`;
     } else {
         logs.forEach(log => {
             const dateStr = (log.createdAt || "").substring(0,10);
-            let typeLabel = '일반';
-            let typeClass = 'info';
-            if (log.logType === 'warning') { typeLabel = '주의/이슈'; typeClass = 'warning'; }
-            if (log.logType === 'success') { typeLabel = '완료/성공'; typeClass = 'success'; }
 
             // Format content with newlines
             const formattedContent = (log.content || '').replace(/\n/g, '<br>');
-            
-            // Attachments
-            let attachHtml = '';
-            try {
-                const atts = JSON.parse(log.attachments || '[]');
-                if (atts.length > 0) {
-                    attachHtml = `<div style="margin-top: 8px; font-size: 11px; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 5px;">
-                        <strong>[첨부파일]</strong> ${atts.map(a => {
-                            let name = a;
-                            if(a.startsWith('/uploads/projects/')) name = a.split('/').pop().split('_').slice(1).join('_');
-                            return name;
-                        }).join(', ')}
-                    </div>`;
-                }
-            } catch(e) {}
 
             html += `
                 <tr>
-                    <td class="col-date">${dateStr}</td>
-                    <td class="col-type"><span class="type-badge ${typeClass}">${typeLabel}</span></td>
-                    <td class="col-manager">${log.manager || project.manager}</td>
+                    <td class="col-date" style="text-align: center;">${dateStr}</td>
                     <td class="col-content">
                         <div style="white-space: pre-wrap;">${formattedContent}</div>
-                        ${attachHtml}
                     </td>
                 </tr>
             `;
