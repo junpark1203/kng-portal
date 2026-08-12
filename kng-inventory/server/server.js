@@ -150,7 +150,6 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // 인증 미들웨어 (JWT 토큰 검증)
-app.use('/api/tbm-material-quotes', tbmMaterialQuotesRoutes.router);
 const { verifyToken } = require('./auth-middleware');
 // health check 등 인증이 필요 없는 라우트는 미들웨어 적용 이전에 선언
 app.get('/api/health', (req, res) => {

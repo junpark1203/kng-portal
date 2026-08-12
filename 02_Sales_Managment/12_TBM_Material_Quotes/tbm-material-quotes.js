@@ -4,6 +4,9 @@ let suppliers = []; // Array of supplier names
 let items = []; // Array of item objects
 let currentDocumentId = null;
 
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3000/api/tbm-material-quotes' : 'https://kng.junparks.com/api/tbm-material-quotes';
+
+
 async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
     try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
@@ -234,7 +237,7 @@ async function saveDocument(status) {
 
     try {
         const method = currentDocumentId ? 'PUT' : 'POST';
-        const url = currentDocumentId ? `/api/tbm-material-quotes/${currentDocumentId}` : '/api/tbm-material-quotes';
+        const url = currentDocumentId ? `${API_BASE}/${currentDocumentId}` : API_BASE;
         
         const res = await authFetch(url, {
             method: method,
@@ -254,7 +257,7 @@ async function saveDocument(status) {
 
 async function loadDocumentList() {
     try {
-        const res = await authFetch('/api/tbm-material-quotes');
+        const res = await authFetch(API_BASE);
         const docs = await res.json();
         
         const tbody = document.getElementById('documentListBody');
@@ -293,7 +296,7 @@ function closeLoadModal() {
 
 async function loadDocument(id) {
     try {
-        const res = await authFetch(`/api/tbm-material-quotes/${id}`);
+        const res = await authFetch(`${API_BASE}/${id}`);
         const doc = await res.json();
         
         currentDocumentId = doc.id;
@@ -311,7 +314,7 @@ async function loadDocument(id) {
 async function deleteDocument(id) {
     if(!confirm('이 문서를 정말 삭제하시겠습니까?')) return;
     try {
-        await authFetch(`/api/tbm-material-quotes/${id}`, { method: 'DELETE' });
+        await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
         if (currentDocumentId === id) {
             items = [];
             suppliers = [];
