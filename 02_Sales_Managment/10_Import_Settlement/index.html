@@ -274,12 +274,12 @@
 
     <!-- 모달: 인쇄 옵션 -->
     <div id="printOptionModal" class="modal">
-        <div class="modal-content" style="max-width: 500px !important; padding: 0 !important; display: flex !important; flex-direction: column !important; max-height: 85vh !important; height: auto !important;">
+        <div class="modal-content" style="max-width: 500px !important; padding: 0 !important; max-height: 85vh !important; overflow: hidden !important;">
             <div class="modal-header">
                 <h2>인쇄 옵션 선택</h2>
                 <button class="btn-close" id="btnClosePrintModal"><i class='bx bx-x'></i></button>
             </div>
-            <div class="modal-body" style="padding: 20px !important; overflow-y: auto !important; flex: 1 !important; min-height: 0 !important;">
+            <div class="modal-body" style="padding: 20px !important; overflow-y: auto !important; max-height: calc(85vh - 140px) !important;">
                 <div class="print-mode-options" style="display:flex; flex-direction:column; gap:12px;">
                     <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
                         <input type="radio" name="printMode" value="summary" checked style="margin-top:4px;">
