@@ -170,6 +170,25 @@ function renderTable() {
         th.style.width = '170px';
         th.style.textAlign = 'right';
         th.style.paddingRight = '12px';
+        
+        let incotermsHtml = '';
+        if (supp.currency !== 'KRW') {
+            incotermsHtml = `
+                <div style="margin-top: 4px; display:flex;">
+                    <select style="flex:1; padding:2px; font-size:11px; border:1px solid var(--gray-300); border-radius:4px; outline:none; color: var(--gray-700);" onchange="updateSupplierIncoterms('${escapeHtml(supp.name)}', this.value)">
+                        <option value="">조건 선택 (Incoterms)</option>
+                        <option value="EXW" ${supp.incoterms === 'EXW' ? 'selected' : ''}>EXW (공장인도)</option>
+                        <option value="FCA" ${supp.incoterms === 'FCA' ? 'selected' : ''}>FCA (운송인인도)</option>
+                        <option value="FOB" ${supp.incoterms === 'FOB' ? 'selected' : ''}>FOB (본선적재)</option>
+                        <option value="CFR" ${supp.incoterms === 'CFR' ? 'selected' : ''}>CFR (운임포함)</option>
+                        <option value="CIF" ${supp.incoterms === 'CIF' ? 'selected' : ''}>CIF (운임보험료포함)</option>
+                        <option value="DAP" ${supp.incoterms === 'DAP' ? 'selected' : ''}>DAP (도착지인도)</option>
+                        <option value="DDP" ${supp.incoterms === 'DDP' ? 'selected' : ''}>DDP (관세지급인도)</option>
+                    </select>
+                </div>
+            `;
+        }
+
         th.innerHTML = `
             <div style="display:flex; justify-content: space-between; align-items:center;">
                 <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
@@ -185,6 +204,7 @@ function renderTable() {
                 </select>
                 <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} style="flex:1.2; width:50px; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:right;" onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
             </div>
+            ${incotermsHtml}
         `;
         thead.insertBefore(th, addTh);
     });
@@ -253,7 +273,10 @@ function updateSupplierCurrency(supplierName, currency) {
     const supp = suppliers.find(s => s.name === supplierName);
     if (supp) {
         supp.currency = currency;
-        if (currency === 'KRW') supp.rate = 1;
+        if (currency === 'KRW') {
+            supp.rate = 1;
+            supp.incoterms = '';
+        }
     }
     renderTable();
 }
@@ -263,6 +286,15 @@ function updateSupplierRate(supplierName, rate) {
     const supp = suppliers.find(s => s.name === supplierName);
     if (supp) {
         supp.rate = Number(rate) || 1;
+    }
+    renderTable();
+}
+
+function updateSupplierIncoterms(supplierName, incoterms) {
+    saveCurrentInputValues();
+    const supp = suppliers.find(s => s.name === supplierName);
+    if (supp) {
+        supp.incoterms = incoterms;
     }
     renderTable();
 }
