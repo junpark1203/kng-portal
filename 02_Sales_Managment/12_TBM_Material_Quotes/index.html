@@ -17,94 +17,29 @@
 
 <body style="background: var(--gray-50); display: flex; flex-direction: column; height: 100vh; overflow: hidden; margin: 0;">
     
-    <!-- Top App Bar -->
-    <header class="app-bar" style="flex-shrink: 0; padding: 16px 24px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
-        <div class="app-bar-left">
-            <div style="font-size: 12px; color: var(--gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;"><i class='bx bx-git-compare'></i> 비교 견적 대시보드</div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px;">TBM 자재 단가 비교</h1>
-        </div>
-        <div class="app-bar-right" style="display: flex; gap: 12px; align-items: center;">
-
-            
-            <!-- Document Title Input -->
-            <div style="position: relative;">
-                <input type="text" id="documentTitle" placeholder="문서 제목 (예: 24년 8월 TBM 단가표)" style="width: 250px; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--gray-800);">
+    <!-- ================= LIST VIEW ================= -->
+    <div id="listView" style="display: flex; flex-direction: column; height: 100%;">
+        <header class="app-bar" style="flex-shrink: 0; padding: 16px 24px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
+            <div class="app-bar-left">
+                <div style="font-size: 12px; color: var(--gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;"><i class='bx bx-git-compare'></i> 비교 견적 대시보드</div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px;">TBM 자재 단가 비교</h1>
             </div>
-            
-            <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6; display: flex; align-items: center; gap: 6px;" onclick="saveDocument('draft')">
-                <i class='bx bx-save'></i> 임시 저장
-            </button>
-            <button class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;" onclick="saveDocument('completed')">
-                <i class='bx bx-check-double'></i> 최종 완료
-            </button>
-        </div>
-    </header>
-
-    <!-- Toolbar -->
-    <div style="flex-shrink: 0; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px;" onclick="loadDocumentList()">
-                <i class='bx bx-folder-open'></i> 불러오기
-            </button>
-            <button class="btn btn-outline" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; color: #ef4444; border-color: #ef4444;" onclick="clearTable()">
-                <i class='bx bx-trash'></i> 초기화
-            </button>
-        </div>
-        <div style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; background: #10b981;" onclick="addSupplierColumn()">
-                <i class='bx bx-plus'></i> 업체(공급사) 추가
-            </button>
-        </div>
-    </div>
-
-    <!-- Main Table Area -->
-    <main style="flex: 1; overflow: auto; padding: 20px; background: var(--gray-50);">
-        <div class="table-container" style="background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: auto; max-height: 100%;">
-            <table id="quoteTable" class="data-table quote-matrix-table" style="min-width: 1200px; border-collapse: separate; border-spacing: 0;">
-                <thead>
-                    <tr id="tableHeaderRow">
-                        <th class="sticky-col" style="left: 0; z-index: 10; width: 60px; text-align: center;">No.</th>
-                        <th class="sticky-col" style="left: 60px; z-index: 10; width: 140px;">식별번호(도면/고유)</th>
-                        <th class="sticky-col" style="left: 200px; z-index: 10; width: 180px;">품명</th>
-                        <th class="sticky-col" style="left: 380px; z-index: 10; width: 150px;">규격</th>
-                        <th class="sticky-col" style="left: 530px; z-index: 10; width: 120px;">투입 현장</th>
-                        <th class="sticky-col" style="left: 650px; z-index: 10; width: 90px; text-align: right;">총 운용수량</th>
-                        <th class="sticky-col" style="left: 740px; z-index: 10; width: 60px; text-align: center; border-right: 2px solid var(--gray-300);">단위</th>
-                        <!-- Supplier columns will be injected here dynamically -->
-                        <th id="addSupplierTh" style="width: 150px; text-align: center; background: #f8fafc; color: var(--gray-400); cursor: pointer;" onclick="addSupplierColumn()">
-                            <i class='bx bx-plus'></i> 추가
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="quoteTableBody">
-                    <!-- Rows will be injected here -->
-                    <tr id="emptyStateRow">
-                        <td colspan="8" style="text-align: center; padding: 60px 20px; color: var(--gray-400);">
-                            <i class='bx bx-box' style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
-                            <p style="font-size: 15px; font-weight: 500;">견적 비교할 항목이 없습니다.</p>
-                            <p style="font-size: 13px; margin-top: 8px;">현장별 현황에서 자재를 내보내기 하거나 불러오기를 이용해 주세요.</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </main>
-
-    <!-- Load Document Modal -->
-    <div id="loadModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h2>문서 불러오기</h2>
-                <button class="close-btn" onclick="closeLoadModal()"><i class='bx bx-x'></i></button>
+            <div class="app-bar-right">
+                <button class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;" onclick="createNewDocument()">
+                    <i class='bx bx-plus'></i> 새 견적서 작성
+                </button>
             </div>
-            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
+        </header>
+        
+        <main style="flex: 1; overflow: auto; padding: 24px 32px;">
+            <div class="table-container" style="background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                 <table class="data-table" style="width: 100%;">
                     <thead>
                         <tr>
-                            <th style="white-space: nowrap; width: 100px; text-align: center;">상태</th>
-                            <th style="white-space: nowrap;">문서 제목</th>
-                            <th style="white-space: nowrap; width: 200px;">생성일시</th>
-                            <th style="width: 80px; text-align: center; white-space: nowrap;">관리</th>
+                            <th style="width: 100px; text-align: center;">상태</th>
+                            <th>문서 제목</th>
+                            <th style="width: 200px;">생성일시</th>
+                            <th style="width: 80px; text-align: center;">관리</th>
                         </tr>
                     </thead>
                     <tbody id="documentListBody">
@@ -112,7 +47,82 @@
                     </tbody>
                 </table>
             </div>
+        </main>
+    </div>
+
+    <!-- ================= DETAIL VIEW ================= -->
+    <div id="detailView" style="display: none; flex-direction: column; height: 100%;">
+        <!-- Top App Bar -->
+        <header class="app-bar" style="flex-shrink: 0; padding: 16px 24px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;">
+            <div class="app-bar-left" style="display: flex; align-items: center; gap: 16px;">
+                <button class="btn btn-outline" style="padding: 6px 12px; display: flex; align-items: center; gap: 4px;" onclick="showListView()">
+                    <i class='bx bx-arrow-back'></i> 목록으로
+                </button>
+                <div>
+                    <div style="font-size: 12px; color: var(--gray-500); font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase;"><i class='bx bx-git-compare'></i> 비교 견적 편집</div>
+                    <h1 style="margin: 0; font-size: 20px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.5px;">상세 비교표</h1>
+                </div>
+            </div>
+            <div class="app-bar-right" style="display: flex; gap: 12px; align-items: center;">
+                <!-- Document Title Input -->
+                <div style="position: relative;">
+                    <input type="text" id="documentTitle" placeholder="문서 제목 (예: 24년 8월 TBM 단가표)" style="width: 250px; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--gray-800);">
+                </div>
+                
+                <button class="btn btn-outline" style="border-color: #3b82f6; color: #3b82f6; display: flex; align-items: center; gap: 6px;" onclick="saveDocument('draft')">
+                    <i class='bx bx-save'></i> 임시 저장
+                </button>
+                <button class="btn btn-primary" style="display: flex; align-items: center; gap: 6px;" onclick="saveDocument('completed')">
+                    <i class='bx bx-check-double'></i> 최종 완료
+                </button>
+            </div>
+        </header>
+
+        <!-- Toolbar -->
+        <div style="flex-shrink: 0; padding: 12px 24px; background: #fff; border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; color: #ef4444; border-color: #ef4444;" onclick="clearTable()">
+                    <i class='bx bx-trash'></i> 초기화
+                </button>
+            </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px; background: #10b981;" onclick="addSupplierColumn()">
+                    <i class='bx bx-plus'></i> 업체(공급사) 추가
+                </button>
+            </div>
         </div>
+
+        <!-- Main Table Area -->
+        <main style="flex: 1; overflow: auto; padding: 20px; background: var(--gray-50);">
+            <div class="table-container" style="background: #fff; border: 1px solid var(--gray-200); border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: auto; max-height: 100%;">
+                <table id="quoteTable" class="data-table quote-matrix-table" style="min-width: 1200px; border-collapse: separate; border-spacing: 0;">
+                    <thead>
+                        <tr id="tableHeaderRow">
+                            <th class="sticky-col" style="left: 0; z-index: 10; width: 60px; text-align: center;">No.</th>
+                            <th class="sticky-col" style="left: 60px; z-index: 10; width: 140px;">식별번호(도면/고유)</th>
+                            <th class="sticky-col" style="left: 200px; z-index: 10; width: 180px;">품명</th>
+                            <th class="sticky-col" style="left: 380px; z-index: 10; width: 150px;">규격</th>
+                            <th class="sticky-col" style="left: 530px; z-index: 10; width: 120px;">투입 현장</th>
+                            <th class="sticky-col" style="left: 650px; z-index: 10; width: 90px; text-align: right;">총 운용수량</th>
+                            <th class="sticky-col" style="left: 740px; z-index: 10; width: 60px; text-align: center; border-right: 2px solid var(--gray-300);">단위</th>
+                            <th id="addSupplierTh" style="width: 150px; text-align: center; background: #f8fafc; color: var(--gray-400); cursor: pointer;" onclick="addSupplierColumn()">
+                                <i class='bx bx-plus'></i> 추가
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="quoteTableBody">
+                        <!-- Rows will be injected here -->
+                        <tr id="emptyStateRow">
+                            <td colspan="8" style="text-align: center; padding: 60px 20px; color: var(--gray-400);">
+                                <i class='bx bx-box' style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                                <p style="font-size: 15px; font-weight: 500;">견적 비교할 항목이 없습니다.</p>
+                                <p style="font-size: 13px; margin-top: 8px;">현장별 현황에서 자재를 내보내기 하거나 직접 입력해 주세요.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 
     <!-- Scripts -->

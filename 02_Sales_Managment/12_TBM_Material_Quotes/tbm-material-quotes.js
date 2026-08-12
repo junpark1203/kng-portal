@@ -67,11 +67,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }));
                 
                 renderTable();
+                showDetailView();
                 localStorage.removeItem('tbmQuoteExport');
+            } else {
+                showListView();
             }
         } catch(e) {
             console.error('Failed to parse exported quote data', e);
+            showListView();
         }
+    } else {
+        showListView();
     }
 });
 
@@ -80,6 +86,26 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>'"]/g, tag => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     }[tag] || tag));
+}
+
+function showListView() {
+    document.getElementById('detailView').style.display = 'none';
+    document.getElementById('listView').style.display = 'flex';
+    loadDocumentList();
+}
+
+function showDetailView() {
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = 'flex';
+}
+
+function createNewDocument() {
+    items = [];
+    suppliers = [];
+    currentDocumentId = null;
+    document.getElementById('documentTitle').value = '';
+    renderTable();
+    showDetailView();
 }
 
 async function addSupplierColumn() {
@@ -316,7 +342,7 @@ async function loadDocumentList() {
         tbody.innerHTML = '';
         
         if (docs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">저장된 문서가 없습니다.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 40px; color: var(--gray-400);">저장된 문서가 없습니다.</td></tr>';
         } else {
             docs.forEach(doc => {
                 const statusHtml = doc.status === 'completed' 
@@ -335,15 +361,9 @@ async function loadDocumentList() {
                 tbody.appendChild(tr);
             });
         }
-        
-        document.getElementById('loadModal').classList.add('active');
     } catch(err) {
         Swal.fire('오류', '목록을 불러오는 중 오류가 발생했습니다.', 'error');
     }
-}
-
-function closeLoadModal() {
-    document.getElementById('loadModal').classList.remove('active');
 }
 
 async function loadDocument(id) {
@@ -360,7 +380,7 @@ async function loadDocument(id) {
         items = doc.items || [];
         
         renderTable();
-        closeLoadModal();
+        showDetailView();
     } catch(err) {
         Swal.fire('오류', '문서를 불러오는 중 오류가 발생했습니다.', 'error');
     }
