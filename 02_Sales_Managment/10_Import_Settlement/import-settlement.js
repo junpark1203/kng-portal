@@ -1539,8 +1539,8 @@ function generatePrintTemplate(opts) {
                 if (opts.showQuoteDate) cells.push(`<th>견적일</th><td>${d.quotationSnapshot?.date || '-'}</td>`);
                 if (opts.showShipmentType) cells.push(`<th>선적형태</th><td>${d.quotationSnapshot?.shipmentType || '-'}</td>`);
                 if (opts.showPolPod) cells.push(`<th>POL / POD</th><td>${d.quotationSnapshot?.pol || '-'} / ${d.quotationSnapshot?.pod || '-'}</td>`);
-                if (opts.showForwarder) cells.push(`<th>적용 포워더</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>`);
-                if (opts.showIncoterms) cells.push(`<th>기준 인코텀즈</th><td>${d.quotationSnapshot?.incoterms || '-'}</td>`);
+                if (opts.showForwarder) cells.push(`<th>포워더</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>`);
+                if (opts.showIncoterms) cells.push(`<th>인코텀즈</th><td>${d.quotationSnapshot?.incoterms || '-'}</td>`);
                 
                 // Render cells in chunks of 2 pairs (4 cols) or 3 pairs (6 cols). Let's do 2 pairs per row for cleanliness
                 for(let i=0; i<cells.length; i+=2) {
