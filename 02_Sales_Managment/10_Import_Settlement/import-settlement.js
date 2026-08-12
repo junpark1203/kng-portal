@@ -1503,7 +1503,11 @@ function generatePrintTemplate(opts) {
     if (!d) return "";
     
     let sectionNum = 1;
-    let html = `<div class="print-report">`;
+    let html = `<table style="width: 100%; border: none; margin: 0; padding: 0; border-spacing: 0;">`;
+    html += `<thead style="height: 20mm; border: none;"><tr><td style="border: none;"></td></tr></thead>`;
+    html += `<tfoot style="height: 20mm; border: none;"><tr><td style="border: none;"></td></tr></tfoot>`;
+    html += `<tbody><tr><td style="border: none; padding: 0 15mm;">`;
+    html += `<div class="print-report">`;
     
     // Header (Always show)
     html += `
@@ -1688,6 +1692,7 @@ function generatePrintTemplate(opts) {
     }
 
     html += `</div>`;
+    html += `</td></tr></tbody></table>`;
     return html;
 }
 
