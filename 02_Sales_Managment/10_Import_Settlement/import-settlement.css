@@ -585,7 +585,7 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 @media print {
     @page {
         size: A4 portrait;
-        margin: 10mm;
+        margin: 20mm 15mm;
     }
     
     body {
@@ -606,7 +606,7 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
-        padding: 10mm 15mm !important;
+        padding: 0 !important;
     }
 
     .print-report {
