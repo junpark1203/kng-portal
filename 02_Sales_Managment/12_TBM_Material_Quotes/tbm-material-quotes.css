@@ -483,3 +483,29 @@ body.modal-open .main-content {
     td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
 }
 
+
+@media print {
+    /* Allow text wrapping to prevent table from forcing a large width */
+    table.data-table th, table.data-table td {
+        white-space: normal !important;
+        word-break: keep-all !important;
+    }
+    
+    /* Slightly scale down the table container if it still wants to be too wide */
+    .table-container {
+        zoom: 0.9;
+    }
+}
+
+
+@media print {
+    .main-wrapper, .page-wrapper, .page-body {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        display: block !important;
+        position: static !important;
+    }
+}
+
