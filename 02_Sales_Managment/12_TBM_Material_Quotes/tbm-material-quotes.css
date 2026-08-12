@@ -292,3 +292,104 @@ body.modal-open .main-content {
 }
 
 .sortable-ghost { opacity: 0.4; background-color: #f1f5f9; }
+/* Print Layout */
+@media print {
+    body {
+        background: #fff !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    
+    #listView, .app-bar-left button, .app-bar-right button:not([onclick*="print"]), .bx-x, .filler-col, .table-container, .btn, .catalog-toolbar {
+        box-shadow: none !important;
+    }
+    
+    /* Hide buttons and unnecessary UI for printing */
+    .app-bar-left button, .app-bar-right button:not([onclick*="print"]), .bx-x, .filler-col, #detailView > div:nth-child(2) {
+        display: none !important;
+    }
+    
+    .app-bar-right button[onclick*="print"] {
+        display: none !important;
+    }
+
+    /* Adjust document title input for print */
+    #documentTitle {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        font-size: 24px !important;
+        width: 100% !important;
+        color: #000 !important;
+        pointer-events: none;
+    }
+    #documentTitle::placeholder {
+        color: transparent !important;
+    }
+
+    /* Detail View adjustments */
+    #detailView {
+        display: flex !important;
+        height: auto !important;
+    }
+    
+    /* App Bar */
+    .app-bar {
+        border-bottom: 2px solid #000 !important;
+        padding: 10px 0 !important;
+    }
+
+    /* Main Area */
+    main {
+        overflow: visible !important;
+        padding: 20px 0 !important;
+        background: #fff !important;
+    }
+
+    .table-container {
+        border: none !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    table {
+        width: 100% !important;
+        min-width: 0 !important;
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+    
+    th, td {
+        border-color: #000 !important;
+        color: #000 !important;
+    }
+
+    .sticky-col {
+        position: static !important;
+    }
+
+    /* Input & Select fields inside the table */
+    input[type="text"], input[type="number"], select {
+        border: none !important;
+        background: transparent !important;
+        appearance: none;
+        -webkit-appearance: none;
+        padding: 0 !important;
+        color: #000 !important;
+        pointer-events: none;
+    }
+    input::placeholder {
+        color: transparent !important;
+    }
+    select {
+        text-align: center;
+    }
+    
+    .krw-preview {
+        color: #000 !important;
+    }
+}

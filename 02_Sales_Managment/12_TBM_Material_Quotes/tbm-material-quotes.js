@@ -274,7 +274,7 @@ function renderTable() {
             `;
         });
         
-        html += `<td style="background: #f8fafc;"></td>`; // filler for the "Add" column space
+        html += `<td class="filler-col" style="background: #f8fafc;"></td>`; // filler for the "Add" column space
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
