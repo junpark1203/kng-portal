@@ -727,3 +727,8 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
     }
 }
 
+
+@media print {
+    .sidebar { display: none !important; }
+}
+
