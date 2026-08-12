@@ -1508,7 +1508,7 @@ function generatePrintTemplate(opts) {
     // Header (Always show)
     html += `
         <div class="print-header">
-            <h1 class="print-title">실수입비용 정산서</h1>
+            <h1 class="print-title">실제 비용 기준 정산 및 품목별 원가 산출</h1>
         </div>
     `;
 
