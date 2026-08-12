@@ -2303,3 +2303,21 @@ th.sortable.active.asc i {
     .kpi-value { font-size: 13px; }
     .fr-row2, .fr-row3 { grid-template-columns: 1fr; }
 }
+
+@media print {
+    /* Hide sidebar and topbar when printing from any iframe or main window */
+    .sidebar, .topbar { display: none !important; }
+    
+    /* Expand main content */
+    .main-content { margin-left: 0 !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; }
+    
+    /* Make iframe full size for printing */
+    .iframe-container, #appIframe {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+    }
+}
+

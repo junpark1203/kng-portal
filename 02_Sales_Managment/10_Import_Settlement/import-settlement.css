@@ -581,12 +581,9 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 .highlight-col { background: rgba(79, 70, 229, 0.05) !important; font-weight: 700; }
 
 /* Print Layout CSS will be replaced */
-
-
-/* Premium Print Report Layout */
 @media print {
     @page {
-        size: a4 portrait;
+        size: A4 portrait;
         margin: 15mm 15mm;
     }
     
@@ -601,7 +598,7 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         padding: 0 !important;
     }
     
-    /* Reset Wrappers to prevent clipping */
+    /* Reset Wrappers */
     .main-wrapper, .page-wrapper, .page-body, .is-container, main {
         width: 100% !important;
         margin: 0 !important;
@@ -609,6 +606,7 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         overflow: visible !important;
         box-shadow: none !important;
         border: none !important;
+        background: #fff !important;
     }
     
     .editor-body {
@@ -619,33 +617,68 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         width: 100% !important;
     }
 
+    /* Override ALL inline backgrounds using !important on elements that have them */
+    .panel-row, table tr, table td, table th, .dash-card, .cost-item-card, .readonly-quote-info {
+        background: transparent !important;
+        color: #000 !important;
+    }
+    .panel-row {
+        border-bottom: 1px dashed #e2e8f0 !important;
+        margin: 0 !important;
+        padding: 6px 0 !important;
+    }
+    .panel-row .p-label { color: #333 !important; font-weight: normal !important; }
+    .panel-row .p-value { color: #000 !important; font-weight: bold !important; }
+
     /* Hide Unnecessary UI */
-    .panel-header, .bottom-actions, .help-text, .tooltip-icon, .btn-add-in-group, .btn-delete-item, .drag-handle, .is-sidebar, .toast-container, .modal {
+    .panel-header, .bottom-actions, .help-text, .tooltip-icon, .btn-add-in-group, .btn-delete-item, .drag-handle, .is-sidebar, .toast-container, .modal, .header-actions {
         display: none !important;
     }
+
+    /* Print Header (Fake a formal document title) */
+    #editTitle {
+        text-align: center !important;
+        font-size: 24px !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #000 !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 20px !important;
+        color: #000 !important;
+    }
+    #editTitle i { display: none !important; }
 
     /* Typography & Headers */
     h3 {
         font-size: 16px !important;
+        margin-top: 15px !important;
         margin-bottom: 8px !important;
-        color: #0f172a !important;
-        border-bottom: 2px solid #334155 !important;
-        padding-bottom: 6px !important;
+        color: #000 !important;
+        border-bottom: 1px solid #000 !important;
+        padding-bottom: 4px !important;
         page-break-after: avoid;
+    }
+    h4 {
+        color: #000 !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        margin-bottom: 8px !important;
     }
 
     /* Flatten Inputs */
-    .calc-input, input, select {
+    .calc-input, input, select, textarea {
         border: none !important;
         background: transparent !important;
         appearance: none;
         -webkit-appearance: none;
         padding: 0 !important;
         margin: 0 !important;
-        color: #0f172a !important;
+        color: #000 !important;
         font-family: inherit !important;
         pointer-events: none;
-        font-size: 12px !important;
+        font-size: 11px !important;
+        box-shadow: none !important;
+        resize: none !important;
+        height: auto !important;
     }
     select::-ms-expand { display: none; }
     
@@ -659,76 +692,103 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         width: 100% !important;
     }
 
-    /* Dashboard Cards */
-    .dash-grid {
+    /* Dashboard Cards - Formal Style */
+    .dashboard-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr) !important;
-        gap: 12px !important;
+        gap: 0 !important;
         width: 100% !important;
+        border: 2px solid #000 !important;
+        border-right: none !important;
     }
     .dash-card {
-        border: 1px solid #cbd5e1 !important; /* Lighter border */
+        border: none !important;
+        border-right: 2px solid #000 !important;
         box-shadow: none !important;
         break-inside: avoid;
-        padding: 12px !important;
-        background: #f8fafc !important;
+        padding: 10px !important;
+        background: #fff !important;
         text-align: center;
+        border-radius: 0 !important;
     }
-    .dash-card h4 { font-size: 11px !important; color: #64748b !important; margin-bottom: 6px !important; }
-    .dash-card .value { font-size: 18px !important; font-weight: 800 !important; color: #0f172a !important; }
+    .dash-card .dash-label { font-size: 11px !important; color: #333 !important; margin-bottom: 6px !important; font-weight: bold !important; }
+    .dash-card .dash-value { font-size: 16px !important; font-weight: 800 !important; color: #000 !important; }
+    .dash-card .dash-sub, .dash-card .dash-pct { font-size: 9px !important; color: #666 !important; margin-top: 4px !important; display: block !important; }
     
     /* Cost Groups & Cards */
     .cost-group {
         break-inside: avoid;
         border: none !important;
-        margin-bottom: 20px !important;
+        margin-bottom: 15px !important;
         box-shadow: none !important;
         padding: 0 !important;
     }
     .cost-item-card {
         break-inside: avoid;
-        border: none !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        padding: 6px 0 !important;
-        background: transparent !important;
-        margin-bottom: 0 !important;
-    }
-    .cost-item-card:last-child {
-        border-bottom: none !important;
+        border: 1px solid #aaa !important;
+        padding: 8px !important;
+        background: #fff !important;
+        margin-bottom: 8px !important;
+        border-radius: 0 !important;
     }
     .edit-section {
-        break-inside: avoid;
-        margin-bottom: 30px !important;
+        break-inside: auto;
+        margin-bottom: 20px !important;
     }
 
-    /* Data Tables styling (if any) */
+    /* Readonly info grid */
+    .quote-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+        border: 1px solid #aaa !important;
+        padding: 10px !important;
+    }
+    .readonly-quote-info {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin-bottom: 20px !important;
+    }
+
+    /* Tables styling */
     table {
         width: 100% !important;
         border-collapse: collapse !important;
         table-layout: auto !important;
+        border-top: 2px solid #000 !important;
+        border-bottom: 2px solid #000 !important;
+        margin-bottom: 10px !important;
     }
     table th, table td {
-        border: none !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        padding: 8px 4px !important;
+        border: 1px solid #aaa !important;
+        padding: 6px 4px !important;
         white-space: normal !important;
         word-break: keep-all !important;
+        font-size: 11px !important;
+        color: #000 !important;
     }
     table th {
         background-color: transparent !important;
         font-weight: 700 !important;
-        color: #0f172a !important;
-        border-bottom: 2px solid #cbd5e1 !important;
+        text-align: center !important;
     }
+
+    /* Highlight Columns in Table */
+    .highlight-col { background: transparent !important; font-weight: 700 !important; color: #000 !important; }
+    
+    /* Print modes specific hiding */
+    body.print-hide-info #basicInfoSection { display: none !important; }
+    body.print-hide-dash #stickyDashboard { display: none !important; }
+    body.print-hide-ancillary #ancillarySection { display: none !important; }
+    body.print-hide-summary #summaryTableSection { display: none !important; }
+    body.print-hide-items #costResultSection { display: none !important; }
+    
+    /* For Summary Mode specifically */
+    body.print-mode-summary .cost-group { display: none !important; }
 
     /* Fix potential overflow */
     * {
         max-width: 100% !important;
     }
 }
-
-
-@media print {
-    .sidebar { display: none !important; }
-}
-
