@@ -845,8 +845,11 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
    Print Logic (Project Logs)
    ========================================================================== */
 
-document.getElementById('btnPrintProject').addEventListener('click', () => {
-    if (!currentProjectId) {
+document.addEventListener('DOMContentLoaded', () => {
+    const btnPrint = document.getElementById('btnPrintProject');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', () => {
+            if (!currentProjectId) {
         Swal.fire('알림', '인쇄할 프로젝트를 먼저 선택해주세요.', 'info');
         return;
     }
@@ -859,6 +862,8 @@ document.getElementById('btnPrintProject').addEventListener('click', () => {
     let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
 
     executePrintProjectLogs(project, printLogs);
+        });
+    }
 });
 
 function executePrintProjectLogs(project, logs) {
