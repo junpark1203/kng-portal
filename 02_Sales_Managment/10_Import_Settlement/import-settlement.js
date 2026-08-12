@@ -1532,7 +1532,7 @@ function generatePrintTemplate(opts) {
         }
 
         if (opts.showQuoteInfo) {
-            html += `<h3 class="sub-title">포워더 견적 정보 (원본)</h3>`;
+            html += `<h3 class="sub-title">포워더 정보</h3>`;
             if (opts.showQuoteName || opts.showQuoteDate || opts.showShipmentType || opts.showPolPod || opts.showForwarder || opts.showIncoterms) {
                 html += `<table class="print-info-table">`;
                 if (opts.showQuoteName) {
