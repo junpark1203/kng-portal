@@ -4,6 +4,32 @@ const DOMAIN_BASE = (window.location.hostname === 'localhost' || window.location
 
 const API_BASE = `${DOMAIN_BASE}/api/projects`;
 
+window.isLogPrintable = function(logId) {
+    if (!currentProjectId) return true;
+    const key = `kng_print_exclude_${currentProjectId}`;
+    try {
+        const excluded = JSON.parse(localStorage.getItem(key) || '[]');
+        return !excluded.includes(logId);
+    } catch(e) {
+        return true;
+    }
+};
+
+window.toggleLogPrint = function(logId, isChecked) {
+    if (!currentProjectId) return;
+    const key = `kng_print_exclude_${currentProjectId}`;
+    try {
+        let excluded = JSON.parse(localStorage.getItem(key) || '[]');
+        if (isChecked) {
+            excluded = excluded.filter(id => id !== logId);
+        } else {
+            if (!excluded.includes(logId)) excluded.push(logId);
+        }
+        localStorage.setItem(key, JSON.stringify(excluded));
+    } catch(e) {}
+};
+
+
 async function authFetch(url, options = {}) {
     let token = null;
     try {
@@ -308,7 +334,10 @@ function renderTimeline(logs) {
             <div class="timeline-content">
                 <div class="timeline-meta">
                     <span>${dateStr}</span>
-                    <div class="timeline-item-actions">
+                    <div class="timeline-item-actions" style="display: flex; align-items: center;">
+                        <label style="cursor: pointer; margin-right: 12px; margin-bottom: 0; font-size: 13px; color: #64748b; font-weight: 500; user-select: none;">
+                            <input type="checkbox" style="vertical-align: middle; margin-right: 4px; cursor: pointer;" onchange="window.toggleLogPrint('${log.id}', this.checked)" ${window.isLogPrintable(log.id) ? 'checked' : ''}> 인쇄
+                        </label>
                         <button class="btn-edit-log" onclick="openEditLogModal('${log.id}')" title="수정"><i class='bx bx-edit-alt'></i></button>
                         <button class="btn-delete-log" onclick="deleteLog('${log.id}')" title="삭제"><i class='bx bx-trash'></i></button>
                     </div>
@@ -457,55 +486,27 @@ function bindEvents() {
             const project = projects.find(p => p.id === currentProjectId);
             if (!project) return;
             
-            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-            const uniqueDates = [...new Set(printLogs.map(l => (l.createdAt || '').substring(0, 10)))].filter(d => d);
-            
-            let dateCheckboxesHtml = '<div style="margin-top: 15px; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">';
-            dateCheckboxesHtml += '<div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">출력할 일자 선택:</div>';
-            
-            if (uniqueDates.length === 0) {
-                dateCheckboxesHtml += '<div style="font-size: 13px; color: #666;">등록된 로그가 없습니다.</div>';
-            } else {
-                uniqueDates.forEach(date => {
-                    dateCheckboxesHtml += `
-                        <label style="display: block; margin-bottom: 5px; cursor: pointer; font-size: 14px;">
-                            <input type="checkbox" class="swal-print-date-cb" value="${date}" checked style="margin-right: 8px;"> 
-                            ${date}
-                        </label>
-                    `;
-                });
-            }
-            dateCheckboxesHtml += '</div>';
-
             const { value: formValues } = await Swal.fire({
                 title: '인쇄 설정',
                 html:
                     '<input id="swal-input1" class="swal2-input" placeholder="헤더명 (예: 프로젝트 로그 내역)" value="프로젝트 로그 내역">' +
-                    '<input id="swal-input2" class="swal2-input" placeholder="작성일 (예: 2026. 7. 30.)" value="' + new Date().toLocaleDateString() + '">' +
-                    dateCheckboxesHtml,
+                    '<input id="swal-input2" class="swal2-input" placeholder="작성일 (예: 2026. 7. 30.)" value="' + new Date().toLocaleDateString() + '">',
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: '인쇄',
                 cancelButtonText: '취소',
                 preConfirm: () => {
-                    const checkedDates = Array.from(document.querySelectorAll('.swal-print-date-cb:checked')).map(cb => cb.value);
-                    if (uniqueDates.length > 0 && checkedDates.length === 0) {
-                        Swal.showValidationMessage('최소 하루 이상의 일자를 선택해주세요.');
-                        return false;
-                    }
                     return [
                         document.getElementById('swal-input1').value,
-                        document.getElementById('swal-input2').value,
-                        checkedDates
+                        document.getElementById('swal-input2').value
                     ]
                 }
             });
 
             if (formValues) {
-                const checkedDates = formValues[2];
-                if (uniqueDates.length > 0) {
-                    printLogs = printLogs.filter(l => checkedDates.includes((l.createdAt || '').substring(0, 10)));
-                }
+                let printLogs = (currentLogs || []).slice()
+                    .filter(l => window.isLogPrintable(l.id))
+                    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
                 executePrintProjectLogs(project, printLogs, formValues[0], formValues[1]);
             }
         });
