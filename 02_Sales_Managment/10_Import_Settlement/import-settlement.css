@@ -584,25 +584,16 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 @media print {
     @page {
         size: A4 portrait;
-        margin: 15mm 15mm;
+        margin: 10mm;
     }
     
-    body {
-        background: #fff !important;
-        color: #000 !important;
-        font-family: "Pretendard", "Malgun Gothic", sans-serif !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+    body { background: #fff !important; color: #000 !important; font-family: "Pretendard", "Malgun Gothic", sans-serif !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; width: 100% !important; margin: 0 !important; padding: 10mm 15mm !important; box-sizing: border-box !important; }
     
     /* Reset Wrappers */
     .main-wrapper, .page-wrapper, .page-body, .is-container, main {
         width: 100% !important;
         margin: 0 !important;
-        padding: 0 !important;
+        padding: 15mm !important; box-sizing: border-box !important;
         overflow: visible !important;
         box-shadow: none !important;
         border: none !important;
@@ -792,3 +783,4 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         max-width: 100% !important;
     }
 }
+
