@@ -932,15 +932,18 @@ function executePrintProjectLogs(project, logs) {
             
             // Attachments
             let attachHtml = '';
-            if (log.attachments && log.attachments.length > 0) {
-                attachHtml = `<div style="margin-top: 8px; font-size: 11px; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 5px;">
-                    <strong>[첨부파일]</strong> ${log.attachments.map(a => {
-                        let name = a;
-                        if(a.startsWith('/uploads/projects/')) name = a.split('/').pop().split('_').slice(1).join('_');
-                        return name;
-                    }).join(', ')}
-                </div>`;
-            }
+            try {
+                const atts = JSON.parse(log.attachments || '[]');
+                if (atts.length > 0) {
+                    attachHtml = `<div style="margin-top: 8px; font-size: 11px; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 5px;">
+                        <strong>[첨부파일]</strong> ${atts.map(a => {
+                            let name = a;
+                            if(a.startsWith('/uploads/projects/')) name = a.split('/').pop().split('_').slice(1).join('_');
+                            return name;
+                        }).join(', ')}
+                    </div>`;
+                }
+            } catch(e) {}
 
             html += `
                 <tr>
