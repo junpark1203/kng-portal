@@ -465,3 +465,17 @@ body.modal-open .main-content {
     }
 }
 
+
+/* Make sticky columns actually stick horizontally */
+.quote-matrix-table th.sticky-col,
+.quote-matrix-table td.sticky-col {
+    position: sticky;
+}
+
+.quote-matrix-table td.sticky-col {
+    background: #fff;
+}
+.data-table tbody tr:nth-child(even) td.sticky-col {
+    background: #f8fafc;
+}
+
