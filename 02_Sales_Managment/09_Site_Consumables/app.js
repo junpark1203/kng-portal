@@ -998,11 +998,19 @@ window.exportToQuoteCompare = () => {
     const exportData = Array.from(checkedBoxes).map(cb => JSON.parse(cb.value));
     localStorage.setItem('tbmQuoteExport', JSON.stringify(exportData));
     
-    // Open the new TBM Quotes module in a new tab/iframe
-    // Since we are in an iframe, we want to change the parent's iframe src or just open a new tab.
-    // A simple new tab is safest, or we can use window.parent navigation if available.
-    // Let's open it in a new window/tab for the comparison.
+    // Let's open it via the parent window's sidebar so it maintains the app layout
+    if (window.parent && window.parent.document) {
+        const targetHref = "./02_Sales_Managment/12_TBM_Material_Quotes/index.html";
+        const link = window.parent.document.querySelector('.menu a[href="' + targetHref + '"]');
+        if (link) {
+            link.click();
+            showToast(checkedBoxes.length + '개의 품목을 비교 모듈로 내보냈습니다.');
+            return;
+        }
+    }
+    
+    // Fallback
     window.open('../12_TBM_Material_Quotes/index.html', '_blank');
     
-    showToast(checkedBoxes.length + '개 항목을 단가 비교 모듈로 내보냈습니다.');
+    showToast(checkedBoxes.length + '개의 품목을 비교 모듈로 내보냈습니다.');
 };
