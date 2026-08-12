@@ -92,7 +92,7 @@ async function addSupplierColumn() {
     });
 
     if (supplierName) {
-        if (suppliers.includes(supplierName)) {
+        if (suppliers.some(s => s.name === supplierName)) {
             Swal.fire('오류', '이미 추가된 업체입니다.', 'error');
             return;
         }
@@ -100,14 +100,14 @@ async function addSupplierColumn() {
         // Save current input values before re-rendering
         saveCurrentInputValues();
         
-        suppliers.push(supplierName);
+        suppliers.push({ name: supplierName, currency: 'KRW', rate: 1 });
         renderTable();
     }
 }
 
 function removeSupplierColumn(supplierName) {
     saveCurrentInputValues();
-    suppliers = suppliers.filter(s => s !== supplierName);
+    suppliers = suppliers.filter(s => s.name !== supplierName);
     items.forEach(item => {
         delete item.prices[supplierName];
     });
@@ -120,9 +120,9 @@ function saveCurrentInputValues() {
     rows.forEach(row => {
         const index = parseInt(row.getAttribute('data-index'));
         suppliers.forEach(supp => {
-            const input = row.querySelector(`input[data-supplier="${escapeHtml(supp)}"]`);
+            const input = row.querySelector(`input[data-supplier="${escapeHtml(supp.name)}"]`);
             if (input) {
-                items[index].prices[supp] = input.value;
+                items[index].prices[supp.name] = input.value;
             }
         });
     });
@@ -141,13 +141,23 @@ function renderTable() {
     suppliers.forEach(supp => {
         const th = document.createElement('th');
         th.className = 'supplier-col';
-        th.style.width = '140px';
+        th.style.width = '170px';
         th.style.textAlign = 'right';
         th.style.paddingRight = '12px';
         th.innerHTML = `
             <div style="display:flex; justify-content: space-between; align-items:center;">
-                <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp)}')"></i>
-                <span>${escapeHtml(supp)} (원)</span>
+                <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
+                <span>${escapeHtml(supp.name)}</span>
+            </div>
+            <div style="margin-top: 8px; display:flex; gap: 4px;">
+                <select style="flex:1; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; outline:none;" onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
+                    <option value="KRW" ${supp.currency === 'KRW' ? 'selected' : ''}>KRW</option>
+                    <option value="USD" ${supp.currency === 'USD' ? 'selected' : ''}>USD</option>
+                    <option value="EUR" ${supp.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                    <option value="CNY" ${supp.currency === 'CNY' ? 'selected' : ''}>CNY</option>
+                    <option value="JPY" ${supp.currency === 'JPY' ? 'selected' : ''}>JPY</option>
+                </select>
+                <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} style="flex:1.2; width:50px; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:right;" onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
             </div>
         `;
         thead.insertBefore(th, addTh);
@@ -186,12 +196,22 @@ function renderTable() {
         `;
 
         suppliers.forEach(supp => {
-            const price = item.prices[supp] || '';
+            const suppName = supp.name;
+            const price = item.prices[suppName] || '';
+            let krwText = '';
+            if (price && supp.currency !== 'KRW') {
+                const krwPrice = Math.round(Number(price) * supp.rate);
+                krwText = '₩' + krwPrice.toLocaleString();
+            }
+
             html += `
                 <td class="supplier-col" style="padding: 4px 8px;">
-                    <input type="number" data-supplier="${escapeHtml(supp)}" value="${price}" 
+                    <input type="number" data-supplier="${escapeHtml(suppName)}" value="${price}" 
                            style="width:100%; padding:6px; text-align:right; border:1px solid var(--gray-300); border-radius:4px; font-size:13px;"
-                           placeholder="0">
+                           placeholder="0" oninput="calculateKRW(this, '${escapeHtml(suppName)}')">
+                    <div class="krw-preview" style="font-size: 11px; color: #64748b; text-align: right; min-height: 16px; margin-top: 2px;">
+                        ${krwText}
+                    </div>
                 </td>
             `;
         });
@@ -200,6 +220,38 @@ function renderTable() {
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
+}
+
+function updateSupplierCurrency(supplierName, currency) {
+    saveCurrentInputValues();
+    const supp = suppliers.find(s => s.name === supplierName);
+    if (supp) {
+        supp.currency = currency;
+        if (currency === 'KRW') supp.rate = 1;
+    }
+    renderTable();
+}
+
+function updateSupplierRate(supplierName, rate) {
+    saveCurrentInputValues();
+    const supp = suppliers.find(s => s.name === supplierName);
+    if (supp) {
+        supp.rate = Number(rate) || 1;
+    }
+    renderTable();
+}
+
+function calculateKRW(inputEl, supplierName) {
+    const supp = suppliers.find(s => s.name === supplierName);
+    const previewEl = inputEl.nextElementSibling;
+    const val = Number(inputEl.value);
+    
+    if (supp && supp.currency !== 'KRW' && val) {
+        const krwPrice = Math.round(val * supp.rate);
+        previewEl.textContent = '₩' + krwPrice.toLocaleString();
+    } else {
+        previewEl.textContent = '';
+    }
 }
 
 function clearTable() {
@@ -301,7 +353,10 @@ async function loadDocument(id) {
         
         currentDocumentId = doc.id;
         document.getElementById('documentTitle').value = doc.title;
-        suppliers = doc.suppliers || [];
+        suppliers = (doc.suppliers || []).map(s => {
+            if (typeof s === 'string') return { name: s, currency: 'KRW', rate: 1 };
+            return s;
+        });
         items = doc.items || [];
         
         renderTable();
