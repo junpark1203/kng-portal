@@ -242,7 +242,7 @@
     <!-- 모달: 견적 불러오기 -->
     <div id="quoteModal" class="modal">
         <div class="modal-content" style="max-width: 800px; width: 90%;">
-            <div class="modal-header">
+            <div class="modal-header" style="flex-shrink: 0 !important;">
                 <h2 id="quoteModalTitle">견적서 불러오기</h2>
                 <button class="btn-close" id="btnCloseQuoteModal"><i class='bx bx-x'></i></button>
             </div>
@@ -265,7 +265,7 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px;">
+            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px; flex-shrink: 0 !important;">
                 <button class="btn-outline" id="btnCancelQuoteModal" style="margin-right: 10px;">취소</button>
                 <button class="btn-primary" id="btnConfirmQuote">불러오기</button>
             </div>
@@ -274,12 +274,12 @@
 
     <!-- 모달: 인쇄 옵션 -->
     <div id="printOptionModal" class="modal">
-        <div class="modal-content" style="max-width: 500px !important; padding: 0 !important; max-height: 85vh !important; overflow: hidden !important;">
-            <div class="modal-header">
+        <div class="modal-content" style="width: 100%; max-width: 500px !important; padding: 0 !important; display: flex !important; flex-direction: column !important; max-height: 650px !important; height: 80vh; min-height: 400px; overflow: hidden !important; margin: auto;">
+            <div class="modal-header" style="flex-shrink: 0 !important;">
                 <h2>인쇄 옵션 선택</h2>
                 <button class="btn-close" id="btnClosePrintModal"><i class='bx bx-x'></i></button>
             </div>
-            <div class="modal-body" style="padding: 20px !important; overflow-y: auto !important; max-height: calc(85vh - 140px) !important;">
+            <div class="modal-body" style="padding: 20px !important; overflow-y: auto !important; flex: 1 !important; min-height: 0 !important;">
                 <div class="print-mode-options" style="display:flex; flex-direction:column; gap:12px;">
                     <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
                         <input type="radio" name="printMode" value="summary" checked style="margin-top:4px;">
@@ -352,7 +352,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px;">
+            <div class="modal-footer" style="padding: 15px 20px; text-align: right; border-top: 1px solid var(--border-color); background: #f9fafb; border-radius: 0 0 10px 10px; flex-shrink: 0 !important;">
                 <button class="btn-outline" id="btnCancelPrintModal" style="margin-right: 10px;">취소</button>
                 <button class="btn-primary" id="btnExecutePrint"><i class='bx bx-printer'></i> 인쇄 실행</button>
             </div>
