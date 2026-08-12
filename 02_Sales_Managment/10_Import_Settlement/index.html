@@ -279,7 +279,7 @@
                 <h2>인쇄 옵션 선택</h2>
                 <button class="btn-close" id="btnClosePrintModal"><i class='bx bx-x'></i></button>
             </div>
-            <div class="modal-body" style="padding: 20px;">
+            <div class="modal-body" style="padding: 20px; max-height: 60vh; overflow-y: auto;">
                 <div class="print-mode-options" style="display:flex; flex-direction:column; gap:12px;">
                     <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
                         <input type="radio" name="printMode" value="summary" checked style="margin-top:4px;">
@@ -308,47 +308,47 @@
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <!-- 1. 정산 및 연동정보 -->
                         <div class="chk-tree-group">
-                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_SettlementInfo" class="parent-chk" checked> 정산 및 연동정보</label>
+                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_SettlementInfo" class="parent-chk" checked> 정산 및 연동정보</label>
                             <div style="padding-left: 20px; display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_SettlementName" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 정산 문서명</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_SettlementDate" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 정산 일자</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_SettlementStatus" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 진행상태</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_SettlementName" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 정산 문서명</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_SettlementDate" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 정산 일자</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_SettlementStatus" class="child-chk" data-parent="chkPrint_SettlementInfo" checked> 진행상태</label>
                             </div>
                         </div>
                         
                         <!-- 2. 연동된 포워더 견적 정보 -->
                         <div class="chk-tree-group">
-                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_QuoteInfo" class="parent-chk" checked> 연동된 포워더 견적 정보</label>
+                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_QuoteInfo" class="parent-chk" checked> 연동된 포워더 견적 정보</label>
                             <div style="padding-left: 20px; display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_QuoteName" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 견적명</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_QuoteDate" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 견적일</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_ShipmentType" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 선적형태</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_PolPod" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> POL/POD</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_Forwarder" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 적용 포워더</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_Incoterms" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 기준 인코텀즈</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_QuoteName" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 견적명</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_QuoteDate" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 견적일</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_ShipmentType" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 선적형태</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_PolPod" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> POL/POD</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Forwarder" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 적용 포워더</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Incoterms" class="child-chk" data-parent="chkPrint_QuoteInfo" checked> 기준 인코텀즈</label>
                             </div>
                         </div>
 
                         <!-- 3. 종합 요약 대시보드 -->
-                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_Dashboard" checked> 종합 요약 대시보드</label>
+                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Dashboard" checked> 종합 요약 대시보드</label>
                         
                         <!-- 4. 항목별 비용 정산 및 분석 -->
-                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_Ancillary" checked> 항목별 비용 정산 및 분석</label>
+                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Ancillary" checked> 항목별 비용 정산 및 분석</label>
 
                         <!-- 5. 비용 요약 -->
-                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_Summary" checked> 비용 요약</label>
+                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Summary" checked> 비용 요약</label>
 
                         <!-- 6. 품목별 실수입원가 산출 -->
                         <div class="chk-tree-group">
-                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_ItemCost" class="parent-chk" checked> 품목별 실수입원가 산출</label>
+                            <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_ItemCost" class="parent-chk" checked> 품목별 실수입원가 산출</label>
                             <div style="padding-left: 20px; display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_ItemCostValue" class="child-chk" data-parent="chkPrint_ItemCost" checked> 실수입원가 (가치비례 배분법)</label>
-                                <label style="font-size:0.85rem; cursor:pointer;"><input type="checkbox" id="chkPrint_ItemCostVolume" class="child-chk" data-parent="chkPrint_ItemCost" checked> 실수입원가 (체적/운임톤 배분법)</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_ItemCostValue" class="child-chk" data-parent="chkPrint_ItemCost" checked> 실수입원가 (가치비례 배분법)</label>
+                                <label style="font-size:0.85rem; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_ItemCostVolume" class="child-chk" data-parent="chkPrint_ItemCost" checked> 실수입원가 (체적/운임톤 배분법)</label>
                             </div>
                         </div>
 
                         <!-- 7. 특이사항 및 비고 -->
-                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer;"><input type="checkbox" id="chkPrint_Remarks" checked> 특이사항 및 비고</label>
+                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Remarks" checked> 특이사항 및 비고</label>
                     </div>
                 </div>
             </div>
