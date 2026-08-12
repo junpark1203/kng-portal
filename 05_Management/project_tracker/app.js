@@ -856,7 +856,7 @@ document.getElementById('btnPrintProject').addEventListener('click', () => {
 
     // Filter logs for this project and sort chronologically (oldest first for a log/history view, or newest first depending on preference - we'll use the current timeline order which is usually newest first, but for print let's do oldest first so it reads like a history document)
     // Wait, the current renderTimeline sorts logs by date desc. Let's just pass project.logs sorted by date ascending for a proper chronological report.
-    let printLogs = (project.logs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
 
     executePrintProjectLogs(project, printLogs);
 });
