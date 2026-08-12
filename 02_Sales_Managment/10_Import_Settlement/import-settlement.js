@@ -141,6 +141,23 @@ function initEvents() {
     document.getElementById('btnClosePrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
     document.getElementById('btnCancelPrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
     document.getElementById('btnExecutePrint').addEventListener('click', executePrint);
+    // UI Checkbox logic
+    document.querySelectorAll('.parent-chk').forEach(parent => {
+        parent.addEventListener('change', function() {
+            const children = document.querySelectorAll(`.child-chk[data-parent="${this.id}"]`);
+            children.forEach(child => child.checked = this.checked);
+        });
+    });
+
+    document.querySelectorAll('.child-chk').forEach(child => {
+        child.addEventListener('change', function() {
+            const parent = document.getElementById(this.dataset.parent);
+            const siblings = document.querySelectorAll(`.child-chk[data-parent="${this.dataset.parent}"]`);
+            const anyChecked = Array.from(siblings).some(s => s.checked);
+            parent.checked = anyChecked;
+        });
+    });
+
     
     const printModeRadios = document.querySelectorAll('input[name="printMode"]');
     printModeRadios.forEach(radio => radio.addEventListener('change', e => {
@@ -1430,16 +1447,44 @@ function exportExcel() {
 function executePrint() {
     const mode = document.querySelector('input[name="printMode"]:checked').value;
     
-    // Check custom options
-    const showInfo = mode !== 'custom' || document.getElementById('chkPrintInfo').checked;
-    const showDash = mode !== 'custom' || document.getElementById('chkPrintDash').checked;
-    const showAncillary = mode === 'detailed' || (mode === 'custom' && document.getElementById('chkPrintAncillary').checked);
-    const showSummary = mode === 'summary' || mode === 'detailed' || (mode === 'custom' && document.getElementById('chkPrintSummary').checked);
-    const showItems = mode === 'detailed' || (mode === 'custom' && document.getElementById('chkPrintItems').checked);
+    let opts = { mode };
+    
+    if (mode === 'custom') {
+        opts.showSettlementInfo = document.getElementById('chkPrint_SettlementInfo').checked;
+        opts.showSettlementName = document.getElementById('chkPrint_SettlementName').checked;
+        opts.showSettlementDate = document.getElementById('chkPrint_SettlementDate').checked;
+        opts.showSettlementStatus = document.getElementById('chkPrint_SettlementStatus').checked;
 
-    const html = generatePrintTemplate({
-        mode, showInfo, showDash, showAncillary, showSummary, showItems
-    });
+        opts.showQuoteInfo = document.getElementById('chkPrint_QuoteInfo').checked;
+        opts.showQuoteName = document.getElementById('chkPrint_QuoteName').checked;
+        opts.showQuoteDate = document.getElementById('chkPrint_QuoteDate').checked;
+        opts.showShipmentType = document.getElementById('chkPrint_ShipmentType').checked;
+        opts.showPolPod = document.getElementById('chkPrint_PolPod').checked;
+        opts.showForwarder = document.getElementById('chkPrint_Forwarder').checked;
+        opts.showIncoterms = document.getElementById('chkPrint_Incoterms').checked;
+
+        opts.showDash = document.getElementById('chkPrint_Dashboard').checked;
+        opts.showAncillary = document.getElementById('chkPrint_Ancillary').checked;
+        opts.showSummary = document.getElementById('chkPrint_Summary').checked;
+        
+        opts.showItemCost = document.getElementById('chkPrint_ItemCost').checked;
+        opts.showItemCostValue = document.getElementById('chkPrint_ItemCostValue').checked;
+        opts.showItemCostVolume = document.getElementById('chkPrint_ItemCostVolume').checked;
+        opts.showRemarks = document.getElementById('chkPrint_Remarks').checked;
+    } else if (mode === 'detailed') {
+        opts.showSettlementInfo = opts.showSettlementName = opts.showSettlementDate = opts.showSettlementStatus = true;
+        opts.showQuoteInfo = opts.showQuoteName = opts.showQuoteDate = opts.showShipmentType = opts.showPolPod = opts.showForwarder = opts.showIncoterms = true;
+        opts.showDash = opts.showAncillary = opts.showSummary = true;
+        opts.showItemCost = opts.showItemCostValue = opts.showItemCostVolume = true;
+        opts.showRemarks = true;
+    } else { // summary
+        opts.showSettlementInfo = opts.showSettlementName = opts.showSettlementDate = opts.showSettlementStatus = true;
+        opts.showQuoteInfo = opts.showQuoteName = opts.showQuoteDate = opts.showShipmentType = opts.showPolPod = opts.showForwarder = opts.showIncoterms = true;
+        opts.showDash = opts.showSummary = opts.showRemarks = true;
+        opts.showAncillary = opts.showItemCost = opts.showItemCostValue = opts.showItemCostVolume = false;
+    }
+
+    const html = generatePrintTemplate(opts);
 
     document.getElementById('printContainer').innerHTML = html;
     document.getElementById('printOptionModal').classList.remove('active');
@@ -1451,6 +1496,7 @@ function executePrint() {
         }, 500);
     }, 100);
 }
+
 
 function generatePrintTemplate(opts) {
     const d = state.doc;
@@ -1466,36 +1512,51 @@ function generatePrintTemplate(opts) {
         </div>
     `;
 
-    // 1. Info
-    if (opts.showInfo) {
-        html += `
-        <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 정산 및 연동 정보</h2>
-            <table class="print-info-table">
-                <tr>
-                    <th>정산 문서명</th><td>${d.title || '-'}</td>
-                    <th>정산 일자</th><td>${d.settlementDate || '-'}</td>
-                    <th>상태</th><td>${d.status === 'completed' ? '완료' : '작성 중'}</td>
-                </tr>
-            </table>
-            <h3 class="sub-title">포워더 견적 정보 (원본)</h3>
-            <table class="print-info-table">
-                <tr>
-                    <th>견적명</th><td colspan="3">${d.quotationSnapshot?.title || '-'}</td>
-                </tr>
-                <tr>
-                    <th>견적일</th><td>${d.quotationSnapshot?.date || '-'}</td>
-                    <th>선적형태</th><td>${d.quotationSnapshot?.shipmentType || '-'}</td>
-                </tr>
-                <tr>
-                    <th>POL / POD</th><td>${d.quotationSnapshot?.pol || '-'} / ${d.quotationSnapshot?.pod || '-'}</td>
-                    <th>적용 포워더</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>
-                </tr>
-            </table>
-        </div>`;
+    // 1. Info & 2. Quote Info
+    if (opts.showSettlementInfo || opts.showQuoteInfo) {
+        html += `<div class="print-section">`;
+        
+        if (opts.showSettlementInfo) {
+            html += `<h2 class="section-title">${sectionNum++}. 정산 및 연동 정보</h2>`;
+            if (opts.showSettlementName || opts.showSettlementDate || opts.showSettlementStatus) {
+                html += `<table class="print-info-table"><tr>`;
+                if (opts.showSettlementName) html += `<th>정산 문서명</th><td>${d.title || '-'}</td>`;
+                if (opts.showSettlementDate) html += `<th>정산 일자</th><td>${d.settlementDate || '-'}</td>`;
+                if (opts.showSettlementStatus) html += `<th>상태</th><td>${d.status === 'completed' ? '완료' : '작성 중'}</td>`;
+                html += `</tr></table>`;
+            }
+        }
+
+        if (opts.showQuoteInfo) {
+            html += `<h3 class="sub-title">포워더 견적 정보 (원본)</h3>`;
+            if (opts.showQuoteName || opts.showQuoteDate || opts.showShipmentType || opts.showPolPod || opts.showForwarder || opts.showIncoterms) {
+                html += `<table class="print-info-table">`;
+                if (opts.showQuoteName) {
+                    html += `<tr><th>견적명</th><td colspan="5">${d.quotationSnapshot?.title || '-'}</td></tr>`;
+                }
+                
+                let cells = [];
+                if (opts.showQuoteDate) cells.push(`<th>견적일</th><td>${d.quotationSnapshot?.date || '-'}</td>`);
+                if (opts.showShipmentType) cells.push(`<th>선적형태</th><td>${d.quotationSnapshot?.shipmentType || '-'}</td>`);
+                if (opts.showPolPod) cells.push(`<th>POL / POD</th><td>${d.quotationSnapshot?.pol || '-'} / ${d.quotationSnapshot?.pod || '-'}</td>`);
+                if (opts.showForwarder) cells.push(`<th>적용 포워더</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>`);
+                if (opts.showIncoterms) cells.push(`<th>기준 인코텀즈</th><td>${d.quotationSnapshot?.incoterms || '-'}</td>`);
+                
+                // Render cells in chunks of 2 pairs (4 cols) or 3 pairs (6 cols). Let's do 2 pairs per row for cleanliness
+                for(let i=0; i<cells.length; i+=2) {
+                    html += `<tr>${cells[i]}`;
+                    if(i+1 < cells.length) html += cells[i+1];
+                    else html += `<th colspan="2"></th>`; // fill empty
+                    html += `</tr>`;
+                }
+                html += `</table>`;
+            }
+        }
+        
+        html += `</div>`;
     }
 
-    // 2. Dash
+    // 3. Dash
     if (opts.showDash) {
         const estStr = document.getElementById('dashTotalEstimated').innerText;
         const billedStr = document.getElementById('dashTotalBilled').innerText;
@@ -1522,11 +1583,11 @@ function generatePrintTemplate(opts) {
         </div>`;
     }
 
-    // 3. Ancillary Costs
+    // 4. Ancillary (Cost Details)
     if (opts.showAncillary) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 항목별 부대비용 상세 내역</h2>
+            <h2 class="section-title">${sectionNum++}. 항목별 비용 정산 및 분석</h2>
             <table class="print-data-table">
                 <thead>
                     <tr>
@@ -1544,10 +1605,10 @@ function generatePrintTemplate(opts) {
                         <th>원화(KRW)</th>
                     </tr>
                 </thead>
-                <tbody>`;
-        
-        let hasCosts = false;
-        if (d.actualCosts && d.actualCosts.length > 0) {
+                <tbody>
+            `;
+            
+            let hasCosts = false;
             d.actualCosts.forEach(cost => {
                 hasCosts = true;
                 const groupName = cost.group === 'invoice' ? '물품대금' : (cost.group === 'ocean' ? '해상운임' : (cost.group === 'export' ? '수출국비용' : (cost.group === 'import' ? '수입국비용' : (cost.group === 'customs' ? '통관/관세' : (cost.group === 'handling' ? '포워더수수료' : (cost.group === 'finance' ? '금융비용' : '기타'))))));
@@ -1569,16 +1630,18 @@ function generatePrintTemplate(opts) {
                     </tr>
                 `;
             });
-        }
-        
-        if (!hasCosts) {
-            html += `<tr><td colspan="8" class="text-center">등록된 비용 항목이 없습니다.</td></tr>`;
-        }
 
-        html += `</tbody></table></div>`;
+            if (!hasCosts) {
+                html += `<tr><td colspan="8" class="text-center" style="padding:15px; color:#94a3b8;">입력된 비용 내역이 없습니다.</td></tr>`;
+            }
+
+        html += `
+                </tbody>
+            </table>
+        </div>`;
     }
 
-    // 4. Summary Table
+    // 5. Summary
     if (opts.showSummary) {
         html += `
         <div class="print-section">
@@ -1589,30 +1652,36 @@ function generatePrintTemplate(opts) {
         </div>`;
     }
 
-    // 5. Cost Distribution
-    if (opts.showItems) {
-        html += `
-        <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (가치비례 배분법)</h2>
-            <table class="print-data-table">
-                ${document.getElementById('costTableValue').innerHTML}
-            </table>
-            
-            <br>
-            <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (체적/운임톤 배분법)</h2>
-            <table class="print-data-table">
-                ${document.getElementById('costTableVolume').innerHTML}
-            </table>
-        </div>`;
+    // 6. Items (Cost allocation)
+    if (opts.showItemCost) {
+        html += `<div class="print-section">`;
+        if (opts.showItemCostValue) {
+            html += `
+                <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (가치비례 배분법)</h2>
+                <table class="print-data-table">
+                    ${document.getElementById('costTableValue').innerHTML}
+                </table>
+                <br>
+            `;
+        }
+        if (opts.showItemCostVolume) {
+            html += `
+                <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (체적/운임톤 배분법)</h2>
+                <table class="print-data-table">
+                    ${document.getElementById('costTableVolume').innerHTML}
+                </table>
+            `;
+        }
+        html += `</div>`;
     }
-    
-    // Remarks
-    if (opts.showInfo) {
+
+    // 7. Remarks
+    if (opts.showRemarks) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">비고 및 특이사항</h2>
+            <h2 class="section-title">특이사항 및 비고</h2>
             <div class="print-remarks">
-                ${(d.remarks || "").replace(/\n/g, "<br>")}
+                ${(d.remarks || "").replace(/\\n/g, "<br>")}
             </div>
         </div>`;
     }
