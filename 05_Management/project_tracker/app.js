@@ -447,6 +447,20 @@ function bindEvents() {
         logSearch.addEventListener('input', () => renderTimeline(currentLogs));
     }
 
+    const btnPrint = document.getElementById('btnPrintProject');
+    if (btnPrint) {
+        btnPrint.addEventListener('click', () => {
+            if (!currentProjectId) {
+                Swal.fire('알림', '인쇄할 프로젝트를 먼저 선택해주세요.', 'info');
+                return;
+            }
+            const project = projects.find(p => p.id === currentProjectId);
+            if (!project) return;
+            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            executePrintProjectLogs(project, printLogs);
+        });
+    }
+
     // New Project Modal
     btnNewProject.addEventListener('click', () => {
         projectForm.reset();
@@ -845,26 +859,7 @@ document.getElementById('btnSaveEditLog').addEventListener('click', async () => 
    Print Logic (Project Logs)
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', () => {
-    const btnPrint = document.getElementById('btnPrintProject');
-    if (btnPrint) {
-        btnPrint.addEventListener('click', () => {
-            if (!currentProjectId) {
-        Swal.fire('알림', '인쇄할 프로젝트를 먼저 선택해주세요.', 'info');
-        return;
-    }
 
-    const project = projects.find(p => p.id === currentProjectId);
-    if (!project) return;
-
-    // Filter logs for this project and sort chronologically (oldest first for a log/history view, or newest first depending on preference - we'll use the current timeline order which is usually newest first, but for print let's do oldest first so it reads like a history document)
-    // Wait, the current renderTimeline sorts logs by date desc. Let's just pass project.logs sorted by date ascending for a proper chronological report.
-    let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    executePrintProjectLogs(project, printLogs);
-        });
-    }
-});
 
 function executePrintProjectLogs(project, logs) {
     const container = document.getElementById('printContainer');
