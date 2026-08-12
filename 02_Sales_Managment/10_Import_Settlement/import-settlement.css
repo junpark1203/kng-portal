@@ -630,6 +630,8 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         padding-bottom: 5px;
         margin-top: 25px;
         margin-bottom: 10px;
+        page-break-after: avoid;
+        break-after: avoid;
     }
     
     .sub-title {
@@ -638,6 +640,8 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         margin-top: 15px;
         margin-bottom: 8px;
         color: #333;
+        page-break-after: avoid;
+        break-after: avoid;
     }
 
     .print-info-table {
