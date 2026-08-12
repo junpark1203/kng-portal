@@ -295,20 +295,28 @@ body.modal-open .main-content {
 /* Print Layout Overwritten */
 
 
-/* Print Layout Styling */
+/* Print Layout CSS will be replaced */
+
+
+
+/* Print Layout Styling - Premium Report */
 @media print {
     @page {
         size: A4 landscape;
-        margin: 15mm;
+        margin: 12mm 15mm;
     }
 
     body {
         background: #fff !important;
         color: #000 !important;
-        font-family: "Inter", sans-serif !important;
+        font-family: "Inter", "Malgun Gothic", sans-serif !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     
-    /* Hide non-printable elements */
+    /* Utility & Hide non-printable elements */
+    .web-only { display: none !important; }
+    .print-only { display: block !important; }
     #listView, .app-bar-left button, .app-bar-left div, .app-bar-right button, .bx-x, .filler-col, #detailView > div:nth-child(2) {
         display: none !important;
     }
@@ -316,13 +324,14 @@ body.modal-open .main-content {
     #detailView {
         display: flex !important;
         flex-direction: column;
+        width: 100% !important;
     }
     
     /* Header (Report Title) */
     .app-bar {
-        border-bottom: 3px solid #1e293b !important;
-        padding: 0 0 12px 0 !important;
-        margin-bottom: 20px !important;
+        border-bottom: 2px solid #1e293b !important;
+        padding: 0 0 10px 0 !important;
+        margin-bottom: 16px !important;
         background: none !important;
         display: flex !important;
         justify-content: space-between !important;
@@ -331,10 +340,11 @@ body.modal-open .main-content {
     }
     
     .app-bar-left h1 {
-        font-size: 24px !important;
+        font-size: 22px !important;
         font-weight: 800 !important;
-        color: #000 !important;
+        color: #0f172a !important;
         margin: 0 !important;
+        letter-spacing: -0.5px;
     }
     
     .app-bar-right {
@@ -346,10 +356,10 @@ body.modal-open .main-content {
         border: none !important;
         background: transparent !important;
         padding: 0 !important;
-        font-size: 14px !important;
-        font-weight: 700 !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
         text-align: right !important;
-        color: #475569 !important;
+        color: #64748b !important;
         width: 350px !important;
         pointer-events: none;
     }
@@ -360,6 +370,7 @@ body.modal-open .main-content {
         padding: 0 !important;
         overflow: visible !important;
         background: transparent !important;
+        width: 100% !important;
     }
     
     .table-container {
@@ -367,38 +378,51 @@ body.modal-open .main-content {
         box-shadow: none !important;
         max-height: none !important;
         overflow: visible !important;
+        width: 100% !important;
     }
     
     table.data-table {
         width: 100% !important;
+        min-width: 0 !important; /* Allow shrinking below min-width */
+        table-layout: auto !important; /* Let browser adjust column widths naturally */
         border-collapse: collapse !important;
-        font-size: 10px !important;
+        font-size: 9px !important; /* Reduced for fitting */
         color: #1e293b !important;
+        border-top: 2px solid #334155 !important;
+        border-bottom: 2px solid #334155 !important;
     }
     
+    /* Disable all sticky logic to let table flow naturally in print */
+    .sticky-col { position: static !important; }
+    .quote-matrix-table th.sticky-col, .quote-matrix-table td.sticky-col { position: static !important; }
+
+    /* Clear widths to let table-layout:auto work its magic */
     table.data-table th, table.data-table td {
-        border: 1px solid #94a3b8 !important;
-        padding: 6px 4px !important;
+        width: auto !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        border: none !important; /* Remove all grid borders */
+        border-bottom: 1px solid #e2e8f0 !important; /* Only subtle horizontal borders */
+        padding: 6px 4px !important; /* Increased padding */
         vertical-align: middle;
         color: #000 !important;
     }
     
     table.data-table th {
-        background-color: #f1f5f9 !important;
+        background-color: #f8fafc !important;
         font-weight: 700 !important;
         text-align: center !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        font-size: 11px !important;
+        font-size: 10px !important;
+        border-bottom: 1px solid #cbd5e1 !important; /* Stronger border under header */
     }
     
-    table.data-table tbody tr:nth-child(even) {
-        background-color: #f8fafc !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+    table.data-table tbody tr:nth-child(even) td.sticky-col,
+    table.data-table tbody tr:nth-child(even) td {
+        background-color: transparent !important; /* Remove zebra stripes for clean report */
     }
     
-    .sticky-col { position: static !important; }
+    /* Ensure no vertical borders sneak in */
+    table.data-table th, table.data-table td { border-left: none !important; border-right: none !important; }
 
     /* Inputs and Selects Cleanup */
     input, select {
@@ -414,68 +438,48 @@ body.modal-open .main-content {
     }
     
     /* Supplier Header Style */
-    .supplier-col div {
+    .print-only {
         display: flex;
-        justify-content: center !important;
+        flex-direction: column;
         align-items: center;
-        margin-top: 4px !important;
-        gap: 4px !important;
+        justify-content: center;
     }
-    
-    .supplier-col span {
-        font-size: 12px !important;
+    .print-only > div:first-child {
+        font-size: 11px !important;
         font-weight: 800 !important;
         color: #000 !important;
-        display: block;
-        text-align: center;
+        margin-bottom: 2px;
+    }
+    .print-only > div:last-child {
+        font-size: 9px !important;
+        color: #64748b !important;
     }
 
     /* Target specific price inputs */
-    td.supplier-col input[type="text"] {
-        font-size: 12px !important;
-        font-weight: 700 !important;
+    td.supplier-col .print-only > div:first-child {
+        font-size: 11px !important;
+        font-weight: 800 !important;
         text-align: right !important;
         width: 100% !important;
     }
-    
-    .krw-preview {
-        font-size: 10px !important;
+    td.supplier-col .print-only > div:last-child {
+        font-size: 9px !important;
+        font-weight: 500 !important;
         color: #64748b !important;
         text-align: right !important;
-        margin-top: 2px !important;
+        width: 100% !important;
     }
-    
-    /* Hide the extra filler column */
-    td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
-}
-
-/* Utility classes for print */
-.print-only { display: none !important; }
-
-@media print {
-    .web-only { display: none !important; }
-    .print-only { display: block !important; }
     
     .site-tag {
         border: none !important;
         background: transparent !important;
         padding: 0 !important;
-        font-size: 10px !important;
+        font-size: 9px !important;
         color: #1e293b !important;
+        white-space: normal !important;
     }
-}
-
-
-/* Make sticky columns actually stick horizontally */
-.quote-matrix-table th.sticky-col,
-.quote-matrix-table td.sticky-col {
-    position: sticky;
-}
-
-.quote-matrix-table td.sticky-col {
-    background: #fff;
-}
-.data-table tbody tr:nth-child(even) td.sticky-col {
-    background: #f8fafc;
+    
+    /* Hide the extra filler column */
+    td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
 }
 
