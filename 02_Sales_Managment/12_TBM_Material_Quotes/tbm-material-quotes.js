@@ -284,14 +284,14 @@ async function loadDocumentList() {
             });
         }
         
-        document.getElementById('loadModal').style.display = 'flex';
+        document.getElementById('loadModal').classList.add('active');
     } catch(err) {
         Swal.fire('오류', '목록을 불러오는 중 오류가 발생했습니다.', 'error');
     }
 }
 
 function closeLoadModal() {
-    document.getElementById('loadModal').style.display = 'none';
+    document.getElementById('loadModal').classList.remove('active');
 }
 
 async function loadDocument(id) {
