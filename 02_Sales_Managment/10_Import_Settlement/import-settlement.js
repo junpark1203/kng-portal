@@ -1551,17 +1551,20 @@ function generatePrintTemplate(opts) {
                 hasCosts = true;
                 const groupName = cost.group === 'invoice' ? '물품대금' : (cost.group === 'ocean' ? '해상운임' : (cost.group === 'export' ? '수출국비용' : (cost.group === 'import' ? '수입국비용' : (cost.group === 'customs' ? '통관/관세' : (cost.group === 'handling' ? '포워더수수료' : (cost.group === 'finance' ? '금융비용' : '기타'))))));
                 
+                let qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+                let qRate = qCurr === 'KRW' ? 1 : ((state.doc.quotationSnapshot && state.doc.quotationSnapshot.exchangeRates) ? (state.doc.quotationSnapshot.exchangeRates[qCurr] || 0) : 0);
+                
                 html += `
                     <tr>
                         <td class="text-center">${groupName}</td>
-                        <td>${cost.name}</td>
+                        <td>${cost.label}</td>
                         <td class="text-right">${cost.isCustom ? '-' : formatNum(cost.quotedForeign, 2)}</td>
-                        <td class="text-right">${cost.isCustom ? '-' : cost.quotedRate}</td>
-                        <td class="text-right">\ ${cost.isCustom ? '-' : formatNum(cost.quotedAmount)}</td>
+                        <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
+                        <td class="text-right">₩ ${cost.isCustom ? '-' : formatNum(cost.quotedForeign * qRate)}</td>
                         
                         <td class="text-right font-weight-bold">${formatNum(cost.billedForeign, 2)}</td>
-                        <td class="text-right font-weight-bold">${cost.billedRate}</td>
-                        <td class="text-right font-weight-bold">\ ${formatNum(cost.billedKrw)}</td>
+                        <td class="text-right font-weight-bold">${cost.billedRate === 1 ? '-' : formatNum(cost.billedRate, 2)}</td>
+                        <td class="text-right font-weight-bold">₩ ${formatNum(cost.billedKrw)}</td>
                     </tr>
                 `;
             });
