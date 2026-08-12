@@ -448,3 +448,20 @@ body.modal-open .main-content {
     /* Hide the extra filler column */
     td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
 }
+
+/* Utility classes for print */
+.print-only { display: none !important; }
+
+@media print {
+    .web-only { display: none !important; }
+    .print-only { display: block !important; }
+    
+    .site-tag {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+        font-size: 10px !important;
+        color: #1e293b !important;
+    }
+}
+

@@ -190,21 +190,27 @@ function renderTable() {
         }
 
         th.innerHTML = `
-            <div style="display:flex; justify-content: space-between; align-items:center;">
-                <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
-                <span>${escapeHtml(supp.name)}</span>
+            <div class="web-only">
+                <div style="display:flex; justify-content: space-between; align-items:center;">
+                    <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
+                    <span>${escapeHtml(supp.name)}</span>
+                </div>
+                <div style="margin-top: 8px; display:flex; gap: 4px;">
+                    <select style="flex:1; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; outline:none;" onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
+                        <option value="KRW" ${supp.currency === 'KRW' ? 'selected' : ''}>KRW</option>
+                        <option value="USD" ${supp.currency === 'USD' ? 'selected' : ''}>USD</option>
+                        <option value="EUR" ${supp.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                        <option value="CNY" ${supp.currency === 'CNY' ? 'selected' : ''}>CNY</option>
+                        <option value="JPY" ${supp.currency === 'JPY' ? 'selected' : ''}>JPY</option>
+                    </select>
+                    <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} style="flex:1.2; width:50px; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:right;" onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
+                </div>
+                ${incotermsHtml}
             </div>
-            <div style="margin-top: 8px; display:flex; gap: 4px;">
-                <select style="flex:1; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; outline:none;" onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
-                    <option value="KRW" ${supp.currency === 'KRW' ? 'selected' : ''}>KRW</option>
-                    <option value="USD" ${supp.currency === 'USD' ? 'selected' : ''}>USD</option>
-                    <option value="EUR" ${supp.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-                    <option value="CNY" ${supp.currency === 'CNY' ? 'selected' : ''}>CNY</option>
-                    <option value="JPY" ${supp.currency === 'JPY' ? 'selected' : ''}>JPY</option>
-                </select>
-                <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} style="flex:1.2; width:50px; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:right;" onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
+            <div class="print-only">
+                <div style="font-weight: 800; font-size: 13px; color: #000; text-align: center;">${escapeHtml(supp.name)}</div>
+                ${supp.currency !== 'KRW' ? `<div style="font-size: 10px; color: #475569; margin-top: 4px; text-align: center;">(${supp.currency} / ${supp.rate}${supp.incoterms ? ' / ' + supp.incoterms : ''})</div>` : ''}
             </div>
-            ${incotermsHtml}
         `;
         thead.insertBefore(th, addTh);
     });
@@ -233,7 +239,7 @@ function renderTable() {
             <td class="sticky-col" style="left: 200px; z-index: 5;">${escapeHtml(item.name)}</td>
             <td class="sticky-col" style="left: 380px; z-index: 5;">${escapeHtml(item.specification)}</td>
             <td class="sticky-col" style="left: 530px; z-index: 5;">
-                <span style="display:inline-block; padding:2px 6px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;">
+                <span class="site-tag" style="display:inline-block; padding:2px 6px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;">
                     ${escapeHtml(item.sites)}
                 </span>
             </td>
@@ -263,12 +269,21 @@ function renderTable() {
             }
 
             html += `
-                <td class="supplier-col" style="padding: 4px 8px;">
-                    <input type="text" data-supplier="${escapeHtml(suppName)}" value="${displayPrice}" 
-                           style="width:100%; padding:6px; text-align:right; border:1px solid var(--gray-300); border-radius:4px; font-size:13px;"
-                           placeholder="0" oninput="handlePriceInput(this, '${escapeHtml(suppName)}')">
-                    <div class="krw-preview" style="font-size: 11px; color: #64748b; text-align: right; min-height: 16px; margin-top: 2px;">
-                        ${krwText}
+                <td class="supplier-col" data-currency="${supp.currency}" style="padding: 4px 8px;">
+                    <div class="web-only">
+                        <input type="text" data-supplier="${escapeHtml(suppName)}" value="${displayPrice}" 
+                               style="width:100%; padding:6px; text-align:right; border:1px solid var(--gray-300); border-radius:4px; font-size:13px;"
+                               placeholder="0" oninput="handlePriceInput(this, '${escapeHtml(suppName)}')">
+                        <div class="krw-preview" style="font-size: 11px; color: #64748b; text-align: right; min-height: 16px; margin-top: 2px;">
+                            ${krwText}
+                        </div>
+                    </div>
+                    <div class="print-only">
+                        ${supp.currency === 'KRW' 
+                            ? `<div style="font-size: 12px; font-weight: 800; color: #000; text-align: right; width: 100%;">${displayPrice ? '₩' + displayPrice : ''}</div>`
+                            : `<div style="font-size: 12px; font-weight: 800; color: #000; text-align: right; width: 100%;">${krwText}</div>
+                               <div style="font-size: 10px; color: #64748b; text-align: right; margin-top: 2px;">${displayPrice ? supp.currency + ' ' + displayPrice : ''}</div>`
+                        }
                     </div>
                 </td>
             `;
@@ -323,13 +338,28 @@ function handlePriceInput(inputEl, supplierName) {
     // 2. Calculate KRW equivalent
     const supp = suppliers.find(s => s.name === supplierName);
     const previewEl = inputEl.nextElementSibling;
+    const printContainer = inputEl.closest('.supplier-col').querySelector('.print-only');
     const val = Number(valStr);
     
+    let krwFormatted = '';
     if (supp && supp.currency !== 'KRW' && val) {
         const krwPrice = Math.round(val * supp.rate);
-        previewEl.textContent = '₩' + krwPrice.toLocaleString();
+        krwFormatted = '₩' + krwPrice.toLocaleString();
+        previewEl.textContent = krwFormatted;
     } else {
         previewEl.textContent = '';
+    }
+
+    // 3. Update print-only view
+    if (printContainer) {
+        if (supp && supp.currency === 'KRW') {
+            printContainer.innerHTML = `<div style="font-size: 12px; font-weight: 800; color: #000; text-align: right; width: 100%;">${inputEl.value ? '₩' + inputEl.value : ''}</div>`;
+        } else {
+            printContainer.innerHTML = `
+                <div style="font-size: 12px; font-weight: 800; color: #000; text-align: right; width: 100%;">${krwFormatted}</div>
+                <div style="font-size: 10px; color: #64748b; text-align: right; margin-top: 2px;">${inputEl.value ? supp.currency + ' ' + inputEl.value : ''}</div>
+            `;
+        }
     }
 }
 
