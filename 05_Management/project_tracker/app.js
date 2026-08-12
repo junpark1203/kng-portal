@@ -457,25 +457,55 @@ function bindEvents() {
             const project = projects.find(p => p.id === currentProjectId);
             if (!project) return;
             
+            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            const uniqueDates = [...new Set(printLogs.map(l => (l.createdAt || '').substring(0, 10)))].filter(d => d);
+            
+            let dateCheckboxesHtml = '<div style="margin-top: 15px; text-align: left; max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">';
+            dateCheckboxesHtml += '<div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">출력할 일자 선택:</div>';
+            
+            if (uniqueDates.length === 0) {
+                dateCheckboxesHtml += '<div style="font-size: 13px; color: #666;">등록된 로그가 없습니다.</div>';
+            } else {
+                uniqueDates.forEach(date => {
+                    dateCheckboxesHtml += `
+                        <label style="display: block; margin-bottom: 5px; cursor: pointer; font-size: 14px;">
+                            <input type="checkbox" class="swal-print-date-cb" value="${date}" checked style="margin-right: 8px;"> 
+                            ${date}
+                        </label>
+                    `;
+                });
+            }
+            dateCheckboxesHtml += '</div>';
+
             const { value: formValues } = await Swal.fire({
                 title: '인쇄 설정',
                 html:
                     '<input id="swal-input1" class="swal2-input" placeholder="헤더명 (예: 프로젝트 로그 내역)" value="프로젝트 로그 내역">' +
-                    '<input id="swal-input2" class="swal2-input" placeholder="작성일 (예: 2026. 7. 30.)" value="' + new Date().toLocaleDateString() + '">',
+                    '<input id="swal-input2" class="swal2-input" placeholder="작성일 (예: 2026. 7. 30.)" value="' + new Date().toLocaleDateString() + '">' +
+                    dateCheckboxesHtml,
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: '인쇄',
                 cancelButtonText: '취소',
                 preConfirm: () => {
+                    const checkedDates = Array.from(document.querySelectorAll('.swal-print-date-cb:checked')).map(cb => cb.value);
+                    if (uniqueDates.length > 0 && checkedDates.length === 0) {
+                        Swal.showValidationMessage('최소 하루 이상의 일자를 선택해주세요.');
+                        return false;
+                    }
                     return [
                         document.getElementById('swal-input1').value,
-                        document.getElementById('swal-input2').value
+                        document.getElementById('swal-input2').value,
+                        checkedDates
                     ]
                 }
             });
 
             if (formValues) {
-                let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                const checkedDates = formValues[2];
+                if (uniqueDates.length > 0) {
+                    printLogs = printLogs.filter(l => checkedDates.includes((l.createdAt || '').substring(0, 10)));
+                }
                 executePrintProjectLogs(project, printLogs, formValues[0], formValues[1]);
             }
         });
