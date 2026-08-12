@@ -148,7 +148,7 @@ function saveCurrentInputValues() {
         suppliers.forEach(supp => {
             const input = row.querySelector(`input[data-supplier="${escapeHtml(supp.name)}"]`);
             if (input) {
-                items[index].prices[supp.name] = input.value;
+                items[index].prices[supp.name] = input.value.replace(/,/g, '');
             }
         });
     });
@@ -245,16 +245,28 @@ function renderTable() {
             const suppName = supp.name;
             const price = item.prices[suppName] || '';
             let krwText = '';
-            if (price && supp.currency !== 'KRW') {
-                const krwPrice = Math.round(Number(price) * supp.rate);
+            
+            // Unformat first in case there are old commas
+            const numericPrice = Number(String(price).replace(/,/g, ''));
+            
+            if (numericPrice && supp.currency !== 'KRW') {
+                const krwPrice = Math.round(numericPrice * supp.rate);
                 krwText = '₩' + krwPrice.toLocaleString();
+            }
+
+            // Format for display
+            let displayPrice = String(price).replace(/[^0-9.]/g, '');
+            let parts = displayPrice.split('.');
+            if (parts[0]) {
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                displayPrice = parts.join('.');
             }
 
             html += `
                 <td class="supplier-col" style="padding: 4px 8px;">
-                    <input type="number" data-supplier="${escapeHtml(suppName)}" value="${price}" 
+                    <input type="text" data-supplier="${escapeHtml(suppName)}" value="${displayPrice}" 
                            style="width:100%; padding:6px; text-align:right; border:1px solid var(--gray-300); border-radius:4px; font-size:13px;"
-                           placeholder="0" oninput="calculateKRW(this, '${escapeHtml(suppName)}')">
+                           placeholder="0" oninput="handlePriceInput(this, '${escapeHtml(suppName)}')">
                     <div class="krw-preview" style="font-size: 11px; color: #64748b; text-align: right; min-height: 16px; margin-top: 2px;">
                         ${krwText}
                     </div>
@@ -299,10 +311,19 @@ function updateSupplierIncoterms(supplierName, incoterms) {
     renderTable();
 }
 
-function calculateKRW(inputEl, supplierName) {
+function handlePriceInput(inputEl, supplierName) {
+    // 1. Format the value with commas
+    let valStr = inputEl.value.replace(/[^0-9.]/g, '');
+    let parts = valStr.split('.');
+    if (parts[0]) {
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        inputEl.value = parts.join('.');
+    }
+
+    // 2. Calculate KRW equivalent
     const supp = suppliers.find(s => s.name === supplierName);
     const previewEl = inputEl.nextElementSibling;
-    const val = Number(inputEl.value);
+    const val = Number(valStr);
     
     if (supp && supp.currency !== 'KRW' && val) {
         const krwPrice = Math.round(val * supp.rate);
