@@ -509,3 +509,7 @@ body.modal-open .main-content {
     }
 }
 
+
+/* Global Utility Classes */
+.print-only { display: none !important; }
+
