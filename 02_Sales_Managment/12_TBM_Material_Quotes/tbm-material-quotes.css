@@ -292,104 +292,159 @@ body.modal-open .main-content {
 }
 
 .sortable-ghost { opacity: 0.4; background-color: #f1f5f9; }
-/* Print Layout */
+/* Print Layout Overwritten */
+
+
+/* Print Layout Styling */
 @media print {
+    @page {
+        size: A4 landscape;
+        margin: 15mm;
+    }
+
     body {
         background: #fff !important;
-        overflow: visible !important;
-        height: auto !important;
+        color: #000 !important;
+        font-family: "Inter", sans-serif !important;
     }
     
-    #listView, .app-bar-left button, .app-bar-right button:not([onclick*="print"]), .bx-x, .filler-col, .table-container, .btn, .catalog-toolbar {
-        box-shadow: none !important;
-    }
-    
-    /* Hide buttons and unnecessary UI for printing */
-    .app-bar-left button, .app-bar-right button:not([onclick*="print"]), .bx-x, .filler-col, #detailView > div:nth-child(2) {
-        display: none !important;
-    }
-    
-    .app-bar-right button[onclick*="print"] {
+    /* Hide non-printable elements */
+    #listView, .app-bar-left button, .app-bar-left div, .app-bar-right button, .bx-x, .filler-col, #detailView > div:nth-child(2) {
         display: none !important;
     }
 
-    /* Adjust document title input for print */
+    #detailView {
+        display: flex !important;
+        flex-direction: column;
+    }
+    
+    /* Header (Report Title) */
+    .app-bar {
+        border-bottom: 3px solid #1e293b !important;
+        padding: 0 0 12px 0 !important;
+        margin-bottom: 20px !important;
+        background: none !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-end !important;
+        box-shadow: none !important;
+    }
+    
+    .app-bar-left h1 {
+        font-size: 24px !important;
+        font-weight: 800 !important;
+        color: #000 !important;
+        margin: 0 !important;
+    }
+    
+    .app-bar-right {
+        display: flex !important;
+        align-items: flex-end !important;
+    }
+    
     #documentTitle {
         border: none !important;
         background: transparent !important;
         padding: 0 !important;
-        font-size: 24px !important;
-        width: 100% !important;
-        color: #000 !important;
+        font-size: 14px !important;
+        font-weight: 700 !important;
+        text-align: right !important;
+        color: #475569 !important;
+        width: 350px !important;
         pointer-events: none;
     }
-    #documentTitle::placeholder {
-        color: transparent !important;
-    }
+    #documentTitle::placeholder { color: transparent !important; }
 
-    /* Detail View adjustments */
-    #detailView {
-        display: flex !important;
-        height: auto !important;
+    /* Main Table Area */
+    main {
+        padding: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
     }
     
-    /* App Bar */
-    .app-bar {
-        border-bottom: 2px solid #000 !important;
-        padding: 10px 0 !important;
-    }
-
-    /* Main Area */
-    main {
-        overflow: visible !important;
-        padding: 20px 0 !important;
-        background: #fff !important;
-    }
-
     .table-container {
         border: none !important;
+        box-shadow: none !important;
         max-height: none !important;
         overflow: visible !important;
     }
-
-    table {
+    
+    table.data-table {
         width: 100% !important;
-        min-width: 0 !important;
-        page-break-inside: auto;
-    }
-
-    tr {
-        page-break-inside: avoid;
-        page-break-after: auto;
+        border-collapse: collapse !important;
+        font-size: 10px !important;
+        color: #1e293b !important;
     }
     
-    th, td {
-        border-color: #000 !important;
+    table.data-table th, table.data-table td {
+        border: 1px solid #94a3b8 !important;
+        padding: 6px 4px !important;
+        vertical-align: middle;
         color: #000 !important;
     }
-
-    .sticky-col {
-        position: static !important;
+    
+    table.data-table th {
+        background-color: #f1f5f9 !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        font-size: 11px !important;
     }
+    
+    table.data-table tbody tr:nth-child(even) {
+        background-color: #f8fafc !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .sticky-col { position: static !important; }
 
-    /* Input & Select fields inside the table */
-    input[type="text"], input[type="number"], select {
+    /* Inputs and Selects Cleanup */
+    input, select {
         border: none !important;
         background: transparent !important;
         appearance: none;
         -webkit-appearance: none;
         padding: 0 !important;
-        color: #000 !important;
+        margin: 0 !important;
+        color: #0f172a !important;
+        font-family: inherit !important;
         pointer-events: none;
     }
-    input::placeholder {
-        color: transparent !important;
+    
+    /* Supplier Header Style */
+    .supplier-col div {
+        display: flex;
+        justify-content: center !important;
+        align-items: center;
+        margin-top: 4px !important;
+        gap: 4px !important;
     }
-    select {
+    
+    .supplier-col span {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        color: #000 !important;
+        display: block;
         text-align: center;
+    }
+
+    /* Target specific price inputs */
+    td.supplier-col input[type="text"] {
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-align: right !important;
+        width: 100% !important;
     }
     
     .krw-preview {
-        color: #000 !important;
+        font-size: 10px !important;
+        color: #64748b !important;
+        text-align: right !important;
+        margin-top: 2px !important;
     }
+    
+    /* Hide the extra filler column */
+    td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
 }
