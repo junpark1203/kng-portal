@@ -22,41 +22,41 @@ let state = {
 };
 
 const DEFAULT_COSTS = [
-    { key: 'OF', label: '?´ìƒ?´ì„ (O/F, Ocean Freight)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'PSS', label: '?±ìˆ˜ê¸?? ì¦ë£?(P.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'LSS', label: '?€? í™©??? ì¦ë£?(L.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'BAF', label: '? ë¥˜? ì¦ë£?(B.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CAF', label: '?µí™”ì¡°ì •? ì¦ë£?(C.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'OF', label: 'í•´ìƒìš´ì„ (O/F, Ocean Freight)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'PSS', label: 'ì„±ìˆ˜ê¸° í• ì¦ë£Œ (P.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'LSS', label: 'ì €ìœ í™©ìœ  í• ì¦ë£Œ (L.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'BAF', label: 'ìœ ë¥˜í• ì¦ë£Œ (B.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CAF', label: 'í†µí™”ì¡°ì •í• ì¦ë£Œ (C.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
 
-    { key: 'CY', label: 'CYë¹?(CY Charge)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'PORT', label: '??§Œë¹„ìš© (Port Charge)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'EDI', label: 'EDI/?œë¥˜/ë¶€??(EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'THC_E', label: '?°ë??í•˜??¹„ ?˜ì¶œ (THC E)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'VGM', label: 'ì´ì¤‘?‰ê?ì¦ë¹„ (VGM)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'CUST_E', label: '?˜ì¶œ?µê?ë¹?(Customs E)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'TRK_E', label: '?´ë¥™?´ì†¡ ?˜ì¶œ (Trucking E)', defaultUnit: 'Lump Sum', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CY', label: 'CYë¹„ (CY Charge)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'PORT', label: 'í•­ë§Œë¹„ìš© (Port Charge)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'EDI', label: 'EDI/ì„œë¥˜/ë¶€í‚¹ (EDI+Doc+Sur+Bkg)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'THC_E', label: 'í„°ë¯¸ë„í•˜ì—­ë¹„ ìˆ˜ì¶œ (THC E)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'VGM', label: 'ì´ì¤‘ëŸ‰ê²€ì¦ë¹„ (VGM)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'CUST_E', label: 'ìˆ˜ì¶œí†µê´€ë¹„ (Customs E)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'TRK_E', label: 'ë‚´ë¥™ìš´ì†¡ ìˆ˜ì¶œ (Trucking E)', defaultUnit: 'Lump Sum', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
     
-    { key: 'CRS', label: 'ì»¨í…Œ?´ë„ˆ?Œì†¡ë£?(C.R.S)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'HNDL', label: 'ì·¨ê¸‰?˜ìˆ˜ë£?(Handling Charge)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'DO', label: '?”ë¬¼?¸ë„ì§€?œì„œ (D/O)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'THC_I', label: '?°ë??í•˜??¹„ ?˜ì… (THC I)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'WHFG', label: 'ë¶€?ì‚¬?©ë£Œ (Wharfage)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'TSF', label: '?°ë??ë³´?ˆë£Œ (TSF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'PSMF', label: '??§Œ?ˆì „ê´€ë¦¬ë¹„ (PSMF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CCC', label: 'ì»¨í…Œ?´ë„ˆ?¸ì •ë¹?(CCC)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'DOC', label: '?œë¥˜?€?‰ë¹„ (DOC)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'STRIP', label: 'ì»¨í…Œ?´ë„ˆ?ì¶œë£?(Stripping)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'TRK_I', label: '?´ë¥™?´ì†¡ ?˜ì… (Trucking I)', defaultUnit: 'Lump Sum', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CRS', label: 'ì»¨í…Œì´ë„ˆíšŒì†¡ë£Œ (C.R.S)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'HNDL', label: 'ì·¨ê¸‰ìˆ˜ìˆ˜ë£Œ (Handling Charge)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DO', label: 'í™”ë¬¼ì¸ë„ì§€ì‹œì„œ (D/O)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'THC_I', label: 'í„°ë¯¸ë„í•˜ì—­ë¹„ ìˆ˜ì… (THC I)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'WHFG', label: 'ë¶€ë‘ì‚¬ìš©ë£Œ (Wharfage)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TSF', label: 'í„°ë¯¸ë„ë³´ì•ˆë£Œ (TSF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'PSMF', label: 'í•­ë§Œì•ˆì „ê´€ë¦¬ë¹„ (PSMF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CCC', label: 'ì»¨í…Œì´ë„ˆì„¸ì •ë¹„ (CCC)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DOC', label: 'ì„œë¥˜ëŒ€í–‰ë¹„ (DOC)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'STRIP', label: 'ì»¨í…Œì´ë„ˆì ì¶œë£Œ (Stripping)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'TRK_I', label: 'ë‚´ë¥™ìš´ì†¡ ìˆ˜ì… (Trucking I)', defaultUnit: 'Lump Sum', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     
-    { key: 'INS', label: '?í•˜ë³´í—˜ë£?(Cargo Ins)', defaultUnit: 'Lump Sum', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'CUST_I', label: '?µê??˜ìˆ˜ë£?(Customs I)', defaultUnit: 'per B/L', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: true } }
+    { key: 'INS', label: 'ì í•˜ë³´í—˜ë£Œ (Cargo Ins)', defaultUnit: 'Lump Sum', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: false } },
+    { key: 'CUST_I', label: 'í†µê´€ìˆ˜ìˆ˜ë£Œ (Customs I)', defaultUnit: 'per B/L', group: 'customs', applyTo: { EXW: true, FOB: true, CIF: true } }
 ];
 
 const UNIT_OPTIONS = ['Lump Sum', 'per Container', 'per B/L', 'per CBM', 'per R/T', 'per TON', 'per Unit'];
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ? í‹¸ë¦¬í‹°
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ìœ í‹¸ë¦¬í‹°
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function getToken() {
     try {
         if (window.parent && typeof window.parent.getAuthToken === 'function') {
@@ -121,8 +121,9 @@ window.toggleSummaryDetails = function(key) {
     }
 };
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ë²„íŠ¼ ?™ì‘ (?‘ì? ?¤ìš´ë¡œë“œ ??ë°”ì¸??// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ë²„íŠ¼ ë™ì‘ (ì—‘ì…€ ë‹¤ìš´ë¡œë“œ ë“±)ë°”ì¸ë”©
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
     loadList();
@@ -150,7 +151,7 @@ function initEvents() {
     document.getElementById('btnCancelQuoteModal').addEventListener('click', () => document.getElementById('quoteModal').classList.remove('active'));
     document.getElementById('btnConfirmQuote').addEventListener('click', loadSelectedQuote);
 
-    // ê¸°ë³¸ ?•ë³´ ?…ë ¥
+    // ê¸°ë³¸ ì •ë³´ ì…ë ¥
     ['docTitle', 'docDate', 'docStatus', 'docRemarks'].forEach(id => {
         document.getElementById(id).addEventListener('input', e => {
             const key = id.replace('doc', '');
@@ -158,10 +159,10 @@ function initEvents() {
         });
     });
     
-    // ?‘ì?, ?¸ì‡„
+    // ì—‘ì…€, ì¸ì‡„
     document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
     
-    // ëª©ë¡ ?„ì²´ ? íƒ
+    // ëª©ë¡ ì „ì²´ ì„ íƒ
     document.getElementById('selectAll').addEventListener('change', e => {
         document.querySelectorAll('.row-chk').forEach(cb => cb.checked = e.target.checked);
     });
@@ -175,8 +176,9 @@ function switchView(view) {
     state.view = view;
 }
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ëª©ë¡ ê´€ë¦?// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ëª©ë¡ ê´€ë¦¬
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadList() {
     try {
         state.list = await authFetch(API_BASE);
@@ -189,13 +191,13 @@ async function loadList() {
 function renderList() {
     const tbody = document.getElementById('settlementListBody');
     if (state.list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">?€?¥ëœ ?•ì‚° ?´ì—­???†ìŠµ?ˆë‹¤.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">ì €ì¥ëœ ì •ì‚° ë‚´ì—­ì´ ì—†ìŠµë‹ˆë‹¤.</td></tr>';
         return;
     }
     
     let html = '';
     state.list.forEach(item => {
-        const statusMap = { 'draft': '?‘ì„± ì¤?, 'completed': '?•ì‚° ?„ë£Œ' };
+        const statusMap = { 'draft': 'ì‘ì„± ì¤‘', 'completed': 'ì •ì‚° ì™„ë£Œ' };
         html += `
             <tr style="cursor: pointer" onclick="window.editSettlement('${item.id}')">
                 <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-chk" value="${item.id}"></td>
@@ -213,22 +215,22 @@ function renderList() {
     tbody.innerHTML = html;
 }
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ê²¬ì  ë¶ˆëŸ¬?¤ê¸° (ëª¨ë‹¬)
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ê²¬ì  ë¶ˆëŸ¬ì˜¤ê¸° (ëª¨ë‹¬)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function openQuoteModal() {
     try {
         const quotes = await authFetch(QUOTE_API);
-        // ?•ì •??confirmed) ê²¬ì ë§??„í„°ë§?(?í•˜ë©?ëª¨ë‘ ?œì‹œ ê°€?? ?¬ê¸°?œëŠ” ëª¨ë‘ ?œì‹œ?˜ë˜ ìµœì‹ ???•ë ¬)
+        // í™•ì •ëœ(confirmed) ê²¬ì ë§Œ í•„í„°ë§ (ì›í•˜ë©´ ëª¨ë‘ í‘œì‹œ ê°€ëŠ¥, ì—¬ê¸°ì„œëŠ” ëª¨ë‘ í‘œì‹œí•˜ë˜ ìµœì‹ ìˆœ ì •ë ¬)
         state.quotes = quotes;
         
         const tbody = document.getElementById('quoteModalBody');
         if (quotes.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">?€?¥ëœ ?¬ì›Œ??ê²¬ì ???†ìŠµ?ˆë‹¤.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ì €ì¥ëœ í¬ì›Œë” ê²¬ì ì´ ì—†ìŠµë‹ˆë‹¤.</td></tr>';
         } else {
             let html = '';
             quotes.forEach((q, idx) => {
-                const statusMap = { 'draft': 'ì´ˆì•ˆ', 'confirmed': '?•ì •', 'expired': 'ë§Œë£Œ' };
+                const statusMap = { 'draft': 'ì´ˆì•ˆ', 'confirmed': 'í™•ì •', 'expired': 'ë§Œë£Œ' };
                 let fwOptions = (q.forwarders || []).map((fw, fIdx) => `<option value="${fIdx}">${fw.name}</option>`).join('');
                 let termOptions = (q.incoterms || []).map(t => `<option value="${t}">${t}</option>`).join('');
                 
@@ -247,24 +249,25 @@ async function openQuoteModal() {
         }
         document.getElementById('quoteModal').classList.add('active');
     } catch(err) {
-        showToast('ê²¬ì  ëª©ë¡??ë¶ˆëŸ¬?¤ëŠ” ì¤??¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.', true);
+        showToast('ê²¬ì  ëª©ë¡ì„ ë¶ˆëŸ¬ì˜¤ëŠ” ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.', true);
     }
 }
 
 function loadSelectedQuote() {
     const radio = document.querySelector('input[name="selectedQuote"]:checked');
-    if (!radio) return showToast('ë¶ˆëŸ¬??ê²¬ì ??? íƒ?˜ì„¸??', true);
+    if (!radio) return showToast('ë¶ˆëŸ¬ì˜¬ ê²¬ì ì„ ì„ íƒí•˜ì„¸ìš”.', true);
     
     const idx = radio.value;
     const quote = state.quotes[idx];
     const fwIdx = document.getElementById(`selFw_${idx}`).value;
     const term = document.getElementById(`selTerm_${idx}`).value;
     
-    if (!fwIdx || !term) return showToast('?¬ì›Œ?”ì? ?¸ì½”?€ì¦ˆë? ëª¨ë‘ ? íƒ?˜ì„¸??', true);
+    if (!fwIdx || !term) return showToast('í¬ì›Œë”ì™€ ì¸ì½”í…€ì¦ˆë¥¼ ëª¨ë‘ ì„ íƒí•˜ì„¸ìš”.', true);
     
     const forwarder = quote.forwarders[fwIdx];
     
-    // ? ê·œ ?•ì‚° ê°ì²´ ì´ˆê¸°??    state.doc = {
+    // ì‹ ê·œ ì •ì‚° ê°ì²´ ì´ˆê¸°í™”
+    state.doc = {
         id: '',
         quotationId: quote.id,
         quotationSnapshot: {
@@ -281,15 +284,15 @@ function loadSelectedQuote() {
             costs: forwarder.costs.filter(c => c.applyTo[term] === true),
             items: quote.items || []
         },
-        title: quote.title + ' ?•ì‚°',
+        title: quote.title + ' ì •ì‚°',
         settlementDate: new Date().toISOString().split('T')[0],
-        paidRates: { ...quote.exchangeRates }, // ê¸°ë³¸?ìœ¼ë¡?ê²¬ì  ?˜ìœ¨ë¡?ì´ˆê¸° ?¸íŒ…
+        paidRates: { ...quote.exchangeRates }, // ê¸°ë³¸ì ìœ¼ë¡œ ê²¬ì  í™˜ìœ¨ë¡œ ì´ˆê¸° ì„¸íŒ…
         actualCosts: [],
         status: 'draft',
         remarks: ''
     };
     
-    // ë¬¼í’ˆ ?€ê¸?Invoice) ì´ˆê¸°??(ê·¸ë£¹??
+    // ë¬¼í’ˆ ëŒ€ê¸ˆ(Invoice) ì´ˆê¸°í™” (ê·¸ë£¹í™”)
     const invoiceByCurr = {};
     (quote.items || []).forEach(item => {
         const p = item.prices && item.prices[term] ? item.prices[term] : null;
@@ -306,7 +309,7 @@ function loadSelectedQuote() {
             id: generateId(),
             key: 'INVOICE_' + curr,
             group: 'invoice',
-            label: 'ë¬¼í’ˆ ?€ê¸?(KRW ?˜ì‚°) - ' + curr,
+            label: 'ë¬¼í’ˆ ëŒ€ê¸ˆ (KRW í™˜ì‚°) - ' + curr,
             unit: 'Lump Sum',
             currency: curr,
             quotedCurrency: curr,
@@ -322,7 +325,8 @@ function loadSelectedQuote() {
         });
     });
 
-    // ë¹„ìš© ??ª© ì´ˆê¸°??    state.doc.quotationSnapshot.costs.forEach(c => {
+    // ë¹„ìš© í•­ëª© ì´ˆê¸°í™”
+    state.doc.quotationSnapshot.costs.forEach(c => {
         let amt = parseFloat(c.amount) || 0;
         let qty = parseFloat(c.unitQty) || 1;
         let quotedTotalForeign = amt * qty;
@@ -330,13 +334,14 @@ function loadSelectedQuote() {
         state.doc.actualCosts.push({
             id: generateId(),
             key: c.key,
-            group: c.group || 'import', // ì¶”ê?: ê³¼ì„¸?œì? êµ¬ë¶„???„í•´ ê·¸ë£¹ ?€??            label: c.label,
+            group: c.group || 'import', // ì¶”ê°€: ê³¼ì„¸í‘œì¤€ êµ¬ë¶„ì„ ìœ„í•´ ê·¸ë£¹ ì €ì¥
+            label: c.label,
             unit: c.unit,
             currency: c.currency, // Legacy
             quotedCurrency: c.currency,
-            quotedUnit: c.unit,       // ê²¬ì  ?ë³¸ ?¨ìœ„ ë³´ì¡´
-            quotedQty: qty,           // ê²¬ì  ?ë³¸ ?˜ëŸ‰ ë³´ì¡´
-            quotedAmount: amt,        // ê²¬ì  ?ë³¸ ?¨ê? ë³´ì¡´
+            quotedUnit: c.unit,       // ê²¬ì  ì›ë³¸ ë‹¨ìœ„ ë³´ì¡´
+            quotedQty: qty,           // ê²¬ì  ì›ë³¸ ìˆ˜ëŸ‰ ë³´ì¡´
+            quotedAmount: amt,        // ê²¬ì  ì›ë³¸ ë‹¨ê°€ ë³´ì¡´
             billedCurrency: c.currency,
             quotedForeign: quotedTotalForeign,
             amount: amt,
@@ -345,8 +350,9 @@ function loadSelectedQuote() {
         });
     });
 
-    // ê¸°í? ë¹„ìš© (?´ìë¹„ìš© ?? ê°€?¸ì˜¤ê¸?    if (quote.otherCosts && Array.isArray(quote.otherCosts)) {
-        // ?´ìë¹„ìš© ê³„ì‚°???„í•œ ?ë³¸ ê²¬ì  ê¸ˆì•¡(?ê¸ˆ) ?°ì¶œ
+    // ê¸°íƒ€ ë¹„ìš© (ì´ìë¹„ìš© ë“±) ê°€ì ¸ì˜¤ê¸°
+    if (quote.otherCosts && Array.isArray(quote.otherCosts)) {
+        // ì´ìë¹„ìš© ê³„ì‚°ì„ ìœ„í•œ ì›ë³¸ ê²¬ì  ê¸ˆì•¡(ì›ê¸ˆ) ì‚°ì¶œ
         let invKrw = 0;
         (quote.items || []).forEach(item => {
             const p = item.prices && item.prices[term] ? item.prices[term] : null;
@@ -368,7 +374,7 @@ function loadSelectedQuote() {
             let amt = parseFloat(oc.amount) || 0;
             let duration = 0, colDays = 0, rate = 0;
             
-            // ?´ìë¹„ìš© (ê²¬ì  ê¸°ì? ì´ˆê¸° ?ê¸ˆ)
+            // ì´ìë¹„ìš© (ê²¬ì  ê¸°ì¤€ ì´ˆê¸° ì›ê¸ˆ)
             if (oc.type === 'calculated' && oc.id === 'interest') {
                 duration = parseFloat(oc.durationMonths) || 0;
                 colDays = parseFloat(oc.collectionDays) || 0;
@@ -381,7 +387,8 @@ function loadSelectedQuote() {
             state.doc.actualCosts.push({
                 id: generateId(),
                 key: oc.id === 'interest' ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
-                group: 'other', // ê¸°í?ë¹„ìš© ??                label: oc.name || oc.label || 'ê¸°í?ë¹„ìš©',
+                group: 'other', // ê¸°íƒ€ë¹„ìš© íƒ­
+                label: oc.name || oc.label || 'ê¸°íƒ€ë¹„ìš©',
                 unit: 'Lump Sum',
                 currency: 'KRW',
                 quotedCurrency: 'KRW',
@@ -393,7 +400,7 @@ function loadSelectedQuote() {
                 amount: amt,
                 unitQty: 1,
                 billedRate: 1,
-                isCustom: false, // ê²¬ì ?œì—??ë¶ˆëŸ¬????ª©?€ ëª¨ë‘ ê³ ì • ?ìŠ¤?¸ë¡œ ì²˜ë¦¬
+                isCustom: false, // ê²¬ì ì„œì—ì„œ ë¶ˆëŸ¬ì˜¨ í•­ëª©ì€ ëª¨ë‘ ê³ ì • í…ìŠ¤íŠ¸ë¡œ ì²˜ë¦¬
                 durationMonths: duration,
                 collectionDays: colDays,
                 interestRate: rate
@@ -401,26 +408,26 @@ function loadSelectedQuote() {
         });
     }
 
-    // ?”ë©´ ê°±ì‹ 
+    // í™”ë©´ ê°±ì‹ 
     document.getElementById('quoteModal').classList.remove('active');
     fillFormFromState();
     switchView('edit');
 }
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ?”ë©´ ?Œë”ë§?(Edit View)
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// í™”ë©´ ë Œë”ë§ (Edit View)
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function fillFormFromState() {
     const doc = state.doc;
     const snap = doc.quotationSnapshot;
     
-    // ê¸°ë³¸ ?•ë³´
+    // ê¸°ë³¸ ì •ë³´
     document.getElementById('docTitle').value = doc.title;
     document.getElementById('docDate').value = doc.settlementDate;
     document.getElementById('docStatus').value = doc.status;
     document.getElementById('docRemarks').value = doc.remarks || '';
     
-    // ?½ê¸° ?„ìš© ê²¬ì  ?•ë³´
+    // ì½ê¸° ì „ìš© ê²¬ì  ì •ë³´
     document.getElementById('roQuoteTitle').innerText = snap.title || '-';
     document.getElementById('roQuoteDate').innerText = snap.quoteDate || '-';
     let shipmentInfo = snap.shipmentType === 'FCL' ? `FCL (${snap.containerType} x ${snap.containerQty})` : 'LCL';
@@ -441,20 +448,20 @@ window.editSettlement = async function(id) {
         fillFormFromState();
         switchView('edit');
     } catch(err) {
-        showToast('ë¬¸ì„œë¥?ë¶ˆëŸ¬?¤ëŠ” ì¤??¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.', true);
+        showToast('ë¬¸ì„œë¥¼ ë¶ˆëŸ¬ì˜¤ëŠ” ì¤‘ ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.', true);
     }
 };
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ?•ì‚° ê·¸ë¦¬???Œë”ë§?& ê³„ì‚°
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ì •ì‚° ê·¸ë¦¬ë“œ ë Œë”ë§ & ê³„ì‚°
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const COST_GROUPS = [
-    { key: 'invoice', label: 'ë¬¼í’ˆ ?€ê¸? },
-    { key: 'ocean', label: '?´ìƒ ?´ì„ (O/F)' },
-    { key: 'export', label: '?˜ì¶œêµ?ë¶€?€ë¹„ìš©' },
-    { key: 'import', label: '?˜ì…êµ?ë¶€?€ë¹„ìš©' },
-    { key: 'customs', label: '?µê?/ê´€?? },
-    { key: 'other', label: 'ê¸°í? ë¹„ìš©' }
+    { key: 'invoice', label: 'ë¬¼í’ˆ ëŒ€ê¸ˆ' },
+    { key: 'ocean', label: 'í•´ìƒ ìš´ì„ (O/F)' },
+    { key: 'export', label: 'ìˆ˜ì¶œêµ­ ë¶€ëŒ€ë¹„ìš©' },
+    { key: 'import', label: 'ìˆ˜ì…êµ­ ë¶€ëŒ€ë¹„ìš©' },
+    { key: 'customs', label: 'í†µê´€/ê´€ì„¸' },
+    { key: 'other', label: 'ê¸°íƒ€ ë¹„ìš©' }
 ];
 
 function renderSettlementGrid() {
@@ -487,11 +494,11 @@ function renderSettlementGrid() {
                 <div class="group-subtotal">
                     <div class="subtotal-item">
                         <span class="subtotal-label">ê²¬ì </span>
-                        <span class="subtotal-value" id="grpEst_${grp.key}">??0</span>
+                        <span class="subtotal-value" id="grpEst_${grp.key}">â‚© 0</span>
                     </div>
                     <div class="subtotal-item">
-                        <span class="subtotal-label">?¤ì œ</span>
-                        <span class="subtotal-value" id="grpAct_${grp.key}">??0</span>
+                        <span class="subtotal-label">ì‹¤ì œ</span>
+                        <span class="subtotal-value" id="grpAct_${grp.key}">â‚© 0</span>
                     </div>
                 </div>
             </div>
@@ -510,14 +517,14 @@ function renderSettlementGrid() {
             let labelHtml = '';
             if (cost.isCustom) {
                 const isDirectInput = cost.key.startsWith('CUSTOM_');
-                let optsHtml = `<option value="">-- ì§ì ‘ ?…ë ¥ --</option>`;
+                let optsHtml = `<option value="">-- ì§ì ‘ ì…ë ¥ --</option>`;
                 DEFAULT_COSTS.filter(c => c.group === cost.group).forEach(c => {
                     optsHtml += `<option value="${c.key}" ${cost.key === c.key ? 'selected' : ''}>${c.label}</option>`;
                 });
                 labelHtml = `
                     <div class="item-label-custom">
                         <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)" style="font-size:0.85rem;">${optsHtml}</select>
-                        <input type="text" class="calc-input" value="${cost.label}" placeholder="??ª©ëª?ì§ì ‘ ?…ë ¥" style="display:${isDirectInput ? 'block' : 'none'}; font-size:0.85rem;" oninput="updateCost(${idx}, 'label', this.value)">
+                        <input type="text" class="calc-input" value="${cost.label}" placeholder="í•­ëª©ëª… ì§ì ‘ ì…ë ¥" style="display:${isDirectInput ? 'block' : 'none'}; font-size:0.85rem;" oninput="updateCost(${idx}, 'label', this.value)">
                     </div>`;
             } else {
                 labelHtml = `<span class="item-label">${cost.label}</span>`;
@@ -528,7 +535,7 @@ function renderSettlementGrid() {
                 `<option value="${c}" ${bCurr===c?'selected':''}>${c}</option>`
             ).join('');
 
-            // Invoice ?„ì´??ë¦¬ìŠ¤??HTML ?ì„±
+            // Invoice ì•„ì´í…œ ë¦¬ìŠ¤íŠ¸ HTML ìƒì„±
             let invoiceItemsHtml = '';
             if (cost.group === 'invoice') {
                 const term = state.doc.quotationSnapshot.incoterm || 'FOB';
@@ -562,7 +569,7 @@ function renderSettlementGrid() {
                 if (trs) {
                     trs += `
                         <tr style="background: #f8fafc; font-weight: 600;">
-                            <td style="padding:8px; text-align:center;">?©ê³„</td>
+                            <td style="padding:8px; text-align:center;">í•©ê³„</td>
                             <td style="padding:8px; text-align:center;">${formatNum(totalQty)}</td>
                             <td colspan="4"></td>
                             <td style="padding:8px; text-align:right;">${qCurr} ${formatNum(totalForeignSum, 2)}</td>
@@ -573,22 +580,22 @@ function renderSettlementGrid() {
                 invoiceItemsHtml = `
                     <div style="grid-column: 1 / -1; margin-bottom: 15px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;">
                         <div style="background: #f8fafc; padding: 10px 12px; font-weight: 600; color: #334155; border-bottom: 1px solid #e2e8f0; font-size:14px;">
-                            <i class='bx bx-list-ul'></i> ?˜ì… ?€???ˆëª© ?´ì—­ (?ˆìƒ ê²¬ì )
+                            <i class='bx bx-list-ul'></i> ìˆ˜ì… ëŒ€ìƒ í’ˆëª© ë‚´ì—­ (ì˜ˆìƒ ê²¬ì )
                         </div>
                         <table style="width: 100%; border-collapse: collapse; font-size: 13px; background: #fff;">
                             <thead>
                                 <tr style="background: #f1f5f9; color: #475569; text-align: left; border-bottom: 2px solid #e2e8f0;">
-                                    <th style="padding: 8px;">?ˆëª…</th>
-                                    <th style="padding: 8px; text-align:center;">?˜ëŸ‰</th>
-                                    <th style="padding: 8px; text-align:center;">?¨ìœ„</th>
-                                    <th style="padding: 8px; text-align:center;">ê´€?¸ìœ¨</th>
-                                    <th style="padding: 8px; text-align:center;">?µí™”</th>
-                                    <th style="padding: 8px; text-align:right;">?¨ê?</th>
+                                    <th style="padding: 8px;">í’ˆëª…</th>
+                                    <th style="padding: 8px; text-align:center;">ìˆ˜ëŸ‰</th>
+                                    <th style="padding: 8px; text-align:center;">ë‹¨ìœ„</th>
+                                    <th style="padding: 8px; text-align:center;">ê´€ì„¸ìœ¨</th>
+                                    <th style="padding: 8px; text-align:center;">í†µí™”</th>
+                                    <th style="padding: 8px; text-align:right;">ë‹¨ê°€</th>
                                     <th style="padding: 8px; text-align:right;">ì´ì•¡</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${trs || '<tr><td colspan="7" style="text-align:center; padding:12px; color:#64748b;">??ª©???†ìŠµ?ˆë‹¤.</td></tr>'}
+                                ${trs || '<tr><td colspan="7" style="text-align:center; padding:12px; color:#64748b;">í•­ëª©ì´ ì—†ìŠµë‹ˆë‹¤.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -602,52 +609,52 @@ function renderSettlementGrid() {
                 ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)">
 
                 <div class="card-top">
-                    <i class='bx bx-grid-vertical drag-handle' title="?œë˜ê·¸í•˜???œì„œ ë³€ê²?></i>
+                    <i class='bx bx-grid-vertical drag-handle' title="ë“œë˜ê·¸í•˜ì—¬ ìˆœì„œ ë³€ê²½"></i>
                     ${labelHtml}
-                    <button class="btn-delete-item" onclick="removeCost(${idx})" title="??ª© ?? œ"><i class='bx bx-trash'></i></button>
+                    <button class="btn-delete-item" onclick="removeCost(${idx})" title="í•­ëª© ì‚­ì œ"><i class='bx bx-trash'></i></button>
                 </div>
 
                 <div class="card-body">
                     ${invoiceItemsHtml}
-                    <!-- ì¢Œì¸¡: ?ˆìƒ ê²¬ì  (Read-only) -->
+                    <!-- ì¢Œì¸¡: ì˜ˆìƒ ê²¬ì  (Read-only) -->
                     ${cost.key === 'INTEREST' ? `
                     <div class="panel-quote">
-                        <div class="panel-title"><i class='bx bx-file'></i> ?ˆìƒ ê²¬ì </div>
+                        <div class="panel-title"><i class='bx bx-file'></i> ì˜ˆìƒ ê²¬ì </div>
                         <div class="panel-row">
-                            <span class="p-label">?¬ì—…ê¸°ê°„</span>
+                            <span class="p-label">ì‚¬ì—…ê¸°ê°„</span>
                             <span class="p-value">${cost.durationMonths || 0} ê°œì›”</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?€ê¸ˆíšŒ??/span>
-                            <span class="p-value">${cost.collectionDays || 0} ??/span>
+                            <span class="p-label">ëŒ€ê¸ˆíšŒìˆ˜</span>
+                            <span class="p-value">${cost.collectionDays || 0} ì¼</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?°ì´?ìœ¨</span>
+                            <span class="p-label">ì—°ì´ììœ¨</span>
                             <span class="p-value">${cost.interestRate || 0} %</span>
                         </div>
                         <div class="panel-row" style="background:rgba(100,116,139,0.06); margin:4px -12px; padding:6px 12px; margin-top:20px;">
                             <span class="p-label" style="font-weight:600;">ê²¬ì ê¸ˆì•¡</span>
-                            <span class="p-value" style="font-weight:600;">??${formatNum(cost.quotedAmount)}</span>
+                            <span class="p-value" style="font-weight:600;">â‚© ${formatNum(cost.quotedAmount)}</span>
                         </div>
                     </div>
                     ` : `
                     <div class="panel-quote">
-                        <div class="panel-title"><i class='bx bx-file'></i> ?ˆìƒ ê²¬ì </div>
+                        <div class="panel-title"><i class='bx bx-file'></i> ì˜ˆìƒ ê²¬ì </div>
                         ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
-                            <span class="p-label">?¨ìœ„</span>
+                            <span class="p-label">ë‹¨ìœ„</span>
                             <span class="p-value">${cost.isCustom ? '-' : (cost.quotedUnit || cost.unit || '-')}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?µí™”</span>
+                            <span class="p-label">í†µí™”</span>
                             <span class="p-value">${cost.isCustom ? '-' : qCurr}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?˜ëŸ‰</span>
+                            <span class="p-label">ìˆ˜ëŸ‰</span>
                             <span class="p-value">${cost.isCustom ? '-' : (cost.quotedQty != null ? cost.quotedQty : '-')}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?¨ê?</span>
+                            <span class="p-label">ë‹¨ê°€</span>
                             <span class="p-value">${cost.isCustom ? '-' : formatNum(cost.quotedAmount, 2)}</span>
                         </div>
                         `}
@@ -656,105 +663,105 @@ function renderSettlementGrid() {
                             <span class="p-value" style="font-weight:600;">${cost.isCustom ? '-' : formatNum(cost.quotedForeign, 2)}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?˜ìœ¨</span>
+                            <span class="p-label">í™˜ìœ¨</span>
                             <span class="p-value">${cost.isCustom ? '-' : (qCurr === 'KRW' ? '-' : formatNum(qRate, 2))}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?í™”(KRW)</span>
-                            <span class="p-value" style="font-weight:700;">??${formatNum(qKrw)}</span>
+                            <span class="p-label">ì›í™”(KRW)</span>
+                            <span class="p-value" style="font-weight:700;">â‚© ${formatNum(qKrw)}</span>
                         </div>
                     </div>
                     `}
 
-                    <!-- ?°ì¸¡: ?¤ì œ ì²?µ¬ (Editable) -->
+                    <!-- ìš°ì¸¡: ì‹¤ì œ ì²­êµ¬ (Editable) -->
                     ${cost.key === 'INTEREST' ? `
                     <div class="panel-billed">
-                        <div class="panel-title"><i class='bx bx-edit-alt'></i> ?¤ì œ ì²?µ¬ (?…ë ¥)</div>
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> ì‹¤ì œ ì²­êµ¬ (ì…ë ¥)</div>
                         <div class="panel-row">
-                            <span class="p-label" style="flex:0 0 70px;">?¬ì—…ê¸°ê°„</span>
+                            <span class="p-label" style="flex:0 0 70px;">ì‚¬ì—…ê¸°ê°„</span>
                             <div class="p-input-wide" style="display:flex; align-items:center;">
                                 <input type="number" class="calc-input" style="text-align:right;" value="${cost.durationMonths || 0}" oninput="updateCost(${idx}, 'durationMonths', this.value)">
                                 <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">ê°œì›”</span>
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label" style="flex:0 0 70px;">?€ê¸ˆíšŒ??/span>
+                            <span class="p-label" style="flex:0 0 70px;">ëŒ€ê¸ˆíšŒìˆ˜</span>
                             <div class="p-input-wide" style="display:flex; align-items:center;">
                                 <input type="number" class="calc-input" style="text-align:right;" value="${cost.collectionDays || 0}" oninput="updateCost(${idx}, 'collectionDays', this.value)">
-                                <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">??/span>
+                                <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">ì¼</span>
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label" style="flex:0 0 70px;">?°ì´?ìœ¨</span>
+                            <span class="p-label" style="flex:0 0 70px;">ì—°ì´ììœ¨</span>
                             <div class="p-input-wide" style="display:flex; align-items:center;">
                                 <input type="number" class="calc-input" step="0.1" style="text-align:right;" value="${cost.interestRate || 0}" oninput="updateCost(${idx}, 'interestRate', this.value)">
                                 <span style="font-size:0.85rem; color:#64748b; margin-left:5px; white-space:nowrap;">%</span>
                             </div>
                         </div>
                         <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; margin-top:20px;">
-                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">ì²?µ¬ê¸ˆì•¡</span>
-                            <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem; font-weight:700;">??${formatNum(amt)}</span>
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">ì²­êµ¬ê¸ˆì•¡</span>
+                            <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem; font-weight:700;">â‚© ${formatNum(amt)}</span>
                         </div>
                     </div>
                     ` : `
                     <div class="panel-billed">
-                        <div class="panel-title"><i class='bx bx-edit-alt'></i> ?¤ì œ ì²?µ¬ (?…ë ¥)</div>
+                        <div class="panel-title"><i class='bx bx-edit-alt'></i> ì‹¤ì œ ì²­êµ¬ (ì…ë ¥)</div>
                         ${cost.group === 'invoice' ? '' : `
                         <div class="panel-row">
-                            <span class="p-label">?¨ìœ„</span>
+                            <span class="p-label">ë‹¨ìœ„</span>
                             <div class="p-input-wide">
                                 <input type="text" class="calc-input" value="${cost.unit}" style="text-align:center;" oninput="updateCost(${idx}, 'unit', this.value)">
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?µí™”</span>
+                            <span class="p-label">í†µí™”</span>
                             <div class="p-input">
                                 <select class="calc-input curr-select" onchange="updateCost(${idx}, 'billedCurrency', this.value)">${currOptions}</select>
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?˜ëŸ‰</span>
+                            <span class="p-label">ìˆ˜ëŸ‰</span>
                             <div class="p-input">
                                 <input type="number" class="calc-input" step="0.01" value="${qty}" oninput="updateCost(${idx}, 'unitQty', this.value)">
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?¨ê?</span>
+                            <span class="p-label">ë‹¨ê°€</span>
                             <div class="p-input">
                                 <input type="number" class="calc-input" step="0.01" value="${amt}" oninput="updateCost(${idx}, 'amount', this.value)">
                             </div>
                         </div>
                         `}
                         <div class="panel-row" style="background:rgba(37,99,235,0.05); margin:4px -12px; padding:6px 12px; ${cost.group === 'invoice' ? 'margin-top:20px;' : ''}">
-                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">ì²?µ¬ê¸ˆì•¡</span>
+                            <span class="p-label" style="color:#1d4ed8; font-weight:600;">ì²­êµ¬ê¸ˆì•¡</span>
                             <span class="p-value" id="billedForeign_${idx}" style="color:#1d4ed8; font-size:0.95rem;">${formatNum(billedForeign, 2)}</span>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?˜ìœ¨</span>
+                            <span class="p-label">í™˜ìœ¨</span>
                             <div class="p-input">
                                 ${bCurr === 'KRW' ? '<span class="p-value">-</span>' : `<input type="number" class="calc-input" step="0.01" value="${cost.billedRate}" oninput="updateCost(${idx}, 'billedRate', this.value)">`}
                             </div>
                         </div>
                         <div class="panel-row">
-                            <span class="p-label">?í™”(KRW)</span>
-                            <span class="p-value" id="billedKrw_${idx}" style="font-weight:700;">??${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
+                            <span class="p-label">ì›í™”(KRW)</span>
+                            <span class="p-value" id="billedKrw_${idx}" style="font-weight:700;">â‚© ${formatNum(billedForeign * (bCurr === 'KRW' ? 1 : cost.billedRate))}</span>
                         </div>
                     </div>
                     `}
                 </div>
 
-                <!-- ?˜ë‹¨: ê²°ê³¼ -->
+                <!-- í•˜ë‹¨: ê²°ê³¼ -->
                 <div class="card-result">
                     <div class="result-item">
-                        <div class="r-label">?¤ì œ ?í™”(KRW)</div>
-                        <div class="r-value" id="krw_${idx}">??0</div>
+                        <div class="r-label">ì‹¤ì œ ì›í™”(KRW)</div>
+                        <div class="r-value" id="krw_${idx}">â‚© 0</div>
                     </div>
                     <div class="result-item">
                         <div class="r-label">ë¹„ìš©ì¦ê°</div>
                         <div class="r-value" id="var_${idx}">0</div>
                     </div>
                     <div class="result-item">
-                        <div class="r-label">?˜ì°¨????/div>
+                        <div class="r-label">í™˜ì°¨ìµ/ì†</div>
                         <div class="r-value" id="gl_${idx}">0</div>
                     </div>
                 </div>
@@ -765,7 +772,7 @@ function renderSettlementGrid() {
             </div>
             <div class="cost-group-footer">
                 <button class="btn-add-in-group" onclick="addCustomCost('${grp.key}')">
-                    <i class='bx bx-plus'></i> ${grp.label} ??ª© ì¶”ê?
+                    <i class='bx bx-plus'></i> ${grp.label} í•­ëª© ì¶”ê°€
                 </button>
             </div>
         </div>`;
@@ -774,9 +781,9 @@ function renderSettlementGrid() {
     container.innerHTML = html;
 }
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ?„ì½”?”ì–¸ ? ê?
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ì•„ì½”ë””ì–¸ í† ê¸€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 window.toggleGroup = function(key) {
     const el = document.getElementById(`grp_${key}`);
     if (el) el.classList.toggle('collapsed');
@@ -830,7 +837,7 @@ window.addCustomCost = function(group) {
         id: generateId(),
         key: 'CUSTOM_' + Date.now(),
         group: group || 'import',
-        label: '?¬ìš©??ì¶”ê? ??ª©',
+        label: 'ì‚¬ìš©ì ì¶”ê°€ í•­ëª©',
         unit: 'Lump Sum',
         currency: 'KRW',
         quotedCurrency: 'KRW',
@@ -910,8 +917,8 @@ function calculateAll() {
     
     const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
     
-    // --- 2-Pass ?´ìë¹„ìš© ?¤ì‹œê°??°ì¶œ ë¡œì§ ---
-    // 1. ë¬¼í’ˆ?€ ?í™” ?˜ì‚°??invKrw) ?°ì¶œ (?¤ì œ ì²?µ¬ ?˜ìœ¨ ë°˜ì˜)
+    // --- 2-Pass ì´ìë¹„ìš© ì‹¤ì‹œê°„ ì‚°ì¶œ ë¡œì§ ---
+    // 1. ë¬¼í’ˆëŒ€ ì›í™” í™˜ì‚°ì•¡(invKrw) ì‚°ì¶œ (ì‹¤ì œ ì²­êµ¬ í™˜ìœ¨ ë°˜ì˜)
     let invKrw = 0;
     state.doc.actualCosts.forEach(cost => {
         if (cost.group === 'invoice') {
@@ -923,7 +930,7 @@ function calculateAll() {
         }
     });
 
-    // 2. ?´ìë¹„ìš©???œì™¸???˜ë¨¸ì§€ ?¤ì œ ë¶€?€ë¹„ìš© ?í™” ?©ì‚°??subKrw) ?°ì¶œ
+    // 2. ì´ìë¹„ìš©ì„ ì œì™¸í•œ ë‚˜ë¨¸ì§€ ì‹¤ì œ ë¶€ëŒ€ë¹„ìš© ì›í™” í•©ì‚°ì•¡(subKrw) ì‚°ì¶œ
     let subKrw = 0;
     state.doc.actualCosts.forEach(cost => {
         if (cost.group !== 'invoice' && cost.key !== 'INTEREST') {
@@ -935,7 +942,7 @@ function calculateAll() {
         }
     });
 
-    // 3. ?´ìë¹„ìš© ??ª©???¤ì œ ì²?µ¬ê¸ˆì•¡ ?…ë°?´íŠ¸
+    // 3. ì´ìë¹„ìš© í•­ëª©ì˜ ì‹¤ì œ ì²­êµ¬ê¸ˆì•¡ ì—…ë°ì´íŠ¸
     state.doc.actualCosts.forEach(cost => {
         if (cost.key === 'INTEREST') {
             const duration = parseFloat(cost.durationMonths) || 0;
@@ -1010,7 +1017,7 @@ function calculateAll() {
         totalCostVariance += varKrw;
         totalExchangeVariance += glKrw;
 
-        // UI ?…ë°?´íŠ¸
+        // UI ì—…ë°ì´íŠ¸
         const bfEl = document.getElementById(`billedForeign_${idx}`);
         const bkEl = document.getElementById(`billedKrw_${idx}`);
         const krwEl = document.getElementById(`krw_${idx}`);
@@ -1018,8 +1025,8 @@ function calculateAll() {
         const glEl = document.getElementById(`gl_${idx}`);
         
         if (bfEl) bfEl.innerText = formatNum(billedForeign, 2);
-        if (bkEl) bkEl.innerText = '??' + formatNum(bKrw);
-        if (krwEl) krwEl.innerText = '??' + formatNum(bKrw);
+        if (bkEl) bkEl.innerText = 'â‚© ' + formatNum(bKrw);
+        if (krwEl) krwEl.innerText = 'â‚© ' + formatNum(bKrw);
         
         if (varEl) {
             varEl.innerText = varKrw > 0 ? '+' + formatNum(varKrw) : formatNum(varKrw);
@@ -1036,32 +1043,33 @@ function calculateAll() {
     COST_GROUPS.forEach(g => {
         const estEl = document.getElementById(`grpEst_${g.key}`);
         const actEl = document.getElementById(`grpAct_${g.key}`);
-        if (estEl) estEl.innerText = '??' + formatNum(grpEst[g.key]);
-        if (actEl) actEl.innerText = '??' + formatNum(grpAct[g.key]);
+        if (estEl) estEl.innerText = 'â‚© ' + formatNum(grpEst[g.key]);
+        if (actEl) actEl.innerText = 'â‚© ' + formatNum(grpAct[g.key]);
     });
     
-    // ?€?œë³´???…ë°?´íŠ¸
-    document.getElementById('dashTotalEstimated').innerText = '??' + formatNum(totalEstKrw);
-    document.getElementById('dashTotalBilled').innerText = '??' + formatNum(totalBilledKrw);
+    // ëŒ€ì‹œë³´ë“œ ì—…ë°ì´íŠ¸
+    document.getElementById('dashTotalEstimated').innerText = 'â‚© ' + formatNum(totalEstKrw);
+    document.getElementById('dashTotalBilled').innerText = 'â‚© ' + formatNum(totalBilledKrw);
     
-    // ?¼ì„¼?°ì?
+    // í¼ì„¼í‹°ì§€
     const pctEl = document.getElementById('dashBilledPct');
     if (pctEl && totalEstKrw > 0) {
         const pct = ((totalBilledKrw - totalEstKrw) / totalEstKrw * 100);
-        const icon = pct > 0 ? '?? : (pct < 0 ? '?? : '');
+        const icon = pct > 0 ? 'â–²' : (pct < 0 ? 'â–¼' : '');
         pctEl.innerText = `${icon} ${Math.abs(pct).toFixed(1)}%`;
         pctEl.className = 'dash-pct ' + (pct > 0 ? 'over' : (pct < 0 ? 'under' : 'neutral'));
     }
     
     const dVar = document.getElementById('dashCostVariance');
-    dVar.innerText = (totalCostVariance > 0 ? '+??' : '??') + formatNum(totalCostVariance);
+    dVar.innerText = (totalCostVariance > 0 ? '+â‚© ' : 'â‚© ') + formatNum(totalCostVariance);
     dVar.style.color = totalCostVariance > 0 ? '#dc2626' : (totalCostVariance < 0 ? '#16a34a' : 'inherit');
     
     const dGl = document.getElementById('dashExchangeGainLoss');
-    dGl.innerText = (totalExchangeVariance > 0 ? '+??' : '??') + formatNum(totalExchangeVariance);
+    dGl.innerText = (totalExchangeVariance > 0 ? '+â‚© ' : 'â‚© ') + formatNum(totalExchangeVariance);
     dGl.style.color = totalExchangeVariance > 0 ? '#dc2626' : (totalExchangeVariance < 0 ? '#16a34a' : 'inherit');
     
-    // 6. ë¹„ìš© ?”ì•½ (Summary Table) ?Œë”ë§?    const sumTbody = document.getElementById('summaryTableBody');
+    // 6. ë¹„ìš© ìš”ì•½ (Summary Table) ë Œë”ë§
+    const sumTbody = document.getElementById('summaryTableBody');
     const sumTfoot = document.getElementById('summaryTableFoot');
     if (sumTbody && sumTfoot) {
         let htmlBody = '';
@@ -1079,7 +1087,7 @@ function calculateAll() {
             }
             
             const diffColor = diff > 0 ? '#dc2626' : (diff < 0 ? '#16a34a' : 'inherit');
-            const diffStr = diff > 0 ? '+??' + formatNum(diff) : (diff < 0 ? '-??' + formatNum(Math.abs(diff)) : '??0');
+            const diffStr = diff > 0 ? '+â‚© ' + formatNum(diff) : (diff < 0 ? '-â‚© ' + formatNum(Math.abs(diff)) : 'â‚© 0');
             
             const hasDetails = (g.key !== 'invoice');
             const toggleIcon = hasDetails ? `<i class='bx bx-plus-square' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer;" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
@@ -1087,8 +1095,8 @@ function calculateAll() {
             htmlBody += `
                 <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}>
                     <td style="padding:10px 12px; font-weight:500;">${g.label} ${toggleIcon}</td>
-                    <td class="col-num" style="padding:10px 12px;">??${formatNum(est)}</td>
-                    <td class="col-num" style="padding:10px 12px;">??${formatNum(act)}</td>
+                    <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(est)}</td>
+                    <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(act)}</td>
                     <td class="col-num" style="padding:10px 12px; color:${diffColor}; font-weight:500;">${diffStr}</td>
                 </tr>
             `;
@@ -1112,13 +1120,13 @@ function calculateAll() {
                         
                         let itemDiff = bKrw - qKrw;
                         let itemDiffColor = itemDiff > 0 ? '#dc2626' : (itemDiff < 0 ? '#16a34a' : 'inherit');
-                        let itemDiffStr = itemDiff > 0 ? '+??' + formatNum(itemDiff) : (itemDiff < 0 ? '-??' + formatNum(Math.abs(itemDiff)) : '??0');
+                        let itemDiffStr = itemDiff > 0 ? '+â‚© ' + formatNum(itemDiff) : (itemDiff < 0 ? '-â‚© ' + formatNum(Math.abs(itemDiff)) : 'â‚© 0');
                         
                         detailRows += `
                             <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
                                 <td style="padding:6px 12px 6px 30px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
-                                <td class="col-num" style="padding:6px 12px;">??${formatNum(qKrw)}</td>
-                                <td class="col-num" style="padding:6px 12px;">??${formatNum(bKrw)}</td>
+                                <td class="col-num" style="padding:6px 12px;">â‚© ${formatNum(qKrw)}</td>
+                                <td class="col-num" style="padding:6px 12px;">â‚© ${formatNum(bKrw)}</td>
                                 <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
                             </tr>
                         `;
@@ -1127,55 +1135,55 @@ function calculateAll() {
                 htmlBody += detailRows;
             }
             
-            // "?µê?/ê´€?? ì§í›„???¬ì›Œ???Œê³„ ì¶œë ¥
+            // "í†µê´€/ê´€ì„¸" ì§í›„ì— í¬ì›Œë” ì†Œê³„ ì¶œë ¥
             if (g.key === 'customs') {
                 const fwDiff = fwAct - fwEst;
                 const fwDiffColor = fwDiff > 0 ? '#dc2626' : (fwDiff < 0 ? '#16a34a' : 'inherit');
-                const fwDiffStr = fwDiff > 0 ? '+??' + formatNum(fwDiff) : (fwDiff < 0 ? '-??' + formatNum(Math.abs(fwDiff)) : '??0');
+                const fwDiffStr = fwDiff > 0 ? '+â‚© ' + formatNum(fwDiff) : (fwDiff < 0 ? '-â‚© ' + formatNum(Math.abs(fwDiff)) : 'â‚© 0');
                 
                 htmlBody += `
                     <tr style="background:#f1f5f9; font-weight:600;">
-                        <td style="padding:10px 12px;">?¬ì›Œ??ë¶€?€ë¹„ìš© ?Œê³„ (KRW)</td>
-                        <td class="col-num" style="padding:10px 12px;">??${formatNum(fwEst)}</td>
-                        <td class="col-num" style="padding:10px 12px;">??${formatNum(fwAct)}</td>
+                        <td style="padding:10px 12px;">í¬ì›Œë” ë¶€ëŒ€ë¹„ìš© ì†Œê³„ (KRW)</td>
+                        <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(fwEst)}</td>
+                        <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(fwAct)}</td>
                         <td class="col-num" style="padding:10px 12px; color:${fwDiffColor};">${fwDiffStr}</td>
                     </tr>
                 `;
             }
         });
         
-        // ?´ìë¹„ìš© ?¨ë… ??ì¶”ê?
+        // ì´ìë¹„ìš© ë‹¨ë… í–‰ ì¶”ê°€
         const intDiff = interestAct - interestEst;
         const intDiffColor = intDiff > 0 ? '#dc2626' : (intDiff < 0 ? '#16a34a' : 'inherit');
-        const intDiffStr = intDiff > 0 ? '+??' + formatNum(intDiff) : (intDiff < 0 ? '-??' + formatNum(Math.abs(intDiff)) : '??0');
+        const intDiffStr = intDiff > 0 ? '+â‚© ' + formatNum(intDiff) : (intDiff < 0 ? '-â‚© ' + formatNum(Math.abs(intDiff)) : 'â‚© 0');
         
         htmlBody += `
             <tr>
-                <td style="padding:10px 12px;">ê¸ˆìœµë¹„ìš© (?´ìë¹„ìš©)</td>
-                <td class="col-num" style="padding:10px 12px;">??${formatNum(interestEst)}</td>
-                <td class="col-num" style="padding:10px 12px;">??${formatNum(interestAct)}</td>
+                <td style="padding:10px 12px;">ê¸ˆìœµë¹„ìš© (ì´ìë¹„ìš©)</td>
+                <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(interestEst)}</td>
+                <td class="col-num" style="padding:10px 12px;">â‚© ${formatNum(interestAct)}</td>
                 <td class="col-num" style="padding:10px 12px; color:${intDiffColor};">${intDiffStr}</td>
             </tr>
         `;
         
         sumTbody.innerHTML = htmlBody;
         
-        // ì´??©ê³„
+        // ì´ í•©ê³„
         const totalDiff = totalBilledKrw - totalEstKrw;
         const totalDiffColor = totalDiff > 0 ? '#fca5a5' : (totalDiff < 0 ? '#86efac' : 'inherit'); 
-        const totalDiffStr = totalDiff > 0 ? '+??' + formatNum(totalDiff) : (totalDiff < 0 ? '-??' + formatNum(Math.abs(totalDiff)) : '??0');
+        const totalDiffStr = totalDiff > 0 ? '+â‚© ' + formatNum(totalDiff) : (totalDiff < 0 ? '-â‚© ' + formatNum(Math.abs(totalDiff)) : 'â‚© 0');
         
         sumTfoot.innerHTML = `
             <tr>
-                <td style="padding:12px;">ì´?ë¹„ìš© (ë¬¼í’ˆ+?¬ì›Œ??ê¸°í?) KRW</td>
-                <td class="col-num" style="padding:12px;">??${formatNum(totalEstKrw)}</td>
-                <td class="col-num" style="padding:12px;">??${formatNum(totalBilledKrw)}</td>
+                <td style="padding:12px;">ì´ ë¹„ìš© (ë¬¼í’ˆ+í¬ì›Œë”+ê¸°íƒ€) KRW</td>
+                <td class="col-num" style="padding:12px;">â‚© ${formatNum(totalEstKrw)}</td>
+                <td class="col-num" style="padding:12px;">â‚© ${formatNum(totalBilledKrw)}</td>
                 <td class="col-num" style="padding:12px; color:${totalDiffColor};">${totalDiffStr}</td>
             </tr>
         `;
     }
 
-    // 5. ê´€??ë¶€ê°€??ê³„ì‚°
+    // 5. ê´€ì„¸/ë¶€ê°€ì„¸ ê³„ì‚°
     renderCostResultTable(totalBilledAncillaryKrw, totalDutiableKrw, totalEstAncillaryKrw, totalDutiableEstKrw);
 }
 
@@ -1205,9 +1213,9 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         }
     });
 
-    // ?¤ì²­êµ?ê¸°ì? ë°°ë¶„ë¹„ìœ¨
+    // ì‹¤ì²­êµ¬ ê¸°ì¤€ ë°°ë¶„ë¹„ìœ¨
     const allocationRatio = totalInvoiceKrw > 0 ? (totalBilledKrw / totalInvoiceKrw) : 0;
-    // ê²¬ì  ê¸°ì? ë°°ë¶„ë¹„ìœ¨
+    // ê²¬ì  ê¸°ì¤€ ë°°ë¶„ë¹„ìœ¨
     const estAllocationRatio = totalInvoiceKrw > 0 ? (totalEstKrw / totalInvoiceKrw) : 0;
 
     let htmlValue = '';
@@ -1228,8 +1236,8 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
     items.forEach(item => {
         const p = item.prices && item.prices[term] ? item.prices[term] : null;
         if (!p || !p.unitPrice || p.unitPrice === 0) {
-            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">?´ë‹¹ ?¸ì½”?€ì¦??¨ê? ?†ìŒ</td></tr>`;
-            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">?´ë‹¹ ?¸ì½”?€ì¦??¨ê? ?†ìŒ</td></tr>`;
+            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">í•´ë‹¹ ì¸ì½”í…€ì¦ˆ ë‹¨ê°€ ì—†ìŒ</td></tr>`;
+            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="7" style="text-align:center; color:var(--text-tertiary)">í•´ë‹¹ ì¸ì½”í…€ì¦ˆ ë‹¨ê°€ ì—†ìŒ</td></tr>`;
             return;
         }
 
@@ -1246,7 +1254,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         
         const dutyRate = item.dutyRate || 0;
 
-        // === ?¤ì²­êµ?ê¸°ì? (ê°€ì¹˜ë¹„ë¡€ ë°°ë¶„) ===
+        // === ì‹¤ì²­êµ¬ ê¸°ì¤€ (ê°€ì¹˜ë¹„ë¡€ ë°°ë¶„) ===
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
         const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
@@ -1259,7 +1267,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
 
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
 
-        // === ê²¬ì  ê¸°ì? (ê°€ì¹˜ë¹„ë¡€ ë°°ë¶„) ===
+        // === ê²¬ì  ê¸°ì¤€ (ê°€ì¹˜ë¹„ë¡€ ë°°ë¶„) ===
         const estAllocatedFC_Value_Total = unitPriceFC * estAllocationRatio;
         const estDutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableEstKrw / totalInvoiceKrw) : 0;
         const estAllocatedFC_Value_Dutiable = unitPriceFC * estDutiableAllocationRatio;
@@ -1275,7 +1283,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         // ì¦ê°
         const diffValue = realCostKrw_Value - estCostKrw_Value;
         const diffColorValue = diffValue > 0 ? '#dc2626' : (diffValue < 0 ? '#16a34a' : 'inherit');
-        const diffTextValue = diffValue > 0 ? `+??${formatNum(diffValue)}` : `??${formatNum(diffValue)}`;
+        const diffTextValue = diffValue > 0 ? `+â‚© ${formatNum(diffValue)}` : `â‚© ${formatNum(diffValue)}`;
 
         htmlValue += `
             <tr>
@@ -1284,14 +1292,14 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
-                <td class="col-num" style="color:var(--text-secondary);">??${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
-                <td class="col-num" style="background:#f0fdf4;">??${formatNum(estCostKrw_Value)}</td>
-                <td class="col-num highlight-col">??${formatNum(realCostKrw_Value)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">â‚© ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num" style="background:#f0fdf4;">â‚© ${formatNum(estCostKrw_Value)}</td>
+                <td class="col-num highlight-col">â‚© ${formatNum(realCostKrw_Value)}</td>
                 <td class="col-num" style="color:${diffColorValue}; font-weight:600;">${diffTextValue}</td>
             </tr>
         `;
 
-        // === ?¤ì²­êµ?ê¸°ì? (ì²´ì /?´ì„??ë°°ë¶„) ===
+        // === ì‹¤ì²­êµ¬ ê¸°ì¤€ (ì²´ì /ìš´ì„í†¤ ë°°ë¶„) ===
         let allocatedFC_Volume_Total = 0;
         let allocatedFC_Volume_Dutiable = 0;
         let volumeShareRatio = 0;
@@ -1319,7 +1327,7 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
 
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
 
-        // === ê²¬ì  ê¸°ì? (ì²´ì /?´ì„??ë°°ë¶„) ===
+        // === ê²¬ì  ê¸°ì¤€ (ì²´ì /ìš´ì„í†¤ ë°°ë¶„) ===
         let estAllocatedFC_Volume_Total = 0;
         let estAllocatedFC_Volume_Dutiable = 0;
 
@@ -1342,11 +1350,11 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
         // ì¦ê°
         const diffVolume = realCostKrw_Volume - estCostKrw_Volume;
         const diffColorVolume = diffVolume > 0 ? '#dc2626' : (diffVolume < 0 ? '#16a34a' : 'inherit');
-        const diffTextVolume = diffVolume > 0 ? `+??${formatNum(diffVolume)}` : `??${formatNum(diffVolume)}`;
+        const diffTextVolume = diffVolume > 0 ? `+â‚© ${formatNum(diffVolume)}` : `â‚© ${formatNum(diffVolume)}`;
 
         const shareText = isLCL ? 
             ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
-            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">?ì¬???„ë½</span>');
+            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">ì ì¬ëŸ‰ ëˆ„ë½</span>');
 
         htmlVolume += `
             <tr>
@@ -1355,9 +1363,9 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume_Total, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
-                <td class="col-num" style="color:var(--text-secondary);">??${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
-                <td class="col-num" style="background:#f0fdf4;">??${formatNum(estCostKrw_Volume)}</td>
-                <td class="col-num highlight-col">??${formatNum(realCostKrw_Volume)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">â‚© ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num" style="background:#f0fdf4;">â‚© ${formatNum(estCostKrw_Volume)}</td>
+                <td class="col-num highlight-col">â‚© ${formatNum(realCostKrw_Volume)}</td>
                 <td class="col-num" style="color:${diffColorVolume}; font-weight:600;">${diffTextVolume}</td>
             </tr>
         `;
@@ -1367,15 +1375,15 @@ function renderCostResultTable(totalBilledKrw, totalDutiableAncillaryKrw, totalE
     if (tbodyVolume) tbodyVolume.innerHTML = htmlVolume;
 }
 
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-// ?€??ë°?ê¸°í? ?¡ì…˜
-// ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ì €ì¥ ë° ê¸°íƒ€ ì•¡ì…˜
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function saveSettlement() {
-    if (!state.doc.title) return showToast('?•ì‚° ë¬¸ì„œëª…ì„ ?…ë ¥?˜ì„¸??', true);
-    if (!state.doc.settlementDate) return showToast('?•ì‚° ?¼ìë¥??…ë ¥?˜ì„¸??', true);
-    if (!state.doc.quotationId) return showToast('?°ë™??ê²¬ì ???†ìŠµ?ˆë‹¤.', true);
+    if (!state.doc.title) return showToast('ì •ì‚° ë¬¸ì„œëª…ì„ ì…ë ¥í•˜ì„¸ìš”.', true);
+    if (!state.doc.settlementDate) return showToast('ì •ì‚° ì¼ìë¥¼ ì…ë ¥í•˜ì„¸ìš”.', true);
+    if (!state.doc.quotationId) return showToast('ì—°ë™ëœ ê²¬ì ì´ ì—†ìŠµë‹ˆë‹¤.', true);
     
-    // ê°•ì œ ?™ê¸°??(ë°©ì–´ ì½”ë“œ)
+    // ê°•ì œ ë™ê¸°í™” (ë°©ì–´ ì½”ë“œ)
     document.querySelectorAll('.calc-input').forEach(el => el.dispatchEvent(new Event('input')));
 
     try {
@@ -1388,7 +1396,7 @@ async function saveSettlement() {
             body: JSON.stringify(state.doc)
         });
         
-        showToast('?€?¥ë˜?ˆìŠµ?ˆë‹¤.');
+        showToast('ì €ì¥ë˜ì—ˆìŠµë‹ˆë‹¤.');
         loadList();
         switchView('list');
     } catch (err) {
@@ -1398,15 +1406,15 @@ async function saveSettlement() {
 
 async function deleteSelected() {
     const ids = Array.from(document.querySelectorAll('.row-chk:checked')).map(cb => cb.value);
-    if (ids.length === 0) return showToast('?? œ????ª©??? íƒ?˜ì„¸??', true);
-    if (!confirm(`? íƒ??${ids.length}ê±´ì„ ?? œ?˜ì‹œê² ìŠµ?ˆê¹Œ?`)) return;
+    if (ids.length === 0) return showToast('ì‚­ì œí•  í•­ëª©ì„ ì„ íƒí•˜ì„¸ìš”.', true);
+    if (!confirm(`ì„ íƒí•œ ${ids.length}ê±´ì„ ì‚­ì œí•˜ì‹œê² ìŠµë‹ˆê¹Œ?`)) return;
     
     try {
         await authFetch(`${API_BASE}/delete`, {
             method: 'POST',
             body: JSON.stringify({ ids })
         });
-        showToast('?? œ?˜ì—ˆ?µë‹ˆ??');
+        showToast('ì‚­ì œë˜ì—ˆìŠµë‹ˆë‹¤.');
         loadList();
     } catch (err) {
         showToast(err.message, true);
@@ -1414,7 +1422,7 @@ async function deleteSelected() {
 }
 
 function exportExcel() {
-    showToast('?‘ì? ?´ë³´?´ê¸° ê¸°ëŠ¥?€ ì¤€ë¹?ì¤‘ì…?ˆë‹¤.', false);
+    showToast('ì—‘ì…€ ë‚´ë³´ë‚´ê¸° ê¸°ëŠ¥ì€ ì¤€ë¹„ ì¤‘ì…ë‹ˆë‹¤.', false);
     // ì¶”í›„ êµ¬í˜„
 }
 
@@ -1453,7 +1461,7 @@ function generatePrintTemplate(opts) {
     // Header (Always show)
     html += `
         <div class="print-header">
-            <h1 class="print-title">½Ç¼öÀÔºñ¿ë Á¤»ê¼­</h1>
+            <h1 class="print-title">ì‹¤ìˆ˜ì…ë¹„ìš© ì •ì‚°ì„œ</h1>
         </div>
     `;
 
@@ -1461,26 +1469,26 @@ function generatePrintTemplate(opts) {
     if (opts.showInfo) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">1. Á¤»ê ¹× ¿¬µ¿ Á¤º¸</h2>
+            <h2 class="section-title">1. ì •ì‚° ë° ì—°ë™ ì •ë³´</h2>
             <table class="print-info-table">
                 <tr>
-                    <th>Á¤»ê ¹®¼­¸í</th><td>${d.title || '-'}</td>
-                    <th>Á¤»ê ÀÏÀÚ</th><td>${d.settlementDate || '-'}</td>
-                    <th>»óÅÂ</th><td>${d.status === 'completed' ? '¿Ï·á' : 'ÀÛ¼º Áß'}</td>
+                    <th>ì •ì‚° ë¬¸ì„œëª…</th><td>${d.title || '-'}</td>
+                    <th>ì •ì‚° ì¼ì</th><td>${d.settlementDate || '-'}</td>
+                    <th>ìƒíƒœ</th><td>${d.status === 'completed' ? 'ì™„ë£Œ' : 'ì‘ì„± ì¤‘'}</td>
                 </tr>
             </table>
-            <h3 class="sub-title">Æ÷¿ö´õ °ßÀû Á¤º¸ (¿øº»)</h3>
+            <h3 class="sub-title">í¬ì›Œë” ê²¬ì  ì •ë³´ (ì›ë³¸)</h3>
             <table class="print-info-table">
                 <tr>
-                    <th>°ßÀû¸í</th><td colspan="3">${d.quotationSnapshot?.title || '-'}</td>
+                    <th>ê²¬ì ëª…</th><td colspan="3">${d.quotationSnapshot?.title || '-'}</td>
                 </tr>
                 <tr>
-                    <th>°ßÀûÀÏ</th><td>${d.quotationSnapshot?.date || '-'}</td>
-                    <th>¼±ÀûÇüÅÂ</th><td>${d.quotationSnapshot?.shipmentType || '-'}</td>
+                    <th>ê²¬ì ì¼</th><td>${d.quotationSnapshot?.date || '-'}</td>
+                    <th>ì„ ì í˜•íƒœ</th><td>${d.quotationSnapshot?.shipmentType || '-'}</td>
                 </tr>
                 <tr>
                     <th>POL / POD</th><td>${d.quotationSnapshot?.pol || '-'} / ${d.quotationSnapshot?.pod || '-'}</td>
-                    <th>Àû¿ë Æ÷¿ö´õ</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>
+                    <th>ì ìš© í¬ì›Œë”</th><td>${d.quotationSnapshot?.forwarderName || '-'}</td>
                 </tr>
             </table>
         </div>`;
@@ -1495,13 +1503,13 @@ function generatePrintTemplate(opts) {
 
         html += `
         <div class="print-section">
-            <h2 class="section-title">2. Á¾ÇÕ ¿ä¾à ´ë½Ãº¸µå</h2>
+            <h2 class="section-title">2. ì¢…í•© ìš”ì•½ ëŒ€ì‹œë³´ë“œ</h2>
             <table class="print-dash-table">
                 <tr>
-                    <th>¿¹»ó ÃÑ °ßÀûºñ¿ë</th>
-                    <th>½ÇÁ¦ ÃÑ ÅõÀÔºñ¿ë</th>
-                    <th>¼ø¼ö ¹°·ùºñ Áõ°¨</th>
-                    <th>ÃÑ È¯Â÷ÀÍ / È¯Â÷¼Õ</th>
+                    <th>ì˜ˆìƒ ì´ ê²¬ì ë¹„ìš©</th>
+                    <th>ì‹¤ì œ ì´ íˆ¬ì…ë¹„ìš©</th>
+                    <th>ìˆœìˆ˜ ë¬¼ë¥˜ë¹„ ì¦ê°</th>
+                    <th>ì´ í™˜ì°¨ìµ / í™˜ì°¨ì†</th>
                 </tr>
                 <tr>
                     <td class="bold-value">${estStr}</td>
@@ -1517,22 +1525,22 @@ function generatePrintTemplate(opts) {
     if (opts.showAncillary) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">3. Ç×¸ñº° ºÎ´ëºñ¿ë »ó¼¼ ³»¿ª</h2>
+            <h2 class="section-title">3. í•­ëª©ë³„ ë¶€ëŒ€ë¹„ìš© ìƒì„¸ ë‚´ì—­</h2>
             <table class="print-data-table">
                 <thead>
                     <tr>
-                        <th rowspan="2">±¸ºĞ</th>
-                        <th rowspan="2">Ç×¸ñ¸í</th>
-                        <th colspan="3">¿¹»ó °ßÀû</th>
-                        <th colspan="3">½ÇÁ¦ Ã»±¸ (ÀÔ·Â)</th>
+                        <th rowspan="2">êµ¬ë¶„</th>
+                        <th rowspan="2">í•­ëª©ëª…</th>
+                        <th colspan="3">ì˜ˆìƒ ê²¬ì </th>
+                        <th colspan="3">ì‹¤ì œ ì²­êµ¬ (ì…ë ¥)</th>
                     </tr>
                     <tr>
-                        <th>¿ÜÈ­±İ¾×</th>
-                        <th>È¯À²</th>
-                        <th>¿øÈ­(KRW)</th>
-                        <th>¿ÜÈ­±İ¾×</th>
-                        <th>È¯À²</th>
-                        <th>¿øÈ­(KRW)</th>
+                        <th>ì™¸í™”ê¸ˆì•¡</th>
+                        <th>í™˜ìœ¨</th>
+                        <th>ì›í™”(KRW)</th>
+                        <th>ì™¸í™”ê¸ˆì•¡</th>
+                        <th>í™˜ìœ¨</th>
+                        <th>ì›í™”(KRW)</th>
                     </tr>
                 </thead>
                 <tbody>`;
@@ -1541,7 +1549,7 @@ function generatePrintTemplate(opts) {
         if (d.actualCosts && d.actualCosts.length > 0) {
             d.actualCosts.forEach(cost => {
                 hasCosts = true;
-                const groupName = cost.group === 'invoice' ? '¹°Ç°´ë±İ' : (cost.group === 'ocean' ? 'ÇØ»ó¿îÀÓ' : (cost.group === 'export' ? '¼öÃâ±¹ºñ¿ë' : (cost.group === 'import' ? '¼öÀÔ±¹ºñ¿ë' : (cost.group === 'customs' ? 'Åë°ü/°ü¼¼' : (cost.group === 'handling' ? 'Æ÷¿ö´õ¼ö¼ö·á' : (cost.group === 'finance' ? '±İÀ¶ºñ¿ë' : '±âÅ¸'))))));
+                const groupName = cost.group === 'invoice' ? 'ë¬¼í’ˆëŒ€ê¸ˆ' : (cost.group === 'ocean' ? 'í•´ìƒìš´ì„' : (cost.group === 'export' ? 'ìˆ˜ì¶œêµ­ë¹„ìš©' : (cost.group === 'import' ? 'ìˆ˜ì…êµ­ë¹„ìš©' : (cost.group === 'customs' ? 'í†µê´€/ê´€ì„¸' : (cost.group === 'handling' ? 'í¬ì›Œë”ìˆ˜ìˆ˜ë£Œ' : (cost.group === 'finance' ? 'ê¸ˆìœµë¹„ìš©' : 'ê¸°íƒ€'))))));
                 
                 html += `
                     <tr>
@@ -1560,7 +1568,7 @@ function generatePrintTemplate(opts) {
         }
         
         if (!hasCosts) {
-            html += `<tr><td colspan="8" class="text-center">µî·ÏµÈ ºñ¿ë Ç×¸ñÀÌ ¾ø½À´Ï´Ù.</td></tr>`;
+            html += `<tr><td colspan="8" class="text-center">ë“±ë¡ëœ ë¹„ìš© í•­ëª©ì´ ì—†ìŠµë‹ˆë‹¤.</td></tr>`;
         }
 
         html += `</tbody></table></div>`;
@@ -1570,7 +1578,7 @@ function generatePrintTemplate(opts) {
     if (opts.showSummary) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">4. ºñ¿ë ¿ä¾à (¿¹»ó °ßÀû vs ½ÇÁ¦ Ã»±¸)</h2>
+            <h2 class="section-title">4. ë¹„ìš© ìš”ì•½ (ì˜ˆìƒ ê²¬ì  vs ì‹¤ì œ ì²­êµ¬)</h2>
             <table class="print-data-table">
                 ${document.getElementById('summaryTableSection').querySelector('.grid-table').innerHTML}
             </table>
@@ -1581,13 +1589,13 @@ function generatePrintTemplate(opts) {
     if (opts.showItems) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">5. Ç°¸ñº° ½Ç¼öÀÔ¿ø°¡ »êÃâ (°¡Ä¡ºñ·Ê ¹èºĞ¹ı)</h2>
+            <h2 class="section-title">5. í’ˆëª©ë³„ ì‹¤ìˆ˜ì…ì›ê°€ ì‚°ì¶œ (ê°€ì¹˜ë¹„ë¡€ ë°°ë¶„ë²•)</h2>
             <table class="print-data-table">
                 ${document.getElementById('costTableValue').innerHTML}
             </table>
             
             <br>
-            <h2 class="section-title">6. Ç°¸ñº° ½Ç¼öÀÔ¿ø°¡ »êÃâ (Ã¼Àû/¿îÀÓÅæ ¹èºĞ¹ı)</h2>
+            <h2 class="section-title">6. í’ˆëª©ë³„ ì‹¤ìˆ˜ì…ì›ê°€ ì‚°ì¶œ (ì²´ì /ìš´ì„í†¤ ë°°ë¶„ë²•)</h2>
             <table class="print-data-table">
                 ${document.getElementById('costTableVolume').innerHTML}
             </table>
@@ -1598,7 +1606,7 @@ function generatePrintTemplate(opts) {
     if (opts.showInfo) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">ºñ°í ¹× Æ¯ÀÌ»çÇ×</h2>
+            <h2 class="section-title">ë¹„ê³  ë° íŠ¹ì´ì‚¬í•­</h2>
             <div class="print-remarks">
                 ${(d.remarks || "").replace(/\n/g, "<br>")}
             </div>
@@ -1608,5 +1616,4 @@ function generatePrintTemplate(opts) {
     html += `</div>`;
     return html;
 }
-
 
