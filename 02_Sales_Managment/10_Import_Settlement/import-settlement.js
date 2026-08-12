@@ -1599,7 +1599,7 @@ function generatePrintTemplate(opts) {
                         <th rowspan="2">구분</th>
                         <th rowspan="2">항목명</th>
                         <th colspan="3">예상 견적</th>
-                        <th colspan="3">실제 청구 (입력)</th>
+                        <th colspan="3">실제 청구</th>
                     </tr>
                     <tr>
                         <th>외화금액</th>
@@ -1621,17 +1621,27 @@ function generatePrintTemplate(opts) {
                 let qCurr = cost.quotedCurrency || cost.currency || 'KRW';
                 let qRate = qCurr === 'KRW' ? 1 : ((state.doc.quotationSnapshot && state.doc.quotationSnapshot.exchangeRates) ? (state.doc.quotationSnapshot.exchangeRates[qCurr] || 0) : 0);
                 
+                let amt = parseFloat(cost.amount) || 0;
+                let qty = parseFloat(cost.unitQty) || 1;
+                let billedForeign = amt * qty;
+                let bCurr = cost.billedCurrency || cost.currency || 'KRW';
+                let bRate = bCurr === 'KRW' ? 1 : (cost.billedRate || 1);
+                let billedKrw = billedForeign * bRate;
+                
+                let displayBilledForeign = bCurr === 'KRW' ? '-' : (billedForeign === 0 ? '-' : formatNum(billedForeign, 2));
+                let displayBilledKrw = billedKrw === 0 ? '-' : formatNum(billedKrw);
+                
                 html += `
                     <tr>
                         <td class="text-center">${groupName}</td>
                         <td>${cost.label}</td>
-                        <td class="text-right">${cost.isCustom ? '-' : formatNum(cost.quotedForeign, 2)}</td>
+                        <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign ? formatNum(cost.quotedForeign, 2) : '-')}</td>
                         <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
-                        <td class="text-right">₩ ${cost.isCustom ? '-' : formatNum(cost.quotedForeign * qRate)}</td>
+                        <td class="text-right">₩ ${cost.isCustom ? '-' : (cost.quotedForeign * qRate ? formatNum(cost.quotedForeign * qRate) : '-')}</td>
                         
-                        <td class="text-right font-weight-bold">${formatNum(cost.billedForeign, 2)}</td>
-                        <td class="text-right font-weight-bold">${cost.billedRate === 1 ? '-' : formatNum(cost.billedRate, 2)}</td>
-                        <td class="text-right font-weight-bold">₩ ${formatNum(cost.billedKrw)}</td>
+                        <td class="text-right font-weight-bold">${displayBilledForeign}</td>
+                        <td class="text-right font-weight-bold">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
+                        <td class="text-right font-weight-bold">₩ ${displayBilledKrw}</td>
                     </tr>
                 `;
             });
