@@ -273,10 +273,10 @@ async function loadDocumentList() {
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td style="text-align:center;">${statusHtml}</td>
-                    <td style="font-weight:600; cursor:pointer; color:#4f46e5;" onclick="loadDocument('${doc.id}')">${escapeHtml(doc.title)}</td>
-                    <td>${new Date(doc.createdAt).toLocaleString()}</td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center; white-space: nowrap;">${statusHtml}</td>
+                    <td style="font-weight:600; cursor:pointer; color:#4f46e5; white-space: nowrap; max-width: 400px; overflow: hidden; text-overflow: ellipsis;" onclick="loadDocument('${doc.id}')">${escapeHtml(doc.title)}</td>
+                    <td style="white-space: nowrap;">${new Date(doc.createdAt).toLocaleString()}</td>
+                    <td style="text-align:center; white-space: nowrap;">
                         <button class="btn btn-outline" style="padding:4px 8px; font-size:12px; color:#ef4444; border-color:#ef4444;" onclick="deleteDocument('${doc.id}')">삭제</button>
                     </td>
                 `;
