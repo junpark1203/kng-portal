@@ -456,7 +456,7 @@ function bindEvents() {
             }
             const project = projects.find(p => p.id === currentProjectId);
             if (!project) return;
-            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+            let printLogs = (currentLogs || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
             executePrintProjectLogs(project, printLogs);
         });
     }
@@ -921,11 +921,11 @@ function executePrintProjectLogs(project, logs) {
         html += `<tr><td colspan="4" style="text-align:center; padding: 20px; color: #64748b;">등록된 로그가 없습니다.</td></tr>`;
     } else {
         logs.forEach(log => {
-            const dateStr = log.date.substring(0,10);
+            const dateStr = (log.createdAt || "").substring(0,10);
             let typeLabel = '일반';
             let typeClass = 'info';
-            if (log.type === 'warning') { typeLabel = '주의/이슈'; typeClass = 'warning'; }
-            if (log.type === 'success') { typeLabel = '완료/성공'; typeClass = 'success'; }
+            if (log.logType === 'warning') { typeLabel = '주의/이슈'; typeClass = 'warning'; }
+            if (log.logType === 'success') { typeLabel = '완료/성공'; typeClass = 'success'; }
 
             // Format content with newlines
             const formattedContent = (log.content || '').replace(/\n/g, '<br>');
