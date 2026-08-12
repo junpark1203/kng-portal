@@ -1456,6 +1456,7 @@ function generatePrintTemplate(opts) {
     const d = state.doc;
     if (!d) return "";
     
+    let sectionNum = 1;
     let html = `<div class="print-report">`;
     
     // Header (Always show)
@@ -1469,7 +1470,7 @@ function generatePrintTemplate(opts) {
     if (opts.showInfo) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">1. 정산 및 연동 정보</h2>
+            <h2 class="section-title">${sectionNum++}. 정산 및 연동 정보</h2>
             <table class="print-info-table">
                 <tr>
                     <th>정산 문서명</th><td>${d.title || '-'}</td>
@@ -1503,7 +1504,7 @@ function generatePrintTemplate(opts) {
 
         html += `
         <div class="print-section">
-            <h2 class="section-title">2. 종합 요약 대시보드</h2>
+            <h2 class="section-title">${sectionNum++}. 종합 요약 대시보드</h2>
             <table class="print-dash-table">
                 <tr>
                     <th>예상 총 견적비용</th>
@@ -1525,7 +1526,7 @@ function generatePrintTemplate(opts) {
     if (opts.showAncillary) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">3. 항목별 부대비용 상세 내역</h2>
+            <h2 class="section-title">${sectionNum++}. 항목별 부대비용 상세 내역</h2>
             <table class="print-data-table">
                 <thead>
                     <tr>
@@ -1581,7 +1582,7 @@ function generatePrintTemplate(opts) {
     if (opts.showSummary) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">4. 비용 요약 (예상 견적 vs 실제 청구)</h2>
+            <h2 class="section-title">${sectionNum++}. 비용 요약 (예상 견적 vs 실제 청구)</h2>
             <table class="print-data-table">
                 ${document.getElementById('summaryTableSection').querySelector('.grid-table').innerHTML}
             </table>
@@ -1592,13 +1593,13 @@ function generatePrintTemplate(opts) {
     if (opts.showItems) {
         html += `
         <div class="print-section">
-            <h2 class="section-title">5. 품목별 실수입원가 산출 (가치비례 배분법)</h2>
+            <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (가치비례 배분법)</h2>
             <table class="print-data-table">
                 ${document.getElementById('costTableValue').innerHTML}
             </table>
             
             <br>
-            <h2 class="section-title">6. 품목별 실수입원가 산출 (체적/운임톤 배분법)</h2>
+            <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (체적/운임톤 배분법)</h2>
             <table class="print-data-table">
                 ${document.getElementById('costTableVolume').innerHTML}
             </table>
