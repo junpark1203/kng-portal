@@ -956,10 +956,16 @@ function executePrintProjectLogs(project, logs, headerTitle, createDate) {
     // Inject and Print
     container.innerHTML = html;
     
+    // Close sweetalert if it's open (it will automatically close but this forces it)
+    if (Swal.isVisible()) {
+        Swal.close();
+    }
+    
     setTimeout(() => {
-        window.print();
-        setTimeout(() => {
+        window.onafterprint = () => {
             container.innerHTML = '';
-        }, 500);
-    }, 100);
+            window.onafterprint = null;
+        };
+        window.print();
+    }, 500);
 }

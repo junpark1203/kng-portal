@@ -713,6 +713,11 @@ mark.highlight {
 /* ==========================================================================
    Print Styles
    ========================================================================== */
+@media screen {
+    #printContainer {
+        display: none !important;
+    }
+}
 @media print {
     body * {
         visibility: hidden;
