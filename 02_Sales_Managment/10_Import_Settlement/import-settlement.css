@@ -43,7 +43,7 @@
     gap: 10px;
 }
 
-/* 정산 기본 정보 및 연동 정보 */
+/* ?�산 기본 ?�보 �??�동 ?�보 */
 .editor-body {
     background: var(--bg-primary);
     border-radius: 8px;
@@ -142,9 +142,9 @@
 .info-item span { color: #64748b; margin-right: 5px; }
 .info-item strong { color: #0f172a; }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 대시보드 (Sticky) */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
+/* ?�?�보??(Sticky) */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 .sticky-dashboard {
     position: sticky;
     top: 0;
@@ -217,9 +217,9 @@
 .dash-pct.under { color: #16a34a; }
 .dash-pct.neutral { color: #64748b; }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 그룹 아코디언 */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
+/* 그룹 ?�코?�언 */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 .cost-group {
     margin-bottom: 16px;
     border: 1px solid var(--border-color);
@@ -321,9 +321,9 @@
     color: #2563eb;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 비용 항목 카드 */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
+/* 비용 ??�� 카드 */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 .cost-item-card {
     padding: 14px 16px;
     border-bottom: 1px solid #f1f5f9;
@@ -471,9 +471,9 @@
 .result-item .r-value.gain { color: #16a34a; }
 .result-item .r-value.loss { color: #dc2626; }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 /* Editable Input Styling */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 .calc-input {
     width: 100%;
     height: 28px;
@@ -510,9 +510,9 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 .calc-input[type="number"] { text-align: right; }
 .calc-input.curr-select { text-align: center; cursor: pointer; }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* 기타 공통 */
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
+/* 기�? 공통 */
+/* ?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━?�━??*/
 .bottom-actions {
     display: flex;
     justify-content: flex-end;
@@ -561,7 +561,7 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
     border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;
 }
 
-/* 원가 산출 테이블 (하단 유지) */
+/* ?��? ?�출 ?�이�?(?�단 ?��?) */
 .table-responsive {
     overflow-x: auto; border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
@@ -580,48 +580,150 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 }
 .highlight-col { background: rgba(79, 70, 229, 0.05) !important; font-weight: 700; }
 
-@media print {
-    /* 공통 기본 세팅 */
-    body { background: #fff !important; }
-    .is-container { padding: 0 !important; overflow: visible !important; height: auto !important; }
-    .editor-body { box-shadow: none !important; padding: 0 !important; border: none !important; background: #fff !important; }
-    
-    /* 불필요한 UI 요소 숨김 */
-    .panel-header, .bottom-actions, .help-text, .tooltip-icon, .btn-add-in-group, .btn-delete-item, .drag-handle { display: none !important; }
-    .modal { display: none !important; }
-    #toastContainer { display: none !important; }
-    
-    /* 입력창을 일반 텍스트처럼 표시 */
-    .calc-input { border: none !important; background: transparent !important; resize: none !important; padding: 0 !important; }
-    select.calc-input { appearance: none !important; -webkit-appearance: none; }
-    
-    /* 인쇄 레이아웃 최적화 */
-    .sticky-dashboard { position: static !important; box-shadow: none !important; padding: 0 !important; margin: 0 0 20px 0 !important; border-bottom: none !important; }
-    .dash-card { border: 1px solid #e2e8f0 !important; box-shadow: none !important; break-inside: avoid; }
-    .cost-group { break-inside: avoid; border: 1px solid #e2e8f0 !important; margin-bottom: 15px !important; box-shadow: none !important; }
-    .cost-item-card { break-inside: avoid; }
-    .edit-section { break-inside: avoid; margin-bottom: 30px !important; padding-bottom: 15px !important; border-bottom: 1px solid #cbd5e1 !important; }
-    
-    h3 { font-size: 14pt !important; margin-bottom: 10px !important; color: #000 !important; }
-    
-    /* 백그라운드 색상 인쇄 강제 */
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+/* Print Layout CSS will be replaced */
 
-    /* [요약 모드] print-mode-summary */
-    body.print-mode-summary #ancillarySection,
-    body.print-mode-summary #costResultSection,
-    body.print-mode-summary #remarksSection {
-        display: none !important;
+
+/* Premium Print Report Layout */
+@media print {
+    @page {
+        size: a4 portrait;
+        margin: 15mm 15mm;
     }
     
-    /* [상세 모드] print-mode-detailed */
-    /* 기본적으로 모두 보이므로 추가 제어 없음 */
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        font-family: "Pretendard", "Malgun Gothic", sans-serif !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
     
-    /* [사용자 정의 모드] print-mode-custom */
-    body.print-hide-info #basicInfoSection,
-    body.print-hide-info #remarksSection { display: none !important; }
-    body.print-hide-dash #stickyDashboard { display: none !important; }
-    body.print-hide-ancillary #ancillarySection { display: none !important; }
-    body.print-hide-summary #summaryTableSection { display: none !important; }
-    body.print-hide-items #costResultSection { display: none !important; }
+    /* Reset Wrappers to prevent clipping */
+    .main-wrapper, .page-wrapper, .page-body, .is-container, main {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+    
+    .editor-body {
+        box-shadow: none !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        width: 100% !important;
+    }
+
+    /* Hide Unnecessary UI */
+    .panel-header, .bottom-actions, .help-text, .tooltip-icon, .btn-add-in-group, .btn-delete-item, .drag-handle, .is-sidebar, .toast-container, .modal {
+        display: none !important;
+    }
+
+    /* Typography & Headers */
+    h3 {
+        font-size: 16px !important;
+        margin-bottom: 8px !important;
+        color: #0f172a !important;
+        border-bottom: 2px solid #334155 !important;
+        padding-bottom: 6px !important;
+        page-break-after: avoid;
+    }
+
+    /* Flatten Inputs */
+    .calc-input, input, select {
+        border: none !important;
+        background: transparent !important;
+        appearance: none;
+        -webkit-appearance: none;
+        padding: 0 !important;
+        margin: 0 !important;
+        color: #0f172a !important;
+        font-family: inherit !important;
+        pointer-events: none;
+        font-size: 12px !important;
+    }
+    select::-ms-expand { display: none; }
+    
+    /* Layout specific */
+    .sticky-dashboard {
+        position: static !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 0 20px 0 !important;
+        border: none !important;
+        width: 100% !important;
+    }
+
+    /* Dashboard Cards */
+    .dash-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr) !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+    .dash-card {
+        border: 1px solid #cbd5e1 !important; /* Lighter border */
+        box-shadow: none !important;
+        break-inside: avoid;
+        padding: 12px !important;
+        background: #f8fafc !important;
+        text-align: center;
+    }
+    .dash-card h4 { font-size: 11px !important; color: #64748b !important; margin-bottom: 6px !important; }
+    .dash-card .value { font-size: 18px !important; font-weight: 800 !important; color: #0f172a !important; }
+    
+    /* Cost Groups & Cards */
+    .cost-group {
+        break-inside: avoid;
+        border: none !important;
+        margin-bottom: 20px !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    .cost-item-card {
+        break-inside: avoid;
+        border: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 6px 0 !important;
+        background: transparent !important;
+        margin-bottom: 0 !important;
+    }
+    .cost-item-card:last-child {
+        border-bottom: none !important;
+    }
+    .edit-section {
+        break-inside: avoid;
+        margin-bottom: 30px !important;
+    }
+
+    /* Data Tables styling (if any) */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+    }
+    table th, table td {
+        border: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 8px 4px !important;
+        white-space: normal !important;
+        word-break: keep-all !important;
+    }
+    table th {
+        background-color: transparent !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+    }
+
+    /* Fix potential overflow */
+    * {
+        max-width: 100% !important;
+    }
 }
+
