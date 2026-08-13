@@ -519,7 +519,11 @@ function renderSettlementGrid() {
                     </div>
                 </div>
             </div>
-            <div class="cost-group-body">`;
+            <div class="cost-group-body"
+                ondragover="handleGroupDragOver(event)"
+                ondragenter="handleGroupDragEnter(event)"
+                ondragleave="handleGroupDragLeave(event)"
+                ondrop="handleGroupDrop(event, '${grp.key}')">`;
 
         items.forEach(({ cost, idx }) => {
             const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -905,14 +909,71 @@ window.handleDragLeave = function(e) {
 
 window.handleDrop = function(e, toIdx) {
     e.preventDefault();
+    e.stopPropagation(); // 그룹 컨테이너로 이벤트 버블링 방지
     const card = e.target.closest('.cost-item-card');
     if (card) card.classList.remove('drag-over');
     
     const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
     if (isNaN(fromIdx) || fromIdx === toIdx) return;
     
+    const movedItem = state.doc.actualCosts[fromIdx];
+    const targetItem = state.doc.actualCosts[toIdx];
+    
+    // 대상 항목의 그룹으로 소속 변경
+    movedItem.group = targetItem.group || 'other';
+    
+    state.doc.actualCosts.splice(fromIdx, 1);
+    
+    // fromIdx가 삭제되었으므로 toIdx 위치 재계산
+    const newToIdx = state.doc.actualCosts.indexOf(targetItem);
+    
+    state.doc.actualCosts.splice(newToIdx !== -1 ? newToIdx : toIdx, 0, movedItem);
+    
+    renderSettlementGrid();
+    calculateAll();
+};
+
+// 새로 추가: 그룹 컨테이너(빈 공간)에 대한 드래그 핸들러
+window.handleGroupDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleGroupDragEnter = function(e) {
+    e.preventDefault();
+    const groupBody = e.target.closest('.cost-group-body');
+    if (groupBody) groupBody.classList.add('drag-over-group');
+};
+
+window.handleGroupDragLeave = function(e) {
+    const groupBody = e.target.closest('.cost-group-body');
+    if (groupBody && !groupBody.contains(e.relatedTarget)) {
+        groupBody.classList.remove('drag-over-group');
+    }
+};
+
+window.handleGroupDrop = function(e, targetGroupKey) {
+    e.preventDefault();
+    const groupBody = e.target.closest('.cost-group-body');
+    if (groupBody) groupBody.classList.remove('drag-over-group');
+    
+    const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+    if (isNaN(fromIdx)) return;
+    
+    // 항목을 타겟 그룹으로 변경하고 실제 배열에서도 뺄셈 후 재삽입
     const movedItem = state.doc.actualCosts.splice(fromIdx, 1)[0];
-    state.doc.actualCosts.splice(toIdx, 0, movedItem);
+    movedItem.group = targetGroupKey;
+    
+    // 해당 그룹의 가장 마지막 항목의 위치를 찾아서 그 뒤에 삽입
+    let insertIdx = state.doc.actualCosts.length;
+    for (let i = state.doc.actualCosts.length - 1; i >= 0; i--) {
+        if (state.doc.actualCosts[i].group === targetGroupKey) {
+            insertIdx = i + 1;
+            break;
+        }
+    }
+    
+    state.doc.actualCosts.splice(insertIdx, 0, movedItem);
     
     renderSettlementGrid();
     calculateAll();

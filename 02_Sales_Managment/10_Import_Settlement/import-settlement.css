@@ -580,6 +580,12 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
 }
 .highlight-col { background: rgba(79, 70, 229, 0.05) !important; font-weight: 700; }
 
+.drag-over-group {
+    background-color: rgba(37, 99, 235, 0.05) !important;
+    border: 2px dashed #3b82f6 !important;
+    border-radius: 8px;
+}
+
 /* Print Layout CSS will be replaced */
 
 @media print {
