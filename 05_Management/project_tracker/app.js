@@ -88,6 +88,36 @@ function highlightText(text, keyword) {
     return escapedText.replace(regex, '<mark class="highlight">$1</mark>');
 }
 
+function formatDateWithDay(dateString, includeTime = false) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const day = days[date.getDay()];
+    
+    let yyyymmdd;
+    if (dateString.length === 10 && dateString.indexOf('-') === 4) {
+        yyyymmdd = dateString;
+    } else {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        yyyymmdd = `${y}-${m}-${d}`;
+    }
+    
+    let result = `${yyyymmdd} (${day})`;
+    
+    if (includeTime && dateString.length > 10) {
+        const hours = date.getHours();
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? '오후' : '오전';
+        const h12 = hours % 12 || 12;
+        result += ` ${ampm} ${h12}:${minutes}`;
+    }
+    return result;
+}
+
 const headerTitle = document.getElementById('headerTitle');
 const headerCategory = document.getElementById('headerCategory');
 const headerManager = document.getElementById('headerManager');
@@ -293,15 +323,7 @@ function renderTimeline(logs) {
             }
         } catch(e) {}
 
-        let dateStr = '';
-        if (log.createdAt && log.createdAt.length === 10) {
-            const parts = log.createdAt.split('-');
-            dateStr = `${parseInt(parts[1])}월 ${parseInt(parts[2])}일`;
-        } else {
-            dateStr = new Date(log.createdAt).toLocaleString('ko-KR', {
-                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-            });
-        }
+        let dateStr = formatDateWithDay(log.createdAt, true);
 
         // Comments
         let commentsHtml = '';
@@ -361,9 +383,7 @@ function renderTimeline(logs) {
 
 // Comment Rendering and Actions
 window.renderCommentItem = function(comment, logId, isReply = false) {
-    let dateStr = new Date(comment.createdAt).toLocaleString('ko-KR', {
-        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
+    let dateStr = formatDateWithDay(comment.createdAt, true);
     
     const replyBtnHtml = isReply ? '' : `<button class="btn-reply-comment" onclick="toggleReplyBox('${comment.id}')">답글 달기</button>`;
     const deleteBtnHtml = `<button class="btn-delete-comment" onclick="deleteComment('${logId}', '${comment.id}')" title="삭제"><i class='bx bx-x'></i></button>`;
@@ -959,20 +979,30 @@ function executePrintProjectLogs(project, logs, headerTitle, createDate) {
     if (logs.length === 0) {
         html += `<tr><td colspan="2" style="text-align:center; padding: 20px; color: #64748b;">등록된 로그가 없습니다.</td></tr>`;
     } else {
+        let groupedLogs = [];
         logs.forEach(log => {
-            const dateStr = (log.createdAt || "").substring(0,10);
+            const dateStr = formatDateWithDay(log.createdAt, false);
+            const lastGroup = groupedLogs[groupedLogs.length - 1];
+            if (lastGroup && lastGroup.dateStr === dateStr) {
+                lastGroup.items.push(log);
+            } else {
+                groupedLogs.push({ dateStr: dateStr, items: [log] });
+            }
+        });
 
-            // Format content with newlines
-            const formattedContent = (log.content || '').replace(/\n/g, '<br>');
-
-            html += `
-                <tr>
-                    <td class="col-date" style="text-align: center;">${dateStr}</td>
+        groupedLogs.forEach(group => {
+            group.items.forEach((log, index) => {
+                const formattedContent = (log.content || '').replace(/\n/g, '<br>');
+                html += `<tr>`;
+                if (index === 0) {
+                    html += `<td class="col-date" style="text-align: center; vertical-align: top; padding-top: 10px;" rowspan="${group.items.length}">${group.dateStr}</td>`;
+                }
+                html += `
                     <td class="col-content">
                         <div style="white-space: pre-wrap;">${formattedContent}</div>
                     </td>
-                </tr>
-            `;
+                </tr>`;
+            });
         });
     }
 
