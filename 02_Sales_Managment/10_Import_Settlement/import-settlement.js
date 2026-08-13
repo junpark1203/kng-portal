@@ -1770,7 +1770,7 @@ function generatePrintTemplate(opts) {
 
         html += `
         <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 비용 요약 (예상 견적 vs 실제 청구)</h2>
+            <h2 class="section-title">${sectionNum++}. 비용 요약</h2>
             <table class="print-data-table">
                 ${sumHtml}
             </table>
