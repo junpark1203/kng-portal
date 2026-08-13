@@ -1575,16 +1575,14 @@ function generatePrintTemplate(opts) {
             <h2 class="section-title">${sectionNum++}. 종합 요약 대시보드</h2>
             <table class="print-dash-table">
                 <tr>
-                    <th>예상 총 견적비용</th>
-                    <th>실제 총 투입비용</th>
-                    <th>순수 물류비 증감</th>
-                    <th>총 환차익 / 환차손</th>
+                    ${opts.includeEstimate ? '<th>예상 총 견적비용</th>' : ''}
+                    ${opts.includeActual ? '<th>실제 총 투입비용</th>' : ''}
+                    ${(opts.includeEstimate && opts.includeActual) ? '<th>순수 물류비 증감</th><th>총 환차익 / 환차손</th>' : ''}
                 </tr>
                 <tr>
-                    <td class="bold-value">${estStr}</td>
-                    <td class="bold-value highlight">${billedStr}</td>
-                    <td class="bold-value">${varStr}</td>
-                    <td class="bold-value">${exchStr}</td>
+                    ${opts.includeEstimate ? `<td class="bold-value">${estStr}</td>` : ''}
+                    ${opts.includeActual ? `<td class="bold-value highlight">${billedStr}</td>` : ''}
+                    ${(opts.includeEstimate && opts.includeActual) ? `<td class="bold-value">${varStr}</td><td class="bold-value">${exchStr}</td>` : ''}
                 </tr>
             </table>
         </div>`;
@@ -1600,16 +1598,13 @@ function generatePrintTemplate(opts) {
                     <tr>
                         <th rowspan="2">구분</th>
                         <th rowspan="2">항목명</th>
-                        <th colspan="3">예상 견적</th>
-                        <th colspan="3">실제 청구</th>
+                        ${opts.includeEstimate ? '<th colspan="3">예상 견적</th>' : ''}
+                        ${opts.includeActual ? '<th colspan="3">실제 청구</th>' : ''}
+                        ${(opts.includeEstimate && opts.includeActual) ? '<th rowspan="2">증감액 (KRW)</th>' : ''}
                     </tr>
                     <tr>
-                        <th>외화금액</th>
-                        <th>환율</th>
-                        <th>원화(KRW)</th>
-                        <th>외화금액</th>
-                        <th>환율</th>
-                        <th>원화(KRW)</th>
+                        ${opts.includeEstimate ? '<th>외화금액</th><th>환율</th><th>원화(KRW)</th>' : ''}
+                        ${opts.includeActual ? '<th>외화금액</th><th>환율</th><th>원화(KRW)</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -1637,19 +1632,25 @@ function generatePrintTemplate(opts) {
                     <tr>
                         <td class="text-center">${groupName}</td>
                         <td>${cost.label}</td>
+                        ${opts.includeEstimate ? `
                         <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign ? formatNum(cost.quotedForeign, 2) : '-')}</td>
                         <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
                         <td class="text-right">₩ ${cost.isCustom ? '-' : (cost.quotedForeign * qRate ? formatNum(cost.quotedForeign * qRate) : '-')}</td>
-                        
+                        ` : ''}
+                        ${opts.includeActual ? `
                         <td class="text-right font-weight-bold">${displayBilledForeign}</td>
                         <td class="text-right font-weight-bold">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
                         <td class="text-right font-weight-bold">₩ ${displayBilledKrw}</td>
+                        ` : ''}
+                        ${(opts.includeEstimate && opts.includeActual) ? `
+                        <td class="text-right">₩ ${formatNum(billedKrw - (cost.isCustom ? 0 : (cost.quotedForeign * qRate)))}</td>
+                        ` : ''}
                     </tr>
                 `;
             });
 
             if (!hasCosts) {
-                html += `<tr><td colspan="8" class="text-center" style="padding:15px; color:#94a3b8;">입력된 비용 내역이 없습니다.</td></tr>`;
+                html += `<tr><td colspan="${2 + (opts.includeEstimate ? 3 : 0) + (opts.includeActual ? 3 : 0) + ((opts.includeEstimate && opts.includeActual) ? 1 : 0)}" class="text-center" style="padding:15px; color:#94a3b8;">입력된 비용 내역이 없습니다.</td></tr>`;
             }
 
         html += `
@@ -1660,11 +1661,57 @@ function generatePrintTemplate(opts) {
 
     // 5. Summary
     if (opts.showSummary) {
+        const tbody = document.getElementById('summaryTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        
+        let sumHtml = `
+            <thead>
+                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                    <th style="width:40%; text-align:left; padding:12px;">비용 구분</th>
+                    ${opts.includeEstimate ? '<th class="col-num" style="width:20%; padding:12px;">예상 견적 (KRW)</th>' : ''}
+                    ${opts.includeActual ? '<th class="col-num highlight-col" style="width:20%; padding:12px;">실제 청구 (KRW)</th>' : ''}
+                    ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num" style="width:20%; padding:12px;">증감액 (KRW)</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        rows.forEach(row => {
+            if (row.style.display === 'none') return;
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 4) {
+                sumHtml += `<tr>${row.innerHTML}</tr>`;
+                return;
+            }
+            sumHtml += `<tr>`;
+            sumHtml += `<td>${cells[0].innerHTML}</td>`;
+            if (opts.includeEstimate) sumHtml += `<td class="text-right">${cells[1].innerHTML}</td>`;
+            if (opts.includeActual) sumHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
+            if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
+            sumHtml += `</tr>`;
+        });
+        sumHtml += `</tbody><tfoot>`;
+        const tfoot = document.getElementById('summaryTableFoot');
+        if (tfoot) {
+            const cells = tfoot.querySelectorAll('td');
+            if (cells.length >= 4) {
+                sumHtml += `<tr>`;
+                sumHtml += `<td>${cells[0].innerHTML}</td>`;
+                if (opts.includeEstimate) sumHtml += `<td class="text-right">${cells[1].innerHTML}</td>`;
+                if (opts.includeActual) sumHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
+                if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
+                sumHtml += `</tr>`;
+            } else {
+                sumHtml += `<tr>${tfoot.innerHTML}</tr>`;
+            }
+        }
+        sumHtml += `</tfoot>`;
+
         html += `
         <div class="print-section">
             <h2 class="section-title">${sectionNum++}. 비용 요약 (예상 견적 vs 실제 청구)</h2>
             <table class="print-data-table">
-                ${document.getElementById('summaryTableSection').querySelector('.grid-table').innerHTML}
+                ${sumHtml}
             </table>
         </div>`;
     }
@@ -1672,11 +1719,55 @@ function generatePrintTemplate(opts) {
     // 6. Items (Cost allocation)
     if (opts.showItemCost) {
         html += `<div class="print-section">`;
+        
+        const generateItemTable = (tableId) => {
+            const table = document.getElementById(tableId);
+            if (!table) return "";
+            
+            let tHtml = `
+                <thead>
+                    <tr>
+                        <th>품명</th>
+                        <th class="col-num">수량 / 점유율</th>
+                        <th class="col-num">단위당 단가 (외화)</th>
+                        <th class="col-num">배분된 부대비용 (외화)</th>
+                        <th class="col-num">실수입원가 (외화)</th>
+                        <th class="col-num">관세 (KRW)</th>
+                        ${opts.includeEstimate ? '<th class="col-num" style="background:#f0fdf4;">예상원가 (KRW)</th>' : ''}
+                        ${opts.includeActual ? '<th class="col-num highlight-col">실청구원가 (KRW)</th>' : ''}
+                        ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num">증감</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length < 9) {
+                    tHtml += `<tr>${row.innerHTML}</tr>`;
+                    return;
+                }
+                tHtml += `<tr>`;
+                tHtml += `<td>${cells[0].innerHTML}</td>`;
+                tHtml += `<td class="text-right">${cells[1].innerHTML}</td>`;
+                tHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
+                tHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
+                tHtml += `<td class="text-right">${cells[4].innerHTML}</td>`;
+                tHtml += `<td class="text-right">${cells[5].innerHTML}</td>`;
+                if (opts.includeEstimate) tHtml += `<td class="text-right">${cells[6].innerHTML}</td>`;
+                if (opts.includeActual) tHtml += `<td class="text-right">${cells[7].innerHTML}</td>`;
+                if (opts.includeEstimate && opts.includeActual) tHtml += `<td class="text-right">${cells[8].innerHTML}</td>`;
+                tHtml += `</tr>`;
+            });
+            tHtml += `</tbody>`;
+            return tHtml;
+        };
+
         if (opts.showItemCostValue) {
             html += `
                 <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (가치비례 배분법)</h2>
                 <table class="print-data-table">
-                    ${document.getElementById('costTableValue').innerHTML}
+                    ${generateItemTable('costTableValue')}
                 </table>
                 <br>
             `;
@@ -1685,7 +1776,7 @@ function generatePrintTemplate(opts) {
             html += `
                 <h2 class="section-title">${sectionNum++}. 품목별 실수입원가 산출 (체적/운임톤 배분법)</h2>
                 <table class="print-data-table">
-                    ${document.getElementById('costTableVolume').innerHTML}
+                    ${generateItemTable('costTableVolume')}
                 </table>
             `;
         }
