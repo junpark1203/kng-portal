@@ -515,8 +515,8 @@ function prepareAndPrint() {
     html += `<th style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">단위</th>`;
     
     suppliers.forEach(supp => {
-        let rateStr = supp.currency === 'KRW' ? '' : `, ${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        html += `<th style="padding: 8px 4px; text-align: right;">${escapeHtml(supp.name)}<br><span style="font-size:9px; color:#64748b; font-weight:normal;">(${supp.currency}${rateStr})</span></th>`;
+        let rateStr = supp.currency === 'KRW' ? '' : `<br>${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        html += `<th style="padding: 8px 4px; text-align: center; vertical-align: bottom;">${escapeHtml(supp.name)}<br><span style="font-size:9px; color:#64748b; font-weight:normal;">${supp.currency}${rateStr}</span></th>`;
     });
     html += `</tr></thead><tbody>`;
     
@@ -547,7 +547,7 @@ function prepareAndPrint() {
                 let p = parseFloat(item.prices[supp.name]) || 0;
                 let isMin = (p > 0 && Math.abs(p * supp.rate - minPriceKrw) < 0.01);
                 
-                let cellStyle = "padding: 6px 4px; text-align: right;";
+                let cellStyle = "padding: 6px 4px; text-align: center; vertical-align: middle;";
                 
                 if (isMin) {
                     cellStyle += " background-color: rgba(16, 185, 129, 0.1);";
@@ -558,12 +558,12 @@ function prepareAndPrint() {
                     let krwStr = '₩' + krwValue.toLocaleString('en-US', {maximumFractionDigits: 0});
                     
                     let currSymbol = supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''));
-                    let foreignStr = supp.currency === 'KRW' ? '' : `<br><span style="font-size: 9px; color: #64748b; font-weight: normal;">${currSymbol}${p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>`;
+                    let foreignStr = supp.currency === 'KRW' ? '' : `<div style="font-size: 9px; color: #64748b; font-weight: normal; margin-top: 1px;">${currSymbol}${p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</div>`;
                     
                     let mainColor = isMin ? '#047857' : '#0f172a';
                     let mainWeight = isMin ? '800' : '600';
                     
-                    html += `<td style="${cellStyle}"><div style="font-weight: ${mainWeight}; color: ${mainColor};">${krwStr}</div>${foreignStr}</td>`;
+                    html += `<td style="${cellStyle}"><div style="font-weight: ${mainWeight}; color: ${mainColor}; line-height: 1.2;">${krwStr}</div>${foreignStr}</td>`;
                 } else {
                     html += `<td style="${cellStyle} color: #cbd5e1;">-</td>`;
                 }
