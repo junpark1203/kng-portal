@@ -124,27 +124,21 @@
                 <div style="height: 4mm;"></div>
 
                 <!-- 제목 -->
-                <div class="doc-title">휴&emsp;가&emsp;원</div>
+                <div class="doc-title">휴&emsp;&emsp;가&emsp;&emsp;원</div>
 
-                <!-- 인적사항 (원본: 4열 테이블) -->
+                <!-- 인적사항 (원본: 4열 테이블 -> 2열로 단순화) -->
                 <table class="doc-info-table">
                     <tr style="height:18pt">
-                        <td class="col-label1">소</td>
-                        <td class="col-label2">속 :</td>
-                        <td class="col-value1" id="pDepartment"></td>
-                        <td class="col-value2"></td>
+                        <td class="col-label">소&emsp;&emsp;&emsp;&emsp;속 :</td>
+                        <td class="col-value" id="pDepartment"></td>
                     </tr>
                     <tr class="row-rank" style="height:24pt">
-                        <td class="col-label1">직</td>
-                        <td class="col-label2">급 :</td>
-                        <td class="col-value1" id="pRank"></td>
-                        <td class="col-value2"></td>
+                        <td class="col-label">직&emsp;&emsp;&emsp;&emsp;급 :</td>
+                        <td class="col-value" id="pRank"></td>
                     </tr>
                     <tr class="row-name" style="height:18pt">
-                        <td class="col-label1">성</td>
-                        <td class="col-label2">명 :</td>
-                        <td class="col-value1" id="pName"></td>
-                        <td class="col-value2"></td>
+                        <td class="col-label">성&emsp;&emsp;&emsp;&emsp;명 :</td>
+                        <td class="col-value" id="pName"></td>
                     </tr>
                 </table>
 
@@ -184,15 +178,24 @@
                 <div class="doc-sign-block">
                     <div class="doc-sign-row">
                         <div class="doc-sign-label"><span>성</span><span>명</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value" id="pSignNameStamp">&emsp;&emsp;&emsp;&emsp;(印)</div>
+                        <div class="doc-sign-value">
+                            <span id="pSignName"></span>
+                            <span class="stamp">(印)</span>
+                        </div>
                     </div>
                     <div class="doc-sign-row">
                         <div class="doc-sign-label"><span>부</span><span>서</span><span>장</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</div>
+                        <div class="doc-sign-value">
+                            <span></span>
+                            <span class="stamp">(印)</span>
+                        </div>
                     </div>
                     <div class="doc-sign-row">
                         <div class="doc-sign-label"><span>담</span><span>당</span><span>임</span><span>원</span></div><span>&nbsp;:&nbsp;</span>
-                        <div class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</div>
+                        <div class="doc-sign-value">
+                            <span></span>
+                            <span class="stamp">(印)</span>
+                        </div>
                     </div>
                 </div>
 

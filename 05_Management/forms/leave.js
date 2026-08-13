@@ -145,9 +145,9 @@ document.addEventListener('DOMContentLoaded', () => {
         els.pDate.textContent = submitDateStr;
         
         // 성명 : OOO (印) 란
-        const signStamp = document.getElementById('pSignNameStamp');
+        const signStamp = document.getElementById('pSignName');
         if (signStamp) {
-            signStamp.innerHTML = els.fName.value ? `${els.fName.value}&emsp;&emsp;(印)` : '&emsp;&emsp;&emsp;&emsp;(印)';
+            signStamp.textContent = els.fName.value || '';
         }
 
         // 클론 업데이트 (화면 미리보기용)

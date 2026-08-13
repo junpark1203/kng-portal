@@ -80,7 +80,6 @@
     text-underline-offset: 4px;
     margin-top: 10mm;
     margin-bottom: 12mm;
-    padding-left: 180pt;
     /* 원본은 tab으로 분리, HTML에서 &emsp; 사용 */
 }
 
@@ -91,6 +90,7 @@
     font-size: 12pt;
     font-weight: bold;
     margin-bottom: 6mm;
+    width: 100%;
 }
 .doc-info-table td {
     vertical-align: top;
@@ -110,10 +110,15 @@
     padding-top: 3pt;
     line-height: 13pt;
 }
-.doc-info-table .col-label1 { width: 33pt; padding-left: 2pt; }
-.doc-info-table .col-label2 { width: 48pt; text-align: right; padding-right: 5pt; }
-.doc-info-table .col-value1 { width: 56pt; padding-left: 5pt; }
-.doc-info-table .col-value2 { width: 41pt; padding-left: 3pt; }
+.doc-info-table td.col-label {
+    width: 80pt;
+    vertical-align: top;
+    white-space: nowrap;
+}
+.doc-info-table td.col-value {
+    padding-left: 10pt;
+    vertical-align: top;
+}
 
 /* ── 본문 문구 ── */
 .doc-statement {
@@ -180,7 +185,12 @@
 }
 .doc-sign-value {
     flex: 1;
-    text-align: right;
+    display: flex;
+    justify-content: space-between;
+    padding-left: 10px;
+}
+.doc-sign-value .stamp {
+    margin-left: auto;
 }
 
 /* ── 결재선 (하단) ── */
