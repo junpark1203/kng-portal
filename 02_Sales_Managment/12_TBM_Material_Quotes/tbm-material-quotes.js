@@ -534,7 +534,7 @@ function prepareAndPrint() {
             });
             let minPriceKrw = prices.length > 0 ? Math.min(...prices) : 0;
             
-            html += `<tr style="border-bottom: 1px solid #e2e8f0;">`;
+            html += `<tr style="border-bottom: 1px solid #e2e8f0; vertical-align: top;">`;
             html += `<td style="padding: 6px 4px; text-align: center; color: #64748b;">${index + 1}</td>`;
             html += `<td style="padding: 6px 4px; word-break: break-all;">${escapeHtml(item.identifier || '-')}</td>`;
             html += `<td style="padding: 6px 4px; font-weight: 600;">${escapeHtml(item.name || '-')}</td>`;
@@ -547,7 +547,7 @@ function prepareAndPrint() {
                 let p = parseFloat(item.prices[supp.name]) || 0;
                 let isMin = (p > 0 && Math.abs(p * supp.rate - minPriceKrw) < 0.01);
                 
-                let cellStyle = "padding: 6px 4px; text-align: center; vertical-align: middle;";
+                let cellStyle = "padding: 6px 4px; text-align: center;";
                 
                 if (isMin) {
                     cellStyle += " background-color: rgba(16, 185, 129, 0.1);";
