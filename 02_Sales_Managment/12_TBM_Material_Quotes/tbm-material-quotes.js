@@ -485,3 +485,91 @@ async function deleteDocument(id) {
         Swal.fire('삭제 실패', err.message, 'error');
     }
 }
+
+function prepareAndPrint() {
+    saveCurrentInputValues();
+    const title = document.getElementById('documentTitle').value || 'TBM 자재 단가 비교표';
+    
+    let html = `<table style="width: 100%; border: none; margin: 0; padding: 0; border-spacing: 0;">`;
+    html += `<thead style="height: 15mm; border: none;"><tr><td style="border: none;"></td></tr></thead>`;
+    html += `<tfoot style="height: 15mm; border: none;"><tr><td style="border: none;"></td></tr></tfoot>`;
+    html += `<tbody><tr><td style="border: none; padding: 0 15mm;">`;
+    
+    html += `<div style="text-align:center; margin-bottom: 20px;">`;
+    html += `<h1 style="font-size: 24px; font-weight: 800; margin: 0; color: #0f172a;">${escapeHtml(title)}</h1>`;
+    html += `</div>`;
+    
+    html += `<table class="print-matrix-table" style="width: 100%; border-collapse: collapse; border-top: 2px solid #334155; border-bottom: 2px solid #334155; font-size: 11px;">`;
+    
+    // Header
+    html += `<thead><tr style="background-color: #f8fafc; border-bottom: 1px solid #cbd5e1;">`;
+    html += `<th style="padding: 8px 4px; text-align: center; width: 40px;">No.</th>`;
+    html += `<th style="padding: 8px 4px; text-align: left;">식별번호</th>`;
+    html += `<th style="padding: 8px 4px; text-align: left;">품명</th>`;
+    html += `<th style="padding: 8px 4px; text-align: left;">규격</th>`;
+    html += `<th style="padding: 8px 4px; text-align: left;">투입 현장</th>`;
+    html += `<th style="padding: 8px 4px; text-align: right;">수량</th>`;
+    html += `<th style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">단위</th>`;
+    
+    suppliers.forEach(supp => {
+        html += `<th style="padding: 8px 4px; text-align: right;">${escapeHtml(supp.name)}<br><span style="font-size:9px; color:#64748b; font-weight:normal;">(${supp.currency})</span></th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    
+    if (items.length === 0) {
+        html += `<tr><td colspan="${7 + suppliers.length}" style="text-align: center; padding: 20px; color: #64748b;">견적 비교할 항목이 없습니다.</td></tr>`;
+    } else {
+        items.forEach((item, index) => {
+            let prices = [];
+            suppliers.forEach(supp => {
+                let p = parseFloat(item.prices[supp.name]) || 0;
+                if(p > 0) {
+                    // normalize to KRW for comparison
+                    prices.push(p * supp.rate);
+                }
+            });
+            let minPriceKrw = prices.length > 0 ? Math.min(...prices) : 0;
+            
+            html += `<tr style="border-bottom: 1px solid #e2e8f0;">`;
+            html += `<td style="padding: 6px 4px; text-align: center; color: #64748b;">${index + 1}</td>`;
+            html += `<td style="padding: 6px 4px;">${escapeHtml(item.identifier || '-')}</td>`;
+            html += `<td style="padding: 6px 4px; font-weight: 600;">${escapeHtml(item.name || '-')}</td>`;
+            html += `<td style="padding: 6px 4px;">${escapeHtml(item.specification || '-')}</td>`;
+            html += `<td style="padding: 6px 4px;">${escapeHtml(item.sites || '-')}</td>`;
+            html += `<td style="padding: 6px 4px; text-align: right;">${item.totalQuantity.toLocaleString()}</td>`;
+            html += `<td style="padding: 6px 4px; text-align: center; border-right: 1px solid #cbd5e1;">${escapeHtml(item.unit || 'EA')}</td>`;
+            
+            suppliers.forEach(supp => {
+                let p = parseFloat(item.prices[supp.name]) || 0;
+                let isMin = (p > 0 && Math.abs(p * supp.rate - minPriceKrw) < 0.01);
+                
+                let cellStyle = "padding: 6px 4px; text-align: right;";
+                let formattedPrice = p > 0 ? p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-';
+                
+                if (isMin) {
+                    cellStyle += " background-color: rgba(16, 185, 129, 0.1); font-weight: 800; color: #047857;";
+                } else if (p > 0) {
+                    cellStyle += " font-weight: 600; color: #0f172a;";
+                } else {
+                    cellStyle += " color: #cbd5e1;";
+                }
+                
+                html += `<td style="${cellStyle}">${formattedPrice}</td>`;
+            });
+            html += `</tr>`;
+        });
+    }
+    
+    html += `</tbody></table>`;
+    html += `</td></tr></tbody></table>`;
+    
+    const printContainer = document.getElementById('printContainer');
+    printContainer.innerHTML = html;
+    
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+            printContainer.innerHTML = '';
+        }, 500);
+    }, 100);
+}

@@ -300,6 +300,7 @@ body.modal-open .main-content {
 
 
 /* Print Layout Styling - Premium Report */
+/* Print Layout Styling - Premium Report */
 @media print {
     @page {
         size: A4 landscape;
@@ -315,197 +316,39 @@ body.modal-open .main-content {
     }
     
     /* Utility & Hide non-printable elements */
-    .web-only { display: none !important; }
-    .print-only { display: block !important; }
-    #listView, .app-bar-left button, .app-bar-left div, .app-bar-right button, .bx-x, .filler-col, #detailView > div:nth-child(2) {
-        display: none !important;
-    }
+    .web-only, #listView, #detailView { display: none !important; }
+    .print-only, #printContainer { display: block !important; }
 
-    #detailView {
-        display: flex !important;
-        flex-direction: column;
+    /* Print Container Style */
+    #printContainer {
         width: 100% !important;
-    }
-    
-    /* Header (Report Title) */
-    .app-bar {
-        border-bottom: 2px solid #1e293b !important;
-        padding: 0 0 10px 0 !important;
-        margin-bottom: 16px !important;
-        background: none !important;
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: flex-end !important;
-        box-shadow: none !important;
-    }
-    
-    .app-bar-left h1 {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-        color: #0f172a !important;
-        margin: 0 !important;
-        letter-spacing: -0.5px;
-    }
-    
-    .app-bar-right {
-        display: flex !important;
-        align-items: flex-end !important;
-    }
-    
-    #documentTitle {
-        border: none !important;
         background: transparent !important;
-        padding: 0 !important;
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        text-align: right !important;
-        color: #64748b !important;
-        width: 350px !important;
-        pointer-events: none;
-    }
-    #documentTitle::placeholder { color: transparent !important; }
-
-    /* Main Table Area */
-    main {
-        padding: 0 !important;
-        overflow: visible !important;
-        background: transparent !important;
-        width: 100% !important;
     }
     
-    .table-container {
-        border: none !important;
-        box-shadow: none !important;
-        max-height: none !important;
-        overflow: visible !important;
-        width: 100% !important;
+    table.print-matrix-table {
+        table-layout: fixed;
+        width: 100%;
+        page-break-inside: auto;
     }
     
-    table.data-table {
-        width: 100% !important;
-        min-width: 0 !important; /* Allow shrinking below min-width */
-        table-layout: auto !important; /* Let browser adjust column widths naturally */
-        border-collapse: collapse !important;
-        font-size: 9px !important; /* Reduced for fitting */
-        color: #1e293b !important;
-        border-top: 2px solid #334155 !important;
-        border-bottom: 2px solid #334155 !important;
+    table.print-matrix-table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
     }
     
-    /* Disable all sticky logic to let table flow naturally in print */
-    .sticky-col { position: static !important; }
-    .quote-matrix-table th.sticky-col, .quote-matrix-table td.sticky-col { position: static !important; }
-
-    /* Clear widths to let table-layout:auto work its magic */
-    table.data-table th, table.data-table td {
-        width: auto !important;
-        max-width: none !important;
-        min-width: 0 !important;
-        border: none !important; /* Remove all grid borders */
-        border-bottom: 1px solid #e2e8f0 !important; /* Only subtle horizontal borders */
-        padding: 6px 4px !important; /* Increased padding */
-        vertical-align: middle;
-        color: #000 !important;
-    }
-    
-    table.data-table th {
+    table.print-matrix-table th {
         background-color: #f8fafc !important;
-        font-weight: 700 !important;
-        text-align: center !important;
-        font-size: 10px !important;
-        border-bottom: 1px solid #cbd5e1 !important; /* Stronger border under header */
-    }
-    
-    table.data-table tbody tr:nth-child(even) td.sticky-col,
-    table.data-table tbody tr:nth-child(even) td {
-        background-color: transparent !important; /* Remove zebra stripes for clean report */
-    }
-    
-    /* Ensure no vertical borders sneak in */
-    table.data-table th, table.data-table td { border-left: none !important; border-right: none !important; }
-
-    /* Inputs and Selects Cleanup */
-    input, select {
-        border: none !important;
-        background: transparent !important;
-        appearance: none;
-        -webkit-appearance: none;
-        padding: 0 !important;
-        margin: 0 !important;
-        color: #0f172a !important;
-        font-family: inherit !important;
-        pointer-events: none;
-    }
-    
-    /* Supplier Header Style */
-    .print-only {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    .print-only > div:first-child {
-        font-size: 11px !important;
-        font-weight: 800 !important;
-        color: #000 !important;
-        margin-bottom: 2px;
-    }
-    .print-only > div:last-child {
-        font-size: 9px !important;
-        color: #64748b !important;
-    }
-
-    /* Target specific price inputs */
-    td.supplier-col .print-only > div:first-child {
-        font-size: 11px !important;
-        font-weight: 800 !important;
-        text-align: right !important;
-        width: 100% !important;
-    }
-    td.supplier-col .print-only > div:last-child {
-        font-size: 9px !important;
-        font-weight: 500 !important;
-        color: #64748b !important;
-        text-align: right !important;
-        width: 100% !important;
-    }
-    
-    .site-tag {
-        border: none !important;
-        background: transparent !important;
-        padding: 0 !important;
-        font-size: 9px !important;
         color: #1e293b !important;
-        white-space: normal !important;
+        font-weight: 700 !important;
+        word-break: keep-all;
     }
     
-    /* Hide the extra filler column */
-    td[style*="background: #f8fafc"], th[style*="background: #f8fafc"] { display: none !important; }
-}
-
-
-@media print {
-    /* Allow text wrapping to prevent table from forcing a large width */
-    table.data-table th, table.data-table td {
-        white-space: normal !important;
-        word-break: keep-all !important;
+    table.print-matrix-table td {
+        word-break: keep-all;
     }
     
-    /* Slightly scale down the table container if it still wants to be too wide */
-    .table-container {
-        zoom: 0.9;
-    }
-}
-
-
-@media print {
-    .main-wrapper, .page-wrapper, .page-body {
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: visible !important;
-        display: block !important;
-        position: static !important;
+    table.print-matrix-table th, table.print-matrix-table td {
+        white-space: normal !important;
     }
 }
 
