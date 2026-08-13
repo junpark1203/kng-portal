@@ -404,7 +404,7 @@ function loadSelectedQuote() {
             state.doc.actualCosts.push({
                 id: generateId(),
                 key: oc.id === 'interest' ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
-                group: 'other', // 기타비용 탭
+                group: oc.id === 'interest' ? 'finance' : 'other', // 기타비용 탭 또는 금융 탭
                 label: oc.name || oc.label || '기타비용',
                 unit: 'Lump Sum',
                 currency: 'KRW',
@@ -478,7 +478,8 @@ const COST_GROUPS = [
     { key: 'export', label: '수출국 부대비용' },
     { key: 'import', label: '수입국 부대비용' },
     { key: 'customs', label: '통관/관세' },
-    { key: 'other', label: '기타 비용' }
+    { key: 'other', label: '기타 비용' },
+    { key: 'finance', label: '금융 비용' }
 ];
 
 function renderSettlementGrid() {
@@ -1042,8 +1043,6 @@ function calculateAll() {
 
     let totalBilledAncillaryKrw = 0;
     let totalEstAncillaryKrw = 0;
-    let interestEst = 0;
-    let interestAct = 0;
 
     state.doc.actualCosts.forEach((cost, idx) => {
         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -1073,13 +1072,8 @@ function calculateAll() {
         }
         
         // Group subtotals
-        if (cost.key === 'INTEREST') {
-            interestEst += qKrw;
-            interestAct += bKrw;
-        } else {
-            const gk = cost.group || 'other';
-            if (grpEst[gk] !== undefined) { grpEst[gk] += qKrw; grpAct[gk] += bKrw; }
-        }
+        const gk = cost.group || 'other';
+        if (grpEst[gk] !== undefined) { grpEst[gk] += qKrw; grpAct[gk] += bKrw; }
         
         let varKrw = 0;
         let glKrw = 0;
@@ -1184,7 +1178,7 @@ function calculateAll() {
                 const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
                 state.doc.actualCosts.forEach(cost => {
                     const gk = cost.group || 'other';
-                    if (gk === g.key && cost.key !== 'INTEREST') {
+                    if (gk === g.key) {
                         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
                         const bCurr = cost.billedCurrency || cost.currency || 'KRW';
                         let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
@@ -1212,37 +1206,7 @@ function calculateAll() {
                 });
                 htmlBody += detailRows;
             }
-            
-            // "통관/관세" 직후에 포워더 소계 출력
-            if (g.key === 'customs') {
-                const fwDiff = fwAct - fwEst;
-                const fwDiffColor = fwDiff > 0 ? '#dc2626' : (fwDiff < 0 ? '#16a34a' : 'inherit');
-                const fwDiffStr = fwDiff > 0 ? '+₩ ' + formatNum(fwDiff) : (fwDiff < 0 ? '-₩ ' + formatNum(Math.abs(fwDiff)) : '₩ 0');
-                
-                htmlBody += `
-                    <tr style="background:#f1f5f9; font-weight:600;">
-                        <td style="padding:10px 12px;">포워더 부대비용 소계 (KRW)</td>
-                        <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(fwEst)}</td>
-                        <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(fwAct)}</td>
-                        <td class="col-num" style="padding:10px 12px; color:${fwDiffColor};">${fwDiffStr}</td>
-                    </tr>
-                `;
-            }
         });
-        
-        // 이자비용 단독 행 추가
-        const intDiff = interestAct - interestEst;
-        const intDiffColor = intDiff > 0 ? '#dc2626' : (intDiff < 0 ? '#16a34a' : 'inherit');
-        const intDiffStr = intDiff > 0 ? '+₩ ' + formatNum(intDiff) : (intDiff < 0 ? '-₩ ' + formatNum(Math.abs(intDiff)) : '₩ 0');
-        
-        htmlBody += `
-            <tr>
-                <td style="padding:10px 12px;">금융비용 (이자비용)</td>
-                <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(interestEst)}</td>
-                <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(interestAct)}</td>
-                <td class="col-num" style="padding:10px 12px; color:${intDiffColor};">${intDiffStr}</td>
-            </tr>
-        `;
         
         sumTbody.innerHTML = htmlBody;
         
@@ -1253,7 +1217,7 @@ function calculateAll() {
         
         sumTfoot.innerHTML = `
             <tr>
-                <td style="padding:12px;">총 비용 (물품+포워더+기타) KRW</td>
+                <td style="padding:12px;">총 비용 합계 (KRW)</td>
                 <td class="col-num" style="padding:12px;">₩ ${formatNum(totalEstKrw)}</td>
                 <td class="col-num" style="padding:12px;">₩ ${formatNum(totalBilledKrw)}</td>
                 <td class="col-num" style="padding:12px; color:${totalDiffColor};">${totalDiffStr}</td>
