@@ -534,7 +534,7 @@ function prepareAndPrint() {
             });
             let minPriceKrw = prices.length > 0 ? Math.min(...prices) : 0;
             
-            html += `<tr style="border-bottom: 1px solid #e2e8f0; vertical-align: top;">`;
+            html += `<tr style="border-bottom: 1px solid #e2e8f0;">`;
             html += `<td style="padding: 6px 4px; text-align: center; color: #64748b;">${index + 1}</td>`;
             html += `<td style="padding: 6px 4px; word-break: break-all;">${escapeHtml(item.identifier || '-')}</td>`;
             html += `<td style="padding: 6px 4px; font-weight: 600;">${escapeHtml(item.name || '-')}</td>`;
@@ -558,14 +558,14 @@ function prepareAndPrint() {
                     let krwStr = '₩' + krwValue.toLocaleString('en-US', {maximumFractionDigits: 0});
                     
                     let currSymbol = supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''));
-                    let foreignStr = supp.currency === 'KRW' ? '' : `<div style="font-size: 9px; color: #64748b; font-weight: normal; margin-top: 1px;">${currSymbol}${p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</div>`;
+                    let foreignStr = supp.currency === 'KRW' ? `<div style="font-size: 9px; color: transparent; margin-top: 1px; user-select: none;">&nbsp;</div>` : `<div style="font-size: 9px; color: #64748b; font-weight: normal; margin-top: 1px;">${currSymbol}${p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</div>`;
                     
                     let mainColor = isMin ? '#047857' : '#0f172a';
                     let mainWeight = isMin ? '800' : '600';
                     
                     html += `<td style="${cellStyle}"><div style="font-weight: ${mainWeight}; color: ${mainColor}; line-height: 1.2;">${krwStr}</div>${foreignStr}</td>`;
                 } else {
-                    html += `<td style="${cellStyle} color: #cbd5e1;">-</td>`;
+                    html += `<td style="${cellStyle}"><div style="color: #cbd5e1; line-height: 1.2;">-</div><div style="font-size: 9px; color: transparent; margin-top: 1px; user-select: none;">&nbsp;</div></td>`;
                 }
             });
             html += `</tr>`;
