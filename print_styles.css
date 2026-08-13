@@ -1,0 +1,144 @@
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+    
+    body {
+        background: #fff !important;
+        color: #000 !important;
+        font-family: "Pretendard", "Malgun Gothic", sans-serif !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .is-container { display: none !important; }
+    
+    #printContainer {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 10mm 15mm !important;
+    }
+
+    .print-report {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .print-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid #000;
+        padding-bottom: 5px;
+        margin-top: 25px;
+        margin-bottom: 10px;
+    }
+    
+    .sub-title {
+        font-size: 13px;
+        font-weight: bold;
+        margin-top: 15px;
+        margin-bottom: 8px;
+        color: #333;
+    }
+
+    .print-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+    }
+    .print-info-table th, .print-info-table td {
+        border: 1px solid #aaa;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+    .print-info-table th {
+        background: #f5f5f5 !important;
+        width: 15%;
+        text-align: left;
+    }
+    
+    .print-dash-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 15px;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+    }
+    .print-dash-table th, .print-dash-table td {
+        border: 1px solid #aaa;
+        padding: 10px;
+        text-align: center;
+    }
+    .print-dash-table th {
+        background: #f5f5f5 !important;
+        font-size: 12px;
+    }
+    .print-dash-table td {
+        font-size: 16px;
+    }
+    
+    .bold-value { font-weight: bold; }
+    .highlight { color: #000 !important; font-weight: 800; }
+
+    .print-data-table {
+        width: 100%;
+        border-collapse: collapse;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
+        margin-bottom: 15px;
+        table-layout: auto;
+    }
+    .print-data-table th, .print-data-table td {
+        border: 1px solid #aaa;
+        padding: 6px 4px;
+        font-size: 10px;
+    }
+    .print-data-table th {
+        background: #f5f5f5 !important;
+        font-weight: bold;
+        text-align: center;
+    }
+    .print-data-table td {
+        word-break: keep-all;
+    }
+    
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .font-weight-bold { font-weight: bold; }
+
+    .print-remarks {
+        border: 1px solid #aaa;
+        padding: 10px;
+        min-height: 80px;
+        font-size: 12px;
+    }
+    
+    /* Ensure no weird colors leak through */
+    #printContainer * {
+        background-color: transparent;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+    #printContainer th {
+        background-color: #f5f5f5 !important;
+    }
+}
+

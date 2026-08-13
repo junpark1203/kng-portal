@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>(양식) 휴가원</title>
+  <meta name="author" content="총무부"/>
+  <style type="text/css"> 
+    * { margin:0; padding:0; text-indent:0; }
+    
+    body { 
+      background-color: #525659; 
+      /* 가운데 정렬만 브라우저에 맡기고 나머지는 전부 절대값 사용 */
+      display: flex; 
+      justify-content: center; 
+      padding: 20px; 
+    }
+    
+    /* 실제 A4 용지의 정확한 픽셀/포인트 규격 (절대 변경 안 됨) */
+    .pdf-canvas {
+      width: 595pt; 
+      height: 842pt; 
+      background-color: white; 
+      box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+      position: relative;
+      box-sizing: border-box;
+      padding-top: 45pt; /* 상단 종이 끝에서 박스까지의 거리 */
+    }
+
+    /* 원본과 동일한 비율의 고정된 테두리 박스 */
+    .pdf-border-box {
+      width: 480pt;  /* "허락하여 주시기"에서 정확히 떨어지도록 계산된 절대 너비 */
+      height: 710pt; /* 하단 비고란 아래로 적당한 여백이 남도록 계산된 절대 높이 */
+      border: 1.5pt solid black; 
+      margin: 0 auto; /* 종이 내에서 가운데 정렬 */
+      box-sizing: border-box;
+      padding: 20pt 15pt; /* 박스 선과 내부 글자들 사이의 절대 여백 */
+    }
+
+    /* 문서 번호 영역 (박스 바깥 고정 위치) */
+    .doc-number-area {
+      width: 480pt; 
+      margin: 0 auto; 
+      padding-top: 5pt; /* 박스 선과 문서번호 사이의 간격 */
+    }
+
+    /* ---------------------------------------------------
+       인쇄 시 여백 없이 A4 용지에 1:1로 찍히도록 강제 설정
+    --------------------------------------------------- */
+    @media print {
+      body { background-color: white; padding: 0; margin: 0; }
+      .pdf-canvas { box-shadow: none; border: none; }
+      @page { size: A4; margin: 0; }
+    }
+
+    h1 { color: black; font-family:굴림체, monospace; font-style: normal; font-weight: bold; text-decoration: underline; font-size: 24pt; }
+    .s1 { color: black; font-family:굴림체, monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; }
+    p { color: black; font-family:굴림체, monospace; font-style: normal; font-weight: bold; text-decoration: none; font-size: 12pt; margin:0pt; }
+    .s2 { color: black; font-family:굴림체, monospace; font-style: normal; font-weight: normal; text-decoration: none; font-size: 10pt; }
+    .s3 { color: black; font-family:Century, serif; font-style: normal; font-weight: normal; text-decoration: none; font-size: 13pt; }
+    table, tbody { vertical-align: top; overflow: visible; }
+  </style>
+</head>
+<body>
+
+  <!-- A4 규격 캔버스 -->
+  <div class="pdf-canvas">
+    
+    <!-- 절대 크기를 가진 사각 테두리 박스 -->
+    <div class="pdf-border-box">
+      
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      <!-- 원본 텍스트에 있던 과도한 padding-left를 제거하고 정확히 가운데에 4칸 띄어쓰기로 배치 -->
+      <h1 style="padding-top: 8pt; text-indent: 0pt; text-align: center;">휴&nbsp;&nbsp;&nbsp;&nbsp;가&nbsp;&nbsp;&nbsp;&nbsp;원</h1>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+
+      <table style="border-collapse:collapse; margin-left:15.79pt" cellspacing="0">
+        <tr style="height:19pt">
+          <td style="width:33pt"><p class="s1" style="padding-left: 2pt;text-indent: 0pt;line-height: 14pt;text-align: left;">소</p></td>
+          <td style="width:48pt"><p class="s1" style="padding-right: 5pt;text-indent: 0pt;line-height: 14pt;text-align: right;">속 :</p></td>
+          <!-- 원본 구조 유지, 줄바꿈 억제 -->
+          <td colspan="2" style="width:120pt; white-space: nowrap;"><p class="s1" style="padding-left: 5pt;text-indent: 0pt;line-height: 14pt;text-align: left;">주식회사 케앤지</p></td>
+        </tr>
+        <tr style="height:25pt">
+          <td style="width:33pt"><p class="s1" style="padding-top: 4pt;padding-left: 2pt;text-indent: 0pt;text-align: left;">직</p></td>
+          <td style="width:48pt"><p class="s1" style="padding-top: 4pt;padding-right: 5pt;text-indent: 0pt;text-align: right;">급 :</p></td>
+          <td style="width:57pt"><p class="s1" style="padding-top: 4pt;padding-left: 5pt;text-indent: 0pt;text-align: left;">차장</p></td>
+          <td style="width:41pt"><p style="text-indent: 0pt;text-align: left;"><br/></p></td>
+        </tr>
+        <tr style="height:19pt">
+          <td style="width:33pt"><p class="s1" style="padding-top: 4pt;padding-left: 2pt;text-indent: 0pt;line-height: 13pt;text-align: left;">성</p></td>
+          <td style="width:48pt"><p class="s1" style="padding-top: 4pt;padding-right: 5pt;text-indent: 0pt;line-height: 13pt;text-align: right;">명 :</p></td>
+          <td style="width:57pt"><p class="s1" style="padding-top: 4pt;padding-left: 5pt;text-indent: 0pt;line-height: 13pt;text-align: left;">박준영</p></td>
+          <td style="width:41pt"><p style="text-indent: 0pt;text-align: left;"><br/></p></td>
+        </tr>
+      </table>
+
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      
+      <!-- 환경 불문 무조건 '주시기'에서 끊어지도록 강제 줄바꿈 -->
+      <p style="padding-top: 3pt;padding-left: 24pt;text-indent: 47pt;line-height: 158%;text-align: left;">상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기<br/>바랍니다.</p>
+      
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      <p style="padding-left: 18pt;text-indent: 0pt;text-align: left;">기   간 : 2026. 08. 03.(월) ~ 2026. 08. 03.(월), (반차-오전)</p>
+      <p style="padding-top: 8pt;padding-left: 18pt;text-indent: 0pt;text-align: left;">사   유 : 개인일정 (잔여일수 7.5/13일)</p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p><br/>
+      <p style="text-indent: 0pt;text-align: right; padding-right: 20pt;">2026. 07. 29.</p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      
+      <p style="text-indent: 0pt;text-align: right; padding-right: 20pt;">성  명 : 박 준 영&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(印)</p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      <p style="text-indent: 0pt;text-align: right; padding-right: 20pt;">부 서 장 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(印)</p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+      <p style="text-indent: 0pt;text-align: right; padding-right: 20pt;">담당임원 :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(印)</p>
+      <p style="text-indent: 0pt;text-align: left;"><br/></p>
+
+      <table style="border-collapse:collapse;margin-left:29.7745pt; width: 400pt;" cellspacing="0">
+        <tr style="height:18pt; white-space: nowrap;">
+          <td style="width:21pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:2pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt" rowspan="2">
+            <p style="text-indent: 0pt;text-align: left;"><br/></p>
+            <p class="s1" style="padding-left: 4pt;text-indent: 0pt;line-height: 117%;text-align: left;">결 재</p>
+          </td>
+          <td style="width:45pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">담당</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">대리</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">과장</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">차장</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">부장</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">이사</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">상무</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">전무</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:1pt"><p class="s1" style="padding-top: 1pt;text-align: center;">부사장</p></td>
+          <td style="width:44pt;border-top-style:solid;border-top-width:2pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:1pt;border-right-style:solid;border-right-width:2pt"><p class="s1" style="padding-top: 1pt;text-align: center;">사장</p></td>
+        </tr>
+        <tr style="height:43pt">
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:1pt"></td>
+          <td style="border-top-style:solid;border-top-width:1pt;border-left-style:solid;border-left-width:1pt;border-bottom-style:solid;border-bottom-width:2pt;border-right-style:solid;border-right-width:2pt"></td>
+        </tr>
+      </table><br/>
+
+      <p style="padding-top: 3pt;padding-left: 26pt;text-indent: 0pt;text-align: left;">주식회사 케앤지 대표이사 귀하</p>
+      
+      <!-- 환경 불문 무조건 '임금은'에서 끊어지도록 강제 줄바꿈 -->
+      <p class="s2" style="padding-top: 10pt;padding-left: 58pt;text-indent: -44pt;line-height: 127%;text-align: left;">비고 1. 취업규칙 제36조 근거하여 휴직기간은 근속연수에 포함을 원칙으로 하며 휴직 기간중 임금은<br/>무급을 원칙으로 한다.</p>
+      <p class="s2" style="padding-left: 43pt;text-indent: 0pt;line-height: 12pt;text-align: left;">2. 모든 서류는 원본으로 제출한다.</p>
+      
+    </div>
+    
+    <!-- 문서 번호는 박스 규격에 맞춰 정렬되도록 감싸서 배치 -->
+    <div class="doc-number-area">
+      <p class="s3" style="padding-left: 5pt; text-align: left;">KG-A4-A15-0</p>
+    </div>
+    
+  </div>
+
+</body>
+</html>

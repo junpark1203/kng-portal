@@ -87,10 +87,13 @@ const showToast = (msg, isError = false) => {
 // 기본 부대비용 템플릿
 const DEFAULT_COSTS = [
     { key: 'OF', label: '해상운임 (O/F, Ocean Freight)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: false } },
-    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: false, CIF: false } },
-    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', group: 'ocean', applyTo: { EXW: true, FOB: true, CIF: true } },
+    
+    { key: 'PSS', label: '성수기 할증료 (P.S.S)', defaultUnit: 'per Container', group: 'logistics', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'LSS', label: '저유황유 할증료 (L.S.S)', defaultUnit: 'per Container', group: 'logistics', applyTo: { EXW: true, FOB: false, CIF: false } },
+    { key: 'BAF', label: '유류할증료 (B.A.F)', defaultUnit: 'per Container', group: 'logistics', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'CAF', label: '통화조정할증료 (C.A.F)', defaultUnit: 'per Container', group: 'logistics', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', group: 'logistics', applyTo: { EXW: true, FOB: true, CIF: true } },
+    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', group: 'logistics', applyTo: { EXW: true, FOB: true, CIF: true } },
 
     { key: 'CY', label: 'CY비 (CY Charge)', defaultUnit: 'per Container', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
     { key: 'PORT', label: '항만비용 (Port Charge)', defaultUnit: 'per B/L', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
@@ -101,14 +104,12 @@ const DEFAULT_COSTS = [
     { key: 'TRK_E', label: '내륙운송 수출 (Trucking E)', defaultUnit: 'Lump Sum', group: 'export', applyTo: { EXW: true, FOB: false, CIF: false } },
     
     { key: 'CRS', label: '컨테이너회송료 (C.R.S)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'HNDL', label: '취급수수료 (Handling Charge)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'DO', label: '화물인도지시서 (D/O)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'THC_I', label: '터미널하역비 수입 (THC I)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'WHFG', label: '부두사용료 (Wharfage)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'TSF', label: '터미널보안료 (TSF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'PSMF', label: '항만안전관리비 (PSMF)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'CCC', label: '컨테이너세정비 (CCC)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
-    { key: 'DOC', label: '서류대행비 (DOC)', defaultUnit: 'per B/L', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'STRIP', label: '컨테이너적출료 (Stripping)', defaultUnit: 'per Container', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     { key: 'TRK_I', label: '내륙운송 수입 (Trucking I)', defaultUnit: 'Lump Sum', group: 'import', applyTo: { EXW: true, FOB: true, CIF: true } },
     
@@ -1039,6 +1040,7 @@ function renderForwarderContent() {
     const groups = [
         { id: 'ocean', title: '🚢 해상 운임 및 할증료' },
         { id: 'export', title: '🛫 수출국 부대비용' },
+        { id: 'logistics', title: '🌐 물류 부대비용 (외화)' },
         { id: 'import', title: '🛬 수입국 부대비용' },
         { id: 'customs', title: '📋 적하보험 및 수입통관' }
     ];
@@ -1077,7 +1079,8 @@ function renderForwarderContent() {
             if (!costGroup) {
                 if (c.key === 'OF') costGroup = 'ocean';
                 else if (c.key === 'INS' || c.key === 'CUST_I') costGroup = 'customs';
-                else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) costGroup = 'export';
+                else if (c.key.endsWith('_E') || ['CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) costGroup = 'export';
+                else if (['PSS', 'LSS', 'BAF', 'CAF', 'HNDL', 'DOC'].includes(c.key)) costGroup = 'logistics';
                 else costGroup = 'import';
                 c.group = costGroup;
             }
@@ -1399,6 +1402,7 @@ function renderSummaryTable() {
         invoice: { label: '물품 대금 (KRW 환산)', values: [], details: {} },
         ocean: { label: '해상 운임 (O/F)', values: [], details: {}, expandable: true },
         export: { label: '수출국 부대비용', values: [], details: {}, expandable: true },
+        logistics: { label: '물류 부대비용 (외화)', values: [], details: {}, expandable: true },
         import: { label: '수입국 부대비용', values: [], details: {}, expandable: true },
         ins: { label: '적하보험료', values: [], details: {}, expandable: true },
         customs: { label: '수입 통관수수료', values: [], details: {}, expandable: true },
@@ -1417,6 +1421,7 @@ function renderSummaryTable() {
             rows.invoice.values.push(invKrw);
             let oceanKrw = 0;
             let exportKrw = 0;
+            let logisticsKrw = 0;
             let importKrw = 0;
             let insKrw = 0;
             let customsKrw = 0;
@@ -1428,6 +1433,7 @@ function renderSummaryTable() {
                     let tRow;
                     if (c.group === 'ocean') tRow = rows.ocean;
                     else if (c.group === 'export') tRow = rows.export;
+                    else if (c.group === 'logistics') tRow = rows.logistics;
                     else if (c.key === 'INS') tRow = rows.ins;
                     else if (c.key === 'CUST_I') tRow = rows.customs;
                     else tRow = rows.import; // 나머지 모두 수입국 (커스텀 포함)
@@ -1440,13 +1446,14 @@ function renderSummaryTable() {
                     // For duty calculation context (not displayed here directly)
                     if (c.group === 'ocean') oceanKrw += amtKrw;
                     else if (c.group === 'export') exportKrw += amtKrw;
+                    else if (c.group === 'logistics') logisticsKrw += amtKrw;
                     else if (c.key === 'INS') insKrw += amtKrw;
                     else if (c.key === 'CUST_I') customsKrw += amtKrw;
                     else importKrw += amtKrw;
                 }
             });
             
-            const sub = oceanKrw + exportKrw + importKrw + insKrw + customsKrw;
+            const sub = oceanKrw + exportKrw + logisticsKrw + importKrw + insKrw + customsKrw;
             rows.subtotal.values[colIdx] = sub;
             
             // 기타 금융 및 추가비용 계산
@@ -1484,7 +1491,7 @@ function renderSummaryTable() {
             fw.calculated[term] = {
                 invoiceKrw: invKrw,
                 ancillaryKrw: sub,
-                dutiableAncillaryKrw: oceanKrw + exportKrw + insKrw, // 과세표준(CIF)용 부대비용
+                dutiableAncillaryKrw: oceanKrw + exportKrw + logisticsKrw + insKrw, // 과세표준(CIF)용 부대비용
                 otherCostsKrw: totalOther,
                 totalKrw: grand
             };
