@@ -280,6 +280,14 @@
                 <button class="btn-close" id="btnClosePrintModal"><i class='bx bx-x'></i></button>
             </div>
             <div class="modal-body" style="padding: 20px !important; overflow-y: auto !important; flex: 1 !important; min-height: 0 !important;">
+                <div class="print-data-options" style="display:flex; gap:20px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color);">
+                    <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="chkPrintData_Estimate" checked> 예상 견적 포함
+                    </label>
+                    <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="chkPrintData_Actual" checked> 실제 청구 포함
+                    </label>
+                </div>
                 <div class="print-mode-options" style="display:flex; flex-direction:column; gap:12px;">
                     <label class="print-mode-label" style="display:flex; gap:10px; cursor:pointer;">
                         <input type="radio" name="printMode" value="summary" checked style="margin-top:4px;">

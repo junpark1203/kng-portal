@@ -1448,6 +1448,8 @@ function executePrint() {
     const mode = document.querySelector('input[name="printMode"]:checked').value;
     
     let opts = { mode };
+    opts.includeEstimate = document.getElementById('chkPrintData_Estimate').checked;
+    opts.includeActual = document.getElementById('chkPrintData_Actual').checked;
     
     if (mode === 'custom') {
         opts.showSettlementInfo = document.getElementById('chkPrint_SettlementInfo').checked;
