@@ -401,10 +401,11 @@ function loadSelectedQuote() {
                 amt = principal * (avgMonths / 12) * (rate / 100);
             }
             
+            const isInterest = oc.id === 'interest' || oc.type === 'calculated' || (oc.name && (oc.name.includes('금융비용') || oc.name.includes('이자비용')));
             state.doc.actualCosts.push({
                 id: generateId(),
-                key: oc.id === 'interest' ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
-                group: oc.id === 'interest' ? 'finance' : 'other', // 기타비용 탭 또는 금융 탭
+                key: isInterest ? 'INTEREST' : ('CUSTOM_OTHER_' + Date.now() + ocIdx),
+                group: isInterest ? 'finance' : 'other', // 기타비용 탭 또는 금융 탭
                 label: oc.name || oc.label || '기타비용',
                 unit: 'Lump Sum',
                 currency: 'KRW',
@@ -462,6 +463,16 @@ window.editSettlement = async function(id) {
     try {
         const data = await authFetch(`${API_BASE}/${id}`);
         state.doc = data;
+        // 레거시 데이터 호환: 금융비용이 다른 그룹(other 등)에 저장된 경우 finance로 강제 이동
+        if (state.doc.actualCosts) {
+            state.doc.actualCosts.forEach(c => {
+                if (c.key === 'INTEREST' || c.label.includes('금융비용') || c.label.includes('이자비용')) {
+                    c.group = 'finance';
+                    c.key = 'INTEREST'; // 자동 산출 UI를 위해 강제 고정
+                }
+            });
+        }
+        
         fillFormFromState();
         switchView('edit');
     } catch(err) {
