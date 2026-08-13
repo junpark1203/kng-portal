@@ -120,58 +120,84 @@
     <div id="printArea" class="print-preview-container">
         <div class="print-page">
             <div class="doc-border">
-                <!-- 제목 -->
-                <div class="doc-title">휴 가 원</div>
+                <!-- 빈 줄 (원본 첫줄 빈줄) -->
+                <div style="height: 4mm;"></div>
 
-                <!-- 인적사항 -->
-                <div class="doc-info-block">
-                    <div class="doc-info-row">
-                        <div class="doc-info-label"><span>소</span><span>속</span></div><span>:</span>
-                        <span class="doc-info-value" id="pDepartment"></span>
-                    </div>
-                    <div class="doc-info-row">
-                        <div class="doc-info-label"><span>직</span><span>급</span></div><span>:</span>
-                        <span class="doc-info-value" id="pRank"></span>
-                    </div>
-                    <div class="doc-info-row">
-                        <div class="doc-info-label"><span>성</span><span>명</span></div><span>:</span>
-                        <span class="doc-info-value" id="pName"></span>
-                    </div>
-                </div>
+                <!-- 제목 -->
+                <div class="doc-title">휴&emsp;가&emsp;원</div>
+
+                <!-- 인적사항 (원본: 4열 테이블) -->
+                <table class="doc-info-table">
+                    <tr style="height:18pt">
+                        <td class="col-label1">소</td>
+                        <td class="col-label2">속 :</td>
+                        <td class="col-value1" id="pDepartment"></td>
+                        <td class="col-value2"></td>
+                    </tr>
+                    <tr class="row-rank" style="height:24pt">
+                        <td class="col-label1">직</td>
+                        <td class="col-label2">급 :</td>
+                        <td class="col-value1" id="pRank"></td>
+                        <td class="col-value2"></td>
+                    </tr>
+                    <tr class="row-name" style="height:18pt">
+                        <td class="col-label1">성</td>
+                        <td class="col-label2">명 :</td>
+                        <td class="col-value1" id="pName"></td>
+                        <td class="col-value2"></td>
+                    </tr>
+                </table>
+
+                <!-- 빈 줄 2개 -->
+                <div style="height: 8mm;"></div>
 
                 <!-- 본문 -->
                 <div class="doc-statement">
                     상기 본인은 아래와 같이 휴가원을 제출, 보완 하오니 허락하여 주시기 바랍니다.
                 </div>
 
+                <!-- 빈 줄 -->
+                <div style="height: 4mm;"></div>
+
                 <!-- 기간 / 사유 -->
                 <div class="doc-detail-block">
-                    <div class="doc-info-row">
-                        <div class="doc-info-label"><span>기</span><span>간</span></div><span>:</span>
-                        <span class="doc-info-value" id="pPeriod"></span>
+                    <div class="doc-detail-row">
+                        <span class="doc-detail-label">기&emsp;&emsp;간 :&nbsp;</span>
+                        <span id="pPeriod"></span>
                     </div>
-                    <div class="doc-info-row">
-                        <div class="doc-info-label"><span>사</span><span>유</span></div><span>:</span>
-                        <span class="doc-info-value" id="pReason"></span>
+                    <div class="doc-detail-row">
+                        <span class="doc-detail-label">사&emsp;&emsp;유 :&nbsp;</span>
+                        <span id="pReason"></span>
                     </div>
                 </div>
 
-                <!-- 날짜 + 서명 -->
+                <!-- 빈 줄 -->
+                <div style="height: 6mm;"></div>
+
+                <!-- 작성일자 (우측) -->
                 <div class="doc-date" id="pDate"></div>
+
+                <!-- 빈 줄 -->
+                <div style="height: 4mm;"></div>
+
+                <!-- 서명란 (우측) -->
                 <div class="doc-sign-block">
                     <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>성</span><span>명</span></div><span>:</span>
-                        <div class="doc-sign-value" id="pSignNameStamp"></div>
+                        <div class="doc-sign-label"><span>성</span><span>명</span></div><span>&nbsp;:&nbsp;</span>
+                        <div class="doc-sign-value" id="pSignNameStamp">&emsp;&emsp;&emsp;&emsp;(印)</div>
                     </div>
                     <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>부</span><span>서</span><span>장</span></div><span>:</span>
+                        <div class="doc-sign-label"><span>부</span><span>서</span><span>장</span></div><span>&nbsp;:&nbsp;</span>
                         <div class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</div>
                     </div>
                     <div class="doc-sign-row">
-                        <div class="doc-sign-label"><span>담</span><span>당</span><span>임</span><span>원</span></div><span>:</span>
+                        <div class="doc-sign-label"><span>담</span><span>당</span><span>임</span><span>원</span></div><span>&nbsp;:&nbsp;</span>
                         <div class="doc-sign-value">&emsp;&emsp;&emsp;&emsp;(印)</div>
                     </div>
                 </div>
+
+                <!-- 빈 줄 -->
+                <div style="height: 4mm;"></div>
 
                 <!-- 결재란 -->
                 <div class="doc-approval-wrap">
@@ -193,7 +219,7 @@
                 </div>
 
                 <!-- 수신자 -->
-                <div class="doc-recipient">주식회사 케앤지&emsp;&emsp;&emsp;대표이사 귀하</div>
+                <div class="doc-recipient">주식회사 케앤지 대표이사 귀하</div>
 
                 <!-- 비고 -->
                 <div class="doc-remarks">
@@ -215,6 +241,6 @@
     <!-- ═══ Scripts ═══ -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="../../app.js"></script>
-    <script type="module" src="leave.js?v=3"></script>
+    <script type="module" src="leave.js?v=4"></script>
 </body>
 </html>

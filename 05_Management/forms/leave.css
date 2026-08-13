@@ -27,7 +27,9 @@
 }
 
 /* ====================================================
-   휴가원 인쇄용 (A4) 스타일
+   휴가원 인쇄용 (A4) 스타일 — 원본 워드 파일 기준 정밀 복원
+   폰트: 굴림체 (GulimChe, monospace)
+   기본 본문: 12pt Bold
    ==================================================== */
 .print-only {
     display: none;
@@ -35,7 +37,7 @@
 
 /* 인쇄 뷰 컨테이너 (화면에서 미리보기) */
 .print-preview-container {
-    background: #525659; /* PDF 뷰어 느낌의 배경 */
+    background: #525659;
     padding: 20px;
     display: none;
     justify-content: center;
@@ -46,11 +48,11 @@
 .print-page {
     background: white;
     width: 210mm;
-    height: 297mm; /* 고정 높이 적용으로 2페이지 방지 */
+    height: 297mm;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    padding: 15mm 18mm 10mm 18mm;
+    padding: 20mm 18mm 15mm 18mm;
     box-sizing: border-box;
-    font-family: 'Batang', '바탕', 'BatangChe', '바탕체', serif;
+    font-family: 'GulimChe', '굴림체', monospace;
     color: #000;
     position: relative;
     margin: 0 auto;
@@ -58,103 +60,121 @@
     flex-direction: column;
 }
 
-/* 인쇄용 양식 내부 레이아웃 */
+/* 인쇄용 양식 내부 레이아웃 — 원본은 테두리 없음 */
 .doc-border {
-    width: 210mm;
-    /* height: 297mm; */
-    border: 2px solid #000;
-    padding: 36mm 22mm 26mm 25mm; /* 상, 우, 하, 좌 여백 (실제 용지에 맞게 조절) */
+    width: 100%;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    font-family: 'Batang', '바탕', serif;
+    font-family: 'GulimChe', '굴림체', monospace;
     overflow: hidden;
+    flex: 1;
 }
 
-/* 제목 */
+/* ── 제목 ── */
 .doc-title {
     text-align: center;
-    font-size: 28pt;
-    font-weight: 600;
-    letter-spacing: 30px;
-    margin-top: 3mm;
-    margin-bottom: 8mm;
+    font-size: 24pt;
+    font-weight: bold;
     text-decoration: underline;
     text-underline-offset: 4px;
-    padding-left: 30px;
+    margin-top: 10mm;
+    margin-bottom: 12mm;
+    padding-left: 180pt;
+    /* 원본은 tab으로 분리, HTML에서 &emsp; 사용 */
 }
 
-/* 상단 인적사항 */
-.doc-info-block {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 13pt;
-    margin-bottom: 8mm;
+/* ── 상단 인적사항 (테이블 기반) ── */
+.doc-info-table {
+    border-collapse: collapse;
+    margin-left: 16pt;
+    font-size: 12pt;
+    font-weight: bold;
+    margin-bottom: 6mm;
 }
-.doc-info-row {
-    display: flex;
-    align-items: baseline;
+.doc-info-table td {
+    vertical-align: top;
+    padding: 0;
+    line-height: 14pt;
 }
-.doc-info-label {
-    display: flex;
-    justify-content: space-between;
-    width: 65px;
-    flex-shrink: 0;
-    white-space: nowrap;
+.doc-info-table tr {
+    height: 18pt;
 }
-.doc-info-value {
-    flex: 1;
-    white-space: nowrap;
+.doc-info-table tr.row-rank {
+    height: 24pt;
 }
+.doc-info-table tr.row-rank td {
+    padding-top: 4pt;
+}
+.doc-info-table tr.row-name td {
+    padding-top: 3pt;
+    line-height: 13pt;
+}
+.doc-info-table .col-label1 { width: 33pt; padding-left: 2pt; }
+.doc-info-table .col-label2 { width: 48pt; text-align: right; padding-right: 5pt; }
+.doc-info-table .col-value1 { width: 56pt; padding-left: 5pt; }
+.doc-info-table .col-value2 { width: 41pt; padding-left: 3pt; }
 
-/* 본문 문구 */
+/* ── 본문 문구 ── */
 .doc-statement {
     text-align: left;
     font-size: 12pt;
-    line-height: 2.0;
+    font-weight: bold;
+    line-height: 160%;
     margin-bottom: 2mm;
     word-break: keep-all;
-    text-indent: 2.5em;
+    padding-left: 24pt;
+    text-indent: 48pt;
 }
 
-/* 기간/사유 블록 */
+/* ── 기간/사유 블록 ── */
 .doc-detail-block {
     display: flex;
     flex-direction: column;
-    gap: 8px;
     font-size: 12pt;
+    font-weight: bold;
     margin-bottom: 8mm;
+    padding-left: 18pt;
+}
+.doc-detail-row {
+    display: flex;
+    align-items: baseline;
+}
+.doc-detail-row + .doc-detail-row {
+    padding-top: 9pt;
+}
+.doc-detail-label {
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-/* 작성일자 */
+/* ── 작성일자 ── */
 .doc-date {
     text-align: right;
     font-size: 12pt;
-    margin-bottom: 3mm;
-    padding-right: 30px;
-    letter-spacing: 2px;
+    font-weight: bold;
+    margin-bottom: 5mm;
 }
 
-/* 서명란 (우측) */
+/* ── 서명란 (우측) ── */
 .doc-sign-block {
     display: flex;
     flex-direction: column;
-    gap: 8px;
     font-size: 12pt;
+    font-weight: bold;
     align-items: flex-end;
-    margin-bottom: 3mm;
-    padding-right: 30px;
+    margin-bottom: 5mm;
 }
 .doc-sign-row {
     display: flex;
     justify-content: flex-start;
-    width: 260px;
+    width: 280px;
+    line-height: 2.2;
 }
 .doc-sign-label {
     display: flex;
     justify-content: space-between;
-    width: 65px;
+    width: 70px;
     flex-shrink: 0;
     white-space: nowrap;
 }
@@ -163,56 +183,73 @@
     text-align: right;
 }
 
-/* 결재선 (좌측 하단) */
+/* ── 결재선 (하단) ── */
 .doc-approval-wrap {
     display: flex;
     margin-bottom: 8px;
     width: 100%;
+    margin-left: 28pt;
 }
 .doc-approval-header {
-    width: 30px;
-    border: 1px solid #000;
-    border-right: none;
+    width: 22pt;
+    border: 2pt solid #000;
+    border-right: 1pt solid #000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     text-align: center;
-    font-size: 11pt;
+    font-size: 12pt;
+    font-weight: bold;
+    line-height: 118%;
+    padding: 2pt 5pt 2pt 5pt;
 }
 .doc-approval-table {
     border-collapse: collapse;
     text-align: center;
-    font-size: 11pt;
-    flex: 1;
+    font-size: 12pt;
+    font-weight: bold;
     table-layout: fixed;
 }
-.doc-approval-table th, .doc-approval-table td {
-    border: 1px solid #000;
-}
 .doc-approval-table th {
-    height: 25px;
-    font-weight: normal;
+    width: 44pt;
+    height: 18pt;
+    border: 1pt solid #000;
+    font-weight: bold;
+    padding-top: 1pt;
+    line-height: 15pt;
 }
 .doc-approval-table td {
-    height: 45px;
+    width: 44pt;
+    height: 43pt;
+    border: 1pt solid #000;
 }
+/* 외곽 테두리 2pt */
+.doc-approval-table th:first-child { border-left: none; }
+.doc-approval-table td:first-child { border-left: none; }
+.doc-approval-table th:last-child { border-right: 2pt solid #000; }
+.doc-approval-table td:last-child { border-right: 2pt solid #000; }
+.doc-approval-table thead tr th { border-top: 2pt solid #000; }
+.doc-approval-table tbody tr:last-child td { border-bottom: 2pt solid #000; }
 
-/* 수신자 */
+/* ── 수신자 ── */
 .doc-recipient {
-    font-size: 14pt;
+    font-size: 12pt;
+    font-weight: bold;
     margin-bottom: 8px;
-    letter-spacing: 1px;
+    padding-left: 26pt;
+    padding-top: 3pt;
 }
 
-/* 하단 비고 */
+/* ── 하단 비고 ── */
 .doc-remarks {
     border: 1px solid #000;
     padding: 8px 12px;
-    font-size: 8.5pt;
+    font-size: 10pt;
+    font-weight: normal;
     line-height: 1.5;
-    margin-top: auto; /* 박스 바닥에 붙이기 */
+    margin-top: auto;
 }
 .doc-remarks-grid {
     display: flex;
@@ -222,11 +259,13 @@
     flex-shrink: 0;
 }
 
-/* 문서 번호 */
+/* ── 문서 번호 ── */
 .doc-id {
-    font-size: 11pt;
-    margin-top: 2mm;
-    font-family: 'Batang', '바탕', serif;
+    font-size: 13pt;
+    font-family: 'Century', serif;
+    font-weight: normal;
+    margin-top: 6pt;
+    padding-left: 5pt;
 }
 
 
@@ -236,7 +275,7 @@
 @media print {
     @page {
         size: A4;
-        margin: 0; /* 브라우저 기본 여백 제거 */
+        margin: 0;
     }
     
     body * {
@@ -258,12 +297,11 @@
         left: 0;
         top: 0;
         width: 210mm;
-        /* height: 297mm; */ 
         background: #fff;
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        font-family: 'Batang', '바탕', serif;
+        font-family: 'GulimChe', '굴림체', monospace;
     }
     
     /* 인쇄 미리보기 컨테이너 배경 제거 */
@@ -278,7 +316,7 @@
     .print-page {
         box-shadow: none;
         margin: 0;
-        padding: 15mm 18mm 10mm 18mm;
+        padding: 20mm 18mm 15mm 18mm;
         width: 210mm;
         height: 297mm;
         page-break-after: always;
