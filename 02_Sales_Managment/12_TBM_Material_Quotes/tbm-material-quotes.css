@@ -356,3 +356,118 @@ body.modal-open .main-content {
 /* Global Utility Classes */
 .print-only { display: none !important; }
 
+/* Premium Spreadsheet Table Styles */
+.quote-matrix-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+.quote-matrix-table th {
+    background: #f8fafc;
+    color: var(--gray-600);
+    font-size: 13px;
+    font-weight: 700;
+    border-bottom: 2px solid var(--gray-200);
+    padding: 12px 16px;
+    position: relative;
+}
+.quote-matrix-table td {
+    padding: 0;
+    border-bottom: 1px solid var(--gray-200);
+    border-right: 1px solid var(--gray-100);
+    position: relative;
+    background: #fff;
+    transition: background 0.2s;
+}
+.quote-matrix-table td:last-child {
+    border-right: none;
+}
+.quote-matrix-table tbody tr:hover td {
+    background: #f8fafc;
+}
+.quote-matrix-table .readonly-cell {
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--gray-700);
+}
+.quote-matrix-table .supplier-th {
+    border-right: 1px solid var(--gray-200);
+}
+.quote-matrix-table .supplier-th:last-child {
+    border-right: none;
+}
+
+/* Spreadsheet Input Styles */
+.matrix-input-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.matrix-input-group input {
+    width: 100%;
+    border: 2px solid transparent;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: 'Inter', monospace;
+    text-align: right;
+    background: transparent;
+    transition: all 0.15s ease;
+    outline: none;
+    color: var(--gray-900);
+}
+.matrix-input-group input:hover {
+    background: rgba(0,0,0,0.02);
+}
+.matrix-input-group input:focus {
+    background: #fff;
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+    z-index: 10;
+}
+.matrix-input-group .preview-krw {
+    font-size: 11px;
+    color: var(--gray-500);
+    text-align: right;
+    padding: 0 16px 8px 16px;
+    pointer-events: none;
+}
+
+/* Supplier Header Controls */
+.supplier-header-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+.supplier-header-controls select, .supplier-header-controls input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 12px;
+    background: #fff;
+    color: var(--gray-700);
+    outline: none;
+    transition: border-color 0.2s;
+}
+.supplier-header-controls select:focus, .supplier-header-controls input:focus {
+    border-color: var(--primary);
+}
+.supplier-header-controls .flex-row {
+    display: flex;
+    gap: 4px;
+}
+
+/* Lowest Price Highlight */
+.matrix-cell-lowest {
+    background: rgba(16, 185, 129, 0.05) !important;
+}
+.matrix-cell-lowest input {
+    color: var(--green-700);
+    font-weight: 800;
+}
+.matrix-cell-lowest .preview-krw {
+    color: var(--green-600);
+    font-weight: 600;
+}

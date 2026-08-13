@@ -190,25 +190,26 @@ function renderTable() {
         }
 
         th.innerHTML = `
-            <div class="web-only">
+            <div class="web-only" style="padding-bottom: 8px;">
                 <div style="display:flex; justify-content: space-between; align-items:flex-start;">
-                    <i class='bx bx-x' style="cursor:pointer; color: #ef4444; margin-top: 2px;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
-                    <div style="text-align:right;">
-                        <span>${escapeHtml(supp.name)}</span>
-                        ${supp.currency !== 'KRW' ? `<div style="font-size: 10px; color: var(--gray-500); font-weight: normal; margin-top: 2px;">(${supp.currency}, ${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})</div>` : ''}
+                    <div style="font-size: 14px; font-weight: 800; color: var(--gray-800);">${escapeHtml(supp.name)}</div>
+                    <i class='bx bx-x' style="cursor:pointer; color: var(--gray-400); font-size: 18px; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--gray-400)'" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
+                </div>
+                ${supp.currency !== 'KRW' ? `<div style="font-size: 11px; color: var(--gray-500); font-weight: 500; margin-top: 2px;">${supp.currency} &middot; ${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>` : ''}
+                
+                <div class="supplier-header-controls">
+                    <div class="flex-row">
+                        <select onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
+                            <option value="KRW" ${supp.currency === 'KRW' ? 'selected' : ''}>KRW</option>
+                            <option value="USD" ${supp.currency === 'USD' ? 'selected' : ''}>USD</option>
+                            <option value="EUR" ${supp.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+                            <option value="CNY" ${supp.currency === 'CNY' ? 'selected' : ''}>CNY</option>
+                            <option value="JPY" ${supp.currency === 'JPY' ? 'selected' : ''}>JPY</option>
+                        </select>
+                        <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
                     </div>
+                    ${incotermsHtml}
                 </div>
-                <div style="margin-top: 8px; display:flex; gap: 4px;">
-                    <select style="flex:1; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; outline:none;" onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
-                        <option value="KRW" ${supp.currency === 'KRW' ? 'selected' : ''}>KRW</option>
-                        <option value="USD" ${supp.currency === 'USD' ? 'selected' : ''}>USD</option>
-                        <option value="EUR" ${supp.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-                        <option value="CNY" ${supp.currency === 'CNY' ? 'selected' : ''}>CNY</option>
-                        <option value="JPY" ${supp.currency === 'JPY' ? 'selected' : ''}>JPY</option>
-                    </select>
-                    <input type="number" step="0.01" placeholder="환율" value="${supp.rate || 1}" ${supp.currency === 'KRW' ? 'disabled' : ''} style="flex:1.2; width:50px; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:right;" onchange="updateSupplierRate('${escapeHtml(supp.name)}', this.value)">
-                </div>
-                ${incotermsHtml}
             </div>
             <div class="print-only">
                 <div style="font-weight: 800; font-size: 13px; color: #000; text-align: center;">${escapeHtml(supp.name)}</div>
@@ -237,18 +238,25 @@ function renderTable() {
         tr.setAttribute('data-index', index);
         
         let html = `
-            <td class="sticky-col" style="left: 0; z-index: 5; text-align: center;">${index + 1}</td>
-            <td class="sticky-col" style="left: 60px; z-index: 5; font-weight:600; word-break: break-all; max-width: 120px;">${escapeHtml(item.identifier)}</td>
-            <td class="sticky-col" style="left: 200px; z-index: 5;">${escapeHtml(item.name)}</td>
-            <td class="sticky-col" style="left: 380px; z-index: 5;">${escapeHtml(item.specification)}</td>
-            <td class="sticky-col" style="left: 530px; z-index: 5;">
+            <td class="sticky-col readonly-cell" style="left: 0; z-index: 5; text-align: center;">${index + 1}</td>
+            <td class="sticky-col readonly-cell" style="left: 60px; z-index: 5; font-weight:600; word-break: break-all; max-width: 120px;">${escapeHtml(item.identifier)}</td>
+            <td class="sticky-col readonly-cell" style="left: 200px; z-index: 5;">${escapeHtml(item.name)}</td>
+            <td class="sticky-col readonly-cell" style="left: 380px; z-index: 5;">${escapeHtml(item.specification)}</td>
+            <td class="sticky-col readonly-cell" style="left: 530px; z-index: 5;">
                 <span class="site-tag" style="display:inline-block; padding:2px 6px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; font-size:11px;">
                     ${escapeHtml(item.sites)}
                 </span>
             </td>
-            <td class="sticky-col" style="left: 650px; z-index: 5; text-align: right; font-weight: 600;">${item.totalQuantity}</td>
-            <td class="sticky-col" style="left: 740px; z-index: 5; text-align: center; border-right: 2px solid var(--gray-300);">${escapeHtml(item.unit)}</td>
+            <td class="sticky-col readonly-cell" style="left: 650px; z-index: 5; text-align: right; font-weight: 600;">${item.totalQuantity}</td>
+            <td class="sticky-col readonly-cell" style="left: 740px; z-index: 5; text-align: center; border-right: 2px solid var(--gray-200);">${escapeHtml(item.unit)}</td>
         `;
+
+        let pricesArr = [];
+        suppliers.forEach(supp => {
+            const p = parseFloat(item.prices[supp.name]) || 0;
+            if(p > 0) pricesArr.push(p * supp.rate);
+        });
+        const minKrw = pricesArr.length > 0 ? Math.min(...pricesArr) : 0;
 
         suppliers.forEach(supp => {
             const suppName = supp.name;
@@ -258,9 +266,15 @@ function renderTable() {
             // Unformat first in case there are old commas
             const numericPrice = Number(String(price).replace(/,/g, ''));
             
-            if (numericPrice && supp.currency !== 'KRW') {
-                const krwPrice = Math.round(numericPrice * supp.rate);
-                krwText = '₩' + krwPrice.toLocaleString();
+            let isMin = false;
+            if (numericPrice) {
+                const krwPrice = numericPrice * supp.rate;
+                if (supp.currency !== 'KRW') {
+                    krwText = '₩' + Math.round(krwPrice).toLocaleString();
+                }
+                if (krwPrice > 0 && Math.abs(krwPrice - minKrw) < 0.01) {
+                    isMin = true;
+                }
             }
 
             // Format for display
@@ -272,12 +286,11 @@ function renderTable() {
             }
 
             html += `
-                <td class="supplier-col" data-currency="${supp.currency}" style="padding: 4px 8px;">
-                    <div class="web-only">
+                <td class="supplier-col ${isMin ? 'matrix-cell-lowest' : ''}" data-currency="${supp.currency}">
+                    <div class="web-only matrix-input-group">
                         <input type="text" data-supplier="${escapeHtml(suppName)}" value="${displayPrice}" 
-                               style="width:100%; padding:6px; text-align:right; border:1px solid var(--gray-300); border-radius:4px; font-size:13px;"
-                               placeholder="0" oninput="handlePriceInput(this, '${escapeHtml(suppName)}')">
-                        <div class="krw-preview" style="font-size: 11px; color: #64748b; text-align: right; min-height: 16px; margin-top: 2px;">
+                               placeholder="" oninput="handlePriceInput(this, '${escapeHtml(suppName)}')">
+                        <div class="krw-preview preview-krw">
                             ${krwText}
                         </div>
                     </div>
@@ -363,6 +376,41 @@ function handlePriceInput(inputEl, supplierName) {
                 <div style="font-size: 10px; color: #64748b; text-align: right; margin-top: 2px;">${inputEl.value ? supp.currency + ' ' + inputEl.value : ''}</div>
             `;
         }
+    }
+    
+    // 4. Highlight lowest price row
+    highlightLowestPriceRow(tr);
+}
+
+function highlightLowestPriceRow(tr) {
+    const itemIndex = parseInt(tr.getAttribute('data-index'));
+    if (isNaN(itemIndex)) return;
+    
+    const item = items[itemIndex];
+    let pricesArr = [];
+    suppliers.forEach(supp => {
+        const p = parseFloat(item.prices[supp.name]) || 0;
+        if(p > 0) pricesArr.push(p * supp.rate);
+    });
+    
+    const minKrw = pricesArr.length > 0 ? Math.min(...pricesArr) : 0;
+    
+    // Reset all highlights in this row first
+    const tds = tr.querySelectorAll('.supplier-col');
+    tds.forEach(td => td.classList.remove('matrix-cell-lowest'));
+    
+    if (minKrw > 0) {
+        suppliers.forEach((supp, idx) => {
+            const p = parseFloat(item.prices[supp.name]) || 0;
+            if (p > 0) {
+                const krwPrice = p * supp.rate;
+                if (Math.abs(krwPrice - minKrw) < 0.01) {
+                    if (tds[idx]) {
+                        tds[idx].classList.add('matrix-cell-lowest');
+                    }
+                }
+            }
+        });
     }
 }
 
