@@ -1176,7 +1176,9 @@ function renderForwarderContent() {
         
         if (!hasItems) {
             let colSpan = 6 + state.doc.incoterms.length + 1;
-            html += `<tr><td colspan="${colSpan}" style="text-align:center; color:var(--text-tertiary); padding: 15px;">추가된 항목이 없습니다.</td></tr>`;
+            html += `<tr ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, -1, '${g.id}')">
+                <td colspan="${colSpan}" style="text-align:center; color:var(--text-tertiary); padding: 15px; border: 2px dashed #e2e8f0;">이곳으로 항목을 드래그하여 추가하세요.</td>
+            </tr>`;
         }
         
         html += `
@@ -1234,7 +1236,7 @@ window.handleDragLeave = function(e) {
     }
 };
 
-window.handleDrop = function(e, toIdx) {
+window.handleDrop = function(e, toIdx, targetGroupId = null) {
     e.preventDefault();
     const tr = e.target.closest('tr');
     if (tr) tr.classList.remove('drag-over');
@@ -1243,8 +1245,26 @@ window.handleDrop = function(e, toIdx) {
     if (isNaN(fromIdx) || fromIdx === toIdx) return;
     
     const fw = state.doc.forwarders[state.activeForwarderIdx];
+    
+    if (toIdx !== -1 && fw.costs[toIdx]) {
+        targetGroupId = fw.costs[toIdx].group;
+    }
+    
     const movedItem = fw.costs.splice(fromIdx, 1)[0];
-    fw.costs.splice(toIdx, 0, movedItem);
+    
+    if (targetGroupId) {
+        movedItem.group = targetGroupId;
+    }
+    
+    if (toIdx === -1) {
+        fw.costs.push(movedItem);
+    } else {
+        let newIdx = toIdx;
+        if (fromIdx < toIdx) {
+            newIdx--;
+        }
+        fw.costs.splice(newIdx, 0, movedItem);
+    }
     
     renderForwarderContent();
 };
