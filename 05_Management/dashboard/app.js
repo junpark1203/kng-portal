@@ -523,7 +523,7 @@ async function loadCalendarEvents() {
             else if (eventDateStr === tomorrowStr) extra = 'tomorrow-event';
 
             return `
-                <div class="event-item ${extra}">
+                <div class="event-item ${extra}" style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''" onclick="if('${ev.htmlLink}') window.open('${ev.htmlLink}', '_blank')">
                     <span class="event-dot"></span>
                     <span class="event-date">${dateStr}</span>
                     <span class="event-title">${ev.summary}</span>
