@@ -191,9 +191,12 @@ function renderTable() {
 
         th.innerHTML = `
             <div class="web-only">
-                <div style="display:flex; justify-content: space-between; align-items:center;">
-                    <i class='bx bx-x' style="cursor:pointer; color: #ef4444;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
-                    <span>${escapeHtml(supp.name)}</span>
+                <div style="display:flex; justify-content: space-between; align-items:flex-start;">
+                    <i class='bx bx-x' style="cursor:pointer; color: #ef4444; margin-top: 2px;" onclick="removeSupplierColumn('${escapeHtml(supp.name)}')"></i>
+                    <div style="text-align:right;">
+                        <span>${escapeHtml(supp.name)}</span>
+                        ${supp.currency !== 'KRW' ? `<div style="font-size: 10px; color: var(--gray-500); font-weight: normal; margin-top: 2px;">(${supp.currency}, ${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})</div>` : ''}
+                    </div>
                 </div>
                 <div style="margin-top: 8px; display:flex; gap: 4px;">
                     <select style="flex:1; padding:2px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; outline:none;" onchange="updateSupplierCurrency('${escapeHtml(supp.name)}', this.value)">
@@ -235,7 +238,7 @@ function renderTable() {
         
         let html = `
             <td class="sticky-col" style="left: 0; z-index: 5; text-align: center;">${index + 1}</td>
-            <td class="sticky-col" style="left: 60px; z-index: 5; font-weight:600;">${escapeHtml(item.identifier)}</td>
+            <td class="sticky-col" style="left: 60px; z-index: 5; font-weight:600; word-break: break-all; max-width: 120px;">${escapeHtml(item.identifier)}</td>
             <td class="sticky-col" style="left: 200px; z-index: 5;">${escapeHtml(item.name)}</td>
             <td class="sticky-col" style="left: 380px; z-index: 5;">${escapeHtml(item.specification)}</td>
             <td class="sticky-col" style="left: 530px; z-index: 5;">
@@ -512,7 +515,8 @@ function prepareAndPrint() {
     html += `<th style="padding: 8px 4px; text-align: center; border-right: 1px solid #cbd5e1;">단위</th>`;
     
     suppliers.forEach(supp => {
-        html += `<th style="padding: 8px 4px; text-align: right;">${escapeHtml(supp.name)}<br><span style="font-size:9px; color:#64748b; font-weight:normal;">(${supp.currency})</span></th>`;
+        let rateStr = supp.currency === 'KRW' ? '' : `, ${supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''))}1=₩${supp.rate.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        html += `<th style="padding: 8px 4px; text-align: right;">${escapeHtml(supp.name)}<br><span style="font-size:9px; color:#64748b; font-weight:normal;">(${supp.currency}${rateStr})</span></th>`;
     });
     html += `</tr></thead><tbody>`;
     
@@ -532,7 +536,7 @@ function prepareAndPrint() {
             
             html += `<tr style="border-bottom: 1px solid #e2e8f0;">`;
             html += `<td style="padding: 6px 4px; text-align: center; color: #64748b;">${index + 1}</td>`;
-            html += `<td style="padding: 6px 4px;">${escapeHtml(item.identifier || '-')}</td>`;
+            html += `<td style="padding: 6px 4px; word-break: break-all;">${escapeHtml(item.identifier || '-')}</td>`;
             html += `<td style="padding: 6px 4px; font-weight: 600;">${escapeHtml(item.name || '-')}</td>`;
             html += `<td style="padding: 6px 4px;">${escapeHtml(item.specification || '-')}</td>`;
             html += `<td style="padding: 6px 4px;">${escapeHtml(item.sites || '-')}</td>`;
@@ -544,17 +548,25 @@ function prepareAndPrint() {
                 let isMin = (p > 0 && Math.abs(p * supp.rate - minPriceKrw) < 0.01);
                 
                 let cellStyle = "padding: 6px 4px; text-align: right;";
-                let formattedPrice = p > 0 ? p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2}) : '-';
                 
                 if (isMin) {
-                    cellStyle += " background-color: rgba(16, 185, 129, 0.1); font-weight: 800; color: #047857;";
-                } else if (p > 0) {
-                    cellStyle += " font-weight: 600; color: #0f172a;";
-                } else {
-                    cellStyle += " color: #cbd5e1;";
+                    cellStyle += " background-color: rgba(16, 185, 129, 0.1);";
                 }
                 
-                html += `<td style="${cellStyle}">${formattedPrice}</td>`;
+                if (p > 0) {
+                    let krwValue = p * supp.rate;
+                    let krwStr = '₩' + krwValue.toLocaleString('en-US', {maximumFractionDigits: 0});
+                    
+                    let currSymbol = supp.currency === 'USD' ? '$' : (supp.currency === 'EUR' ? '€' : (supp.currency === 'CNY' ? '¥' : ''));
+                    let foreignStr = supp.currency === 'KRW' ? '' : `<br><span style="font-size: 9px; color: #64748b; font-weight: normal;">${currSymbol}${p.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}</span>`;
+                    
+                    let mainColor = isMin ? '#047857' : '#0f172a';
+                    let mainWeight = isMin ? '800' : '600';
+                    
+                    html += `<td style="${cellStyle}"><div style="font-weight: ${mainWeight}; color: ${mainColor};">${krwStr}</div>${foreignStr}</td>`;
+                } else {
+                    html += `<td style="${cellStyle} color: #cbd5e1;">-</td>`;
+                }
             });
             html += `</tr>`;
         });
