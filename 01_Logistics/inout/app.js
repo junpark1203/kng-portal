@@ -241,7 +241,7 @@ const app = {
             const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             return `
-            <tr>
+            <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openHistoryModal(${r.id}, '${r.type}')">
                 <td>${badge}</td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
@@ -251,7 +251,7 @@ const app = {
                 <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="${delFn}"><i class='bx bx-trash'></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}"><i class='bx bx-trash'></i></button>
                 </td>
             </tr>
             `;
@@ -920,6 +920,280 @@ const app = {
                 alert('출고 실패: ' + err.message);
             }
         }
+    },
+    
+    // ==========================================
+    // History Modal & Print Logic
+    // ==========================================
+    openHistoryModal: async function(id, type) {
+        try {
+            const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
+            this.currentHistoryDetail = data;
+            
+            $('detailModalTitle').innerText = type === 'inbound' ? '입고 상세 내역' : '출고 상세 내역';
+            
+            let html = `<table class="table table-bordered mb-0" style="font-size:0.9rem;">
+                <tbody>
+                    <tr>
+                        <th class="bg-light w-25">구분</th>
+                        <td>${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</td>
+                        <th class="bg-light w-25">일자</th>
+                        <td>${data.date}</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">${type === 'inbound' ? '매입처' : '도착지'}</th>
+                        <td>${type === 'inbound' ? data.supplier : data.destination}</td>
+                        <th class="bg-light">품명/규격</th>
+                        <td><strong>${data.item}</strong> / ${data.spec}</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">수량/단위</th>
+                        <td>${data.qty} ${data.unit}</td>
+                        <th class="bg-light">단가/총액</th>
+                        <td>${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()} 
+                            (총액: ${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()})</td>
+                    </tr>`;
+            
+            if (type === 'inbound') {
+                html += `
+                    <tr>
+                        <th class="bg-light">창고 위치</th>
+                        <td colspan="3">${data.location_name || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th class="bg-light">비고</th>
+                        <td colspan="3">${data.note || '-'}</td>
+                    </tr>`;
+                
+                $('printOptInboundWrapper').style.display = 'inline-block';
+                $('printOptInbound').checked = true;
+                $('printOptOutboundWrapper').style.display = 'none';
+                $('printOptTransWrapper').style.display = 'none';
+            } else {
+                let lotsHtml = '';
+                if (data.consumed_lots && data.consumed_lots.length > 0) {
+                    lotsHtml = data.consumed_lots.map(l => 
+                        `<li>${l.inbound_date} 입고 (${l.supplier}) [${l.location_name}] - ${l.consumed_qty}개 차감</li>`
+                    ).join('');
+                }
+                html += `
+                    <tr>
+                        <th class="bg-light">배송비</th>
+                        <td>${data.shipping_fee.toLocaleString()}</td>
+                        <th class="bg-light">차감 창고내역</th>
+                        <td><ul class="mb-0 ps-3" style="font-size:0.8rem;">${lotsHtml}</ul></td>
+                    </tr>`;
+                    
+                $('printOptInboundWrapper').style.display = 'none';
+                $('printOptOutboundWrapper').style.display = 'inline-block';
+                $('printOptTransWrapper').style.display = 'inline-block';
+                $('printOptTrans').checked = true;
+            }
+            
+            html += `</tbody></table>`;
+            $('detailModalContent').innerHTML = html;
+            
+            new bootstrap.Modal(document.getElementById('historyDetailModal')).show();
+            
+        } catch (err) {
+            alert('상세 내역을 불러오는데 실패했습니다: ' + err.message);
+        }
+    },
+    
+    openCompanyPresetModal: function() {
+        const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
+        $('preset_bizNo').value = preset.bizNo || '845-88-00551';
+        $('preset_bizName').value = preset.bizName || '주식회사 케앤지';
+        $('preset_ceo').value = preset.ceo || '윤종';
+        $('preset_address').value = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
+        $('preset_bizType').value = preset.bizType || '도소매/임대업';
+        $('preset_bizItem').value = preset.bizItem || '건설자재, 용품외';
+        
+        new bootstrap.Modal(document.getElementById('companyPresetModal')).show();
+    },
+    
+    saveCompanyPreset: function() {
+        const preset = {
+            bizNo: $('preset_bizNo').value,
+            bizName: $('preset_bizName').value,
+            ceo: $('preset_ceo').value,
+            address: $('preset_address').value,
+            bizType: $('preset_bizType').value,
+            bizItem: $('preset_bizItem').value
+        };
+        localStorage.setItem('kng_company_preset', JSON.stringify(preset));
+        bootstrap.Modal.getInstance(document.getElementById('companyPresetModal')).hide();
+        alert('기본값이 저장되었습니다.');
+    },
+    
+    printHistoryDetail: function() {
+        if (!this.currentHistoryDetail) return;
+        
+        const data = this.currentHistoryDetail;
+        const printType = document.querySelector('input[name="printType"]:checked').value;
+        const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
+        
+        // Defaults if preset not set
+        const bizNo = preset.bizNo || '845-88-00551';
+        const bizName = preset.bizName || '주식회사 케앤지';
+        const ceo = preset.ceo || '윤종';
+        const address = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
+        const bizType = preset.bizType || '도소매/임대업';
+        const bizItem = preset.bizItem || '건설자재, 용품외';
+        
+        let printWindow = window.open('', '_blank');
+        let htmlContent = `
+            <html>
+            <head>
+                <title>인쇄</title>
+                <style>
+                    body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color:#333; }
+                    .header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                    .info-table, .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+                    .info-table th, .info-table td, .data-table th, .data-table td { border: 1px solid #ccc; padding: 8px; }
+                    .info-table th, .data-table th { background-color: #f1f5f9; text-align: left; }
+                    .text-right { text-align: right !important; }
+                    .text-center { text-align: center !important; }
+                </style>
+            </head>
+            <body>`;
+            
+        if (printType === 'transaction_statement') {
+            const price = data.selling_price;
+            const amount = price * data.qty;
+            const vat = Math.floor(amount * 0.1);
+            const total = amount + vat;
+            
+            htmlContent += `
+                <div class="header">거 래 명 세 서</div>
+                
+                <table class="info-table" style="width: 50%; float: right; margin-bottom:20px;">
+                    <tr><th rowspan="4" style="width:30px; text-align:center;">공<br>급<br>자</th><th>등록번호</th><td colspan="3">${bizNo}</td></tr>
+                    <tr><th>상호</th><td>${bizName}</td><th>성명</th><td>${ceo}</td></tr>
+                    <tr><th>주소</th><td colspan="3">${address}</td></tr>
+                    <tr><th>업태</th><td>${bizType}</td><th>종목</th><td>${bizItem}</td></tr>
+                </table>
+                <div style="clear:both;"></div>
+                
+                <table class="info-table">
+                    <tr>
+                        <th style="width: 15%;">거래일자</th>
+                        <td>${data.date}</td>
+                        <th style="width: 15%;">공급받는자</th>
+                        <td>${data.destination} 귀하</td>
+                    </tr>
+                </table>
+                
+                <table class="data-table">
+                    <tr>
+                        <th>품명</th>
+                        <th>규격</th>
+                        <th>단위</th>
+                        <th>수량</th>
+                        <th>단가</th>
+                        <th>공급가액</th>
+                        <th>세액(VAT)</th>
+                        <th>합계금액</th>
+                    </tr>
+                    <tr>
+                        <td>${data.item}</td>
+                        <td>${data.spec}</td>
+                        <td>${data.unit}</td>
+                        <td class="text-right">${data.qty}</td>
+                        <td class="text-right">${price.toLocaleString()}</td>
+                        <td class="text-right">${amount.toLocaleString()}</td>
+                        <td class="text-right">${vat.toLocaleString()}</td>
+                        <td class="text-right">${total.toLocaleString()}</td>
+                    </tr>
+                </table>
+            `;
+        } else if (printType === 'inbound_receipt') {
+            const amount = data.qty * data.unit_price;
+            htmlContent += `
+                <div class="header">입 고 내 역 서</div>
+                <table class="info-table">
+                    <tr>
+                        <th style="width: 15%;">입고일자</th>
+                        <td style="width: 35%;">${data.date}</td>
+                        <th style="width: 15%;">매입처</th>
+                        <td style="width: 35%;">${data.supplier}</td>
+                    </tr>
+                    <tr>
+                        <th>입고창고</th>
+                        <td colspan="3">${data.location_name || '-'}</td>
+                    </tr>
+                </table>
+                <table class="data-table">
+                    <tr>
+                        <th>품명</th>
+                        <th>규격</th>
+                        <th>단위</th>
+                        <th>수량</th>
+                        <th>단가</th>
+                        <th>합계금액</th>
+                        <th>비고</th>
+                    </tr>
+                    <tr>
+                        <td>${data.item}</td>
+                        <td>${data.spec}</td>
+                        <td>${data.unit}</td>
+                        <td class="text-right">${data.qty}</td>
+                        <td class="text-right">${data.unit_price.toLocaleString()}</td>
+                        <td class="text-right">${amount.toLocaleString()}</td>
+                        <td>${data.note || ''}</td>
+                    </tr>
+                </table>
+            `;
+        } else if (printType === 'outbound_receipt') {
+            let lotsInfo = (data.consumed_lots || []).map(l => `${l.location_name}`).join(', ');
+            htmlContent += `
+                <div class="header">출 고 내 역 서</div>
+                <table class="info-table">
+                    <tr>
+                        <th style="width: 15%;">출고일자</th>
+                        <td style="width: 35%;">${data.date}</td>
+                        <th style="width: 15%;">도착지/수령자</th>
+                        <td style="width: 35%;">${data.destination}</td>
+                    </tr>
+                    <tr>
+                        <th>출고창고</th>
+                        <td colspan="3">${lotsInfo}</td>
+                    </tr>
+                </table>
+                <table class="data-table">
+                    <tr>
+                        <th>품명</th>
+                        <th>규격</th>
+                        <th>단위</th>
+                        <th>수량</th>
+                        <th>배송비</th>
+                        <th>담당자 확인</th>
+                    </tr>
+                    <tr>
+                        <td>${data.item}</td>
+                        <td>${data.spec}</td>
+                        <td>${data.unit}</td>
+                        <td class="text-right">${data.qty}</td>
+                        <td class="text-right">${data.shipping_fee.toLocaleString()}</td>
+                        <td></td>
+                    </tr>
+                </table>
+                <div style="margin-top: 50px; text-align: right;">
+                    인수자 서명 : _____________________ (인)
+                </div>
+            `;
+        }
+        
+        htmlContent += `
+            <script>
+                window.onload = function() { window.print(); window.close(); }
+            </script>
+            </body>
+            </html>
+        `;
+        
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
     }
 };
 

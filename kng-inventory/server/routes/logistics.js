@@ -53,10 +53,14 @@ function initLogisticsTables(database) {
                 )
             `, (err) => {
                 if (!err) {
-                    // 테이블이 이미 존재할 수 있으므로 note 컬럼 추가 시도
-                    database.run("ALTER TABLE logistics_inbound ADD COLUMN note TEXT", (err2) => {
-                        // 중복 컬럼 에러는 무시
-                    });
+                    // 테이블이 이미 존재할 수 있으므로 컬럼 추가 시도 (에러 무시)
+                    const addColsInbound = [
+                        "ALTER TABLE logistics_inbound ADD COLUMN note TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
+                        "ALTER TABLE logistics_inbound ADD COLUMN tax_invoice_date TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0"
+                    ];
+                    addColsInbound.forEach(sql => database.run(sql, () => {}));
                 }
             });
 
@@ -73,8 +77,16 @@ function initLogisticsTables(database) {
                     selling_price REAL NOT NULL,
                     shipping_fee REAL NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            `);
+            `, (err) => {
+                if (!err) {
+                    const addColsOutbound = [
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
+                        "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0"
+                    ];
+                    addColsOutbound.forEach(sql => database.run(sql, () => {}));
+                }
+            });
 
             // 4. 출고-입고 맵핑 테이블 (어떤 출고가 어떤 입고 Lot들을 얼마나 차감했는지)
             database.run(`
@@ -370,12 +382,14 @@ router.get('/history', (req, res) => {
         WITH combined AS (
             SELECT 
                 'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
-                i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at
+                i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at,
+                i.settlement_status, i.tax_invoice_date, i.is_zero_tax
             FROM logistics_inbound i
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
-                o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at
+                o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at,
+                o.settlement_status, o.tax_invoice_date, o.is_zero_tax
             FROM logistics_outbound o
         )
         SELECT * FROM combined
@@ -402,6 +416,70 @@ router.get('/history', (req, res) => {
                 limit
             });
         });
+    });
+});
+
+// --- 상세 내역 조회 (모달용) ---
+router.get('/history/inbound/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = `
+        SELECT i.*, l.name as location_name
+        FROM logistics_inbound i
+        LEFT JOIN logistics_locations l ON i.location_id = l.id
+        WHERE i.id = ?
+    `;
+    db.get(sql, [id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Record not found' });
+        row.type = 'inbound';
+        res.json(row);
+    });
+});
+
+router.get('/history/outbound/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = `SELECT * FROM logistics_outbound WHERE id = ?`;
+    db.get(sql, [id], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Record not found' });
+        
+        row.type = 'outbound';
+        // 연관된 입고(inbound) 내역과 창고 조회
+        const lotsSql = `
+            SELECT l.consumed_qty, i.supplier, i.date as inbound_date, loc.name as location_name, i.unit_price
+            FROM logistics_outbound_lots l
+            JOIN logistics_inbound i ON l.inbound_id = i.id
+            LEFT JOIN logistics_locations loc ON i.location_id = loc.id
+            WHERE l.outbound_id = ?
+        `;
+        db.all(lotsSql, [id], (err2, lots) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            row.consumed_lots = lots;
+            res.json(row);
+        });
+    });
+});
+
+// --- 정산 상태 업데이트 ---
+router.post('/settlement/:type', (req, res) => {
+    const type = req.params.type;
+    const { ids, tax_invoice_date, is_zero_tax } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'IDs are required' });
+    }
+    
+    const table = type === 'inbound' ? 'logistics_inbound' : (type === 'outbound' ? 'logistics_outbound' : null);
+    if (!table) return res.status(400).json({ error: 'Invalid type' });
+
+    const status = tax_invoice_date ? '정산완료' : '미정산';
+    
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
+    
+    db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Settlement updated', updatedCount: this.changes });
     });
 });
 
