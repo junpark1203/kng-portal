@@ -1442,7 +1442,18 @@ function calculateAll() {
                             detailRows += `
                                 <tr class="detail-row-${g.key}" style="display:${isExpanded ? 'table-row' : 'none'}; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
                                     <td style="padding:6px 12px; text-align:center; color:#94a3b8;">${grpNo}-${itemIdx}</td>
-                                    <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${sItem.name || '-'}</td>
+                                    <td style="padding:6px 12px 6px 12px;">
+                                        <div style="display:flex; align-items:center;">
+                                            <i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>
+                                            <span style="font-weight:500;">${sItem.name || '-'}</span>
+                                        </div>
+                                        <div style="margin-left:18px; margin-top:6px; font-size:0.75rem; color:#64748b; display:flex; flex-wrap:wrap; gap:12px;">
+                                            <span><strong>수량:</strong> ${sItem.qty || 0} ${sItem.unit || ''}</span>
+                                            <span><strong>단가:</strong> ${qCurr} ${formatNum(p.unitPrice, 2)}</span>
+                                            <span><strong>총액(외화):</strong> ${qCurr} ${formatNum(foreignAmt, 2)}</span>
+                                            <span><strong>관세율:</strong> ${sItem.dutyRate || 0}%</span>
+                                        </div>
+                                    </td>
                                     <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
                                     <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
                                     <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
