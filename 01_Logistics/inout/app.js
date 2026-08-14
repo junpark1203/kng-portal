@@ -935,38 +935,61 @@ const app = {
             
             $('detailModalTitle').innerText = type === 'inbound' ? '입고 상세 내역' : '출고 상세 내역';
             
-            let html = `<table class="table table-bordered mb-0" style="font-size:0.9rem;">
-                <tbody>
-                    <tr>
-                        <th class="bg-light w-25">구분</th>
-                        <td>${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</td>
-                        <th class="bg-light w-25">일자</th>
-                        <td>${data.date}</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">${type === 'inbound' ? '매입처' : '도착지'}</th>
-                        <td>${type === 'inbound' ? data.supplier : data.destination}</td>
-                        <th class="bg-light">품명/규격</th>
-                        <td><strong>${data.item}</strong> / ${data.spec}</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">수량/단위</th>
-                        <td>${data.qty} ${data.unit}</td>
-                        <th class="bg-light">단가/총액</th>
-                        <td>${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()} 
-                            (총액: ${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()})</td>
-                    </tr>`;
+            let html = `<div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">구분</div>
+                        <div class="fw-bold fs-6">${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">일자</div>
+                        <div class="fw-bold fs-6">${data.date}</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">${type === 'inbound' ? '매입처' : '도착지'}</div>
+                        <div class="fw-bold fs-6">${type === 'inbound' ? data.supplier : data.destination}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">품명/규격</div>
+                        <div class="fw-bold fs-6 text-primary">${data.item} <span class="text-secondary fw-normal">/ ${data.spec}</span></div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">수량/단위</div>
+                        <div class="fw-bold fs-6">${data.qty.toLocaleString()} <span class="text-secondary fw-normal">${data.unit}</span></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">단가/총액</div>
+                        <div class="fw-bold fs-6">${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()}원</div>
+                        <div class="text-danger small fw-bold mt-1">총액: ${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()}원</div>
+                    </div>
+                </div>`;
             
             if (type === 'inbound') {
                 html += `
-                    <tr>
-                        <th class="bg-light">창고 위치</th>
-                        <td colspan="3">${data.location_name || '-'}</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light">비고</th>
-                        <td colspan="3">${data.note || '-'}</td>
-                    </tr>`;
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">창고 위치</div>
+                        <div class="fw-bold fs-6">${data.location_name || '-'}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">비고</div>
+                        <div class="fw-bold fs-6">${data.note || '-'}</div>
+                    </div>
+                </div>`;
                 
                 $('printOptInboundWrapper').style.display = 'inline-block';
                 $('printOptInbound').checked = true;
@@ -976,16 +999,22 @@ const app = {
                 let lotsHtml = '';
                 if (data.consumed_lots && data.consumed_lots.length > 0) {
                     lotsHtml = data.consumed_lots.map(l => 
-                        `<li>${l.inbound_date} 입고 (${l.supplier}) [${l.location_name}] - ${l.consumed_qty}개 차감</li>`
+                        `<li class="mb-1">${l.inbound_date} 입고 <span class="text-muted">(${l.supplier}) [${l.location_name}]</span> - <span class="text-danger fw-bold">${l.consumed_qty}개 차감</span></li>`
                     ).join('');
                 }
                 html += `
-                    <tr>
-                        <th class="bg-light">배송비</th>
-                        <td>${data.shipping_fee.toLocaleString()}</td>
-                        <th class="bg-light">차감 창고내역</th>
-                        <td><ul class="mb-0 ps-3" style="font-size:0.8rem;">${lotsHtml}</ul></td>
-                    </tr>`;
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">배송비</div>
+                        <div class="fw-bold fs-6">${data.shipping_fee.toLocaleString()}원</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
+                        <div class="text-muted small mb-1">차감 창고내역</div>
+                        <ul class="mb-0 ps-3 fw-bold" style="font-size:0.85rem;">${lotsHtml || '<li class="text-muted">내역 없음</li>'}</ul>
+                    </div>
+                </div>`;
                     
                 $('printOptInboundWrapper').style.display = 'none';
                 $('printOptOutboundWrapper').style.display = 'inline-block';
@@ -993,7 +1022,7 @@ const app = {
                 $('printOptTrans').checked = true;
             }
             
-            html += `</tbody></table>`;
+            html += `</div>`;
             $('detailModalContent').innerHTML = html;
             
             new bootstrap.Modal(document.getElementById('historyDetailModal')).show();
