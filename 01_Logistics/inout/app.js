@@ -1087,37 +1087,42 @@ const app = {
                     .info-table th, .info-table td, .data-table th, .data-table td { border: 1px solid #ccc; padding: 8px; }
                     .info-table th, .data-table th { background-color: #f1f5f9; text-align: left; }
                     
-                    /* Modern Styles for Transaction Statement */
-                    .modern-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; color:#1a1a1a; }
-                    .header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-                    .title { font-size: 32px; font-weight: 700; color: #1a1a1a; margin: 0; letter-spacing: -1px; }
-                    .logo { max-height: 40px; object-fit: contain; }
+                    /* Modern Styles for Transaction Statement v2 */
+                    @page { size: A4; margin: 15mm; }
+                    .modern-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#1a1a1a; }
+                    .top-bar { height: 4px; background-color: #1B2B4B; margin-bottom: 30px; width: 100%; }
+                    .header-section { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid #D4A017; padding-bottom: 15px; }
+                    .logo { max-height: 48px; object-fit: contain; }
+                    .title-wrapper { text-align: right; }
+                    .title { font-size: 28px; font-weight: 700; color: #1a1a1a; margin: 0 0 5px 0; letter-spacing: 2px; }
+                    .date-text { color: #868e96; font-size: 14px; }
                     
-                    .total-section { background-color: #f8f9fa; border-radius: 8px; padding: 20px 24px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
-                    .total-label { font-size: 16px; color: #495057; font-weight: 500; }
-                    .total-amount { font-size: 28px; font-weight: 700; color: #1a1a1a; }
+                    .total-section { background-color: #FDF8E8; border: 1px solid #F1E5C6; border-radius: 8px; padding: 24px 30px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
+                    .total-info { display: flex; flex-direction: column; gap: 6px; }
+                    .total-label { font-size: 16px; color: #5C4B22; font-weight: 600; }
+                    .total-sub { font-size: 13px; color: #8C7B52; }
+                    .total-amount { font-size: 36px; font-weight: 700; color: #1B2B4B; }
                     
                     .info-section { display: flex; justify-content: space-between; margin-bottom: 40px; gap: 40px; }
-                    .info-block { flex: 1; }
-                    .info-block h3 { font-size: 14px; color: #868e96; margin: 0 0 12px 0; font-weight: 500; text-transform: uppercase; }
-                    .info-text { font-size: 15px; line-height: 1.6; margin: 0; }
+                    .info-block { flex: 1; background-color: #f8f9fa; padding: 20px; border-radius: 8px; }
+                    .info-block h3 { font-size: 13px; color: #868e96; margin: 0 0 15px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+                    .info-text { font-size: 14px; line-height: 1.7; margin: 0; color: #343a40; }
                     .supplier-info { position: relative; }
-                    .stamp { position: absolute; right: 20px; top: -10px; width: 60px; height: 60px; opacity: 0.85; mix-blend-mode: multiply; }
+                    .stamp { position: absolute; right: 10px; bottom: 10px; width: 65px; height: 65px; opacity: 0.9; mix-blend-mode: multiply; }
                     
                     .modern-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-                    .modern-table th { border-top: 2px solid #1a1a1a; border-bottom: 1px solid #dee2e6; color: #495057; font-weight: 600; padding: 12px 8px; text-align: left; font-size: 14px; background: none; }
-                    .modern-table td { padding: 16px 8px; border-bottom: 1px solid #f1f3f5; font-size: 15px; border-left: none; border-right: none; }
+                    .modern-table th { border-top: 2px solid #1B2B4B; border-bottom: 1px solid #dee2e6; color: #495057; font-weight: 600; padding: 14px 8px; text-align: left; font-size: 13px; }
+                    .modern-table td { padding: 16px 8px; border-bottom: 1px solid #f1f3f5; font-size: 14px; }
+                    .modern-table tbody tr:last-child td { border-bottom: 2px solid #1B2B4B; }
                     .text-right { text-align: right !important; }
                     
-                    .summary-section { width: 300px; margin-left: auto; }
-                    .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; color: #495057; }
-                    .summary-row.final { font-size: 18px; font-weight: 700; color: #1a1a1a; border-top: 2px solid #1a1a1a; padding-top: 12px; margin-top: 4px; }
-                    
-                    .modern-footer { margin-top: 60px; text-align: right; font-size: 15px; }
+                    .modern-footer { margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 14px; color: #495057; }
+                    .notes { flex: 1; padding: 15px; background: #f8f9fa; border-left: 3px solid #D4A017; margin-right: 40px; }
+                    .signature { width: 250px; text-align: right; }
                     
                     @media print {
-                        body, .modern-container { padding: 0; }
-                        .total-section { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #f8f9fa !important; }
+                        body { padding: 0; }
+                        .total-section, .info-block, .notes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 </style>
             </head>
@@ -1131,13 +1136,20 @@ const app = {
             
             htmlContent += `
             <div class="modern-container">
+                <div class="top-bar"></div>
                 <div class="header-section">
-                    <h1 class="title">거래명세서</h1>
-                    <img src="../../assets/images/logo.png" class="logo" alt="" onerror="this.style.display='none'">
+                    <img src="../../assets/images/logo.png" class="logo" alt="K&G Logo" onerror="this.style.display='none'">
+                    <div class="title-wrapper">
+                        <h1 class="title">거래명세서</h1>
+                        <div class="date-text">거래일자: ${data.date}</div>
+                    </div>
                 </div>
                 
                 <div class="total-section">
-                    <div class="total-label">총 합계금액 (VAT 포함)</div>
+                    <div class="total-info">
+                        <div class="total-label">총 합계금액 (VAT 포함)</div>
+                        <div class="total-sub">공급가액 ₩${amount.toLocaleString()} + 세액 ₩${vat.toLocaleString()}</div>
+                    </div>
                     <div class="total-amount">₩ ${total.toLocaleString()}</div>
                 </div>
                 
@@ -1145,16 +1157,14 @@ const app = {
                     <div class="info-block">
                         <h3>공급받는 자</h3>
                         <p class="info-text">
-                            <strong>${data.destination}</strong> 귀하<br><br>
-                            <span style="color:#868e96">거래일자</span><br>
-                            ${data.date}
+                            <strong style="font-size:16px; color:#1a1a1a;">${data.destination}</strong> 귀하<br><br>
                         </p>
                     </div>
                     <div class="info-block supplier-info">
                         <h3>공급자</h3>
                         <p class="info-text">
-                            <strong>${bizName}</strong>
-                            <img src="../../assets/images/stamp.png" class="stamp" alt="" onerror="this.style.display='none'"><br>
+                            <strong style="font-size:16px; color:#1a1a1a;">${bizName}</strong>
+                            <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"><br>
                             대표자: ${ceo}<br>
                             등록번호: ${bizNo}<br>
                             주소: ${address}<br>
@@ -1176,8 +1186,8 @@ const app = {
                     <tbody>
                         <tr>
                             <td>
-                                <strong>${data.item}</strong>
-                                <div style="color:#868e96; font-size:13px; margin-top:4px;">${data.spec}</div>
+                                <strong style="color:#1a1a1a;">${data.item}</strong>
+                                <div style="color:#868e96; font-size:12px; margin-top:4px;">${data.spec}</div>
                             </td>
                             <td>${data.unit}</td>
                             <td class="text-right">${data.qty.toLocaleString()}</td>
@@ -1187,24 +1197,14 @@ const app = {
                     </tbody>
                 </table>
                 
-                <div class="summary-section">
-                    <div class="summary-row">
-                        <span>공급가액</span>
-                        <span>${amount.toLocaleString()}</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>세액 (VAT)</span>
-                        <span>${vat.toLocaleString()}</span>
-                    </div>
-                    <div class="summary-row final">
-                        <span>총 합계금액</span>
-                        <span>₩ ${total.toLocaleString()}</span>
-                    </div>
-                </div>
-                
                 <div class="modern-footer">
-                    비고: ${data.note ? data.note : (data.shipping_fee ? '배송비 ' + data.shipping_fee.toLocaleString() + '원' : '')}<br><br><br>
-                    인수자 서명 : _____________________ (인)
+                    <div class="notes">
+                        <strong>비고:</strong><br>
+                        ${data.note ? data.note : (data.shipping_fee ? '배송비 ' + data.shipping_fee.toLocaleString() + '원' : '특이사항 없음')}
+                    </div>
+                    <div class="signature">
+                        인수자 서명 : _____________________ (인)
+                    </div>
                 </div>
             </div>
             `;
