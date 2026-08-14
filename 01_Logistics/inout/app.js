@@ -1087,42 +1087,41 @@ const app = {
                     .info-table th, .info-table td, .data-table th, .data-table td { border: 1px solid #ccc; padding: 8px; }
                     .info-table th, .data-table th { background-color: #f1f5f9; text-align: left; }
                     
-                    /* Modern Styles for Transaction Statement v2 */
+                    /* Hybrid Styles for Transaction Statement v3 */
                     @page { size: A4; margin: 15mm; }
-                    .modern-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#1a1a1a; }
-                    .top-bar { height: 4px; background-color: #1B2B4B; margin-bottom: 30px; width: 100%; }
-                    .header-section { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 2px solid #D4A017; padding-bottom: 15px; }
-                    .logo { max-height: 48px; object-fit: contain; }
-                    .title-wrapper { text-align: right; }
-                    .title { font-size: 28px; font-weight: 700; color: #1a1a1a; margin: 0 0 5px 0; letter-spacing: 2px; }
-                    .date-text { color: #868e96; font-size: 14px; }
+                    .hybrid-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#212529; }
+                    .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
+                    .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
+                    .title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
+                    .date-text { font-size: 15px; color: #495057; margin-bottom: 25px; text-align: center; }
+                    .recipient-text { font-size: 18px; text-align: left; margin-left: 20px; }
+                    .header-right { width: 420px; }
                     
-                    .total-section { background-color: #FDF8E8; border: 1px solid #F1E5C6; border-radius: 8px; padding: 24px 30px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: center; }
-                    .total-info { display: flex; flex-direction: column; gap: 6px; }
-                    .total-label { font-size: 16px; color: #5C4B22; font-weight: 600; }
-                    .total-sub { font-size: 13px; color: #8C7B52; }
-                    .total-amount { font-size: 36px; font-weight: 700; color: #1B2B4B; }
+                    .supplier-table { width: 100%; border-collapse: collapse; font-size: 13px; border: 2px solid #212529; }
+                    .supplier-table th, .supplier-table td { border: 1px solid #dee2e6; padding: 6px 8px; }
+                    .supplier-table th { background-color: #f8f9fa; color: #495057; text-align: center; font-weight: 600; }
+                    .supplier-table td { color: #212529; }
+                    .supplier-th { width: 30px; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 5px; padding: 10px 5px !important; }
+                    .stamp-cell { position: relative; }
+                    .stamp { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); width: 45px; height: 45px; opacity: 0.85; mix-blend-mode: multiply; }
                     
-                    .info-section { display: flex; justify-content: space-between; margin-bottom: 40px; gap: 40px; }
-                    .info-block { flex: 1; background-color: #f8f9fa; padding: 20px; border-radius: 8px; }
-                    .info-block h3 { font-size: 13px; color: #868e96; margin: 0 0 15px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-                    .info-text { font-size: 14px; line-height: 1.7; margin: 0; color: #343a40; }
-                    .supplier-info { position: relative; }
-                    .stamp { position: absolute; right: 10px; bottom: 10px; width: 65px; height: 65px; opacity: 0.9; mix-blend-mode: multiply; }
+                    .amount-bar { display: flex; border: 2px solid #212529; border-bottom: none; align-items: stretch; font-size: 16px; }
+                    .amount-label { width: 120px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; font-weight: 600; border-right: 1px solid #dee2e6; letter-spacing: 10px; padding: 12px 0; }
+                    .amount-ko { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 600; letter-spacing: 1px; }
+                    .amount-num { width: 150px; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; font-weight: 700; font-size: 17px; }
                     
-                    .modern-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-                    .modern-table th { border-top: 2px solid #1B2B4B; border-bottom: 1px solid #dee2e6; color: #495057; font-weight: 600; padding: 14px 8px; text-align: left; font-size: 13px; }
-                    .modern-table td { padding: 16px 8px; border-bottom: 1px solid #f1f3f5; font-size: 14px; }
-                    .modern-table tbody tr:last-child td { border-bottom: 2px solid #1B2B4B; }
+                    .hybrid-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; border: 2px solid #212529; }
+                    .hybrid-table th, .hybrid-table td { border: 1px solid #dee2e6; padding: 8px 6px; }
+                    .hybrid-table th { background-color: #f8f9fa; font-weight: 600; color: #495057; text-align: center; border-bottom: 2px solid #212529; }
+                    .hybrid-table td { height: 32px; }
+                    .footer-row { background-color: #e9ecef; border-top: 2px solid #212529 !important; }
+                    .footer-row td { color: #212529; padding: 10px 6px; font-size: 14px; }
+                    .text-center { text-align: center !important; }
                     .text-right { text-align: right !important; }
-                    
-                    .modern-footer { margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 14px; color: #495057; }
-                    .notes { flex: 1; padding: 15px; background: #f8f9fa; border-left: 3px solid #D4A017; margin-right: 40px; }
-                    .signature { width: 250px; text-align: right; }
                     
                     @media print {
                         body { padding: 0; }
-                        .total-section, .info-block, .notes { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .supplier-table th, .amount-label, .hybrid-table th, .footer-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 </style>
             </head>
@@ -1134,77 +1133,116 @@ const app = {
             const vat = Math.floor(amount * 0.1);
             const total = amount + vat;
             
+            function numberToKorean(number) {
+                const inputNumber = parseInt(number, 10);
+                const hanA = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+                const danA = ["", "십", "백", "천"];
+                const danG = ["", "만", "억", "조"];
+                let result = "";
+                let numStr = inputNumber.toString();
+                let length = numStr.length;
+                for (let i = 0; i < length; i++) {
+                    let n = parseInt(numStr.charAt(i));
+                    let pos = length - i - 1;
+                    if (n > 0) result += hanA[n] + danA[pos % 4];
+                    if (pos % 4 === 0 && pos > 0) {
+                        let chunk = numStr.substring(Math.max(0, i - 3), i + 1);
+                        if (parseInt(chunk) > 0) result += danG[pos / 4];
+                    }
+                }
+                return result + " 원정";
+            }
+            
+            const koTotalAmount = numberToKorean(total);
+            const emptyRows = Array(12).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            
             htmlContent += `
-            <div class="modern-container">
-                <div class="top-bar"></div>
-                <div class="header-section">
-                    <img src="../../assets/images/logo.png" class="logo" alt="K&G Logo" onerror="this.style.display='none'">
-                    <div class="title-wrapper">
-                        <h1 class="title">거래명세서</h1>
-                        <div class="date-text">거래일자: ${data.date}</div>
+            <div class="hybrid-container">
+                <div class="hybrid-header">
+                    <div class="header-left">
+                        <h1 class="title">거 래 명 세 서</h1>
+                        <div class="date-text">${data.date}</div>
+                        <div class="recipient-text"><strong>${data.destination}</strong> 귀하</div>
+                    </div>
+                    <div class="header-right">
+                        <table class="supplier-table">
+                            <tr>
+                                <th rowspan="4" class="supplier-th">공급자</th>
+                                <th style="width: 25%">등록번호</th>
+                                <td colspan="3">${bizNo}</td>
+                            </tr>
+                            <tr>
+                                <th>상호</th>
+                                <td style="width: 35%">${bizName}</td>
+                                <th style="width: 15%">대표자</th>
+                                <td class="stamp-cell">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
+                            </tr>
+                            <tr>
+                                <th>주소</th>
+                                <td colspan="3">${address}</td>
+                            </tr>
+                            <tr>
+                                <th>업태</th>
+                                <td>${bizType}</td>
+                                <th>종목</th>
+                                <td>${bizItem}</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
                 
-                <div class="total-section">
-                    <div class="total-info">
-                        <div class="total-label">총 합계금액 (VAT 포함)</div>
-                        <div class="total-sub">공급가액 ₩${amount.toLocaleString()} + 세액 ₩${vat.toLocaleString()}</div>
-                    </div>
-                    <div class="total-amount">₩ ${total.toLocaleString()}</div>
+                <div class="amount-bar">
+                    <div class="amount-label">금 액</div>
+                    <div class="amount-ko">${koTotalAmount}</div>
+                    <div class="amount-num">₩ ${total.toLocaleString()}</div>
                 </div>
                 
-                <div class="info-section">
-                    <div class="info-block">
-                        <h3>공급받는 자</h3>
-                        <p class="info-text">
-                            <strong style="font-size:16px; color:#1a1a1a;">${data.destination}</strong> 귀하<br><br>
-                        </p>
-                    </div>
-                    <div class="info-block supplier-info">
-                        <h3>공급자</h3>
-                        <p class="info-text">
-                            <strong style="font-size:16px; color:#1a1a1a;">${bizName}</strong>
-                            <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"><br>
-                            대표자: ${ceo}<br>
-                            등록번호: ${bizNo}<br>
-                            주소: ${address}<br>
-                            업태/종목: ${bizType} / ${bizItem}
-                        </p>
-                    </div>
-                </div>
-                
-                <table class="modern-table">
+                <table class="hybrid-table">
                     <thead>
                         <tr>
-                            <th>품명/규격</th>
-                            <th>단위</th>
-                            <th class="text-right">수량</th>
-                            <th class="text-right">단가</th>
-                            <th class="text-right">공급가액</th>
+                            <th style="width: 5%">순번</th>
+                            <th style="width: 25%">품명</th>
+                            <th style="width: 15%">규격</th>
+                            <th style="width: 8%">단위</th>
+                            <th style="width: 8%">수량</th>
+                            <th style="width: 10%">단가</th>
+                            <th style="width: 12%">금액</th>
+                            <th style="width: 10%">부가세</th>
+                            <th style="width: 12%">합계금액</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>
-                                <strong style="color:#1a1a1a;">${data.item}</strong>
-                                <div style="color:#868e96; font-size:12px; margin-top:4px;">${data.spec}</div>
-                            </td>
-                            <td>${data.unit}</td>
+                            <td class="text-center">1</td>
+                            <td>${data.item}</td>
+                            <td class="text-center">${data.spec}</td>
+                            <td class="text-center">${data.unit}</td>
                             <td class="text-right">${data.qty.toLocaleString()}</td>
                             <td class="text-right">${price.toLocaleString()}</td>
                             <td class="text-right">${amount.toLocaleString()}</td>
+                            <td class="text-right">${vat.toLocaleString()}</td>
+                            <td class="text-right">${total.toLocaleString()}</td>
                         </tr>
+                        <tr>
+                            <td class="text-center"></td>
+                            <td class="text-center">- 이하여백 -</td>
+                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        </tr>
+                        ${emptyRows}
                     </tbody>
+                    <tfoot>
+                        <tr class="footer-row">
+                            <td colspan="6" class="text-center"><strong>계</strong></td>
+                            <td class="text-right"><strong>${amount.toLocaleString()}</strong></td>
+                            <td class="text-right"><strong>${vat.toLocaleString()}</strong></td>
+                            <td class="text-right"><strong>${total.toLocaleString()}</strong></td>
+                        </tr>
+                    </tfoot>
                 </table>
                 
-                <div class="modern-footer">
-                    <div class="notes">
-                        <strong>비고:</strong><br>
-                        ${data.note ? data.note : (data.shipping_fee ? '배송비 ' + data.shipping_fee.toLocaleString() + '원' : '특이사항 없음')}
-                    </div>
-                    <div class="signature">
-                        인수자 서명 : _____________________ (인)
-                    </div>
+                <div style="font-size:13px; color:#495057; text-align:right;">
+                    ${data.note ? '비고: ' + data.note : ''}
+                    ${!data.note && data.shipping_fee ? '비고: 배송비 ' + data.shipping_fee.toLocaleString() + '원' : ''}
                 </div>
             </div>
             `;
