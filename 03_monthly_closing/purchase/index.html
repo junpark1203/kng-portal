@@ -31,10 +31,12 @@
             background-color: #4361ee; border-color: #4361ee; color: #fff;
         }
         
+        .print-only { display: none; }
+        
         @media print {
             body * { visibility: hidden; }
-            #printContainer, #printContainer * { visibility: visible; }
-            #printContainer { position: absolute; left: 0; top: 0; width: 100%; }
+            .print-only, .print-only * { visibility: visible; }
+            .print-only { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
             
             /* Print styles */
