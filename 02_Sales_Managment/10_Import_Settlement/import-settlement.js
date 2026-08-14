@@ -1855,9 +1855,9 @@ function generatePrintTemplate(opts) {
                                 <td class="text-right">₩ ${cost.isCustom ? '-' : formatNum(qKrw)}</td>
                                 ` : ''}
                                 ${opts.includeActual ? `
-                                <td class="text-right font-weight-bold">${displayBilledForeign}</td>
-                                <td class="text-right font-weight-bold">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
-                                <td class="text-right font-weight-bold">₩ ${displayBilledKrw}</td>
+                                <td class="text-right">${displayBilledForeign}</td>
+                                <td class="text-right">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
+                                <td class="text-right">₩ ${displayBilledKrw}</td>
                                 ` : ''}
                                 ${(opts.includeEstimate && opts.includeActual) ? `
                                 <td class="text-right">₩ ${formatNum(billedKrw - qKrw)}</td>
