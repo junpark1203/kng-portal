@@ -951,7 +951,7 @@ const app = {
                 
                 <div class="col-md-6">
                     <div class="p-3 bg-light rounded border border-light shadow-sm h-100">
-                        <div class="text-muted small mb-1">${type === 'inbound' ? '매입처' : '도착지'}</div>
+                        <div class="text-muted small mb-1">${type === 'inbound' ? '매입처' : '출고처'}</div>
                         <div class="fw-bold fs-6">${type === 'inbound' ? data.supplier : data.destination}</div>
                     </div>
                 </div>
@@ -1184,7 +1184,7 @@ const app = {
                     <tr>
                         <th style="width: 15%;">출고일자</th>
                         <td style="width: 35%;">${data.date}</td>
-                        <th style="width: 15%;">도착지/수령자</th>
+                        <th style="width: 15%;">출고처</th>
                         <td style="width: 35%;">${data.destination}</td>
                     </tr>
                     <tr>
