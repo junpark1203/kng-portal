@@ -1088,8 +1088,9 @@ const app = {
                     .info-table th, .data-table th { background-color: #f1f5f9; text-align: left; }
                     
                     /* Hybrid Styles for Transaction Statement v3 */
-                    @page { size: A4; margin: 15mm; }
-                    .hybrid-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#212529; }
+                    * { box-sizing: border-box; }
+                    @page { size: A4; margin: 10mm; }
+                    .hybrid-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; color:#212529; }
                     .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
                     .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
                     .title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
@@ -1120,7 +1121,8 @@ const app = {
                     .text-right { text-align: right !important; }
                     
                     @media print {
-                        body { padding: 0; }
+                        body { padding: 0; margin: 0; }
+                        .hybrid-container { max-width: 100%; width: 100%; padding: 10mm !important; margin: 0; }
                         .supplier-table th, .amount-label, .hybrid-table th, .footer-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 </style>
