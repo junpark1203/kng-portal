@@ -488,7 +488,7 @@ const COST_GROUPS = [
     { key: 'invoice', label: '물품 대금' },
     { key: 'ocean', label: '해상 운임 (O/F)' },
     { key: 'export', label: '수출국 부대비용' },
-    { key: 'logistics', label: '물류 부대비용 (외화)' },
+    { key: 'logistics', label: '물류 부대비용' },
     { key: 'import', label: '수입국 부대비용' },
     { key: 'customs', label: '통관/관세' },
     { key: 'other', label: '기타 비용' },
@@ -516,9 +516,10 @@ function renderSettlementGrid() {
         state.doc.groupOrder = COST_GROUPS.map(g => g.key);
     }
 
-    state.doc.groupOrder.forEach(grpKey => {
+    state.doc.groupOrder.forEach((grpKey, grpIndex) => {
         const grp = COST_GROUPS.find(g => g.key === grpKey);
         if (!grp) return;
+        const grpNo = grpIndex + 1;
         const items = grouped[grp.key] || [];
 
         html += `
@@ -533,7 +534,7 @@ function renderSettlementGrid() {
                 <div class="group-title">
                     <i class='bx bx-grid-vertical' style="margin-right: 5px; color: #cbd5e1;" title="드래그하여 섹션 순서 변경"></i>
                     <i class='bx bx-chevron-down'></i>
-                    ${grp.label} <span style="font-weight:400; color:#94a3b8; font-size:0.85em;">(${items.length})</span>
+                    ${grpNo}. ${grp.label} <span style="font-weight:400; color:#94a3b8; font-size:0.85em;">(${items.length})</span>
                 </div>
                 <div class="group-subtotal">
                     <div class="subtotal-item">
@@ -558,7 +559,9 @@ function renderSettlementGrid() {
             </div>`;
         }
 
-        items.forEach(({ cost, idx }) => {
+        items.forEach(({ cost, idx }, itemIndex) => {
+            const itemNoStr = `<span style="font-weight:bold; color:#64748b; margin-right:5px;">[${grpNo}-${itemIndex + 1}]</span>`;
+            
             const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
             const bCurr = cost.billedCurrency || cost.currency || 'KRW';
             let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
@@ -577,11 +580,12 @@ function renderSettlementGrid() {
                 });
                 labelHtml = `
                     <div class="item-label-custom">
+                        ${itemNoStr}
                         <select class="calc-input" onchange="onCostKeyChange(${idx}, this.value)" style="font-size:0.85rem;">${optsHtml}</select>
                         <input type="text" class="calc-input" value="${cost.label}" placeholder="항목명 직접 입력" style="display:${isDirectInput ? 'block' : 'none'}; font-size:0.85rem;" oninput="updateCost(${idx}, 'label', this.value)">
                     </div>`;
             } else {
-                labelHtml = `<span class="item-label">${cost.label}</span>`;
+                labelHtml = `<span class="item-label">${itemNoStr}${cost.label}</span>`;
             }
 
             // Currency select HTML
@@ -917,6 +921,7 @@ window.removeCost = function(idx) {
 
 // --- Drag and Drop Handlers (updated for cards) ---
 window.handleDragStart = function(e) {
+    e.stopPropagation();
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', e.currentTarget.dataset.idx);
     e.currentTarget.classList.add('dragging');
@@ -1019,9 +1024,8 @@ window.handleDragEnd = function(e) {
 
 // 새로 추가: 섹션 전체 드래그 앤 드롭 핸들러
 window.handleSectionDragStart = function(e) {
-    // 내부 아이템의 드래그일 경우 섹션 드래그 방지
+    // 내부 아이템의 드래그일 경우 섹션 드래그 무시
     if (e.target.closest('.cost-item-card') && e.target !== e.currentTarget) {
-        e.preventDefault();
         return;
     }
     e.dataTransfer.effectAllowed = 'move';
@@ -1240,7 +1244,12 @@ function calculateAll() {
         let fwEst = 0;
         let fwAct = 0;
         
-        COST_GROUPS.forEach(g => {
+        let order = state.doc.groupOrder || COST_GROUPS.map(g => g.key);
+        order.forEach((grpKey, grpIndex) => {
+            const g = COST_GROUPS.find(cg => cg.key === grpKey);
+            if (!g) return;
+            const grpNo = grpIndex + 1;
+
             const est = grpEst[g.key] || 0;
             const act = grpAct[g.key] || 0;
             const diff = act - est;
@@ -1258,6 +1267,7 @@ function calculateAll() {
             
             htmlBody += `
                 <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}>
+                    <td style="padding:10px 12px; text-align:center; font-weight:bold;">${grpNo}</td>
                     <td style="padding:10px 12px; font-weight:500;">${g.label} ${toggleIcon}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(est)}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(act)}</td>
@@ -1268,9 +1278,11 @@ function calculateAll() {
             if (hasDetails) {
                 let detailRows = '';
                 const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
+                let itemIdx = 0;
                 state.doc.actualCosts.forEach(cost => {
                     const gk = cost.group || 'other';
                     if (gk === g.key) {
+                        itemIdx++;
                         const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
                         const bCurr = cost.billedCurrency || cost.currency || 'KRW';
                         let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
@@ -1288,7 +1300,8 @@ function calculateAll() {
                         
                         detailRows += `
                             <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
-                                <td style="padding:6px 12px 6px 30px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
+                                <td style="padding:6px 12px; text-align:center; color:#94a3b8;">${grpNo}-${itemIdx}</td>
+                                <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
                                 <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
                                 <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
                                 <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
@@ -1309,7 +1322,7 @@ function calculateAll() {
         
         sumTfoot.innerHTML = `
             <tr>
-                <td style="padding:12px;">총 비용 합계 (KRW)</td>
+                <td colspan="2" style="padding:12px; text-align:center;">총 비용 합계 (KRW)</td>
                 <td class="col-num" style="padding:12px;">₩ ${formatNum(totalEstKrw)}</td>
                 <td class="col-num" style="padding:12px;">₩ ${formatNum(totalBilledKrw)}</td>
                 <td class="col-num" style="padding:12px; color:${totalDiffColor};">${totalDiffStr}</td>
@@ -1713,8 +1726,9 @@ function generatePrintTemplate(opts) {
             <table class="print-data-table">
                 <thead>
                     <tr>
-                        <th rowspan="2">구분</th>
-                        <th rowspan="2">항목명</th>
+                        <th rowspan="2" style="width: 5%;">No.</th>
+                        <th rowspan="2" style="width: 15%;">구분</th>
+                        <th rowspan="2" style="width: 20%;">항목명</th>
                         ${opts.includeEstimate ? '<th colspan="3">예상 견적</th>' : ''}
                         ${opts.includeActual ? '<th colspan="3">실제 청구</th>' : ''}
                         ${(opts.includeEstimate && opts.includeActual) ? '<th rowspan="2">증감액 (KRW)</th>' : ''}
@@ -1726,48 +1740,105 @@ function generatePrintTemplate(opts) {
                 </thead>
                 <tbody>
             `;
-            
             let hasCosts = false;
-            d.actualCosts.forEach(cost => {
-                hasCosts = true;
-                const groupName = cost.group === 'invoice' ? '물품대금' : (cost.group === 'ocean' ? '해상운임' : (cost.group === 'export' ? '수출국비용' : (cost.group === 'import' ? '수입국비용' : (cost.group === 'customs' ? '통관/관세' : (cost.group === 'handling' ? '포워더수수료' : (cost.group === 'finance' ? '금융비용' : '기타'))))));
+            let grandEstKrw = 0;
+            let grandActKrw = 0;
+            
+            let order = state.doc.groupOrder || COST_GROUPS.map(g => g.key);
+            order.forEach((grpKey, grpIndex) => {
+                const grp = COST_GROUPS.find(g => g.key === grpKey);
+                if (!grp) return;
                 
-                let qCurr = cost.quotedCurrency || cost.currency || 'KRW';
-                let qRate = qCurr === 'KRW' ? 1 : ((state.doc.quotationSnapshot && state.doc.quotationSnapshot.exchangeRates) ? (state.doc.quotationSnapshot.exchangeRates[qCurr] || 0) : 0);
+                let grpEstKrw = 0;
+                let grpActKrw = 0;
+                let itemIdx = 0;
                 
-                let amt = parseFloat(cost.amount) || 0;
-                let qty = parseFloat(cost.unitQty) || 1;
-                let billedForeign = amt * qty;
-                let bCurr = cost.billedCurrency || cost.currency || 'KRW';
-                let bRate = bCurr === 'KRW' ? 1 : (cost.billedRate || 1);
-                let billedKrw = billedForeign * bRate;
-                
-                let displayBilledForeign = bCurr === 'KRW' ? '-' : (billedForeign === 0 ? '-' : formatNum(billedForeign, 2));
-                let displayBilledKrw = billedKrw === 0 ? '-' : formatNum(billedKrw);
-                
+                const groupCosts = d.actualCosts.filter(c => (c.group || 'other') === grpKey);
+                if (groupCosts.length > 0) {
+                    hasCosts = true;
+                    groupCosts.forEach(cost => {
+                        itemIdx++;
+                        let qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+                        let qRate = qCurr === 'KRW' ? 1 : ((state.doc.quotationSnapshot && state.doc.quotationSnapshot.exchangeRates) ? (state.doc.quotationSnapshot.exchangeRates[qCurr] || 0) : 0);
+                        let qKrw = cost.quotedForeign * qRate;
+                        if (cost.isCustom) qKrw = 0;
+                        
+                        let amt = parseFloat(cost.amount) || 0;
+                        let qty = parseFloat(cost.unitQty) || 1;
+                        let billedForeign = amt * qty;
+                        let bCurr = cost.billedCurrency || cost.currency || 'KRW';
+                        let bRate = bCurr === 'KRW' ? 1 : (cost.billedRate || 1);
+                        let billedKrw = billedForeign * bRate;
+                        
+                        grpEstKrw += qKrw;
+                        grpActKrw += billedKrw;
+                        
+                        let displayBilledForeign = bCurr === 'KRW' ? '-' : (billedForeign === 0 ? '-' : formatNum(billedForeign, 2));
+                        let displayBilledKrw = billedKrw === 0 ? '-' : formatNum(billedKrw);
+                        
+                        html += `
+                            <tr>
+                                <td class="text-center" style="color:#94a3b8; font-size:0.9em;">${grpIndex + 1}-${itemIdx}</td>
+                                <td class="text-center">${grp.label}</td>
+                                <td>${cost.label}</td>
+                                ${opts.includeEstimate ? `
+                                <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign ? formatNum(cost.quotedForeign, 2) : '-')}</td>
+                                <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
+                                <td class="text-right">₩ ${cost.isCustom ? '-' : formatNum(qKrw)}</td>
+                                ` : ''}
+                                ${opts.includeActual ? `
+                                <td class="text-right font-weight-bold">${displayBilledForeign}</td>
+                                <td class="text-right font-weight-bold">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
+                                <td class="text-right font-weight-bold">₩ ${displayBilledKrw}</td>
+                                ` : ''}
+                                ${(opts.includeEstimate && opts.includeActual) ? `
+                                <td class="text-right">₩ ${formatNum(billedKrw - qKrw)}</td>
+                                ` : ''}
+                            </tr>
+                        `;
+                    });
+                    
+                    grandEstKrw += grpEstKrw;
+                    grandActKrw += grpActKrw;
+                    
+                    html += `
+                        <tr style="background-color: #f1f5f9; font-weight: bold;">
+                            <td colspan="3" class="text-center" style="padding: 10px;">${grp.label} 소계</td>
+                            ${opts.includeEstimate ? `
+                            <td colspan="2"></td>
+                            <td class="text-right">₩ ${formatNum(grpEstKrw)}</td>
+                            ` : ''}
+                            ${opts.includeActual ? `
+                            <td colspan="2"></td>
+                            <td class="text-right">₩ ${formatNum(grpActKrw)}</td>
+                            ` : ''}
+                            ${(opts.includeEstimate && opts.includeActual) ? `
+                            <td class="text-right">₩ ${formatNum(grpActKrw - grpEstKrw)}</td>
+                            ` : ''}
+                        </tr>
+                    `;
+                }
+            });
+
+            if (hasCosts) {
                 html += `
-                    <tr>
-                        <td class="text-center">${groupName}</td>
-                        <td>${cost.label}</td>
+                    <tr style="background-color: #e2e8f0; font-weight: bold; font-size: 1.05em;">
+                        <td colspan="3" class="text-center" style="padding: 12px;">수입비용 총계</td>
                         ${opts.includeEstimate ? `
-                        <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign ? formatNum(cost.quotedForeign, 2) : '-')}</td>
-                        <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
-                        <td class="text-right">₩ ${cost.isCustom ? '-' : (cost.quotedForeign * qRate ? formatNum(cost.quotedForeign * qRate) : '-')}</td>
+                        <td colspan="2"></td>
+                        <td class="text-right">₩ ${formatNum(grandEstKrw)}</td>
                         ` : ''}
                         ${opts.includeActual ? `
-                        <td class="text-right font-weight-bold">${displayBilledForeign}</td>
-                        <td class="text-right font-weight-bold">${bRate === 1 ? '-' : formatNum(bRate, 2)}</td>
-                        <td class="text-right font-weight-bold">₩ ${displayBilledKrw}</td>
+                        <td colspan="2"></td>
+                        <td class="text-right">₩ ${formatNum(grandActKrw)}</td>
                         ` : ''}
                         ${(opts.includeEstimate && opts.includeActual) ? `
-                        <td class="text-right">₩ ${formatNum(billedKrw - (cost.isCustom ? 0 : (cost.quotedForeign * qRate)))}</td>
+                        <td class="text-right">₩ ${formatNum(grandActKrw - grandEstKrw)}</td>
                         ` : ''}
                     </tr>
                 `;
-            });
-
-            if (!hasCosts) {
-                html += `<tr><td colspan="${2 + (opts.includeEstimate ? 3 : 0) + (opts.includeActual ? 3 : 0) + ((opts.includeEstimate && opts.includeActual) ? 1 : 0)}" class="text-center" style="padding:15px; color:#94a3b8;">입력된 비용 내역이 없습니다.</td></tr>`;
+            } else {
+                html += `<tr><td colspan="${3 + (opts.includeEstimate ? 3 : 0) + (opts.includeActual ? 3 : 0) + ((opts.includeEstimate && opts.includeActual) ? 1 : 0)}" class="text-center" style="padding:15px; color:#94a3b8;">입력된 비용 내역이 없습니다.</td></tr>`;
             }
 
         html += `

@@ -1040,7 +1040,7 @@ function renderForwarderContent() {
     const groups = [
         { id: 'ocean', title: '🚢 해상 운임 및 할증료' },
         { id: 'export', title: '🛫 수출국 부대비용' },
-        { id: 'logistics', title: '🌐 물류 부대비용 (외화)' },
+        { id: 'logistics', title: '🌐 물류 부대비용' },
         { id: 'import', title: '🛬 수입국 부대비용' },
         { id: 'customs', title: '📋 적하보험 및 수입통관' }
     ];
@@ -1422,14 +1422,13 @@ function renderSummaryTable() {
         invoice: { label: '물품 대금 (KRW 환산)', values: [], details: {} },
         ocean: { label: '해상 운임 (O/F)', values: [], details: {}, expandable: true },
         export: { label: '수출국 부대비용', values: [], details: {}, expandable: true },
-        logistics: { label: '물류 부대비용 (외화)', values: [], details: {}, expandable: true },
+        logistics: { label: '물류 부대비용', values: [], details: {}, expandable: true },
         import: { label: '수입국 부대비용', values: [], details: {}, expandable: true },
         ins: { label: '적하보험료', values: [], details: {}, expandable: true },
         customs: { label: '수입 통관수수료', values: [], details: {}, expandable: true },
-        subtotal: { label: '포워더 부대비용 소계 (KRW)', values: [], isTotal: true },
         interestCost: { label: '금융비용 (이자비용)', values: [] },
         manualOther: { label: '기타 추가 부대비용 (수동)', values: [], details: {}, expandable: true },
-        grandtotal: { label: '총 비용 (물품+포워더+기타) KRW', values: [], isGrand: true }
+        grandtotal: { label: '총 비용 (KRW)', values: [], isGrand: true }
     };
 
     let colIdx = 0;
@@ -1474,7 +1473,6 @@ function renderSummaryTable() {
             });
             
             const sub = oceanKrw + exportKrw + logisticsKrw + importKrw + insKrw + customsKrw;
-            rows.subtotal.values[colIdx] = sub;
             
             // 기타 금융 및 추가비용 계산
             let manualOtherCosts = 0;
