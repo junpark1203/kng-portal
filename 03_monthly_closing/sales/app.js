@@ -3,78 +3,146 @@ const API_BASE = 'https://kng.junparks.com/api/logistics';
 const $ = id => document.getElementById(id);
 
 const app = {
-    currentTab: '미정산',
+    currentStatus: '미정산', // 기본: 미정산
     currentPage: 1,
     limit: 50,
     items: [],
+    totalItems: 0,
 
     init: function() {
-        const now = new Date();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        $('filterMonth').value = `${now.getFullYear()}-${month}`;
+        // 이벤트 리스너 등록
+        $('statusFilter').addEventListener('change', (e) => {
+            this.currentStatus = e.target.value;
+            this.currentPage = 1;
+            this.loadData();
+        });
         
-        $('filterMonth').addEventListener('change', () => { this.currentPage = 1; this.loadData(); });
-        $('searchInput').addEventListener('input', () => { this.currentPage = 1; this.loadData(); });
+        $('limitSelect').addEventListener('change', (e) => {
+            this.limit = parseInt(e.target.value, 10);
+            this.currentPage = 1;
+            this.loadData();
+        });
         
+        $('searchInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') { this.currentPage = 1; this.loadData(); }
+        });
+        
+        // 날짜 프리셋 이벤트
+        document.querySelectorAll('.date-preset-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                this.applyDatePreset(e.target.dataset.preset);
+                this.currentPage = 1;
+                this.loadData();
+            });
+        });
+        
+        // 직접 날짜 변경 시 프리셋 액티브 해제
+        const clearPreset = () => {
+            document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+        };
+        $('startDate').addEventListener('change', clearPreset);
+        $('endDate').addEventListener('change', clearPreset);
+        
+        // 체크박스 헤더
+        $('checkAllHeader').addEventListener('change', this.onCheckAllHeaderChange.bind(this));
+        
+        // 초기 날짜 세팅 (당월)
+        this.applyDatePreset('당월');
+        
+        // 데이터 로드
         this.loadData();
     },
 
-    setTab: function(tabName) {
-        this.currentTab = tabName;
-        this.currentPage = 1;
-        $('checkAll').checked = false;
+    applyDatePreset: function(preset) {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = today.getMonth();
+        const d = today.getDate();
         
-        if (tabName === '미정산') {
-            $('actionButtons').style.display = 'block';
-            $('colStatusOrDate').innerText = '상태';
-        } else {
-            $('actionButtons').style.display = 'none';
-            $('colStatusOrDate').innerText = '정산일자';
+        let start, end;
+        
+        const formatDate = (date) => {
+            const yy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            return `${yy}-${mm}-${dd}`;
+        };
+
+        if (preset === '당월') {
+            start = new Date(y, m, 1);
+            end = new Date(y, m + 1, 0); // 말일
+        } else if (preset === '3개월') {
+            start = new Date(y, m - 3, d);
+            end = today;
+        } else if (preset === '6개월') {
+            start = new Date(y, m - 6, d);
+            end = today;
+        } else if (preset === '전체') {
+            $('startDate').value = '';
+            $('endDate').value = '';
+            return;
         }
         
+        if (start && end) {
+            $('startDate').value = formatDate(start);
+            $('endDate').value = formatDate(end);
+        }
+    },
+    
+    resetAdvancedSearch: function() {
+        $('searchParty').value = '';
+        $('searchItem').value = '';
+        $('searchSpec').value = '';
         this.loadData();
     },
 
     loadData: async function() {
         try {
-            const filterMonth = $('filterMonth').value;
-            let startDate = '';
-            let endDate = '';
-            if (filterMonth) {
-                startDate = `${filterMonth}-01`;
-                // Last day of month
-                const [y, m] = filterMonth.split('-');
-                const lastDay = new Date(y, m, 0).getDate();
-                endDate = `${filterMonth}-${lastDay}`;
-            }
-
+            const startDate = $('startDate').value;
+            const endDate = $('endDate').value;
             const search = $('searchInput').value.trim();
+            const searchParty = $('searchParty').value.trim();
+            const searchItem = $('searchItem').value.trim();
+            const searchSpec = $('searchSpec').value.trim();
+
             const url = new URL(`${API_BASE}/history`);
             url.searchParams.append('type', 'outbound');
             url.searchParams.append('page', this.currentPage);
             url.searchParams.append('limit', this.limit);
+            
             if (startDate) url.searchParams.append('startDate', startDate);
             if (endDate) url.searchParams.append('endDate', endDate);
             if (search) url.searchParams.append('search', search);
+            if (searchParty) url.searchParams.append('searchParty', searchParty);
+            if (searchItem) url.searchParams.append('searchItem', searchItem);
+            if (searchSpec) url.searchParams.append('searchSpec', searchSpec);
 
             const res = await window.authFetch(url.toString());
-            const data = await res.json();
+            const result = await res.json();
             
-            // Filter by tab
-            const filteredData = data.data.filter(r => 
-                (this.currentTab === '미정산' && (!r.settlement_status || r.settlement_status === '미정산')) ||
-                (this.currentTab === '정산완료' && r.settlement_status === '정산완료')
+            let allData = result.data || [];
+            
+            // 상태 필터링 (클라이언트 단 - API가 상태 필터를 미지원할 수 있으므로 넉넉히 가져와서 필터링, 단 페이징 이슈 주의)
+            // 백엔드가 상태 필터를 받지 않으므로, 사실 이상적으로는 백엔드에 맡겨야함.
+            // 하지만 당장 화면 레벨에서 걸러주는 것이 기존 방식임.
+            const filteredData = allData.filter(r => 
+                this.currentStatus === '전체보기' ||
+                (this.currentStatus === '미정산' && (!r.settlement_status || r.settlement_status === '미정산')) ||
+                (this.currentStatus === '정산완료' && r.settlement_status === '정산완료')
             );
             
             this.items = filteredData;
-            this.renderTable();
+            this.totalItems = result.total; // 백엔드 토탈
             
-            // local count display update
-            if (this.currentTab === '미정산') {
-                $('pendingCount').innerText = filteredData.length;
-            } else {
-                $('completedCount').innerText = filteredData.length;
-            }
+            // 화면 렌더링
+            this.renderTable();
+            this.updatePagination();
+            
+            // UI 초기화
+            $('checkAllHeader').checked = false;
+            this.updateBatchButton();
             
         } catch (err) {
             console.error(err);
@@ -86,14 +154,18 @@ const app = {
         const tbody = $('dataTableBody');
         if (this.items.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            $('totalCount').innerText = 0;
             return;
         }
+        
+        $('totalCount').innerText = this.items.length; // 현재 필터링된 개수 (정확한 전체는 아님)
 
         tbody.innerHTML = this.items.map(r => {
-            const isPending = this.currentTab === '미정산';
-            const total = r.qty * r.price;
+            const total = (r.qty || 0) * (r.price || 0);
+            
             let statusHtml = '';
-            if (isPending) {
+            let statusVal = r.settlement_status || '미정산';
+            if (statusVal === '미정산') {
                 statusHtml = `<span class="badge bg-warning text-dark">미정산</span>`;
             } else {
                 statusHtml = `<div class="text-secondary small">${r.tax_invoice_date || ''}</div>
@@ -104,30 +176,89 @@ const app = {
             return `
             <tr>
                 <td class="text-center">
-                    ${isPending ? `<input class="form-check-input row-chk" type="checkbox" value="${r.id}">` : '-'}
+                    <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                 </td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
                 <td><strong>${r.item}</strong></td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-danger fw-bold">${r.qty}</td>
-                <td>${r.price.toLocaleString()}</td>
-                <td>${total.toLocaleString()}</td>
+                <td>${Number(r.price).toLocaleString()}</td>
+                <td>${Number(total).toLocaleString()}</td>
                 <td class="text-center">${statusHtml}</td>
             </tr>
             `;
         }).join('');
     },
 
-    toggleCheckAll: function() {
-        const checked = $('checkAll').checked;
-        document.querySelectorAll('.row-chk').forEach(el => el.checked = checked);
+    updatePagination: function() {
+        // 간단한 페이징 처리
+        const totalPages = Math.ceil(this.totalItems / this.limit) || 1;
+        const pageInfo = `${(this.currentPage - 1) * this.limit + 1} - ${Math.min(this.currentPage * this.limit, this.totalItems)} (총 ${this.totalItems}건)`;
+        $('pageInfo').innerText = pageInfo;
+        
+        let paginationHtml = '';
+        paginationHtml += `<button class="btn btn-sm btn-outline-secondary" ${this.currentPage === 1 ? 'disabled' : ''} onclick="app.goToPage(${this.currentPage - 1})">&laquo; 이전</button>`;
+        paginationHtml += `<button class="btn btn-sm btn-outline-secondary" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="app.goToPage(${this.currentPage + 1})">다음 &raquo;</button>`;
+        $('pagination').innerHTML = paginationHtml;
+    },
+    
+    goToPage: function(p) {
+        this.currentPage = p;
+        this.loadData();
     },
 
+    // 체크박스 기능들
+    onCheckAllHeaderChange: function() {
+        const checked = $('checkAllHeader').checked;
+        document.querySelectorAll('.row-chk').forEach(el => el.checked = checked);
+        this.updateBatchButton();
+    },
+    
+    toggleCheckAllRows: function(forceCheck) {
+        $('checkAllHeader').checked = forceCheck;
+        document.querySelectorAll('.row-chk').forEach(el => el.checked = forceCheck);
+        this.updateBatchButton();
+    },
+    
+    checkAllUnsettled: function() {
+        let hasUnsettled = false;
+        document.querySelectorAll('.row-chk').forEach(el => {
+            if (el.dataset.status === '미정산') {
+                el.checked = true;
+                hasUnsettled = true;
+            } else {
+                el.checked = false;
+            }
+        });
+        $('checkAllHeader').checked = false;
+        this.updateBatchButton();
+        if (!hasUnsettled) alert('현재 목록에 미정산 항목이 없습니다.');
+    },
+    
+    updateBatchButton: function() {
+        const checkedBoxes = document.querySelectorAll('.row-chk:checked');
+        let hasUnsettled = false;
+        checkedBoxes.forEach(el => {
+            if (el.dataset.status === '미정산') hasUnsettled = true;
+        });
+        
+        if (hasUnsettled) {
+            $('batchSettleBtn').style.display = 'inline-block';
+        } else {
+            $('batchSettleBtn').style.display = 'none';
+        }
+    },
+
+    // 정산 모달
     openSettlementModal: function() {
-        const selected = Array.from(document.querySelectorAll('.row-chk:checked')).map(el => el.value);
+        const selected = [];
+        document.querySelectorAll('.row-chk:checked').forEach(el => {
+            if (el.dataset.status === '미정산') selected.push(el.value);
+        });
+        
         if (selected.length === 0) {
-            return alert('정산할 내역을 선택해주세요.');
+            return alert('정산할 미정산 내역을 선택해주세요.');
         }
         $('selectedCount').innerText = selected.length;
         $('taxDate').value = new Date().toISOString().split('T')[0];
@@ -136,7 +267,10 @@ const app = {
     },
 
     submitSettlement: async function() {
-        const selected = Array.from(document.querySelectorAll('.row-chk:checked')).map(el => parseInt(el.value));
+        const selected = [];
+        document.querySelectorAll('.row-chk:checked').forEach(el => {
+            if (el.dataset.status === '미정산') selected.push(parseInt(el.value));
+        });
         const taxDate = $('taxDate').value;
         const isZeroTax = $('isZeroTax').checked;
         
@@ -153,11 +287,96 @@ const app = {
             });
             alert('정산 처리가 완료되었습니다.');
             bootstrap.Modal.getInstance(document.getElementById('settleModal')).hide();
-            $('checkAll').checked = false;
             this.loadData();
         } catch (err) {
             alert('정산 처리 실패: ' + err.message);
         }
+    },
+    
+    // 거래내역서 출력
+    printSelected: function() {
+        const checkedBoxes = document.querySelectorAll('.row-chk:checked');
+        if (checkedBoxes.length === 0) return alert('출력할 내역을 선택해주세요.');
+        
+        const selectedIds = Array.from(checkedBoxes).map(el => parseInt(el.value));
+        const selectedItems = this.items.filter(item => selectedIds.includes(item.id));
+        
+        // Group by Party? Let's just print all in one statement for simplicity, or we could group by party if needed. 
+        // User just said "선택내역 거래내역서(원장) 출력", so we print exactly what is selected.
+        
+        let sumTotal = 0;
+        let sumVat = 0;
+        let sumGrand = 0;
+        
+        const rowsHtml = selectedItems.map((r, index) => {
+            const total = (r.qty || 0) * (r.price || 0);
+            const vat = r.is_zero_tax ? 0 : Math.floor(total * 0.1);
+            const grand = total + vat;
+            
+            sumTotal += total;
+            sumVat += vat;
+            sumGrand += grand;
+            
+            return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${r.date}</td>
+                <td>${r.tax_invoice_date || '-'}</td>
+                <td>${r.party}</td>
+                <td>${r.item}</td>
+                <td>${r.spec} / ${r.unit}</td>
+                <td class="text-right">${r.qty}</td>
+                <td class="text-right">${Number(r.price).toLocaleString()}</td>
+                <td class="text-right">${Number(total).toLocaleString()}</td>
+                <td class="text-right">${Number(vat).toLocaleString()}</td>
+                <td class="text-right fw-bold">${Number(grand).toLocaleString()}</td>
+            </tr>
+            `;
+        }).join('');
+        
+        const printHtml = `
+            <div class="print-header">
+                <h2>거래내역서 (원장)</h2>
+                <div style="text-align:right; font-size:12px; margin-top:10px;">출력일시: ${new Date().toLocaleString()}</div>
+            </div>
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th style="width:40px;">No.</th>
+                        <th>발생일자</th>
+                        <th>정산일자</th>
+                        <th>거래처</th>
+                        <th>품명</th>
+                        <th>규격/단위</th>
+                        <th>수량</th>
+                        <th>단가</th>
+                        <th>공급가액</th>
+                        <th>부가세</th>
+                        <th>합계금액</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            
+            <table class="print-summary">
+                <tr>
+                    <td style="background-color:#f8f9fa;">총 공급가액</td>
+                    <td class="text-right">${Number(sumTotal).toLocaleString()} 원</td>
+                    <td style="background-color:#f8f9fa;">총 부가세</td>
+                    <td class="text-right">${Number(sumVat).toLocaleString()} 원</td>
+                    <td style="background-color:#e9ecef;">총 합계금액</td>
+                    <td class="text-right">${Number(sumGrand).toLocaleString()} 원</td>
+                </tr>
+            </table>
+        `;
+        
+        $('printContainer').innerHTML = printHtml;
+        
+        setTimeout(() => {
+            window.print();
+        }, 300);
     }
 };
 

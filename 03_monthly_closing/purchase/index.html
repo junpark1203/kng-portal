@@ -15,59 +15,147 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="../../css/iframe-common.css">
     <style>
-        .page-header { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+        .page-header { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1rem; }
         .table-responsive { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .nav-tabs .nav-link { color: #64748b; font-weight: 500; border: none; border-bottom: 2px solid transparent; }
-        .nav-tabs .nav-link.active { color: #4361ee; border-bottom: 2px solid #4361ee; background: transparent; }
-        .nav-tabs { border-bottom: 1px solid #e2e8f0; margin-bottom: 1rem; }
         .chk-col { width: 40px; text-align: center; }
+        
+        .filter-card {
+            background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
+        }
+        
+        .date-preset-btn {
+            border-color: #cbd5e1; color: #475569;
+        }
+        .date-preset-btn.active {
+            background-color: #4361ee; border-color: #4361ee; color: #fff;
+        }
+        
+        @media print {
+            body * { visibility: hidden; }
+            #printContainer, #printContainer * { visibility: visible; }
+            #printContainer { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+            
+            /* Print styles */
+            .print-header { text-align: center; margin-bottom: 20px; }
+            .print-header h2 { margin: 0; font-size: 24px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 10px; display: inline-block; }
+            .print-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: center; }
+            .print-table th { background-color: #f8f9fa !important; font-weight: bold; -webkit-print-color-adjust: exact; }
+            .print-table .text-right { text-align: right; }
+            .print-summary { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; font-weight: bold; }
+            .print-summary td { border: 2px solid #000; padding: 10px; text-align: center; }
+        }
     </style>
 </head>
 <body class="bg-light">
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 no-print">
     <div class="page-header d-flex justify-content-between align-items-center">
         <div>
-            <h4 class="mb-1 fw-bold text-dark"><i class='bx bx-import text-primary'></i> 매입 정산</h4>
+            <h4 class="mb-1 fw-bold text-dark"><i class='bx bx-import text-primary'></i> 매입정산</h4>
             <p class="text-muted mb-0 small">입고 내역에 대한 세금계산서 수취 및 대금 확정 관리</p>
+        </div>
+        <div>
+            <select id="statusFilter" class="form-select form-select-sm fw-bold border-primary text-primary" style="width: 140px; box-shadow: 0 2px 4px rgba(67,97,238,0.1);">
+                <option value="미정산">● 미정산 보기</option>
+                <option value="정산완료">● 정산완료 보기</option>
+                <option value="전체보기">● 전체보기</option>
+            </select>
         </div>
     </div>
 
-    <!-- 탭 메뉴 -->
-    <ul class="nav nav-tabs" id="settlementTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" onclick="app.setTab('미정산')">미정산 <span class="badge bg-danger rounded-pill" id="pendingCount">0</span></button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button" role="tab" onclick="app.setTab('정산완료')">정산완료 <span class="badge bg-secondary rounded-pill" id="completedCount">0</span></button>
-        </li>
-    </ul>
-
-    <!-- 컨트롤 바 -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex gap-2 align-items-center">
-            <input type="month" id="filterMonth" class="form-control form-control-sm" style="width:150px;">
-            <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="매입처, 품명 검색..." style="width:200px;">
+    <!-- 필터 및 검색 영역 -->
+    <div class="filter-card">
+        <div class="row g-2 align-items-center mb-2">
+            <!-- 기간 프리셋 -->
+            <div class="col-auto">
+                <div class="btn-group btn-group-sm" role="group" id="datePresets">
+                    <button type="button" class="btn date-preset-btn active" data-preset="당월">당월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="3개월">3개월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="6개월">6개월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="전체">전체</button>
+                </div>
+            </div>
+            <!-- 날짜 직접 선택 -->
+            <div class="col-auto d-flex align-items-center gap-1">
+                <input type="date" id="startDate" class="form-control form-control-sm" style="width: 130px;">
+                <span class="text-muted">~</span>
+                <input type="date" id="endDate" class="form-control form-control-sm" style="width: 130px;">
+            </div>
+            
+            <!-- 통합 검색 -->
+            <div class="col-auto flex-grow-1">
+                <div class="input-group input-group-sm">
+                    <input type="text" id="searchInput" class="form-control" placeholder="전체 통합 검색 (품명, 거래처 등)">
+                    <button class="btn btn-outline-secondary" type="button" onclick="app.loadData()"><i class='bx bx-search'></i> 검색</button>
+                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSearch"><i class='bx bx-slider'></i> 상세검색</button>
+                </div>
+            </div>
         </div>
-        <div id="actionButtons">
-            <button class="btn btn-primary btn-sm fw-bold" onclick="app.openSettlementModal()"><i class='bx bx-check-circle'></i> 선택항목 정산하기</button>
+        
+        <!-- 상세 검색 (Collapse) -->
+        <div class="collapse" id="advancedSearch">
+            <div class="card card-body bg-light mt-2 p-3 border-0">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted mb-1">매입처</label>
+                        <input type="text" id="searchParty" class="form-control form-control-sm" placeholder="예: 구글">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted mb-1">품명</label>
+                        <input type="text" id="searchItem" class="form-control form-control-sm" placeholder="예: 시멘트">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted mb-1">규격</label>
+                        <input type="text" id="searchSpec" class="form-control form-control-sm" placeholder="예: 25KG">
+                    </div>
+                </div>
+                <div class="text-end mt-2">
+                    <button class="btn btn-sm btn-secondary" onclick="app.resetAdvancedSearch()">초기화</button>
+                    <button class="btn btn-sm btn-primary" onclick="app.loadData()">적용</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 액션 바 -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-secondary" onclick="app.toggleCheckAllRows(true)">전체선택</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="app.checkAllUnsettled()">미정산건 전체선택</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="app.toggleCheckAllRows(false)">선택해제</button>
+            <div class="ms-2 border-start ps-3 d-flex align-items-center gap-2">
+                <span class="small text-muted">항목 수:</span>
+                <select id="limitSelect" class="form-select form-select-sm" style="width: 70px;">
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success btn-sm fw-bold" onclick="app.printSelected()"><i class='bx bx-printer'></i> 선택내역 거래내역서 출력</button>
+            <button id="batchSettleBtn" class="btn btn-primary btn-sm fw-bold" onclick="app.openSettlementModal()" style="display: none;"><i class='bx bx-check-circle'></i> 일괄 정산하기</button>
         </div>
     </div>
 
     <!-- 테이블 -->
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table table-hover align-middle mb-0" id="mainTable">
             <thead class="table-light text-secondary">
                 <tr>
-                    <th class="chk-col"><input class="form-check-input" type="checkbox" id="checkAll" onchange="app.toggleCheckAll()"></th>
-                    <th>입고일자</th>
+                    <th class="chk-col"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
+                    <th>일자</th>
                     <th>매입처</th>
                     <th>품명</th>
                     <th>규격/단위</th>
                     <th>수량</th>
                     <th>단가</th>
-                    <th>입고금액(총액)</th>
-                    <th id="colStatusOrDate">상태</th>
+                    <th>금액(총액)</th>
+                    <th>상태</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
@@ -78,23 +166,29 @@
     
     <!-- 페이징 -->
     <div class="d-flex justify-content-between align-items-center mt-3">
-        <div class="text-muted small" id="pageInfo"></div>
+        <div class="text-muted small">
+            총 <span id="totalCount" class="fw-bold">0</span>건 중 
+            <span id="pageInfo">0-0</span>
+        </div>
         <div class="btn-group" id="pagination"></div>
     </div>
 </div>
+
+<!-- 인쇄용 컨테이너 (평소에는 숨김) -->
+<div id="printContainer" class="print-only"></div>
 
 <!-- 정산 처리 모달 -->
 <div class="modal fade" id="settleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold">매입 정산 처리</h5>
+                <h5 class="modal-title fs-6 fw-bold">매입정산 처리</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p class="mb-3">선택한 <strong id="selectedCount" class="text-primary">0</strong>건의 내역을 정산완료 처리합니다.</p>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">정산 일자 (세금계산서 수취일)</label>
+                    <label class="form-label fw-bold">정산 일자 (세금계산서 발행/수취일)</label>
                     <input type="date" class="form-control" id="taxDate">
                 </div>
                 <div class="form-check mb-3">
@@ -117,6 +211,6 @@
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>
