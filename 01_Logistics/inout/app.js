@@ -928,6 +928,9 @@ const app = {
     openHistoryModal: async function(id, type) {
         try {
             const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
+            if (type === 'inbound') {
+                data.qty = data.qty_initial;
+            }
             this.currentHistoryDetail = data;
             
             $('detailModalTitle').innerText = type === 'inbound' ? '입고 상세 내역' : '출고 상세 내역';
