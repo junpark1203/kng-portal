@@ -1740,7 +1740,7 @@ function generatePrintTemplate(opts) {
                 </thead>
                 <tbody>
             `;
-            let hasCosts = false;
+            let hasCosts = true;
             let grandEstKrw = 0;
             let grandActKrw = 0;
             
@@ -1754,8 +1754,8 @@ function generatePrintTemplate(opts) {
                 let itemIdx = 0;
                 
                 const groupCosts = d.actualCosts.filter(c => (c.group || 'other') === grpKey);
+                
                 if (groupCosts.length > 0) {
-                    hasCosts = true;
                     groupCosts.forEach(cost => {
                         itemIdx++;
                         let qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -1797,27 +1797,38 @@ function generatePrintTemplate(opts) {
                             </tr>
                         `;
                     });
-                    
-                    grandEstKrw += grpEstKrw;
-                    grandActKrw += grpActKrw;
-                    
+                } else {
                     html += `
-                        <tr style="background-color: #f1f5f9; font-weight: bold;">
-                            <td colspan="3" class="text-center" style="padding: 10px;">${grp.label} 소계</td>
-                            ${opts.includeEstimate ? `
-                            <td colspan="2"></td>
-                            <td class="text-right">₩ ${formatNum(grpEstKrw)}</td>
-                            ` : ''}
-                            ${opts.includeActual ? `
-                            <td colspan="2"></td>
-                            <td class="text-right">₩ ${formatNum(grpActKrw)}</td>
-                            ` : ''}
-                            ${(opts.includeEstimate && opts.includeActual) ? `
-                            <td class="text-right">₩ ${formatNum(grpActKrw - grpEstKrw)}</td>
-                            ` : ''}
+                        <tr>
+                            <td class="text-center" style="color:#94a3b8; font-size:0.9em;">${grpIndex + 1}-0</td>
+                            <td class="text-center">${grp.label}</td>
+                            <td style="color:#94a3b8;">(항목 없음)</td>
+                            ${opts.includeEstimate ? '<td colspan="3" class="text-center">-</td>' : ''}
+                            ${opts.includeActual ? '<td colspan="3" class="text-center">-</td>' : ''}
+                            ${(opts.includeEstimate && opts.includeActual) ? '<td class="text-center">-</td>' : ''}
                         </tr>
                     `;
                 }
+                
+                grandEstKrw += grpEstKrw;
+                grandActKrw += grpActKrw;
+                
+                html += `
+                    <tr style="background-color: #f1f5f9; font-weight: bold;">
+                        <td colspan="3" class="text-center" style="padding: 10px;">${grpIndex + 1}. ${grp.label} 소계</td>
+                        ${opts.includeEstimate ? `
+                        <td colspan="2"></td>
+                        <td class="text-right">₩ ${formatNum(grpEstKrw)}</td>
+                        ` : ''}
+                        ${opts.includeActual ? `
+                        <td colspan="2"></td>
+                        <td class="text-right">₩ ${formatNum(grpActKrw)}</td>
+                        ` : ''}
+                        ${(opts.includeEstimate && opts.includeActual) ? `
+                        <td class="text-right">₩ ${formatNum(grpActKrw - grpEstKrw)}</td>
+                        ` : ''}
+                    </tr>
+                `;
             });
 
             if (hasCosts) {
