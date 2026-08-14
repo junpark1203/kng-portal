@@ -118,7 +118,21 @@ window.toggleSummaryDetails = function(key) {
     });
     
     if (icon) {
-        icon.className = isHidden ? 'bx bx-minus-square' : 'bx bx-plus-square';
+        icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+};
+
+window.scrollToCostItem = function(idx) {
+    const el = document.getElementById(`cost-item-${idx}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Temporarily highlight the item
+        const origShadow = el.style.boxShadow;
+        el.style.transition = 'box-shadow 0.3s ease';
+        el.style.boxShadow = '0 0 0 2px #3b82f6, 0 4px 15px rgba(59,130,246,0.3)';
+        setTimeout(() => {
+            el.style.boxShadow = origShadow || '';
+        }, 1500);
     }
 };
 
@@ -661,7 +675,7 @@ function renderSettlementGrid() {
             }
 
             html += `
-            <div class="cost-item-card" draggable="true" data-idx="${idx}"
+            <div class="cost-item-card" id="cost-item-${idx}" draggable="true" data-idx="${idx}"
                 ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)"
                 ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)"
                 ondrop="handleDrop(event, ${idx})" ondragend="handleDragEnd(event)">
@@ -1263,7 +1277,7 @@ function calculateAll() {
             const diffStr = diff > 0 ? '+₩ ' + formatNum(diff) : (diff < 0 ? '-₩ ' + formatNum(Math.abs(diff)) : '₩ 0');
             
             const hasDetails = (g.key !== 'invoice');
-            const toggleIcon = hasDetails ? `<i class='bx bx-plus-square' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer;" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
+            const toggleIcon = hasDetails ? `<i class='bx bx-chevron-down' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer; transition: transform 0.3s ease; font-size:1.2rem;" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
             
             htmlBody += `
                 <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}>
@@ -1279,7 +1293,7 @@ function calculateAll() {
                 let detailRows = '';
                 const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
                 let itemIdx = 0;
-                state.doc.actualCosts.forEach(cost => {
+                state.doc.actualCosts.forEach((cost, globalIdx) => {
                     const gk = cost.group || 'other';
                     if (gk === g.key) {
                         itemIdx++;
@@ -1299,7 +1313,7 @@ function calculateAll() {
                         let itemDiffStr = itemDiff > 0 ? '+₩ ' + formatNum(itemDiff) : (itemDiff < 0 ? '-₩ ' + formatNum(Math.abs(itemDiff)) : '₩ 0');
                         
                         detailRows += `
-                            <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
+                            <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9; cursor:pointer;" title="클릭시 상세 항목으로 이동" onclick="scrollToCostItem(${globalIdx})">
                                 <td style="padding:6px 12px; text-align:center; color:#94a3b8;">${grpNo}-${itemIdx}</td>
                                 <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
                                 <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
