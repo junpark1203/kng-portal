@@ -511,14 +511,27 @@ function renderSettlementGrid() {
 
     let html = '';
 
-    COST_GROUPS.forEach(grp => {
-        const items = grouped[grp.key];
-        if (!items || items.length === 0) return;
+    // Ensure state.doc.groupOrder exists
+    if (!state.doc.groupOrder || state.doc.groupOrder.length === 0) {
+        state.doc.groupOrder = COST_GROUPS.map(g => g.key);
+    }
+
+    state.doc.groupOrder.forEach(grpKey => {
+        const grp = COST_GROUPS.find(g => g.key === grpKey);
+        if (!grp) return;
+        const items = grouped[grp.key] || [];
 
         html += `
-        <div class="cost-group" id="grp_${grp.key}">
-            <div class="cost-group-header" onclick="toggleGroup('${grp.key}')">
+        <div class="cost-group" id="grp_${grp.key}" draggable="true" data-group-key="${grp.key}"
+            ondragstart="handleSectionDragStart(event)"
+            ondragover="handleSectionDragOver(event)"
+            ondragenter="handleSectionDragEnter(event)"
+            ondragleave="handleSectionDragLeave(event)"
+            ondrop="handleSectionDrop(event, '${grp.key}')"
+            ondragend="handleSectionDragEnd(event)">
+            <div class="cost-group-header" onclick="toggleGroup('${grp.key}')" style="cursor: grab;">
                 <div class="group-title">
+                    <i class='bx bx-grid-vertical' style="margin-right: 5px; color: #cbd5e1;" title="드래그하여 섹션 순서 변경"></i>
                     <i class='bx bx-chevron-down'></i>
                     ${grp.label} <span style="font-weight:400; color:#94a3b8; font-size:0.85em;">(${items.length})</span>
                 </div>
@@ -538,6 +551,12 @@ function renderSettlementGrid() {
                 ondragenter="handleGroupDragEnter(event)"
                 ondragleave="handleGroupDragLeave(event)"
                 ondrop="handleGroupDrop(event, '${grp.key}')">`;
+
+        if (items.length === 0) {
+            html += `<div class="empty-group-dropzone" style="text-align:center; padding: 25px; margin: 10px; border: 2px dashed #cbd5e1; border-radius: 8px; color: #94a3b8; font-size: 0.9rem; pointer-events: none;">
+                <i class='bx bx-import' style="font-size: 1.2rem; vertical-align: middle; margin-right: 5px;"></i> 이곳으로 항목을 드래그하여 추가하세요
+            </div>`;
+        }
 
         items.forEach(({ cost, idx }) => {
             const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
@@ -996,6 +1015,66 @@ window.handleGroupDrop = function(e, targetGroupKey) {
 window.handleDragEnd = function(e) {
     e.currentTarget.classList.remove('dragging');
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+};
+
+// 새로 추가: 섹션 전체 드래그 앤 드롭 핸들러
+window.handleSectionDragStart = function(e) {
+    // 내부 아이템의 드래그일 경우 섹션 드래그 방지
+    if (e.target.closest('.cost-item-card') && e.target !== e.currentTarget) {
+        e.preventDefault();
+        return;
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'section:' + e.currentTarget.dataset.groupKey);
+    e.currentTarget.classList.add('dragging-section');
+};
+
+window.handleSectionDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+};
+
+window.handleSectionDragEnter = function(e) {
+    e.preventDefault();
+    const group = e.target.closest('.cost-group');
+    // 대상이 현재 드래그중인 섹션이 아닐 때만 효과
+    if (group && !group.classList.contains('dragging-section')) {
+        group.classList.add('drag-over-section');
+    }
+};
+
+window.handleSectionDragLeave = function(e) {
+    const group = e.target.closest('.cost-group');
+    if (group && !group.contains(e.relatedTarget)) {
+        group.classList.remove('drag-over-section');
+    }
+};
+
+window.handleSectionDrop = function(e, targetGroupKey) {
+    e.preventDefault();
+    e.stopPropagation();
+    const group = e.target.closest('.cost-group');
+    if (group) group.classList.remove('drag-over-section');
+    
+    const data = e.dataTransfer.getData('text/plain');
+    if (!data.startsWith('section:')) return;
+    
+    const fromKey = data.replace('section:', '');
+    if (fromKey === targetGroupKey) return;
+    
+    const fromIdx = state.doc.groupOrder.indexOf(fromKey);
+    const toIdx = state.doc.groupOrder.indexOf(targetGroupKey);
+    
+    if (fromIdx !== -1 && toIdx !== -1) {
+        state.doc.groupOrder.splice(fromIdx, 1);
+        state.doc.groupOrder.splice(toIdx, 0, fromKey);
+        renderSettlementGrid();
+    }
+};
+
+window.handleSectionDragEnd = function(e) {
+    e.currentTarget.classList.remove('dragging-section');
+    document.querySelectorAll('.drag-over-section').forEach(el => el.classList.remove('drag-over-section'));
 };
 
 function calculateAll() {
