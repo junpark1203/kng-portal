@@ -108,6 +108,7 @@ const showToast = (msg, isError = false) => {
 function generateId() { return Math.random().toString(36).substr(2, 9); }
 
 window.toggleSummaryDetails = function(key) {
+    state.expandedSummaryGroups = state.expandedSummaryGroups || {};
     const rows = document.querySelectorAll(`.detail-row-${key}`);
     const icon = document.getElementById(`icon_${key}`);
     
@@ -116,6 +117,8 @@ window.toggleSummaryDetails = function(key) {
         if (idx === 0) isHidden = row.style.display === 'none';
         row.style.display = isHidden ? 'table-row' : 'none';
     });
+    
+    state.expandedSummaryGroups[key] = isHidden;
     
     if (icon) {
         icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
@@ -1095,6 +1098,113 @@ window.handleSectionDragEnd = function(e) {
     document.querySelectorAll('.drag-over-section').forEach(el => el.classList.remove('drag-over-section'));
 };
 
+// --- Summary Table Drag & Drop ---
+window.handleSummaryGroupDragStart = function(e, key) {
+    e.stopPropagation();
+    state.draggedSummaryGroup = key;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', key);
+    e.target.style.opacity = '0.5';
+};
+
+window.handleSummaryGroupDragOver = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state.draggedSummaryGroup || typeof state.draggedSummaryItemIdx === 'number') {
+        e.dataTransfer.dropEffect = 'move';
+        let targetRow = e.target.closest('tr');
+        if(targetRow) targetRow.style.backgroundColor = '#f1f5f9';
+    }
+};
+
+window.handleSummaryGroupDragLeave = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    let targetRow = e.target.closest('tr');
+    if(targetRow) targetRow.style.backgroundColor = '';
+};
+
+window.handleSummaryGroupDrop = function(e, targetKey) {
+    e.preventDefault();
+    e.stopPropagation();
+    let targetRow = e.target.closest('tr');
+    if(targetRow) targetRow.style.backgroundColor = '';
+    
+    if (state.draggedSummaryGroup && state.draggedSummaryGroup !== targetKey) {
+        let order = state.doc.groupOrder || COST_GROUPS.map(g => g.key);
+        const fromIdx = order.indexOf(state.draggedSummaryGroup);
+        const toIdx = order.indexOf(targetKey);
+        
+        if (fromIdx > -1 && toIdx > -1) {
+            order.splice(fromIdx, 1);
+            order.splice(toIdx, 0, state.draggedSummaryGroup);
+            state.doc.groupOrder = order;
+            fillFormFromState();
+            toast('섹션 순서가 변경되었습니다.');
+        }
+    } else if (typeof state.draggedSummaryItemIdx === 'number') {
+        const cost = state.doc.actualCosts[state.draggedSummaryItemIdx];
+        if (cost && cost.group !== targetKey && targetKey !== 'invoice') {
+            cost.group = targetKey;
+            fillFormFromState();
+            toast('항목이 이동되었습니다.');
+        }
+    }
+};
+
+window.handleSummaryItemDragStart = function(e, idx) {
+    e.stopPropagation();
+    state.draggedSummaryItemIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
+};
+
+window.handleSummaryItemDragOver = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof state.draggedSummaryItemIdx === 'number') {
+        e.dataTransfer.dropEffect = 'move';
+        let targetRow = e.target.closest('tr');
+        if(targetRow) targetRow.style.backgroundColor = '#e2e8f0';
+    }
+};
+
+window.handleSummaryItemDragLeave = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    let targetRow = e.target.closest('tr');
+    if(targetRow) targetRow.style.backgroundColor = '';
+};
+
+window.handleSummaryItemDrop = function(e, targetGrpKey, targetIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    let targetRow = e.target.closest('tr');
+    if(targetRow) targetRow.style.backgroundColor = '';
+    
+    if (typeof state.draggedSummaryItemIdx === 'number' && targetGrpKey !== 'invoice') {
+        if (state.draggedSummaryItemIdx === targetIdx) return;
+        
+        const item = state.doc.actualCosts.splice(state.draggedSummaryItemIdx, 1)[0];
+        item.group = targetGrpKey;
+        
+        let insertIdx = targetIdx;
+        if (state.draggedSummaryItemIdx < targetIdx) {
+            insertIdx--;
+        }
+        state.doc.actualCosts.splice(insertIdx, 0, item);
+        
+        fillFormFromState();
+        toast('항목 순서가 변경되었습니다.');
+    }
+};
+
+window.handleSummaryDragEnd = function(e) {
+    e.target.style.opacity = '1';
+    state.draggedSummaryGroup = null;
+    state.draggedSummaryItemIdx = null;
+};
+
 function calculateAll() {
     let totalEstKrw = 0;
     let totalBilledKrw = 0;
@@ -1276,12 +1386,22 @@ function calculateAll() {
             const diffColor = diff > 0 ? '#dc2626' : (diff < 0 ? '#16a34a' : 'inherit');
             const diffStr = diff > 0 ? '+₩ ' + formatNum(diff) : (diff < 0 ? '-₩ ' + formatNum(Math.abs(diff)) : '₩ 0');
             
-            const hasDetails = (g.key !== 'invoice');
-            const toggleIcon = hasDetails ? `<i class='bx bx-chevron-down' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer; transition: transform 0.3s ease; font-size:1.2rem;" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
+            const hasDetails = true;
+            state.expandedSummaryGroups = state.expandedSummaryGroups || {};
+            const isExpanded = !!state.expandedSummaryGroups[g.key];
+            const toggleIcon = hasDetails ? `<i class='bx bx-chevron-down' id="icon_${g.key}" style="color:#64748b; margin-left:8px; vertical-align:middle; cursor:pointer; transition: transform 0.3s ease; font-size:1.2rem; transform: ${isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'};" onclick="event.stopPropagation(); toggleSummaryDetails('${g.key}')"></i>` : '';
             
             htmlBody += `
-                <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}>
-                    <td style="padding:10px 12px; text-align:center; font-weight:bold;">${grpNo}</td>
+                <tr style="border-bottom:1px solid #e2e8f0; ${hasDetails ? 'cursor:pointer; background:#fff;' : ''}" ${hasDetails ? `onclick="toggleSummaryDetails('${g.key}')"` : ''}
+                    draggable="true" 
+                    ondragstart="handleSummaryGroupDragStart(event, '${g.key}')" 
+                    ondragover="handleSummaryGroupDragOver(event)"
+                    ondragleave="handleSummaryGroupDragLeave(event)"
+                    ondrop="handleSummaryGroupDrop(event, '${g.key}')"
+                    ondragend="handleSummaryDragEnd(event)">
+                    <td style="padding:10px 12px; text-align:center; font-weight:bold;">
+                        <i class='bx bx-grid-vertical' style="color:#cbd5e1; cursor:grab; margin-right:4px;"></i>${grpNo}
+                    </td>
                     <td style="padding:10px 12px; font-weight:500;">${g.label} ${toggleIcon}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(est)}</td>
                     <td class="col-num" style="padding:10px 12px;">₩ ${formatNum(act)}</td>
@@ -1293,36 +1413,84 @@ function calculateAll() {
                 let detailRows = '';
                 const snapRates = state.doc.quotationSnapshot.exchangeRates || {};
                 let itemIdx = 0;
-                state.doc.actualCosts.forEach((cost, globalIdx) => {
-                    const gk = cost.group || 'other';
-                    if (gk === g.key) {
-                        itemIdx++;
-                        const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
-                        const bCurr = cost.billedCurrency || cost.currency || 'KRW';
-                        let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
-                        let qKrw = cost.quotedForeign * qRate;
-                        
-                        let amt = parseFloat(cost.amount) || 0;
-                        let qty = parseFloat(cost.unitQty) || 1;
-                        let billedForeign = amt * qty;
-                        let bRate = bCurr === 'KRW' ? 1 : cost.billedRate;
-                        let bKrw = billedForeign * bRate;
-                        
-                        let itemDiff = bKrw - qKrw;
-                        let itemDiffColor = itemDiff > 0 ? '#dc2626' : (itemDiff < 0 ? '#16a34a' : 'inherit');
-                        let itemDiffStr = itemDiff > 0 ? '+₩ ' + formatNum(itemDiff) : (itemDiff < 0 ? '-₩ ' + formatNum(Math.abs(itemDiff)) : '₩ 0');
-                        
-                        detailRows += `
-                            <tr class="detail-row-${g.key}" style="display:none; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9; cursor:pointer;" title="클릭시 상세 항목으로 이동" onclick="scrollToCostItem(${globalIdx})">
-                                <td style="padding:6px 12px; text-align:center; color:#94a3b8;">${grpNo}-${itemIdx}</td>
-                                <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
-                                <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
-                                <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
-                                <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
-                            </tr>
-                        `;
-                    }
-                });
+
+                if (g.key === 'invoice') {
+                    const term = state.doc.quotationSnapshot.incoterm || 'FOB';
+                    const snapItems = state.doc.quotationSnapshot.items || [];
+                    snapItems.forEach(sItem => {
+                        const p = sItem.prices && sItem.prices[term] ? sItem.prices[term] : null;
+                        if (p && p.currency && p.unitPrice) {
+                            itemIdx++;
+                            const qCurr = p.currency;
+                            const bCurr = p.currency;
+                            const qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
+                            
+                            let bRate = qRate;
+                            const invCost = state.doc.actualCosts.find(c => c.group === 'invoice' && (c.billedCurrency === qCurr || c.currency === qCurr));
+                            if (invCost && invCost.billedRate) {
+                                bRate = parseFloat(invCost.billedRate);
+                            }
+                            
+                            const foreignAmt = p.unitPrice * (sItem.qty || 0);
+                            const qKrw = foreignAmt * qRate;
+                            const bKrw = foreignAmt * bRate;
+                            
+                            let itemDiff = bKrw - qKrw;
+                            let itemDiffColor = itemDiff > 0 ? '#dc2626' : (itemDiff < 0 ? '#16a34a' : 'inherit');
+                            let itemDiffStr = itemDiff > 0 ? '+₩ ' + formatNum(itemDiff) : (itemDiff < 0 ? '-₩ ' + formatNum(Math.abs(itemDiff)) : '₩ 0');
+                            
+                            detailRows += `
+                                <tr class="detail-row-${g.key}" style="display:${isExpanded ? 'table-row' : 'none'}; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:6px 12px; text-align:center; color:#94a3b8;">${grpNo}-${itemIdx}</td>
+                                    <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${sItem.name || '-'}</td>
+                                    <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
+                                    <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
+                                    <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                } else {
+                    state.doc.actualCosts.forEach((cost, globalIdx) => {
+                        const gk = cost.group || 'other';
+                        if (gk === g.key) {
+                            itemIdx++;
+                            const qCurr = cost.quotedCurrency || cost.currency || 'KRW';
+                            const bCurr = cost.billedCurrency || cost.currency || 'KRW';
+                            let qRate = qCurr === 'KRW' ? 1 : (snapRates[qCurr] || 0);
+                            let qKrw = cost.quotedForeign * qRate;
+                            
+                            let amt = parseFloat(cost.amount) || 0;
+                            let qty = parseFloat(cost.unitQty) || 1;
+                            let billedForeign = amt * qty;
+                            let bRate = bCurr === 'KRW' ? 1 : cost.billedRate;
+                            let bKrw = billedForeign * bRate;
+                            
+                            let itemDiff = bKrw - qKrw;
+                            let itemDiffColor = itemDiff > 0 ? '#dc2626' : (itemDiff < 0 ? '#16a34a' : 'inherit');
+                            let itemDiffStr = itemDiff > 0 ? '+₩ ' + formatNum(itemDiff) : (itemDiff < 0 ? '-₩ ' + formatNum(Math.abs(itemDiff)) : '₩ 0');
+                            
+                            detailRows += `
+                                <tr class="detail-row-${g.key}" style="display:${isExpanded ? 'table-row' : 'none'}; background:#f8fafc; font-size:0.85rem; color:#475569; border-bottom:1px solid #f1f5f9; cursor:pointer;" 
+                                    title="클릭시 상세 항목으로 이동" onclick="scrollToCostItem(${globalIdx})"
+                                    draggable="true"
+                                    ondragstart="handleSummaryItemDragStart(event, ${globalIdx})"
+                                    ondragover="handleSummaryItemDragOver(event)"
+                                    ondragleave="handleSummaryItemDragLeave(event)"
+                                    ondrop="handleSummaryItemDrop(event, '${g.key}', ${globalIdx})"
+                                    ondragend="handleSummaryDragEnd(event)">
+                                    <td style="padding:6px 12px; text-align:center; color:#94a3b8;">
+                                        <i class='bx bx-grid-vertical' style="color:#cbd5e1; cursor:grab; margin-right:4px;"></i>${grpNo}-${itemIdx}
+                                    </td>
+                                    <td style="padding:6px 12px 6px 12px;"><i class='bx bx-subdirectory-right' style="color:#94a3b8; margin-right:5px;"></i>${cost.label}</td>
+                                    <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(qKrw)}</td>
+                                    <td class="col-num" style="padding:6px 12px;">₩ ${formatNum(bKrw)}</td>
+                                    <td class="col-num" style="padding:6px 12px; color:${itemDiffColor};">${itemDiffStr}</td>
+                                </tr>
+                            `;
+                        }
+                    });
+                }
                 htmlBody += detailRows;
             }
         });
@@ -1828,7 +1996,35 @@ function generatePrintTemplate(opts) {
                 let grpActForeign = {};
                 let itemIdx = 0;
                 
-                const groupCosts = d.actualCosts.filter(c => (c.group || 'other') === grpKey);
+                let groupCosts = [];
+                if (grpKey === 'invoice') {
+                    const term = state.doc.quotationSnapshot.incoterm || 'FOB';
+                    const snapItems = state.doc.quotationSnapshot.items || [];
+                    snapItems.forEach(sItem => {
+                        const p = sItem.prices && sItem.prices[term] ? sItem.prices[term] : null;
+                        if (p && p.currency && p.unitPrice) {
+                            const qCurr = p.currency;
+                            let bRate = 1;
+                            const invCost = d.actualCosts.find(c => c.group === 'invoice' && (c.billedCurrency === qCurr || c.currency === qCurr));
+                            if (invCost && invCost.billedRate) {
+                                bRate = parseFloat(invCost.billedRate);
+                            }
+                            groupCosts.push({
+                                isCustom: false,
+                                label: sItem.name || '-',
+                                quotedCurrency: qCurr,
+                                currency: qCurr,
+                                billedCurrency: qCurr,
+                                quotedForeign: p.unitPrice * (sItem.qty || 0),
+                                amount: p.unitPrice,
+                                unitQty: sItem.qty || 0,
+                                billedRate: bRate
+                            });
+                        }
+                    });
+                } else {
+                    groupCosts = d.actualCosts.filter(c => (c.group || 'other') === grpKey);
+                }
                 
                 if (groupCosts.length > 0) {
                     groupCosts.forEach(cost => {
