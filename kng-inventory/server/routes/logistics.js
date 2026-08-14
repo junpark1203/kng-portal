@@ -77,6 +77,7 @@ function initLogisticsTables(database) {
                     selling_price REAL NOT NULL,
                     shipping_fee REAL NOT NULL,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
             `, (err) => {
                 if (!err) {
                     const addColsOutbound = [
