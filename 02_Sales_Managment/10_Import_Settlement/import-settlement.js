@@ -1718,6 +1718,65 @@ function generatePrintTemplate(opts) {
         </div>`;
     }
 
+    // 5. Summary
+    if (opts.showSummary) {
+        const tbody = document.getElementById('summaryTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        
+        let sumHtml = `
+            <thead>
+                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                    <th style="width:10%; text-align:center; padding:12px;">No.</th>
+                    <th style="width:30%; text-align:left; padding:12px;">비용 구분</th>
+                    ${opts.includeEstimate ? '<th class="col-num" style="width:20%; padding:12px;">예상 견적 (KRW)</th>' : ''}
+                    ${opts.includeActual ? '<th class="col-num highlight-col" style="width:20%; padding:12px;">실제 청구 (KRW)</th>' : ''}
+                    ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num" style="width:20%; padding:12px;">증감액 (KRW)</th>' : ''}
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        rows.forEach(row => {
+            if (row.style.display === 'none') return;
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 5) {
+                sumHtml += `<tr>${row.innerHTML}</tr>`;
+                return;
+            }
+            sumHtml += `<tr>`;
+            sumHtml += `<td class="text-center">${cells[0].innerHTML}</td>`;
+            sumHtml += `<td>${cells[1].innerHTML}</td>`;
+            if (opts.includeEstimate) sumHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
+            if (opts.includeActual) sumHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
+            if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right">${cells[4].innerHTML}</td>`;
+            sumHtml += `</tr>`;
+        });
+        sumHtml += `</tbody><tfoot>`;
+        const tfoot = document.getElementById('summaryTableFoot');
+        if (tfoot) {
+            const cells = tfoot.querySelectorAll('td');
+            if (cells.length >= 4) {
+                sumHtml += `<tr>`;
+                sumHtml += `<td colspan="2" class="text-center font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[0].innerHTML}</td>`;
+                if (opts.includeEstimate) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[1].innerHTML}</td>`;
+                if (opts.includeActual) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[2].innerHTML}</td>`;
+                if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[3].innerHTML}</td>`;
+                sumHtml += `</tr>`;
+            } else {
+                sumHtml += `<tr>${tfoot.innerHTML}</tr>`;
+            }
+        }
+        sumHtml += `</tfoot>`;
+
+        html += `
+        <div class="print-section">
+            <h2 class="section-title">${sectionNum++}. 비용 요약</h2>
+            <table class="print-data-table">
+                ${sumHtml}
+            </table>
+        </div>`;
+    }
+
     // 4. Ancillary (Cost Details)
     if (opts.showAncillary) {
         html += `
@@ -1874,65 +1933,6 @@ function generatePrintTemplate(opts) {
 
         html += `
                 </tbody>
-            </table>
-        </div>`;
-    }
-
-    // 5. Summary
-    if (opts.showSummary) {
-        const tbody = document.getElementById('summaryTableBody');
-        const rows = tbody.querySelectorAll('tr');
-        
-        let sumHtml = `
-            <thead>
-                <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                    <th style="width:10%; text-align:center; padding:12px;">No.</th>
-                    <th style="width:30%; text-align:left; padding:12px;">비용 구분</th>
-                    ${opts.includeEstimate ? '<th class="col-num" style="width:20%; padding:12px;">예상 견적 (KRW)</th>' : ''}
-                    ${opts.includeActual ? '<th class="col-num highlight-col" style="width:20%; padding:12px;">실제 청구 (KRW)</th>' : ''}
-                    ${(opts.includeEstimate && opts.includeActual) ? '<th class="col-num" style="width:20%; padding:12px;">증감액 (KRW)</th>' : ''}
-                </tr>
-            </thead>
-            <tbody>
-        `;
-        
-        rows.forEach(row => {
-            if (row.style.display === 'none') return;
-            const cells = row.querySelectorAll('td');
-            if (cells.length < 5) {
-                sumHtml += `<tr>${row.innerHTML}</tr>`;
-                return;
-            }
-            sumHtml += `<tr>`;
-            sumHtml += `<td class="text-center">${cells[0].innerHTML}</td>`;
-            sumHtml += `<td>${cells[1].innerHTML}</td>`;
-            if (opts.includeEstimate) sumHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
-            if (opts.includeActual) sumHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
-            if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right">${cells[4].innerHTML}</td>`;
-            sumHtml += `</tr>`;
-        });
-        sumHtml += `</tbody><tfoot>`;
-        const tfoot = document.getElementById('summaryTableFoot');
-        if (tfoot) {
-            const cells = tfoot.querySelectorAll('td');
-            if (cells.length >= 4) {
-                sumHtml += `<tr>`;
-                sumHtml += `<td colspan="2" class="text-center font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[0].innerHTML}</td>`;
-                if (opts.includeEstimate) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[1].innerHTML}</td>`;
-                if (opts.includeActual) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[2].innerHTML}</td>`;
-                if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right font-weight-bold" style="background:#f1f5f9; border-top:2px solid #cbd5e1;">${cells[3].innerHTML}</td>`;
-                sumHtml += `</tr>`;
-            } else {
-                sumHtml += `<tr>${tfoot.innerHTML}</tr>`;
-            }
-        }
-        sumHtml += `</tfoot>`;
-
-        html += `
-        <div class="print-section">
-            <h2 class="section-title">${sectionNum++}. 비용 요약</h2>
-            <table class="print-data-table">
-                ${sumHtml}
             </table>
         </div>`;
     }

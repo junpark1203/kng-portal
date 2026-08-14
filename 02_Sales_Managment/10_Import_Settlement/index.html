@@ -121,25 +121,11 @@
                     </div>
                 </section>
 
-                <!-- SECTION 3: 항목별 비용 정산 (카드형 아코디언) -->
-                <section class="edit-section" id="ancillarySection">
-                    <div class="section-header-flex">
-                        <div>
-                            <h3 style="margin:0;">3. 항목별 비용 정산 및 분석</h3>
-                            <p class="help-text" style="margin:5px 0 0 0;">* 각 항목의 <strong>우측 파란 패널</strong>에서 실제 청구 내역을 입력하세요.</p>
-                        </div>
-                    </div>
-                    
-                    <div id="settlementCardContainer">
-                        <!-- JS 렌더링 영역 -->
-                    </div>
-                </section>
-
                 <!-- SECTION 4: 비용 요약 -->
                 <section class="settlement-section" id="summaryTableSection" style="margin-top:30px;">
                     <div class="section-header">
                         <div class="section-title">
-                            <h3 style="margin:0;">4. 비용 요약</h3>
+                            <h3 style="margin:0;">3. 비용 요약</h3>
                         </div>
                     </div>
                     <div class="table-container" style="margin-top:10px; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0;">
@@ -160,6 +146,20 @@
                                 <!-- JS rendering -->
                             </tfoot>
                         </table>
+                    </div>
+                </section>
+
+                <!-- SECTION 3: 항목별 비용 정산 (카드형 아코디언) -->
+                <section class="edit-section" id="ancillarySection">
+                    <div class="section-header-flex">
+                        <div>
+                            <h3 style="margin:0;">4. 항목별 비용 정산 및 분석</h3>
+                            <p class="help-text" style="margin:5px 0 0 0;">* 각 항목의 <strong>우측 파란 패널</strong>에서 실제 청구 내역을 입력하세요.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="settlementCardContainer">
+                        <!-- JS 렌더링 영역 -->
                     </div>
                 </section>
 
@@ -341,11 +341,11 @@
                         <!-- 3. 종합 요약 대시보드 -->
                         <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Dashboard" checked> 종합 요약 대시보드</label>
                         
-                        <!-- 4. 항목별 비용 정산 및 분석 -->
-                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Ancillary" checked> 항목별 비용 정산 및 분석</label>
-
                         <!-- 5. 비용 요약 -->
                         <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Summary" checked> 비용 요약</label>
+
+                        <!-- 4. 항목별 비용 정산 및 분석 -->
+                        <label style="font-size:0.95rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; margin:0;"><input type="checkbox" id="chkPrint_Ancillary" checked> 항목별 비용 정산 및 분석</label>
 
                         <!-- 6. 품목별 실수입원가 산출 -->
                         <div class="chk-tree-group">
