@@ -1751,6 +1751,8 @@ function generatePrintTemplate(opts) {
                 
                 let grpEstKrw = 0;
                 let grpActKrw = 0;
+                let grpEstForeign = {};
+                let grpActForeign = {};
                 let itemIdx = 0;
                 
                 const groupCosts = d.actualCosts.filter(c => (c.group || 'other') === grpKey);
@@ -1773,7 +1775,14 @@ function generatePrintTemplate(opts) {
                         grpEstKrw += qKrw;
                         grpActKrw += billedKrw;
                         
-                        let displayBilledForeign = bCurr === 'KRW' ? '-' : (billedForeign === 0 ? '-' : formatNum(billedForeign, 2));
+                        if (!cost.isCustom && cost.quotedForeign && qCurr !== 'KRW') {
+                            grpEstForeign[qCurr] = (grpEstForeign[qCurr] || 0) + cost.quotedForeign;
+                        }
+                        if (billedForeign > 0 && bCurr !== 'KRW') {
+                            grpActForeign[bCurr] = (grpActForeign[bCurr] || 0) + billedForeign;
+                        }
+                        
+                        let displayBilledForeign = bCurr === 'KRW' ? '-' : (billedForeign === 0 ? '-' : `${bCurr} ${formatNum(billedForeign, 2)}`);
                         let displayBilledKrw = billedKrw === 0 ? '-' : formatNum(billedKrw);
                         
                         html += `
@@ -1782,7 +1791,7 @@ function generatePrintTemplate(opts) {
                                 <td class="text-center">${grp.label}</td>
                                 <td>${cost.label}</td>
                                 ${opts.includeEstimate ? `
-                                <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign ? formatNum(cost.quotedForeign, 2) : '-')}</td>
+                                <td class="text-right">${cost.isCustom ? '-' : (cost.quotedForeign && qCurr !== 'KRW' ? `${qCurr} ${formatNum(cost.quotedForeign, 2)}` : '-')}</td>
                                 <td class="text-right">${cost.isCustom ? '-' : (qRate === 1 ? '-' : formatNum(qRate, 2))}</td>
                                 <td class="text-right">₩ ${cost.isCustom ? '-' : formatNum(qKrw)}</td>
                                 ` : ''}
@@ -1802,7 +1811,7 @@ function generatePrintTemplate(opts) {
                         <tr>
                             <td class="text-center" style="color:#94a3b8; font-size:0.9em;">${grpIndex + 1}-0</td>
                             <td class="text-center">${grp.label}</td>
-                            <td style="color:#94a3b8;">(항목 없음)</td>
+                            <td style="color:#94a3b8;">-</td>
                             ${opts.includeEstimate ? '<td colspan="3" class="text-center">-</td>' : ''}
                             ${opts.includeActual ? '<td colspan="3" class="text-center">-</td>' : ''}
                             ${(opts.includeEstimate && opts.includeActual) ? '<td class="text-center">-</td>' : ''}
@@ -1813,15 +1822,26 @@ function generatePrintTemplate(opts) {
                 grandEstKrw += grpEstKrw;
                 grandActKrw += grpActKrw;
                 
+                const formatForeignSums = (sums) => {
+                    const keys = Object.keys(sums);
+                    if (keys.length === 0) return '-';
+                    return keys.map(k => `${k} ${formatNum(sums[k], 2)}`).join('<br>');
+                };
+                
+                let grpEstForeignStr = formatForeignSums(grpEstForeign);
+                let grpActForeignStr = formatForeignSums(grpActForeign);
+                
                 html += `
                     <tr style="background-color: #f1f5f9; font-weight: bold;">
                         <td colspan="3" class="text-center" style="padding: 10px;">${grpIndex + 1}. ${grp.label} 소계</td>
                         ${opts.includeEstimate ? `
-                        <td colspan="2"></td>
+                        <td class="text-right">${grpEstForeignStr}</td>
+                        <td></td>
                         <td class="text-right">₩ ${formatNum(grpEstKrw)}</td>
                         ` : ''}
                         ${opts.includeActual ? `
-                        <td colspan="2"></td>
+                        <td class="text-right">${grpActForeignStr}</td>
+                        <td></td>
                         <td class="text-right">₩ ${formatNum(grpActKrw)}</td>
                         ` : ''}
                         ${(opts.includeEstimate && opts.includeActual) ? `
