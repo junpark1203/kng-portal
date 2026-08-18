@@ -432,8 +432,21 @@ router.get('/history/inbound/:id', (req, res) => {
     db.get(sql, [id], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!row) return res.status(404).json({ error: 'Record not found' });
+        
         row.type = 'inbound';
-        res.json(row);
+        
+        const groupSql = `
+            SELECT i.*, l.name as location_name
+            FROM logistics_inbound i
+            LEFT JOIN logistics_locations l ON i.location_id = l.id
+            WHERE i.date = ? AND i.supplier = ? AND i.created_at = ?
+            ORDER BY i.id ASC
+        `;
+        db.all(groupSql, [row.date, row.supplier, row.created_at], (err2, items) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            row.items = items;
+            res.json(row);
+        });
     });
 });
 
@@ -445,18 +458,35 @@ router.get('/history/outbound/:id', (req, res) => {
         if (!row) return res.status(404).json({ error: 'Record not found' });
         
         row.type = 'outbound';
-        // 연관된 입고(inbound) 내역과 창고 조회
-        const lotsSql = `
-            SELECT l.consumed_qty, i.supplier, i.date as inbound_date, loc.name as location_name, i.unit_price
-            FROM logistics_outbound_lots l
-            JOIN logistics_inbound i ON l.inbound_id = i.id
-            LEFT JOIN logistics_locations loc ON i.location_id = loc.id
-            WHERE l.outbound_id = ?
-        `;
-        db.all(lotsSql, [id], (err2, lots) => {
+        
+        const groupSql = `SELECT * FROM logistics_outbound WHERE date = ? AND destination = ? AND created_at = ? ORDER BY id ASC`;
+        db.all(groupSql, [row.date, row.destination, row.created_at], (err2, items) => {
             if (err2) return res.status(500).json({ error: err2.message });
-            row.consumed_lots = lots;
-            res.json(row);
+            
+            const itemIds = items.map(i => i.id);
+            if (itemIds.length === 0) {
+                row.items = [];
+                return res.json(row);
+            }
+            
+            const placeholders = itemIds.map(() => '?').join(',');
+            const lotsSql = `
+                SELECT l.outbound_id, l.consumed_qty, i.supplier, i.date as inbound_date, loc.name as location_name, i.unit_price
+                FROM logistics_outbound_lots l
+                JOIN logistics_inbound i ON l.inbound_id = i.id
+                LEFT JOIN logistics_locations loc ON i.location_id = loc.id
+                WHERE l.outbound_id IN (${placeholders})
+            `;
+            db.all(lotsSql, itemIds, (err3, lots) => {
+                if (err3) return res.status(500).json({ error: err3.message });
+                
+                items.forEach(item => {
+                    item.consumed_lots = lots.filter(l => l.outbound_id === item.id);
+                });
+                
+                row.items = items;
+                res.json(row);
+            });
         });
     });
 });

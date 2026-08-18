@@ -917,6 +917,8 @@ const app = {
             }
             this.currentHistoryDetail = data;
             
+            const items = data.items || [data];
+            
             let html = `
             <div style="max-width: 1000px; margin: 0;">
                 <table class="table table-bordered table-compact align-middle mb-0" style="font-size: 0.85rem;">
@@ -930,49 +932,60 @@ const app = {
                             <td class="fw-bold text-truncate" style="width: 18%;">${type === 'inbound' ? data.supplier : data.destination}</td>
                             <th class="bg-light text-center" style="width: 10%;">${type === 'inbound' ? '창고위치' : '배송비'}</th>
                             <td class="fw-bold text-end" style="width: 10%;">${type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원'}</td>
-                        </tr>
-                        <tr>
+                        </tr>`;
+
+            items.forEach((item, idx) => {
+                const itemQty = type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
+                const itemPrice = type === 'inbound' ? item.unit_price : item.selling_price;
+                const borderStyle = idx > 0 ? 'border-top: 2px solid #cbd5e1;' : '';
+                
+                html += `
+                        <tr style="${borderStyle}">
                             <th class="bg-light text-center">품명/규격</th>
-                            <td colspan="3" class="fw-bold text-primary">${data.item} <span class="text-secondary fw-normal">/ ${data.spec}</span></td>
+                            <td colspan="3" class="fw-bold text-primary">${item.item} <span class="text-secondary fw-normal">/ ${item.spec}</span></td>
                             <th class="bg-light text-center">수량/단위</th>
-                            <td class="fw-bold">${data.qty.toLocaleString()} <span class="text-secondary fw-normal">${data.unit}</span></td>
+                            <td class="fw-bold">${itemQty.toLocaleString()} <span class="text-secondary fw-normal">${item.unit}</span></td>
                             <th class="bg-light text-center">단가 / 총액</th>
                             <td class="text-end">
-                                <div class="text-muted" style="font-size:0.75rem;">${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()}원</div>
-                                <div class="fw-bold text-danger">${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()}원</div>
+                                <div class="text-muted" style="font-size:0.75rem;">${itemPrice.toLocaleString()}원</div>
+                                <div class="fw-bold text-danger">${(itemQty * itemPrice).toLocaleString()}원</div>
                             </td>
                         </tr>`;
-            
-            if (type === 'inbound') {
-                html += `
+                
+                if (type === 'inbound') {
+                    if (item.note) {
+                        html += `
                         <tr>
                             <th class="bg-light text-center">비고</th>
-                            <td colspan="7">${data.note || '-'}</td>
-                        </tr>
+                            <td colspan="7">${item.note}</td>
+                        </tr>`;
+                    }
+                } else {
+                    let lotsHtml = '';
+                    if (item.consumed_lots && item.consumed_lots.length > 0) {
+                        lotsHtml = item.consumed_lots.map(l => 
+                            `<span class="badge bg-white text-dark border me-1">${l.inbound_date} 입고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}개</span></span>`
+                        ).join('');
+                        html += `
+                        <tr>
+                            <th class="bg-light text-center">차감내역</th>
+                            <td colspan="7">${lotsHtml}</td>
+                        </tr>`;
+                    }
+                }
+            });
+            
+            html += `
                     </tbody>
                 </table>
             </div>`;
                 
+            if (type === 'inbound') {
                 $('printOptInboundWrapper').style.display = 'inline-block';
                 $('printOptInbound').checked = true;
                 $('printOptOutboundWrapper').style.display = 'none';
                 $('printOptTransWrapper').style.display = 'none';
             } else {
-                let lotsHtml = '';
-                if (data.consumed_lots && data.consumed_lots.length > 0) {
-                    lotsHtml = data.consumed_lots.map(l => 
-                        `<span class="badge bg-white text-dark border me-1">${l.inbound_date} 입고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}개</span></span>`
-                    ).join('');
-                }
-                html += `
-                        <tr>
-                            <th class="bg-light text-center">차감내역</th>
-                            <td colspan="7">${lotsHtml || '<span class="text-muted">내역 없음</span>'}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>`;
-                    
                 $('printOptInboundWrapper').style.display = 'none';
                 $('printOptOutboundWrapper').style.display = 'inline-block';
                 $('printOptTransWrapper').style.display = 'inline-block';
@@ -1109,12 +1122,9 @@ const app = {
                 </tr>
             </table>`;
             
+        const items = data.items || [data];
+        
         if (printType === 'transaction_statement') {
-            const price = data.selling_price;
-            const amount = price * data.qty;
-            const vat = Math.floor(amount * 0.1);
-            const total = amount + vat;
-            
             function numberToKorean(number) {
                 const inputNumber = parseInt(number, 10);
                 const hanA = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
@@ -1135,8 +1145,39 @@ const app = {
                 return result + " 원정";
             }
             
-            const koTotalAmount = numberToKorean(total);
-            const emptyRows = Array(12).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            let totalAmount = 0;
+            let totalVat = 0;
+            let totalSum = 0;
+            let itemRowsHtml = "";
+            
+            items.forEach((item, idx) => {
+                const itemQty = data.type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
+                const price = data.type === 'inbound' ? item.unit_price : item.selling_price;
+                const amount = price * itemQty;
+                const vat = Math.floor(amount * 0.1);
+                const total = amount + vat;
+                
+                totalAmount += amount;
+                totalVat += vat;
+                totalSum += total;
+                
+                itemRowsHtml += `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td>${item.item}</td>
+                            <td class="text-center">${item.spec}</td>
+                            <td class="text-center">${item.unit}</td>
+                            <td class="text-right">${itemQty.toLocaleString()}</td>
+                            <td class="text-right">${price.toLocaleString()}</td>
+                            <td class="text-right">${amount.toLocaleString()}</td>
+                            <td class="text-right">${vat.toLocaleString()}</td>
+                            <td class="text-right">${total.toLocaleString()}</td>
+                        </tr>`;
+            });
+            
+            const koTotalAmount = numberToKorean(totalSum);
+            const emptyRowsCount = Math.max(0, 12 - items.length);
+            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
             
             htmlContent += `
                 <div class="hybrid-header">
@@ -1153,7 +1194,7 @@ const app = {
                 <div class="amount-bar">
                     <div class="amount-label">금 액</div>
                     <div class="amount-ko">${koTotalAmount}</div>
-                    <div class="amount-num">₩ ${total.toLocaleString()}</div>
+                    <div class="amount-num">₩ ${totalSum.toLocaleString()}</div>
                 </div>
                 
                 <table class="hybrid-table">
@@ -1171,17 +1212,7 @@ const app = {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="text-center">1</td>
-                            <td>${data.item}</td>
-                            <td class="text-center">${data.spec}</td>
-                            <td class="text-center">${data.unit}</td>
-                            <td class="text-right">${data.qty.toLocaleString()}</td>
-                            <td class="text-right">${price.toLocaleString()}</td>
-                            <td class="text-right">${amount.toLocaleString()}</td>
-                            <td class="text-right">${vat.toLocaleString()}</td>
-                            <td class="text-right">${total.toLocaleString()}</td>
-                        </tr>
+                        ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
                             <td class="text-center">- 이하여백 -</td>
@@ -1192,9 +1223,9 @@ const app = {
                     <tfoot>
                         <tr class="footer-row">
                             <td colspan="6" class="text-center"><strong>계</strong></td>
-                            <td class="text-right"><strong>${amount.toLocaleString()}</strong></td>
-                            <td class="text-right"><strong>${vat.toLocaleString()}</strong></td>
-                            <td class="text-right"><strong>${total.toLocaleString()}</strong></td>
+                            <td class="text-right"><strong>${totalAmount.toLocaleString()}</strong></td>
+                            <td class="text-right"><strong>${totalVat.toLocaleString()}</strong></td>
+                            <td class="text-right"><strong>${totalSum.toLocaleString()}</strong></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -1205,8 +1236,22 @@ const app = {
                 </div>
             `;
         } else if (printType === 'inbound_receipt') {
-            const amount = data.qty * data.unit_price;
-            const emptyRows = Array(13).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            let itemRowsHtml = "";
+            items.forEach((item, idx) => {
+                const itemQty = item.qty_initial || item.qty;
+                itemRowsHtml += `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td>${item.item}</td>
+                            <td class="text-center">${item.spec}</td>
+                            <td class="text-center">${item.unit}</td>
+                            <td class="text-right">${itemQty.toLocaleString()}</td>
+                            <td class="text-center">${item.location_name || '-'}</td>
+                            <td class="text-center">${item.note || ''}</td>
+                        </tr>`;
+            });
+            const emptyRowsCount = Math.max(0, 13 - items.length);
+            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
             
             htmlContent += `
                 <div class="hybrid-header">
@@ -1233,15 +1278,7 @@ const app = {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="text-center">1</td>
-                            <td>${data.item}</td>
-                            <td class="text-center">${data.spec}</td>
-                            <td class="text-center">${data.unit}</td>
-                            <td class="text-right">${data.qty.toLocaleString()}</td>
-                            <td class="text-center">${data.location_name || '-'}</td>
-                            <td class="text-center">${data.note || ''}</td>
-                        </tr>
+                        ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
                             <td class="text-center">- 이하여백 -</td>
@@ -1252,8 +1289,22 @@ const app = {
                 </table>
             `;
         } else if (printType === 'outbound_receipt') {
-            let lotsInfo = (data.consumed_lots || []).map(l => `${l.location_name}`).join(', ');
-            const emptyRows = Array(13).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            let itemRowsHtml = "";
+            items.forEach((item, idx) => {
+                let lotsInfo = (item.consumed_lots || []).map(l => `${l.location_name}`).join(', ');
+                itemRowsHtml += `
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td>${item.item}</td>
+                            <td class="text-center">${item.spec}</td>
+                            <td class="text-center">${item.unit}</td>
+                            <td class="text-right">${item.qty.toLocaleString()}</td>
+                            <td class="text-right">${item.shipping_fee.toLocaleString()}</td>
+                            <td class="text-center">${lotsInfo}</td>
+                        </tr>`;
+            });
+            const emptyRowsCount = Math.max(0, 13 - items.length);
+            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
             
             htmlContent += `
                 <div class="hybrid-header">
@@ -1280,15 +1331,7 @@ const app = {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="text-center">1</td>
-                            <td>${data.item}</td>
-                            <td class="text-center">${data.spec}</td>
-                            <td class="text-center">${data.unit}</td>
-                            <td class="text-right">${data.qty.toLocaleString()}</td>
-                            <td class="text-right">${data.shipping_fee.toLocaleString()}</td>
-                            <td class="text-center">${lotsInfo}</td>
-                        </tr>
+                        ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
                             <td class="text-center">- 이하여백 -</td>
