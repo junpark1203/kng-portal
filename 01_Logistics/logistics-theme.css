@@ -186,6 +186,13 @@ h4 {
     background-color: #f8fafc !important;
 }
 
+/* Compact Table Overrides */
+.table.table-compact tbody td,
+.table.table-compact tbody th,
+.table.table-compact thead th {
+    padding: 0.25rem 0.5rem !important;
+}
+
 /* Accordion */
 .accordion-button {
     font-weight: 600;
