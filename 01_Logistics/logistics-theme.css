@@ -264,3 +264,64 @@ h4 {
 .modal-backdrop {
     z-index: 1050 !important;
 }
+
+/* Drawer Detail Optimizations */
+.drawer-meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+}
+.drawer-meta-bar.inbound {
+    background-color: #f0fdf4;
+    border: 1px solid #dcfce7;
+}
+.drawer-meta-bar.outbound {
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+}
+.drawer-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.drawer-meta-label {
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.8rem;
+}
+.drawer-meta-value {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.drawer-items-table {
+    font-size: 0.8rem;
+}
+.drawer-items-table thead th {
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+}
+.drawer-items-table tbody td {
+    padding: 0.4rem 0.5rem !important;
+    vertical-align: middle;
+}
+.drawer-items-table .sub-row td {
+    padding: 0.25rem 0.5rem 0.5rem 0.5rem !important;
+    font-size: 0.75rem;
+    border-top: none !important;
+    color: #64748b;
+}
+.drawer-items-table .total-row td {
+    background-color: #f8fafc !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    border-top: 2px solid #e2e8f0 !important;
+}

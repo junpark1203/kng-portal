@@ -919,61 +919,99 @@ const app = {
             
             const items = data.items || [data];
             
+            const badgeHtml = type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>';
+            const metaClass = type === 'inbound' ? 'inbound' : 'outbound';
+            const partnerLabel = type === 'inbound' ? '매입처' : '출고처';
+            const partnerValue = type === 'inbound' ? data.supplier : data.destination;
+            const extraLabel = type === 'inbound' ? '창고위치' : '배송비';
+            const extraValue = type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원';
+            
             let html = `
             <div style="max-width: 1000px; margin: 0;">
-                <table class="table table-bordered table-compact align-middle mb-0" style="font-size: 0.85rem;">
-                    <tbody>
+                <div class="drawer-meta-bar ${metaClass}">
+                    <div class="drawer-meta-item">
+                        ${badgeHtml}
+                    </div>
+                    <div class="drawer-meta-item ms-2">
+                        <span class="drawer-meta-label"><i class='bx bx-calendar'></i> 일자</span>
+                        <span class="drawer-meta-value">${data.date}</span>
+                    </div>
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-buildings'></i> ${partnerLabel}</span>
+                        <span class="drawer-meta-value">${partnerValue}</span>
+                    </div>
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-info-circle'></i> ${extraLabel}</span>
+                        <span class="drawer-meta-value">${extraValue}</span>
+                    </div>
+                </div>
+                
+                <table class="table table-bordered drawer-items-table align-middle mb-0">
+                    <thead>
                         <tr>
-                            <th class="bg-light text-center" style="width: 12%;">구분</th>
-                            <td style="width: 13%;">${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</td>
-                            <th class="bg-light text-center" style="width: 12%;">일자</th>
-                            <td class="fw-bold" style="width: 13%;">${data.date}</td>
-                            <th class="bg-light text-center" style="width: 12%;">${type === 'inbound' ? '매입처' : '출고처'}</th>
-                            <td class="fw-bold text-truncate" style="width: 18%;">${type === 'inbound' ? data.supplier : data.destination}</td>
-                            <th class="bg-light text-center" style="width: 10%;">${type === 'inbound' ? '창고위치' : '배송비'}</th>
-                            <td class="fw-bold text-end" style="width: 10%;">${type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원'}</td>
-                        </tr>`;
+                            <th class="text-center" style="width: 5%">#</th>
+                            <th class="text-center" style="width: 35%">품명 / 규격</th>
+                            <th class="text-center" style="width: 10%">단위</th>
+                            <th class="text-center" style="width: 10%">수량</th>
+                            <th class="text-center" style="width: 20%">단가</th>
+                            <th class="text-center" style="width: 20%">총액</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            let totalQty = 0;
+            let totalAmount = 0;
 
             items.forEach((item, idx) => {
                 const itemQty = type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
                 const itemPrice = type === 'inbound' ? item.unit_price : item.selling_price;
-                const borderStyle = idx > 0 ? 'border-top: 2px solid #cbd5e1;' : '';
+                const amount = itemQty * itemPrice;
+                
+                totalQty += itemQty;
+                totalAmount += amount;
                 
                 html += `
-                        <tr style="${borderStyle}">
-                            <th class="bg-light text-center">품명/규격</th>
-                            <td colspan="3" class="fw-bold text-primary">${item.item} <span class="text-secondary fw-normal">/ ${item.spec}</span></td>
-                            <th class="bg-light text-center">수량/단위</th>
-                            <td class="fw-bold">${itemQty.toLocaleString()} <span class="text-secondary fw-normal">${item.unit}</span></td>
-                            <th class="bg-light text-center">단가 / 총액</th>
-                            <td class="text-end">
-                                <div class="text-muted" style="font-size:0.75rem;">${itemPrice.toLocaleString()}원</div>
-                                <div class="fw-bold text-danger">${(itemQty * itemPrice).toLocaleString()}원</div>
-                            </td>
+                        <tr>
+                            <td class="text-center">${idx + 1}</td>
+                            <td><span class="fw-bold text-primary">${item.item}</span> <span class="text-secondary">/ ${item.spec}</span></td>
+                            <td class="text-center">${item.unit}</td>
+                            <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
+                            <td class="text-end">${itemPrice.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-danger">${amount.toLocaleString()}원</td>
                         </tr>`;
                 
                 if (type === 'inbound') {
                     if (item.note) {
                         html += `
-                        <tr>
-                            <th class="bg-light text-center">비고</th>
-                            <td colspan="7">${item.note}</td>
+                        <tr class="sub-row">
+                            <td></td>
+                            <td colspan="5"><i class='bx bx-message-square-detail'></i> 비고: ${item.note}</td>
                         </tr>`;
                     }
                 } else {
                     let lotsHtml = '';
                     if (item.consumed_lots && item.consumed_lots.length > 0) {
                         lotsHtml = item.consumed_lots.map(l => 
-                            `<span class="badge bg-white text-dark border me-1">${l.inbound_date} 입고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}개</span></span>`
+                            `<span class="badge bg-white text-dark border me-1" style="font-weight:normal; font-size:0.7rem;">${l.inbound_date} 입고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}</span></span>`
                         ).join('');
                         html += `
-                        <tr>
-                            <th class="bg-light text-center">차감내역</th>
-                            <td colspan="7">${lotsHtml}</td>
+                        <tr class="sub-row">
+                            <td></td>
+                            <td colspan="5"><i class='bx bx-layer'></i> 차감: ${lotsHtml}</td>
                         </tr>`;
                     }
                 }
             });
+            
+            if (items.length > 1) {
+                html += `
+                        <tr class="total-row">
+                            <td colspan="3" class="text-center">합계</td>
+                            <td class="text-end text-primary">${totalQty.toLocaleString()}</td>
+                            <td></td>
+                            <td class="text-end text-danger">${totalAmount.toLocaleString()}원</td>
+                        </tr>`;
+            }
             
             html += `
                     </tbody>
