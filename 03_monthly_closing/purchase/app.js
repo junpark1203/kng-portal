@@ -336,7 +336,7 @@ const app = {
         
         const printHtml = `
             <div class="print-header">
-                <h2>거래내역서 (원장)</h2>
+                <h2>거래내역서</h2>
                 <div style="text-align:right; font-size:12px; margin-top:10px;">출력일시: ${new Date().toLocaleString()}</div>
             </div>
             <table class="print-table">
