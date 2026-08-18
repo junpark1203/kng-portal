@@ -338,7 +338,7 @@ const app = {
         const rowId = 'in_row_' + Date.now();
         const rowHtml = `
             <div class="row g-2 mb-2 align-items-center inbound-item-row" id="${rowId}">
-                <div class="col-md-2 position-relative">
+                <div class="col-md-3 position-relative">
                     <input type="text" class="form-control form-control-sm in-item" placeholder="품목명" autocomplete="off" required>
                     <div class="autocomplete-suggestions" style="display:none;"></div>
                 </div>
@@ -354,7 +354,7 @@ const app = {
                 <div class="col-md-2">
                     <input type="number" class="form-control form-control-sm in-price" placeholder="매입단가" min="0" step="1" required>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <input type="text" class="form-control form-control-sm in-note" placeholder="비고">
                 </div>
                 <div class="col-md-1 text-center">
@@ -528,10 +528,10 @@ const app = {
                 <div class="col-md-1">
                     <input type="text" class="form-control form-control-sm out-unit" placeholder="단위" readonly>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 수량" min="0.01" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
                 </div>
-                <div class="col-md-2 d-flex gap-1">
+                <div class="col-md-3 d-flex gap-1">
                     <input type="number" class="form-control form-control-sm out-price" placeholder="단가" min="0" step="1" required>
                     <input type="number" class="form-control form-control-sm out-shipping" placeholder="배송비" min="0" step="1" value="0" required>
                 </div>

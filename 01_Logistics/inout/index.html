@@ -30,7 +30,7 @@
         .drawer-overlay.show { opacity: 1; visibility: visible; }
         
         .side-drawer {
-            position: fixed; top: 0; right: -550px; width: 550px; height: 100vh;
+            position: fixed; top: 0; right: -900px; width: 900px; height: 100vh;
             background: #fff; z-index: 1045;
             box-shadow: -5px 0 25px rgba(0,0,0,0.1);
             transition: right 0.3s ease;
@@ -171,12 +171,12 @@
                 
                 <!-- 입고 품목 헤더 -->
                 <div class="row g-2 mb-1 text-center fw-bold text-secondary d-none d-md-flex" style="font-size: 0.85rem; padding: 0 10px;">
-                    <div class="col-md-2">품목명</div>
+                    <div class="col-md-3">품목명</div>
                     <div class="col-md-2">규격</div>
                     <div class="col-md-1">단위</div>
                     <div class="col-md-1">수량</div>
                     <div class="col-md-2">매입단가</div>
-                    <div class="col-md-3">비고</div>
+                    <div class="col-md-2">비고</div>
                     <div class="col-md-1">삭제</div>
                 </div>
 
@@ -216,8 +216,8 @@
                     <div class="col-md-3">품목명</div>
                     <div class="col-md-2">규격</div>
                     <div class="col-md-1">단위</div>
-                    <div class="col-md-2">출고 수량</div>
-                    <div class="col-md-2">단가 &middot; 배송비</div>
+                    <div class="col-md-1">출고 수량</div>
+                    <div class="col-md-3">단가 &middot; 배송비</div>
                     <div class="col-md-2">Lot 설정 &middot; 삭제</div>
                 </div>
 
