@@ -38,10 +38,8 @@
         @media print {
             body * { visibility: hidden; }
             .print-only, .print-only * { visibility: visible; }
-            .print-only { display: block !important; position: relative; width: 100%; padding: 15mm; box-sizing: border-box; }
+            .print-only { display: block !important; position: relative; width: 100%; padding: 0 15mm; box-sizing: border-box; }
             .no-print { display: none !important; }
-            
-            .print-summary { page-break-inside: avoid; }
             
             /* Print styles */
             .print-header { text-align: center; margin-bottom: 20px; }
