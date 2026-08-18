@@ -170,17 +170,6 @@
                     <h6 class="fw-bold mb-0">입고 품목 내역</h6>
                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
                 </div>
-                
-                <!-- 입고 품목 헤더 -->
-                <div class="row g-2 mb-1 text-center fw-bold text-secondary d-none d-md-flex" style="font-size: 0.85rem; padding: 0 10px;">
-                    <div class="col-md-3">품목명</div>
-                    <div class="col-md-2">규격</div>
-                    <div class="col-md-1">단위</div>
-                    <div class="col-md-1">수량</div>
-                    <div class="col-md-2">매입단가</div>
-                    <div class="col-md-2">비고</div>
-                    <div class="col-md-1">삭제</div>
-                </div>
 
                 <div id="inboundItemsContainer">
                     <!-- app.js에서 렌더링 -->
@@ -211,16 +200,6 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold mb-0">출고 품목 내역</h6>
                     <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
-                </div>
-
-                <!-- 출고 품목 헤더 -->
-                <div class="row g-2 mb-1 text-center fw-bold text-secondary d-none d-md-flex" style="font-size: 0.85rem; padding: 0 10px;">
-                    <div class="col-md-3">품목명</div>
-                    <div class="col-md-2">규격</div>
-                    <div class="col-md-1">단위</div>
-                    <div class="col-md-1">출고 수량</div>
-                    <div class="col-md-3">단가 &middot; 배송비</div>
-                    <div class="col-md-2">Lot 설정 &middot; 삭제</div>
                 </div>
 
                 <div id="outboundItemsContainer">
