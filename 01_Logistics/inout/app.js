@@ -871,6 +871,8 @@ const app = {
         $('drawerInbound').classList.add('d-none');
         $('drawerOutbound').classList.add('d-none');
         $('drawerDetail').classList.add('d-none');
+        $('headerPrintControls').classList.add('d-none');
+        $('headerPrintControls').classList.remove('d-flex');
         
         const header = $('drawerHeader');
         header.className = 'drawer-header';
@@ -895,6 +897,8 @@ const app = {
             }
         } else if (mode === 'detail') {
             $('drawerDetail').classList.remove('d-none');
+            $('headerPrintControls').classList.remove('d-none');
+            $('headerPrintControls').classList.add('d-flex');
             const typeStr = data.type === 'inbound' ? '입고' : '출고';
             $('drawerTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} 상세 내역`;
             header.classList.add('bg-detail');
@@ -1019,14 +1023,20 @@ const app = {
             </div>`;
                 
             if (type === 'inbound') {
-                $('printOptInboundWrapper').style.display = 'inline-block';
+                $('printOptInbound').classList.remove('d-none');
+                $('printOptInboundLabel').classList.remove('d-none');
                 $('printOptInbound').checked = true;
-                $('printOptOutboundWrapper').style.display = 'none';
-                $('printOptTransWrapper').style.display = 'none';
+                $('printOptOutbound').classList.add('d-none');
+                $('printOptOutboundLabel').classList.add('d-none');
+                $('printOptTrans').classList.add('d-none');
+                $('printOptTransLabel').classList.add('d-none');
             } else {
-                $('printOptInboundWrapper').style.display = 'none';
-                $('printOptOutboundWrapper').style.display = 'inline-block';
-                $('printOptTransWrapper').style.display = 'inline-block';
+                $('printOptInbound').classList.add('d-none');
+                $('printOptInboundLabel').classList.add('d-none');
+                $('printOptOutbound').classList.remove('d-none');
+                $('printOptOutboundLabel').classList.remove('d-none');
+                $('printOptTrans').classList.remove('d-none');
+                $('printOptTransLabel').classList.remove('d-none');
                 $('printOptTrans').checked = true;
             }
             
