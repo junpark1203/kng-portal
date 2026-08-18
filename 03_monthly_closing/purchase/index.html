@@ -142,6 +142,8 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-success btn-sm fw-bold" onclick="app.printSelected()"><i class='bx bx-printer'></i> 선택내역 거래내역서 출력</button>
+            <button id="cancelSettleBtn" class="btn btn-outline-danger btn-sm fw-bold" onclick="app.cancelSettlement()" style="display: none;"><i class='bx bx-x-circle'></i> 정산 취소</button>
+            <button id="editSettleBtn" class="btn btn-outline-primary btn-sm fw-bold" onclick="app.editSettlement()" style="display: none;"><i class='bx bx-pencil'></i> 정산일자 수정</button>
             <button id="batchSettleBtn" class="btn btn-primary btn-sm fw-bold" onclick="app.openSettlementModal()" style="display: none;"><i class='bx bx-check-circle'></i> 일괄 정산하기</button>
         </div>
     </div>

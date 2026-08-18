@@ -239,37 +239,71 @@ const app = {
     updateBatchButton: function() {
         const checkedBoxes = document.querySelectorAll('.row-chk:checked');
         let hasUnsettled = false;
+        let hasSettled = false;
+        
         checkedBoxes.forEach(el => {
             if (el.dataset.status === '미정산') hasUnsettled = true;
+            if (el.dataset.status === '정산완료') hasSettled = true;
         });
         
-        if (hasUnsettled) {
-            $('batchSettleBtn').style.display = 'inline-block';
-        } else {
-            $('batchSettleBtn').style.display = 'none';
-        }
+        $('batchSettleBtn').style.display = (hasUnsettled && !hasSettled) ? 'inline-block' : 'none';
+        $('cancelSettleBtn').style.display = (!hasUnsettled && hasSettled) ? 'inline-block' : 'none';
+        $('editSettleBtn').style.display = (!hasUnsettled && hasSettled) ? 'inline-block' : 'none';
     },
 
     // 정산 모달
-    openSettlementModal: function() {
+    openSettlementModal: function(isEdit = false) {
         const selected = [];
+        const targetStatus = isEdit ? '정산완료' : '미정산';
         document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === '미정산') selected.push(el.value);
+            if (el.dataset.status === targetStatus) selected.push(el.value);
         });
         
         if (selected.length === 0) {
-            return alert('정산할 미정산 내역을 선택해주세요.');
+            return alert(`처리할 ${targetStatus} 내역을 선택해주세요.`);
         }
+        
+        this.isEditMode = isEdit;
         $('selectedCount').innerText = selected.length;
         $('taxDate').value = new Date().toISOString().split('T')[0];
         $('isZeroTax').checked = false;
         new bootstrap.Modal(document.getElementById('settleModal')).show();
     },
+    
+    editSettlement: function() {
+        this.openSettlementModal(true);
+    },
+    
+    cancelSettlement: async function() {
+        const selected = [];
+        document.querySelectorAll('.row-chk:checked').forEach(el => {
+            if (el.dataset.status === '정산완료') selected.push(parseInt(el.value));
+        });
+        
+        if (selected.length === 0) return alert('정산 취소할 내역을 선택해주세요.');
+        if (!confirm(`선택한 ${selected.length}건의 정산을 취소(미정산으로 되돌림)하시겠습니까?`)) return;
+        
+        try {
+            await window.authFetch(`${API_BASE}/settlement/outbound`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ids: selected,
+                    tax_invoice_date: null,
+                    is_zero_tax: false
+                })
+            });
+            alert('정산 취소 처리가 완료되었습니다.');
+            this.loadData();
+        } catch (err) {
+            alert('정산 취소 실패: ' + err.message);
+        }
+    },
 
     submitSettlement: async function() {
         const selected = [];
+        const targetStatus = this.isEditMode ? '정산완료' : '미정산';
         document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === '미정산') selected.push(parseInt(el.value));
+            if (el.dataset.status === targetStatus) selected.push(parseInt(el.value));
         });
         const taxDate = $('taxDate').value;
         const isZeroTax = $('isZeroTax').checked;
@@ -285,11 +319,11 @@ const app = {
                     is_zero_tax: isZeroTax
                 })
             });
-            alert('정산 처리가 완료되었습니다.');
+            alert(`정산 ${this.isEditMode ? '수정' : '처리'}가 완료되었습니다.`);
             bootstrap.Modal.getInstance(document.getElementById('settleModal')).hide();
             this.loadData();
         } catch (err) {
-            alert('정산 처리 실패: ' + err.message);
+            alert('처리 실패: ' + err.message);
         }
     },
     
