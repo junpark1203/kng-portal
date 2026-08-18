@@ -123,7 +123,27 @@ function updateExchangeRateUI() {
 async function loadPresets() {
     try {
         const res = await authFetch(API + '/presets');
-        if (res.ok) presetsData = await res.json();
+        if (res.ok) {
+            presetsData = await res.json();
+            // 과거 버그로 인해 중복된 키가 DB에 저장되어 있는 경우를 위해 로드 시 동적 중복 제거
+            presetsData.forEach(p => {
+                if (p.fields) {
+                    const seen = new Set();
+                    p.fields.forEach(f => {
+                        if (f.type !== 'section') {
+                            let k = f.key;
+                            let counter = 1;
+                            while (seen.has(k)) {
+                                k = f.key + '_' + counter;
+                                counter++;
+                            }
+                            f.key = k;
+                            seen.add(k);
+                        }
+                    });
+                }
+            });
+        }
     } catch(e) { console.error(e); }
     updateCategorySelect();
 }
@@ -724,7 +744,13 @@ function flattenSections() {
             const type = row.querySelector('.sf-type').value;
             const note = row.querySelector('.sf-note')?.value.trim() || '';
             if (label) {
-                const key = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + fields.length;
+                const baseKey = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + fields.length;
+                let key = baseKey;
+                let counter = 1;
+                while (fields.some(f => f.key === key)) {
+                    key = baseKey + '_' + counter;
+                    counter++;
+                }
                 fields.push({ key, label, type, note });
             }
         });
