@@ -29,15 +29,16 @@
         }
         .drawer-overlay.show { opacity: 1; visibility: visible; }
         
-        .side-drawer {
-            position: fixed; top: 0; right: -900px; width: 900px; height: 100vh;
+        .bottom-drawer {
+            position: fixed; bottom: -80vh; left: 0; width: 100vw; height: 75vh;
             background: #fff; z-index: 1045;
-            box-shadow: -5px 0 25px rgba(0,0,0,0.1);
-            transition: right 0.3s ease;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
+            transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             display: flex; flex-direction: column;
+            border-radius: 16px 16px 0 0;
         }
-        .side-drawer.show { right: 0; }
-        @media (max-width: 576px) { .side-drawer { width: 100%; right: -100%; } }
+        .bottom-drawer.show { bottom: 0; }
+        @media (max-width: 576px) { .bottom-drawer { height: 90vh; bottom: -90vh; border-radius: 12px 12px 0 0; } }
         
         .drawer-header {
             padding: 1.25rem 1.5rem;
@@ -135,7 +136,7 @@
 
 <!-- 통합 드로워 -->
 <div id="drawerOverlay" class="drawer-overlay" onclick="app.closeDrawer()"></div>
-<div id="sideDrawer" class="side-drawer">
+<div id="bottomDrawer" class="bottom-drawer">
     <div class="drawer-header" id="drawerHeader">
         <h5 class="mb-0 fw-bold" id="drawerTitle">타이틀</h5>
         <button type="button" class="btn-close" onclick="app.closeDrawer()"></button>

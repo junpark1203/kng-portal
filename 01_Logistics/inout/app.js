@@ -866,7 +866,7 @@ const app = {
     // ==========================================
     openDrawer: function(mode, data = null) {
         $('drawerOverlay').classList.add('show');
-        $('sideDrawer').classList.add('show');
+        $('bottomDrawer').classList.add('show');
         
         $('drawerInbound').classList.add('d-none');
         $('drawerOutbound').classList.add('d-none');
@@ -904,7 +904,7 @@ const app = {
     
     closeDrawer: function() {
         $('drawerOverlay').classList.remove('show');
-        $('sideDrawer').classList.remove('show');
+        $('bottomDrawer').classList.remove('show');
         $('btnFilterAll').checked = true;
         this.resetPageAndLoadHistory();
     },
