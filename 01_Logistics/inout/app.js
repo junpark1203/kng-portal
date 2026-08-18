@@ -68,8 +68,6 @@ const app = {
         this.setupInboundAutocomplete();
         this.setupOutboundAutocomplete();
         this.loadHistory();
-        this.loadRecentInbounds();
-        this.loadRecentOutbounds();
     },
 
     bindEvents: function() {
@@ -241,7 +239,7 @@ const app = {
             const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             return `
-            <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openHistoryModal(${r.id}, '${r.type}')">
+            <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
                 <td>${badge}</td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
@@ -264,7 +262,6 @@ const app = {
             await authFetch(`${API_BASE}/inbound/${id}`, { method: 'DELETE' });
             alert('입고 내역이 삭제되었습니다.');
             this.loadHistory();
-            this.loadRecentInbounds();
         } catch (err) {
             alert('삭제 실패: ' + err.message);
         }
@@ -276,67 +273,9 @@ const app = {
             await authFetch(`${API_BASE}/outbound/${id}`, { method: 'DELETE' });
             alert('출고 내역이 삭제되고 재고가 복구되었습니다.');
             this.loadHistory();
-            this.loadRecentOutbounds();
         } catch (err) {
             alert('삭제 실패: ' + err.message);
         }
-    },
-
-    // ----------------------------------------
-    // Recent Lists (최근 30건)
-    // ----------------------------------------
-    loadRecentInbounds: async function() {
-        try {
-            const res = await authFetch(`${API_BASE}/history?type=inbound&limit=30`);
-            const inbounds = res.data || [];
-            
-            const tbody = $('recentInboundTbody');
-            if(inbounds.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">내역이 없습니다.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = inbounds.map(r => `
-            <tr>
-                <td>${r.date}</td>
-                <td>${r.party}</td>
-                <td><strong>${r.item}</strong></td>
-                <td>${r.spec}</td>
-                <td>${r.unit}</td>
-                <td class="text-success fw-bold">${r.qty}</td>
-                <td>${r.price.toLocaleString()}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteInbound(${r.id})"><i class='bx bx-trash'></i></button>
-                </td>
-            </tr>
-            `).join('');
-        } catch(e) { console.error('Failed to load recent inbounds:', e); }
-    },
-
-    loadRecentOutbounds: async function() {
-        try {
-            const res = await authFetch(`${API_BASE}/history?type=outbound&limit=30`);
-            const outbounds = res.data || [];
-            
-            const tbody = $('recentOutboundTbody');
-            if(outbounds.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">내역이 없습니다.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = outbounds.map(r => `
-            <tr>
-                <td>${r.date}</td>
-                <td>${r.party}</td>
-                <td><strong>${r.item}</strong></td>
-                <td>${r.spec}</td>
-                <td>${r.unit}</td>
-                <td class="text-danger fw-bold">${r.qty}</td>
-                <td>${r.price.toLocaleString()}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="app.deleteOutbound(${r.id})"><i class='bx bx-trash'></i></button>
-                </td>
-            </tr>
-            `).join('');
-        } catch(e) { console.error('Failed to load recent outbounds:', e); }
     },
 
     initTodayDates: function() {
@@ -514,7 +453,7 @@ const app = {
                 
                 // Update history tables
                 this.loadHistory();
-                this.loadRecentInbounds();
+                this.closeDrawer();
             } catch (err) {
                 alert('입고 실패: ' + err.message);
             }
@@ -915,7 +854,7 @@ const app = {
                 
                 // Update history tables
                 this.loadHistory();
-                this.loadRecentOutbounds();
+                this.closeDrawer();
             } catch (err) {
                 alert('출고 실패: ' + err.message);
             }
@@ -923,17 +862,60 @@ const app = {
     },
     
     // ==========================================
-    // History Modal & Print Logic
+    // Drawer & Detail & Print Logic
     // ==========================================
-    openHistoryModal: async function(id, type) {
+    openDrawer: function(mode, data = null) {
+        $('drawerOverlay').classList.add('show');
+        $('sideDrawer').classList.add('show');
+        
+        $('drawerInbound').classList.add('d-none');
+        $('drawerOutbound').classList.add('d-none');
+        $('drawerDetail').classList.add('d-none');
+        
+        const header = $('drawerHeader');
+        header.className = 'drawer-header';
+        
+        if (mode === 'inbound_create') {
+            $('drawerInbound').classList.remove('d-none');
+            $('drawerTitle').innerHTML = "<i class='bx bx-plus-circle'></i> 입고 등록";
+            header.classList.add('bg-inbound');
+            $('btnFilterIn').checked = true;
+            this.resetPageAndLoadHistory();
+            if ($('inboundItemsContainer').children.length === 0) {
+                this.addInboundItemRow();
+            }
+        } else if (mode === 'outbound_create') {
+            $('drawerOutbound').classList.remove('d-none');
+            $('drawerTitle').innerHTML = "<i class='bx bx-minus-circle'></i> 출고 등록";
+            header.classList.add('bg-outbound');
+            $('btnFilterOut').checked = true;
+            this.resetPageAndLoadHistory();
+            if ($('outboundItemsContainer').children.length === 0) {
+                this.addOutboundItemRow();
+            }
+        } else if (mode === 'detail') {
+            $('drawerDetail').classList.remove('d-none');
+            const typeStr = data.type === 'inbound' ? '입고' : '출고';
+            $('drawerTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} 상세 내역`;
+            header.classList.add('bg-detail');
+            this.renderDrawerDetail(data.id, data.type);
+        }
+    },
+    
+    closeDrawer: function() {
+        $('drawerOverlay').classList.remove('show');
+        $('sideDrawer').classList.remove('show');
+        $('btnFilterAll').checked = true;
+        this.resetPageAndLoadHistory();
+    },
+
+    renderDrawerDetail: async function(id, type) {
         try {
             const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
             if (type === 'inbound') {
                 data.qty = data.qty_initial;
             }
             this.currentHistoryDetail = data;
-            
-            $('detailModalTitle').innerText = type === 'inbound' ? '입고 상세 내역' : '출고 상세 내역';
             
             let html = `<div class="row g-3">
                 <div class="col-md-6">
@@ -1023,9 +1005,7 @@ const app = {
             }
             
             html += `</div>`;
-            $('detailModalContent').innerHTML = html;
-            
-            new bootstrap.Modal(document.getElementById('historyDetailModal')).show();
+            $('drawerDetailContent').innerHTML = html;
             
         } catch (err) {
             alert('상세 내역을 불러오는데 실패했습니다: ' + err.message);
@@ -1081,16 +1061,12 @@ const app = {
                 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
                 <style>
                     body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; padding: 20px; color:#333; }
-                    /* Legacy Styles for receipts */
-                    .header { text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-                    .info-table, .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
-                    .info-table th, .info-table td, .data-table th, .data-table td { border: 1px solid #ccc; padding: 8px; }
-                    .info-table th, .data-table th { background-color: #f1f5f9; text-align: left; }
-                    
-                    /* Hybrid Styles for Transaction Statement v3 */
+                    /* Common Styles */
                     * { box-sizing: border-box; }
-                    @page { size: A4; margin: 10mm; }
-                    .hybrid-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; color:#212529; }
+                    @page { size: A4; margin: 15mm; }
+                    .print-wrapper { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#212529; }
+                    
+                    /* Hybrid Header Styles */
                     .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
                     .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
                     .title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
@@ -1120,14 +1096,43 @@ const app = {
                     .text-center { text-align: center !important; }
                     .text-right { text-align: right !important; }
                     
+                    .signature-area { margin-top: 40px; text-align: right; font-size: 16px; font-weight: 600; }
+                    
                     @media print {
                         body { padding: 0; margin: 0; }
-                        .hybrid-container { max-width: 100%; width: 100%; padding: 10mm !important; margin: 0; }
+                        .print-wrapper { max-width: 100%; width: 100%; padding: 0 !important; margin: 0; }
                         .supplier-table th, .amount-label, .hybrid-table th, .footer-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     }
                 </style>
             </head>
-            <body>`;
+            <body>
+            <div class="print-wrapper">`;
+            
+        // 공통 공급자 정보 HTML
+        const supplierHtml = `
+            <table class="supplier-table">
+                <tr>
+                    <th rowspan="4" class="supplier-th">공급자</th>
+                    <th style="width: 25%">등록번호</th>
+                    <td colspan="3">${bizNo}</td>
+                </tr>
+                <tr>
+                    <th>상호</th>
+                    <td style="width: 35%">${bizName}</td>
+                    <th style="width: 15%">대표자</th>
+                    <td class="stamp-cell">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
+                </tr>
+                <tr>
+                    <th>주소</th>
+                    <td colspan="3">${address}</td>
+                </tr>
+                <tr>
+                    <th>업태</th>
+                    <td>${bizType}</td>
+                    <th>종목</th>
+                    <td>${bizItem}</td>
+                </tr>
+            </table>`;
             
         if (printType === 'transaction_statement') {
             const price = data.selling_price;
@@ -1159,7 +1164,6 @@ const app = {
             const emptyRows = Array(12).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
             
             htmlContent += `
-            <div class="hybrid-container">
                 <div class="hybrid-header">
                     <div class="header-left">
                         <h1 class="title">거 래 명 세 서</h1>
@@ -1167,29 +1171,7 @@ const app = {
                         <div class="recipient-text"><strong>${data.destination}</strong> 귀하</div>
                     </div>
                     <div class="header-right">
-                        <table class="supplier-table">
-                            <tr>
-                                <th rowspan="4" class="supplier-th">공급자</th>
-                                <th style="width: 25%">등록번호</th>
-                                <td colspan="3">${bizNo}</td>
-                            </tr>
-                            <tr>
-                                <th>상호</th>
-                                <td style="width: 35%">${bizName}</td>
-                                <th style="width: 15%">대표자</th>
-                                <td class="stamp-cell">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
-                            </tr>
-                            <tr>
-                                <th>주소</th>
-                                <td colspan="3">${address}</td>
-                            </tr>
-                            <tr>
-                                <th>업태</th>
-                                <td>${bizType}</td>
-                                <th>종목</th>
-                                <td>${bizItem}</td>
-                            </tr>
-                        </table>
+                        ${supplierHtml}
                     </div>
                 </div>
                 
@@ -1246,86 +1228,108 @@ const app = {
                     ${data.note ? '비고: ' + data.note : ''}
                     ${!data.note && data.shipping_fee ? '비고: 배송비 ' + data.shipping_fee.toLocaleString() + '원' : ''}
                 </div>
-            </div>
             `;
         } else if (printType === 'inbound_receipt') {
             const amount = data.qty * data.unit_price;
+            const emptyRows = Array(13).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            
             htmlContent += `
-                <div class="header">입 고 내 역 서</div>
-                <table class="info-table">
-                    <tr>
-                        <th style="width: 15%;">입고일자</th>
-                        <td style="width: 35%;">${data.date}</td>
-                        <th style="width: 15%;">매입처</th>
-                        <td style="width: 35%;">${data.supplier}</td>
-                    </tr>
-                    <tr>
-                        <th>입고창고</th>
-                        <td colspan="3">${data.location_name || '-'}</td>
-                    </tr>
-                </table>
-                <table class="data-table">
-                    <tr>
-                        <th>품명</th>
-                        <th>규격</th>
-                        <th>단위</th>
-                        <th>수량</th>
-                        <th>단가</th>
-                        <th>합계금액</th>
-                        <th>비고</th>
-                    </tr>
-                    <tr>
-                        <td>${data.item}</td>
-                        <td>${data.spec}</td>
-                        <td>${data.unit}</td>
-                        <td class="text-right">${data.qty}</td>
-                        <td class="text-right">${data.unit_price.toLocaleString()}</td>
-                        <td class="text-right">${amount.toLocaleString()}</td>
-                        <td>${data.note || ''}</td>
-                    </tr>
+                <div class="hybrid-header">
+                    <div class="header-left">
+                        <h1 class="title">입 고 내 역 서</h1>
+                        <div class="date-text">${data.date}</div>
+                        <div class="recipient-text"><strong>${data.supplier}</strong> 귀하</div>
+                    </div>
+                    <div class="header-right">
+                        ${supplierHtml}
+                    </div>
+                </div>
+                
+                <table class="hybrid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%">순번</th>
+                            <th style="width: 30%">품명</th>
+                            <th style="width: 15%">규격</th>
+                            <th style="width: 10%">단위</th>
+                            <th style="width: 10%">수량</th>
+                            <th style="width: 15%">입고창고</th>
+                            <th style="width: 15%">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center">1</td>
+                            <td>${data.item}</td>
+                            <td class="text-center">${data.spec}</td>
+                            <td class="text-center">${data.unit}</td>
+                            <td class="text-right">${data.qty.toLocaleString()}</td>
+                            <td class="text-center">${data.location_name || '-'}</td>
+                            <td class="text-center">${data.note || ''}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center"></td>
+                            <td class="text-center">- 이하여백 -</td>
+                            <td></td><td></td><td></td><td></td><td></td>
+                        </tr>
+                        ${emptyRows}
+                    </tbody>
                 </table>
             `;
         } else if (printType === 'outbound_receipt') {
             let lotsInfo = (data.consumed_lots || []).map(l => `${l.location_name}`).join(', ');
+            const emptyRows = Array(13).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+            
             htmlContent += `
-                <div class="header">출 고 내 역 서</div>
-                <table class="info-table">
-                    <tr>
-                        <th style="width: 15%;">출고일자</th>
-                        <td style="width: 35%;">${data.date}</td>
-                        <th style="width: 15%;">출고처</th>
-                        <td style="width: 35%;">${data.destination}</td>
-                    </tr>
-                    <tr>
-                        <th>출고창고</th>
-                        <td colspan="3">${lotsInfo}</td>
-                    </tr>
+                <div class="hybrid-header">
+                    <div class="header-left">
+                        <h1 class="title">출 고 내 역 서</h1>
+                        <div class="date-text">${data.date}</div>
+                        <div class="recipient-text"><strong>${data.destination}</strong> 귀하</div>
+                    </div>
+                    <div class="header-right">
+                        ${supplierHtml}
+                    </div>
+                </div>
+                
+                <table class="hybrid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%">순번</th>
+                            <th style="width: 30%">품명</th>
+                            <th style="width: 15%">규격</th>
+                            <th style="width: 10%">단위</th>
+                            <th style="width: 10%">수량</th>
+                            <th style="width: 15%">배송비</th>
+                            <th style="width: 15%">출고창고</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center">1</td>
+                            <td>${data.item}</td>
+                            <td class="text-center">${data.spec}</td>
+                            <td class="text-center">${data.unit}</td>
+                            <td class="text-right">${data.qty.toLocaleString()}</td>
+                            <td class="text-right">${data.shipping_fee.toLocaleString()}</td>
+                            <td class="text-center">${lotsInfo}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center"></td>
+                            <td class="text-center">- 이하여백 -</td>
+                            <td></td><td></td><td></td><td></td><td></td>
+                        </tr>
+                        ${emptyRows}
+                    </tbody>
                 </table>
-                <table class="data-table">
-                    <tr>
-                        <th>품명</th>
-                        <th>규격</th>
-                        <th>단위</th>
-                        <th>수량</th>
-                        <th>배송비</th>
-                        <th>담당자 확인</th>
-                    </tr>
-                    <tr>
-                        <td>${data.item}</td>
-                        <td>${data.spec}</td>
-                        <td>${data.unit}</td>
-                        <td class="text-right">${data.qty}</td>
-                        <td class="text-right">${data.shipping_fee.toLocaleString()}</td>
-                        <td></td>
-                    </tr>
-                </table>
-                <div style="margin-top: 50px; text-align: right;">
+                <div class="signature-area">
                     인수자 서명 : _____________________ (인)
                 </div>
             `;
         }
         
         htmlContent += `
+            </div>
             <script>
                 window.onload = function() { window.print(); window.close(); }
             </script>
