@@ -917,38 +917,41 @@ const app = {
             }
             this.currentHistoryDetail = data;
             
-            let html = `<table class="table table-bordered table-sm align-middle mb-0" style="font-size: 0.9rem;">
-                <tbody>
-                    <tr>
-                        <th class="bg-light text-center" style="width: 10%;">구분</th>
-                        <td style="width: 15%;">${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</td>
-                        <th class="bg-light text-center" style="width: 10%;">일자</th>
-                        <td style="width: 15%;" class="fw-bold">${data.date}</td>
-                        <th class="bg-light text-center" style="width: 12%;">${type === 'inbound' ? '매입처' : '출고처'}</th>
-                        <td style="width: 18%;" class="fw-bold text-truncate">${type === 'inbound' ? data.supplier : data.destination}</td>
-                        <th class="bg-light text-center" style="width: 10%;">${type === 'inbound' ? '창고위치' : '배송비'}</th>
-                        <td style="width: 10%;" class="fw-bold text-end">${type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원'}</td>
-                    </tr>
-                    <tr>
-                        <th class="bg-light text-center">품명/규격</th>
-                        <td colspan="3" class="fw-bold text-primary">${data.item} <span class="text-secondary fw-normal">/ ${data.spec}</span></td>
-                        <th class="bg-light text-center">수량/단위</th>
-                        <td class="fw-bold">${data.qty.toLocaleString()} <span class="text-secondary fw-normal">${data.unit}</span></td>
-                        <th class="bg-light text-center">단가 / 총액</th>
-                        <td class="text-end">
-                            <div class="text-muted" style="font-size:0.8rem;">${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()}원</div>
-                            <div class="fw-bold text-danger">${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()}원</div>
-                        </td>
-                    </tr>`;
+            let html = `
+            <div style="max-width: 1000px; margin: 0;">
+                <table class="table table-bordered align-middle mb-0" style="font-size: 0.85rem;">
+                    <tbody>
+                        <tr>
+                            <th class="bg-light text-center py-1 px-2" style="width: 12%;">구분</th>
+                            <td class="py-1 px-2" style="width: 13%;">${type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>'}</td>
+                            <th class="bg-light text-center py-1 px-2" style="width: 12%;">일자</th>
+                            <td class="fw-bold py-1 px-2" style="width: 13%;">${data.date}</td>
+                            <th class="bg-light text-center py-1 px-2" style="width: 12%;">${type === 'inbound' ? '매입처' : '출고처'}</th>
+                            <td class="fw-bold text-truncate py-1 px-2" style="width: 18%;">${type === 'inbound' ? data.supplier : data.destination}</td>
+                            <th class="bg-light text-center py-1 px-2" style="width: 10%;">${type === 'inbound' ? '창고위치' : '배송비'}</th>
+                            <td class="fw-bold text-end py-1 px-2" style="width: 10%;">${type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원'}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light text-center py-1 px-2">품명/규격</th>
+                            <td colspan="3" class="fw-bold text-primary py-1 px-2">${data.item} <span class="text-secondary fw-normal">/ ${data.spec}</span></td>
+                            <th class="bg-light text-center py-1 px-2">수량/단위</th>
+                            <td class="fw-bold py-1 px-2">${data.qty.toLocaleString()} <span class="text-secondary fw-normal">${data.unit}</span></td>
+                            <th class="bg-light text-center py-1 px-2">단가 / 총액</th>
+                            <td class="text-end py-1 px-2">
+                                <div class="text-muted" style="font-size:0.75rem;">${(type === 'inbound' ? data.unit_price : data.selling_price).toLocaleString()}원</div>
+                                <div class="fw-bold text-danger">${(data.qty * (type === 'inbound' ? data.unit_price : data.selling_price)).toLocaleString()}원</div>
+                            </td>
+                        </tr>`;
             
             if (type === 'inbound') {
                 html += `
-                    <tr>
-                        <th class="bg-light text-center">비고</th>
-                        <td colspan="7">${data.note || '-'}</td>
-                    </tr>
-                </tbody>
-            </table>`;
+                        <tr>
+                            <th class="bg-light text-center py-1 px-2">비고</th>
+                            <td colspan="7" class="py-1 px-2">${data.note || '-'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>`;
                 
                 $('printOptInboundWrapper').style.display = 'inline-block';
                 $('printOptInbound').checked = true;
@@ -962,12 +965,13 @@ const app = {
                     ).join('');
                 }
                 html += `
-                    <tr>
-                        <th class="bg-light text-center">차감내역</th>
-                        <td colspan="7">${lotsHtml || '<span class="text-muted">내역 없음</span>'}</td>
-                    </tr>
-                </tbody>
-            </table>`;
+                        <tr>
+                            <th class="bg-light text-center py-1 px-2">차감내역</th>
+                            <td colspan="7" class="py-1 px-2">${lotsHtml || '<span class="text-muted">내역 없음</span>'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>`;
                     
                 $('printOptInboundWrapper').style.display = 'none';
                 $('printOptOutboundWrapper').style.display = 'inline-block';
