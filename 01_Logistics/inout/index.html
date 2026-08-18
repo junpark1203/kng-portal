@@ -219,27 +219,25 @@
                 <!-- JS Render -->
             </div>
             
-            <div id="printControls" class="bg-light p-3 rounded mt-3 d-flex flex-column gap-3" style="border: 1px solid #e2e8f0;">
-                <div>
-                    <span class="fw-bold mb-2 d-block">내역서/명세서 인쇄:</span>
-                    <div class="d-flex flex-wrap gap-3">
-                        <div class="form-check" id="printOptInboundWrapper">
-                            <input class="form-check-input" type="radio" name="printType" id="printOptInbound" value="inbound_receipt">
-                            <label class="form-check-label" for="printOptInbound">입고내역서</label>
-                        </div>
-                        <div class="form-check" id="printOptOutboundWrapper">
-                            <input class="form-check-input" type="radio" name="printType" id="printOptOutbound" value="outbound_receipt">
-                            <label class="form-check-label" for="printOptOutbound">출고내역서</label>
-                        </div>
-                        <div class="form-check" id="printOptTransWrapper">
-                            <input class="form-check-input" type="radio" name="printType" id="printOptTrans" value="transaction_statement" checked>
-                            <label class="form-check-label" for="printOptTrans">거래명세서</label>
-                        </div>
+            <div id="printControls" class="bg-light p-2 rounded mt-2 d-flex flex-row align-items-center justify-content-between" style="border: 1px solid #e2e8f0; font-size: 0.85rem;">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="fw-bold">인쇄:</span>
+                    <div class="form-check mb-0" id="printOptInboundWrapper">
+                        <input class="form-check-input" type="radio" name="printType" id="printOptInbound" value="inbound_receipt">
+                        <label class="form-check-label" for="printOptInbound" style="cursor:pointer;">입고내역서</label>
+                    </div>
+                    <div class="form-check mb-0" id="printOptOutboundWrapper">
+                        <input class="form-check-input" type="radio" name="printType" id="printOptOutbound" value="outbound_receipt">
+                        <label class="form-check-label" for="printOptOutbound" style="cursor:pointer;">출고내역서</label>
+                    </div>
+                    <div class="form-check mb-0" id="printOptTransWrapper">
+                        <input class="form-check-input" type="radio" name="printType" id="printOptTrans" value="transaction_statement" checked>
+                        <label class="form-check-label" for="printOptTrans" style="cursor:pointer;">거래명세서</label>
                     </div>
                 </div>
-                <div class="d-flex justify-content-end gap-2 mt-2">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()"><i class='bx bx-cog'></i> 거래명세서 설정</button>
-                    <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄하기</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()"><i class='bx bx-cog'></i> 명세서 설정</button>
+                    <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄</button>
                 </div>
             </div>
         </div>
