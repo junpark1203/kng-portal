@@ -364,7 +364,7 @@ const app = {
                 </tbody>
                 <tbody style="border-top: 2px solid #000;">
                     <tr>
-                        <td colspan="5" style="border:none;"></td>
+                        <td colspan="5" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
                         <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 공급가액</td>
                         <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()} 원</td>
                         <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 부가세</td>
