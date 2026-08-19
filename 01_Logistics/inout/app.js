@@ -337,7 +337,7 @@ const app = {
         const container = $('inboundItemsContainer');
         const rowId = 'in_row_' + Date.now();
         const rowHtml = `
-            <div class="row g-2 mb-2 align-items-center inbound-item-row" id="${rowId}">
+            <div class="row g-2 mb-1 align-items-center inbound-item-row" id="${rowId}">
                 <div class="col-md-3 position-relative">
                     <input type="text" class="form-control form-control-sm in-item" placeholder="품목명" autocomplete="off" required>
                     <div class="autocomplete-suggestions" style="display:none;"></div>
@@ -514,7 +514,7 @@ const app = {
         this.outboundRows[rowId] = { availableLots: [], consumedLots: [] };
 
         const rowHtml = `
-            <div class="row g-2 mb-2 align-items-center outbound-item-row" id="${rowId}">
+            <div class="row g-2 mb-1 align-items-center outbound-item-row" id="${rowId}">
                 <div class="col-md-3 position-relative">
                     <input type="text" class="form-control form-control-sm out-item" placeholder="품목명" autocomplete="off" required>
                     <div class="autocomplete-suggestions"></div>

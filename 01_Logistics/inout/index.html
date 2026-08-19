@@ -18,8 +18,8 @@
         #locationsModal .modal-body ul { list-style: none; padding: 0; }
         #locationsModal .modal-body li { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
         
-        .inbound-item-row { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; transition: border-color 0.2s; }
-        .inbound-item-row:hover { border-color: #cbd5e1; }
+        .inbound-item-row, .outbound-item-row { background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; transition: border-color 0.2s; }
+        .inbound-item-row:hover, .outbound-item-row:hover { border-color: #cbd5e1; }
         
         /* Drawer Styles */
         .drawer-overlay {
@@ -51,7 +51,7 @@
         .drawer-header.bg-detail { background: #f8fafc; border-left: 4px solid #3b82f6; }
         
         .drawer-body {
-            padding: 1.5rem; flex: 1; overflow-y: auto;
+            padding: 1rem; flex: 1; overflow-y: auto;
         }
     </style>
 </head>
@@ -163,24 +163,24 @@
         <!-- 입고 폼 -->
         <div id="drawerInbound" class="d-none">
             <form id="inboundForm">
-                <div class="row g-3">
+                <div class="row g-2">
                     <div class="col-md-6">
-                        <label class="form-label">입고일자</label>
-                        <input type="date" class="form-control" id="in_date" required>
+                        <label class="form-label mb-1">입고일자</label>
+                        <input type="date" class="form-control form-control-sm" id="in_date" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">매입처</label>
-                        <input type="text" class="form-control" id="in_supplier" placeholder="매입처 입력" required>
+                        <label class="form-label mb-1">매입처</label>
+                        <input type="text" class="form-control form-control-sm" id="in_supplier" placeholder="매입처 입력" required>
                     </div>
                     <div class="col-md-12">
-                        <label class="form-label">재고 위치</label>
-                        <select class="form-select" id="in_location" required>
+                        <label class="form-label mb-1">재고 위치</label>
+                        <select class="form-select form-select-sm" id="in_location" required>
                             <option value="">로딩 중...</option>
                         </select>
                     </div>
                 </div>
 
-                <hr class="my-4 text-muted">
+                <hr class="my-2 text-muted">
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold mb-0">입고 품목 내역</h6>
@@ -191,12 +191,12 @@
                     <!-- app.js에서 렌더링 -->
                 </div>
 
-                <div class="mt-3 bg-light p-3 rounded border">
-                    <label class="form-label fw-bold">비고 (선택사항)</label>
-                    <input type="text" class="form-control" id="in_note" placeholder="입고 건에 대한 통합 메모">
+                <div class="mt-2 bg-light p-2 rounded border">
+                    <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                    <input type="text" class="form-control form-control-sm" id="in_note" placeholder="입고 건에 대한 통합 메모">
                 </div>
 
-                <div class="mt-4 text-end">
+                <div class="mt-3 text-end">
                     <button type="submit" class="btn btn-success w-100"><i class='bx bx-check'></i> 입고 처리</button>
                 </div>
             </form>
@@ -205,18 +205,18 @@
         <!-- 출고 폼 -->
         <div id="drawerOutbound" class="d-none">
             <form id="outboundForm">
-                <div class="row g-3">
+                <div class="row g-2">
                     <div class="col-md-6">
-                        <label class="form-label">출고일자</label>
-                        <input type="date" class="form-control" id="out_date" required>
+                        <label class="form-label mb-1">출고일자</label>
+                        <input type="date" class="form-control form-control-sm" id="out_date" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">출고처(고객/현장)</label>
-                        <input type="text" class="form-control" id="out_destination" placeholder="출고처 입력" required>
+                        <label class="form-label mb-1">출고처(고객/현장)</label>
+                        <input type="text" class="form-control form-control-sm" id="out_destination" placeholder="출고처 입력" required>
                     </div>
                 </div>
 
-                <hr class="my-4 text-muted">
+                <hr class="my-2 text-muted">
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="fw-bold mb-0">출고 품목 내역</h6>
@@ -227,20 +227,20 @@
                     <!-- JS Render -->
                 </div>
 
-                <div class="mt-3 bg-light p-3 rounded border">
+                <div class="mt-2 bg-light p-2 rounded border">
                     <div class="row g-2">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold">총 배송비</label>
-                            <input type="number" class="form-control" id="out_shipping" placeholder="0" min="0" step="1" value="0">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">총 배송비</label>
+                            <input type="number" class="form-control form-control-sm" id="out_shipping" placeholder="0" min="0" step="1" value="0">
                         </div>
                         <div class="col-md-9">
-                            <label class="form-label fw-bold">비고 (선택사항)</label>
-                            <input type="text" class="form-control" id="out_note" placeholder="출고 건에 대한 통합 메모">
+                            <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                            <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 대한 통합 메모">
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-4">
+                <div class="mt-3">
                     <small class="text-danger fw-bold d-block mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
                     <button type="submit" class="btn btn-danger w-100" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
                 </div>
