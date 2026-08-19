@@ -531,9 +531,12 @@ const app = {
                 <div class="col-md-1">
                     <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 수량" min="0.01" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
                 </div>
-                <div class="col-md-3 d-flex gap-1">
+                <div class="col-md-2 d-flex gap-1">
                     <input type="number" class="form-control form-control-sm out-price" placeholder="단가" min="0" step="1" required>
                     <input type="number" class="form-control form-control-sm out-shipping" placeholder="배송비" min="0" step="1" value="0" required>
+                </div>
+                <div class="col-md-1">
+                    <input type="text" class="form-control form-control-sm out-note" placeholder="비고">
                 </div>
                 <div class="col-md-2 d-flex gap-1 justify-content-center">
                     <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot 설정</button>
@@ -825,12 +828,13 @@ const app = {
             const qty = parseFloat(row.querySelector('.out-qty').value);
             const selling_price = parseFloat(row.querySelector('.out-price').value);
             const shipping_fee = parseFloat(row.querySelector('.out-shipping').value);
+            const note = row.querySelector('.out-note').value.trim();
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price) || isNaN(shipping_fee)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, selling_price, shipping_fee, consumed_lots });
+                items.push({ item, spec, unit, qty, selling_price, shipping_fee, note, consumed_lots });
             }
         });
 
@@ -1002,6 +1006,13 @@ const app = {
                         <tr class="sub-row">
                             <td></td>
                             <td colspan="5"><i class='bx bx-layer'></i> 차감: ${lotsHtml}</td>
+                        </tr>`;
+                    }
+                    if (item.note) {
+                        html += `
+                        <tr class="sub-row">
+                            <td></td>
+                            <td colspan="5"><i class='bx bx-message-square-detail'></i> 비고: ${item.note}</td>
                         </tr>`;
                     }
                 }

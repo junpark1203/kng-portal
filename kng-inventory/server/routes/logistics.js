@@ -81,6 +81,7 @@ function initLogisticsTables(database) {
             `, (err) => {
                 if (!err) {
                     const addColsOutbound = [
+                        "ALTER TABLE logistics_outbound ADD COLUMN note TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
                         "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0"
@@ -272,8 +273,8 @@ router.post('/outbound', (req, res) => {
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, item, spec, unit, qty, selling_price, shipping_fee)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (date, destination, item, spec, unit, qty, selling_price, shipping_fee, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
         const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
@@ -287,7 +288,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee, function(err) {
+            stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee, i.note, function(err) {
                 if (err) {
                     hasError = true;
                     return;
