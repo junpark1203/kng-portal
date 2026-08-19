@@ -191,6 +191,11 @@
                     <!-- app.js에서 렌더링 -->
                 </div>
 
+                <div class="mt-3 bg-light p-3 rounded border">
+                    <label class="form-label fw-bold">비고 (선택사항)</label>
+                    <input type="text" class="form-control" id="in_note" placeholder="입고 건에 대한 통합 메모">
+                </div>
+
                 <div class="mt-4 text-end">
                     <button type="submit" class="btn btn-success w-100"><i class='bx bx-check'></i> 입고 처리</button>
                 </div>
@@ -220,6 +225,19 @@
 
                 <div id="outboundItemsContainer">
                     <!-- JS Render -->
+                </div>
+
+                <div class="mt-3 bg-light p-3 rounded border">
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">총 배송비</label>
+                            <input type="number" class="form-control" id="out_shipping" placeholder="0" min="0" step="1" value="0">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label fw-bold">비고 (선택사항)</label>
+                            <input type="text" class="form-control" id="out_note" placeholder="출고 건에 대한 통합 메모">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mt-4">

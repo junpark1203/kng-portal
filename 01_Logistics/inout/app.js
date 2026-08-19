@@ -357,9 +357,6 @@ const app = {
                 <div class="col-md-1 text-center">
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.removeInboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
                 </div>
-                <div class="col-md-12 mt-1">
-                    <input type="text" class="form-control form-control-sm in-note" placeholder="비고 (선택사항)">
-                </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', rowHtml);
@@ -418,13 +415,15 @@ const app = {
         const items = [];
         let hasError = false;
 
+        const docNote = $('in_note').value.trim();
+
         rows.forEach(row => {
             const item = row.querySelector('.in-item').value.trim();
             const spec = row.querySelector('.in-spec').value.trim();
             const unit = row.querySelector('.in-unit').value.trim();
             const qty = parseFloat(row.querySelector('.in-qty').value);
             const unit_price = parseFloat(row.querySelector('.in-price').value);
-            const note = row.querySelector('.in-note').value.trim();
+            const note = docNote;
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
@@ -528,19 +527,15 @@ const app = {
                 <div class="col-md-1">
                     <input type="text" class="form-control form-control-sm out-unit" placeholder="단위" readonly>
                 </div>
-                <div class="col-md-1">
+                <div class="col-md-2">
                     <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 수량" min="0.01" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
                 </div>
-                <div class="col-md-3 d-flex gap-1">
+                <div class="col-md-2">
                     <input type="number" class="form-control form-control-sm out-price" placeholder="단가" min="0" step="1" required>
-                    <input type="number" class="form-control form-control-sm out-shipping" placeholder="배송비" min="0" step="1" value="0" required>
                 </div>
                 <div class="col-md-2 d-flex gap-1 justify-content-center">
                     <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot 설정</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.removeOutboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
-                </div>
-                <div class="col-md-12 mt-1">
-                    <input type="text" class="form-control form-control-sm out-note" placeholder="비고 (선택사항)">
                 </div>
             </div>
         `;
@@ -820,6 +815,9 @@ const app = {
         const items = [];
         let hasError = false;
 
+        const docShippingFee = parseFloat($('out_shipping').value) || 0;
+        const docNote = $('out_note').value.trim();
+
         rows.forEach(row => {
             const rowId = row.id;
             const item = row.querySelector('.out-item').value.trim();
@@ -827,11 +825,11 @@ const app = {
             const unit = row.querySelector('.out-unit').value.trim();
             const qty = parseFloat(row.querySelector('.out-qty').value);
             const selling_price = parseFloat(row.querySelector('.out-price').value);
-            const shipping_fee = parseFloat(row.querySelector('.out-shipping').value);
-            const note = row.querySelector('.out-note').value.trim();
+            const shipping_fee = docShippingFee;
+            const note = docNote;
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
-            if (!item || !spec || isNaN(qty) || isNaN(selling_price) || isNaN(shipping_fee)) {
+            if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
                 items.push({ item, spec, unit, qty, selling_price, shipping_fee, note, consumed_lots });
@@ -953,6 +951,7 @@ const app = {
                         <span class="drawer-meta-value">${extraValue}</span>
                     </div>
                 </div>
+                ${data.note ? `<div class="mt-2 mb-3 px-3 py-2 bg-light rounded text-muted" style="font-size:0.85rem;"><i class='bx bx-message-square-detail'></i> <strong>비고:</strong> ${data.note}</div>` : ''}
                 
                 <table class="table table-bordered drawer-items-table align-middle mb-0">
                     <thead>
@@ -988,15 +987,7 @@ const app = {
                             <td class="text-end fw-bold text-danger">${amount.toLocaleString()}원</td>
                         </tr>`;
                 
-                if (type === 'inbound') {
-                    if (item.note) {
-                        html += `
-                        <tr class="sub-row">
-                            <td></td>
-                            <td colspan="5"><i class='bx bx-message-square-detail'></i> 비고: ${item.note}</td>
-                        </tr>`;
-                    }
-                } else {
+                if (type === 'outbound') {
                     let lotsHtml = '';
                     if (item.consumed_lots && item.consumed_lots.length > 0) {
                         lotsHtml = item.consumed_lots.map(l => 
@@ -1006,13 +997,6 @@ const app = {
                         <tr class="sub-row">
                             <td></td>
                             <td colspan="5"><i class='bx bx-layer'></i> 차감: ${lotsHtml}</td>
-                        </tr>`;
-                    }
-                    if (item.note) {
-                        html += `
-                        <tr class="sub-row">
-                            <td></td>
-                            <td colspan="5"><i class='bx bx-message-square-detail'></i> 비고: ${item.note}</td>
                         </tr>`;
                     }
                 }
