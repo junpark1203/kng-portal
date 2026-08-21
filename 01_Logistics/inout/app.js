@@ -363,9 +363,7 @@ const app = {
                 }
                 
                 let matches = this.partnersCache;
-                if (typeFilter) {
-                    matches = matches.filter(p => p.type === typeFilter || p.type === 'ALL');
-                }
+                // Removed strict typeFilter to prevent partners from not showing up
                 matches = matches.filter(p => 
                     (p.name && p.name.toLowerCase().includes(val)) || 
                     (p.company_name && p.company_name.toLowerCase().includes(val))
