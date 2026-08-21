@@ -1438,19 +1438,25 @@ const app = {
                 $('edit_in_qty').min = consumed;
                 $('edit_in_item').disabled = true;
                 $('edit_in_item').readOnly = true;
+                $('edit_in_item').classList.add('bg-light', 'text-muted');
                 $('edit_in_spec').disabled = true;
                 $('edit_in_spec').readOnly = true;
+                $('edit_in_spec').classList.add('bg-light', 'text-muted');
                 $('edit_in_unit').disabled = true;
                 $('edit_in_unit').readOnly = true;
+                $('edit_in_unit').classList.add('bg-light', 'text-muted');
             } else {
                 $('editInboundWarning').classList.add('d-none');
                 $('edit_in_qty').min = 0.01;
                 $('edit_in_item').disabled = false;
                 $('edit_in_item').readOnly = false;
+                $('edit_in_item').classList.remove('bg-light', 'text-muted');
                 $('edit_in_spec').disabled = false;
                 $('edit_in_spec').readOnly = false;
+                $('edit_in_spec').classList.remove('bg-light', 'text-muted');
                 $('edit_in_unit').disabled = false;
                 $('edit_in_unit').readOnly = false;
+                $('edit_in_unit').classList.remove('bg-light', 'text-muted');
             }
             
             let modal = bootstrap.Modal.getInstance($('editInboundModal'));
