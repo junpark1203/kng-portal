@@ -78,8 +78,9 @@
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="form-label mb-1 fw-bold small text-muted">거래처 선택</label>
-                <div class="position-relative">
-                    <input type="text" id="partnerInput" class="form-control form-control-sm" placeholder="거래처명 / 사업자명 검색..." autocomplete="off">
+                <div class="input-group input-group-sm position-relative">
+                    <input type="text" id="partnerInput" class="form-control" placeholder="거래처명 / 사업자명 검색..." autocomplete="off">
+                    <button class="btn btn-primary fw-bold" type="button" onclick="app.loadLedger()">조회</button>
                     <div id="partnerSuggestions" class="autocomplete-suggestions" style="display:none;"></div>
                 </div>
             </div>
