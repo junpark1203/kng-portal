@@ -1,3 +1,5 @@
+const API_BASE = 'https://kng.junparks.com/api/logistics';
+
 const app = {
     data: [],
     modal: null,
@@ -9,8 +11,9 @@ const app = {
 
     async loadData() {
         try {
-            const res = await api.get('/partners');
-            this.data = res;
+            const res = await window.authFetch(`${API_BASE}/partners`);
+            if (!res.ok) throw new Error('API Error');
+            this.data = await res.json();
             this.renderTable();
         } catch (error) {
             console.error('Failed to load partners:', error);
@@ -98,18 +101,34 @@ const app = {
         try {
             if (id) {
                 // 수정
-                await api.put(`/partners/${id}`, payload);
+                const res = await window.authFetch(`${API_BASE}/partners/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || '저장 중 오류가 발생했습니다.');
+                }
                 Swal.fire({ title: '저장 완료', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             } else {
                 // 등록
-                await api.post('/partners', payload);
+                const res = await window.authFetch(`${API_BASE}/partners`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || '등록 중 오류가 발생했습니다.');
+                }
                 Swal.fire({ title: '등록 완료', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }
             this.modal.hide();
             this.loadData(); // 리로드
         } catch (error) {
             console.error(error);
-            Swal.fire('오류', error.response?.data?.error || '저장 중 오류가 발생했습니다.', 'error');
+            Swal.fire('오류', error.message || '저장 중 오류가 발생했습니다.', 'error');
         }
     },
 
@@ -129,12 +148,18 @@ const app = {
 
         if (result.isConfirmed) {
             try {
-                await api.delete(`/partners/${id}`);
+                const res = await window.authFetch(`${API_BASE}/partners/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || '삭제 중 오류가 발생했습니다.');
+                }
                 Swal.fire({ title: '삭제됨', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
                 this.loadData();
             } catch (error) {
                 console.error(error);
-                Swal.fire('오류', '삭제 중 오류가 발생했습니다.', 'error');
+                Swal.fire('오류', error.message || '삭제 중 오류가 발생했습니다.', 'error');
             }
         }
     }
