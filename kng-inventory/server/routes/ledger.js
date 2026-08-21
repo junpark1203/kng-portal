@@ -4,7 +4,7 @@ const authMiddleware = require('../auth-middleware');
 
 module.exports = (database) => {
 
-    router.get('/', authMiddleware, (req, res) => {
+    router.get('/', authMiddleware.verifyToken, (req, res) => {
         const { partner, startDate, endDate } = req.query;
         
         if (!partner) {

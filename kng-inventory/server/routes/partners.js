@@ -19,7 +19,7 @@ module.exports = (database) => {
     });
 
     // 2. 전체 조회
-    router.get('/', authMiddleware, (req, res) => {
+    router.get('/', authMiddleware.verifyToken, (req, res) => {
         database.all("SELECT * FROM partners ORDER BY name ASC", [], (err, rows) => {
             if (err) return res.status(500).json({ error: err.message });
             res.json(rows);
@@ -27,7 +27,7 @@ module.exports = (database) => {
     });
 
     // 3. 단일 등록
-    router.post('/', authMiddleware, (req, res) => {
+    router.post('/', authMiddleware.verifyToken, (req, res) => {
         const { name, type, contact, note } = req.body;
         if (!name) return res.status(400).json({ error: 'Name is required' });
 
@@ -45,7 +45,7 @@ module.exports = (database) => {
     });
 
     // 4. 단일 수정
-    router.put('/:id', authMiddleware, (req, res) => {
+    router.put('/:id', authMiddleware.verifyToken, (req, res) => {
         const { name, type, contact, note } = req.body;
         const id = req.params.id;
 
@@ -63,7 +63,7 @@ module.exports = (database) => {
     });
 
     // 5. 단일 삭제
-    router.delete('/:id', authMiddleware, (req, res) => {
+    router.delete('/:id', authMiddleware.verifyToken, (req, res) => {
         const id = req.params.id;
         
         database.run("DELETE FROM partners WHERE id = ?", [id], function(err) {
