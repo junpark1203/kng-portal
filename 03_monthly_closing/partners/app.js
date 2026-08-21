@@ -1,4 +1,4 @@
-const API_BASE = 'https://kng.junparks.com/api/logistics';
+const API_BASE = 'https://kng.junparks.com/api';
 
 const app = {
     data: [],
