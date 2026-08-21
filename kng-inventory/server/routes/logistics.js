@@ -58,7 +58,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN note TEXT",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
                         "ALTER TABLE logistics_inbound ADD COLUMN tax_invoice_date TEXT",
-                        "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0"
                     ];
                     addColsInbound.forEach(sql => database.run(sql, () => {}));
                 }
@@ -84,7 +85,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN note TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
                         "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
-                        "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0"
                     ];
                     addColsOutbound.forEach(sql => database.run(sql, () => {}));
                 }
@@ -385,13 +387,13 @@ router.get('/history', (req, res) => {
             SELECT 
                 'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
                 i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at,
-                i.settlement_status, i.tax_invoice_date, i.is_zero_tax
+                i.settlement_status, i.tax_invoice_date, i.is_zero_tax, i.is_direct
             FROM logistics_inbound i
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
                 o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at,
-                o.settlement_status, o.tax_invoice_date, o.is_zero_tax
+                o.settlement_status, o.tax_invoice_date, o.is_zero_tax, o.is_direct
             FROM logistics_outbound o
         )
         SELECT * FROM combined
@@ -488,6 +490,76 @@ router.get('/history/outbound/:id', (req, res) => {
                 row.items = items;
                 res.json(row);
             });
+        });
+    });
+});
+
+// --- Direct (직출고) ---
+router.post('/direct', (req, res) => {
+    const { date, supplier, destination, items } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        
+        let hasError = false;
+        
+        // 1. Inbound insert (is_direct = 1, qty_remaining = 0)
+        const inSql = `
+            INSERT INTO logistics_inbound 
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1)
+        `;
+        
+        // 2. Outbound insert (is_direct = 1)
+        const outSql = `
+            INSERT INTO logistics_outbound 
+            (date, destination, item, spec, unit, qty, selling_price, shipping_fee, note, is_direct)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
+        `;
+        
+        // 3. Mapping insert
+        const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
+        
+        const stmtIn = db.prepare(inSql);
+        const stmtOut = db.prepare(outSql);
+        const stmtLots = db.prepare(lotsSql);
+
+        for (let i of items) {
+            // Because of db.serialize, these callbacks will execute in order.
+            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', function(errIn) {
+                if (errIn) { hasError = true; return; }
+                const inboundId = this.lastID;
+                
+                stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.note || '', function(errOut) {
+                    if (errOut) { hasError = true; return; }
+                    const outboundId = this.lastID;
+                    
+                    stmtLots.run(outboundId, inboundId, i.qty, function(errLots) {
+                        if (errLots) hasError = true;
+                    });
+                });
+            });
+        }
+        
+        // Statements finalize barrier
+        db.run("SELECT 1", function() {
+            stmtIn.finalize();
+            stmtOut.finalize();
+            stmtLots.finalize();
+            
+            if (hasError) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: "Direct shipment transaction failed" });
+            } else {
+                db.run("COMMIT", (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.status(201).json({ message: 'Direct shipment success' });
+                });
+            }
         });
     });
 });

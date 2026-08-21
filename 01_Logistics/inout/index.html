@@ -21,6 +21,11 @@
             cursor: not-allowed !important;
         }
         #lotModal {
+            z-index: 1070 !important;
+        }
+        /* lotModal이 열릴 때 생성되는 두번째 backdrop의 z-index 상향 조정 */
+        .modal-backdrop:nth-of-type(2), 
+        .modal-backdrop.show[style*="z-index: 1050"] ~ .modal-backdrop {
             z-index: 1060 !important;
         }
         
@@ -70,6 +75,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0 fw-bold"><i class='bx bx-transfer text-primary'></i> 입출고 관리</h4>
         <div class="d-flex gap-2">
+            <button class="btn btn-warning text-dark fw-bold shadow-sm" onclick="app.openDrawer('direct_create')">
+                <i class='bx bx-shuffle'></i> 직출고 등록
+            </button>
             <button class="btn btn-success" onclick="app.openDrawer('inbound_create')">
                 <i class='bx bx-plus'></i> 입고 등록
             </button>
@@ -179,7 +187,11 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label mb-1">매입처</label>
-                        <input type="text" class="form-control form-control-sm" id="in_supplier" placeholder="매입처 입력" required>
+                        <div class="input-group input-group-sm position-relative">
+                            <input type="text" class="form-control" id="in_supplier" placeholder="매입처 입력" required autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'in_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
+                            <div class="autocomplete-suggestions" id="in_supplier_sug" style="display:none;"></div>
+                        </div>
                     </div>
                     <div class="col-md-12">
                         <label class="form-label mb-1">재고 위치</label>
@@ -221,7 +233,11 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label mb-1">출고처(고객/현장)</label>
-                        <input type="text" class="form-control form-control-sm" id="out_destination" placeholder="출고처 입력" required>
+                        <div class="input-group input-group-sm position-relative">
+                            <input type="text" class="form-control" id="out_destination" placeholder="출고처 입력" required autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'out_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
+                            <div class="autocomplete-suggestions" id="out_destination_sug" style="display:none;"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -256,6 +272,49 @@
             </form>
         </div>
         
+        <!-- 직출고 폼 -->
+        <div id="drawerDirect" class="d-none">
+            <form id="directForm">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">거래일자</label>
+                        <input type="date" class="form-control form-control-sm" id="dir_date" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">매입처 (공급처)</label>
+                        <div class="input-group input-group-sm position-relative">
+                            <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 입력" required autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'dir_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
+                            <div class="autocomplete-suggestions" id="dir_supplier_sug" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1">매출처 (납품처)</label>
+                        <div class="input-group input-group-sm position-relative">
+                            <input type="text" class="form-control" id="dir_destination" placeholder="매출처 입력" required autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'dir_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
+                            <div class="autocomplete-suggestions" id="dir_destination_sug" style="display:none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-2 text-muted">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold mb-0">공급 품목 내역 <span class="badge bg-warning text-dark ms-2">직출고 (재고 미반영)</span></h6>
+                    <button type="button" class="btn btn-outline-warning text-dark btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                </div>
+
+                <div id="directItemsContainer">
+                    <!-- JS Render -->
+                </div>
+
+                <div class="mt-3 text-end">
+                    <button type="submit" class="btn btn-warning text-dark w-100 fw-bold"><i class='bx bx-check-double'></i> 직출고 동시 처리</button>
+                </div>
+            </form>
+        </div>
+
         <!-- 상세 정보 -->
         <div id="drawerDetail" class="d-none">
             <div id="drawerDetailContent" class="mb-3">
@@ -554,6 +613,37 @@
                     <button type="submit" class="btn btn-danger">수정 저장</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- 거래처 즉시 등록 모달 -->
+<div class="modal fade" id="quickPartnerModal" tabindex="-1" style="z-index: 1080 !important;">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title fw-bold mb-0">새 거래처 즉시 등록</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="quickPartnerTargetInput">
+                <div class="mb-3">
+                    <label class="form-label mb-1 fw-bold" style="font-size:0.85rem">유형</label>
+                    <select id="quickPartnerType" class="form-select form-select-sm">
+                        <option value="매입처">매입처</option>
+                        <option value="매출처">매출처</option>
+                        <option value="기타">기타</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label mb-1 fw-bold" style="font-size:0.85rem">거래처명</label>
+                    <input type="text" id="quickPartnerName" class="form-control form-control-sm" required placeholder="예: 구글 주식회사">
+                </div>
+            </div>
+            <div class="modal-footer py-1 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold" onclick="app.submitQuickPartner()">등록</button>
+            </div>
         </div>
     </div>
 </div>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>판매장부</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Boxicons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../../css/iframe-common.css">
+    <style>
+        .page-header { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1rem; }
+        .table-responsive { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .filter-card { background: #fff; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .direct-row { background-color: #f8f9fa; }
+        
+        .date-preset-btn { border-color: #cbd5e1; color: #475569; }
+        .date-preset-btn.active { background-color: #4361ee; border-color: #4361ee; color: #fff; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printableArea, #printableArea * { visibility: visible; }
+            #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container-fluid py-4">
+    <div class="page-header d-flex justify-content-between align-items-center no-print">
+        <div>
+            <h4 class="mb-1 fw-bold text-dark"><i class='bx bx-book-content text-primary'></i> 판매장부 (통합 내역)</h4>
+            <p class="text-muted mb-0 small">선택한 거래처의 입고(매입) 및 출고(매출) 내역을 타임라인 순으로 확인합니다.</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-secondary fw-bold shadow-sm me-2" onclick="window.print()">
+                <i class='bx bx-printer'></i> 인쇄
+            </button>
+        </div>
+    </div>
+
+    <!-- 필터 영역 -->
+    <div class="filter-card no-print">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1 fw-bold small text-muted">거래처 선택</label>
+                <select id="partnerSelect" class="form-select form-select-sm">
+                    <option value="">거래처를 선택하세요</option>
+                    <!-- app.js에서 로드 -->
+                </select>
+            </div>
+            
+            <div class="col-md-5">
+                <label class="form-label mb-1 fw-bold small text-muted">조회 기간</label>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="date" id="startDate" class="form-control form-control-sm">
+                    <span class="text-muted">~</span>
+                    <input type="date" id="endDate" class="form-control form-control-sm">
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="btn-group btn-group-sm w-100" role="group" id="datePresets">
+                    <button type="button" class="btn date-preset-btn active" data-preset="당월">당월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="3개월">3개월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="6개월">6개월</button>
+                    <button type="button" class="btn date-preset-btn" data-preset="전체">전체</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 프린트 가능한 장부 영역 -->
+    <div id="printableArea">
+        <div class="d-none d-print-block mb-3 text-center">
+            <h3 class="fw-bold border-bottom border-2 border-dark pb-2 d-inline-block" id="printTitle">판매장부</h3>
+            <p class="mt-2" id="printPeriod"></p>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="text-center" style="width: 100px;">거래일자</th>
+                        <th class="text-center" style="width: 80px;">구분</th>
+                        <th>품목명</th>
+                        <th style="width: 120px;">규격</th>
+                        <th class="text-center" style="width: 60px;">단위</th>
+                        <th class="text-end" style="width: 80px;">수량</th>
+                        <th class="text-end" style="width: 100px;">단가</th>
+                        <th class="text-end" style="width: 120px;">공급가액</th>
+                        <th style="width: 150px;">비고</th>
+                    </tr>
+                </thead>
+                <tbody id="ledgerTableBody">
+                    <tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                </tbody>
+                <tfoot id="ledgerTableFoot" class="table-secondary fw-bold" style="display: none;">
+                    <tr>
+                        <td colspan="5" class="text-end">합계</td>
+                        <td class="text-end text-primary" id="sumQty">0</td>
+                        <td></td>
+                        <td class="text-end text-primary" id="sumAmount">0</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="../../js/api.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

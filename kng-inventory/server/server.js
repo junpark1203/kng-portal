@@ -68,6 +68,8 @@ const { initReportBuilderTables } = reportBuilderRoutes;
 // 통합 물류 재고 관리 모듈
 const logisticsRoutes = require('./routes/logistics');
 const { initLogisticsTables } = logisticsRoutes;
+const partnersRoutes = require('./routes/partners');
+const ledgerRoutes = require('./routes/ledger');
 
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
@@ -1100,6 +1102,8 @@ app.use('/api/projects', projectsRoutes.router);
 app.use('/api/leave-request', leaveRequestRoutes.router);
 app.use('/api/margin-calculator', marginCalculatorRoutes.router);
 app.use('/api/logistics', logisticsRoutes.router);
+app.use('/api/partners', partnersRoutes(db));
+app.use('/api/ledger', ledgerRoutes(db));
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

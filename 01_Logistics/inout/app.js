@@ -67,12 +67,14 @@ const app = {
         this.initTodayDates();
         this.setupInboundAutocomplete();
         this.setupOutboundAutocomplete();
+        this.setupPartnerAutocomplete();
         this.loadHistory();
     },
 
     bindEvents: function() {
         $('inboundForm').addEventListener('submit', this.handleInboundSubmit.bind(this));
         $('outboundForm').addEventListener('submit', this.handleOutboundSubmit.bind(this));
+        $('directForm').addEventListener('submit', this.handleDirectSubmit.bind(this));
         $('editInboundForm').addEventListener('submit', this.submitEditInbound.bind(this));
         $('editOutboundForm').addEventListener('submit', this.submitEditOutbound.bind(this));
         $('btnEditOutboundLot').addEventListener('click', this.openEditOutboundLotModal.bind(this));
@@ -336,6 +338,103 @@ const app = {
     },
 
     // ----------------------------------------
+    // Partner Autocomplete & Quick Modal
+    // ----------------------------------------
+    partnersCache: [],
+    
+    setupPartnerAutocomplete: async function() {
+        try {
+            const res = await authFetch(`${API_BASE}/partners`);
+            this.partnersCache = res;
+        } catch (e) {
+            console.error('Failed to load partners', e);
+        }
+
+        const attach = (inputId, sugId, typeFilter) => {
+            const input = $(inputId);
+            const sug = $(sugId);
+            if (!input || !sug) return;
+
+            input.addEventListener('input', (e) => {
+                const val = e.target.value.trim().toLowerCase();
+                if (val.length < 1) {
+                    sug.style.display = 'none';
+                    return;
+                }
+                
+                let matches = this.partnersCache;
+                if (typeFilter) {
+                    matches = matches.filter(p => p.type === typeFilter || p.type === 'ALL');
+                }
+                matches = matches.filter(p => p.name.toLowerCase().includes(val));
+
+                if (matches.length > 0) {
+                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m.name}</div>`).join('');
+                    sug.style.display = 'block';
+                    
+                    sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
+                        div.addEventListener('click', () => {
+                            input.value = div.innerText;
+                            sug.style.display = 'none';
+                        });
+                    });
+                } else {
+                    sug.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (e.target !== input) sug.style.display = 'none';
+            });
+            this.attachAutocompleteKeyboard(input, sug);
+        };
+
+        attach('in_supplier', 'in_supplier_sug', '매입처');
+        attach('out_destination', 'out_destination_sug', '매출처');
+        attach('dir_supplier', 'dir_supplier_sug', '매입처');
+        attach('dir_destination', 'dir_destination_sug', '매출처');
+    },
+
+    openPartnerModal: function(defaultType, targetInputId) {
+        $('quickPartnerTargetInput').value = targetInputId;
+        $('quickPartnerType').value = defaultType === '매입처' ? '매입처' : '매출처';
+        $('quickPartnerName').value = '';
+        
+        const modalEl = $('quickPartnerModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    },
+
+    submitQuickPartner: async function() {
+        const type = $('quickPartnerType').value;
+        const name = $('quickPartnerName').value.trim();
+        const targetInputId = $('quickPartnerTargetInput').value;
+
+        if (!name) return alert('거래처명을 입력해주세요.');
+
+        try {
+            await authFetch(`${API_BASE}/partners`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, type, contact: '', note: '빠른 등록' })
+            });
+            
+            // 캐시 갱신
+            await this.setupPartnerAutocomplete();
+
+            if (targetInputId && $(targetInputId)) {
+                $(targetInputId).value = name;
+            }
+            
+            const modal = bootstrap.Modal.getInstance($('quickPartnerModal'));
+            if (modal) modal.hide();
+        } catch (err) {
+            alert('거래처 등록 실패: ' + err.message);
+        }
+    },
+
+    // ----------------------------------------
     // Inbound (입고)
     // ----------------------------------------
     addInboundItemRow: function() {
@@ -499,6 +598,136 @@ const app = {
             items[currentFocus].classList.add('active-suggestion');
             // Auto scroll (optional, simple logic)
             items[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+    },
+
+    // ----------------------------------------
+    // Direct Shipment (직출고)
+    // ----------------------------------------
+    addDirectItemRow: function() {
+        const container = $('directItemsContainer');
+        const rowId = 'dir_row_' + Date.now() + Math.floor(Math.random() * 1000);
+
+        const rowHtml = `
+            <div class="row g-2 mb-1 align-items-center direct-item-row" id="${rowId}">
+                <div class="col-md-3 position-relative">
+                    <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
+                    <div class="autocomplete-suggestions"></div>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
+                </div>
+                <div class="col-md-1">
+                    <input type="text" class="form-control form-control-sm dir-unit" placeholder="단위" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm dir-qty" placeholder="수량" min="0.01" step="0.01" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1" required>
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출단가" min="0" step="1" required>
+                    <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', rowHtml);
+        
+        const newRow = $(rowId);
+        const input = newRow.querySelector('.dir-item');
+        const sug = newRow.querySelector('.autocomplete-suggestions');
+        
+        input.addEventListener('input', async (e) => {
+            const val = e.target.value.trim();
+            if (val.length < 1) { sug.style.display = 'none'; return; }
+            try {
+                const items = await authFetch(`${API_BASE}/items/all`);
+                const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
+                if (matches.length > 0) {
+                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
+                    sug.style.display = 'block';
+                    
+                    sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
+                        div.addEventListener('click', () => {
+                            input.value = div.innerText;
+                            sug.style.display = 'none';
+                        });
+                    });
+                } else {
+                    sug.style.display = 'none';
+                }
+            } catch (err) { console.error(err); }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== input) sug.style.display = 'none';
+        });
+
+        this.attachAutocompleteKeyboard(input, sug);
+    },
+
+    removeDirectItemRow: function(rowId) {
+        const row = $(rowId);
+        if (row) row.remove();
+    },
+
+    handleDirectSubmit: async function(e) {
+        e.preventDefault();
+        
+        const rows = document.querySelectorAll('.direct-item-row');
+        if (rows.length === 0) return alert('직출고할 품목을 추가하세요.');
+
+        const items = [];
+        let hasError = false;
+
+        const date = $('dir_date').value;
+        const supplier = $('dir_supplier').value.trim();
+        const destination = $('dir_destination').value.trim();
+        
+        if (!supplier || !destination) {
+            return alert('매입처와 매출처를 모두 입력해주세요.');
+        }
+
+        rows.forEach(row => {
+            const item = row.querySelector('.dir-item').value.trim();
+            const spec = row.querySelector('.dir-spec').value.trim();
+            const unit = row.querySelector('.dir-unit').value.trim();
+            const qty = parseFloat(row.querySelector('.dir-qty').value);
+            const in_price = parseFloat(row.querySelector('.dir-in-price').value);
+            const out_price = parseFloat(row.querySelector('.dir-out-price').value);
+
+            if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
+                hasError = true;
+            } else {
+                items.push({ item, spec, unit, qty, in_price, out_price });
+            }
+        });
+
+        if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
+
+        const payload = {
+            date: date,
+            supplier: supplier,
+            destination: destination,
+            items: items
+        };
+
+        if (confirm(`총 ${items.length}건의 품목을 직출고로 동시 처리하시겠습니까? (입고/출고 장부에 동시 반영됨)`)) {
+            try {
+                const res = await authFetch('${API_BASE}/logistics/direct', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                alert('직출고 처리가 완료되었습니다.');
+                this.closeDrawer();
+                $('btnFilterAll').checked = true;
+                this.resetPageAndLoadHistory();
+            } catch (err) {
+                alert('직출고 실패: ' + err.message);
+            }
         }
     },
 
@@ -719,6 +948,16 @@ const app = {
         const modalEl = $('lotModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) modal = new bootstrap.Modal(modalEl);
+        
+        // lotModal이 다른 모달(editOutboundModal 등) 위에 뜰 때 배경(backdrop) z-index 보정
+        modalEl.addEventListener('shown.bs.modal', function () {
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            if (backdrops.length > 1) {
+                // 마지막(가장 위에 있는) backdrop의 z-index를 조정
+                backdrops[backdrops.length - 1].style.zIndex = '1069';
+            }
+        }, { once: true });
+        
         modal.show();
     },
 
@@ -882,6 +1121,7 @@ const app = {
         
         $('drawerInbound').classList.add('d-none');
         $('drawerOutbound').classList.add('d-none');
+        $('drawerDirect').classList.add('d-none');
         $('drawerDetail').classList.add('d-none');
         $('headerPrintControls').classList.add('d-none');
         $('headerPrintControls').classList.remove('d-flex');
@@ -906,6 +1146,15 @@ const app = {
             this.resetPageAndLoadHistory();
             if ($('outboundItemsContainer').children.length === 0) {
                 this.addOutboundItemRow();
+            }
+        } else if (mode === 'direct_create') {
+            $('drawerDirect').classList.remove('d-none');
+            $('drawerTitle').innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
+            header.classList.add('bg-warning'); // warning 색상
+            $('btnFilterAll').checked = true;
+            this.resetPageAndLoadHistory();
+            if ($('directItemsContainer').children.length === 0) {
+                this.addDirectItemRow();
             }
         } else if (mode === 'detail') {
             $('drawerDetail').classList.remove('d-none');

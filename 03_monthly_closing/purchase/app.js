@@ -173,6 +173,7 @@ const app = {
                               ${r.is_zero_tax ? '<span class="badge bg-info ms-1">영세율</span>' : ''}`;
             }
             
+            const directBadge = r.is_direct ? `<span class="badge bg-secondary ms-1">직출고</span>` : '';
             return `
             <tr>
                 <td class="text-center">
@@ -180,7 +181,7 @@ const app = {
                 </td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
-                <td><strong>${r.item}</strong></td>
+                <td><strong>${r.item}</strong>${directBadge}</td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-success fw-bold">${r.qty}</td>
                 <td>${Number(r.price).toLocaleString()}</td>
