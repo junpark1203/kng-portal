@@ -497,7 +497,15 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label mb-1">매입처</label>
-                            <input type="text" class="form-control form-control-sm" id="edit_in_supplier" required>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group input-group-sm position-relative">
+                                    <input type="text" class="form-control form-control-sm" id="edit_in_supplier" autocomplete="off" required>
+                                    <div class="autocomplete-suggestions" id="edit_in_supplier_sug" style="display:none;"></div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-1 text-nowrap" onclick="app.openQuickPartnerModal('edit_in_supplier')" title="새 거래처 등록">
+                                    <i class='bx bx-plus'></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-2">
@@ -563,7 +571,15 @@
                         </div>
                         <div class="col-md-8">
                             <label class="form-label mb-1">출고처(고객/현장)</label>
-                            <input type="text" class="form-control form-control-sm" id="edit_out_destination" required>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group input-group-sm position-relative">
+                                    <input type="text" class="form-control form-control-sm" id="edit_out_destination" autocomplete="off" required>
+                                    <div class="autocomplete-suggestions" id="edit_out_destination_sug" style="display:none;"></div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-1 text-nowrap" onclick="app.openQuickPartnerModal('edit_out_destination')" title="새 거래처 등록">
+                                    <i class='bx bx-plus'></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     

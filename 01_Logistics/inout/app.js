@@ -393,6 +393,10 @@ const app = {
         attach('out_destination', 'out_destination_sug', '매출처');
         attach('dir_supplier', 'dir_supplier_sug', '매입처');
         attach('dir_destination', 'dir_destination_sug', '매출처');
+        
+        // 수정 모달
+        attach('edit_in_supplier', 'edit_in_supplier_sug', '매입처');
+        attach('edit_out_destination', 'edit_out_destination_sug', '매출처');
     },
 
     openPartnerModal: function(defaultType, targetInputId) {
