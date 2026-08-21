@@ -345,7 +345,7 @@ const app = {
     setupPartnerAutocomplete: async function() {
         try {
             const res = await authFetch(`${API_BASE}/partners`);
-            this.partnersCache = res;
+            this.partnersCache = await res.json();
         } catch (e) {
             console.error('Failed to load partners', e);
         }
