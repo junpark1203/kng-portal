@@ -240,6 +240,7 @@ const app = {
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
             const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
+            const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
