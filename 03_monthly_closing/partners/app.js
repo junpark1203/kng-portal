@@ -34,14 +34,16 @@ const app = {
 
         if (searchWord) {
             filtered = filtered.filter(p => 
-                p.name.toLowerCase().includes(searchWord) || 
+                (p.name && p.name.toLowerCase().includes(searchWord)) || 
+                (p.company_name && p.company_name.toLowerCase().includes(searchWord)) ||
                 (p.note && p.note.toLowerCase().includes(searchWord)) ||
-                (p.contact && p.contact.toLowerCase().includes(searchWord))
+                (p.phone && p.phone.includes(searchWord)) ||
+                (p.manager1_name && p.manager1_name.includes(searchWord))
             );
         }
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">등록된 거래처가 없거나 검색 결과가 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">등록된 거래처가 없거나 검색 결과가 없습니다.</td></tr>`;
             return;
         }
 
@@ -53,8 +55,15 @@ const app = {
                         ${p.type}
                     </span>
                 </td>
-                <td class="fw-bold">${p.name}</td>
-                <td>${p.contact || '-'}</td>
+                <td>
+                    <div class="fw-bold">${p.name}</div>
+                    <div class="small text-muted">${p.company_name || '-'}</div>
+                </td>
+                <td>${p.ceoName || p.ceo_name || '-'}</td>
+                <td>
+                    ${p.phone ? `<i class='bx bx-phone'></i> ${p.phone}<br>` : ''}
+                    ${p.manager1_name ? `<i class='bx bx-user'></i> ${p.manager1_name}` : ''}
+                </td>
                 <td class="text-muted small">${p.note || ''}</td>
                 <td class="text-center">
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="app.openEditModal(${p.id})">수정</button>
@@ -76,9 +85,28 @@ const app = {
         if (!partner) return;
 
         document.getElementById('partnerId').value = partner.id;
-        document.getElementById('partnerName').value = partner.name;
-        document.getElementById('partnerType').value = partner.type;
-        document.getElementById('partnerContact').value = partner.contact || '';
+        document.getElementById('partnerName').value = partner.name || '';
+        document.getElementById('companyName').value = partner.company_name || '';
+        document.getElementById('ceoName').value = partner.ceo_name || '';
+        document.getElementById('businessNumber').value = partner.business_number || '';
+        document.getElementById('address').value = partner.address || '';
+        document.getElementById('partnerType').value = partner.type || 'ALL';
+        
+        document.getElementById('bankName').value = partner.bank_name || '';
+        document.getElementById('accountNumber').value = partner.account_number || '';
+        document.getElementById('accountHolder').value = partner.account_holder || '';
+        
+        document.getElementById('phone').value = partner.phone || '';
+        document.getElementById('fax').value = partner.fax || '';
+        
+        document.getElementById('manager1Name').value = partner.manager1_name || '';
+        document.getElementById('manager1Phone').value = partner.manager1_phone || '';
+        document.getElementById('manager1Email').value = partner.manager1_email || '';
+        
+        document.getElementById('manager2Name').value = partner.manager2_name || '';
+        document.getElementById('manager2Phone').value = partner.manager2_phone || '';
+        document.getElementById('manager2Email').value = partner.manager2_email || '';
+        
         document.getElementById('partnerNote').value = partner.note || '';
         
         document.getElementById('modalTitle').innerText = '거래처 수정';
@@ -88,15 +116,41 @@ const app = {
     async savePartner() {
         const id = document.getElementById('partnerId').value;
         const name = document.getElementById('partnerName').value.trim();
+        const company_name = document.getElementById('companyName').value.trim();
+        const ceo_name = document.getElementById('ceoName').value.trim();
+        const business_number = document.getElementById('businessNumber').value.trim();
+        const address = document.getElementById('address').value.trim();
         const type = document.getElementById('partnerType').value;
-        const contact = document.getElementById('partnerContact').value.trim();
+        
+        const bank_name = document.getElementById('bankName').value.trim();
+        const account_number = document.getElementById('accountNumber').value.trim();
+        const account_holder = document.getElementById('accountHolder').value.trim();
+        
+        const phone = document.getElementById('phone').value.trim();
+        const fax = document.getElementById('fax').value.trim();
+        
+        const manager1_name = document.getElementById('manager1Name').value.trim();
+        const manager1_phone = document.getElementById('manager1Phone').value.trim();
+        const manager1_email = document.getElementById('manager1Email').value.trim();
+        
+        const manager2_name = document.getElementById('manager2Name').value.trim();
+        const manager2_phone = document.getElementById('manager2Phone').value.trim();
+        const manager2_email = document.getElementById('manager2Email').value.trim();
+        
         const note = document.getElementById('partnerNote').value.trim();
 
-        if (!name) {
-            return Swal.fire('알림', '거래처명을 입력해주세요.', 'warning');
+        if (!name || !company_name) {
+            return Swal.fire('알림', '거래처명과 사업자명을 모두 입력해주세요.', 'warning');
         }
 
-        const payload = { name, type, contact, note };
+        const payload = { 
+            name, company_name, ceo_name, business_number, address, type,
+            bank_name, account_number, account_holder,
+            phone, fax,
+            manager1_name, manager1_phone, manager1_email,
+            manager2_name, manager2_phone, manager2_email,
+            note 
+        };
 
         try {
             if (id) {

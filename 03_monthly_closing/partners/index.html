@@ -58,16 +58,17 @@
         <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
             <thead class="table-light">
                 <tr>
-                    <th class="text-center" style="width: 80px;">No</th>
-                    <th style="width: 150px;">유형</th>
-                    <th style="width: 300px;">거래처명</th>
-                    <th style="width: 200px;">연락처/담당자</th>
+                    <th class="text-center" style="width: 60px;">No</th>
+                    <th style="width: 100px;">유형</th>
+                    <th style="width: 250px;">거래처명 / 사업자명</th>
+                    <th style="width: 150px;">대표자</th>
+                    <th style="width: 200px;">주요 연락처</th>
                     <th>비고</th>
-                    <th class="text-center" style="width: 150px;">관리</th>
+                    <th class="text-center" style="width: 120px;">관리</th>
                 </tr>
             </thead>
             <tbody id="partnersTableBody">
-                <tr><td colspan="6" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                <tr><td colspan="7" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
             </tbody>
         </table>
     </div>
@@ -75,7 +76,7 @@
 
 <!-- 거래처 모달 -->
 <div class="modal fade" id="partnerModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title fw-bold" id="modalTitle">거래처 등록</h5>
@@ -84,26 +85,105 @@
             <div class="modal-body">
                 <form id="partnerForm">
                     <input type="hidden" id="partnerId">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">거래처명 <span class="text-danger">*</span></label>
-                        <input type="text" id="partnerName" class="form-control" required placeholder="예: 구글 주식회사">
+                    
+                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-building'></i> 기본 정보</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">거래처명 <span class="text-danger">*</span></label>
+                            <input type="text" id="partnerName" class="form-control" required placeholder="예: 구글">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">사업자명 <span class="text-danger">*</span></label>
+                            <input type="text" id="companyName" class="form-control" required placeholder="예: 구글 주식회사">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">대표자</label>
+                            <input type="text" id="ceoName" class="form-control" placeholder="대표자명">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">사업자번호</label>
+                            <input type="text" id="businessNumber" class="form-control" placeholder="000-00-00000">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold">주소</label>
+                            <input type="text" id="address" class="form-control" placeholder="사업장 주소">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">유형</label>
+                            <select id="partnerType" class="form-select">
+                                <option value="ALL">전체/공통</option>
+                                <option value="매입처">매입처 (주로 물품 공급)</option>
+                                <option value="매출처">매출처 (주로 납품 대상)</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">유형</label>
-                        <select id="partnerType" class="form-select">
-                            <option value="ALL">전체/공통</option>
-                            <option value="매입처">매입처 (주로 물품 공급)</option>
-                            <option value="매출처">매출처 (주로 납품 대상)</option>
-                            <option value="기타">기타</option>
-                        </select>
+
+                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-credit-card'></i> 결제 정보</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">은행명</label>
+                            <input type="text" id="bankName" class="form-control" placeholder="예: 신한은행">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">계좌번호</label>
+                            <input type="text" id="accountNumber" class="form-control" placeholder="계좌번호 입력">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">예금주</label>
+                            <input type="text" id="accountHolder" class="form-control" placeholder="예금주명">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">연락처/담당자</label>
-                        <input type="text" id="partnerContact" class="form-control" placeholder="예: 홍길동 대리 (010-1234-5678)">
+
+                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-phone'></i> 연락처 정보</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">대표 전화</label>
+                            <input type="text" id="phone" class="form-control" placeholder="02-000-0000">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">팩스</label>
+                            <input type="text" id="fax" class="form-control" placeholder="02-000-0000">
+                        </div>
                     </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6 border-end">
+                            <h6 class="fw-bold pb-2 text-secondary">담당자 1</h6>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">이름</label>
+                                <input type="text" id="manager1Name" class="form-control form-control-sm">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">연락처</label>
+                                <input type="text" id="manager1Phone" class="form-control form-control-sm">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">이메일</label>
+                                <input type="text" id="manager1Email" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold pb-2 text-secondary">담당자 2</h6>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">이름</label>
+                                <input type="text" id="manager2Name" class="form-control form-control-sm">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">연락처</label>
+                                <input type="text" id="manager2Phone" class="form-control form-control-sm">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-1">이메일</label>
+                                <input type="text" id="manager2Email" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-note'></i> 추가 정보</h6>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">비고 (사업자번호 등)</label>
-                        <textarea id="partnerNote" class="form-control" rows="3" placeholder="추가 정보 입력..."></textarea>
+                        <label class="form-label fw-bold">비고</label>
+                        <textarea id="partnerNote" class="form-control" rows="2" placeholder="기타 참고사항 입력..."></textarea>
                     </div>
                 </form>
             </div>

@@ -366,15 +366,21 @@ const app = {
                 if (typeFilter) {
                     matches = matches.filter(p => p.type === typeFilter || p.type === 'ALL');
                 }
-                matches = matches.filter(p => p.name.toLowerCase().includes(val));
+                matches = matches.filter(p => 
+                    (p.name && p.name.toLowerCase().includes(val)) || 
+                    (p.company_name && p.company_name.toLowerCase().includes(val))
+                );
 
                 if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m.name}</div>`).join('');
+                    sug.innerHTML = matches.map(m => {
+                        const displayText = m.company_name ? `${m.name} / ${m.company_name}` : m.name;
+                        return `<div class="autocomplete-suggestion" data-name="${m.name}">${displayText}</div>`;
+                    }).join('');
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
                         div.addEventListener('click', () => {
-                            input.value = div.innerText;
+                            input.value = div.dataset.name;
                             sug.style.display = 'none';
                         });
                     });

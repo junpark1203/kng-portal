@@ -29,6 +29,33 @@
             #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
             .no-print { display: none !important; }
         }
+
+        .autocomplete-suggestions {
+            border: 1px solid #ced4da;
+            background: #fff;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            z-index: 1000;
+            width: 100%;
+            border-radius: 0.25rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .autocomplete-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-suggestion:hover,
+        .active-suggestion {
+            background-color: #f8f9fa;
+            color: #4361ee;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -51,10 +78,10 @@
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="form-label mb-1 fw-bold small text-muted">거래처 선택</label>
-                <select id="partnerSelect" class="form-select form-select-sm">
-                    <option value="">거래처를 선택하세요</option>
-                    <!-- app.js에서 로드 -->
-                </select>
+                <div class="position-relative">
+                    <input type="text" id="partnerInput" class="form-control form-control-sm" placeholder="거래처명 / 사업자명 검색..." autocomplete="off">
+                    <div id="partnerSuggestions" class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
             </div>
             
             <div class="col-md-5">

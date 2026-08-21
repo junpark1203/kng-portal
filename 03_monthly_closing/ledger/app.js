@@ -6,7 +6,7 @@ const app = {
         this.loadPartners();
         
         // Event Listeners
-        document.getElementById('partnerSelect').addEventListener('change', () => this.loadLedger());
+        document.getElementById('partnerInput').addEventListener('change', () => this.loadLedger());
         document.getElementById('startDate').addEventListener('change', () => this.loadLedger());
         document.getElementById('endDate').addEventListener('change', () => this.loadLedger());
     },
@@ -56,16 +56,92 @@ const app = {
             const res = await api.get('/partners');
             this.partners = res;
             
-            const select = document.getElementById('partnerSelect');
-            select.innerHTML = '<option value="">거래처를 선택하세요</option>' + 
-                res.map(p => `<option value="${p.name}">${p.name} (${p.type})</option>`).join('');
+            const input = document.getElementById('partnerInput');
+            const sug = document.getElementById('partnerSuggestions');
+            
+            input.addEventListener('input', (e) => {
+                const val = e.target.value.trim().toLowerCase();
+                if (val.length < 1) {
+                    sug.style.display = 'none';
+                    return;
+                }
+                
+                const matches = this.partners.filter(p => 
+                    (p.name && p.name.toLowerCase().includes(val)) || 
+                    (p.company_name && p.company_name.toLowerCase().includes(val))
+                );
+
+                if (matches.length > 0) {
+                    sug.innerHTML = matches.map(m => {
+                        const displayText = m.company_name ? `${m.name} / ${m.company_name}` : m.name;
+                        return `<div class="autocomplete-suggestion" data-name="${m.name}">${displayText}</div>`;
+                    }).join('');
+                    sug.style.display = 'block';
+                    
+                    sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
+                        div.addEventListener('click', () => {
+                            input.value = div.dataset.name;
+                            sug.style.display = 'none';
+                            this.loadLedger(); // Trigger search when selected
+                        });
+                    });
+                } else {
+                    sug.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (e.target !== input) sug.style.display = 'none';
+            });
+
+            this.attachAutocompleteKeyboard(input, sug);
         } catch (error) {
             console.error('Failed to load partners', error);
         }
     },
 
+    attachAutocompleteKeyboard(input, sugBox) {
+        let currentFocus = -1;
+        input.addEventListener('keydown', (e) => {
+            if (sugBox.style.display === 'none') return;
+            const items = sugBox.querySelectorAll('.autocomplete-suggestion');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentFocus++;
+                if (currentFocus >= items.length) currentFocus = 0;
+                this.setActive(items, currentFocus);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentFocus--;
+                if (currentFocus < 0) currentFocus = items.length - 1;
+                this.setActive(items, currentFocus);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (currentFocus > -1) {
+                    items[currentFocus].click();
+                } else {
+                    // if they press enter without selection, just load ledger
+                    sugBox.style.display = 'none';
+                    this.loadLedger();
+                }
+            }
+        });
+
+        input.addEventListener('input', () => { currentFocus = -1; });
+    },
+
+    setActive(items, currentFocus) {
+        items.forEach(item => item.classList.remove('active-suggestion'));
+        if (items[currentFocus]) {
+            items[currentFocus].classList.add('active-suggestion');
+            items[currentFocus].scrollIntoView({ block: 'nearest' });
+        }
+    },
+
     async loadLedger() {
-        const partner = document.getElementById('partnerSelect').value;
+        const partner = document.getElementById('partnerInput').value.trim();
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const tbody = document.getElementById('ledgerTableBody');

@@ -16,6 +16,20 @@ module.exports = (database) => {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        // 컬럼 추가 (기존 테이블 마이그레이션용)
+        const columns = [
+            'company_name TEXT', 'ceo_name TEXT', 'business_number TEXT', 'address TEXT',
+            'bank_name TEXT', 'account_number TEXT', 'account_holder TEXT',
+            'phone TEXT', 'fax TEXT',
+            'manager1_name TEXT', 'manager1_phone TEXT', 'manager1_email TEXT',
+            'manager2_name TEXT', 'manager2_phone TEXT', 'manager2_email TEXT'
+        ];
+        columns.forEach(col => {
+            const colName = col.split(' ')[0];
+            database.run(`ALTER TABLE partners ADD COLUMN ${col}`, function(err) {
+                // 이미 컬럼이 존재하면 무시
+            });
+        });
     });
 
     // 2. 전체 조회
@@ -28,36 +42,88 @@ module.exports = (database) => {
 
     // 3. 단일 등록
     router.post('/', authMiddleware.verifyToken, (req, res) => {
-        const { name, type, contact, note } = req.body;
-        if (!name) return res.status(400).json({ error: 'Name is required' });
+        const { 
+            name, company_name, ceo_name, business_number, address,
+            bank_name, account_number, account_holder,
+            phone, fax,
+            manager1_name, manager1_phone, manager1_email,
+            manager2_name, manager2_phone, manager2_email,
+            type, contact, note 
+        } = req.body;
+        
+        if (!name || !company_name) return res.status(400).json({ error: '거래처명과 사업자명은 필수입니다.' });
 
-        const stmt = database.prepare("INSERT INTO partners (name, type, contact, note) VALUES (?, ?, ?, ?)");
-        stmt.run([name, type || 'ALL', contact || '', note || ''], function(err) {
+        const stmt = database.prepare(`
+            INSERT INTO partners (
+                name, company_name, ceo_name, business_number, address,
+                bank_name, account_number, account_holder,
+                phone, fax,
+                manager1_name, manager1_phone, manager1_email,
+                manager2_name, manager2_phone, manager2_email,
+                type, contact, note
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        stmt.run([
+            name, company_name, ceo_name || '', business_number || '', address || '',
+            bank_name || '', account_number || '', account_holder || '',
+            phone || '', fax || '',
+            manager1_name || '', manager1_phone || '', manager1_email || '',
+            manager2_name || '', manager2_phone || '', manager2_email || '',
+            type || 'ALL', contact || '', note || ''
+        ], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(400).json({ error: '이미 등록된 거래처 이름입니다.' });
                 }
                 return res.status(500).json({ error: err.message });
             }
-            res.json({ id: this.lastID, name, type, contact, note });
+            res.json({ id: this.lastID, name, company_name });
         });
         stmt.finalize();
     });
 
     // 4. 단일 수정
     router.put('/:id', authMiddleware.verifyToken, (req, res) => {
-        const { name, type, contact, note } = req.body;
+        const { 
+            name, company_name, ceo_name, business_number, address,
+            bank_name, account_number, account_holder,
+            phone, fax,
+            manager1_name, manager1_phone, manager1_email,
+            manager2_name, manager2_phone, manager2_email,
+            type, contact, note 
+        } = req.body;
         const id = req.params.id;
 
-        const stmt = database.prepare("UPDATE partners SET name = ?, type = ?, contact = ?, note = ? WHERE id = ?");
-        stmt.run([name, type || 'ALL', contact || '', note || '', id], function(err) {
+        if (!name || !company_name) return res.status(400).json({ error: '거래처명과 사업자명은 필수입니다.' });
+
+        const stmt = database.prepare(`
+            UPDATE partners SET 
+                name = ?, company_name = ?, ceo_name = ?, business_number = ?, address = ?,
+                bank_name = ?, account_number = ?, account_holder = ?,
+                phone = ?, fax = ?,
+                manager1_name = ?, manager1_phone = ?, manager1_email = ?,
+                manager2_name = ?, manager2_phone = ?, manager2_email = ?,
+                type = ?, contact = ?, note = ?
+            WHERE id = ?
+        `);
+        
+        stmt.run([
+            name, company_name, ceo_name || '', business_number || '', address || '',
+            bank_name || '', account_number || '', account_holder || '',
+            phone || '', fax || '',
+            manager1_name || '', manager1_phone || '', manager1_email || '',
+            manager2_name || '', manager2_phone || '', manager2_email || '',
+            type || 'ALL', contact || '', note || '',
+            id
+        ], function(err) {
             if (err) {
                 if (err.message.includes('UNIQUE constraint failed')) {
                     return res.status(400).json({ error: '이미 등록된 거래처 이름입니다.' });
                 }
                 return res.status(500).json({ error: err.message });
             }
-            res.json({ id, name, type, contact, note });
+            res.json({ id, name, company_name });
         });
         stmt.finalize();
     });
