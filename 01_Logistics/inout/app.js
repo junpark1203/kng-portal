@@ -73,6 +73,9 @@ const app = {
     bindEvents: function() {
         $('inboundForm').addEventListener('submit', this.handleInboundSubmit.bind(this));
         $('outboundForm').addEventListener('submit', this.handleOutboundSubmit.bind(this));
+        $('editInboundForm').addEventListener('submit', this.submitEditInbound.bind(this));
+        $('editOutboundForm').addEventListener('submit', this.submitEditOutbound.bind(this));
+        $('btnEditOutboundLot').addEventListener('click', this.openEditOutboundLotModal.bind(this));
         
         // Hide autocomplete when clicking outside
         document.addEventListener('click', (e) => {
@@ -237,7 +240,7 @@ const app = {
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
             const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
-            const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
+            const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
                 <td>${badge}</td>
@@ -248,8 +251,9 @@ const app = {
                 <td>${r.unit}</td>
                 <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
-                <td class="text-center">
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}"><i class='bx bx-trash'></i></button>
+                <td class="text-center text-nowrap">
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>
                 </td>
             </tr>
             `;
@@ -753,8 +757,13 @@ const app = {
             return;
         }
         
-        this.outboundRows[this.currentLotModalRowId].consumedLots = tempConsumed;
-        this.validateAllOutboundLots();
+        if (this.currentLotModalRowId === 'editOutbound') {
+            this.editOutboundState.consumedLots = tempConsumed;
+            $('editOutboundErrorMsg').style.display = 'none';
+        } else {
+            this.outboundRows[this.currentLotModalRowId].consumedLots = tempConsumed;
+            this.validateAllOutboundLots();
+        }
         
         const modal = bootstrap.Modal.getInstance($('lotModal'));
         modal.hide();
@@ -1403,6 +1412,211 @@ const app = {
     }
 };
 
+    // ----------------------------------------
+    // Edit Logic (수정 로직)
+    // ----------------------------------------
+    openEditInbound: async function(id) {
+        try {
+            const data = await authFetch(`${API_BASE}/history/inbound/${id}`);
+            
+            $('editInboundId').value = data.id;
+            $('edit_in_date').value = data.date;
+            $('edit_in_supplier').value = data.supplier;
+            $('edit_in_location').innerHTML = locations.map(l => `<option value="${l.id}" ${l.id === data.location_id ? 'selected' : ''}>${l.name}</option>`).join('');
+            
+            $('edit_in_item').value = data.item;
+            $('edit_in_spec').value = data.spec;
+            $('edit_in_unit').value = data.unit;
+            $('edit_in_qty').value = data.qty_initial;
+            $('edit_in_price').value = data.unit_price;
+            $('edit_in_note').value = data.note || '';
+            
+            const consumed = data.qty_initial - data.qty_remaining;
+            if (consumed > 0) {
+                $('editInboundWarning').classList.remove('d-none');
+                $('editInboundMinQty').innerText = consumed;
+                $('edit_in_qty').min = consumed;
+                $('edit_in_item').readOnly = true;
+                $('edit_in_spec').readOnly = true;
+                $('edit_in_unit').readOnly = true;
+            } else {
+                $('editInboundWarning').classList.add('d-none');
+                $('edit_in_qty').min = 0.01;
+                $('edit_in_item').readOnly = false;
+                $('edit_in_spec').readOnly = false;
+                $('edit_in_unit').readOnly = false;
+            }
+            
+            let modal = bootstrap.Modal.getInstance($('editInboundModal'));
+            if (!modal) modal = new bootstrap.Modal($('editInboundModal'));
+            modal.show();
+        } catch(err) {
+            alert('입고 내역을 불러오는데 실패했습니다: ' + err.message);
+        }
+    },
+    
+    submitEditInbound: async function(e) {
+        e.preventDefault();
+        const id = $('editInboundId').value;
+        const payload = {
+            date: $('edit_in_date').value,
+            supplier: $('edit_in_supplier').value,
+            location_id: $('edit_in_location').value,
+            item: $('edit_in_item').value,
+            spec: $('edit_in_spec').value,
+            unit: $('edit_in_unit').value,
+            qty: parseFloat($('edit_in_qty').value),
+            unit_price: parseFloat($('edit_in_price').value),
+            note: $('edit_in_note').value
+        };
+        
+        try {
+            await authFetch(`${API_BASE}/inbound/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            alert('입고 내역이 수정되었습니다.');
+            bootstrap.Modal.getInstance($('editInboundModal')).hide();
+            this.loadHistory();
+            if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
+                this.renderDrawerDetail(id, 'inbound');
+            }
+        } catch(err) {
+            alert('수정 실패: ' + err.message);
+        }
+    },
+    
+    editOutboundState: { availableLots: [], consumedLots: [] },
+    
+    openEditOutbound: async function(id) {
+        try {
+            const data = await authFetch(`${API_BASE}/history/outbound/${id}`);
+            const item = data.items ? (data.items.find(i => i.id == id) || data) : data;
+            
+            $('editOutboundId').value = item.id;
+            $('edit_out_date').value = item.date;
+            $('edit_out_destination').value = item.destination || item.party;
+            $('edit_out_shipping').value = item.shipping_fee || 0;
+            $('edit_out_note').value = item.note || '';
+            
+            $('edit_out_item').value = item.item;
+            $('edit_out_spec').value = item.spec;
+            $('edit_out_unit').value = item.unit;
+            $('edit_out_qty').value = item.qty;
+            $('edit_out_price').value = item.selling_price || item.price;
+            
+            // 기존 할당된 Lot 정보 저장
+            this.editOutboundState.consumedLots = (item.consumed_lots || []).map(l => ({
+                inbound_id: l.inbound_id,
+                consumed_qty: l.consumed_qty
+            }));
+            
+            // 품목에 해당하는 전체 사용 가능 재고(Lot)를 백엔드에서 조회
+            // 주의: 자기 자신이 차감했던 재고량도 복구된 상태로 계산해야 하므로 백엔드에서 받은 잔여량 + 내가 차감했던 양
+            const lots = await authFetch(`${API_BASE}/inventory/item/${encodeURIComponent(item.item)}`);
+            
+            // 현재 차감된 lot들의 수량을 잔여량에 더해서 가상의 "수정 전 초기 상태" 잔여량을 만듬
+            this.editOutboundState.availableLots = lots.map(lot => {
+                const consumed = this.editOutboundState.consumedLots.find(c => c.inbound_id === lot.id);
+                if (consumed) {
+                    lot.qty_remaining += consumed.consumed_qty;
+                }
+                return lot;
+            });
+            
+            let modal = bootstrap.Modal.getInstance($('editOutboundModal'));
+            if (!modal) modal = new bootstrap.Modal($('editOutboundModal'));
+            modal.show();
+            
+            // 오류 메시지 리셋
+            $('editOutboundErrorMsg').style.display = 'none';
+        } catch(err) {
+            alert('출고 내역을 불러오는데 실패했습니다: ' + err.message);
+        }
+    },
+    
+    openEditOutboundLotModal: function() {
+        this.currentLotModalRowId = 'editOutbound';
+        const itemName = $('edit_out_item').value;
+        const specName = $('edit_out_spec').value;
+        const targetQty = parseFloat($('edit_out_qty').value) || 0;
+        
+        $('lotModalItemTitle').innerText = `[${itemName} / ${specName}]`;
+        $('lotModalReqQty').innerText = targetQty;
+        
+        const rData = this.editOutboundState;
+        
+        const tbody = $('lotModalTbody');
+        tbody.innerHTML = rData.availableLots.map(lot => {
+            const consumed = rData.consumedLots.find(c => c.inbound_id === lot.id);
+            const val = consumed ? consumed.consumed_qty : 0;
+            return `
+            <tr>
+                <td>${lot.date}</td>
+                <td>${lot.location_name || '-'}</td>
+                <td>${lot.supplier}</td>
+                <td>${lot.unit_price.toLocaleString()}</td>
+                <td><strong>${lot.qty_remaining}</strong></td>
+                <td>
+                    <input type="number" class="form-control form-control-sm lot-qty-modal-input mx-auto" 
+                           data-id="${lot.id}"
+                           min="0" max="${lot.qty_remaining}" step="0.01" value="${val}"
+                           onchange="app.validateLotModalSum()" onkeyup="app.validateLotModalSum()">
+                </td>
+            </tr>
+            `;
+        }).join('');
+        
+        this.validateLotModalSum();
+        
+        let modal = bootstrap.Modal.getInstance($('lotModal'));
+        if (!modal) modal = new bootstrap.Modal($('lotModal'));
+        modal.show();
+    },
+    
+    submitEditOutbound: async function(e) {
+        e.preventDefault();
+        
+        const targetQty = parseFloat($('edit_out_qty').value) || 0;
+        const sumLots = this.editOutboundState.consumedLots.reduce((acc, cur) => acc + cur.consumed_qty, 0);
+        
+        if (Math.abs(sumLots - targetQty) > 0.0001) {
+            $('editOutboundErrorMsg').style.display = 'block';
+            return;
+        }
+        
+        const id = $('editOutboundId').value;
+        const payload = {
+            date: $('edit_out_date').value,
+            destination: $('edit_out_destination').value,
+            item: $('edit_out_item').value,
+            spec: $('edit_out_spec').value,
+            unit: $('edit_out_unit').value,
+            qty: targetQty,
+            selling_price: parseFloat($('edit_out_price').value) || 0,
+            shipping_fee: parseFloat($('edit_out_shipping').value) || 0,
+            note: $('edit_out_note').value,
+            consumed_lots: this.editOutboundState.consumedLots
+        };
+        
+        try {
+            await authFetch(`${API_BASE}/outbound/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            alert('출고 내역이 수정되었습니다.');
+            bootstrap.Modal.getInstance($('editOutboundModal')).hide();
+            this.loadHistory();
+            if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
+                this.renderDrawerDetail(id, 'outbound');
+            }
+        } catch(err) {
+            alert('수정 실패: ' + err.message);
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     app.init();
 });
+
