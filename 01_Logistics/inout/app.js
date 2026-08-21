@@ -1410,8 +1410,7 @@ const app = {
         
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-    }
-};
+    },
 
     // ----------------------------------------
     // Edit Logic (수정 로직)
