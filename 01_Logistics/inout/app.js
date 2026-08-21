@@ -407,6 +407,7 @@ const app = {
         $('quickPartnerTargetInput').value = targetInputId;
         $('quickPartnerType').value = defaultType === '매입처' ? '매입처' : '매출처';
         $('quickPartnerName').value = '';
+        $('quickPartnerCompanyName').value = '';
         
         const modalEl = $('quickPartnerModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
@@ -417,15 +418,16 @@ const app = {
     submitQuickPartner: async function() {
         const type = $('quickPartnerType').value;
         const name = $('quickPartnerName').value.trim();
+        const company_name = $('quickPartnerCompanyName').value.trim();
         const targetInputId = $('quickPartnerTargetInput').value;
 
-        if (!name) return alert('거래처명을 입력해주세요.');
+        if (!name || !company_name) return alert('거래처명과 사업자명을 모두 입력해주세요.');
 
         try {
             await authFetch(`${API_BASE}/partners`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type, contact: '', note: '빠른 등록' })
+                body: JSON.stringify({ name, company_name, type, contact: '', note: '빠른 등록' })
             });
             
             // 캐시 갱신

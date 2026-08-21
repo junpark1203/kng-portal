@@ -11,7 +11,7 @@
     <style>
         .lot-qty-input { width: 80px; text-align: right; }
         
-        .autocomplete-suggestions { border: 1px solid #ced4da; max-height: 200px; overflow-y: auto; position: absolute; z-index: 1060; background: #fff; width: 100%; border-radius: 0 0 4px 4px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .autocomplete-suggestions { border: 1px solid #ced4da; max-height: 200px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1060; background: #fff; width: 100%; border-radius: 0 0 4px 4px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .autocomplete-suggestion { padding: 8px; cursor: pointer; }
         .autocomplete-suggestion:hover { background-color: #f1f1f1; }
         
@@ -653,7 +653,11 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label mb-1 fw-bold" style="font-size:0.85rem">거래처명</label>
-                    <input type="text" id="quickPartnerName" class="form-control form-control-sm" required placeholder="예: 구글 주식회사">
+                    <input type="text" id="quickPartnerName" class="form-control form-control-sm" required placeholder="예: 구글">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label mb-1 fw-bold" style="font-size:0.85rem">사업자명 (필수)</label>
+                    <input type="text" id="quickPartnerCompanyName" class="form-control form-control-sm" required placeholder="예: 구글 주식회사">
                 </div>
             </div>
             <div class="modal-footer py-1 bg-light">
