@@ -15,6 +15,15 @@
         .autocomplete-suggestion { padding: 8px; cursor: pointer; }
         .autocomplete-suggestion:hover { background-color: #f1f1f1; }
         
+        input.form-control[readonly], input.form-control[disabled] {
+            background-color: #e9ecef !important;
+            opacity: 1 !important;
+            cursor: not-allowed !important;
+        }
+        #lotModal {
+            z-index: 1060 !important;
+        }
+        
         #locationsModal .modal-body ul { list-style: none; padding: 0; }
         #locationsModal .modal-body li { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
         
