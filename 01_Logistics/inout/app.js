@@ -1436,14 +1436,20 @@ const app = {
                 $('editInboundWarning').classList.remove('d-none');
                 $('editInboundMinQty').innerText = consumed;
                 $('edit_in_qty').min = consumed;
+                $('edit_in_item').disabled = true;
                 $('edit_in_item').readOnly = true;
+                $('edit_in_spec').disabled = true;
                 $('edit_in_spec').readOnly = true;
+                $('edit_in_unit').disabled = true;
                 $('edit_in_unit').readOnly = true;
             } else {
                 $('editInboundWarning').classList.add('d-none');
                 $('edit_in_qty').min = 0.01;
+                $('edit_in_item').disabled = false;
                 $('edit_in_item').readOnly = false;
+                $('edit_in_spec').disabled = false;
                 $('edit_in_spec').readOnly = false;
+                $('edit_in_unit').disabled = false;
                 $('edit_in_unit').readOnly = false;
             }
             
@@ -1499,9 +1505,9 @@ const app = {
             $('edit_out_shipping').value = item.shipping_fee || 0;
             $('edit_out_note').value = item.note || '';
             
-            $('edit_out_item').innerText = item.item;
-            $('edit_out_spec').innerText = item.spec || '-';
-            $('edit_out_unit').innerText = item.unit || '-';
+            $('edit_out_item').value = item.item;
+            $('edit_out_spec').value = item.spec || '';
+            $('edit_out_unit').value = item.unit || '';
             $('edit_out_qty').value = item.qty;
             $('edit_out_price').value = item.selling_price || item.price;
             
@@ -1537,8 +1543,8 @@ const app = {
     
     openEditOutboundLotModal: function() {
         this.currentLotModalRowId = 'editOutbound';
-        const itemName = $('edit_out_item').innerText;
-        const specName = $('edit_out_spec').innerText;
+        const itemName = $('edit_out_item').value;
+        const specName = $('edit_out_spec').value;
         const targetQty = parseFloat($('edit_out_qty').value) || 0;
         
         $('lotModalItemTitle').innerText = `[${itemName} / ${specName}]`;
@@ -1589,9 +1595,9 @@ const app = {
         const payload = {
             date: $('edit_out_date').value,
             destination: $('edit_out_destination').value,
-            item: $('edit_out_item').innerText,
-            spec: $('edit_out_spec').innerText,
-            unit: $('edit_out_unit').innerText,
+            item: $('edit_out_item').value,
+            spec: $('edit_out_spec').value,
+            unit: $('edit_out_unit').value,
             qty: targetQty,
             selling_price: parseFloat($('edit_out_price').value) || 0,
             shipping_fee: parseFloat($('edit_out_shipping').value) || 0,
