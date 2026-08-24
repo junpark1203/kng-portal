@@ -1138,6 +1138,10 @@ const app = {
         setTimeout(() => app.openDirectExcelModal(), 300);
     },
 
+    downloadExcelTemplate: function() {
+        window.location.href = API_BASE + '/direct/template';
+    },
+
     openDirectExcelModal: function() {
         const modalEl = document.getElementById('directExcelModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
