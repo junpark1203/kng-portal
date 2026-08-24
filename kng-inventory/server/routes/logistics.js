@@ -519,7 +519,7 @@ router.post('/direct', (req, res) => {
         const outSql = `
             INSERT INTO logistics_outbound 
             (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, note, is_direct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
         `;
         
         // 3. Mapping insert
