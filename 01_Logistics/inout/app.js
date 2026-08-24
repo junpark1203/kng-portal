@@ -1124,6 +1124,69 @@ const app = {
     // ==========================================
     // Drawer & Detail & Print Logic
     // ==========================================
+    openDirectExcelModal: function() {
+        const modalEl = document.getElementById('directExcelModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        $('directExcelFile').value = '';
+        modal.show();
+    },
+
+    uploadDirectExcel: async function() {
+        const fileInput = $('directExcelFile');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert('업로드할 엑셀 파일을 선택해주세요.');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            // Show loading state
+            const btn = event.currentTarget || document.querySelector('#directExcelModal .btn-warning');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 업로드 중...';
+            btn.disabled = true;
+
+            const res = await fetch(`${API_BASE}/outbound/direct/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(`총 ${data.count}건의 엑셀 데이터가 성공적으로 일괄 등록되었습니다.`);
+                
+                const modalEl = document.getElementById('directExcelModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                
+                app.resetPageAndLoadHistory();
+            } else {
+                let errText = await res.text();
+                try {
+                    const errJson = JSON.parse(errText);
+                    errText = errJson.error || errJson.details || errText;
+                } catch(e) {}
+                alert(`업로드 실패: ${errText}`);
+            }
+        } catch (err) {
+            alert(`업로드 중 오류 발생: ${err.message}`);
+        } finally {
+            // Reset loading state
+            const btn = document.querySelector('#directExcelModal .btn-warning');
+            if (btn) {
+                btn.innerHTML = "<i class='bx bx-upload'></i> 업로드 및 일괄 등록";
+                btn.disabled = false;
+            }
+        }
+    },
+
     openDrawer: function(mode, data = null) {
         if (mode === 'inbound_create') {
             const modalEl = document.getElementById('inboundModal');
