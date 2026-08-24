@@ -1140,16 +1140,30 @@ const app = {
 
     downloadExcelTemplate: async function() {
         try {
+            let token = null;
+            try {
+                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+                    token = await window.parent.getAuthToken();
+                }
+            } catch(e) {}
+            if (!token) {
+                try { token = await waitForAuth(); } catch(e) {}
+            }
+            if (!token) token = localStorage.getItem('token');
+
             const res = await fetch(API_BASE + '/direct/template', {
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                headers: { 'Authorization': 'Bearer ' + token }
             });
-            if (!res.ok) throw new Error('다운로드 실패');
+            if (!res.ok) {
+                const err = await res.json().catch(()=>({}));
+                throw new Error(err.error || 'HTTP error ' + res.status);
+            }
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            a.download = 'logistics_direct_template.xlsx';
+            a.download = '직출고_엑셀일괄등록_양식.xlsx';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
