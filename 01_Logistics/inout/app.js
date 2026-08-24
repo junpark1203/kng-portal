@@ -437,9 +437,9 @@ const app = {
                 </div>
                 <div class="row g-2 align-items-center">
                     <div class="col-5">
-                        <div class="input-group input-group-sm">
-                            <input type="number" class="form-control in-qty" placeholder="수량" min="0.01" step="0.01" required>
-                            <input type="text" class="form-control in-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
+                        <div class="d-flex gap-1">
+                            <input type="number" class="form-control form-control-sm in-qty" placeholder="수량" min="0.01" step="0.01" required>
+                            <input type="text" class="form-control form-control-sm in-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
                         </div>
                     </div>
                     <div class="col-5">
@@ -609,9 +609,9 @@ const app = {
                 </div>
                 <div class="row g-2 align-items-center">
                     <div class="col-4">
-                        <div class="input-group input-group-sm">
-                            <input type="number" class="form-control dir-qty" placeholder="수량" min="0.01" step="0.01" required>
-                            <input type="text" class="form-control dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
+                        <div class="d-flex gap-1">
+                            <input type="number" class="form-control form-control-sm dir-qty" placeholder="수량" min="0.01" step="0.01" required>
+                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
                         </div>
                     </div>
                     <div class="col-3">
@@ -765,9 +765,9 @@ const app = {
                 </div>
                 <div class="row g-2 align-items-center">
                     <div class="col-5">
-                        <div class="input-group input-group-sm">
-                            <input type="number" class="form-control out-qty" placeholder="출고 수량" min="0.01" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
-                            <input type="text" class="form-control out-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" readonly>
+                        <div class="d-flex gap-1">
+                            <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 수량" min="0.01" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
+                            <input type="text" class="form-control form-control-sm out-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" readonly>
                         </div>
                     </div>
                     <div class="col-4">
