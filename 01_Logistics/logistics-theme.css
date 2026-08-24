@@ -263,6 +263,12 @@ h4 {
 
 /* Autocomplete Customization */
 .autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    z-index: 1060;
+    background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);

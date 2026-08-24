@@ -403,46 +403,6 @@ const app = {
         attach('edit_out_destination', 'edit_out_destination_sug', '매출처');
     },
 
-    openPartnerModal: function(defaultType, targetInputId) {
-        $('quickPartnerTargetInput').value = targetInputId;
-        $('quickPartnerType').value = defaultType === '매입처' ? '매입처' : '매출처';
-        $('quickPartnerName').value = '';
-        $('quickPartnerCompanyName').value = '';
-        
-        const modalEl = $('quickPartnerModal');
-        let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) modal = new bootstrap.Modal(modalEl);
-        modal.show();
-    },
-
-    submitQuickPartner: async function() {
-        const type = $('quickPartnerType').value;
-        const name = $('quickPartnerName').value.trim();
-        const company_name = $('quickPartnerCompanyName').value.trim();
-        const targetInputId = $('quickPartnerTargetInput').value;
-
-        if (!name || !company_name) return alert('거래처명과 사업자명을 모두 입력해주세요.');
-
-        try {
-            await authFetch(`${API_BASE}/partners`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, company_name, type, contact: '', note: '빠른 등록' })
-            });
-            
-            // 캐시 갱신
-            await this.setupPartnerAutocomplete();
-
-            if (targetInputId && $(targetInputId)) {
-                $(targetInputId).value = name;
-            }
-            
-            const modal = bootstrap.Modal.getInstance($('quickPartnerModal'));
-            if (modal) modal.hide();
-        } catch (err) {
-            alert('거래처 등록 실패: ' + err.message);
-        }
-    },
 
     // ----------------------------------------
     // Inbound (입고)
