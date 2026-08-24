@@ -1130,8 +1130,6 @@ const app = {
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
             modal.show();
-            $('btnFilterIn').checked = true;
-            this.resetPageAndLoadHistory();
             if ($('inboundItemsContainer').children.length === 0) {
                 this.addInboundItemRow();
             }
@@ -1140,8 +1138,6 @@ const app = {
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
             modal.show();
-            $('btnFilterOut').checked = true;
-            this.resetPageAndLoadHistory();
             if ($('outboundItemsContainer').children.length === 0) {
                 this.addOutboundItemRow();
             }
@@ -1150,8 +1146,6 @@ const app = {
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
             modal.show();
-            $('btnFilterAll').checked = true;
-            this.resetPageAndLoadHistory();
             if ($('directItemsContainer').children.length === 0) {
                 this.addDirectItemRow();
             }
