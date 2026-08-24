@@ -1210,7 +1210,7 @@ const app = {
             }
             if (!token) token = localStorage.getItem('token');
 
-            const res = await fetch(`${API_BASE}/outbound/direct/upload`, {
+            const res = await fetch(`${API_BASE}/direct/upload`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
