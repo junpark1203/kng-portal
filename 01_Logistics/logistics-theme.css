@@ -347,3 +347,22 @@ h4 {
     font-size: 0.85rem;
     border-top: 2px solid #e2e8f0 !important;
 }
+
+
+/* Fix for small inputs and buttons inside tight grids (overriding universal !important) */
+.form-control-sm, 
+.form-select-sm,
+.input-group-sm > .form-control, 
+.input-group-sm > .form-select, 
+.input-group-sm > .btn {
+    height: 32px !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 12px !important;
+}
+
+.btn-sm {
+    height: 32px !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+}
