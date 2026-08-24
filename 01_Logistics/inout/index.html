@@ -40,11 +40,17 @@
         .modal-header.bg-direct { background: #fefce8 !important; border-bottom: 3px solid #f59e0b; }
         .modal-header.bg-detail { background: #f8fafc !important; border-bottom: 3px solid #3b82f6; }
 
-        /* Bootstrap modal-xl / modal-lg fix for tablet size (768px ~ 992px) */
-        @media (min-width: 768px) and (max-width: 991.98px) {
+        /* Bootstrap modal-xl / modal-lg fix for iframe (viewport < 768px) */
+        @media (min-width: 0px) {
             .modal-lg, .modal-xl {
                 max-width: 95% !important;
+                margin: 1.75rem auto;
             }
+        }
+        
+        /* Restore Bootstrap btn-close if overridden */
+        .btn-close {
+            background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat !important;
         }
         
         /* 모바일 화면 (768px 미만)에서는 항목 컨테이너에 가로 스크롤 허용 */
