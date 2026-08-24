@@ -1199,10 +1199,21 @@ const app = {
             btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 업로드 중...';
             btn.disabled = true;
 
+            let token = null;
+            try {
+                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+                    token = await window.parent.getAuthToken();
+                }
+            } catch(e) {}
+            if (!token) {
+                try { token = await waitForAuth(); } catch(e) {}
+            }
+            if (!token) token = localStorage.getItem('token');
+
             const res = await fetch(`${API_BASE}/outbound/direct/upload`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: formData
             });
