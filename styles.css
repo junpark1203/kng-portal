@@ -631,6 +631,26 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     padding: 0;
 }
 
+/* Legacy btn compat */
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: 1px solid var(--danger);
+    border-radius: 5px;
+    background: var(--danger);
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    color: white;
+    transition: all var(--transition-fast);
+}
+
+.btn-danger:hover {
+    background: #b91c1c; /* slightly darker danger */
+}
+
 .header-top {
     display: flex;
     justify-content: space-between;
