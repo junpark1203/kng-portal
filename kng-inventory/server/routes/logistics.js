@@ -61,7 +61,9 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0"
                     ];
-                    addColsInbound.forEach(sql => database.run(sql, () => {}));
+                    database.serialize(() => {
+                        addColsInbound.forEach(sql => database.run(sql, () => {}));
+                    });
                 }
             });
 
@@ -89,7 +91,9 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN actual_destination TEXT"
                     ];
-                    addColsOutbound.forEach(sql => database.run(sql, () => {}));
+                    database.serialize(() => {
+                        addColsOutbound.forEach(sql => database.run(sql, () => {}));
+                    });
                 }
             });
 
