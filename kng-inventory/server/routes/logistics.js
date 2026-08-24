@@ -56,9 +56,6 @@ function initLogisticsTables(database) {
                     // 테이블이 이미 존재할 수 있으므로 컬럼 추가 시도 (에러 무시)
                     const addColsInbound = [
                         "ALTER TABLE logistics_inbound ADD COLUMN note TEXT",
-                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
-                        "ALTER TABLE logistics_inbound ADD COLUMN tax_invoice_date TEXT",
-                        "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0"
                     ];
                     database.serialize(() => {
@@ -85,9 +82,6 @@ function initLogisticsTables(database) {
                 if (!err) {
                     const addColsOutbound = [
                         "ALTER TABLE logistics_outbound ADD COLUMN note TEXT",
-                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
-                        "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
-                        "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN actual_destination TEXT"
                     ];
@@ -392,13 +386,13 @@ router.get('/history', (req, res) => {
             SELECT 
                 'inbound' as type, i.id, i.date, i.supplier as party, NULL as actual_destination, i.item, i.spec, i.unit, 
                 i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at,
-                i.settlement_status, i.tax_invoice_date, i.is_zero_tax, i.is_direct
+                i.is_direct
             FROM logistics_inbound i
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, o.destination as party, o.actual_destination, o.item, o.spec, o.unit, 
                 o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at,
-                o.settlement_status, o.tax_invoice_date, o.is_zero_tax, o.is_direct
+                o.is_direct
             FROM logistics_outbound o
         )
         SELECT * FROM combined
