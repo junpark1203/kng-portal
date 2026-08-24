@@ -1,5 +1,5 @@
 /**
- * ?�출�?관�??�론?�엔??로직
+ * ?�출�?관�??�론?�엔??로직
  */
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -58,7 +58,7 @@ async function authFetch(url, options = {}) {
 
 const $ = id => document.getElementById(id);
 let locations = [];
-let availableLots = []; // 출고 ???�택???�목+규격???�여 Lot 목록
+let availableLots = []; // 출고 ???�택???�목+규격???�여 Lot 목록
 
 const app = {
     init: async function() {
@@ -93,7 +93,7 @@ const app = {
     },
 
     // ----------------------------------------
-    // History & Deletion (?�역 �???��)
+    // History & Deletion (?�역 �???��)
     // ----------------------------------------
     currentPage: 1,
     sortCol: 'date',
@@ -115,7 +115,7 @@ const app = {
         }
         
         document.querySelectorAll('.sort-icon').forEach(el => el.innerHTML = '');
-        const icon = this.sortDir === 'asc' ? ' ?��' : ' ?��';
+        const icon = this.sortDir === 'asc' ? ' ?��' : ' ?��';
         const th = document.getElementById('th-' + colName);
         if (th) {
             th.querySelector('.sort-icon').innerHTML = icon;
@@ -183,14 +183,14 @@ const app = {
         });
 
         try {
-            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-muted">?�이?��? 불러?�는 중입?�다...</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-muted">?�이?��? 불러?�는 중입?�다...</td></tr>`;
             
             const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
             this.renderHistoryTable(res.data);
             this.renderPagination(res.total, res.page, res.limit);
         } catch (err) {
             console.error('History load error:', err);
-            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">?�역??불러?��? 못했?�니??</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">?�역??불러?��? 못했?�니??</td></tr>`;
         }
     },
 
@@ -202,9 +202,9 @@ const app = {
         
         // Prev button
         if (currentPage > 1) {
-            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage - 1})">?�전</button></li>`;
+            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage - 1})">?�전</button></li>`;
         } else {
-            html += `<li class="page-item disabled"><span class="page-link">?�전</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">?�전</span></li>`;
         }
 
         // Display up to 5 page numbers around the current page
@@ -224,9 +224,9 @@ const app = {
 
         // Next button
         if (currentPage < totalPages) {
-            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage + 1})">?�음</button></li>`;
+            html += `<li class="page-item"><button class="page-link" onclick="app.changeHistoryPage(${currentPage + 1})">?�음</button></li>`;
         } else {
-            html += `<li class="page-item disabled"><span class="page-link">?�음</span></li>`;
+            html += `<li class="page-item disabled"><span class="page-link">?�음</span></li>`;
         }
 
         ul.innerHTML = html;
@@ -235,13 +235,13 @@ const app = {
     renderHistoryTable: function(data) {
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">?�당?�는 ?�역???�습?�다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">?�당?�는 ?�역???�습?�다.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
-            const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">?�고</span>`;
+            const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">?�고</span>`;
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
             return `
@@ -255,8 +255,8 @@ const app = {
                 <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty}</td>
                 <td>${r.price.toLocaleString()}</td>
                 <td class="text-center text-nowrap">
-                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="?�정"><i class='bx bx-edit'></i></button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="??��"><i class='bx bx-trash'></i></button>
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="?�정"><i class='bx bx-edit'></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="??��"><i class='bx bx-trash'></i></button>
                 </td>
             </tr>
             `;
@@ -264,24 +264,24 @@ const app = {
     },
 
     deleteInbound: async function(id) {
-        if (!confirm('???�고 ?�역???�말 ??��?�시겠습?�까? (?��? 출고???�역?� ??��?????�습?�다)')) return;
+        if (!confirm('???�고 ?�역???�말 ??��?�시겠습?�까? (?��? 출고???�역?� ??��?????�습?�다)')) return;
         try {
             await authFetch(`${API_BASE}/inbound/${id}`, { method: 'DELETE' });
-            alert('?�고 ?�역????��?�었?�니??');
+            alert('?�고 ?�역????��?�었?�니??');
             this.loadHistory();
         } catch (err) {
-            alert('??�� ?�패: ' + err.message);
+            alert('??�� ?�패: ' + err.message);
         }
     },
 
     deleteOutbound: async function(id) {
-        if (!confirm('??출고 ?�역???�말 ??��?�시겠습?�까? (차감?�었???�고 ?�고가 ?�시 복구?�니??')) return;
+        if (!confirm('??출고 ?�역???�말 ??��?�시겠습?�까? (차감?�었???�고 ?�고가 ?�시 복구?�니??')) return;
         try {
             await authFetch(`${API_BASE}/outbound/${id}`, { method: 'DELETE' });
-            alert('출고 ?�역????��?�고 ?�고가 복구?�었?�니??');
+            alert('출고 ?�역????��?�고 ?�고가 복구?�었?�니??');
             this.loadHistory();
         } catch (err) {
-            alert('??�� ?�패: ' + err.message);
+            alert('??�� ?�패: ' + err.message);
         }
     },
 
@@ -292,13 +292,13 @@ const app = {
     },
 
     // ----------------------------------------
-    // Locations (?�치 관�?
+    // Locations (?�치 관�?
     // ----------------------------------------
     loadLocations: async function() {
         try {
             locations = await authFetch(`${API_BASE}/locations`);
             const sel = $('in_location');
-            sel.innerHTML = '<option value="">?�택?�세??/option>';
+            sel.innerHTML = '<option value="">?�택?�세??/option>';
             locations.forEach(loc => {
                 sel.innerHTML += `<option value="${loc.id}">${loc.name}</option>`;
             });
@@ -327,13 +327,13 @@ const app = {
     addLocation: async function() {
         const input = $('newLocationInput');
         const name = input.value.trim();
-        if (!name) return alert('?�름???�력?�세??);
+        if (!name) return alert('?�름???�력?�세??);
         try {
             await authFetch(`${API_BASE}/locations`, { method: 'POST', body: JSON.stringify({ name }) });
             input.value = '';
             await this.loadLocations();
         } catch (e) {
-            alert('?�류: ' + e.message);
+            alert('?�류: ' + e.message);
         }
     },
 
@@ -350,7 +350,7 @@ const app = {
         } catch (e) {
             console.error('Failed to load partners', e);
         }
-        // 거래�??�동?�성?� ?�제 Partner Search Modal �??��???    },
+        // 거래�??�동?�성?� ?�제 Partner Search Modal �??��???    },
 
     openPartnerSearchModal: function(targetInputId) {
         if (!this.partnersCache || this.partnersCache.length === 0) {
@@ -375,7 +375,7 @@ const app = {
         if (!modal) modal = new bootstrap.Modal(modalEl);
         modal.show();
         
-        // ?�커???�동
+        // ?�커???�동
         setTimeout(() => $('partnerSearchInput').focus(), 500);
     },
 
@@ -392,7 +392,7 @@ const app = {
         }
         
         if (matches.length === 0) {
-            listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검?�된 거래처�? ?�습?�다.</div>`;
+            listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검?�된 거래처�? ?�습?�다.</div>`;
             return;
         }
 
@@ -418,7 +418,7 @@ const app = {
 
 
     // ----------------------------------------
-    // Inbound (?�고)
+    // Inbound (?�고)
     // ----------------------------------------
     addInboundItemRow: function() {
         const container = $('inboundItemsContainer');
@@ -427,7 +427,7 @@ const app = {
             <div class="p-2 mb-2 border rounded bg-light inbound-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
                     <div class="col-6 position-relative">
-                        <input type="text" class="form-control form-control-sm in-item" placeholder="?�목�? autocomplete="off" required>
+                        <input type="text" class="form-control form-control-sm in-item" placeholder="?�목�? autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                     <div class="col-6">
@@ -437,22 +437,22 @@ const app = {
                 <div class="row g-2 align-items-center">
                     <div class="col-5">
                         <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm in-qty" placeholder="?�량"  step="0.01" required>
-                            <input type="text" class="form-control form-control-sm in-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" required>
+                            <input type="number" class="form-control form-control-sm in-qty" placeholder="?�량"  step="0.01" required>
+                            <input type="text" class="form-control form-control-sm in-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" required>
                         </div>
                     </div>
                     <div class="col-5">
-                        <input type="number" class="form-control form-control-sm in-price" placeholder="?�고?��?" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm in-price" placeholder="?�고?��?" min="0" step="1" required>
                     </div>
                     <div class="col-2 d-flex justify-content-end">
-                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="app.removeInboundItemRow('${rowId}')"><i class='bx bx-trash'></i> ??��</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="app.removeInboundItemRow('${rowId}')"><i class='bx bx-trash'></i> ??��</button>
                     </div>
                 </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', rowHtml);
         
-        // ?�로 추�????�의 ?�목 ?�력칸에 ?�동?�성 ?�벤???�결
+        // ?�로 추�????�의 ?�목 ?�력칸에 ?�동?�성 ?�벤???�결
         const newRow = $(rowId);
         const input = newRow.querySelector('.in-item');
         const sug = newRow.querySelector('.autocomplete-suggestions');
@@ -479,7 +479,7 @@ const app = {
             } catch (err) { console.error(err); }
         });
 
-        // ?��? ?�릭 ???�동?�성 ?�기 처리
+        // ?��? ?�릭 ???�동?�성 ?�기 처리
         document.addEventListener('click', (e) => {
             if (e.target !== input) sug.style.display = 'none';
         });
@@ -493,7 +493,7 @@ const app = {
     },
 
     setupInboundAutocomplete: function() {
-        // 초기????기본?�로 1�???추�?
+        // 초기????기본?�로 1�???추�?
         this.addInboundItemRow();
     },
 
@@ -501,7 +501,7 @@ const app = {
         e.preventDefault();
         
         const rows = document.querySelectorAll('.inbound-item-row');
-        if (rows.length === 0) return alert('?�고???�목??추�??�세??');
+        if (rows.length === 0) return alert('?�고???�목??추�??�세??');
 
         const items = [];
         let hasError = false;
@@ -523,7 +523,7 @@ const app = {
             }
         });
 
-        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
+        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
 
         const payload = {
             date: $('in_date').value,
@@ -532,10 +532,10 @@ const app = {
             items: items
         };
 
-        if (confirm(`�?${items.length}건의 ?�목???�고?�시겠습?�까?`)) {
+        if (confirm(`�?${items.length}건의 ?�목???�고?�시겠습?�까?`)) {
             try {
                 await authFetch(`${API_BASE}/inbound`, { method: 'POST', body: JSON.stringify(payload) });
-                alert('?�고 ?�료?�었?�니??');
+                alert('?�고 ?�료?�었?�니??');
                 $('inboundForm').reset();
                 $('inboundItemsContainer').innerHTML = '';
                 this.addInboundItemRow();
@@ -545,7 +545,7 @@ const app = {
                 this.loadHistory();
                 this.closeDrawer();
             } catch (err) {
-                alert('?�고 ?�패: ' + err.message);
+                alert('?�고 ?�패: ' + err.message);
             }
         }
     },
@@ -589,7 +589,7 @@ const app = {
     },
 
     // ----------------------------------------
-    // Direct Shipment (직출�?
+    // Direct Shipment (직출�?
     // ----------------------------------------
     addDirectItemRow: function() {
         const container = $('directItemsContainer');
@@ -599,7 +599,7 @@ const app = {
             <div class="p-2 mb-2 border rounded bg-light direct-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
                     <div class="col-7 position-relative">
-                        <input type="text" class="form-control form-control-sm dir-item" placeholder="?�목�? autocomplete="off" required>
+                        <input type="text" class="form-control form-control-sm dir-item" placeholder="?�목�? autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                     <div class="col-5">
@@ -609,15 +609,15 @@ const app = {
                 <div class="row g-2 align-items-center">
                     <div class="col-4">
                         <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm dir-qty" placeholder="?�량"  step="0.01" required>
-                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" required>
+                            <input type="number" class="form-control form-control-sm dir-qty" placeholder="?�량"  step="0.01" required>
+                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" required>
                         </div>
                     </div>
                     <div class="col-3">
-                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입?��?" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입?��?" min="0" step="1" required>
                     </div>
                     <div class="col-4">
-                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출?��?" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출?��?" min="0" step="1" required>
                     </div>
                     <div class="col-1 text-end">
                         <button type="button" class="btn btn-sm btn-outline-danger w-100 px-1" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
@@ -669,7 +669,7 @@ const app = {
         e.preventDefault();
         
         const rows = document.querySelectorAll('.direct-item-row');
-        if (rows.length === 0) return alert('직출고할 ?�목??추�??�세??');
+        if (rows.length === 0) return alert('직출고할 ?�목??추�??�세??');
 
         const items = [];
         let hasError = false;
@@ -680,7 +680,7 @@ const app = {
         const actual_destination = $('dir_actual_destination') ? $('dir_actual_destination').value.trim() : '';
         
         if (!supplier || !destination) {
-            return alert('매입처�? 매출처�? 모두 ?�력?�주?�요.');
+            return alert('매입처�? 매출처�? 모두 ?�력?�주?�요.');
         }
 
         const docShippingFee = parseFloat($('dir_shipping') ? $('dir_shipping').value : 0) || 0;
@@ -705,7 +705,7 @@ const app = {
             }
         });
 
-        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
+        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
 
         const payload = {
             date: date,
@@ -715,7 +715,7 @@ const app = {
             items: items
         };
 
-        if (confirm(`�?${items.length}건의 ?�목??직출고로 ?�시 처리?�시겠습?�까? (?�고/출고 ?��????�시 반영??`)) {
+        if (confirm(`�?${items.length}건의 ?�목??직출고로 ?�시 처리?�시겠습?�까? (?�고/출고 ?��????�시 반영??`)) {
             try {
                 const res = await authFetch('${API_BASE}/logistics/direct', {
                     method: 'POST',
@@ -723,12 +723,12 @@ const app = {
                     body: JSON.stringify(payload)
                 });
                 
-                alert('직출�?처리가 ?�료?�었?�니??');
+                alert('직출�?처리가 ?�료?�었?�니??');
                 this.closeDrawer();
                 $('btnFilterAll').checked = true;
                 this.resetPageAndLoadHistory();
             } catch (err) {
-                alert('직출�??�패: ' + err.message);
+                alert('직출�??�패: ' + err.message);
             }
         }
     },
@@ -752,27 +752,27 @@ const app = {
             <div class="p-2 mb-2 border rounded bg-light outbound-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
                     <div class="col-6 position-relative">
-                        <input type="text" class="form-control form-control-sm out-item" placeholder="?�목�? autocomplete="off" required>
+                        <input type="text" class="form-control form-control-sm out-item" placeholder="?�목�? autocomplete="off" required>
                         <div class="autocomplete-suggestions"></div>
                     </div>
                     <div class="col-6">
                         <select class="form-select form-select-sm out-spec" disabled required onchange="app.handleOutboundSpecChange('${rowId}', this)">
-                            <option value="">?�목 먼�? ?�택</option>
+                            <option value="">?�목 먼�? ?�택</option>
                         </select>
                     </div>
                 </div>
                 <div class="row g-2 align-items-center">
                     <div class="col-5">
                         <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 ?�량"  step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
-                            <input type="text" class="form-control form-control-sm out-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" readonly>
+                            <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 ?�량"  step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
+                            <input type="text" class="form-control form-control-sm out-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="?�위" readonly>
                         </div>
                     </div>
                     <div class="col-4">
-                        <input type="number" class="form-control form-control-sm out-price" placeholder="?��?" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm out-price" placeholder="?��?" min="0" step="1" required>
                     </div>
                     <div class="col-3 d-flex gap-1 justify-content-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot ?�정</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot ?�정</button>
                         <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="app.removeOutboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
                     </div>
                 </div>
@@ -791,7 +791,7 @@ const app = {
             const unitInput = newRow.querySelector('.out-unit');
             const lotBtn = newRow.querySelector('.btn-lot');
 
-            specSel.innerHTML = '<option value="">?�목???�택?�세??/option>';
+            specSel.innerHTML = '<option value="">?�목???�택?�세??/option>';
             specSel.disabled = true;
             qtyInput.disabled = true;
             unitInput.value = '';
@@ -846,15 +846,15 @@ const app = {
 
             const row = $(rowId);
             const sel = row.querySelector('.out-spec');
-            sel.innerHTML = '<option value="">규격???�택?�세??/option>';
+            sel.innerHTML = '<option value="">규격???�택?�세??/option>';
             
             for (const [spec, data] of Object.entries(specMap)) {
-                sel.innerHTML += `<option value="${spec}" data-lots='${JSON.stringify(data.lots)}' data-unit="${data.unit}">[?�여 ${data.total}${data.unit}] ${spec}</option>`;
+                sel.innerHTML += `<option value="${spec}" data-lots='${JSON.stringify(data.lots)}' data-unit="${data.unit}">[?�여 ${data.total}${data.unit}] ${spec}</option>`;
             }
             sel.disabled = false;
         } catch (e) {
             console.error(e);
-            alert('규격??불러?�는???�패?�습?�다.');
+            alert('규격??불러?�는???�패?�습?�다.');
         }
     },
 
@@ -954,11 +954,11 @@ const app = {
         let modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) modal = new bootstrap.Modal(modalEl);
         
-        // lotModal???�른 모달(editOutboundModal ?? ?�에 ????배경(backdrop) z-index 보정
+        // lotModal???�른 모달(editOutboundModal ?? ?�에 ????배경(backdrop) z-index 보정
         modalEl.addEventListener('shown.bs.modal', function () {
             const backdrops = document.querySelectorAll('.modal-backdrop');
             if (backdrops.length > 1) {
-                // 마�?�?가???�에 ?�는) backdrop??z-index�?조정
+                // 마�?�?가???�에 ?�는) backdrop??z-index�?조정
                 backdrops[backdrops.length - 1].style.zIndex = '1069';
             }
         }, { once: true });
@@ -998,7 +998,7 @@ const app = {
         
         const isMatch = Math.abs(sum - targetQty) < 0.0001 && targetQty > 0;
         if (!isMatch && targetQty > 0) {
-            alert('차감???�계가 �?출고 ?�량�??�치?��? ?�습?�다.');
+            alert('차감???�계가 �?출고 ?�량�??�치?��? ?�습?�다.');
             return;
         }
         
@@ -1034,11 +1034,11 @@ const app = {
                 if (isMatch) {
                     btn.classList.remove('btn-outline-danger');
                     btn.classList.add('btn-outline-primary');
-                    btn.innerHTML = 'Lot ?�인??<i class="bx bx-check"></i>';
+                    btn.innerHTML = 'Lot ?�인??<i class="bx bx-check"></i>';
                 } else {
                     btn.classList.remove('btn-outline-primary');
                     btn.classList.add('btn-outline-danger');
-                    btn.innerHTML = 'Lot ?�설???�요 <i class="bx bx-error"></i>';
+                    btn.innerHTML = 'Lot ?�설???�요 <i class="bx bx-error"></i>';
                     allValid = false;
                 }
             } else if (qty <= 0) {
@@ -1064,7 +1064,7 @@ const app = {
     handleOutboundSubmit: async function(e) {
         e.preventDefault();
         const rows = document.querySelectorAll('.outbound-item-row');
-        if (rows.length === 0) return alert('출고???�목??추�??�세??');
+        if (rows.length === 0) return alert('출고???�목??추�??�세??');
 
         const items = [];
         let hasError = false;
@@ -1091,7 +1091,7 @@ const app = {
             }
         });
 
-        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
+        if (hasError) return alert('?�목 ?�역??�?값이 ?�거???�바르�? ?�습?�다.');
 
         const payload = {
             date: $('out_date').value,
@@ -1100,10 +1100,10 @@ const app = {
             items: items
         };
 
-        if (confirm(`�?${items.length}건의 ?�목??출고?�시겠습?�까?`)) {
+        if (confirm(`�?${items.length}건의 ?�목??출고?�시겠습?�까?`)) {
             try {
                 await authFetch(`${API_BASE}/outbound`, { method: 'POST', body: JSON.stringify(payload) });
-                alert('출고 ?�료?�었?�니??');
+                alert('출고 ?�료?�었?�니??');
                 $('outboundForm').reset();
                 $('outboundItemsContainer').innerHTML = '';
                 this.outboundRows = {};
@@ -1114,7 +1114,7 @@ const app = {
                 this.loadHistory();
                 this.closeDrawer();
             } catch (err) {
-                alert('출고 ?�패: ' + err.message);
+                alert('출고 ?�패: ' + err.message);
             }
         }
     },
@@ -1122,6 +1122,20 @@ const app = {
     // ==========================================
     // Drawer & Detail & Print Logic
     // ==========================================
+    openExcelMenuModal: function() {
+        const modalEl = document.getElementById('excelMenuModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    },
+
+    closeExcelMenuAndOpenDirect: function() {
+        const modalEl = document.getElementById('excelMenuModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        setTimeout(() => app.openDirectExcelModal(), 300);
+    },
+
     openDirectExcelModal: function() {
         const modalEl = document.getElementById('directExcelModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
@@ -1133,7 +1147,7 @@ const app = {
     uploadDirectExcel: async function() {
         const fileInput = $('directExcelFile');
         if (!fileInput.files || fileInput.files.length === 0) {
-            alert('?�로?�할 ?��? ?�일???�택?�주?�요.');
+            alert('?�로?�할 ?��? ?�일???�택?�주?�요.');
             return;
         }
         
@@ -1145,7 +1159,7 @@ const app = {
             // Show loading state
             const btn = event.currentTarget || document.querySelector('#directExcelModal .btn-warning');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ?�로??�?..';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ?�로??�?..';
             btn.disabled = true;
 
             const res = await fetch(`${API_BASE}/outbound/direct/upload`, {
@@ -1158,7 +1172,7 @@ const app = {
 
             if (res.ok) {
                 const data = await res.json();
-                alert(`�?${data.count}건의 ?��? ?�이?��? ?�공?�으�??�괄 ?�록?�었?�니??`);
+                alert(`�?${data.count}건의 ?��? ?�이?��? ?�공?�으�??�괄 ?�록?�었?�니??`);
                 
                 const modalEl = document.getElementById('directExcelModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
@@ -1171,15 +1185,15 @@ const app = {
                     const errJson = JSON.parse(errText);
                     errText = errJson.error || errJson.details || errText;
                 } catch(e) {}
-                alert(`?�로???�패: ${errText}`);
+                alert(`?�로???�패: ${errText}`);
             }
         } catch (err) {
-            alert(`?�로??�??�류 발생: ${err.message}`);
+            alert(`?�로??�??�류 발생: ${err.message}`);
         } finally {
             // Reset loading state
             const btn = document.querySelector('#directExcelModal .btn-warning');
             if (btn) {
-                btn.innerHTML = "<i class='bx bx-upload'></i> ?�로??�??�괄 ?�록";
+                btn.innerHTML = "<i class='bx bx-upload'></i> ?�로??�??�괄 ?�록";
                 btn.disabled = false;
             }
         }
@@ -1211,8 +1225,8 @@ const app = {
                 this.addDirectItemRow();
             }
         } else if (mode === 'detail') {
-            const typeStr = data.type === 'inbound' ? '?�고' : '출고';
-            $('detailModalTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} ?�세 ?�역`;
+            const typeStr = data.type === 'inbound' ? '?�고' : '출고';
+            $('detailModalTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} ?�세 ?�역`;
             const modalEl = document.getElementById('detailModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
@@ -1244,12 +1258,12 @@ const app = {
             
             const items = data.items || [data];
             
-            const badgeHtml = type === 'inbound' ? '<span class="badge bg-success">?�고</span>' : '<span class="badge bg-danger">출고</span>';
+            const badgeHtml = type === 'inbound' ? '<span class="badge bg-success">?�고</span>' : '<span class="badge bg-danger">출고</span>';
             const metaClass = type === 'inbound' ? 'inbound' : 'outbound';
-            const partnerLabel = type === 'inbound' ? '매입�? : '출고�?;
+            const partnerLabel = type === 'inbound' ? '매입�? : '출고�?;
             const partnerValue = type === 'inbound' ? data.supplier : data.destination;
-            const extraLabel = type === 'inbound' ? '창고?�치' : '배송�?;
-            const shipVatLabel = data.shipping_fee_vat_included === 1 ? '(부가???�함)' : '(공급가 기�?)';
+            const extraLabel = type === 'inbound' ? '창고?�치' : '배송�?;
+            const shipVatLabel = data.shipping_fee_vat_included === 1 ? '(부가???�함)' : '(공급가 기�?)';
             const extraValue = type === 'inbound' 
                 ? (data.location_name || '-')
                 : (data.shipping_fee ? data.shipping_fee.toLocaleString() + '??' + shipVatLabel : '-');
@@ -1258,7 +1272,7 @@ const app = {
             if (type === 'outbound' && data.actual_destination) {
                 actualDestHtml = `
                     <div class="drawer-meta-item ms-3">
-                        <span class="drawer-meta-label"><i class='bx bx-map'></i> ?�출고처</span>
+                        <span class="drawer-meta-label"><i class='bx bx-map'></i> ?�출고처</span>
                         <span class="drawer-meta-value">${data.actual_destination}</span>
                     </div>
                 `;
@@ -1271,7 +1285,7 @@ const app = {
                         ${badgeHtml}
                     </div>
                     <div class="drawer-meta-item ms-2">
-                        <span class="drawer-meta-label"><i class='bx bx-calendar'></i> ?�자</span>
+                        <span class="drawer-meta-label"><i class='bx bx-calendar'></i> ?�자</span>
                         <span class="drawer-meta-value">${data.date}</span>
                     </div>
                     <div class="drawer-meta-item ms-3">
@@ -1290,10 +1304,10 @@ const app = {
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 5%">#</th>
-                            <th class="text-center" style="width: 35%">?�명 / 규격</th>
-                            <th class="text-center" style="width: 10%">?�위</th>
-                            <th class="text-center" style="width: 10%">?�량</th>
-                            <th class="text-center" style="width: 20%">?��?</th>
+                            <th class="text-center" style="width: 35%">?�명 / 규격</th>
+                            <th class="text-center" style="width: 10%">?�위</th>
+                            <th class="text-center" style="width: 10%">?�량</th>
+                            <th class="text-center" style="width: 20%">?��?</th>
                             <th class="text-center" style="width: 20%">총액</th>
                         </tr>
                     </thead>
@@ -1324,7 +1338,7 @@ const app = {
                     let lotsHtml = '';
                     if (item.consumed_lots && item.consumed_lots.length > 0) {
                         lotsHtml = item.consumed_lots.map(l => 
-                            `<span class="badge bg-white text-dark border me-1" style="font-weight:normal; font-size:0.7rem;">${l.inbound_date} ?�고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}</span></span>`
+                            `<span class="badge bg-white text-dark border me-1" style="font-weight:normal; font-size:0.7rem;">${l.inbound_date} ?�고 (${l.supplier}) <span class="text-danger fw-bold ms-1">-${l.consumed_qty}</span></span>`
                         ).join('');
                         html += `
                         <tr class="sub-row">
@@ -1338,7 +1352,7 @@ const app = {
             if (items.length > 1) {
                 html += `
                         <tr class="total-row">
-                            <td colspan="3" class="text-center">?�계</td>
+                            <td colspan="3" class="text-center">?�계</td>
                             <td class="text-end text-primary">${totalQty.toLocaleString()}</td>
                             <td></td>
                             <td class="text-end text-danger">${totalAmount.toLocaleString()}??/td>
@@ -1372,18 +1386,18 @@ const app = {
             $('drawerDetailContent').innerHTML = html;
             
         } catch (err) {
-            alert('?�세 ?�역??불러?�는???�패?�습?�다: ' + err.message);
+            alert('?�세 ?�역??불러?�는???�패?�습?�다: ' + err.message);
         }
     },
     
     openCompanyPresetModal: function() {
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
         $('preset_bizNo').value = preset.bizNo || '845-88-00551';
-        $('preset_bizName').value = preset.bizName || '주식?�사 케?��?';
-        $('preset_ceo').value = preset.ceo || '?�종';
-        $('preset_address').value = preset.address || '?�울??강동�?구천면로 159, 1�?2?? 3??;
-        $('preset_bizType').value = preset.bizType || '?�소�??��???;
-        $('preset_bizItem').value = preset.bizItem || '건설?�재, ?�품??;
+        $('preset_bizName').value = preset.bizName || '주식?�사 케?��?';
+        $('preset_ceo').value = preset.ceo || '?�종';
+        $('preset_address').value = preset.address || '?�울??강동�?구천면로 159, 1�?2?? 3??;
+        $('preset_bizType').value = preset.bizType || '?�소�??��???;
+        $('preset_bizItem').value = preset.bizItem || '건설?�재, ?�품??;
         
         new bootstrap.Modal(document.getElementById('companyPresetModal')).show();
     },
@@ -1399,7 +1413,7 @@ const app = {
         };
         localStorage.setItem('kng_company_preset', JSON.stringify(preset));
         bootstrap.Modal.getInstance(document.getElementById('companyPresetModal')).hide();
-        alert('기본값이 ?�?�되?�습?�다.');
+        alert('기본값이 ?�?�되?�습?�다.');
     },
     
     printHistoryDetail: function() {
@@ -1411,17 +1425,17 @@ const app = {
         
         // Defaults if preset not set
         const bizNo = preset.bizNo || '845-88-00551';
-        const bizName = preset.bizName || '주식?�사 케?��?';
-        const ceo = preset.ceo || '?�종';
-        const address = preset.address || '?�울??강동�?구천면로 159, 1�?2?? 3??;
-        const bizType = preset.bizType || '?�소�??��???;
-        const bizItem = preset.bizItem || '건설?�재, ?�품??;
+        const bizName = preset.bizName || '주식?�사 케?��?';
+        const ceo = preset.ceo || '?�종';
+        const address = preset.address || '?�울??강동�?구천면로 159, 1�?2?? 3??;
+        const bizType = preset.bizType || '?�소�??��???;
+        const bizItem = preset.bizItem || '건설?�재, ?�품??;
         
         let printWindow = window.open('', '_blank');
         let htmlContent = `
             <html>
             <head>
-                <title>?�쇄</title>
+                <title>?�쇄</title>
                 <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
                 <style>
                     body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; padding: 20px; color:#333; }
@@ -1472,18 +1486,18 @@ const app = {
             <body>
             <div class="print-wrapper">`;
             
-        // 공통 공급???�보 HTML
+        // 공통 공급???�보 HTML
         const supplierHtml = `
             <table class="supplier-table">
                 <tr>
                     <th rowspan="4" class="supplier-th">공급??/th>
-                    <th style="width: 25%">?�록번호</th>
+                    <th style="width: 25%">?�록번호</th>
                     <td colspan="3">${bizNo}</td>
                 </tr>
                 <tr>
-                    <th>?�호</th>
+                    <th>?�호</th>
                     <td style="width: 35%">${bizName}</td>
-                    <th style="width: 15%">?�?�자</th>
+                    <th style="width: 15%">?�?�자</th>
                     <td class="stamp-cell">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
                 </tr>
                 <tr>
@@ -1491,7 +1505,7 @@ const app = {
                     <td colspan="3">${address}</td>
                 </tr>
                 <tr>
-                    <th>?�태</th>
+                    <th>?�태</th>
                     <td>${bizType}</td>
                     <th>종목</th>
                     <td>${bizItem}</td>
@@ -1503,9 +1517,9 @@ const app = {
         if (printType === 'transaction_statement') {
             function numberToKorean(number) {
                 const inputNumber = parseInt(number, 10);
-                const hanA = ["", "??, "??, "??, "??, "??, "??, "�?, "??, "�?];
-                const danA = ["", "??, "�?, "�?];
-                const danG = ["", "�?, "??, "�?];
+                const hanA = ["", "??, "??, "??, "??, "??, "??, "�?, "??, "�?];
+                const danA = ["", "??, "�?, "�?];
+                const danG = ["", "�?, "??, "�?];
                 let result = "";
                 let numStr = inputNumber.toString();
                 let length = numStr.length;
@@ -1518,7 +1532,7 @@ const app = {
                         if (parseInt(chunk) > 0) result += danG[pos / 4];
                     }
                 }
-                return result + " ?�정";
+                return result + " ?�정";
             }
             
             let totalAmount = 0;
@@ -1572,9 +1586,9 @@ const app = {
                 itemRowsHtml += `
                         <tr>
                             <td class="text-center">${items.length + 1}</td>
-                            <td>배송�?/td>
+                            <td>배송�?/td>
                             <td class="text-center"></td>
-                            <td class="text-center">�?/td>
+                            <td class="text-center">�?/td>
                             <td class="text-right">1</td>
                             <td class="text-right">${shipAmount.toLocaleString()}</td>
                             <td class="text-right">${shipAmount.toLocaleString()}</td>
@@ -1593,7 +1607,7 @@ const app = {
             htmlContent += `
                 <div class="hybrid-header">
                     <div class="header-left">
-                        <h1 class="title">�???�?????/h1>
+                        <h1 class="title">�???�?????/h1>
                         <div class="date-text">${data.date}</div>
                         <div class="recipient-text"><strong>${data.destination}</strong> 귀??/div>
                     </div>
@@ -1603,7 +1617,7 @@ const app = {
                 </div>
                 
                 <div class="amount-bar">
-                    <div class="amount-label">�???/div>
+                    <div class="amount-label">�???/div>
                     <div class="amount-ko">${koTotalAmount}</div>
                     <div class="amount-num">??${totalSum.toLocaleString()}</div>
                 </div>
@@ -1611,29 +1625,29 @@ const app = {
                 <table class="hybrid-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">?�번</th>
-                            <th style="width: 25%">?�명</th>
+                            <th style="width: 5%">?�번</th>
+                            <th style="width: 25%">?�명</th>
                             <th style="width: 15%">규격</th>
-                            <th style="width: 8%">?�위</th>
-                            <th style="width: 8%">?�량</th>
-                            <th style="width: 10%">?��?</th>
+                            <th style="width: 8%">?�위</th>
+                            <th style="width: 8%">?�량</th>
+                            <th style="width: 10%">?��?</th>
                             <th style="width: 12%">금액</th>
                             <th style="width: 10%">부가??/th>
-                            <th style="width: 12%">?�계금액</th>
+                            <th style="width: 12%">?�계금액</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
-                            <td class="text-center">- ?�하?�백 -</td>
+                            <td class="text-center">- ?�하?�백 -</td>
                             <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                         </tr>
                         ${emptyRows}
                     </tbody>
                     <tfoot>
                         <tr class="footer-row">
-                            <td colspan="6" class="text-center"><strong>�?/strong></td>
+                            <td colspan="6" class="text-center"><strong>�?/strong></td>
                             <td class="text-right"><strong>${totalAmount.toLocaleString()}</strong></td>
                             <td class="text-right"><strong>${totalVat.toLocaleString()}</strong></td>
                             <td class="text-right"><strong>${totalSum.toLocaleString()}</strong></td>
@@ -1666,7 +1680,7 @@ const app = {
             htmlContent += `
                 <div class="hybrid-header">
                     <div class="header-left">
-                        <h1 class="title">??�???????/h1>
+                        <h1 class="title">??�???????/h1>
                         <div class="date-text">${data.date}</div>
                         <div class="recipient-text"><strong>${data.supplier}</strong> 귀??/div>
                     </div>
@@ -1678,12 +1692,12 @@ const app = {
                 <table class="hybrid-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">?�번</th>
-                            <th style="width: 30%">?�명</th>
+                            <th style="width: 5%">?�번</th>
+                            <th style="width: 30%">?�명</th>
                             <th style="width: 15%">규격</th>
-                            <th style="width: 10%">?�위</th>
-                            <th style="width: 10%">?�량</th>
-                            <th style="width: 15%">?�고창고</th>
+                            <th style="width: 10%">?�위</th>
+                            <th style="width: 10%">?�량</th>
+                            <th style="width: 15%">?�고창고</th>
                             <th style="width: 15%">비고</th>
                         </tr>
                     </thead>
@@ -1691,7 +1705,7 @@ const app = {
                         ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
-                            <td class="text-center">- ?�하?�백 -</td>
+                            <td class="text-center">- ?�하?�백 -</td>
                             <td></td><td></td><td></td><td></td><td></td>
                         </tr>
                         ${emptyRows}
@@ -1719,7 +1733,7 @@ const app = {
             htmlContent += `
                 <div class="hybrid-header">
                     <div class="header-left">
-                        <h1 class="title">�?�???????/h1>
+                        <h1 class="title">�?�???????/h1>
                         <div class="date-text">${data.date}</div>
                         <div class="recipient-text"><strong>${data.destination}</strong> 귀??/div>
                     </div>
@@ -1731,12 +1745,12 @@ const app = {
                 <table class="hybrid-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">?�번</th>
-                            <th style="width: 30%">?�명</th>
+                            <th style="width: 5%">?�번</th>
+                            <th style="width: 30%">?�명</th>
                             <th style="width: 15%">규격</th>
-                            <th style="width: 10%">?�위</th>
-                            <th style="width: 10%">?�량</th>
-                            <th style="width: 15%">배송�?/th>
+                            <th style="width: 10%">?�위</th>
+                            <th style="width: 10%">?�량</th>
+                            <th style="width: 15%">배송�?/th>
                             <th style="width: 15%">출고창고</th>
                         </tr>
                     </thead>
@@ -1744,14 +1758,14 @@ const app = {
                         ${itemRowsHtml}
                         <tr>
                             <td class="text-center"></td>
-                            <td class="text-center">- ?�하?�백 -</td>
+                            <td class="text-center">- ?�하?�백 -</td>
                             <td></td><td></td><td></td><td></td><td></td>
                         </tr>
                         ${emptyRows}
                     </tbody>
                 </table>
                 <div class="signature-area">
-                    ?�수???�명 : _____________________ (??
+                    ?�수???�명 : _____________________ (??
                 </div>
             `;
         }
@@ -1770,7 +1784,7 @@ const app = {
     },
 
     // ----------------------------------------
-    // Edit Logic (?�정 로직)
+    // Edit Logic (?�정 로직)
     // ----------------------------------------
     openEditInbound: async function(id) {
         try {
@@ -1820,7 +1834,7 @@ const app = {
             if (!modal) modal = new bootstrap.Modal($('editInboundModal'));
             modal.show();
         } catch(err) {
-            alert('?�고 ?�역??불러?�는???�패?�습?�다: ' + err.message);
+            alert('?�고 ?�역??불러?�는???�패?�습?�다: ' + err.message);
         }
     },
     
@@ -1844,14 +1858,14 @@ const app = {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
-            alert('?�고 ?�역???�정?�었?�니??');
+            alert('?�고 ?�역???�정?�었?�니??');
             bootstrap.Modal.getInstance($('editInboundModal')).hide();
             this.loadHistory();
             if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
                 this.renderDrawerDetail(id, 'inbound');
             }
         } catch(err) {
-            alert('?�정 ?�패: ' + err.message);
+            alert('?�정 ?�패: ' + err.message);
         }
     },
     
@@ -1875,15 +1889,15 @@ const app = {
             $('edit_out_qty').value = item.qty;
             $('edit_out_price').value = item.selling_price || item.price;
             
-            // 기존 ?�당??Lot ?�보 ?�??            this.editOutboundState.consumedLots = (item.consumed_lots || []).map(l => ({
+            // 기존 ?�당??Lot ?�보 ?�??            this.editOutboundState.consumedLots = (item.consumed_lots || []).map(l => ({
                 inbound_id: l.inbound_id,
                 consumed_qty: l.consumed_qty
             }));
             
-            // ?�목???�당?�는 ?�체 ?�용 가???�고(Lot)�?백엔?�에??조회
-            // 주의: ?�기 ?�신??차감?�던 ?�고?�도 복구???�태�?계산?�야 ?��?�?백엔?�에??받�? ?�여??+ ?��? 차감?�던 ??            const lots = await authFetch(`${API_BASE}/inventory/item/${encodeURIComponent(item.item)}`);
+            // ?�목???�당?�는 ?�체 ?�용 가???�고(Lot)�?백엔?�에??조회
+            // 주의: ?�기 ?�신??차감?�던 ?�고?�도 복구???�태�?계산?�야 ?��?�?백엔?�에??받�? ?�여??+ ?��? 차감?�던 ??            const lots = await authFetch(`${API_BASE}/inventory/item/${encodeURIComponent(item.item)}`);
             
-            // ?�재 차감??lot?�의 ?�량???�여?�에 ?�해??가?�의 "?�정 ??초기 ?�태" ?�여?�을 만듬
+            // ?�재 차감??lot?�의 ?�량???�여?�에 ?�해??가?�의 "?�정 ??초기 ?�태" ?�여?�을 만듬
             this.editOutboundState.availableLots = lots.map(lot => {
                 const consumed = this.editOutboundState.consumedLots.find(c => c.inbound_id === lot.id);
                 if (consumed) {
@@ -1896,10 +1910,10 @@ const app = {
             if (!modal) modal = new bootstrap.Modal($('editOutboundModal'));
             modal.show();
             
-            // ?�류 메시지 리셋
+            // ?�류 메시지 리셋
             $('editOutboundErrorMsg').style.display = 'none';
         } catch(err) {
-            alert('출고 ?�역??불러?�는???�패?�습?�다: ' + err.message);
+            alert('출고 ?�역??불러?�는???�패?�습?�다: ' + err.message);
         }
     },
     
@@ -1972,14 +1986,14 @@ const app = {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
-            alert('출고 ?�역???�정?�었?�니??');
+            alert('출고 ?�역???�정?�었?�니??');
             bootstrap.Modal.getInstance($('editOutboundModal')).hide();
             this.loadHistory();
             if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
                 this.renderDrawerDetail(id, 'outbound');
             }
         } catch(err) {
-            alert('?�정 ?�패: ' + err.message);
+            alert('?�정 ?�패: ' + err.message);
         }
     }
 };
