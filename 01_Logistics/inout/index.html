@@ -40,6 +40,23 @@
         .modal-header.bg-direct { background: #fefce8 !important; border-bottom: 3px solid #f59e0b; }
         .modal-header.bg-detail { background: #f8fafc !important; border-bottom: 3px solid #3b82f6; }
 
+        /* Bootstrap modal-xl / modal-lg fix for tablet size (768px ~ 992px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .modal-lg, .modal-xl {
+                max-width: 95%;
+            }
+        }
+        
+        /* 모바일 화면 (768px 미만)에서는 항목 컨테이너에 가로 스크롤 허용 */
+        @media (max-width: 767.98px) {
+            #inboundItemsContainer, #outboundItemsContainer, #directItemsContainer {
+                min-width: 700px;
+            }
+            .item-container-wrapper {
+                overflow-x: auto;
+                padding-bottom: 10px;
+            }
+        }
     </style>
 </head>
 <body class="bg-light">
