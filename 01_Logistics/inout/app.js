@@ -684,18 +684,25 @@ const app = {
             return alert('매입처와 매출처를 모두 입력해주세요.');
         }
 
-        rows.forEach(row => {
+        const docShippingFee = parseFloat($('dir_shipping') ? $('dir_shipping').value : 0) || 0;
+        const docShippingFeeVatIncluded = $('dir_shipping_vat') && $('dir_shipping_vat').checked ? 1 : 0;
+        const docNote = $('dir_note') ? $('dir_note').value.trim() : '';
+
+        rows.forEach((row, idx) => {
             const item = row.querySelector('.dir-item').value.trim();
             const spec = row.querySelector('.dir-spec').value.trim();
             const unit = row.querySelector('.dir-unit').value.trim();
             const qty = parseFloat(row.querySelector('.dir-qty').value);
             const in_price = parseFloat(row.querySelector('.dir-in-price').value);
             const out_price = parseFloat(row.querySelector('.dir-out-price').value);
+            const shipping_fee = idx === 0 ? docShippingFee : 0;
+            const shipping_fee_vat_included = idx === 0 ? docShippingFeeVatIncluded : 0;
+            const note = docNote;
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, in_price, out_price });
+                items.push({ item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note });
             }
         });
 

@@ -518,7 +518,7 @@ router.post('/direct', (req, res) => {
         const outSql = `
             INSERT INTO logistics_outbound 
             (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, 1)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         `;
         
         // 3. Mapping insert
@@ -534,7 +534,7 @@ router.post('/direct', (req, res) => {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.note || '', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
