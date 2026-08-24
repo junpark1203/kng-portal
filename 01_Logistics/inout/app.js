@@ -598,14 +598,14 @@ const app = {
 
         const rowHtml = `
             <div class="row g-2 mb-1 align-items-center direct-item-row" id="${rowId}">
-                <div class="col-3 position-relative">
+                <div class="col-4 position-relative">
                     <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
                     <div class="autocomplete-suggestions"></div>
                 </div>
                 <div class="col-2">
                     <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
                 </div>
-                <div class="col-3">
+                <div class="col-2">
                     <div class="input-group input-group-sm">
                         <input type="number" class="form-control dir-qty" placeholder="수량" min="0.01" step="0.01" required>
                         <input type="text" class="form-control dir-unit bg-light text-center" style="max-width: 45px; padding: 0.25rem;" placeholder="단위" required>

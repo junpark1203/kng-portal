@@ -274,26 +274,28 @@
             </div>
             <div class="modal-body bg-light">
                 <form id="directForm">
-                    <div class="row g-2">
-                        <div class="col-3">
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">거래일자</label>
                             <input type="date" class="form-control form-control-sm" id="dir_date" required>
                         </div>
-                        <div class="col-3">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">매입처 (공급처)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-3">
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">매출처 (납품처/계산서)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-3">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">실출고처 (배송지/현장)</label>
                             <input type="text" class="form-control form-control-sm" id="dir_actual_destination" placeholder="실제 배송지 또는 하청업체명 자유 입력" autocomplete="off">
                         </div>
@@ -680,6 +682,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
