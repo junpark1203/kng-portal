@@ -386,7 +386,7 @@ router.get('/history', (req, res) => {
             SELECT 
                 'inbound' as type, i.id, i.date, i.supplier as party, NULL as actual_destination, i.item, i.spec, i.unit, 
                 i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at,
-                i.is_direct
+                0 as is_direct
             FROM logistics_inbound i
             UNION ALL
             SELECT 
