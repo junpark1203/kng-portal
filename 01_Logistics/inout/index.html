@@ -35,38 +35,11 @@
         .inbound-item-row, .outbound-item-row { background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; transition: border-color 0.2s; }
         .inbound-item-row:hover, .outbound-item-row:hover { border-color: #cbd5e1; }
         
-        /* Drawer Styles */
-        .drawer-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.4); z-index: 1040;
-            opacity: 0; visibility: hidden; transition: 0.3s ease;
-        }
-        .drawer-overlay.show { opacity: 1; visibility: visible; }
-        
-        .bottom-drawer {
-            position: fixed; bottom: -100%; left: 0; width: 100vw; 
-            height: auto; max-height: 65vh;
-            background: #fff; z-index: 1045;
-            box-shadow: 0 -5px 25px rgba(0,0,0,0.15);
-            transition: bottom 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex; flex-direction: column;
-            border-radius: 16px 16px 0 0;
-        }
-        .bottom-drawer.show { bottom: 0; }
-        @media (max-width: 576px) { .bottom-drawer { max-height: 85vh; border-radius: 12px 12px 0 0; } }
-        
-        .drawer-header {
-            padding: 0.4rem 1.25rem;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .drawer-header.bg-inbound { background: #f0fdf4; border-left: 4px solid #10b981; }
-        .drawer-header.bg-outbound { background: #fef2f2; border-left: 4px solid #ef4444; }
-        .drawer-header.bg-detail { background: #f8fafc; border-left: 4px solid #3b82f6; }
-        
-        .drawer-body {
-            padding: 1rem; flex: 1; overflow-y: auto;
-        }
+        .modal-header.bg-inbound { background: #f0fdf4 !important; border-bottom: 3px solid #10b981; }
+        .modal-header.bg-outbound { background: #fef2f2 !important; border-bottom: 3px solid #ef4444; }
+        .modal-header.bg-direct { background: #fefce8 !important; border-bottom: 3px solid #f59e0b; }
+        .modal-header.bg-detail { background: #f8fafc !important; border-bottom: 3px solid #3b82f6; }
+
     </style>
 </head>
 <body class="bg-light">
@@ -75,7 +48,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="mb-0 fw-bold"><i class='bx bx-transfer text-primary'></i> 입출고 관리</h4>
         <div class="d-flex gap-2">
-            <button class="btn btn-warning text-dark fw-bold shadow-sm" onclick="app.openDrawer('direct_create')">
+            <button class="btn btn-warning shadow-sm" onclick="app.openDrawer('direct_create')">
                 <i class='bx bx-shuffle'></i> 직출고 등록
             </button>
             <button class="btn btn-success" onclick="app.openDrawer('inbound_create')">
@@ -142,167 +115,226 @@
                     
                     <!-- 페이지네이션 -->
                     <div class="d-flex justify-content-center mt-3">
-                        <ul class="pagination pagination-sm mb-0" id="historyPagination">
-                            <!-- JS 렌더링 영역 -->
-                        </ul>
+                       <!-- 입출고 모달 영역 -->
+
+<!-- 입고 등록 모달 -->
+<div class="modal fade" id="inboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-inbound">
+                <h5 class="modal-title fw-bold"><i class='bx bx-plus'></i> 입고 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <form id="inboundForm">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">입고일자</label>
+                            <input type="date" class="form-control form-control-sm" id="in_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label mb-1">매입처</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="in_supplier" placeholder="매입처 입력" required autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'in_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="in_supplier_sug" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label mb-1">재고 위치</label>
+                            <select class="form-select form-select-sm" id="in_location" required>
+                                <option value="">로딩 중...</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
+
+                    <hr class="my-3 text-muted">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">입고 품목 내역</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                    </div>
+
+                    <div id="inboundItemsContainer">
+                        <!-- app.js에서 렌더링 -->
+                    </div>
+
+                    <div class="mt-3 bg-white p-3 rounded border shadow-sm">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                        <input type="text" class="form-control form-control-sm" id="in_note" placeholder="입고 건에 대한 통합 메모">
+                    </div>
+
+                    <div class="mt-4 text-end">
+                        <button type="submit" class="btn btn-success px-4 py-2"><i class='bx bx-check'></i> 입고 처리</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 통합 드로워 -->
-<div id="drawerOverlay" class="drawer-overlay" onclick="app.closeDrawer()"></div>
-<div id="bottomDrawer" class="bottom-drawer">
-    <div class="drawer-header" id="drawerHeader">
-        <h6 class="mb-0 fw-bold text-nowrap" id="drawerTitle">타이틀</h6>
-        <div class="d-flex align-items-center justify-content-end w-100 ms-3">
-            <div id="headerPrintControls" class="d-none align-items-center gap-2">
-                <div class="btn-group btn-group-sm" role="group">
-                    <input type="radio" class="btn-check" name="printType" id="printOptInbound" value="inbound_receipt">
-                    <label class="btn btn-outline-primary" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> 입고내역서</label>
-
-                    <input type="radio" class="btn-check" name="printType" id="printOptOutbound" value="outbound_receipt">
-                    <label class="btn btn-outline-primary" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고내역서</label>
-
-                    <input type="radio" class="btn-check" name="printType" id="printOptTrans" value="transaction_statement" checked>
-                    <label class="btn btn-outline-primary" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세서</label>
-                </div>
-                <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()" title="명세서 설정"><i class='bx bx-cog'></i></button>
-                <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄</button>
+<!-- 출고 등록 모달 -->
+<div class="modal fade" id="outboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-outbound">
+                <h5 class="modal-title fw-bold"><i class='bx bx-minus'></i> 출고 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <button type="button" class="btn btn-light btn-sm border ms-3 d-flex align-items-center justify-content-center" onclick="app.closeDrawer()" style="width:32px; height:32px;" title="닫기"><i class='bx bx-x fs-4'></i></button>
+            <div class="modal-body bg-light">
+                <form id="outboundForm">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label mb-1">출고일자</label>
+                            <input type="date" class="form-control form-control-sm" id="out_date" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-1">매출처 (계산서 발행)</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 입력" required autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'out_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="out_destination_sug" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label mb-1">실출고처 (배송지/현장)</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="out_actual_destination" placeholder="실제 배송지 입력" autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'out_actual_destination')" title="새 배송지 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="out_actual_destination_sug" style="display:none;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-3 text-muted">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">출고 품목 내역</h6>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                    </div>
+
+                    <div id="outboundItemsContainer">
+                        <!-- JS Render -->
+                    </div>
+
+                    <div class="mt-3 bg-white p-3 rounded border shadow-sm">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">총 배송비</label>
+                                <input type="number" class="form-control form-control-sm" id="out_shipping" placeholder="0" min="0" step="1" value="0">
+                            </div>
+                            <div class="col-md-9">
+                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                                <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 대한 통합 메모">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <small class="text-danger fw-bold d-block mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
+                        <button type="submit" class="btn btn-danger w-100 py-2 fs-6" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-    <div class="drawer-body" id="drawerBody">
-        
-        <!-- 입고 폼 -->
-        <div id="drawerInbound" class="d-none">
-            <form id="inboundForm">
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label mb-1">입고일자</label>
-                        <input type="date" class="form-control form-control-sm" id="in_date" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label mb-1">매입처</label>
-                        <div class="input-group input-group-sm position-relative">
-                            <input type="text" class="form-control" id="in_supplier" placeholder="매입처 입력" required autocomplete="off">
-                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'in_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
-                            <div class="autocomplete-suggestions" id="in_supplier_sug" style="display:none;"></div>
-                        </div>
-                    </div>
-                    <div class="col-md-12">
-                        <label class="form-label mb-1">재고 위치</label>
-                        <select class="form-select form-select-sm" id="in_location" required>
-                            <option value="">로딩 중...</option>
-                        </select>
-                    </div>
-                </div>
+</div>
 
-                <hr class="my-2 text-muted">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0">입고 품목 내역</h6>
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
-                </div>
-
-                <div id="inboundItemsContainer">
-                    <!-- app.js에서 렌더링 -->
-                </div>
-
-                <div class="mt-2 bg-light p-2 rounded border">
-                    <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
-                    <input type="text" class="form-control form-control-sm" id="in_note" placeholder="입고 건에 대한 통합 메모">
-                </div>
-
-                <div class="mt-3 text-end">
-                    <button type="submit" class="btn btn-success w-100"><i class='bx bx-check'></i> 입고 처리</button>
-                </div>
-            </form>
-        </div>
-        
-        <!-- 출고 폼 -->
-        <div id="drawerOutbound" class="d-none">
-            <form id="outboundForm">
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <label class="form-label mb-1">출고일자</label>
-                        <input type="date" class="form-control form-control-sm" id="out_date" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label mb-1">출고처(고객/현장)</label>
-                        <div class="input-group input-group-sm position-relative">
-                            <input type="text" class="form-control" id="out_destination" placeholder="출고처 입력" required autocomplete="off">
-                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'out_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
-                            <div class="autocomplete-suggestions" id="out_destination_sug" style="display:none;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="my-2 text-muted">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0">출고 품목 내역</h6>
-                    <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
-                </div>
-
-                <div id="outboundItemsContainer">
-                    <!-- JS Render -->
-                </div>
-
-                <div class="mt-2 bg-light p-2 rounded border">
+<!-- 직출고 등록 모달 -->
+<div class="modal fade" id="directModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-direct">
+                <h5 class="modal-title fw-bold"><i class='bx bx-shuffle'></i> 직출고 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <form id="directForm">
                     <div class="row g-2">
                         <div class="col-md-3">
-                            <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">총 배송비</label>
-                            <input type="number" class="form-control form-control-sm" id="out_shipping" placeholder="0" min="0" step="1" value="0">
+                            <label class="form-label mb-1">거래일자</label>
+                            <input type="date" class="form-control form-control-sm" id="dir_date" required>
                         </div>
-                        <div class="col-md-9">
-                            <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
-                            <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 대한 통합 메모">
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">매입처 (공급처)</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 입력" required autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'dir_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="dir_supplier_sug" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">매출처 (납품처/계산서)</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="dir_destination" placeholder="매출처 입력" required autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'dir_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="dir_destination_sug" style="display:none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">실출고처 (배송지/현장)</label>
+                            <div class="input-group input-group-sm position-relative">
+                                <input type="text" class="form-control" id="dir_actual_destination" placeholder="실제 배송지 입력" autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'dir_actual_destination')" title="새 배송지 등록"><i class='bx bx-plus'></i></button>
+                                <div class="autocomplete-suggestions" id="dir_actual_destination_sug" style="display:none;"></div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="mt-3">
-                    <small class="text-danger fw-bold d-block mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
-                    <button type="submit" class="btn btn-danger w-100" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
-                </div>
-            </form>
+                    <hr class="my-3 text-muted">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">공급 품목 내역 <span class="badge bg-warning text-dark ms-2">직출고 (재고 미반영)</span></h6>
+                        <button type="button" class="btn btn-outline-warning btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                    </div>
+
+                    <div id="directItemsContainer">
+                        <!-- JS Render -->
+                    </div>
+
+                    <div class="mt-4 text-end">
+                        <button type="submit" class="btn btn-warning w-100 fw-bold py-2 fs-6"><i class='bx bx-check-double'></i> 직출고 동시 처리</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        
-        <!-- 직출고 폼 -->
-        <div id="drawerDirect" class="d-none">
-            <form id="directForm">
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <label class="form-label mb-1">거래일자</label>
-                        <input type="date" class="form-control form-control-sm" id="dir_date" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label mb-1">매입처 (공급처)</label>
-                        <div class="input-group input-group-sm position-relative">
-                            <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 입력" required autocomplete="off">
-                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매입처', 'dir_supplier')" title="새 매입처 등록"><i class='bx bx-plus'></i></button>
-                            <div class="autocomplete-suggestions" id="dir_supplier_sug" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- 상세 정보 모달 -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-detail" id="detailModalHeader">
+                <h5 class="modal-title fw-bold" id="detailModalTitle">상세 정보</h5>
+                
+                <div class="d-flex align-items-center justify-content-end ms-auto me-3">
+                    <div id="headerPrintControls" class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="printType" id="printOptInbound" value="inbound_receipt">
+                            <label class="btn btn-outline-primary" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> 입고내역서</label>
+
+                            <input type="radio" class="btn-check" name="printType" id="printOptOutbound" value="outbound_receipt">
+                            <label class="btn btn-outline-primary" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고내역서</label>
+
+                            <input type="radio" class="btn-check" name="printType" id="printOptTrans" value="transaction_statement" checked>
+                            <label class="btn btn-outline-primary" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세서</label>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label mb-1">매출처 (납품처)</label>
-                        <div class="input-group input-group-sm position-relative">
-                            <input type="text" class="form-control" id="dir_destination" placeholder="매출처 입력" required autocomplete="off">
-                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerModal('매출처', 'dir_destination')" title="새 매출처 등록"><i class='bx bx-plus'></i></button>
-                            <div class="autocomplete-suggestions" id="dir_destination_sug" style="display:none;"></div>
-                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()" title="명세서 설정"><i class='bx bx-cog'></i></button>
+                        <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄</button>
                     </div>
                 </div>
 
-                <hr class="my-2 text-muted">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <h6 class="fw-bold mb-0">공급 품목 내역 <span class="badge bg-warning text-dark ms-2">직출고 (재고 미반영)</span></h6>
-                    <button type="button" class="btn btn-outline-warning text-dark btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <div id="drawerDetailContent" class="mb-3">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>ton" class="btn btn-outline-warning text-dark btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
                 </div>
 
                 <div id="directItemsContainer">

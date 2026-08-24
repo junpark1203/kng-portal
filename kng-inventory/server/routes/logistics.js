@@ -86,7 +86,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
                         "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
-                        "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_outbound ADD COLUMN actual_destination TEXT"
                     ];
                     addColsOutbound.forEach(sql => database.run(sql, () => {}));
                 }
@@ -261,7 +262,7 @@ router.post('/inbound', (req, res) => {
 
 // --- Outbound (출고) ---
 router.post('/outbound', (req, res) => {
-    const { date, destination, items } = req.body;
+    const { date, destination, actual_destination, items } = req.body;
     
     // 검증
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -275,8 +276,8 @@ router.post('/outbound', (req, res) => {
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, item, spec, unit, qty, selling_price, shipping_fee, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
         const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
@@ -290,7 +291,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee, i.note, function(err) {
+            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee, i.note, function(err) {
                 if (err) {
                     hasError = true;
                     return;
@@ -385,13 +386,13 @@ router.get('/history', (req, res) => {
     const baseSql = `
         WITH combined AS (
             SELECT 
-                'inbound' as type, i.id, i.date, i.supplier as party, i.item, i.spec, i.unit, 
+                'inbound' as type, i.id, i.date, i.supplier as party, NULL as actual_destination, i.item, i.spec, i.unit, 
                 i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, i.note, i.created_at,
                 i.settlement_status, i.tax_invoice_date, i.is_zero_tax, i.is_direct
             FROM logistics_inbound i
             UNION ALL
             SELECT 
-                'outbound' as type, o.id, o.date, o.destination as party, o.item, o.spec, o.unit, 
+                'outbound' as type, o.id, o.date, o.destination as party, o.actual_destination, o.item, o.spec, o.unit, 
                 o.qty as qty, o.selling_price as price, o.shipping_fee, '' as note, o.created_at,
                 o.settlement_status, o.tax_invoice_date, o.is_zero_tax, o.is_direct
             FROM logistics_outbound o
@@ -496,7 +497,7 @@ router.get('/history/outbound/:id', (req, res) => {
 
 // --- Direct (직출고) ---
 router.post('/direct', (req, res) => {
-    const { date, supplier, destination, items } = req.body;
+    const { date, supplier, destination, actual_destination, items } = req.body;
     
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Items are required' });
@@ -517,8 +518,8 @@ router.post('/direct', (req, res) => {
         // 2. Outbound insert (is_direct = 1)
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, item, spec, unit, qty, selling_price, shipping_fee, note, is_direct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, note, is_direct)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1)
         `;
         
         // 3. Mapping insert
@@ -534,7 +535,7 @@ router.post('/direct', (req, res) => {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, i.item, i.spec, i.unit, i.qty, i.selling_price, i.note || '', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.note || '', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -694,11 +695,11 @@ router.put('/outbound/:id', (req, res) => {
                     // 3. 출고 테이블 업데이트
                     const outUpdateSql = `
                         UPDATE logistics_outbound 
-                        SET date = ?, destination = ?, item = ?, spec = ?, unit = ?, 
+                        SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, 
                             qty = ?, selling_price = ?, shipping_fee = ?, note = ?
                         WHERE id = ?
                     `;
-                    db.run(outUpdateSql, [date, destination, item, spec, unit, qty, selling_price, shipping_fee, note || '', id], function(err4) {
+                    db.run(outUpdateSql, [date, destination, req.body.actual_destination || '', item, spec, unit, qty, selling_price, shipping_fee, note || '', id], function(err4) {
                         if (err4) {
                             db.run("ROLLBACK");
                             return res.status(500).json({ error: err4.message });

@@ -694,6 +694,7 @@ const app = {
         const date = $('dir_date').value;
         const supplier = $('dir_supplier').value.trim();
         const destination = $('dir_destination').value.trim();
+        const actual_destination = $('dir_actual_destination') ? $('dir_actual_destination').value.trim() : '';
         
         if (!supplier || !destination) {
             return alert('매입처와 매출처를 모두 입력해주세요.');
@@ -720,6 +721,7 @@ const app = {
             date: date,
             supplier: supplier,
             destination: destination,
+            actual_destination: actual_destination,
             items: items
         };
 
@@ -1100,6 +1102,7 @@ const app = {
         const payload = {
             date: $('out_date').value,
             destination: $('out_destination').value,
+            actual_destination: $('out_actual_destination') ? $('out_actual_destination').value.trim() : '',
             items: items
         };
 
@@ -1126,60 +1129,56 @@ const app = {
     // Drawer & Detail & Print Logic
     // ==========================================
     openDrawer: function(mode, data = null) {
-        $('drawerOverlay').classList.add('show');
-        $('bottomDrawer').classList.add('show');
-        
-        $('drawerInbound').classList.add('d-none');
-        $('drawerOutbound').classList.add('d-none');
-        $('drawerDirect').classList.add('d-none');
-        $('drawerDetail').classList.add('d-none');
-        $('headerPrintControls').classList.add('d-none');
-        $('headerPrintControls').classList.remove('d-flex');
-        
-        const header = $('drawerHeader');
-        header.className = 'drawer-header';
-        
         if (mode === 'inbound_create') {
-            $('drawerInbound').classList.remove('d-none');
-            $('drawerTitle').innerHTML = "<i class='bx bx-plus-circle'></i> 입고 등록";
-            header.classList.add('bg-inbound');
+            const modalEl = document.getElementById('inboundModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
             $('btnFilterIn').checked = true;
             this.resetPageAndLoadHistory();
             if ($('inboundItemsContainer').children.length === 0) {
                 this.addInboundItemRow();
             }
         } else if (mode === 'outbound_create') {
-            $('drawerOutbound').classList.remove('d-none');
-            $('drawerTitle').innerHTML = "<i class='bx bx-minus-circle'></i> 출고 등록";
-            header.classList.add('bg-outbound');
+            const modalEl = document.getElementById('outboundModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
             $('btnFilterOut').checked = true;
             this.resetPageAndLoadHistory();
             if ($('outboundItemsContainer').children.length === 0) {
                 this.addOutboundItemRow();
             }
         } else if (mode === 'direct_create') {
-            $('drawerDirect').classList.remove('d-none');
-            $('drawerTitle').innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
-            header.classList.add('bg-warning'); // warning 색상
+            const modalEl = document.getElementById('directModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
             $('btnFilterAll').checked = true;
             this.resetPageAndLoadHistory();
             if ($('directItemsContainer').children.length === 0) {
                 this.addDirectItemRow();
             }
         } else if (mode === 'detail') {
-            $('drawerDetail').classList.remove('d-none');
-            $('headerPrintControls').classList.remove('d-none');
-            $('headerPrintControls').classList.add('d-flex');
             const typeStr = data.type === 'inbound' ? '입고' : '출고';
-            $('drawerTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} 상세 내역`;
-            header.classList.add('bg-detail');
+            $('detailModalTitle').innerHTML = `<i class='bx bx-file'></i> ${typeStr} 상세 내역`;
+            const modalEl = document.getElementById('detailModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
             this.renderDrawerDetail(data.id, data.type);
         }
     },
     
     closeDrawer: function() {
-        $('drawerOverlay').classList.remove('show');
-        $('bottomDrawer').classList.remove('show');
+        const modals = ['inboundModal', 'outboundModal', 'directModal', 'detailModal'];
+        modals.forEach(id => {
+            const modalEl = document.getElementById(id);
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        });
         $('btnFilterAll').checked = true;
         this.resetPageAndLoadHistory();
     },
@@ -1201,6 +1200,16 @@ const app = {
             const extraLabel = type === 'inbound' ? '창고위치' : '배송비';
             const extraValue = type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원';
             
+            let actualDestHtml = '';
+            if (type === 'outbound' && data.actual_destination) {
+                actualDestHtml = `
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-map'></i> 실출고처</span>
+                        <span class="drawer-meta-value">${data.actual_destination}</span>
+                    </div>
+                `;
+            }
+            
             let html = `
             <div style="max-width: 1000px; margin: 0;">
                 <div class="drawer-meta-bar ${metaClass}">
@@ -1215,6 +1224,7 @@ const app = {
                         <span class="drawer-meta-label"><i class='bx bx-buildings'></i> ${partnerLabel}</span>
                         <span class="drawer-meta-value">${partnerValue}</span>
                     </div>
+                    ${actualDestHtml}
                     <div class="drawer-meta-item ms-3">
                         <span class="drawer-meta-label"><i class='bx bx-info-circle'></i> ${extraLabel}</span>
                         <span class="drawer-meta-value">${extraValue}</span>
