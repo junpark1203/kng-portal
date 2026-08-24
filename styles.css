@@ -1854,7 +1854,7 @@ th.sortable.active.asc i {
     margin-top: 8px;
 }
 
-.close-btn, .btn-close {
+.close-btn {
     width: 32px;
     height: 32px;
     display: flex;
@@ -1869,7 +1869,7 @@ th.sortable.active.asc i {
     transition: all var(--transition-fast);
 }
 
-.close-btn:hover, .btn-close:hover {
+.close-btn:hover {
     background: var(--gray-200);
     color: var(--gray-800);
 }
