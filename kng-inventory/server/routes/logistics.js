@@ -582,7 +582,7 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             const shipping_vat = (shipping_vat_raw === 'Y' || shipping_vat_raw === '1' || shipping_vat_raw === 'TRUE') ? 1 : 0;
             const note = getVal(13);
 
-            if (!date || !supplier || !destination || !item || qty <= 0 || in_price < 0) {
+            if (!date || !supplier || !destination || !item || qty === 0 || in_price < 0) {
                 return; // Skip invalid rows
             }
 
