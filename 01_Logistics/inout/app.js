@@ -597,26 +597,32 @@ const app = {
         const rowId = 'dir_row_' + Date.now() + Math.floor(Math.random() * 1000);
 
         const rowHtml = `
-            <div class="row g-2 mb-1 align-items-center direct-item-row" id="${rowId}">
-                <div class="col-4 position-relative">
-                    <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
-                    <div class="autocomplete-suggestions"></div>
-                </div>
-                <div class="col-2">
-                    <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
-                </div>
-                <div class="col-2">
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control dir-qty" placeholder="수량" min="0.01" step="0.01" required>
-                        <input type="text" class="form-control dir-unit bg-light text-center" style="max-width: 45px; padding: 0.25rem;" placeholder="단위" required>
+            <div class="p-2 mb-2 border rounded bg-light direct-item-row" id="${rowId}">
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col-7 position-relative">
+                        <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
+                    </div>
+                    <div class="col-5">
+                        <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
                     </div>
                 </div>
-                <div class="col-2">
-                    <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1" required>
-                </div>
-                <div class="col-2 d-flex gap-1 justify-content-end">
-                    <input type="number" class="form-control form-control-sm dir-out-price flex-grow-1" placeholder="매출단가" min="0" step="1" required>
-                    <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
+                <div class="row g-2 align-items-center">
+                    <div class="col-4">
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control dir-qty" placeholder="수량" min="0.01" step="0.01" required>
+                            <input type="text" class="form-control dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1" required>
+                    </div>
+                    <div class="col-4">
+                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출단가" min="0" step="1" required>
+                    </div>
+                    <div class="col-1 text-end">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100 px-1" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
+                    </div>
                 </div>
             </div>
         `;
