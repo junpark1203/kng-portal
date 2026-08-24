@@ -779,7 +779,7 @@ const app = {
                 <div class="col-2">
                     <input type="number" class="form-control form-control-sm out-price" placeholder="단가" min="0" step="1" required>
                 </div>
-                <div class="col-3 d-flex gap-1 justify-content-center">
+                <div class="col-2 d-flex gap-1 justify-content-center">
                     <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot 설정</button>
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.removeOutboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
                 </div>
