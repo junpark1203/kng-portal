@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>?�출�?관�?/title>
+    <title>입출고 관리</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css?v=3">
@@ -23,7 +23,7 @@
         #lotModal {
             z-index: 1070 !important;
         }
-        /* lotModal???�릴 ???�성?�는 ?�번�?backdrop??z-index ?�향 조정 */
+        /* lotModal이 열릴 때 생성되는 두번째 backdrop의 z-index 상향 조정 */
         .modal-backdrop:nth-of-type(2), 
         .modal-backdrop.show[style*="z-index: 1050"] ~ .modal-backdrop {
             z-index: 1060 !important;
@@ -53,7 +53,7 @@
             background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='M.293.293a1 1 0 011.414 0L8 6.586 14.293.293a1 1 0 111.414 1.414L9.414 8l6.293 6.293a1 1 0 01-1.414 1.414L8 9.414l-6.293 6.293a1 1 0 01-1.414-1.414L6.586 8 .293 1.707a1 1 0 010-1.414z'/%3e%3c/svg%3e") center/1em auto no-repeat !important;
         }
         
-        /* 모바???�면 (768px 미만)?�서????�� 컨테?�너??가�??�크�??�용 */
+        /* 모바일 화면 (768px 미만)에서는 항목 컨테이너에 가로 스크롤 허용 */
         @media (max-width: 767.98px) {
             #inboundItemsContainer, #outboundItemsContainer, #directItemsContainer {
                 min-width: 700px;
@@ -69,7 +69,7 @@
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0 fw-bold"><i class='bx bx-transfer text-primary'></i> ?�출�?관�?/h4>
+        <h4 class="mb-0 fw-bold"><i class='bx bx-transfer text-primary'></i> 입출고 관리</h4>
         <div class="d-flex gap-2">
                         <button class="btn btn-outline-secondary shadow-sm fw-bold text-dark bg-white" onclick="app.openExcelMenuModal()">
                 <i class='bx bx-table'></i> 엑셀등록
@@ -78,18 +78,18 @@
                 <i class='bx bx-shuffle'></i> 직출고 등록
             </button>
             <button class="btn btn-success" onclick="app.openDrawer('inbound_create')">
-                <i class='bx bx-plus'></i> ?�고 ?�록
+                <i class='bx bx-plus'></i> 입고 등록
             </button>
             <button class="btn btn-danger" onclick="app.openDrawer('outbound_create')">
-                <i class='bx bx-minus'></i> 출고 ?�록
+                <i class='bx bx-minus'></i> 출고 등록
             </button>
             <button class="btn btn-outline-secondary" onclick="app.openLocationsModal()">
-                <i class='bx bx-cog'></i> ?�치 ?�정
+                <i class='bx bx-cog'></i> 위치 설정
             </button>
         </div>
     </div>
 
-    <!-- 리스??�?-->
+    <!-- 리스트 뷰 -->
     <div>
             <div class="card shadow-sm border-0">
                 <div class="card-body">
@@ -97,13 +97,13 @@
                         <div class="d-flex gap-3 align-items-center">
                             <div class="btn-group" role="group">
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">?�체 보기</label>
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">전체 보기</label>
                                 
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">?�고�?보기</label>
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">입고만 보기</label>
                                 
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고�?보기</label>
+                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고만 보기</label>
                             </div>
                             <select class="form-select form-select-sm w-auto" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
                                 <option value="50">50개씩 보기</option>
@@ -113,8 +113,8 @@
                             </select>
                         </div>
                         <div class="d-flex w-25 gap-2">
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="?�순 검??.." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
-                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.openDetailedSearch()"><i class='bx bx-slider-alt'></i> ?�세검??/button>
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="단순 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
+                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.openDetailedSearch()"><i class='bx bx-slider-alt'></i> 상세검색</button>
                         </div>
                     </div>
                     
@@ -123,23 +123,23 @@
                             <thead class="table-light sticky-top" style="z-index: 10;">
                                 <tr>
                                     <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
-                                    <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">?�자<span class="sort-icon"> ?��</span></th>
-                                    <th id="th-party" style="cursor:pointer" onclick="app.toggleSort('party')" class="user-select-none">거래�?span class="sort-icon"></span></th>
-                                    <th id="th-item" style="cursor:pointer" onclick="app.toggleSort('item')" class="user-select-none">?�목�?span class="sort-icon"></span></th>
+                                    <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
+                                    <th id="th-party" style="cursor:pointer" onclick="app.toggleSort('party')" class="user-select-none">거래처<span class="sort-icon"></span></th>
+                                    <th id="th-item" style="cursor:pointer" onclick="app.toggleSort('item')" class="user-select-none">품목명<span class="sort-icon"></span></th>
                                     <th id="th-spec" style="cursor:pointer" onclick="app.toggleSort('spec')" class="user-select-none">규격<span class="sort-icon"></span></th>
-                                    <th id="th-unit" style="cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none">?�위<span class="sort-icon"></span></th>
-                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none">?�량<span class="sort-icon"></span></th>
-                                    <th id="th-price" style="cursor:pointer" onclick="app.toggleSort('price')" class="user-select-none">?��?<span class="sort-icon"></span></th>
-                                    <th class="text-center user-select-none">??��</th>
+                                    <th id="th-unit" style="cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none">단위<span class="sort-icon"></span></th>
+                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none">수량<span class="sort-icon"></span></th>
+                                    <th id="th-price" style="cursor:pointer" onclick="app.toggleSort('price')" class="user-select-none">단가<span class="sort-icon"></span></th>
+                                    <th class="text-center user-select-none">삭제</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTbody">
-                                <tr><td colspan="9" class="text-center text-muted">?�이?��? 불러?�는 중입?�다...</td></tr>
+                                <tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
                     </div>
                     
-                    <!-- ?�이지?�이??-->
+                    <!-- 페이지네이션 -->
                     <div class="d-flex justify-content-center mt-3">
                         <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
                     </div>
@@ -148,34 +148,34 @@
     </div>
 </div>
 
-<!-- ?�출�?모달 ?�역 -->
+<!-- 입출고 모달 영역 -->
 
-<!-- ?�고 ?�록 모달 -->
+<!-- 입고 등록 모달 -->
 <div class="modal fade" id="inboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-inbound">
-                <h5 class="modal-title fw-bold"><i class='bx bx-plus'></i> ?�고 ?�록</h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-plus'></i> 입고 등록</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light">
                 <form id="inboundForm">
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label mb-1">?�고?�자</label>
+                            <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="in_date" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label mb-1">매입�?/label>
+                            <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="in_supplier" placeholder="매입�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-12">
-                            <label class="form-label mb-1">?�고 ?�치</label>
+                            <label class="form-label mb-1">재고 위치</label>
                             <select class="form-select form-select-sm" id="in_location" required>
-                                <option value="">로딩 �?..</option>
+                                <option value="">로딩 중...</option>
                             </select>
                         </div>
                     </div>
@@ -183,21 +183,21 @@
                     <hr class="my-3 text-muted">
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">?�고 ?�목 ?�역</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추�?</button>
+                        <h6 class="fw-bold mb-0">입고 품목 내역</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
                     </div>
 
                     <div id="inboundItemsContainer">
-                        <!-- app.js?�서 ?�더�?-->
+                        <!-- app.js에서 렌더링 -->
                     </div>
 
                     <div class="mt-3 bg-white p-3 rounded border shadow-sm">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (?�택?�항)</label>
-                        <input type="text" class="form-control form-control-sm" id="in_note" placeholder="?�고 건에 ?�???�합 메모">
+                        <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                        <input type="text" class="form-control form-control-sm" id="in_note" placeholder="입고 건에 대한 통합 메모">
                     </div>
 
                     <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-success px-4 py-2"><i class='bx bx-check'></i> ?�고 처리</button>
+                        <button type="submit" class="btn btn-success px-4 py-2"><i class='bx bx-check'></i> 입고 처리</button>
                     </div>
                 </form>
             </div>
@@ -205,39 +205,39 @@
     </div>
 </div>
 
-<!-- 출고 ?�록 모달 -->
+<!-- 출고 등록 모달 -->
 <div class="modal fade" id="outboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-outbound">
-                <h5 class="modal-title fw-bold"><i class='bx bx-minus'></i> 출고 ?�록</h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-minus'></i> 출고 등록</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light">
                 <form id="outboundForm">
                     <div class="row g-2">
                         <div class="col-4">
-                            <label class="form-label mb-1">출고?�자</label>
+                            <label class="form-label mb-1">출고일자</label>
                             <input type="date" class="form-control form-control-sm" id="out_date" required>
                         </div>
                         <div class="col-4">
-                            <label class="form-label mb-1">매출�?(계산??발행)</label>
+                            <label class="form-label mb-1">매출처 (계산서 발행)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="out_destination" placeholder="매출�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-4">
-                            <label class="form-label mb-1">?�출고처 (배송지/?�장)</label>
-                            <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="?�제 배송지 ?�는 ?�청?�체�??�유 ?�력" autocomplete="off">
+                            <label class="form-label mb-1">실출고처 (배송지/현장)</label>
+                            <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="실제 배송지 또는 하청업체명 자유 입력" autocomplete="off">
                         </div>
                     </div>
 
                     <hr class="my-3 text-muted">
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">출고 ?�목 ?�역</h6>
-                        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추�?</button>
+                        <h6 class="fw-bold mb-0">출고 품목 내역</h6>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
                     </div>
 
                     <div id="outboundItemsContainer">
@@ -248,25 +248,25 @@
                         <div class="row g-2">
                             <div class="col-4">
                                 <label class="form-label fw-bold mb-1 d-flex align-items-center gap-2" style="font-size:0.85rem;">
-                                    <span class="mb-0">�?배송�?/span>
+                                    <span class="mb-0">총 배송비</span>
                                     <div class="d-flex align-items-center gap-1">
                                         <input class="form-check-input m-0" type="checkbox" id="out_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
                                         <label class="text-nowrap text-muted fw-normal m-0" style="font-size: 0.7rem; cursor: pointer; padding-top: 1px;" for="out_shipping_vat">
-                                            (부가???�함)
+                                            (부가세 포함)
                                         </label>
                                     </div>
                                 </label>
                                 <input type="number" class="form-control form-control-sm" id="out_shipping" min="0" step="1" value="0">
                             </div>
                             <div class="col-8">
-                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (?�택?�항)</label>
-                                <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 ?�???�합 메모">
+                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                                <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 대한 통합 메모">
                             </div>
                         </div>
                     </div>
 
                     <div class="mt-4">
-                        <small class="text-danger fw-bold d-block mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 ?�목??Lot ?�정???�료?�야 출고 처리가 가?�합?�다.</small>
+                        <small class="text-danger fw-bold d-block mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
                         <button type="submit" class="btn btn-danger w-100 py-2 fs-6" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
                     </div>
                 </form>
@@ -275,48 +275,48 @@
     </div>
 </div>
 
-<!-- 직출�??�록 모달 -->
+<!-- 직출고 등록 모달 -->
 <div class="modal fade" id="directModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-direct">
-                <h5 class="modal-title fw-bold"><i class='bx bx-shuffle'></i> 직출�??�록</h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-shuffle'></i> 직출고 등록</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light">
                 <form id="directForm">
                     <div class="row g-3 mb-2">
                         <div class="col-md-6">
-                            <label class="form-label mb-1">거래?�자</label>
+                            <label class="form-label mb-1">거래일자</label>
                             <input type="date" class="form-control form-control-sm" id="dir_date" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label mb-1">매입�?(공급�?</label>
+                            <label class="form-label mb-1">매입처 (공급처)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="dir_supplier" placeholder="매입�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label mb-1">매출�?(?�품�?계산??</label>
+                            <label class="form-label mb-1">매출처 (납품처/계산서)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="dir_destination" placeholder="매출�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label mb-1">?�출고처 (배송지/?�장)</label>
-                            <input type="text" class="form-control form-control-sm" id="dir_actual_destination" placeholder="?�제 배송지 ?�는 ?�청?�체�??�유 ?�력" autocomplete="off">
+                            <label class="form-label mb-1">실출고처 (배송지/현장)</label>
+                            <input type="text" class="form-control form-control-sm" id="dir_actual_destination" placeholder="실제 배송지 또는 하청업체명 자유 입력" autocomplete="off">
                         </div>
                     </div>
 
                     <hr class="my-3 text-muted">
 
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">공급 ?�목 ?�역 <span class="badge bg-warning text-dark ms-2">직출�?(?�고 미반??</span></h6>
-                        <button type="button" class="btn btn-outline-warning btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추�?</button>
+                        <h6 class="fw-bold mb-0">공급 품목 내역 <span class="badge bg-warning text-dark ms-2">직출고 (재고 미반영)</span></h6>
+                        <button type="button" class="btn btn-outline-warning btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
                     </div>
 
                     <div id="directItemsContainer">
@@ -327,25 +327,25 @@
                         <div class="row g-2">
                             <div class="col-4">
                                 <label class="form-label fw-bold mb-1 d-flex align-items-center gap-2" style="font-size:0.85rem;">
-                                    <span class="mb-0">�?배송�?/span>
+                                    <span class="mb-0">총 배송비</span>
                                     <div class="d-flex align-items-center gap-1">
                                         <input class="form-check-input m-0" type="checkbox" id="dir_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
                                         <label class="text-nowrap text-muted fw-normal m-0" style="font-size: 0.7rem; cursor: pointer; padding-top: 1px;" for="dir_shipping_vat">
-                                            (부가???�함)
+                                            (부가세 포함)
                                         </label>
                                     </div>
                                 </label>
                                 <input type="number" class="form-control form-control-sm" id="dir_shipping" min="0" step="1" value="0">
                             </div>
                             <div class="col-8">
-                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (?�택?�항)</label>
-                                <input type="text" class="form-control form-control-sm" id="dir_note" placeholder="직출�?건에 ?�???�합 메모">
+                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
+                                <input type="text" class="form-control form-control-sm" id="dir_note" placeholder="직출고 건에 대한 통합 메모">
                             </div>
                         </div>
                     </div>
 
                     <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-warning w-100 fw-bold py-2 fs-6"><i class='bx bx-check-double'></i> 직출�??�시 처리</button>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold py-2 fs-6"><i class='bx bx-check-double'></i> 직출고 동시 처리</button>
                     </div>
                 </form>
             </div>
@@ -353,27 +353,27 @@
     </div>
 </div>
 
-<!-- ?�세 ?�보 모달 -->
+<!-- 상세 정보 모달 -->
 <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-detail" id="detailModalHeader">
-                <h5 class="modal-title fw-bold" id="detailModalTitle">?�세 ?�보</h5>
+                <h5 class="modal-title fw-bold" id="detailModalTitle">상세 정보</h5>
                 
                 <div class="d-flex align-items-center justify-content-end ms-auto me-3">
                     <div id="headerPrintControls" class="d-flex align-items-center gap-2">
                         <div class="btn-group btn-group-sm" role="group">
                             <input type="radio" class="btn-check" name="printType" id="printOptInbound" value="inbound_receipt">
-                            <label class="btn btn-outline-primary" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> ?�고?�역??/label>
+                            <label class="btn btn-outline-primary" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> 입고내역서</label>
 
                             <input type="radio" class="btn-check" name="printType" id="printOptOutbound" value="outbound_receipt">
-                            <label class="btn btn-outline-primary" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고?�역??/label>
+                            <label class="btn btn-outline-primary" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고내역서</label>
 
                             <input type="radio" class="btn-check" name="printType" id="printOptTrans" value="transaction_statement" checked>
-                            <label class="btn btn-outline-primary" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세??/label>
+                            <label class="btn btn-outline-primary" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세서</label>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()" title="명세???�정"><i class='bx bx-cog'></i></button>
-                        <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> ?�쇄</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()" title="명세서 설정"><i class='bx bx-cog'></i></button>
+                        <button class="btn btn-primary btn-sm" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄</button>
                     </div>
                 </div>
 
@@ -388,63 +388,63 @@
     </div>
 </div>
 
-<!-- ?�세 검??모달 -->
+<!-- 상세 검색 모달 -->
 <div class="modal fade" id="detailedSearchModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold">?�세 조건 검??/h5>
+                <h5 class="modal-title fs-6 fw-bold">상세 조건 검색</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="dsForm">
                     <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">?�작 ?�자</label>
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">시작 일자</label>
                             <input type="date" class="form-control" id="ds_start_date">
                         </div>
                         <div class="col-6">
-                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">종료 ?�자</label>
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">종료 일자</label>
                             <input type="date" class="form-control" id="ds_end_date">
                         </div>
                         <div class="col-12">
-                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">거래�?(?�함)</label>
-                            <input type="text" class="form-control" id="ds_party" placeholder="?? ?�서?�강??>
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">거래처 (포함)</label>
+                            <input type="text" class="form-control" id="ds_party" placeholder="예: 동서울강남">
                         </div>
                         <div class="col-12">
-                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">?�목�?(?�함)</label>
-                            <input type="text" class="form-control" id="ds_item" placeholder="?? TMT-100">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">품목명 (포함)</label>
+                            <input type="text" class="form-control" id="ds_item" placeholder="예: TMT-100">
                         </div>
                         <div class="col-12">
-                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">규격 (?�함)</label>
-                            <input type="text" class="form-control" id="ds_spec" placeholder="?? 25KG">
+                            <label class="form-label mb-1 text-secondary" style="font-size:0.85rem">규격 (포함)</label>
+                            <input type="text" class="form-control" id="ds_spec" placeholder="예: 25KG">
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light" onclick="app.resetDetailedSearch()">초기??/button>
-                <button type="button" class="btn btn-primary" onclick="app.applyDetailedSearch()">검???�용</button>
+                <button type="button" class="btn btn-light" onclick="app.resetDetailedSearch()">초기화</button>
+                <button type="button" class="btn btn-primary" onclick="app.applyDetailedSearch()">검색 적용</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ?�치 ?�정 모달 -->
+<!-- 위치 설정 모달 -->
 <div class="modal fade" id="locationsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold">?�고 ?�치 관�?/h5>
+                <h5 class="modal-title fs-6 fw-bold">재고 위치 관리</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <ul id="locationList">
-                    <!-- 로�??�션 리스???�더�?-->
+                    <!-- 로케이션 리스트 렌더링 -->
                 </ul>
                 <div class="input-group mt-3">
-                    <input type="text" class="form-control form-control-sm" id="newLocationInput" placeholder="??창고/?�장 ?�름">
-                    <button class="btn btn-primary btn-sm" onclick="app.addLocation()">추�?</button>
+                    <input type="text" class="form-control form-control-sm" id="newLocationInput" placeholder="새 창고/현장 이름">
+                    <button class="btn btn-primary btn-sm" onclick="app.addLocation()">추가</button>
                 </div>
             </div>
         </div>
@@ -456,24 +456,24 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold"><span id="lotModalItemTitle"></span> Lot ?�정</h5>
+                <h5 class="modal-title fs-6 fw-bold"><span id="lotModalItemTitle"></span> Lot 설정</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-info py-2 px-3 mb-3 d-flex justify-content-between align-items-center">
-                    <span><strong>?�요 ?�량: </strong><span id="lotModalReqQty">0</span></span>
-                    <span><strong>?�재 ?�당?? </strong><span id="lotModalCurQty">0</span></span>
+                    <span><strong>필요 수량: </strong><span id="lotModalReqQty">0</span></span>
+                    <span><strong>현재 할당량: </strong><span id="lotModalCurQty">0</span></span>
                 </div>
                 <div class="table-responsive bg-white rounded shadow-sm border border-light">
                     <table class="table mb-0">
                         <thead>
                             <tr>
-                                <th>?�고?�자</th>
-                                <th>?�치</th>
-                                <th>매입�?/th>
-                                <th>?�고?��?</th>
-                                <th>?�재 ?�여??/th>
-                                <th class="table-primary text-primary">출고 차감??/th>
+                                <th>입고일자</th>
+                                <th>위치</th>
+                                <th>매입처</th>
+                                <th>입고단가</th>
+                                <th>현재 잔여량</th>
+                                <th class="table-primary text-primary">출고 차감량</th>
                             </tr>
                         </thead>
                         <tbody id="lotModalTbody">
@@ -481,11 +481,11 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="fw-bold text-danger mt-2" id="lotModalErrorMsg" style="display: none;"><i class='bx bx-error'></i> 차감???�계가 �?출고 ?�량�??�치?��? ?�습?�다.</div>
+                <div class="fw-bold text-danger mt-2" id="lotModalErrorMsg" style="display: none;"><i class='bx bx-error'></i> 차감량 합계가 총 출고 수량과 일치하지 않습니다.</div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">?�기</button>
-                <button type="button" class="btn btn-primary" onclick="app.saveLotModal()">?�??(?�인)</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-primary" onclick="app.saveLotModal()">저장 (확인)</button>
             </div>
             </div>
         </div>
@@ -493,34 +493,34 @@
 </div>
 
 
-<!-- 거래명세??공급???�정 모달 -->
+<!-- 거래명세서 공급자 설정 모달 -->
 <div class="modal fade" id="companyPresetModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold">거래명세??공급???�보 ?�정</h5>
+                <h5 class="modal-title fs-6 fw-bold">거래명세서 공급자 정보 설정</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-2">
-                    <label class="form-label">?�업?�등록번??/label>
+                    <label class="form-label">사업자등록번호</label>
                     <input type="text" class="form-control" id="preset_bizNo">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">?�호 (법인�?</label>
+                    <label class="form-label">상호 (법인명)</label>
                     <input type="text" class="form-control" id="preset_bizName">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">?�?�자?�명</label>
+                    <label class="form-label">대표자성명</label>
                     <input type="text" class="form-control" id="preset_ceo">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">?�업??주소</label>
+                    <label class="form-label">사업장 주소</label>
                     <input type="text" class="form-control" id="preset_address">
                 </div>
                 <div class="row">
                     <div class="col mb-2">
-                        <label class="form-label">?�태</label>
+                        <label class="form-label">업태</label>
                         <input type="text" class="form-control" id="preset_bizType">
                     </div>
                     <div class="col mb-2">
@@ -528,50 +528,50 @@
                         <input type="text" class="form-control" id="preset_bizItem">
                     </div>
                 </div>
-                <small class="text-muted mt-2 d-block">* ?�?�된 ?�보???�용?�의 ?�재 브라?��??�만 ?�?�되�?거래명세???�쇄 ??기본값으�??�용?�니??</small>
+                <small class="text-muted mt-2 d-block">* 저장된 정보는 사용자의 현재 브라우저에만 저장되며 거래명세서 인쇄 시 기본값으로 사용됩니다.</small>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" onclick="app.saveCompanyPreset()">?�??/button>
+                <button type="button" class="btn btn-primary" onclick="app.saveCompanyPreset()">저장</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ?�고 ?�역 ?�정 모달 -->
+<!-- 입고 내역 수정 모달 -->
 <div class="modal fade" id="editInboundModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-inbound">
-                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> ?�고 ?�역 ?�정</h5>
+                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> 입고 내역 수정</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editInboundForm">
                 <div class="modal-body">
                     <input type="hidden" id="editInboundId">
                     <div class="alert alert-warning py-2 mb-3 d-none" id="editInboundWarning">
-                        <i class='bx bx-info-circle'></i> ?��? ?��? 출고?�어 <strong>?�명, 규격, ?�위</strong>???�정?????�으�? ?�량?� <strong><span id="editInboundMinQty">0</span> ?�상</strong>?�로�??�정 가?�합?�다.
+                        <i class='bx bx-info-circle'></i> 이미 일부 출고되어 <strong>품명, 규격, 단위</strong>는 수정할 수 없으며, 수량은 <strong><span id="editInboundMinQty">0</span> 이상</strong>으로만 수정 가능합니다.
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label mb-1">?�고?�자</label>
+                            <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="edit_in_date" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label mb-1">매입�?/label>
+                            <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_in_supplier');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_in_supplier')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_in_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label class="form-label mb-1">?�고 ?�치</label>
+                        <label class="form-label mb-1">재고 위치</label>
                         <select class="form-select form-select-sm" id="edit_in_location" required></select>
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-5">
-                            <label class="form-label mb-1">?�명</label>
+                            <label class="form-label mb-1">품명</label>
                             <input type="text" class="form-control form-control-sm" id="edit_in_item" required>
                         </div>
                         <div class="col-4">
@@ -579,17 +579,17 @@
                             <input type="text" class="form-control form-control-sm" id="edit_in_spec" required>
                         </div>
                         <div class="col-3">
-                            <label class="form-label mb-1">?�위</label>
+                            <label class="form-label mb-1">단위</label>
                             <input type="text" class="form-control form-control-sm" id="edit_in_unit" required>
                         </div>
                     </div>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label mb-1">?�량 <small class="text-muted">(초기?�고??</small></label>
-                            <input type="number" class="form-control form-control-sm" id="edit_in_qty"  step="0.01" required>
+                            <label class="form-label mb-1">수량 <small class="text-muted">(초기입고량)</small></label>
+                            <input type="number" class="form-control form-control-sm" id="edit_in_qty" step="0.01" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label mb-1">?��?</label>
+                            <label class="form-label mb-1">단가</label>
                             <input type="number" class="form-control form-control-sm" id="edit_in_price" min="0" step="1" required>
                         </div>
                     </div>
@@ -600,44 +600,44 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-success">?�정 ?�??/button>
+                    <button type="submit" class="btn btn-success">수정 저장</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- 출고 ?�역 ?�정 모달 -->
+<!-- 출고 내역 수정 모달 -->
 <div class="modal fade" id="editOutboundModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-outbound">
-                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> 출고 ?�역 ?�정</h5>
+                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> 출고 내역 수정</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editOutboundForm">
                 <div class="modal-body">
                     <input type="hidden" id="editOutboundId">
                     <div class="alert alert-info py-2 mb-3">
-                        <i class='bx bx-info-circle'></i> 출고 ?�량?�나 ?�목???�정?�려�??�측??<strong>Lot ?�정</strong> 버튼???�러 차감???�고�??�시 지?�해???�니?? (?�정 모달?�서???�목 변경을 지?�하지 ?�습?�다. ?�요 ????�� ???�등록하?�요.)
+                        <i class='bx bx-info-circle'></i> 출고 수량이나 품목을 수정하려면 우측의 <strong>Lot 설정</strong> 버튼을 눌러 차감할 재고를 다시 지정해야 합니다. (수정 모달에서는 품목 변경을 지원하지 않습니다. 필요 시 삭제 후 재등록하세요.)
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-4">
-                            <label class="form-label mb-1">출고?�자</label>
+                            <label class="form-label mb-1">출고일자</label>
                             <input type="date" class="form-control form-control-sm" id="edit_out_date" required>
                         </div>
                         <div class="col-8">
-                            <label class="form-label mb-1">출고�?고객/?�장)</label>
+                            <label class="form-label mb-1">출고처(고객/현장)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출�?검??(Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_out_destination');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_out_destination')" title="거래�?검??><i class='bx bx-search'></i></button>
+                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_out_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                     </div>
                     
                     <div class="row g-2 mb-3">
                         <div class="col-5">
-                            <label class="form-label mb-1">?�목�?/label>
+                            <label class="form-label mb-1">품목명</label>
                             <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_item" readonly disabled>
                         </div>
                         <div class="col-4">
@@ -645,33 +645,33 @@
                             <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_spec" readonly disabled>
                         </div>
                         <div class="col-3">
-                            <label class="form-label mb-1">?�위</label>
+                            <label class="form-label mb-1">단위</label>
                             <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_unit" readonly disabled>
                         </div>
                     </div>
                     
                     <div class="row g-2 mb-3 align-items-end">
                         <div class="col-4">
-                            <label class="form-label mb-1">출고?�량</label>
-                            <input type="number" class="form-control form-control-sm" id="edit_out_qty"  step="0.01" required>
+                            <label class="form-label mb-1">출고수량</label>
+                            <input type="number" class="form-control form-control-sm" id="edit_out_qty" step="0.01" required>
                         </div>
                         <div class="col-4">
-                            <label class="form-label mb-1">?��?</label>
+                            <label class="form-label mb-1">단가</label>
                             <input type="number" class="form-control form-control-sm" id="edit_out_price" min="0" step="1" required>
                         </div>
                         <div class="col-4">
-                            <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnEditOutboundLot" style="height: 31px;">Lot ?�정</button>
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnEditOutboundLot" style="height: 31px;">Lot 설정</button>
                         </div>
                     </div>
 
                     <div class="row g-2">
                         <div class="col-4">
                             <label class="form-label fw-bold mb-1 d-flex align-items-center gap-2" style="font-size:0.85rem;">
-                                <span class="mb-0">배송�?/span>
+                                <span class="mb-0">배송비</span>
                                 <div class="d-flex align-items-center gap-1">
                                     <input class="form-check-input m-0" type="checkbox" id="edit_out_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
                                     <label class="text-nowrap text-muted fw-normal m-0" style="font-size: 0.7rem; cursor: pointer; padding-top: 1px;" for="edit_out_shipping_vat">
-                                        (부가???�함)
+                                        (부가세 포함)
                                     </label>
                                 </div>
                             </label>
@@ -684,9 +684,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <small class="text-danger fw-bold me-auto" id="editOutboundErrorMsg" style="display:none;"><i class='bx bx-error'></i> Lot ?�정???�시 ?�료?�주?�요.</small>
+                    <small class="text-danger fw-bold me-auto" id="editOutboundErrorMsg" style="display:none;"><i class='bx bx-error'></i> Lot 설정을 다시 완료해주세요.</small>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-danger">?�정 ?�??/button>
+                    <button type="submit" class="btn btn-danger">수정 저장</button>
                 </div>
             </form>
         </div>
@@ -695,19 +695,19 @@
 
 
 
-<!-- 거래�?검??모달 -->
+<!-- 거래처 검색 모달 -->
 <div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
     <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white py-2">
-                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래�?검??/h6>
+                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-light">
                 <input type="hidden" id="partnerSearchTargetInput">
                 <div class="input-group mb-3 shadow-sm">
                     <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
-                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 ?�는 ?�워???�력..." onkeyup="app.filterPartnerSearch()">
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()">
                 </div>
                 <div class="list-group shadow-sm" id="partnerSearchList">
                     <!-- JS Render -->
@@ -717,39 +717,59 @@
     </div>
 </div>
 
-<!-- 직출�??��? ?�로??모달 -->
+
+<!-- 엑셀 등록 메뉴 모달 -->
+<div class="modal fade" id="excelMenuModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> 엑셀 일괄 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <button class="btn btn-warning w-100 py-3 fw-bold fs-6 shadow-sm" onclick="app.closeExcelMenuAndOpenDirect()">
+                    <i class='bx bx-shuffle'></i> 직출고 일괄등록
+                </button>
+                <div class="mt-4 text-muted small text-start">
+                    <i class='bx bx-info-circle'></i> 입고 및 출고 일괄등록은 추후 지원 예정입니다.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 직출고 엑셀 업로드 모달 -->
 <div class="modal fade" id="directExcelModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> 직출�?과거?�역 ?��? ?�괄 ?�록</h5>
+                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> 직출고 과거내역 엑셀 일괄 등록</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-info mb-4" style="font-size:0.9rem;">
-                    <strong>?�내:</strong><br>
-                    1. ?��? ?�플릿을 ?�운로드?�여 ?�해�??�식??맞게 직출�??�역???�성??주세??<br>
-                    2. ?�자, 매입�? 매출처�? ?�일???�러 ?��? ?�동?�로 <strong>?�나??직출�?명세??/strong>�?묶여??처리?�니??
+                    <strong>안내:</strong><br>
+                    1. 엑셀 템플릿을 다운로드하여 정해진 양식에 맞게 직출고 내역을 작성해 주세요.<br>
+                    2. 일자, 매입처, 매출처가 동일한 여러 행은 자동으로 <strong>하나의 직출고 명세서</strong>로 묶여서 처리됩니다.
                 </div>
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <span class="fw-bold">1?�계: ?�플�??�운로드</span>
+                    <span class="fw-bold">1단계: 템플릿 다운로드</span>
                     <a href="/api/logistics/outbound/direct/template" class="btn btn-sm btn-outline-primary">
-                        <i class='bx bxs-download'></i> ?��? ?�플�?받기
+                        <i class='bx bxs-download'></i> 엑셀 템플릿 받기
                     </a>
                 </div>
 
                 <hr>
 
                 <div class="mt-3">
-                    <span class="fw-bold d-block mb-2">2?�계: ?�성???�일 ?�로??/span>
+                    <span class="fw-bold d-block mb-2">2단계: 작성된 파일 업로드</span>
                     <input class="form-control" type="file" id="directExcelFile" accept=".xlsx, .xls">
                 </div>
             </div>
             <div class="modal-footer d-flex justify-content-between">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 <button type="button" class="btn btn-warning fw-bold" onclick="app.uploadDirectExcel()">
-                    <i class='bx bx-upload'></i> ?�로??�??�괄 ?�록
+                    <i class='bx bx-upload'></i> 업로드 및 일괄 등록
                 </button>
             </div>
         </div>
@@ -759,7 +779,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Firebase & Auth -->
 <script type="module">
-    // (Firebase ?�정?� ?�른 ?�이지?� ?�일?�게 ?�용 ?�요 ??추�?, ?�기?�는 백엔??API�??�용)
+    // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
 <script src="app.js?v=15"></script>
 </body>
