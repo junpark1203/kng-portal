@@ -671,7 +671,7 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
 
                                 // 3. Link them in lots
                                 db.run(`
-                                    INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, qty)
+                                    INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty)
                                     VALUES (?, ?, ?)
                                 `, [outboundId, inboundId, currentItem.qty], function(err) {
                                     if (err) {
