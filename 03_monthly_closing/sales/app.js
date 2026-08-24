@@ -161,7 +161,21 @@ const app = {
         $('totalCount').innerText = this.items.length; // 현재 필터링된 개수 (정확한 전체는 아님)
 
         tbody.innerHTML = this.items.map(r => {
-            const total = (r.qty || 0) * (r.price || 0);
+            const qtyTotal = (r.qty || 0) * (r.price || 0);
+            let shipAmount = 0;
+            if (r.shipping_fee > 0) {
+                shipAmount = r.shipping_fee_vat_included === 1 
+                             ? Math.round(r.shipping_fee / 1.1) 
+                             : r.shipping_fee;
+            }
+            const total = qtyTotal + shipAmount;
+            
+            let itemDisplay = `<strong>${r.item}</strong>`;
+            if (r.is_direct) itemDisplay += `<span class="badge bg-secondary ms-1">직</span>`;
+            if (r.shipping_fee > 0) {
+                const shipVatText = r.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가 기준)';
+                itemDisplay += `<div class="small text-muted mt-1">+ 배송비 ${r.shipping_fee.toLocaleString()}원 ${shipVatText}</div>`;
+            }
             
             let statusHtml = '';
             let statusVal = r.settlement_status || '미정산';
@@ -181,7 +195,7 @@ const app = {
                 </td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
-                <td><strong>${r.item}</strong>${directBadge}</td>
+                <td>${itemDisplay}</td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-danger fw-bold">${r.qty}</td>
                 <td>${Number(r.price).toLocaleString()}</td>
@@ -344,13 +358,33 @@ const app = {
         let sumGrand = 0;
         
         const rowsHtml = selectedItems.map((r, index) => {
-            const total = (r.qty || 0) * (r.price || 0);
-            const vat = r.is_zero_tax ? 0 : Math.floor(total * 0.1);
+            const qtyTotal = (r.qty || 0) * (r.price || 0);
+            
+            let shipAmount = 0;
+            let shipVat = 0;
+            
+            if (r.shipping_fee > 0) {
+                if (r.shipping_fee_vat_included === 1) {
+                    shipAmount = Math.round(r.shipping_fee / 1.1);
+                    shipVat = r.shipping_fee - shipAmount;
+                } else {
+                    shipAmount = r.shipping_fee;
+                    shipVat = Math.floor(shipAmount * 0.1);
+                }
+            }
+            
+            const total = qtyTotal + shipAmount;
+            const vat = r.is_zero_tax ? 0 : (Math.floor(qtyTotal * 0.1) + shipVat);
             const grand = total + vat;
             
             sumTotal += total;
             sumVat += vat;
             sumGrand += grand;
+            
+            let itemHtml = `<strong>${r.item}</strong>`;
+            if (r.shipping_fee > 0) {
+                itemHtml += ` <span class="text-muted" style="font-size:0.85em;">(+배송비)</span>`;
+            }
             
             return `
             <tr>
@@ -358,8 +392,7 @@ const app = {
                 <td>${r.date}</td>
                 <td>${r.tax_invoice_date || '-'}</td>
                 <td>${r.party}</td>
-                <td>${r.item}</td>
-                <td>${r.spec} / ${r.unit}</td>
+                <td>${itemHtml}</td>
                 <td class="text-right">${r.qty}</td>
                 <td class="text-right">${Number(r.price).toLocaleString()}</td>
                 <td class="text-right">${Number(total).toLocaleString()}</td>

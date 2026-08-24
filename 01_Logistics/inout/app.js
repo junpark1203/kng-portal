@@ -1074,14 +1074,15 @@ const app = {
             const unit = row.querySelector('.out-unit').value.trim();
             const qty = parseFloat(row.querySelector('.out-qty').value);
             const selling_price = parseFloat(row.querySelector('.out-price').value);
-            const shipping_fee = docShippingFee;
+            const shipping_fee = idx === 0 ? docShippingFee : 0;
+            const shipping_fee_vat_included = idx === 0 ? ($('out_shipping_vat').checked ? 1 : 0) : 0;
             const note = docNote;
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, selling_price, shipping_fee, note, consumed_lots });
+                items.push({ item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots });
             }
         });
 
@@ -1186,7 +1187,10 @@ const app = {
             const partnerLabel = type === 'inbound' ? '매입처' : '출고처';
             const partnerValue = type === 'inbound' ? data.supplier : data.destination;
             const extraLabel = type === 'inbound' ? '창고위치' : '배송비';
-            const extraValue = type === 'inbound' ? (data.location_name || '-') : data.shipping_fee.toLocaleString() + '원';
+            const shipVatLabel = data.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가 기준)';
+            const extraValue = type === 'inbound' 
+                ? (data.location_name || '-')
+                : (data.shipping_fee ? data.shipping_fee.toLocaleString() + '원 ' + shipVatLabel : '-');
             
             let actualDestHtml = '';
             if (type === 'outbound' && data.actual_destination) {
@@ -1485,6 +1489,41 @@ const app = {
                         </tr>`;
             });
             
+            if (data.shipping_fee && data.shipping_fee > 0) {
+                const isVatIncluded = data.shipping_fee_vat_included === 1;
+                let shipAmount, shipVat, shipTotal;
+                
+                if (isVatIncluded) {
+                    shipTotal = data.shipping_fee;
+                    shipAmount = Math.round(shipTotal / 1.1);
+                    shipVat = shipTotal - shipAmount;
+                } else {
+                    shipAmount = data.shipping_fee;
+                    shipVat = Math.floor(shipAmount * 0.1);
+                    shipTotal = shipAmount + shipVat;
+                }
+                
+                totalAmount += shipAmount;
+                totalVat += shipVat;
+                totalSum += shipTotal;
+                
+                itemRowsHtml += `
+                        <tr>
+                            <td class="text-center">${items.length + 1}</td>
+                            <td>배송비</td>
+                            <td class="text-center"></td>
+                            <td class="text-center">건</td>
+                            <td class="text-right">1</td>
+                            <td class="text-right">${shipAmount.toLocaleString()}</td>
+                            <td class="text-right">${shipAmount.toLocaleString()}</td>
+                            <td class="text-right">${shipVat.toLocaleString()}</td>
+                            <td class="text-right">${shipTotal.toLocaleString()}</td>
+                        </tr>`;
+                
+                // Add an empty item to items length so emptyRowsCount calculation is correct
+                items.push({});
+            }
+            
             const koTotalAmount = numberToKorean(totalSum);
             const emptyRowsCount = Math.max(0, 12 - items.length);
             const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
@@ -1542,7 +1581,6 @@ const app = {
                 
                 <div style="font-size:13px; color:#495057; text-align:right;">
                     ${data.note ? '비고: ' + data.note : ''}
-                    ${!data.note && data.shipping_fee ? '비고: 배송비 ' + data.shipping_fee.toLocaleString() + '원' : ''}
                 </div>
             `;
         } else if (printType === 'inbound_receipt') {
@@ -1766,6 +1804,7 @@ const app = {
             $('edit_out_date').value = item.date;
             $('edit_out_destination').value = item.destination || item.party;
             $('edit_out_shipping').value = item.shipping_fee || 0;
+            $('edit_out_shipping_vat').checked = item.shipping_fee_vat_included === 1;
             $('edit_out_note').value = item.note || '';
             
             $('edit_out_item').value = item.item;
