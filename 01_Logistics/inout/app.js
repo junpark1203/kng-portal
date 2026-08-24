@@ -349,58 +349,71 @@ const app = {
         } catch (e) {
             console.error('Failed to load partners', e);
         }
+        // 거래처 자동완성은 이제 Partner Search Modal 로 이관됨
+    },
 
-        const attach = (inputId, sugId, typeFilter) => {
-            const input = $(inputId);
-            const sug = $(sugId);
-            if (!input || !sug) return;
+    openPartnerSearchModal: function(targetInputId) {
+        if (!this.partnersCache || this.partnersCache.length === 0) {
+            this.setupPartnerAutocomplete().then(() => this.showPartnerSearchModal(targetInputId));
+        } else {
+            this.showPartnerSearchModal(targetInputId);
+        }
+    },
 
-            input.addEventListener('input', (e) => {
-                const val = e.target.value.trim().toLowerCase();
-                if (val.length < 1) {
-                    sug.style.display = 'none';
-                    return;
-                }
-                
-                let matches = this.partnersCache;
-                // Removed strict typeFilter to prevent partners from not showing up
-                matches = matches.filter(p => 
-                    (p.name && p.name.toLowerCase().includes(val)) || 
-                    (p.company_name && p.company_name.toLowerCase().includes(val))
-                );
-
-                if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => {
-                        const displayText = m.company_name ? `${m.name} / ${m.company_name}` : m.name;
-                        return `<div class="autocomplete-suggestion" data-name="${m.name}">${displayText}</div>`;
-                    }).join('');
-                    sug.style.display = 'block';
-                    
-                    sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('click', () => {
-                            input.value = div.dataset.name;
-                            sug.style.display = 'none';
-                        });
-                    });
-                } else {
-                    sug.style.display = 'none';
-                }
-            });
-
-            document.addEventListener('click', (e) => {
-                if (e.target !== input) sug.style.display = 'none';
-            });
-            this.attachAutocompleteKeyboard(input, sug);
-        };
-
-        attach('in_supplier', 'in_supplier_sug', '매입처');
-        attach('out_destination', 'out_destination_sug', '매출처');
-        attach('dir_supplier', 'dir_supplier_sug', '매입처');
-        attach('dir_destination', 'dir_destination_sug', '매출처');
+    showPartnerSearchModal: function(targetInputId) {
+        const inputEl = $(targetInputId);
+        if (!inputEl) return;
         
-        // 수정 모달
-        attach('edit_in_supplier', 'edit_in_supplier_sug', '매입처');
-        attach('edit_out_destination', 'edit_out_destination_sug', '매출처');
+        $('partnerSearchTargetInput').value = targetInputId;
+        const searchVal = inputEl.value.trim();
+        $('partnerSearchInput').value = searchVal;
+        
+        this.filterPartnerSearch();
+
+        const modalEl = $('partnerSearchModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        // 포커스 이동
+        setTimeout(() => $('partnerSearchInput').focus(), 500);
+    },
+
+    filterPartnerSearch: function() {
+        const val = $('partnerSearchInput').value.trim().toLowerCase();
+        const listContainer = $('partnerSearchList');
+        
+        let matches = this.partnersCache;
+        if (val) {
+            matches = matches.filter(p => 
+                (p.name && p.name.toLowerCase().includes(val)) || 
+                (p.company_name && p.company_name.toLowerCase().includes(val))
+            );
+        }
+        
+        if (matches.length === 0) {
+            listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검색된 거래처가 없습니다.</div>`;
+            return;
+        }
+
+        listContainer.innerHTML = matches.map(m => {
+            const displayText = m.company_name ? `${m.name} / <small class="text-muted">${m.company_name}</small>` : m.name;
+            return `
+                <button type="button" class="list-group-item list-group-item-action py-2" onclick="app.selectPartner('${m.name}')">
+                    <div class="fw-bold">${m.name}</div>
+                    ${m.company_name ? `<div style="font-size: 0.8rem;" class="text-muted">${m.company_name}</div>` : ''}
+                </button>
+            `;
+        }).join('');
+    },
+
+    selectPartner: function(name) {
+        const targetId = $('partnerSearchTargetInput').value;
+        if (targetId && $(targetId)) {
+            $(targetId).value = name;
+        }
+        const modal = bootstrap.Modal.getInstance($('partnerSearchModal'));
+        if (modal) modal.hide();
     },
 
 

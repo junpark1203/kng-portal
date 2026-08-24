@@ -164,9 +164,9 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label mb-1">매입처</label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control form-control-sm" id="in_supplier" placeholder="매입처 검색" required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="in_supplier_sug" style="display:none;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-12">
@@ -219,9 +219,9 @@
                         </div>
                         <div class="col-4">
                             <label class="form-label mb-1">매출처 (계산서 발행)</label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control form-control-sm" id="out_destination" placeholder="매출처 검색" required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="out_destination_sug" style="display:none;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-4">
@@ -281,16 +281,16 @@
                         </div>
                         <div class="col-3">
                             <label class="form-label mb-1">매입처 (공급처)</label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control form-control-sm" id="dir_supplier" placeholder="매입처 검색" required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="dir_supplier_sug" style="display:none;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-3">
                             <label class="form-label mb-1">매출처 (납품처/계산서)</label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control form-control-sm" id="dir_destination" placeholder="매출처 검색" required autocomplete="off">
-                                <div class="autocomplete-suggestions" id="dir_destination_sug" style="display:none;"></div>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                         <div class="col-3">
@@ -525,14 +525,9 @@
                         </div>
                         <div class="col-6">
                             <label class="form-label mb-1">매입처</label>
-                            <div class="d-flex align-items-center">
-                                <div class="input-group input-group-sm position-relative">
-                                    <input type="text" class="form-control form-control-sm" id="edit_in_supplier" autocomplete="off" required>
-                                    <div class="autocomplete-suggestions" id="edit_in_supplier_sug" style="display:none;"></div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary ms-1 text-nowrap" onclick="app.openPartnerModal('매입처', 'edit_in_supplier')" title="새 매입처 등록">
-                                    <i class='bx bx-plus'></i>
-                                </button>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_in_supplier');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                     </div>
@@ -599,14 +594,9 @@
                         </div>
                         <div class="col-8">
                             <label class="form-label mb-1">출고처(고객/현장)</label>
-                            <div class="d-flex align-items-center">
-                                <div class="input-group input-group-sm position-relative">
-                                    <input type="text" class="form-control form-control-sm" id="edit_out_destination" autocomplete="off" required>
-                                    <div class="autocomplete-suggestions" id="edit_out_destination_sug" style="display:none;"></div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary ms-1 text-nowrap" onclick="app.openPartnerModal('매출처', 'edit_out_destination')" title="새 매출처 등록">
-                                    <i class='bx bx-plus'></i>
-                                </button>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_out_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
                     </div>
@@ -663,11 +653,33 @@
 
 
 
+<!-- 거래처 검색 모달 -->
+<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white py-2">
+                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="partnerSearchTargetInput">
+                <div class="input-group mb-3 shadow-sm">
+                    <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()">
+                </div>
+                <div class="list-group shadow-sm" id="partnerSearchList">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Firebase & Auth -->
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
