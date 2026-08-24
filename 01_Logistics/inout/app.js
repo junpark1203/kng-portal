@@ -1138,8 +1138,25 @@ const app = {
         setTimeout(() => app.openDirectExcelModal(), 300);
     },
 
-    downloadExcelTemplate: function() {
-        window.location.href = API_BASE + '/direct/template';
+    downloadExcelTemplate: async function() {
+        try {
+            const res = await fetch(API_BASE + '/direct/template', {
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            });
+            if (!res.ok) throw new Error('다운로드 실패');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'logistics_direct_template.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e) {
+            alert('템플릿 다운로드 중 오류가 발생했습니다: ' + e.message);
+        }
     },
 
     openDirectExcelModal: function() {
