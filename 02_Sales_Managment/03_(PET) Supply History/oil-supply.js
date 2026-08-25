@@ -882,30 +882,3 @@ async function exportToExcel() {
         btn.disabled = false;
     }
 }
-
-        const res = await authFetch(API_BASE + '/export', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids })
-        });
-        
-        if (!res.ok) throw new Error('엑셀 생성 실패');
-
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-        a.download = `유류자재공급내역_${dateStr}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-    } catch (e) {
-        console.error(e);
-        showToast('엑셀 다운로드 오류: ' + e.message, 'error');
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
