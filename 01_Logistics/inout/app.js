@@ -68,7 +68,36 @@ const app = {
         this.setupInboundAutocomplete();
         this.setupOutboundAutocomplete();
         this.setupPartnerAutocomplete();
+        this.loadCategories();
         this.loadHistory();
+    },
+
+    
+    async loadCategories() {
+        try {
+            const res = await authFetch(`${API_BASE}/categories`);
+            const datalist = $('categoryDatalist');
+            const pillsContainer = $('categoryPillsContainer');
+            
+            if (datalist) {
+                datalist.innerHTML = res.map(c => `<option value="${c}"></option>`).join('');
+            }
+            if (pillsContainer) {
+                const pillsHtml = res.map(c => 
+                    `<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="app.filterByCategory('${c}')">${c}</button>`
+                ).join('');
+                pillsContainer.innerHTML = `
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill" onclick="app.filterByCategory('')">전체보기</button>
+                    ${pillsHtml}
+                `;
+            }
+        } catch (err) {
+            console.error('Failed to load categories', err);
+        }
+    },
+    filterByCategory(cat) {
+        this.detailedFilters.category = cat;
+        this.resetPageAndLoadHistory();
     },
 
     bindEvents: function() {
@@ -103,9 +132,7 @@ const app = {
     detailedFilters: {
         startDate: '',
         endDate: '',
-        searchParty: '',
-        searchItem: '',
-        searchSpec: ''
+        category: ''
     },
 
     toggleSort: function(colName) {
@@ -185,14 +212,14 @@ const app = {
         });
 
         try {
-            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="15" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
             const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
             this.renderHistoryTable(res.data);
             this.renderPagination(res.total, res.page, res.limit);
         } catch (err) {
             console.error('History load error:', err);
-            $('historyTbody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="15" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
         }
     },
 
@@ -237,7 +264,7 @@ const app = {
     renderHistoryTable: function(data) {
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="15" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
             return;
         }
 
@@ -248,6 +275,7 @@ const app = {
                 badge = `<span class="badge bg-warning text-dark">직출고</span>`;
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
+            const checkbox = `<input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}">`;
             const editFn = isOut ? (r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
             
             const renderCell = (val, isNumber = false) => {
@@ -287,6 +315,66 @@ const app = {
         document.querySelectorAll('.history-checkbox').forEach(cb => {
             cb.checked = selectAll;
         });
+    },
+
+    
+    toggleSelectAllHistory() {
+        const isChecked = $('selectAllHistory').checked;
+        document.querySelectorAll('.history-checkbox').forEach(cb => {
+            cb.checked = isChecked;
+        });
+    },
+
+    openBulkUpdateModal() {
+        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        if (checkboxes.length === 0) {
+            Swal.fire('알림', '일괄 수정할 항목을 체크해주세요.', 'info');
+            return;
+        }
+        $('bulkUpdateCount').innerText = checkboxes.length;
+        $('bulkUpdateForm').reset();
+        
+        const modalEl = document.getElementById('bulkUpdateModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    },
+
+    async submitBulkUpdate() {
+        const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+        const inboundIds = [];
+        const outboundIds = [];
+        
+        checkboxes.forEach(cb => {
+            if (cb.dataset.type === 'inbound') inboundIds.push(cb.value);
+            else outboundIds.push(cb.value);
+        });
+
+        const supplier = $('bulkSupplier').value.trim();
+        const destination = $('bulkDestination').value.trim();
+        const category = $('bulkCategory').value.trim();
+
+        if (!supplier && !destination && !category) {
+            Swal.fire('알림', '변경할 항목을 하나 이상 입력해주세요.', 'warning');
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/bulk-update`, {
+                method: 'PUT',
+                body: JSON.stringify({ inboundIds, outboundIds, supplier, destination, category })
+            });
+            Swal.fire('완료', '일괄 수정이 완료되었습니다.', 'success');
+            
+            const modalEl = document.getElementById('bulkUpdateModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+            
+            this.resetPageAndLoadHistory();
+            this.loadCategories();
+        } catch (err) {
+            Swal.fire('오류', '일괄 수정 실패: ' + err.message, 'error');
+        }
     },
 
     deleteSelectedHistory: async function() {

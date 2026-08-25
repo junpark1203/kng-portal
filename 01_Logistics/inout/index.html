@@ -105,6 +105,9 @@
                                 
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
                                 <label class="text-nowrap" for="btnFilterOut">출고만 보기</label>
+                                
+                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterDirect" value="direct" onchange="app.resetPageAndLoadHistory()">
+                                <label class="text-nowrap" for="btnFilterDirect">직출고만 보기</label>
                             </div>
                             <select class="form-select form-select-sm w-auto" style="min-width: 130px;" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
                                 <option value="50">50개씩 보기</option>
@@ -114,11 +117,29 @@
                             </select>
                             <div class="vr"></div>
                             <button class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
+                            <button class="btn btn-sm btn-outline-primary text-nowrap ms-1" onclick="app.openBulkUpdateModal()"><i class='bx bx-edit'></i> 일괄 수정</button>
                         </div>
-                        <div class="d-flex w-25 gap-2">
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="단순 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
-                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.openDetailedSearch()"><i class='bx bx-slider-alt'></i> 상세검색</button>
+                        
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일">
+                            <span class="text-muted">~</span>
+                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일">
+                            <select class="form-select form-select-sm" id="searchTarget" style="width: 110px;">
+                                <option value="">전체 검색</option>
+                                <option value="supplier">매입처</option>
+                                <option value="destination">매출처</option>
+                                <option value="category">분류</option>
+                                <option value="item">품목명</option>
+                                <option value="spec">규격</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="검색어 입력..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()" style="width: 180px;">
+                            <button class="btn btn-sm btn-primary text-nowrap" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
+                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
                         </div>
+                    </div>
+                    
+                    <div class="mb-3 d-flex gap-2 flex-wrap" id="categoryPillsContainer">
+                        <!-- 카테고리 필터 버튼 렌더링 -->
                     </div>
                     
                     <div class="table-responsive">
@@ -127,6 +148,7 @@
                                 <tr>
                                     <th style="width: 30px;" class="text-center"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
                                     <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
+                                    <th id="th-category" style="cursor:pointer" onclick="app.toggleSort('category')" class="user-select-none">분류<span class="sort-icon"></span></th>
                                     <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
                                     <th id="th-supplier" style="cursor:pointer" onclick="app.toggleSort('supplier')" class="user-select-none">입고처<span class="sort-icon"></span></th>
                                     <th id="th-destination" style="cursor:pointer" onclick="app.toggleSort('destination')" class="user-select-none">출고처<span class="sort-icon"></span></th>
@@ -142,7 +164,7 @@
                                 </tr>
                             </thead>
                             <tbody id="historyTbody">
-                                <tr><td colspan="14" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
+                                <tr><td colspan="15" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -155,6 +177,53 @@
             </div>
     </div>
 </div>
+
+
+<!-- 일괄 수정 모달 -->
+<div class="modal fade" id="bulkUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class='bx bx-edit'></i> 선택 항목 일괄 수정</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-4">선택하신 <span id="bulkUpdateCount" class="fw-bold text-danger">0</span>개 항목의 정보 중 아래 항목들을 일괄적으로 변경합니다. 변경하지 않을 항목은 비워두세요.</p>
+                
+                <form id="bulkUpdateForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">매입처 (입고/직출고 대상)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="bulkSupplier" placeholder="새 매입처 이름 입력 (Enter 검색)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('bulkSupplier');}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('bulkSupplier')"><i class='bx bx-search'></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">매출처 (출고/직출고 대상)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="bulkDestination" placeholder="새 매출처 이름 입력 (Enter 검색)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('bulkDestination');}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('bulkDestination')"><i class='bx bx-search'></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">분류 (카테고리)</label>
+                        <input type="text" class="form-control form-control-sm" id="bulkCategory" list="categoryDatalist" placeholder="새 분류 선택 또는 직접 입력" autocomplete="off">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="app.submitBulkUpdate()">일괄 변경 적용</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<datalist id="categoryDatalist">
+    <!-- JS Render -->
+</datalist>
 
 <!-- 입출고 모달 영역 -->
 

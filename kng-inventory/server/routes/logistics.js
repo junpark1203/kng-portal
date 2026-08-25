@@ -59,7 +59,8 @@ function initLogisticsTables(database) {
                     // 테이블이 이미 존재할 수 있으므로 컬럼 추가 시도 (에러 무시)
                     const addColsInbound = [
                         "ALTER TABLE logistics_inbound ADD COLUMN note TEXT",
-                        "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_inbound ADD COLUMN category TEXT"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -87,7 +88,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN note TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN actual_destination TEXT",
-                        "ALTER TABLE logistics_outbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_outbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_outbound ADD COLUMN category TEXT"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -222,6 +224,73 @@ router.get('/items/all', (req, res) => {
     });
 });
 
+
+// --- Bulk Update (일괄 수정) ---
+router.put('/bulk-update', (req, res) => {
+    const { inboundIds, outboundIds, supplier, destination, category } = req.body;
+    
+    if ((!inboundIds || inboundIds.length === 0) && (!outboundIds || outboundIds.length === 0)) {
+        return res.status(400).json({ error: 'No items selected' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        let hasError = false;
+
+        const updateInboundSql = [];
+        const updateInboundParams = [];
+        if (supplier) { updateInboundSql.push('supplier = ?'); updateInboundParams.push(supplier); }
+        if (category) { updateInboundSql.push('category = ?'); updateInboundParams.push(category); }
+        
+        if (inboundIds && inboundIds.length > 0 && updateInboundSql.length > 0) {
+            const placeholders = inboundIds.map(() => '?').join(',');
+            const sql = `UPDATE logistics_inbound SET ${updateInboundSql.join(', ')} WHERE id IN (${placeholders})`;
+            db.run(sql, [...updateInboundParams, ...inboundIds], (err) => {
+                if (err) hasError = true;
+            });
+        }
+
+        const updateOutboundSql = [];
+        const updateOutboundParams = [];
+        if (destination) { updateOutboundSql.push('destination = ?'); updateOutboundParams.push(destination); }
+        if (category) { updateOutboundSql.push('category = ?'); updateOutboundParams.push(category); }
+        
+        if (outboundIds && outboundIds.length > 0 && updateOutboundSql.length > 0) {
+            const placeholders = outboundIds.map(() => '?').join(',');
+            const sql = `UPDATE logistics_outbound SET ${updateOutboundSql.join(', ')} WHERE id IN (${placeholders})`;
+            db.run(sql, [...updateOutboundParams, ...outboundIds], (err) => {
+                if (err) hasError = true;
+            });
+        }
+
+        db.run("SELECT 1", function() {
+            if (hasError) {
+                db.run("ROLLBACK");
+                res.status(500).json({ error: "Bulk update failed" });
+            } else {
+                db.run("COMMIT", (err2) => {
+                    if (err2) return res.status(500).json({ error: err2.message });
+                    res.json({ message: 'Bulk update success' });
+                });
+            }
+        });
+    });
+});
+
+
+// --- Categories API ---
+router.get('/categories', (req, res) => {
+    const sql = `
+        SELECT DISTINCT category FROM logistics_inbound WHERE category IS NOT NULL AND category != ''
+        UNION
+        SELECT DISTINCT category FROM logistics_outbound WHERE category IS NOT NULL AND category != ''
+    `;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows.map(r => r.category).filter(c => c));
+    });
+});
+
 // --- Inbound (입고) ---
 router.post('/inbound', (req, res) => {
     const { date, supplier, location_id, items } = req.body;
@@ -235,7 +304,7 @@ router.post('/inbound', (req, res) => {
         db.run("BEGIN TRANSACTION");
         const sql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const stmt = db.prepare(sql);
@@ -245,7 +314,7 @@ router.post('/inbound', (req, res) => {
         
         try {
             for (let i of items) {
-                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '');
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '');
             }
         } catch (e) {
             hasError = true;
@@ -282,7 +351,7 @@ router.post('/outbound', (req, res) => {
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
@@ -297,7 +366,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note, function(err) {
+            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', function(err) {
                 if (err) {
                     hasError = true;
                     return;
@@ -335,14 +404,14 @@ router.get('/history', (req, res) => {
         page = 1, limit = 50, type = 'all', search = '',
         sortCol = 'date', sortDir = 'desc',
         startDate = '', endDate = '',
-        searchParty = '', searchItem = '', searchSpec = ''
+        searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = ''
     } = req.query;
 
     page = parseInt(page, 10) || 1;
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total'];
+    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category'];
     const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
     const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -364,26 +433,47 @@ router.get('/history', (req, res) => {
         whereClauses.push("date <= ?");
         params.push(endDate);
     }
-    if (searchParty) {
-        whereClauses.push("(supplier LIKE ? OR destination LIKE ?)");
-        params.push(`%${searchParty}%`, `%${searchParty}%`);
-    }
-    if (searchItem) {
-        whereClauses.push("item LIKE ?");
-        params.push(`%${searchItem}%`);
-    }
-    if (searchSpec) {
-        whereClauses.push("spec LIKE ?");
-        params.push(`%${searchSpec}%`);
+    
+    
+    if (type === 'direct') {
+        whereClauses.push("is_direct = 1");
     }
 
-    // General search (from the main search bar)
+    if (category) {
+        whereClauses.push("category = ?");
+        params.push(category);
+    }
+    
+    if (searchTarget && searchKeyword) {
+        const kw = `%${searchKeyword.trim()}%`;
+        switch(searchTarget) {
+            case 'supplier':
+                whereClauses.push("supplier LIKE ?"); params.push(kw); break;
+            case 'destination':
+                whereClauses.push("destination LIKE ?"); params.push(kw); break;
+            case 'item':
+                whereClauses.push("item LIKE ?"); params.push(kw); break;
+            case 'spec':
+                whereClauses.push("spec LIKE ?"); params.push(kw); break;
+            case 'note':
+                whereClauses.push("note LIKE ?"); params.push(kw); break;
+            case 'category':
+                whereClauses.push("category LIKE ?"); params.push(kw); break;
+            default:
+                whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ?)");
+                params.push(kw, kw, kw, kw, kw, kw);
+                break;
+        }
+    }
+
+
+    // General search (from the main search bar) (Kept for compatibility if used)
     const searchTerms = search.trim().split(/\s+/).filter(Boolean);
     if (searchTerms.length > 0) {
         searchTerms.forEach(term => {
-            whereClauses.push(`(date LIKE ? OR supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ?)`);
+            whereClauses.push(`(date LIKE ? OR supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ?)`);
             const likeTerm = `%${term}%`;
-            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
         });
     }
 
@@ -394,7 +484,7 @@ router.get('/history', (req, res) => {
             SELECT 
                 'inbound' as type, i.id, i.date, 
                 i.supplier as supplier, NULL as destination, 
-                NULL as actual_destination, i.item, i.spec, i.unit, 
+                NULL as actual_destination, i.item, i.spec, i.unit, i.category, 
                 i.qty_initial as qty, 
                 i.unit_price as inbound_price, NULL as outbound_price,
                 (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
@@ -407,7 +497,7 @@ router.get('/history', (req, res) => {
                 'outbound' as type, o.id, o.date, 
                 CASE WHEN o.is_direct = 1 THEN di.supplier ELSE NULL END as supplier, 
                 o.destination as destination, 
-                o.actual_destination, o.item, o.spec, o.unit, 
+                o.actual_destination, o.item, o.spec, o.unit, o.category, 
                 o.qty as qty, 
                 CASE WHEN o.is_direct = 1 THEN di.unit_price ELSE NULL END as inbound_price, 
                 o.selling_price as outbound_price, 
@@ -535,19 +625,20 @@ router.get('/direct/template', async (req, res) => {
         const worksheet = workbook.addWorksheet('직출고 일괄등록');
 
         worksheet.columns = [
-            { header: '거래일자 (YYYY-MM-DD)', key: 'date', width: 20 },
-            { header: '매입처(공급처)', key: 'supplier', width: 20 },
-            { header: '매출처(납품처)', key: 'destination', width: 20 },
-            { header: '실출고처(현장명)', key: 'actual_destination', width: 25 },
-            { header: '품목명', key: 'item', width: 20 },
-            { header: '규격', key: 'spec', width: 15 },
+            { header: '일자 (YYYY-MM-DD)', key: 'date', width: 15 },
+            { header: '매입처', key: 'supplier', width: 20 },
+            { header: '매출처', key: 'destination', width: 20 },
+            { header: '실도착지', key: 'actual_destination', width: 20 },
+            { header: '분류', key: 'category', width: 15 },
+            { header: '품목명', key: 'item', width: 30 },
+            { header: '규격', key: 'spec', width: 20 },
             { header: '단위', key: 'unit', width: 10 },
-            { header: '수량', key: 'qty', width: 10 },
+            { header: '수량', key: 'qty', width: 15 },
             { header: '매입단가', key: 'in_price', width: 15 },
             { header: '매출단가', key: 'out_price', width: 15 },
-            { header: '총 배송비', key: 'shipping_fee', width: 15 },
-            { header: '배송비 부가세 포함(Y/N)', key: 'shipping_vat', width: 25 },
-            { header: '비고', key: 'note', width: 30 }
+            { header: '운반비 (매출)', key: 'shipping_fee', width: 15 },
+            { header: '운반비 부가세포함(Y/N)', key: 'shipping_vat', width: 15 },
+            { header: '비고', key: 'note', width: 25 }
         ];
 
         // Header style
@@ -601,23 +692,24 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             const supplier = getVal(2);
             const destination = getVal(3);
             const actual_destination = getVal(4);
-            const item = getVal(5);
-            const spec = getVal(6);
-            const unit = getVal(7);
-            const qty = parseFloat(getVal(8)) || 0;
-            const in_price = parseFloat(getVal(9)) || 0;
-            const out_price = parseFloat(getVal(10)) || 0;
-            const shipping_fee = parseFloat(getVal(11)) || 0;
-            const shipping_vat_raw = getVal(12).toUpperCase();
+            const category = getVal(5);
+            const item = getVal(6);
+            const spec = getVal(7);
+            const unit = getVal(8);
+            const qty = parseFloat(getVal(9)) || 0;
+            const in_price = parseFloat(getVal(10)) || 0;
+            const out_price = parseFloat(getVal(11)) || 0;
+            const shipping_fee = parseFloat(getVal(12)) || 0;
+            const shipping_vat_raw = getVal(13).toUpperCase();
             const shipping_vat = (shipping_vat_raw === 'Y' || shipping_vat_raw === '1' || shipping_vat_raw === 'TRUE') ? 1 : 0;
-            const note = getVal(13);
+            const note = getVal(14);
 
             if (!date || !supplier || !destination || !item || qty === 0 || in_price < 0) {
                 return; // Skip invalid rows
             }
 
             rows.push({
-                date, supplier, destination, actual_destination, item, spec, unit, qty, in_price, out_price, shipping_fee, shipping_vat, note
+                date, supplier, destination, actual_destination, category, item, spec, unit, qty, in_price, out_price, shipping_fee, shipping_vat, note
             });
         });
 
@@ -673,7 +765,7 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                         const currentItem = g.items[idx];
                         // 1. Insert Inbound
                         db.run(`
-                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct)
+                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1)
                         `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, g.note], function(err) {
                             if (err) {
@@ -689,8 +781,8 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                             const itemShippingVat = idx === 0 ? g.shipping_fee_vat_included : 0;
 
                             db.run(`
-                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
                             `, [g.date, g.destination, g.actual_destination, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemShipping, itemShippingVat, g.note], function(err) {
                                 if (err) {
                                     hasError = true;
@@ -742,15 +834,15 @@ router.post('/direct', (req, res) => {
         // 1. Inbound insert (is_direct = 1, qty_remaining = 0)
         const inSql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, ?)
         `;
         
         // 2. Outbound insert (is_direct = 1)
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
         `;
         
         // 3. Mapping insert
@@ -762,11 +854,11 @@ router.post('/direct', (req, res) => {
 
         for (let i of items) {
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', function(errIn) {
+            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -822,7 +914,7 @@ router.post('/settlement/:type', (req, res) => {
 // --- Inbound Update (입고 내역 수정) ---
 router.put('/direct/:id', (req, res) => {
     const id = req.params.id; // This is the outbound_id
-    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, shipping_fee, shipping_fee_vat_included, note } = req.body;
+    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, shipping_fee, shipping_fee_vat_included, note, category } = req.body;
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
@@ -844,18 +936,18 @@ router.put('/direct/:id', (req, res) => {
             // 1. Update Inbound
             const inSql = `
                 UPDATE logistics_inbound
-                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, note = ?
+                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, note = ?, category = ?
                 WHERE id = ?
             `;
-            db.run(inSql, [date, supplier, qty, inbound_price, note || '', inboundId], function(e) { if(e) hasError = true; });
+            db.run(inSql, [date, supplier, qty, inbound_price, note || '', category || '', inboundId], function(e) { if(e) hasError = true; });
 
             // 2. Update Outbound
             const outSql = `
                 UPDATE logistics_outbound
-                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?
+                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?
                 WHERE id = ?
             `;
-            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', id], function(e) { if(e) hasError = true; });
+            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', category || '', id], function(e) { if(e) hasError = true; });
 
             // 3. Update Lots
             const lotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
