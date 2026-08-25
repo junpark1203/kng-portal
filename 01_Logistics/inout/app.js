@@ -269,8 +269,11 @@ const app = {
                 <td class="text-end">${renderCell(r.outbound_price, true)}</td>
                 <td class="text-end">${renderCell(r.outbound_total, true)}</td>
                 <td class="text-center text-nowrap">
-                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
-                    <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>
+                    ${r.settlement_status === '정산완료' 
+                        ? `<span class="badge bg-secondary">정산완료</span>` 
+                        : `<button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
+                           <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>`
+                    }
                 </td>
             </tr>
             `;
