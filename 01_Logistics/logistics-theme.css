@@ -340,6 +340,7 @@ h4 {
 .drawer-items-table tbody td {
     padding: 0.4rem 0.5rem !important;
     vertical-align: middle;
+    word-break: keep-all;
 }
 .drawer-items-table .sub-row td {
     padding: 0.25rem 0.5rem 0.5rem 0.5rem !important;

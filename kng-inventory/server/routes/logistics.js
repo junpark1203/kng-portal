@@ -112,7 +112,11 @@ function initLogisticsTables(database) {
                 database.run(`CREATE INDEX IF NOT EXISTS idx_inbound_date ON logistics_inbound(date DESC)`);
                 database.run(`CREATE INDEX IF NOT EXISTS idx_inbound_created ON logistics_inbound(created_at DESC)`);
                 database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_date ON logistics_outbound(date DESC)`);
-                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_created ON logistics_outbound(created_at DESC)`, (err2) => {
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_created ON logistics_outbound(created_at DESC)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_inbound_is_direct ON logistics_inbound(is_direct)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_is_direct ON logistics_outbound(is_direct)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_lots_outbound ON logistics_outbound_lots(outbound_id)`);
+                database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_lots_inbound ON logistics_outbound_lots(inbound_id)`, (err2) => {
                     if (err2) reject(err2);
                     else resolve();
                 });
@@ -397,12 +401,14 @@ router.get('/history', (req, res) => {
             SELECT 
                 'outbound' as type, o.id, o.date, 
                 CASE WHEN o.is_direct = 1 THEN 
-                    (SELECT i.supplier FROM logistics_inbound i JOIN logistics_outbound_lots l ON i.id = l.inbound_id WHERE l.outbound_id = o.id LIMIT 1) || ' -> ' || o.destination
+                    di.supplier || ' -> ' || o.destination
                 ELSE o.destination END as party, 
                 o.actual_destination, o.item, o.spec, o.unit, 
                 o.qty as qty, o.selling_price as price, o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct
             FROM logistics_outbound o
+            LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
+            LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
         )
         SELECT * FROM combined
         ${whereStr}
