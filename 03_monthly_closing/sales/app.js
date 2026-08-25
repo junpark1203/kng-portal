@@ -343,6 +343,85 @@ const app = {
     },
     
     // 거래내역서 출력
+    
+    downloadSelectedExcel: async function() {
+        if (this.checkedIds.size === 0) {
+            alert('엑셀로 다운로드할 항목을 선택해주세요.');
+            return;
+        }
+
+        const selectedRows = this.currentData.filter(r => this.checkedIds.has(r.id));
+        if (selectedRows.length === 0) return;
+
+        try {
+            const ExcelJS = window.ExcelJS;
+            if (!ExcelJS) {
+                alert('엑셀 라이브러리를 불러오지 못했습니다. 페이지를 새로고침 해주세요.');
+                return;
+            }
+            
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('유류자재공급내역');
+
+            worksheet.columns = [
+                { header: '일자', key: 'date', width: 15 },
+                { header: '매출처', key: 'destination', width: 25 },
+                { header: '품명', key: 'item', width: 25 },
+                { header: '규격', key: 'spec', width: 15 },
+                { header: '단위', key: 'unit', width: 10 },
+                { header: '수량', key: 'qty', width: 15 },
+                { header: '단가', key: 'price', width: 15 },
+                { header: '금액(총액)', key: 'total', width: 15 },
+                { header: '상태', key: 'status', width: 15 },
+                { header: '정산일자', key: 'tax_date', width: 15 },
+                { header: '비고', key: 'note', width: 30 }
+            ];
+
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE0E0E0' }
+            };
+
+            selectedRows.forEach(r => {
+                worksheet.addRow({
+                    date: r.date ? r.date.split('T')[0] : '',
+                    destination: r.destination,
+                    item: r.item,
+                    spec: r.spec,
+                    unit: r.unit,
+                    qty: r.qty,
+                    price: r.selling_price,
+                    total: r.selling_price * r.qty,
+                    status: r.settlement_status,
+                    tax_date: r.tax_date ? r.tax_date.split('T')[0] : '',
+                    note: r.note || ''
+                });
+            });
+
+            worksheet.getColumn('qty').numFmt = '#,##0.00';
+            worksheet.getColumn('price').numFmt = '#,##0';
+            worksheet.getColumn('total').numFmt = '#,##0';
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `유류자재공급내역_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+        } catch (err) {
+            console.error(err);
+            alert('엑셀 다운로드 중 오류가 발생했습니다.');
+        }
+    },
+
     printSelected: function() {
         const checkedBoxes = document.querySelectorAll('.row-chk:checked');
         if (checkedBoxes.length === 0) return alert('출력할 내역을 선택해주세요.');
