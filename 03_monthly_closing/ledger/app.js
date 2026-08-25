@@ -55,82 +55,76 @@ const app = {
         try {
             const res = await api.get('/partners');
             this.partners = res;
-            
-            const input = document.getElementById('partnerInput');
-            const sug = document.getElementById('partnerSuggestions');
-            
-            input.addEventListener('input', (e) => {
-                const val = e.target.value.trim().toLowerCase();
-                if (val.length < 1) {
-                    sug.style.display = 'none';
-                    return;
-                }
-                
-                const matches = this.partners.filter(p => 
-                    (p.name && p.name.toLowerCase().includes(val)) || 
-                    (p.company_name && p.company_name.toLowerCase().includes(val))
-                );
-
-                if (matches.length > 0) {
-                    sug.innerHTML = matches.map(m => {
-                        const displayText = m.company_name ? `${m.name} / ${m.company_name}` : m.name;
-                        return `<div class="autocomplete-suggestion" data-name="${m.name}">${displayText}</div>`;
-                    }).join('');
-                    sug.style.display = 'block';
-                    
-                    sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('click', () => {
-                            input.value = div.dataset.name;
-                            sug.style.display = 'none';
-                            this.loadLedger(); // Trigger search when selected
-                        });
-                    });
-                } else {
-                    sug.style.display = 'none';
-                }
-            });
-
-            document.addEventListener('click', (e) => {
-                if (e.target !== input) sug.style.display = 'none';
-            });
-
-            this.attachAutocompleteKeyboard(input, sug);
         } catch (error) {
             console.error('Failed to load partners', error);
         }
     },
-
-    attachAutocompleteKeyboard(input, sugBox) {
-        let currentFocus = -1;
-        input.addEventListener('keydown', (e) => {
-            if (sugBox.style.display === 'none') return;
-            const items = sugBox.querySelectorAll('.autocomplete-suggestion');
-            if (items.length === 0) return;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                currentFocus++;
-                if (currentFocus >= items.length) currentFocus = 0;
-                this.setActive(items, currentFocus);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                currentFocus--;
-                if (currentFocus < 0) currentFocus = items.length - 1;
-                this.setActive(items, currentFocus);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (currentFocus > -1) {
-                    items[currentFocus].click();
-                } else {
-                    // if they press enter without selection, just load ledger
-                    sugBox.style.display = 'none';
-                    this.loadLedger();
-                }
-            }
-        });
-
-        input.addEventListener('input', () => { currentFocus = -1; });
+    
+    openPartnerSearchModal: function(targetInputId) {
+        if (!this.partners || this.partners.length === 0) {
+            this.loadPartners().then(() => this.showPartnerSearchModal(targetInputId));
+        } else {
+            this.showPartnerSearchModal(targetInputId);
+        }
     },
+
+    showPartnerSearchModal: function(targetInputId) {
+        const inputEl = document.getElementById(targetInputId);
+        if (!inputEl) return;
+        
+        document.getElementById('partnerSearchTargetInput').value = targetInputId;
+        const searchVal = inputEl.value.trim();
+        document.getElementById('partnerSearchInput').value = searchVal;
+        
+        this.filterPartnerSearch();
+
+        const modalEl = document.getElementById('partnerSearchModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        setTimeout(() => document.getElementById('partnerSearchInput').focus(), 500);
+    },
+
+    filterPartnerSearch: function() {
+        const val = document.getElementById('partnerSearchInput').value.trim().toLowerCase();
+        const listContainer = document.getElementById('partnerSearchList');
+        
+        let matches = this.partners;
+        if (val) {
+            matches = matches.filter(p => 
+                (p.name && p.name.toLowerCase().includes(val)) || 
+                (p.company_name && p.company_name.toLowerCase().includes(val))
+            );
+        }
+        
+        if (matches.length === 0) {
+            listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검색된 거래처가 없습니다.</div>`;
+            return;
+        }
+
+        listContainer.innerHTML = matches.map(m => {
+            const displayText = m.company_name ? `${m.name} / <small class="text-muted">${m.company_name}</small>` : m.name;
+            return `
+                <button type="button" class="list-group-item list-group-item-action py-2" onclick="app.selectPartner('${m.name}')">
+                    <div class="fw-bold">${m.name}</div>
+                    ${m.company_name ? `<div style="font-size: 0.8rem;" class="text-muted">${m.company_name}</div>` : ''}
+                </button>
+            `;
+        }).join('');
+    },
+
+    selectPartner: function(name) {
+        const targetId = document.getElementById('partnerSearchTargetInput').value;
+        if (targetId) {
+            document.getElementById(targetId).value = name;
+        }
+        const modal = bootstrap.Modal.getInstance(document.getElementById('partnerSearchModal'));
+        if (modal) modal.hide();
+        this.loadLedger(); // Trigger search automatically after selection
+    },
+
+    
 
     setActive(items, currentFocus) {
         items.forEach(item => item.classList.remove('active-suggestion'));

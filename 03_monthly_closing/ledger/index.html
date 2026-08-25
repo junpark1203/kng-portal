@@ -30,34 +30,7 @@
             .no-print { display: none !important; }
         }
 
-        .autocomplete-suggestions {
-            border: 1px solid #ced4da;
-            background: #fff;
-            max-height: 200px;
-            overflow-y: auto;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            z-index: 1000;
-            width: 100%;
-            border-radius: 0.25rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .autocomplete-suggestion {
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .autocomplete-suggestion:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-suggestion:hover,
-        .active-suggestion {
-            background-color: #f8f9fa;
-            color: #4361ee;
-            font-weight: 500;
-        }
+        
     </style>
 </head>
 <body class="bg-light">
@@ -81,9 +54,11 @@
             <div class="col-md-3">
                 <label class="form-label mb-1 fw-bold small text-muted">거래처 선택</label>
                 <div class="input-group input-group-sm position-relative">
-                    <input type="text" id="partnerInput" class="form-control" placeholder="거래처명 / 사업자명 검색..." autocomplete="off">
-                    <button class="btn btn-primary fw-bold" type="button" onclick="app.loadLedger()">조회</button>
-                    <div id="partnerSuggestions" class="autocomplete-suggestions" style="display:none;"></div>
+                    <div class="input-group input-group-sm">
+                        <input type="text" id="partnerInput" class="form-control bg-white" placeholder="클릭하여 검색..." readonly style="cursor:pointer;" onclick="app.openPartnerSearchModal('partnerInput')">
+                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('partnerInput')"><i class='bx bx-search'></i></button>
+                        <button class="btn btn-primary fw-bold" type="button" onclick="app.loadLedger()">조회</button>
+                    </div>
                 </div>
             </div>
             
@@ -152,6 +127,31 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="../../js/api.js"></script>
 <script src="app.js"></script>
+
+
+<!-- 거래처 검색 모달 -->
+<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white py-2">
+                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="partnerSearchTargetInput">
+                <div class="input-group mb-3 shadow-sm">
+                    <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()">
+                </div>
+                <div class="list-group shadow-sm" id="partnerSearchList">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 </body>
 </html>
