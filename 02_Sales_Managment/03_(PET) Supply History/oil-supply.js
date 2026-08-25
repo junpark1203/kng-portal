@@ -784,21 +784,104 @@ async function deleteSelected() {
 }
 
 
+
 async function exportToExcel() {
-    if (filteredData.length === 0) return showToast('내보낼 데이터가 없습니다.', 'warning');
-    const btn = $('btnExportExcel');
+    if (filteredData.length === 0) {
+        alert('내보낼 데이터가 없습니다.');
+        return;
+    }
+    const btn = document.getElementById('btnExportExcel');
     const originalText = btn.innerHTML;
     try {
         btn.innerHTML = "<i class='bx bx-loader bx-spin'></i> 생성 중...";
         btn.disabled = true;
 
         const checkedBoxes = Array.from(document.querySelectorAll('.row-check:checked'));
-        let ids;
+        let selectedData = [];
         if (checkedBoxes.length > 0) {
-            ids = checkedBoxes.map(cb => Number(cb.value));
+            const ids = new Set(checkedBoxes.map(cb => Number(cb.value)));
+            selectedData = filteredData.filter(d => ids.has(d.id));
         } else {
-            ids = filteredData.map(d => d.id);
+            selectedData = filteredData;
         }
+        
+        if (selectedData.length === 0) {
+            alert('선택된 데이터가 없습니다.');
+            return;
+        }
+
+        const ExcelJS = window.ExcelJS;
+        if (!ExcelJS) {
+            alert('엑셀 라이브러리를 불러오지 못했습니다. 페이지를 새로고침 해주세요.');
+            return;
+        }
+        
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('유류 자재 공급 내역');
+
+        worksheet.columns = [
+            { header: '일자', key: 'supplyDate', width: 15 },
+            { header: '현장명', key: 'site', width: 25 },
+            { header: '공급사', key: 'supplier', width: 20 },
+            { header: '제조사', key: 'manufacturer', width: 20 },
+            { header: '구분', key: 'category', width: 15 },
+            { header: '품목명', key: 'item', width: 25 },
+            { header: '규격', key: 'spec', width: 15 },
+            { header: '단위', key: 'unit', width: 10 },
+            { header: '수량', key: 'qty', width: 15 },
+            { header: '단가', key: 'price', width: 15 },
+            { header: '총액', key: 'total', width: 15 },
+            { header: '비고', key: 'note', width: 30 }
+        ];
+
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        selectedData.forEach(d => {
+            worksheet.addRow({
+                supplyDate: d.supplyDate || '-',
+                site: d.site || '-',
+                supplier: d.supplier || '-',
+                manufacturer: d.manufacturer || '-',
+                category: d.category || '-',
+                item: d.item || '-',
+                spec: d.spec || '-',
+                unit: d.unit || '-',
+                qty: d.qty || 0,
+                price: d.price || 0,
+                total: d.total || 0,
+                note: d.note || '-'
+            });
+        });
+
+        worksheet.getColumn('qty').numFmt = '#,##0.00';
+        worksheet.getColumn('price').numFmt = '#,##0';
+        worksheet.getColumn('total').numFmt = '#,##0';
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        a.download = `유류자재공급내역_${dateStr}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        alert('엑셀 다운로드 오류: ' + e.message);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
 
         const res = await authFetch(API_BASE + '/export', {
             method: 'POST',
