@@ -1365,41 +1365,63 @@ const app = {
                 ? (data.location_name || '-')
                 : (data.shipping_fee ? data.shipping_fee.toLocaleString() + '원 ' + shipVatLabel : '-');
             
-            let partnerHtml = '';
+            let metaBarHtml = '';
             if (type === 'outbound' && data.is_direct === 1) {
-                partnerHtml = `
-                    <div class="drawer-meta-item ms-3">
-                        <span class="drawer-meta-label"><i class='bx bx-buildings'></i> 매입처(공급)</span>
-                        <span class="drawer-meta-value">${data.supplier || '-'}</span>
+                metaBarHtml = `
+                <div class="drawer-meta-bar ${metaClass} flex-column align-items-start gap-2">
+                    <div class="d-flex w-100 justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div class="drawer-meta-item">${badgeHtml}</div>
+                            <div class="drawer-meta-item">
+                                <span class="drawer-meta-label"><i class='bx bx-calendar'></i> 일자</span>
+                                <span class="drawer-meta-value">${data.date}</span>
+                            </div>
+                        </div>
+                        <div class="drawer-meta-item">
+                            <span class="drawer-meta-label"><i class='bx bx-info-circle'></i> ${extraLabel}</span>
+                            <span class="drawer-meta-value">${extraValue}</span>
+                        </div>
                     </div>
-                    <div class="drawer-meta-item ms-3">
-                        <span class="drawer-meta-label"><i class='bx bx-store-alt'></i> 매출처(납품)</span>
-                        <span class="drawer-meta-value">${data.destination}</span>
+                    <hr class="w-100 my-1 border-secondary opacity-25">
+                    <div class="d-flex w-100 flex-wrap gap-4">
+                        <div class="drawer-meta-item">
+                            <span class="drawer-meta-label"><i class='bx bx-buildings'></i> 매입처(공급)</span>
+                            <span class="drawer-meta-value fw-bold text-dark">${data.supplier || '-'}</span>
+                        </div>
+                        <div class="drawer-meta-item">
+                            <span class="drawer-meta-label"><i class='bx bx-store-alt'></i> 매출처(납품)</span>
+                            <span class="drawer-meta-value fw-bold text-primary">${data.destination}</span>
+                        </div>
+                        ${data.actual_destination ? `
+                        <div class="drawer-meta-item">
+                            <span class="drawer-meta-label"><i class='bx bx-map'></i> 실출고처</span>
+                            <span class="drawer-meta-value text-dark">${data.actual_destination}</span>
+                        </div>
+                        ` : ''}
                     </div>
+                </div>
                 `;
             } else {
                 const partnerLabel = type === 'inbound' ? '매입처' : '출고처';
                 const partnerValue = type === 'inbound' ? data.supplier : data.destination;
-                partnerHtml = `
+                const partnerHtml = `
                     <div class="drawer-meta-item ms-3">
                         <span class="drawer-meta-label"><i class='bx bx-buildings'></i> ${partnerLabel}</span>
                         <span class="drawer-meta-value">${partnerValue}</span>
                     </div>
                 `;
-            }
+                
+                let actualDestHtml = '';
+                if (type === 'outbound' && data.actual_destination) {
+                    actualDestHtml = `
+                        <div class="drawer-meta-item ms-3">
+                            <span class="drawer-meta-label"><i class='bx bx-map'></i> 실출고처</span>
+                            <span class="drawer-meta-value">${data.actual_destination}</span>
+                        </div>
+                    `;
+                }
 
-            let actualDestHtml = '';
-            if (type === 'outbound' && data.actual_destination) {
-                actualDestHtml = `
-                    <div class="drawer-meta-item ms-3">
-                        <span class="drawer-meta-label"><i class='bx bx-map'></i> 실출고처</span>
-                        <span class="drawer-meta-value">${data.actual_destination}</span>
-                    </div>
-                `;
-            }
-            
-            let html = `
-            <div style="max-width: 1000px; margin: 0;">
+                metaBarHtml = `
                 <div class="drawer-meta-bar ${metaClass}">
                     <div class="drawer-meta-item">
                         ${badgeHtml}
@@ -1415,6 +1437,12 @@ const app = {
                         <span class="drawer-meta-value">${extraValue}</span>
                     </div>
                 </div>
+                `;
+            }
+
+            let html = `
+            <div class="w-100">
+                ${metaBarHtml}
                 ${data.note ? `<div class="mt-2 mb-3 px-3 py-2 bg-light rounded text-muted" style="font-size:0.85rem;"><i class='bx bx-message-square-detail'></i> <strong>비고:</strong> ${data.note}</div>` : ''}
                 
                 <table class="table table-bordered drawer-items-table align-middle mb-0">
