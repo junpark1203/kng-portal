@@ -90,7 +90,8 @@ function initEvents() {
         document.querySelectorAll('.row-check').forEach(cb => cb.checked = e.target.checked);
     });
 
-    $('addBtn').addEventListener('click', () => openModal());
+    $('addBtn')?.addEventListener('click', () => openModal());
+    $('btnExportExcel')?.addEventListener('click', exportToExcel);
     $('deleteBtn').addEventListener('click', deleteSelected);
     $('closeModalBtn').addEventListener('click', closeModal);
     $('cancelBtn').addEventListener('click', closeModal);
