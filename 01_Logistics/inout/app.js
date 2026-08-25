@@ -235,7 +235,7 @@ const app = {
     renderHistoryTable: function(data) {
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
             return;
         }
 
@@ -247,17 +247,27 @@ const app = {
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
+            
+            const renderCell = (val, isNumber = false) => {
+                if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
+                return isNumber ? val.toLocaleString() : val;
+            };
+
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
                 <td class="text-center" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
                 <td>${badge}</td>
                 <td>${r.date}</td>
-                <td>${r.party}</td>
-                <td><strong>${r.item}</strong></td>
+                <td>${renderCell(r.supplier)}</td>
+                <td>${renderCell(r.destination)}</td>
+                <td><strong class="text-primary">${r.item}</strong></td>
                 <td>${r.spec}</td>
                 <td>${r.unit}</td>
-                <td class="${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty}</td>
-                <td>${r.price.toLocaleString()}</td>
+                <td class="text-end ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
+                <td class="text-end">${renderCell(r.inbound_price, true)}</td>
+                <td class="text-end">${renderCell(r.inbound_total, true)}</td>
+                <td class="text-end">${renderCell(r.outbound_price, true)}</td>
+                <td class="text-end">${renderCell(r.outbound_total, true)}</td>
                 <td class="text-center text-nowrap">
                     <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
                     <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>

@@ -122,23 +122,27 @@
                     </div>
                     
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle" style="font-size: 0.9rem;">
-                            <thead class="table-light sticky-top" style="z-index: 10;">
+                        <table class="table table-hover table-sm align-middle" style="font-size: 0.85rem;">
+                            <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                                 <tr>
-                                    <th style="width: 40px;" class="text-center"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
+                                    <th style="width: 30px;" class="text-center"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
                                     <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
                                     <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
-                                    <th id="th-party" style="cursor:pointer" onclick="app.toggleSort('party')" class="user-select-none">거래처<span class="sort-icon"></span></th>
+                                    <th id="th-supplier" style="cursor:pointer" onclick="app.toggleSort('supplier')" class="user-select-none">입고처<span class="sort-icon"></span></th>
+                                    <th id="th-destination" style="cursor:pointer" onclick="app.toggleSort('destination')" class="user-select-none">출고처<span class="sort-icon"></span></th>
                                     <th id="th-item" style="cursor:pointer" onclick="app.toggleSort('item')" class="user-select-none">품목명<span class="sort-icon"></span></th>
                                     <th id="th-spec" style="cursor:pointer" onclick="app.toggleSort('spec')" class="user-select-none">규격<span class="sort-icon"></span></th>
                                     <th id="th-unit" style="cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none">단위<span class="sort-icon"></span></th>
-                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none">수량<span class="sort-icon"></span></th>
-                                    <th id="th-price" style="cursor:pointer" onclick="app.toggleSort('price')" class="user-select-none">단가<span class="sort-icon"></span></th>
-                                    <th class="text-center user-select-none">삭제</th>
+                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none text-end">수량<span class="sort-icon"></span></th>
+                                    <th id="th-inbound_price" style="cursor:pointer" onclick="app.toggleSort('inbound_price')" class="user-select-none text-end">매입단가<span class="sort-icon"></span></th>
+                                    <th id="th-inbound_total" style="cursor:pointer" onclick="app.toggleSort('inbound_total')" class="user-select-none text-end">매입합계<span class="sort-icon"></span></th>
+                                    <th id="th-outbound_price" style="cursor:pointer" onclick="app.toggleSort('outbound_price')" class="user-select-none text-end">매출단가<span class="sort-icon"></span></th>
+                                    <th id="th-outbound_total" style="cursor:pointer" onclick="app.toggleSort('outbound_total')" class="user-select-none text-end">매출합계<span class="sort-icon"></span></th>
+                                    <th class="text-center user-select-none">관리</th>
                                 </tr>
                             </thead>
                             <tbody id="historyTbody">
-                                <tr><td colspan="10" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
+                                <tr><td colspan="14" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
                     </div>

@@ -342,7 +342,7 @@ router.get('/history', (req, res) => {
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    const validSortCols = ['type', 'date', 'party', 'item', 'spec', 'unit', 'qty', 'price'];
+    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total'];
     const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
     const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -365,8 +365,8 @@ router.get('/history', (req, res) => {
         params.push(endDate);
     }
     if (searchParty) {
-        whereClauses.push("party LIKE ?");
-        params.push(`%${searchParty}%`);
+        whereClauses.push("(supplier LIKE ? OR destination LIKE ?)");
+        params.push(`%${searchParty}%`, `%${searchParty}%`);
     }
     if (searchItem) {
         whereClauses.push("item LIKE ?");
@@ -381,9 +381,9 @@ router.get('/history', (req, res) => {
     const searchTerms = search.trim().split(/\s+/).filter(Boolean);
     if (searchTerms.length > 0) {
         searchTerms.forEach(term => {
-            whereClauses.push(`(date LIKE ? OR party LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ?)`);
+            whereClauses.push(`(date LIKE ? OR supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ?)`);
             const likeTerm = `%${term}%`;
-            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
         });
     }
 
@@ -392,19 +392,28 @@ router.get('/history', (req, res) => {
     const baseSql = `
         WITH combined AS (
             SELECT 
-                'inbound' as type, i.id, i.date, i.supplier as party, NULL as actual_destination, i.item, i.spec, i.unit, 
-                i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
+                'inbound' as type, i.id, i.date, 
+                i.supplier as supplier, NULL as destination, 
+                NULL as actual_destination, i.item, i.spec, i.unit, 
+                i.qty_initial as qty, 
+                i.unit_price as inbound_price, NULL as outbound_price,
+                (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
+                0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
                 i.is_direct
             FROM logistics_inbound i
             WHERE i.is_direct = 0
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, 
-                CASE WHEN o.is_direct = 1 THEN 
-                    di.supplier || ' -> ' || o.destination
-                ELSE o.destination END as party, 
+                CASE WHEN o.is_direct = 1 THEN di.supplier ELSE NULL END as supplier, 
+                o.destination as destination, 
                 o.actual_destination, o.item, o.spec, o.unit, 
-                o.qty as qty, o.selling_price as price, o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
+                o.qty as qty, 
+                CASE WHEN o.is_direct = 1 THEN di.unit_price ELSE NULL END as inbound_price, 
+                o.selling_price as outbound_price, 
+                CASE WHEN o.is_direct = 1 THEN (di.unit_price * o.qty) ELSE NULL END as inbound_total,
+                (o.selling_price * o.qty) as outbound_total,
+                o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
