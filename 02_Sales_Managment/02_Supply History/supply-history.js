@@ -376,7 +376,13 @@ async function exportToExcel() {
         btn.innerHTML = "<i class='bx bx-loader bx-spin'></i> 생성 중...";
         btn.disabled = true;
 
-        const ids = filteredData.map(d => d.id);
+        const checkedBoxes = Array.from(document.querySelectorAll('.row-check:checked'));
+        let ids;
+        if (checkedBoxes.length > 0) {
+            ids = checkedBoxes.map(cb => Number(cb.value));
+        } else {
+            ids = filteredData.map(d => d.id);
+        }
         const res = await authFetch(API_BASE + '/export', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
