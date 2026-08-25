@@ -286,8 +286,9 @@ const app = {
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
                 <td class="text-center" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
-                <td>${badge}</td>
-                <td>${r.date}</td>
+                <td class="text-center">${badge}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
+                <td class="text-center">${r.date.split('T')[0]}</td>
                 <td>${renderCell(r.supplier)}</td>
                 <td>${renderCell(r.destination)}</td>
                 <td><strong class="text-primary">${r.item}</strong></td>
