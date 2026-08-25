@@ -401,7 +401,7 @@ router.get('/history', (req, res) => {
                 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
                 i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax
             FROM logistics_inbound i
-            WHERE i.is_direct = 0
+            ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, 
