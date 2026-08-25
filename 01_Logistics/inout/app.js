@@ -2012,7 +2012,7 @@ const app = {
             alert('입고 내역이 수정되었습니다.');
             bootstrap.Modal.getInstance($('editInboundModal')).hide();
             this.loadHistory();
-            if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
+            if ($('detailModal') && $('detailModal').classList.contains('show')) {
                 this.renderDrawerDetail(id, 'inbound');
             }
         } catch(err) {
@@ -2142,7 +2142,7 @@ const app = {
             alert('출고 내역이 수정되었습니다.');
             bootstrap.Modal.getInstance($('editOutboundModal')).hide();
             this.loadHistory();
-            if ($('drawerDetail').classList.contains('show') || !$('drawerDetail').classList.contains('d-none')) {
+            if ($('detailModal') && $('detailModal').classList.contains('show')) {
                 this.renderDrawerDetail(id, 'outbound');
             }
         } catch(err) {
