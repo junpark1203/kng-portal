@@ -422,6 +422,7 @@ router.get('/history', (req, res) => {
         whereClauses.push("type = 'inbound'");
     } else if (type === 'outbound') {
         whereClauses.push("type = 'outbound'");
+        whereClauses.push("is_direct = 0");
     }
 
     // Detailed search filters

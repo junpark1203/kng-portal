@@ -204,11 +204,10 @@ const app = {
             search: searchRaw,
             sortCol: this.sortCol,
             sortDir: this.sortDir,
-            startDate: this.detailedFilters.startDate,
-            endDate: this.detailedFilters.endDate,
-            searchParty: this.detailedFilters.searchParty,
-            searchItem: this.detailedFilters.searchItem,
-            searchSpec: this.detailedFilters.searchSpec
+            startDate: $('searchStartDate')?.value || '',
+            endDate: $('searchEndDate')?.value || '',
+            searchTarget: $('searchTarget')?.value || '',
+            searchKeyword: searchRaw
         });
 
         try {
