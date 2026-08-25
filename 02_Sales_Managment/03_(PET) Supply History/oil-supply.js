@@ -844,7 +844,7 @@ async function exportToExcel() {
 
         selectedData.forEach(d => {
             worksheet.addRow({
-                supplyDate: d.supplyDate || '-',
+                supplyDate: d.date || '-',
                 site: d.site || '-',
                 supplier: d.supplier || '-',
                 manufacturer: d.manufacturer || '-',
