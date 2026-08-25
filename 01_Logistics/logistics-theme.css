@@ -373,3 +373,34 @@ h4 {
     font-size: 12px !important;
     line-height: 1.5 !important;
 }
+
+/* Segmented Control (Pill Tabs) */
+.segmented-control {
+    display: inline-flex;
+    background-color: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    align-items: center;
+}
+.segmented-control .btn-check + label {
+    padding: 6px 16px !important;
+    cursor: pointer;
+    font-size: 13px !important;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 6px;
+    border: none !important;
+    background: transparent;
+    transition: all 0.2s ease;
+    margin: 0;
+    height: auto !important;
+    line-height: normal !important;
+}
+.segmented-control .btn-check:checked + label {
+    background-color: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.segmented-control .btn-check + label:hover:not(.active) {
+    color: #334155;
+}

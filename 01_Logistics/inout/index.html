@@ -96,15 +96,15 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex gap-3 align-items-center">
-                            <div class="btn-group" role="group">
+                            <div class="segmented-control">
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterAll">전체 보기</label>
+                                <label class="text-nowrap" for="btnFilterAll">전체 보기</label>
                                 
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterIn">입고만 보기</label>
+                                <label class="text-nowrap" for="btnFilterIn">입고만 보기</label>
                                 
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="btn btn-outline-primary btn-sm px-3" for="btnFilterOut">출고만 보기</label>
+                                <label class="text-nowrap" for="btnFilterOut">출고만 보기</label>
                             </div>
                             <select class="form-select form-select-sm w-auto" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
                                 <option value="50">50개씩 보기</option>
@@ -370,15 +370,15 @@
                     <h5 class="modal-title fw-bold text-nowrap" id="detailModalTitle">상세 정보</h5>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <div id="headerPrintControls" class="d-flex align-items-center gap-2 flex-wrap">
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="segmented-control">
                                 <input type="radio" class="btn-check" name="printType" id="printOptInbound" value="inbound_receipt">
-                                <label class="btn btn-outline-primary text-nowrap" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> 입고내역서</label>
+                                <label class="text-nowrap" for="printOptInbound" id="printOptInboundLabel"><i class='bx bx-file'></i> 입고내역서</label>
 
                                 <input type="radio" class="btn-check" name="printType" id="printOptOutbound" value="outbound_receipt">
-                                <label class="btn btn-outline-primary text-nowrap" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고내역서</label>
+                                <label class="text-nowrap" for="printOptOutbound" id="printOptOutboundLabel"><i class='bx bx-file'></i> 출고내역서</label>
 
                                 <input type="radio" class="btn-check" name="printType" id="printOptTrans" value="transaction_statement" checked>
-                                <label class="btn btn-outline-primary text-nowrap" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세서</label>
+                                <label class="text-nowrap" for="printOptTrans" id="printOptTransLabel"><i class='bx bx-receipt'></i> 거래명세서</label>
                             </div>
                             <button class="btn btn-outline-secondary btn-sm" onclick="app.openCompanyPresetModal()" title="명세서 설정"><i class='bx bx-cog'></i></button>
                             <button class="btn btn-primary btn-sm text-nowrap" onclick="app.printHistoryDetail()"><i class='bx bx-printer'></i> 인쇄</button>
