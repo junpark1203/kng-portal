@@ -115,6 +115,7 @@
                         <div class="d-flex w-25 gap-2">
                             <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="단순 검색..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()">
                             <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.openDetailedSearch()"><i class='bx bx-slider-alt'></i> 상세검색</button>
+                            <button class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
                         </div>
                     </div>
                     
@@ -122,6 +123,7 @@
                         <table class="table table-hover align-middle" style="font-size: 0.9rem;">
                             <thead class="table-light sticky-top" style="z-index: 10;">
                                 <tr>
+                                    <th style="width: 40px;" class="text-center"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
                                     <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
                                     <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
                                     <th id="th-party" style="cursor:pointer" onclick="app.toggleSort('party')" class="user-select-none">거래처<span class="sort-icon"></span></th>
@@ -134,7 +136,7 @@
                                 </tr>
                             </thead>
                             <tbody id="historyTbody">
-                                <tr><td colspan="9" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
+                                <tr><td colspan="10" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
                             </tbody>
                         </table>
                     </div>

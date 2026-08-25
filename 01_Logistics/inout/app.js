@@ -235,17 +235,21 @@ const app = {
     renderHistoryTable: function(data) {
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
-            const badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
+            let badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
+            if (isOut && r.is_direct === 1) {
+                badge = `<span class="badge bg-warning text-dark">직출고</span>`;
+            }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
+                <td class="text-center" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
                 <td>${badge}</td>
                 <td>${r.date}</td>
                 <td>${r.party}</td>
@@ -261,6 +265,39 @@ const app = {
             </tr>
             `;
         }).join('');
+    },
+
+    toggleSelectAllHistory: function() {
+        const selectAll = $('selectAllHistory').checked;
+        document.querySelectorAll('.history-checkbox').forEach(cb => {
+            cb.checked = selectAll;
+        });
+    },
+
+    deleteSelectedHistory: async function() {
+        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        if (checked.length === 0) return alert('삭제할 항목을 선택하세요.');
+        if (!confirm(`선택한 ${checked.length}개의 내역을 삭제하시겠습니까? (출고 내역 삭제 시 입고 잔여수량이 복구되며, 직출고의 경우 입출고 모두 삭제됩니다.)`)) return;
+        
+        let successCount = 0;
+        let failCount = 0;
+        for (const cb of checked) {
+            const id = cb.value;
+            const type = cb.dataset.type;
+            try {
+                const res = await authFetch(`${API_BASE}/${type}/${id}`, { method: 'DELETE' });
+                if (res && res.error) throw new Error(res.error);
+                successCount++;
+            } catch (err) {
+                failCount++;
+                console.error(`Failed to delete ${type} ${id}:`, err);
+            }
+        }
+        
+        const msg = `선택 삭제가 완료되었습니다.\\n(성공: ${successCount}건, 실패: ${failCount}건)`;
+        alert(msg);
+        $('selectAllHistory').checked = false;
+        this.resetPageAndLoadHistory();
     },
 
     deleteInbound: async function(id) {
@@ -1306,16 +1343,41 @@ const app = {
             
             const items = data.items || [data];
             
-            const badgeHtml = type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>';
+            let badgeHtml = type === 'inbound' ? '<span class="badge bg-success">입고</span>' : '<span class="badge bg-danger">출고</span>';
+            if (type === 'outbound' && data.is_direct === 1) {
+                badgeHtml = '<span class="badge bg-warning text-dark">직출고</span>';
+            }
+            
             const metaClass = type === 'inbound' ? 'inbound' : 'outbound';
-            const partnerLabel = type === 'inbound' ? '매입처' : '출고처';
-            const partnerValue = type === 'inbound' ? data.supplier : data.destination;
             const extraLabel = type === 'inbound' ? '창고위치' : '배송비';
             const shipVatLabel = data.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가 기준)';
             const extraValue = type === 'inbound' 
                 ? (data.location_name || '-')
                 : (data.shipping_fee ? data.shipping_fee.toLocaleString() + '원 ' + shipVatLabel : '-');
             
+            let partnerHtml = '';
+            if (type === 'outbound' && data.is_direct === 1) {
+                partnerHtml = `
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-buildings'></i> 매입처(공급)</span>
+                        <span class="drawer-meta-value">${data.supplier || '-'}</span>
+                    </div>
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-store-alt'></i> 매출처(납품)</span>
+                        <span class="drawer-meta-value">${data.destination}</span>
+                    </div>
+                `;
+            } else {
+                const partnerLabel = type === 'inbound' ? '매입처' : '출고처';
+                const partnerValue = type === 'inbound' ? data.supplier : data.destination;
+                partnerHtml = `
+                    <div class="drawer-meta-item ms-3">
+                        <span class="drawer-meta-label"><i class='bx bx-buildings'></i> ${partnerLabel}</span>
+                        <span class="drawer-meta-value">${partnerValue}</span>
+                    </div>
+                `;
+            }
+
             let actualDestHtml = '';
             if (type === 'outbound' && data.actual_destination) {
                 actualDestHtml = `
@@ -1336,10 +1398,7 @@ const app = {
                         <span class="drawer-meta-label"><i class='bx bx-calendar'></i> 일자</span>
                         <span class="drawer-meta-value">${data.date}</span>
                     </div>
-                    <div class="drawer-meta-item ms-3">
-                        <span class="drawer-meta-label"><i class='bx bx-buildings'></i> ${partnerLabel}</span>
-                        <span class="drawer-meta-value">${partnerValue}</span>
-                    </div>
+                    ${partnerHtml}
                     ${actualDestHtml}
                     <div class="drawer-meta-item ms-3">
                         <span class="drawer-meta-label"><i class='bx bx-info-circle'></i> ${extraLabel}</span>
@@ -1421,13 +1480,19 @@ const app = {
                 $('printOptTrans').classList.add('d-none');
                 $('printOptTransLabel').classList.add('d-none');
             } else {
-                $('printOptInbound').classList.add('d-none');
-                $('printOptInboundLabel').classList.add('d-none');
                 $('printOptOutbound').classList.remove('d-none');
                 $('printOptOutboundLabel').classList.remove('d-none');
                 $('printOptTrans').classList.remove('d-none');
                 $('printOptTransLabel').classList.remove('d-none');
                 $('printOptTrans').checked = true;
+                
+                if (data.is_direct === 1) {
+                    $('printOptInbound').classList.remove('d-none');
+                    $('printOptInboundLabel').classList.remove('d-none');
+                } else {
+                    $('printOptInbound').classList.add('d-none');
+                    $('printOptInboundLabel').classList.add('d-none');
+                }
             }
             
             html += `</div>`;

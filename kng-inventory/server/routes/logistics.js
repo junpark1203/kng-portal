@@ -390,12 +390,17 @@ router.get('/history', (req, res) => {
             SELECT 
                 'inbound' as type, i.id, i.date, i.supplier as party, NULL as actual_destination, i.item, i.spec, i.unit, 
                 i.qty_initial as qty, i.unit_price as price, 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
-                0 as is_direct
+                i.is_direct
             FROM logistics_inbound i
+            WHERE i.is_direct = 0
             UNION ALL
             SELECT 
-                'outbound' as type, o.id, o.date, o.destination as party, o.actual_destination, o.item, o.spec, o.unit, 
-                o.qty as qty, o.selling_price as price, o.shipping_fee, o.shipping_fee_vat_included, '' as note, o.created_at,
+                'outbound' as type, o.id, o.date, 
+                CASE WHEN o.is_direct = 1 THEN 
+                    (SELECT i.supplier FROM logistics_inbound i JOIN logistics_outbound_lots l ON i.id = l.inbound_id WHERE l.outbound_id = o.id LIMIT 1) || ' -> ' || o.destination
+                ELSE o.destination END as party, 
+                o.actual_destination, o.item, o.spec, o.unit, 
+                o.qty as qty, o.selling_price as price, o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct
             FROM logistics_outbound o
         )
@@ -489,6 +494,10 @@ router.get('/history/outbound/:id', (req, res) => {
                 items.forEach(item => {
                     item.consumed_lots = lots.filter(l => l.outbound_id === item.id);
                 });
+                
+                if (row.is_direct === 1 && lots.length > 0) {
+                    row.supplier = lots[0].supplier;
+                }
                 
                 row.items = items;
                 res.json(row);
@@ -1005,21 +1014,26 @@ router.delete('/outbound/:id', (req, res) => {
                     return res.status(500).json({ error: 'Failed to restore inbound inventory' });
                 }
                 
-                db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
-                    if (err3) {
-                        db.run("ROLLBACK");
-                        return res.status(500).json({ error: err3.message });
-                    }
-                    
-                    db.run(`DELETE FROM logistics_outbound WHERE id = ?`, [id], function(err4) {
-                        if (err4) {
+                db.run(`DELETE FROM logistics_inbound WHERE is_direct = 1 AND qty_remaining = qty_initial`, function(errClean) {
+                    // Ignore errors for cleanup, or log them
+                    if (errClean) console.error("Error cleaning up direct inbound:", errClean);
+
+                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
+                        if (err3) {
                             db.run("ROLLBACK");
-                            return res.status(500).json({ error: err4.message });
+                            return res.status(500).json({ error: err3.message });
                         }
                         
-                        db.run("COMMIT", (err5) => {
-                            if (err5) return res.status(500).json({ error: err5.message });
-                            res.json({ message: 'Deleted and inventory restored successfully' });
+                        db.run(`DELETE FROM logistics_outbound WHERE id = ?`, [id], function(err4) {
+                            if (err4) {
+                                db.run("ROLLBACK");
+                                return res.status(500).json({ error: err4.message });
+                            }
+                            
+                            db.run("COMMIT", (err5) => {
+                                if (err5) return res.status(500).json({ error: err5.message });
+                                res.json({ message: 'Deleted and inventory restored successfully' });
+                            });
                         });
                     });
                 });
