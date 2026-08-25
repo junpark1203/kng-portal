@@ -329,7 +329,7 @@ const app = {
     openBulkUpdateModal() {
         const checkboxes = document.querySelectorAll('.history-checkbox:checked');
         if (checkboxes.length === 0) {
-            Swal.fire('알림', '일괄 수정할 항목을 체크해주세요.', 'info');
+            alert('일괄 수정할 항목을 체크해주세요.');
             return;
         }
         $('bulkUpdateCount').innerText = checkboxes.length;
@@ -356,7 +356,7 @@ const app = {
         const category = $('bulkCategory').value.trim();
 
         if (!supplier && !destination && !category) {
-            Swal.fire('알림', '변경할 항목을 하나 이상 입력해주세요.', 'warning');
+            alert('변경할 항목을 하나 이상 입력해주세요.');
             return;
         }
 
@@ -365,7 +365,7 @@ const app = {
                 method: 'PUT',
                 body: JSON.stringify({ inboundIds, outboundIds, supplier, destination, category })
             });
-            Swal.fire('완료', '일괄 수정이 완료되었습니다.', 'success');
+            alert('일괄 수정이 완료되었습니다.');
             
             const modalEl = document.getElementById('bulkUpdateModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
@@ -374,7 +374,7 @@ const app = {
             this.resetPageAndLoadHistory();
             this.loadCategories();
         } catch (err) {
-            Swal.fire('오류', '일괄 수정 실패: ' + err.message, 'error');
+            alert('일괄 수정 실패: ' + err.message);
         }
     },
 
