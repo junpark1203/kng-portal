@@ -77,6 +77,8 @@ const app = {
         $('directForm').addEventListener('submit', this.handleDirectSubmit.bind(this));
         $('editInboundForm').addEventListener('submit', this.submitEditInbound.bind(this));
         $('editOutboundForm').addEventListener('submit', this.submitEditOutbound.bind(this));
+        const edf = $('editDirectForm');
+        if(edf) edf.addEventListener('submit', this.submitEditDirectOutbound.bind(this));
         $('btnEditOutboundLot').addEventListener('click', this.openEditOutboundLotModal.bind(this));
         
         // Hide autocomplete when clicking outside
@@ -246,7 +248,7 @@ const app = {
                 badge = `<span class="badge bg-warning text-dark">직출고</span>`;
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
-            const editFn = isOut ? `app.openEditOutbound(${r.id})` : `app.openEditInbound(${r.id})`;
+            const editFn = isOut ? (r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
@@ -2025,6 +2027,69 @@ const app = {
     
     editOutboundState: { availableLots: [], consumedLots: [] },
     
+    
+    openEditDirectOutbound: async function(id) {
+        try {
+            const data = await authFetch(`${API_BASE}/history/outbound/${id}`);
+            const item = data.items ? (data.items.find(i => i.id == id) || data) : data;
+            
+            $('editDirectId').value = item.id;
+            $('edit_direct_date').value = item.date;
+            $('edit_direct_supplier').value = item.supplier || '';
+            $('edit_direct_destination').value = item.actual_destination || item.destination || item.party || '';
+            $('edit_direct_shipping').value = item.shipping_fee || 0;
+            $('edit_direct_shipping_vat').checked = item.shipping_fee_vat_included === 1;
+            $('edit_direct_note').value = item.note || '';
+            
+            $('edit_direct_item').value = item.item;
+            $('edit_direct_spec').value = item.spec || '';
+            $('edit_direct_unit').value = item.unit || '';
+            $('edit_direct_qty').value = item.qty;
+            $('edit_direct_inbound_price').value = item.inbound_price || 0;
+            $('edit_direct_outbound_price').value = item.selling_price || item.price || 0;
+            
+            const modalEl = document.getElementById('editDirectModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        } catch(err) {
+            console.error(err);
+            alert('직출고 데이터를 불러오는 중 오류가 발생했습니다.');
+        }
+    },
+
+    submitEditDirectOutbound: async function(e) {
+        e.preventDefault();
+        const id = $('editDirectId').value;
+        const payload = {
+            date: $('edit_direct_date').value,
+            supplier: $('edit_direct_supplier').value,
+            destination: $('edit_direct_destination').value,
+            actual_destination: $('edit_direct_destination').value,
+            qty: parseFloat($('edit_direct_qty').value) || 0,
+            inbound_price: parseFloat($('edit_direct_inbound_price').value) || 0,
+            selling_price: parseFloat($('edit_direct_outbound_price').value) || 0,
+            shipping_fee: parseFloat($('edit_direct_shipping').value) || 0,
+            shipping_fee_vat_included: $('edit_direct_shipping_vat').checked ? 1 : 0,
+            note: $('edit_direct_note').value
+        };
+
+        try {
+            await authFetch(`${API_BASE}/direct/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const modalEl = document.getElementById('editDirectModal');
+            bootstrap.Modal.getInstance(modalEl).hide();
+            this.resetPageAndLoadHistory();
+            showAlert('직출고 내역이 수정되었습니다.');
+        } catch(err) {
+            console.error(err);
+            alert('수정 실패: ' + err.message);
+        }
+    },
+
     openEditOutbound: async function(id) {
         try {
             const data = await authFetch(`${API_BASE}/history/outbound/${id}`);

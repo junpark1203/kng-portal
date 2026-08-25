@@ -615,6 +615,82 @@
     </div>
 </div>
 
+
+<!-- 직출고 내역 수정 모달 -->
+<div class="modal fade" id="editDirectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> 직출고 내역 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editDirectForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editDirectId">
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class='bx bx-info-circle'></i> 직출고 건은 매입과 매출이 동시에 수정됩니다. 품목 변경은 지원하지 않습니다. 필요 시 삭제 후 재등록하세요.
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">일자</label>
+                            <input type="date" class="form-control" id="edit_direct_date" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">매입처</label>
+                            <input type="text" class="form-control" id="edit_direct_supplier" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">출고처(고객/현장)</label>
+                            <input type="text" class="form-control" id="edit_direct_destination" required>
+                        </div>
+                        
+                        <div class="col-md-5">
+                            <label class="form-label text-muted small mb-1">품목명</label>
+                            <input type="text" class="form-control bg-light" id="edit_direct_item" readonly>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label text-muted small mb-1">규격</label>
+                            <input type="text" class="form-control bg-light" id="edit_direct_spec" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label text-muted small mb-1">단위</label>
+                            <input type="text" class="form-control bg-light" id="edit_direct_unit" readonly>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">수량</label>
+                            <input type="number" step="0.01" class="form-control" id="edit_direct_qty" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">매입단가</label>
+                            <input type="number" class="form-control" id="edit_direct_inbound_price" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">매출단가</label>
+                            <input type="number" class="form-control" id="edit_direct_outbound_price" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label text-muted small mb-1">배송비 <input class="form-check-input ms-2" type="checkbox" id="edit_direct_shipping_vat"> (부가세 포함)</label>
+                            <input type="number" class="form-control" id="edit_direct_shipping" value="0">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label text-muted small mb-1">비고</label>
+                            <input type="text" class="form-control" id="edit_direct_note">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-white" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-warning">수정 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 <!-- 출고 내역 수정 모달 -->
 <div class="modal fade" id="editOutboundModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">

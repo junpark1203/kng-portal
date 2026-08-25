@@ -512,6 +512,7 @@ router.get('/history/outbound/:id', (req, res) => {
                 
                 if (row.is_direct === 1 && lots.length > 0) {
                     row.supplier = lots[0].supplier;
+                    row.inbound_price = lots[0].unit_price;
                 }
                 
                 row.items = items;
@@ -814,6 +815,61 @@ router.post('/settlement/:type', (req, res) => {
 });
 
 // --- Inbound Update (입고 내역 수정) ---
+router.put('/direct/:id', (req, res) => {
+    const id = req.params.id; // This is the outbound_id
+    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, shipping_fee, shipping_fee_vat_included, note } = req.body;
+    
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        
+        // Find the mapped inbound lot
+        db.get(`SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lot) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+            if (!lot) {
+                db.run("ROLLBACK");
+                return res.status(404).json({ error: 'Direct outbound mapping not found' });
+            }
+            
+            const inboundId = lot.inbound_id;
+            let hasError = false;
+
+            // 1. Update Inbound
+            const inSql = `
+                UPDATE logistics_inbound
+                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, note = ?
+                WHERE id = ?
+            `;
+            db.run(inSql, [date, supplier, qty, inbound_price, note || '', inboundId], function(e) { if(e) hasError = true; });
+
+            // 2. Update Outbound
+            const outSql = `
+                UPDATE logistics_outbound
+                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?
+                WHERE id = ?
+            `;
+            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', id], function(e) { if(e) hasError = true; });
+
+            // 3. Update Lots
+            const lotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
+            db.run(lotSql, [qty, id, inboundId], function(e) { if(e) hasError = true; });
+
+            db.run("SELECT 1", function() {
+                if (hasError) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: 'Failed to update direct outbound' });
+                }
+                db.run("COMMIT", (errCommit) => {
+                    if (errCommit) return res.status(500).json({ error: errCommit.message });
+                    res.json({ success: true });
+                });
+            });
+        });
+    });
+});
+
 router.put('/inbound/:id', (req, res) => {
     const id = req.params.id;
     const { date, supplier, item, spec, unit, qty, unit_price, location_id, note } = req.body;
