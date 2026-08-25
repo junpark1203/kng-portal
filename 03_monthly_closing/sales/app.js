@@ -161,7 +161,7 @@ const app = {
         $('totalCount').innerText = this.items.length; // 현재 필터링된 개수 (정확한 전체는 아님)
 
         tbody.innerHTML = this.items.map(r => {
-            const qtyTotal = (r.qty || 0) * (r.price || 0);
+            const qtyTotal = (r.qty || 0) * (r.outbound_price || 0);
             let shipAmount = 0;
             if (r.shipping_fee > 0) {
                 shipAmount = r.shipping_fee_vat_included === 1 
@@ -194,11 +194,11 @@ const app = {
                     <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                 </td>
                 <td>${r.date}</td>
-                <td>${r.party}</td>
+                <td>${r.destination || ''}</td>
                 <td>${itemDisplay}</td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-danger fw-bold">${r.qty}</td>
-                <td>${Number(r.price).toLocaleString()}</td>
+                <td>${Number(r.outbound_price || 0).toLocaleString()}</td>
                 <td>${Number(total).toLocaleString()}</td>
                 <td class="text-center">${statusHtml}</td>
             </tr>
@@ -350,15 +350,12 @@ const app = {
         const selectedIds = Array.from(checkedBoxes).map(el => parseInt(el.value));
         const selectedItems = this.items.filter(item => selectedIds.includes(item.id));
         
-        // Group by Party? Let's just print all in one statement for simplicity, or we could group by party if needed. 
-        // User just said "선택내역 거래내역서(원장) 출력", so we print exactly what is selected.
-        
         let sumTotal = 0;
         let sumVat = 0;
         let sumGrand = 0;
         
         const rowsHtml = selectedItems.map((r, index) => {
-            const qtyTotal = (r.qty || 0) * (r.price || 0);
+            const qtyTotal = (r.qty || 0) * (r.outbound_price || 0);
             
             let shipAmount = 0;
             let shipVat = 0;
@@ -382,6 +379,7 @@ const app = {
             sumGrand += grand;
             
             let itemHtml = `<strong>${r.item}</strong>`;
+            if (r.is_direct) itemHtml += ` <span class="badge bg-secondary">직</span>`;
             if (r.shipping_fee > 0) {
                 itemHtml += ` <span class="text-muted" style="font-size:0.85em;">(+배송비)</span>`;
             }
@@ -391,10 +389,10 @@ const app = {
                 <td>${index + 1}</td>
                 <td>${r.date}</td>
                 <td>${r.tax_invoice_date || '-'}</td>
-                <td>${r.party}</td>
+                <td>${r.destination || ''}</td>
                 <td>${itemHtml}</td>
                 <td class="text-right">${r.qty}</td>
-                <td class="text-right">${Number(r.price).toLocaleString()}</td>
+                <td class="text-right">${Number(r.outbound_price || 0).toLocaleString()}</td>
                 <td class="text-right">${Number(total).toLocaleString()}</td>
                 <td class="text-right">${Number(vat).toLocaleString()}</td>
                 <td class="text-right fw-bold">${Number(grand).toLocaleString()}</td>

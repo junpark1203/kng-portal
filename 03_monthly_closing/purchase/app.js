@@ -161,7 +161,7 @@ const app = {
         $('totalCount').innerText = this.items.length; // 현재 필터링된 개수 (정확한 전체는 아님)
 
         tbody.innerHTML = this.items.map(r => {
-            const total = (r.qty || 0) * (r.price || 0);
+            const total = (r.qty || 0) * (r.inbound_price || 0);
             
             let statusHtml = '';
             let statusVal = r.settlement_status || '미정산';
@@ -180,11 +180,11 @@ const app = {
                     <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                 </td>
                 <td>${r.date}</td>
-                <td>${r.party}</td>
+                <td>${r.supplier || ''}</td>
                 <td><strong>${r.item}</strong>${directBadge}</td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-success fw-bold">${r.qty}</td>
-                <td>${Number(r.price).toLocaleString()}</td>
+                <td>${Number(r.inbound_price || 0).toLocaleString()}</td>
                 <td>${Number(total).toLocaleString()}</td>
                 <td class="text-center">${statusHtml}</td>
             </tr>
@@ -344,7 +344,7 @@ const app = {
         let sumGrand = 0;
         
         const rowsHtml = selectedItems.map((r, index) => {
-            const total = (r.qty || 0) * (r.price || 0);
+            const total = (r.qty || 0) * (r.inbound_price || 0);
             const vat = r.is_zero_tax ? 0 : Math.floor(total * 0.1);
             const grand = total + vat;
             
@@ -357,11 +357,11 @@ const app = {
                 <td>${index + 1}</td>
                 <td>${r.date}</td>
                 <td>${r.tax_invoice_date || '-'}</td>
-                <td>${r.party}</td>
+                <td>${r.supplier || ''}</td>
                 <td>${r.item}</td>
                 <td>${r.spec} / ${r.unit}</td>
                 <td class="text-right">${r.qty}</td>
-                <td class="text-right">${Number(r.price).toLocaleString()}</td>
+                <td class="text-right">${Number(r.inbound_price || 0).toLocaleString()}</td>
                 <td class="text-right">${Number(total).toLocaleString()}</td>
                 <td class="text-right">${Number(vat).toLocaleString()}</td>
                 <td class="text-right fw-bold">${Number(grand).toLocaleString()}</td>
