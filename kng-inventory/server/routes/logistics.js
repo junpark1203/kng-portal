@@ -507,7 +507,12 @@ router.get('/history/outbound/:id', (req, res) => {
                 if (err3) return res.status(500).json({ error: err3.message });
                 
                 items.forEach(item => {
-                    item.consumed_lots = lots.filter(l => l.outbound_id === item.id);
+                    const itemLots = lots.filter(l => l.outbound_id === item.id);
+                    item.consumed_lots = itemLots;
+                    if (row.is_direct === 1 && itemLots.length > 0) {
+                        item.supplier = itemLots[0].supplier;
+                        item.inbound_price = itemLots[0].unit_price;
+                    }
                 });
                 
                 if (row.is_direct === 1 && lots.length > 0) {
