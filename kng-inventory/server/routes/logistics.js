@@ -1240,6 +1240,68 @@ router.delete('/outbound/:id', (req, res) => {
     });
 });
 
+router.get('/migrate-partners', async (req, res) => {
+    try {
+        const partners = await new Promise((resolve, reject) => {
+            db.all("SELECT id, name, company_name FROM partners", [], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        if (partners.length === 0) {
+            return res.json({ message: 'No partners found in the database. Migration skipped.' });
+        }
+
+        const findMatchingPartner = (textName) => {
+            if (!textName) return null;
+            textName = textName.trim();
+            let match = partners.find(p => p.name === textName || p.company_name === textName);
+            if (match) return match.name;
+            match = partners.find(p => p.name.includes(textName) || (p.company_name && p.company_name.includes(textName)));
+            if (match) return match.name;
+            match = partners.find(p => textName.includes(p.name) || (p.company_name && textName.includes(p.company_name)));
+            if (match) return match.name;
+            return null;
+        };
+
+        const inboundRows = await new Promise((resolve) => {
+            db.all("SELECT id, supplier FROM logistics_inbound", [], (err, rows) => resolve(rows || []));
+        });
+
+        let inboundUpdated = 0;
+        for (const row of inboundRows) {
+            const matchedName = findMatchingPartner(row.supplier);
+            if (matchedName && matchedName !== row.supplier) {
+                await new Promise((resolve) => db.run("UPDATE logistics_inbound SET supplier = ? WHERE id = ?", [matchedName, row.id], resolve));
+                inboundUpdated++;
+            }
+        }
+
+        const outboundRows = await new Promise((resolve) => {
+            db.all("SELECT id, destination FROM logistics_outbound", [], (err, rows) => resolve(rows || []));
+        });
+
+        let outboundUpdated = 0;
+        for (const row of outboundRows) {
+            const matchedName = findMatchingPartner(row.destination);
+            if (matchedName && matchedName !== row.destination) {
+                await new Promise((resolve) => db.run("UPDATE logistics_outbound SET destination = ? WHERE id = ?", [matchedName, row.id], resolve));
+                outboundUpdated++;
+            }
+        }
+
+        res.json({ 
+            success: true, 
+            message: '마이그레이션이 성공적으로 완료되었습니다.', 
+            inboundUpdated, 
+            outboundUpdated 
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = {
     router,
     initLogisticsTables,
