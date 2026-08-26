@@ -718,6 +718,35 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             return res.status(400).json({ error: 'No valid data found in excel' });
         }
 
+        // --- VALIDATION BLOCK (Strategy B) ---
+        const partners = await new Promise((resolve, reject) => {
+            db.all("SELECT name, company_name FROM partners", [], (err, pRows) => {
+                if (err) reject(err);
+                else resolve(pRows || []);
+            });
+        });
+        
+        const validNames = new Set();
+        partners.forEach(p => {
+            if (p.name) validNames.add(p.name);
+            if (p.company_name) validNames.add(p.company_name);
+        });
+
+        const invalidPartners = new Set();
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            if (!validNames.has(r.supplier)) invalidPartners.add(`(줄 ${i+2}) ${r.supplier}`);
+            if (!validNames.has(r.destination)) invalidPartners.add(`(줄 ${i+2}) ${r.destination}`);
+        }
+
+        if (invalidPartners.size > 0) {
+            const errList = Array.from(invalidPartners).join(', ');
+            return res.status(400).json({ 
+                error: `다음 텍스트가 등록된 거래처명과 일치하지 않습니다. 공식 명칭을 쓰거나 거래처 관리에 먼저 등록해주세요: ${errList}`
+            });
+        }
+        // ------------------------
+
         // Group rows by date + supplier + destination
         const grouped = {};
         for (const r of rows) {
