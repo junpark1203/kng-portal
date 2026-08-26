@@ -747,16 +747,17 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         }
         // ------------------------
 
-        // Group rows by date + supplier + destination
+        // Group rows by date + supplier + destination + category
         const grouped = {};
         for (const r of rows) {
-            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.shipping_fee}|${r.shipping_vat}|${r.note}`;
+            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.shipping_fee}|${r.shipping_vat}|${r.note}|${r.category}`;
             if (!grouped[key]) {
                 grouped[key] = {
                     date: r.date,
                     supplier: r.supplier,
                     destination: r.destination,
                     actual_destination: r.actual_destination,
+                    category: r.category,
                     shipping_fee: r.shipping_fee,
                     shipping_fee_vat_included: r.shipping_vat,
                     note: r.note,
@@ -796,8 +797,8 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                         // 1. Insert Inbound
                         db.run(`
                             INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1)
-                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, g.note], function(err) {
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?)
+                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, g.note, g.category], function(err) {
                             if (err) {
                                 hasError = true;
                                 db.run("ROLLBACK");
@@ -813,7 +814,7 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                             db.run(`
                                 INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                            `, [g.date, g.destination, g.actual_destination, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemShipping, itemShippingVat, g.note], function(err) {
+                            `, [g.date, g.destination, g.actual_destination, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemShipping, itemShippingVat, g.note, g.category], function(err) {
                                 if (err) {
                                     hasError = true;
                                     db.run("ROLLBACK");
