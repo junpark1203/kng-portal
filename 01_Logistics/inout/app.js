@@ -858,7 +858,7 @@ const app = {
 
         if (confirm(`총 ${items.length}건의 품목을 직출고로 동시 처리하시겠습니까? (입고/출고 장부에 동시 반영됨)`)) {
             try {
-                const res = await authFetch(`${API_BASE}/logistics/direct`, {
+                const res = await authFetch(`${API_BASE}/direct`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1214,7 +1214,7 @@ const app = {
         const docShippingFee = parseFloat($('out_shipping').value) || 0;
         const docNote = $('out_note').value.trim();
 
-        rows.forEach(row => {
+        rows.forEach((row, idx) => {
             const rowId = row.id;
             const item = row.querySelector('.out-item').value.trim();
             const spec = row.querySelector('.out-spec').value.trim();
