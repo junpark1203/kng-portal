@@ -46,11 +46,11 @@ const app = {
             }
         };
 
-        document.querySelectorAll('.date-preset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                presets[e.target.dataset.preset]();
+        document.querySelectorAll('input[name="datePreset"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    presets[e.target.value]();
+                }
             });
         });
 
@@ -172,8 +172,8 @@ const app = {
                     
                     const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1">직출고</span>' : '';
                     const typeBadge = row.type === '입고' 
-                        ? `<span class="badge bg-danger bg-opacity-75">입고(매입)</span>`
-                        : `<span class="badge bg-primary bg-opacity-75">출고(매출)</span>`;
+                        ? `<span class="badge bg-success bg-opacity-75">입고(매입)</span>`
+                        : `<span class="badge bg-danger bg-opacity-75">출고(매출)</span>`;
 
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
