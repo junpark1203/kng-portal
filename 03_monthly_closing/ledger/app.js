@@ -8,12 +8,6 @@ const app = {
         this.loadPartners();
         
         // Event Listeners
-        document.getElementById('partnerInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                this.loadLedger();
-            }
-        });
         document.getElementById('startDate').addEventListener('change', () => this.loadLedger());
         document.getElementById('endDate').addEventListener('change', () => this.loadLedger());
     },

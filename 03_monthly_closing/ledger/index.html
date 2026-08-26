@@ -46,8 +46,8 @@
     <div class="card shadow-sm border-0 mb-4 no-print">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <div class="segmented-control me-2" id="datePresets">
+                <div class="d-flex gap-2 align-items-center" style="overflow-x: auto; padding-bottom: 5px;">
+                    <div class="segmented-control flex-shrink-0" id="datePresets">
                         <input type="radio" class="btn-check" name="datePreset" id="presetMonth" value="당월" checked>
                         <label class="text-nowrap" for="presetMonth">당월</label>
                         
@@ -62,15 +62,15 @@
                     </div>
                     
                     <input type="date" class="form-control form-control-sm" id="startDate" title="시작일">
-                    <span class="text-muted">~</span>
+                    <span class="text-muted flex-shrink-0">~</span>
                     <input type="date" class="form-control form-control-sm" id="endDate" title="종료일">
                     
-                    <div class="input-group input-group-sm ms-2" style="width: 220px;">
+                    <div class="input-group input-group-sm flex-shrink-0" style="width: 200px;">
                         <input type="text" id="partnerInput" class="form-control" placeholder="거래처 검색 (Enter)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('partnerInput');}">
                         <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('partnerInput')" title="거래처 검색"><i class='bx bx-search'></i></button>
                     </div>
                     
-                    <button class="btn btn-sm btn-primary text-nowrap ms-1" type="button" onclick="app.loadLedger()"><i class='bx bx-search'></i> 조회</button>
+                    <button class="btn btn-sm btn-primary text-nowrap flex-shrink-0" type="button" onclick="app.loadLedger()"><i class='bx bx-search'></i> 조회</button>
                 </div>
             </div>
         </div>
