@@ -305,7 +305,7 @@ router.post('/inbound', (req, res) => {
         const sql = `
             INSERT INTO logistics_inbound 
             (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const stmt = db.prepare(sql);
         
@@ -352,7 +352,7 @@ router.post('/outbound', (req, res) => {
         const outSql = `
             INSERT INTO logistics_outbound 
             (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
         const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
