@@ -495,7 +495,8 @@ router.get('/history', (req, res) => {
                 i.unit_price as inbound_price, NULL as outbound_price,
                 (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
                 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
-                i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax
+                i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax,
+                i.transaction_group_id, i.settlement_qty, i.settlement_price
             FROM logistics_inbound i
             ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
@@ -510,7 +511,8 @@ router.get('/history', (req, res) => {
                 CASE WHEN o.is_direct = 1 THEN (di.unit_price * o.qty) ELSE NULL END as inbound_total,
                 (o.selling_price * o.qty) as outbound_total,
                 o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
-                o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax
+                o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax,
+                o.transaction_group_id, o.settlement_qty, o.settlement_price
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
