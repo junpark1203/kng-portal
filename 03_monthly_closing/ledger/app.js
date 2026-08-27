@@ -134,6 +134,7 @@ const app = {
         const partner = document.getElementById('partnerInput').value;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
+        const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
         const tbody = document.getElementById('ledgerTableBody');
         const tfoot = document.getElementById('ledgerTableFoot');
 
@@ -148,7 +149,7 @@ const app = {
         try {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
-            const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}`);
+            const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
             if (!response.ok) throw new Error('API Error');
             const res = await response.json();
             
@@ -169,11 +170,15 @@ const app = {
                         ? `<span class="badge bg-success bg-opacity-75">입고(매입)</span>`
                         : `<span class="badge bg-danger bg-opacity-75">출고(매출)</span>`;
 
+                    const siteBadge = aggregateByBizNum && row.site_name 
+                        ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
+                        : '';
+
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="text-center">${row.date.split('T')[0]}</td>
                             <td class="text-center">${typeBadge}</td>
-                            <td class="fw-bold">${row.item} ${isDirect}</td>
+                            <td class="fw-bold">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
                             <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
@@ -190,7 +195,9 @@ const app = {
             }
 
             // 프린트 헤더 세팅
-            document.getElementById('printTitle').innerText = `${partner} 거래원장 (판매장부)`;
+            document.getElementById('printTitle').innerText = aggregateByBizNum 
+                ? `${partner} (사업자 통합) 거래원장`
+                : `${partner} 거래원장 (판매장부)`;
             document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
 
         } catch (error) {
