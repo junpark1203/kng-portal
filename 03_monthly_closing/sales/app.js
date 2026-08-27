@@ -271,7 +271,11 @@ const app = {
         const selected = [];
         const targetStatus = isEdit ? '정산완료' : '미정산';
         document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === targetStatus) selected.push(el.value);
+            if (el.dataset.status === targetStatus) {
+                const id = parseInt(el.value);
+                const rowData = this.currentData.find(r => r.id === id);
+                if (rowData) selected.push(rowData);
+            }
         });
         
         if (selected.length === 0) {
@@ -282,6 +286,32 @@ const app = {
         $('selectedCount').innerText = selected.length;
         $('taxDate').value = new Date().toISOString().split('T')[0];
         $('isZeroTax').checked = false;
+        
+        // 테이블 렌더링
+        const tbody = document.getElementById('settleModalTableBody');
+        if (tbody) {
+            tbody.innerHTML = selected.map(r => {
+                const qty = r.qty || 0;
+                const price = r.selling_price || 0;
+                const settleQty = r.settlement_qty ?? qty;
+                const settlePrice = r.settlement_price ?? price;
+                
+                return `
+                    <tr data-id="${r.id}">
+                        <td class="text-truncate" style="max-width: 150px;" title="${r.item}">${r.item}</td>
+                        <td class="text-end">${qty.toLocaleString()}</td>
+                        <td class="text-end px-1">
+                            <input type="number" class="form-control form-control-sm text-end settle-qty" value="${settleQty}">
+                        </td>
+                        <td class="text-end">${price.toLocaleString()}</td>
+                        <td class="text-end px-1">
+                            <input type="number" class="form-control form-control-sm text-end settle-price" value="${settlePrice}">
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
         new bootstrap.Modal(document.getElementById('settleModal')).show();
     },
     
@@ -315,23 +345,33 @@ const app = {
     },
 
     submitSettlement: async function() {
-        const selected = [];
-        const targetStatus = this.isEditMode ? '정산완료' : '미정산';
-        document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === targetStatus) selected.push(parseInt(el.value));
-        });
+        const itemsToSettle = [];
         const taxDate = $('taxDate').value;
         const isZeroTax = $('isZeroTax').checked;
         
         if (!taxDate) return alert('정산 일자를 입력해주세요.');
         
+        document.querySelectorAll('#settleModalTableBody tr').forEach(tr => {
+            const id = parseInt(tr.dataset.id);
+            const sqty = parseFloat(tr.querySelector('.settle-qty').value) || 0;
+            const sprice = parseFloat(tr.querySelector('.settle-price').value) || 0;
+            
+            itemsToSettle.push({
+                id: id,
+                settlement_qty: sqty,
+                settlement_price: sprice,
+                tax_invoice_date: taxDate,
+                is_zero_tax: isZeroTax
+            });
+        });
+        
+        if (itemsToSettle.length === 0) return;
+        
         try {
             await window.authFetch(`${API_BASE}/settlement/outbound`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    ids: selected,
-                    tax_invoice_date: taxDate,
-                    is_zero_tax: isZeroTax
+                    items: itemsToSettle
                 })
             });
             alert(`정산 ${this.isEditMode ? '수정' : '처리'}가 완료되었습니다.`);

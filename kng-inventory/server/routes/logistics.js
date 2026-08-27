@@ -301,11 +301,14 @@ router.post('/inbound', (req, res) => {
     }
 
     db.serialize(() => {
+        const dateStr = (date || '').substring(0, 10).replace(/-/g, '');
+        const txGroupId = `IN-${dateStr}-${Date.now().toString().slice(-6)}`;
+
         db.run("BEGIN TRANSACTION");
         const sql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const stmt = db.prepare(sql);
         
@@ -314,7 +317,7 @@ router.post('/inbound', (req, res) => {
         
         try {
             for (let i of items) {
-                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '');
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId);
             }
         } catch (e) {
             hasError = true;
@@ -346,13 +349,15 @@ router.post('/outbound', (req, res) => {
 
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
+        const dateStr = (date || '').substring(0, 10).replace(/-/g, '');
+        const txGroupId = `OUT-${dateStr}-${Date.now().toString().slice(-6)}`;
         
         let hasError = false;
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
         const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
@@ -366,7 +371,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', function(err) {
+            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txGroupId, function(err) {
                 if (err) {
                     hasError = true;
                     return;
@@ -862,18 +867,23 @@ router.post('/direct', (req, res) => {
         
         let hasError = false;
         
+        const dateStr = (date || '').substring(0, 10).replace(/-/g, '');
+        const timeStr = Date.now().toString().slice(-6);
+        const txInGroupId = `IN-${dateStr}-${timeStr}`;
+        const txOutGroupId = `OUT-${dateStr}-${timeStr}`;
+        
         // 1. Inbound insert (is_direct = 1, qty_remaining = 0)
         const inSql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category, transaction_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, ?, ?)
         `;
         
         // 2. Outbound insert (is_direct = 1)
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
         `;
         
         // 3. Mapping insert
@@ -885,11 +895,11 @@ router.post('/direct', (req, res) => {
 
         for (let i of items) {
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', function(errIn) {
+            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', txInGroupId, function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -922,23 +932,44 @@ router.post('/direct', (req, res) => {
 // --- 정산 상태 업데이트 ---
 router.post('/settlement/:type', (req, res) => {
     const type = req.params.type;
-    const { ids, tax_invoice_date, is_zero_tax } = req.body;
-    
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ error: 'IDs are required' });
-    }
+    const { items, ids, tax_invoice_date, is_zero_tax } = req.body;
     
     const table = type === 'inbound' ? 'logistics_inbound' : (type === 'outbound' ? 'logistics_outbound' : null);
     if (!table) return res.status(400).json({ error: 'Invalid type' });
 
-    const status = tax_invoice_date ? '정산완료' : '미정산';
-    
-    const placeholders = ids.map(() => '?').join(',');
-    const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
-    
-    db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'Settlement updated', updatedCount: this.changes });
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        let hasError = false;
+
+        if (items && Array.isArray(items)) {
+            // 개별 정산 (수량, 단가 포함)
+            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ? WHERE id = ?`);
+            for (let i of items) {
+                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.id, function(e) { if(e) hasError = true; });
+            }
+            stmt.finalize();
+        } else if (ids && Array.isArray(ids)) {
+            // 단순 상태 변경 (정산 취소 등)
+            const status = tax_invoice_date ? '정산완료' : '미정산';
+            const placeholders = ids.map(() => '?').join(',');
+            const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
+            db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
+                if(err) hasError = true;
+            });
+        } else {
+             db.run("ROLLBACK");
+             return res.status(400).json({ error: 'Invalid payload' });
+        }
+
+        db.run("SELECT 1", function() {
+            if (hasError) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: 'Settlement update failed' });
+            } else {
+                db.run("COMMIT");
+                res.json({ message: 'Settlement updated' });
+            }
+        });
     });
 });
 

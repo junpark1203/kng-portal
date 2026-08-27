@@ -139,22 +139,22 @@ const app = {
         const tfoot = document.getElementById('ledgerTableFoot');
 
         if (!partner) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
             tfoot.style.display = 'none';
-            document.getElementById('printTitle').innerText = '판매장부';
+            document.getElementById('printTitle').innerText = '매출/매입 정산내역';
             document.getElementById('printPeriod').innerText = '';
             return;
         }
 
         try {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
             const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
             if (!response.ok) throw new Error('API Error');
             const res = await response.json();
             
             if (res.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">해당 기간에 거래 내역이 없습니다.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
                 tfoot.style.display = 'none';
             } else {
                 let sumQty = 0;
@@ -176,7 +176,9 @@ const app = {
 
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
+                            <td class="d-print-none text-muted small">${row.transaction_group_id || ''}</td>
                             <td class="text-center">${row.date.split('T')[0]}</td>
+                            <td class="text-center text-primary fw-bold">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
                             <td class="text-center">${typeBadge}</td>
                             <td class="fw-bold">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
@@ -196,13 +198,13 @@ const app = {
 
             // 프린트 헤더 세팅
             document.getElementById('printTitle').innerText = aggregateByBizNum 
-                ? `${partner} (사업자 통합) 거래원장`
-                : `${partner} 거래원장 (판매장부)`;
+                ? `${partner} (사업자 통합) 매출/매입 정산내역`
+                : `${partner} 매출/매입 정산내역`;
             document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
 
         } catch (error) {
             console.error('Failed to load ledger', error);
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
             tfoot.style.display = 'none';
         }
     }

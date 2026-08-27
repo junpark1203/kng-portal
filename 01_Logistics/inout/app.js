@@ -211,14 +211,15 @@ const app = {
         });
 
         try {
-            $('historyTbody').innerHTML = `<tr><td colspan="15" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
             const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
+            this.currentHistoryData = res.data;
             this.renderHistoryTable(res.data);
             this.renderPagination(res.total, res.page, res.limit);
         } catch (err) {
             console.error('History load error:', err);
-            $('historyTbody').innerHTML = `<tr><td colspan="15" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
+            $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
         }
     },
 
@@ -263,7 +264,7 @@ const app = {
     renderHistoryTable: function(data) {
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="15" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
             return;
         }
 
@@ -284,7 +285,8 @@ const app = {
 
             return `
             <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
-                <td class="text-center" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
+                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
+                <td class="d-print-none text-muted small">${r.transaction_group_id || ''}</td>
                 <td class="text-center">${badge}</td>
                 <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
                 <td class="text-center">${r.date.split('T')[0]}</td>
@@ -401,6 +403,116 @@ const app = {
         alert(msg);
         $('selectAllHistory').checked = false;
         this.resetPageAndLoadHistory();
+    },
+
+    printSelectedHistory: function() {
+        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        if (checked.length === 0) {
+            alert('출력할 내역을 선택해주세요.');
+            return;
+        }
+
+        if (!this.currentHistoryData) return;
+
+        const selectedItems = checked.map(cb => {
+            const id = parseInt(cb.value);
+            const type = cb.dataset.type;
+            return this.currentHistoryData.find(r => r.id === id && r.type === type);
+        }).filter(item => item !== undefined);
+
+        if (selectedItems.length === 0) return;
+
+        let tableRows = '';
+        let totalAmount = 0;
+        
+        selectedItems.forEach(item => {
+            const isOut = item.type === 'outbound';
+            const qty = item.qty || 0;
+            const price = isOut ? (item.outbound_price || 0) : (item.inbound_price || 0);
+            const amount = isOut ? (item.outbound_total || 0) : (item.inbound_total || 0);
+            totalAmount += amount;
+            
+            const partner = item.supplier || item.destination || '';
+            const typeText = isOut ? '출고' : '입고';
+            
+            tableRows += `
+                <tr>
+                    <td class="text-center">${item.date ? item.date.split('T')[0] : ''}</td>
+                    <td class="text-center">${typeText}</td>
+                    <td>${item.item || ''}</td>
+                    <td>${item.spec || ''}</td>
+                    <td class="text-center">${item.unit || ''}</td>
+                    <td class="text-end">${qty.toLocaleString()}</td>
+                    <td class="text-end">${price.toLocaleString()}</td>
+                    <td class="text-end">${amount.toLocaleString()}</td>
+                    <td>${partner}</td>
+                </tr>
+            `;
+        });
+
+        const printHtml = `
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <title>거래명세서</title>
+                <style>
+                    body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; font-size: 12px; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .header h2 { margin: 0; font-size: 24px; text-decoration: underline; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #000; padding: 5px 8px; }
+                    th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
+                    .text-center { text-align: center; }
+                    .text-end { text-align: right; }
+                    .total-row td { font-weight: bold; background-color: #f2f2f2; }
+                    @media print {
+                        @page { size: A4; margin: 1cm; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>거래명세서</h2>
+                    <div style="text-align: right; margin-top: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 12%">일자</th>
+                            <th style="width: 8%">구분</th>
+                            <th style="width: 20%">품목</th>
+                            <th style="width: 12%">규격</th>
+                            <th style="width: 8%">단위</th>
+                            <th style="width: 10%">수량</th>
+                            <th style="width: 10%">단가</th>
+                            <th style="width: 12%">금액</th>
+                            <th style="width: 18%">거래처</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                        <tr class="total-row">
+                            <td colspan="7" class="text-end">합계</td>
+                            <td class="text-end">${totalAmount.toLocaleString()}</td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printHtml);
+            printWindow.document.close();
+            // Wait for styles to be applied
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+            }, 250);
+        }
     },
 
     deleteInbound: async function(id) {

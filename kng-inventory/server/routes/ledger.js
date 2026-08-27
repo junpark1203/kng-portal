@@ -16,16 +16,22 @@ module.exports = (database) => {
             
             // 입고(매입) 데이터 조회
             const inSql = `
-                SELECT '입고' as type, date, item, spec, unit, qty_initial as qty, unit_price as price, is_direct, note, id, supplier as site_name
+                SELECT '입고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
+                       COALESCE(settlement_qty, qty_initial) as qty, 
+                       COALESCE(settlement_price, unit_price) as price, 
+                       is_direct, note, id, supplier as site_name
                 FROM logistics_inbound 
-                WHERE supplier IN (${placeholders}) AND date >= ? AND date <= ?
+                WHERE supplier IN (${placeholders}) AND date >= ? AND date <= ? AND settlement_status = '정산완료'
             `;
             
             // 출고(매출) 데이터 조회
             const outSql = `
-                SELECT '출고' as type, date, item, spec, unit, qty, selling_price as price, is_direct, note, id, destination as site_name
+                SELECT '출고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
+                       COALESCE(settlement_qty, qty) as qty, 
+                       COALESCE(settlement_price, selling_price) as price, 
+                       is_direct, note, id, destination as site_name
                 FROM logistics_outbound
-                WHERE destination IN (${placeholders}) AND date >= ? AND date <= ?
+                WHERE destination IN (${placeholders}) AND date >= ? AND date <= ? AND settlement_status = '정산완료'
             `;
 
             const inParams = [...partnersList, startDate, endDate];

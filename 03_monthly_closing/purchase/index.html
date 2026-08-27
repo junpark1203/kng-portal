@@ -185,23 +185,46 @@
 
 <!-- 정산 처리 모달 -->
 <div class="modal fade" id="settleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fs-6 fw-bold">매입정산 처리</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-3">선택한 <strong id="selectedCount" class="text-primary">0</strong>건의 내역을 정산완료 처리합니다.</p>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">정산 일자 (세금계산서 발행/수취일)</label>
-                    <input type="date" class="form-control" id="taxDate">
+                <p class="mb-2">선택한 <strong id="selectedCount" class="text-primary">0</strong>건의 내역을 정산완료 처리합니다.</p>
+                
+                <!-- 선택된 항목들의 정산 수량/단가를 수정할 수 있는 테이블 -->
+                <div class="table-responsive mb-3 border rounded" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>품명</th>
+                                <th class="text-end" style="width: 80px;">원수량</th>
+                                <th class="text-end" style="width: 100px;">정산수량</th>
+                                <th class="text-end" style="width: 100px;">원단가</th>
+                                <th class="text-end" style="width: 110px;">정산단가</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settleModalTableBody">
+                            <!-- JS 렌더링 -->
+                        </tbody>
+                    </table>
                 </div>
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="isZeroTax">
-                    <label class="form-check-label" for="isZeroTax">
-                        영세율 (부가세 0%) 적용
-                    </label>
+
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-7">
+                        <label class="form-label fw-bold mb-1">일괄 정산 일자 (세금계산서 발행/수취일)</label>
+                        <input type="date" class="form-control form-control-sm" id="taxDate">
+                    </div>
+                    <div class="col-md-5 d-flex align-items-end h-100">
+                        <div class="form-check mt-3 mb-1">
+                            <input class="form-check-input" type="checkbox" id="isZeroTax">
+                            <label class="form-check-label small fw-bold" for="isZeroTax">
+                                전체 영세율 (부가세 0%) 적용
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
