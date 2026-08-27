@@ -804,6 +804,28 @@
     </div>
 </div>
 
+<!-- 거래처 검색 모달 (공통) -->
+<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white py-2">
+                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="partnerSearchTargetInput">
+                <div class="input-group mb-3 shadow-sm">
+                    <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()">
+                </div>
+                <div class="list-group shadow-sm" id="partnerSearchList">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Firebase & Auth -->
 <script type="module">
