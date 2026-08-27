@@ -109,6 +109,7 @@ const app = {
 
             const url = new URL(`${API_BASE}/history`);
             url.searchParams.append('type', 'outbound');
+            url.searchParams.append('include_direct', 'true');
             url.searchParams.append('page', this.currentPage);
             url.searchParams.append('limit', this.limit);
             

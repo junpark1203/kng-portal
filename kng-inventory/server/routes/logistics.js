@@ -421,7 +421,8 @@ router.get('/history', (req, res) => {
         page = 1, limit = 50, type = 'all', search = '',
         sortCol = 'date', sortDir = 'desc',
         startDate = '', endDate = '',
-        searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = ''
+        searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = '',
+        include_direct = 'false'
     } = req.query;
 
     page = parseInt(page, 10) || 1;
@@ -437,9 +438,14 @@ router.get('/history', (req, res) => {
 
     if (type === 'inbound') {
         whereClauses.push("type = 'inbound'");
+        if (include_direct !== 'true') {
+            whereClauses.push("is_direct = 0");
+        }
     } else if (type === 'outbound') {
         whereClauses.push("type = 'outbound'");
-        whereClauses.push("is_direct = 0");
+        if (include_direct !== 'true') {
+            whereClauses.push("is_direct = 0");
+        }
     }
 
     // Detailed search filters
