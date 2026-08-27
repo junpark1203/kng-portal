@@ -104,11 +104,17 @@ const app = {
         $('inboundForm').addEventListener('submit', this.handleInboundSubmit.bind(this));
         $('outboundForm').addEventListener('submit', this.handleOutboundSubmit.bind(this));
         $('directForm').addEventListener('submit', this.handleDirectSubmit.bind(this));
-        $('editInboundForm').addEventListener('submit', this.submitEditInbound.bind(this));
-        $('editOutboundForm').addEventListener('submit', this.submitEditOutbound.bind(this));
+        const eif = $('editInboundForm');
+        if (eif) eif.addEventListener('submit', this.submitEditInbound.bind(this));
+        
+        const eof = $('editOutboundForm');
+        if (eof) eof.addEventListener('submit', this.submitEditOutbound.bind(this));
+        
         const edf = $('editDirectForm');
-        if(edf) edf.addEventListener('submit', this.submitEditDirectOutbound.bind(this));
-        $('btnEditOutboundLot').addEventListener('click', this.openEditOutboundLotModal.bind(this));
+        if (edf) edf.addEventListener('submit', this.submitEditDirectOutbound.bind(this));
+        
+        const beol = $('btnEditOutboundLot');
+        if (beol) beol.addEventListener('click', this.openEditOutboundLotModal.bind(this));
         
         // Hide autocomplete when clicking outside
         document.addEventListener('click', (e) => {
