@@ -1348,6 +1348,60 @@ router.get('/migrate-partners', async (req, res) => {
     }
 });
 
+router.get('/migrate-tx-ids', async (req, res) => {
+    try {
+        const updateRecords = (tableName, partnerCol, prefix) => {
+            return new Promise((resolve, reject) => {
+                db.all(`SELECT id, date, ${partnerCol} as partner, transaction_group_id FROM ${tableName} ORDER BY date ASC, id ASC`, [], (err, rows) => {
+                    if (err) return reject(err);
+                    if (!rows || rows.length === 0) return resolve(0);
+
+                    const counters = {};
+                    const groupIds = {};
+                    const updateStmt = db.prepare(`UPDATE ${tableName} SET transaction_group_id = ? WHERE id = ?`);
+                    
+                    let updatedCount = 0;
+
+                    db.serialize(() => {
+                        db.run("BEGIN TRANSACTION");
+                        rows.forEach(row => {
+                            if (row.transaction_group_id) return;
+                            const dateStr = (row.date || '').substring(0, 10).replace(/-/g, '');
+                            if (!dateStr) return;
+
+                            const groupKey = `${dateStr}_${row.partner}`;
+                            let txId = groupIds[groupKey];
+
+                            if (!txId) {
+                                if (!counters[dateStr]) counters[dateStr] = 0;
+                                counters[dateStr]++;
+                                const seq = String(counters[dateStr]).padStart(3, '0');
+                                txId = `${prefix}-${dateStr}-${seq}`;
+                                groupIds[groupKey] = txId;
+                            }
+
+                            updateStmt.run(txId, row.id);
+                            updatedCount++;
+                        });
+                        updateStmt.finalize();
+                        db.run("COMMIT", (err) => {
+                            if (err) reject(err);
+                            else resolve(updatedCount);
+                        });
+                    });
+                });
+            });
+        };
+
+        const inCount = await updateRecords('logistics_inbound', 'supplier', 'IN');
+        const outCount = await updateRecords('logistics_outbound', 'destination', 'OUT');
+
+        res.json({ success: true, message: 'Transaction ID 백필 완료', inCount, outCount });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 module.exports = {
     router,
     initLogisticsTables,
