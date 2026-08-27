@@ -17,16 +17,16 @@ function waitForAuth(timeout = 8000) {
                     window.parent.getAuthToken().then(t => {
                         if (t) { res(t); }
                         else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
-                        else { _authReady = null; res(null); }
+                        else { _authReady = Promise.resolve(null); res(null); }
                     }).catch(() => {
                         if (Date.now() - s < timeout) setTimeout(poll, 400);
-                        else { _authReady = null; res(null); }
+                        else { _authReady = Promise.resolve(null); res(null); }
                     });
                 } else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
-                else { _authReady = null; res(null); }
+                else { _authReady = Promise.resolve(null); res(null); }
             } catch (e) {
                 if (Date.now() - s < timeout) setTimeout(poll, 400);
-                else { _authReady = null; res(null); }
+                else { _authReady = Promise.resolve(null); res(null); }
             }
         })();
     });
