@@ -259,7 +259,7 @@ const app = {
         document.querySelectorAll('.row-chk:checked').forEach(el => {
             if (el.dataset.status === targetStatus) {
                 const id = parseInt(el.value);
-                const rowData = this.currentData.find(r => r.id === id);
+                const rowData = this.items.find(r => r.id === id);
                 if (rowData) selected.push(rowData);
             }
         });
