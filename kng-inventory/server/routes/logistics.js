@@ -60,7 +60,13 @@ function initLogisticsTables(database) {
                     const addColsInbound = [
                         "ALTER TABLE logistics_inbound ADD COLUMN note TEXT",
                         "ALTER TABLE logistics_inbound ADD COLUMN is_direct INTEGER DEFAULT 0",
-                        "ALTER TABLE logistics_inbound ADD COLUMN category TEXT"
+                        "ALTER TABLE logistics_inbound ADD COLUMN category TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
+                        "ALTER TABLE logistics_inbound ADD COLUMN tax_invoice_date TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_inbound ADD COLUMN transaction_group_id TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_qty REAL",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_price REAL"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -89,7 +95,13 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN is_direct INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN actual_destination TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0",
-                        "ALTER TABLE logistics_outbound ADD COLUMN category TEXT"
+                        "ALTER TABLE logistics_outbound ADD COLUMN category TEXT",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_status TEXT DEFAULT '미정산'",
+                        "ALTER TABLE logistics_outbound ADD COLUMN tax_invoice_date TEXT",
+                        "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_outbound ADD COLUMN transaction_group_id TEXT",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_qty REAL",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
