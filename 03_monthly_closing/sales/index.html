@@ -178,24 +178,26 @@
     </div>
 
     <!-- 테이블 -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="mainTable">
-            <thead class="table-light text-secondary">
+    <div class="table-responsive bg-white rounded-3 shadow-sm border border-light">
+        <table class="table table-hover align-middle mb-0" id="mainTable" style="min-width: 1300px;">
+            <thead class="table-light text-secondary border-bottom">
                 <tr>
-                    <th class="chk-col"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
-                    <th style="width: 130px;">일자<br><small class="text-muted fw-normal">출고 / 정산</small></th>
+                    <th class="chk-col text-center" style="width: 40px;"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
+                    <th style="width: 120px;">출고일자<br><small class="text-muted fw-normal">매출일자</small></th>
                     <th style="width: 120px;">매출처</th>
-                    <th style="min-width: 150px;">품명<br><small class="text-muted fw-normal">규격 / 단위</small></th>
-                    <th class="text-end" style="width: 110px;">수량<br><small class="text-muted fw-normal">출고 / 정산</small></th>
-                    <th class="text-end" style="width: 120px;">단가<br><small class="text-muted fw-normal">출고 / 정산</small></th>
-                    <th class="text-end" style="width: 130px;">금액<br><small class="text-muted fw-normal">총액 / 공급가액</small></th>
-                    <th class="text-end" style="width: 120px;">부가세<br><small class="text-muted fw-normal">정산 부가세</small></th>
-                    <th class="text-end" style="width: 130px;">합계금액<br><small class="text-muted fw-normal">정산 합계</small></th>
+                    <th style="min-width: 150px;">품명</th>
+                    <th style="width: 100px;">규격</th>
+                    <th style="width: 80px;">단위</th>
+                    <th class="text-end" style="width: 110px;">출고수량<br><small class="text-muted fw-normal">정산수량</small></th>
+                    <th class="text-end" style="width: 120px;">출고단가<br><small class="text-muted fw-normal">매출단가</small></th>
+                    <th class="text-end" style="width: 130px;">출고금액<br><small class="text-muted fw-normal">정산금액</small></th>
+                    <th class="text-end" style="width: 130px;">부가세<br><small class="text-muted fw-normal">정산 부가세</small></th>
+                    <th class="text-end" style="width: 130px;">합계금액<br><small class="text-muted fw-normal">매출금액</small></th>
                     <th class="text-center" style="width: 100px;">상태/작업</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
-                <tr><td colspan="9" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                <tr><td colspan="12" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>
             </tbody>
         </table>
     </div>

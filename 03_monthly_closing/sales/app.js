@@ -154,7 +154,7 @@ const app = {
     renderTable: function() {
         const tbody = $('dataTableBody');
         if (this.items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
             $('totalCount').innerText = 0;
             return;
         }
@@ -188,48 +188,46 @@ const app = {
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
                     <td class="align-middle px-2">
-                        <div class="original-data">${r.date.split('T')[0]}</div>
-                        <input type="date" class="form-control form-control-sm inline-date edit-input" value="${defaultTaxDate}">
+                        <div class="original-data text-muted small">${r.date.split('T')[0]}</div>
+                        <input type="date" class="form-control form-control-sm inline-date edit-input mt-1" value="${defaultTaxDate}">
                     </td>
                     <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.destination || ''}">${r.destination || ''}</td>
-                    <td class="align-middle text-truncate" style="max-width: 150px;">
+                    <td class="align-middle text-truncate fw-bold" style="max-width: 150px;" title="${r.item}">
                         <div>${itemDisplay}</div>
-                        <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
+                    </td>
+                    <td class="align-middle text-truncate small" style="max-width: 100px;" title="${r.spec}">${r.spec || '-'}</td>
+                    <td class="align-middle text-truncate small" style="max-width: 80px;">${r.unit || '-'}</td>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data text-muted small">${r.qty}</div>
+                        <input type="number" class="form-control form-control-sm text-end inline-qty edit-input mt-1" value="${r.qty}" oninput="app.calcInline(${r.id}, true)">
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div class="original-data">${r.qty}</div>
-                        <input type="number" class="form-control form-control-sm text-end inline-qty edit-input" value="${r.qty}" oninput="app.calcInline(${r.id})">
+                        <div class="original-data text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</div>
+                        <input type="number" class="form-control form-control-sm text-end inline-price edit-input mt-1" value="${r.outbound_price || 0}" oninput="app.calcInline(${r.id}, true)">
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div class="original-data">${Number(r.outbound_price || 0).toLocaleString()}</div>
-                        <input type="number" class="form-control form-control-sm text-end inline-price edit-input" value="${r.outbound_price || 0}" oninput="app.calcInline(${r.id})">
-                    </td>
-                    <td class="text-end align-middle px-2">
-                        <div class="original-data">${Number(originalTotal).toLocaleString()}</div>
+                        <div class="original-data text-muted small">${Number(originalTotal).toLocaleString()}</div>
                         <div class="text-primary fw-bold inline-supply-amt mt-2">0</div>
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div class="form-check form-switch d-flex justify-content-end align-items-center gap-1 mb-1 p-0">
-                            <input class="form-check-input m-0 inline-zero-tax" type="checkbox" role="switch" style="cursor: pointer;" onchange="app.calcInline(${r.id})">
-                            <label class="form-check-label small text-muted" style="font-size: 0.75rem;">영세율</label>
-                        </div>
-                        <div class="text-primary inline-vat">0</div>
+                        <div style="height: 1.4rem;"></div>
+                        <input type="number" class="form-control form-control-sm text-end inline-vat edit-input mt-1" value="0" oninput="app.calcInline(${r.id}, false)">
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div style="height: 1.4rem;"></div> <!-- Spacing for alignment -->
-                        <div class="text-primary fw-bold inline-total-amt">0</div>
+                        <div style="height: 1.4rem;"></div>
+                        <div class="text-primary fw-bold inline-total-amt mt-2">0</div>
                     </td>
                     <td class="text-center align-middle">
-                        <div class="mb-1"><span class="badge bg-warning text-dark">미정산</span></div>
-                        <button class="btn btn-sm btn-primary py-0 px-2 fw-bold" onclick="app.submitInlineSettlement(${r.id})">정산</button>
+                        <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="app.submitInlineSettlement(${r.id})">정산 확정</button>
                     </td>
                 </tr>
                 `;
-            } else {
                 const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0) + shipAmount;
                 let vat = 0;
                 
-                if (r.is_zero_tax) {
+                if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                    vat = r.settlement_vat;
+                } else if (r.is_zero_tax) {
                     vat = 0;
                 } else {
                     const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
@@ -244,44 +242,42 @@ const app = {
                 const totalAmt = supplyAmt + vat;
                 
                 return `
-                <tr data-id="${r.id}">
+                <tr data-id="${r.id}" class="settled-row">
                     <td class="text-center align-middle">
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
                     <td class="align-middle px-2">
-                        <div class="original-data">${r.date.split('T')[0]}</div>
-                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</div>
+                        <div class="original-data text-muted small">${r.date.split('T')[0]}</div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</div>
                     </td>
                     <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.destination || ''}">${r.destination || ''}</td>
-                    <td class="align-middle text-truncate" style="max-width: 150px;">
+                    <td class="align-middle text-truncate fw-bold" style="max-width: 150px;" title="${r.item}">
                         <div>${itemDisplay}</div>
-                        <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
+                    </td>
+                    <td class="align-middle text-truncate small" style="max-width: 100px;" title="${r.spec}">${r.spec || '-'}</td>
+                    <td class="align-middle text-truncate small" style="max-width: 80px;">${r.unit || '-'}</td>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data text-muted small">${r.qty}</div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${r.settlement_qty}</div>
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div class="original-data">${r.qty}</div>
-                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${r.settlement_qty}</div>
+                        <div class="original-data text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${Number(r.settlement_price || 0).toLocaleString()}</div>
                     </td>
                     <td class="text-end align-middle px-2">
-                        <div class="original-data">${Number(r.outbound_price || 0).toLocaleString()}</div>
-                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${Number(r.settlement_price || 0).toLocaleString()}</div>
-                    </td>
-                    <td class="text-end align-middle px-2">
-                        <div class="original-data">${Number(originalTotal).toLocaleString()}</div>
-                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${Number(supplyAmt).toLocaleString()}</div>
-                    </td>
-                    <td class="text-end align-middle px-2">
-                        <div style="height: 1.2rem;"></div>
-                        <div class="text-primary fw-bold" style="font-size: 0.95rem;">${Number(vat).toLocaleString()}</div>
+                        <div class="original-data text-muted small">${Number(originalTotal).toLocaleString()}</div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${Number(supplyAmt).toLocaleString()}</div>
                     </td>
                     <td class="text-end align-middle px-2">
                         <div style="height: 1.2rem;"></div>
-                        <div class="text-primary fw-bold" style="font-size: 0.95rem;">${Number(totalAmt).toLocaleString()}</div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${Number(vat).toLocaleString()}</div>
+                    </td>
+                    <td class="text-end align-middle px-2">
+                        <div style="height: 1.2rem;"></div>
+                        <div class="text-primary fw-bold mt-1" style="font-size: 0.95rem;">${Number(totalAmt).toLocaleString()}</div>
                     </td>
                     <td class="text-center align-middle">
-                        <div class="mb-1">
-                            <span class="badge bg-success">정산완료</span>
-                            ${r.is_zero_tax ? '<span class="badge bg-info ms-1">영세율</span>' : ''}
-                        </div>
+                        <span class="badge bg-success shadow-sm px-3 py-2">정산완료</span>
                     </td>
                 </tr>
                 `;
@@ -357,12 +353,12 @@ const app = {
         $('checkAllHeader').checked = allChecks.length > 0 && checkedBoxes.length === allChecks.length;
     },
 
-    calcInline: function(id) {
+    calcInline: function(id, autoCalcVat = false) {
         const tr = document.querySelector(`tr[data-id="${id}"]`);
         if(!tr) return;
         const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
         const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
-        const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
+        const vatInput = tr.querySelector('.inline-vat');
         
         const shipAmount = parseFloat(tr.dataset.shipamt) || 0;
         const shipFee = parseFloat(tr.dataset.shipfee) || 0;
@@ -371,20 +367,19 @@ const app = {
         const itemSupplyAmt = qty * price;
         const supplyAmt = itemSupplyAmt + shipAmount;
         
-        let vat = 0;
-        if (!isZeroTax) {
+        if (autoCalcVat) {
             const itemVat = Math.floor(itemSupplyAmt * 0.1);
             let shipVat = 0;
             if (shipFee > 0) {
                 shipVat = shipVatInc === 1 ? shipFee - shipAmount : Math.floor(shipAmount * 0.1);
             }
-            vat = itemVat + shipVat;
+            vatInput.value = itemVat + shipVat;
         }
         
+        const vat = parseFloat(vatInput.value) || 0;
         const total = supplyAmt + vat;
         
         tr.querySelector('.inline-supply-amt').innerText = supplyAmt.toLocaleString();
-        tr.querySelector('.inline-vat').innerText = vat.toLocaleString();
         tr.querySelector('.inline-total-amt').innerText = total.toLocaleString();
     },
     
@@ -407,7 +402,8 @@ const app = {
         const taxDate = tr.querySelector('.inline-date').value;
         const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
         const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
-        const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
+        const vat = parseFloat(tr.querySelector('.inline-vat').value) || 0;
+        const isZeroTax = (vat === 0);
         
         if(!taxDate) return alert('정산일자를 입력해주세요.');
         
@@ -416,11 +412,12 @@ const app = {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    updates: [{
+                    items: [{ // updates -> items
                         id: id,
                         tax_invoice_date: taxDate,
                         settlement_qty: qty,
                         settlement_price: price,
+                        settlement_vat: vat,
                         is_zero_tax: isZeroTax ? 1 : 0
                     }]
                 })
@@ -438,7 +435,7 @@ const app = {
     
     submitBatchSettlement: async function() {
         const checked = document.querySelectorAll('.row-chk:checked');
-        const updates = [];
+        const items = []; // updates -> items
         
         checked.forEach(el => {
             if(el.dataset.status === '미정산') {
@@ -447,31 +444,33 @@ const app = {
                 const taxDate = tr.querySelector('.inline-date').value;
                 const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
                 const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
-                const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
+                const vat = parseFloat(tr.querySelector('.inline-vat').value) || 0;
+                const isZeroTax = (vat === 0);
                 
-                updates.push({
+                items.push({
                     id: id,
                     tax_invoice_date: taxDate,
                     settlement_qty: qty,
                     settlement_price: price,
+                    settlement_vat: vat,
                     is_zero_tax: isZeroTax ? 1 : 0
                 });
             }
         });
         
-        if(updates.length === 0) return alert('선택된 미정산 내역이 없습니다.');
+        if(items.length === 0) return alert('선택된 미정산 내역이 없습니다.');
         
-        if(updates.some(u => !u.tax_invoice_date)) {
+        if(items.some(u => !u.tax_invoice_date)) {
             return alert('정산일자가 입력되지 않은 항목이 있습니다.');
         }
         
-        if(!confirm(`선택한 ${updates.length}건을 일괄 정산완료 처리하시겠습니까?`)) return;
+        if(!confirm(`선택한 ${items.length}건을 일괄 정산완료 처리하시겠습니까?`)) return;
         
         try {
             const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ updates })
+                body: JSON.stringify({ items }) // updates -> items
             });
             if (res.ok) {
                 this.loadData();
@@ -497,7 +496,7 @@ const app = {
         if(!confirm(`선택한 ${ids.length}건을 정산 취소하시겠습니까?\n(다시 미정산 상태로 돌아가며 정산일자는 초기화됩니다.)`)) return;
         
         try {
-            const res = await window.authFetch(`${API_BASE}/settlement/outbound/cancel`, {
+            const res = await window.authFetch(`${API_BASE}/settlement/outbound`, { // cancel URL 수정
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ ids })
