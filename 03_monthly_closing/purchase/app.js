@@ -174,33 +174,36 @@ const app = {
                     <td class="text-center align-middle">
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
-                    <td class="align-middle">
-                        <div>${r.date.split('T')[0]}</div>
-                        <div class="mt-1"><input type="date" class="form-control form-control-sm inline-date" value="${defaultTaxDate}"></div>
+                    <td class="align-middle px-2">
+                        <div class="original-data">${r.date.split('T')[0]}</div>
+                        <input type="date" class="form-control form-control-sm inline-date edit-input" value="${defaultTaxDate}">
                     </td>
                     <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.supplier || ''}">${r.supplier || ''}</td>
                     <td class="align-middle text-truncate" style="max-width: 150px;">
                         <div><strong>${r.item}</strong>${directBadge}</div>
                         <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${r.qty}</div>
-                        <div class="mt-1"><input type="number" class="form-control form-control-sm text-end inline-qty" value="${r.qty}" oninput="app.calcInline(${r.id})"></div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${r.qty}</div>
+                        <input type="number" class="form-control form-control-sm text-end inline-qty edit-input" value="${r.qty}" oninput="app.calcInline(${r.id})">
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${Number(r.inbound_price || 0).toLocaleString()}</div>
-                        <div class="mt-1"><input type="number" class="form-control form-control-sm text-end inline-price" value="${r.inbound_price || 0}" oninput="app.calcInline(${r.id})"></div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${Number(r.inbound_price || 0).toLocaleString()}</div>
+                        <input type="number" class="form-control form-control-sm text-end inline-price edit-input" value="${r.inbound_price || 0}" oninput="app.calcInline(${r.id})">
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${Number(originalTotal).toLocaleString()}</div>
-                        <div class="mt-1 text-primary fw-bold inline-supply-amt">0</div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${Number(originalTotal).toLocaleString()}</div>
+                        <div class="text-primary fw-bold inline-supply-amt mt-2">0</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div class="mb-1"><label class="small text-muted" style="cursor: pointer;"><input type="checkbox" class="inline-zero-tax" onchange="app.calcInline(${r.id})"> 영세율</label></div>
+                    <td class="text-end align-middle px-2">
+                        <div class="form-check form-switch d-flex justify-content-end align-items-center gap-1 mb-1 p-0">
+                            <input class="form-check-input m-0 inline-zero-tax" type="checkbox" role="switch" style="cursor: pointer;" onchange="app.calcInline(${r.id})">
+                            <label class="form-check-label small text-muted" style="font-size: 0.75rem;">영세율</label>
+                        </div>
                         <div class="text-primary inline-vat">0</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div style="height: 1.2rem;"></div> <!-- Spacing for alignment -->
+                    <td class="text-end align-middle px-2">
+                        <div style="height: 1.4rem;"></div> <!-- Spacing to align with total -->
                         <div class="text-primary fw-bold inline-total-amt">0</div>
                     </td>
                     <td class="text-center align-middle">
@@ -219,34 +222,34 @@ const app = {
                     <td class="text-center align-middle">
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
-                    <td class="align-middle">
-                        <div>${r.date.split('T')[0]}</div>
-                        <div class="text-primary small fw-bold mt-1">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</div>
+                    <td class="align-middle px-2">
+                        <div class="original-data">${r.date.split('T')[0]}</div>
+                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</div>
                     </td>
                     <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.supplier || ''}">${r.supplier || ''}</td>
                     <td class="align-middle text-truncate" style="max-width: 150px;">
                         <div><strong>${r.item}</strong>${directBadge}</div>
                         <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${r.qty}</div>
-                        <div class="text-primary small fw-bold mt-1">${r.settlement_qty}</div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${r.qty}</div>
+                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${r.settlement_qty}</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${Number(r.inbound_price || 0).toLocaleString()}</div>
-                        <div class="text-primary small fw-bold mt-1">${Number(r.settlement_price || 0).toLocaleString()}</div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${Number(r.inbound_price || 0).toLocaleString()}</div>
+                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${Number(r.settlement_price || 0).toLocaleString()}</div>
                     </td>
-                    <td class="text-end align-middle">
-                        <div>${Number(originalTotal).toLocaleString()}</div>
-                        <div class="text-primary small fw-bold mt-1">${Number(supplyAmt).toLocaleString()}</div>
+                    <td class="text-end align-middle px-2">
+                        <div class="original-data">${Number(originalTotal).toLocaleString()}</div>
+                        <div class="text-primary fw-bold mt-2" style="font-size: 0.95rem;">${Number(supplyAmt).toLocaleString()}</div>
                     </td>
-                    <td class="text-end align-middle">
+                    <td class="text-end align-middle px-2">
                         <div style="height: 1.2rem;"></div>
-                        <div class="text-primary small fw-bold">${Number(vat).toLocaleString()}</div>
+                        <div class="text-primary fw-bold" style="font-size: 0.95rem;">${Number(vat).toLocaleString()}</div>
                     </td>
-                    <td class="text-end align-middle">
+                    <td class="text-end align-middle px-2">
                         <div style="height: 1.2rem;"></div>
-                        <div class="text-primary fw-bold">${Number(totalAmt).toLocaleString()}</div>
+                        <div class="text-primary fw-bold" style="font-size: 0.95rem;">${Number(totalAmt).toLocaleString()}</div>
                     </td>
                     <td class="text-center align-middle">
                         <div class="mb-1">
