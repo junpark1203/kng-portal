@@ -169,42 +169,126 @@ const app = {
                              ? Math.round(r.shipping_fee / 1.1) 
                              : r.shipping_fee;
             }
-            const total = qtyTotal + shipAmount;
+            const originalTotal = qtyTotal + shipAmount;
             
             let itemDisplay = `<strong>${r.item}</strong>`;
-            if (r.is_direct) itemDisplay += `<span class="badge bg-secondary ms-1">직</span>`;
+            if (r.is_direct) itemDisplay += `<span class="badge bg-secondary ms-1">직출고</span>`;
             if (r.shipping_fee > 0) {
                 const shipVatText = r.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가 기준)';
                 itemDisplay += `<div class="small text-muted mt-1">+ 배송비 ${r.shipping_fee.toLocaleString()}원 ${shipVatText}</div>`;
             }
             
-            let statusHtml = '';
             let statusVal = r.settlement_status || '미정산';
-            if (statusVal === '미정산') {
-                statusHtml = `<span class="badge bg-warning text-dark">미정산</span>`;
-            } else {
-                statusHtml = `<div class="text-secondary small">${r.tax_invoice_date || ''}</div>
-                              <span class="badge bg-success">정산완료</span>
-                              ${r.is_zero_tax ? '<span class="badge bg-info ms-1">영세율</span>' : ''}`;
-            }
             
-            const directBadge = r.is_direct ? `<span class="badge bg-secondary ms-1">직출고</span>` : '';
-            return `
-            <tr>
-                <td class="text-center">
-                    <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
-                </td>
-                <td>${r.date}</td>
-                <td>${r.destination || ''}</td>
-                <td>${itemDisplay}</td>
-                <td>${r.spec} / ${r.unit}</td>
-                <td class="text-danger fw-bold">${r.qty}</td>
-                <td>${Number(r.outbound_price || 0).toLocaleString()}</td>
-                <td>${Number(total).toLocaleString()}</td>
-                <td class="text-center">${statusHtml}</td>
-            </tr>
-            `;
+            if (statusVal === '미정산') {
+                const defaultTaxDate = r.date ? r.date.split('T')[0] : '';
+                return `
+                <tr data-id="${r.id}" class="unsettled-row" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee}" data-shipvatinc="${r.shipping_fee_vat_included}">
+                    <td class="text-center align-middle">
+                        <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
+                    </td>
+                    <td class="align-middle">
+                        <div>${r.date.split('T')[0]}</div>
+                        <div class="mt-1"><input type="date" class="form-control form-control-sm inline-date" value="${defaultTaxDate}"></div>
+                    </td>
+                    <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.destination || ''}">${r.destination || ''}</td>
+                    <td class="align-middle text-truncate" style="max-width: 150px;">
+                        <div>${itemDisplay}</div>
+                        <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${r.qty}</div>
+                        <div class="mt-1"><input type="number" class="form-control form-control-sm text-end inline-qty" value="${r.qty}" oninput="app.calcInline(${r.id})"></div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${Number(r.outbound_price || 0).toLocaleString()}</div>
+                        <div class="mt-1"><input type="number" class="form-control form-control-sm text-end inline-price" value="${r.outbound_price || 0}" oninput="app.calcInline(${r.id})"></div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${Number(originalTotal).toLocaleString()}</div>
+                        <div class="mt-1 text-primary fw-bold inline-supply-amt">0</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div class="mb-1"><label class="small text-muted" style="cursor: pointer;"><input type="checkbox" class="inline-zero-tax" onchange="app.calcInline(${r.id})"> 영세율</label></div>
+                        <div class="text-primary inline-vat">0</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div style="height: 1.2rem;"></div> <!-- Spacing for alignment -->
+                        <div class="text-primary fw-bold inline-total-amt">0</div>
+                    </td>
+                    <td class="text-center align-middle">
+                        <div class="mb-1"><span class="badge bg-warning text-dark">미정산</span></div>
+                        <button class="btn btn-sm btn-primary py-0 px-2 fw-bold" onclick="app.submitInlineSettlement(${r.id})">정산</button>
+                    </td>
+                </tr>
+                `;
+            } else {
+                const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0) + shipAmount;
+                let vat = 0;
+                
+                if (r.is_zero_tax) {
+                    vat = 0;
+                } else {
+                    const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
+                    let shipVat = 0;
+                    if (r.shipping_fee > 0) {
+                        shipVat = r.shipping_fee_vat_included === 1 
+                                  ? r.shipping_fee - shipAmount
+                                  : Math.floor(shipAmount * 0.1);
+                    }
+                    vat = itemVat + shipVat;
+                }
+                const totalAmt = supplyAmt + vat;
+                
+                return `
+                <tr data-id="${r.id}">
+                    <td class="text-center align-middle">
+                        <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
+                    </td>
+                    <td class="align-middle">
+                        <div>${r.date.split('T')[0]}</div>
+                        <div class="text-primary small fw-bold mt-1">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</div>
+                    </td>
+                    <td class="align-middle text-truncate" style="max-width: 120px;" title="${r.destination || ''}">${r.destination || ''}</td>
+                    <td class="align-middle text-truncate" style="max-width: 150px;">
+                        <div>${itemDisplay}</div>
+                        <div class="text-muted small mt-1" title="${r.spec} / ${r.unit}">${r.spec} / ${r.unit}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${r.qty}</div>
+                        <div class="text-primary small fw-bold mt-1">${r.settlement_qty}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${Number(r.outbound_price || 0).toLocaleString()}</div>
+                        <div class="text-primary small fw-bold mt-1">${Number(r.settlement_price || 0).toLocaleString()}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div>${Number(originalTotal).toLocaleString()}</div>
+                        <div class="text-primary small fw-bold mt-1">${Number(supplyAmt).toLocaleString()}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div style="height: 1.2rem;"></div>
+                        <div class="text-primary small fw-bold">${Number(vat).toLocaleString()}</div>
+                    </td>
+                    <td class="text-end align-middle">
+                        <div style="height: 1.2rem;"></div>
+                        <div class="text-primary fw-bold">${Number(totalAmt).toLocaleString()}</div>
+                    </td>
+                    <td class="text-center align-middle">
+                        <div class="mb-1">
+                            <span class="badge bg-success">정산완료</span>
+                            ${r.is_zero_tax ? '<span class="badge bg-info ms-1">영세율</span>' : ''}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            }
         }).join('');
+        
+        // 초기 렌더링 후 모든 미정산 행에 대해 초기 계산 실행
+        this.items.filter(r => (!r.settlement_status || r.settlement_status === '미정산')).forEach(r => {
+            this.calcInline(r.id);
+        });
     },
 
     updatePagination: function() {
@@ -262,176 +346,180 @@ const app = {
             if (el.dataset.status === '정산완료') hasSettled = true;
         });
         
-        $('batchSettleBtn').style.display = (hasUnsettled && !hasSettled) ? 'inline-block' : 'none';
-        $('cancelSettleBtn').style.display = (!hasUnsettled && hasSettled) ? 'inline-block' : 'none';
-        $('editSettleBtn').style.display = (!hasUnsettled && hasSettled) ? 'inline-block' : 'none';
+        $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
+        $('batchDateContainer').style.display = hasUnsettled ? 'flex' : 'none';
+        $('cancelSettleBtn').style.display = hasSettled ? 'inline-block' : 'none';
+        
+        const allChecks = document.querySelectorAll('.row-chk');
+        $('checkAllHeader').checked = allChecks.length > 0 && checkedBoxes.length === allChecks.length;
     },
 
-    // 정산 모달
-    openSettlementModal: function(isEdit = false) {
-        const selected = [];
-        const targetStatus = isEdit ? '정산완료' : '미정산';
-        document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === targetStatus) {
-                const id = parseInt(el.value);
-                const rowData = this.items.find(r => r.id === id);
-                if (rowData) selected.push(rowData);
+    calcInline: function(id) {
+        const tr = document.querySelector(`tr[data-id="${id}"]`);
+        if(!tr) return;
+        const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
+        const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
+        const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
+        
+        const shipAmount = parseFloat(tr.dataset.shipamt) || 0;
+        const shipFee = parseFloat(tr.dataset.shipfee) || 0;
+        const shipVatInc = parseInt(tr.dataset.shipvatinc) || 0;
+        
+        const itemSupplyAmt = qty * price;
+        const supplyAmt = itemSupplyAmt + shipAmount;
+        
+        let vat = 0;
+        if (!isZeroTax) {
+            const itemVat = Math.floor(itemSupplyAmt * 0.1);
+            let shipVat = 0;
+            if (shipFee > 0) {
+                shipVat = shipVatInc === 1 ? shipFee - shipAmount : Math.floor(shipAmount * 0.1);
             }
-        });
-        
-        if (selected.length === 0) {
-            return alert(`처리할 ${targetStatus} 내역을 선택해주세요.`);
+            vat = itemVat + shipVat;
         }
         
-        this.isEditMode = isEdit;
-        $('selectedCount').innerText = selected.length;
-        $('taxDate').value = new Date().toISOString().split('T')[0];
-        $('isZeroTax').checked = false;
+        const total = supplyAmt + vat;
         
-        // 테이블 렌더링
-        const tbody = document.getElementById('settleModalTableBody');
-        if (tbody) {
-            tbody.innerHTML = selected.map(r => {
-                const qty = r.qty || 0;
-                const price = r.outbound_price || 0;
-                const settleQty = r.settlement_qty ?? qty;
-                const settlePrice = r.settlement_price ?? price;
-                
-                const defaultTaxDate = r.tax_invoice_date || (r.date ? r.date.split('T')[0] : '');
-                
-                const isZeroTax = $('isZeroTax').checked;
-                const total = settleQty * settlePrice;
-                const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
-                
-                return `
-                    <tr data-id="${r.id}">
-                        <td class="text-truncate" style="max-width: 120px;" title="${r.destination || ''}">${r.destination || ''}</td>
-                        <td class="text-truncate" style="max-width: 150px;" title="${r.item}">${r.item}</td>
-                        <td class="text-center align-middle">${r.date ? r.date.split('T')[0] : ''}</td>
-                        <td class="text-center px-1">
-                            <input type="date" class="form-control form-control-sm text-center settle-date" value="${defaultTaxDate}">
-                        </td>
-                        <td class="text-end align-middle">${qty.toLocaleString()}</td>
-                        <td class="text-end px-1">
-                            <input type="number" class="form-control form-control-sm text-end settle-qty" value="${settleQty}" oninput="app.recalculateSettlement(this.closest('tr'))">
-                        </td>
-                        <td class="text-end align-middle">${price.toLocaleString()}</td>
-                        <td class="text-end px-1">
-                            <input type="number" class="form-control form-control-sm text-end settle-price" value="${settlePrice}" oninput="app.recalculateSettlement(this.closest('tr'))">
-                        </td>
-                        <td class="text-end align-middle settle-total fw-bold">${total.toLocaleString()}</td>
-                        <td class="text-end align-middle settle-vat text-muted">${vat.toLocaleString()}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-        
-        new bootstrap.Modal(document.getElementById('settleModal')).show();
-    },
-    
-    editSettlement: function() {
-        this.openSettlementModal(true);
-    },
-    
-    recalculateSettlement: function(row) {
-        const qty = parseFloat(row.querySelector('.settle-qty').value) || 0;
-        const price = parseFloat(row.querySelector('.settle-price').value) || 0;
-        const isZeroTax = $('isZeroTax').checked;
-        const total = qty * price;
-        const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
-        
-        row.querySelector('.settle-total').innerText = total.toLocaleString();
-        row.querySelector('.settle-vat').innerText = vat.toLocaleString();
-    },
-    
-    updateAllVat: function() {
-        document.querySelectorAll('#settleModalTableBody tr').forEach(tr => {
-            this.recalculateSettlement(tr);
-        });
+        tr.querySelector('.inline-supply-amt').innerText = supplyAmt.toLocaleString();
+        tr.querySelector('.inline-vat').innerText = vat.toLocaleString();
+        tr.querySelector('.inline-total-amt').innerText = total.toLocaleString();
     },
     
     applyBatchDate: function() {
-        const d = $('taxDate').value;
-        if(!d) return alert('적용할 일자를 먼저 선택해주세요.');
-        document.querySelectorAll('.settle-date').forEach(el => el.value = d);
-    },
-    
-    cancelSettlement: async function() {
-        const selected = [];
+        const d = $('batchSettleDate').value;
+        if(!d) return alert('일괄 적용할 정산일자를 선택해주세요.');
         document.querySelectorAll('.row-chk:checked').forEach(el => {
-            if (el.dataset.status === '정산완료') selected.push(parseInt(el.value));
+            if(el.dataset.status === '미정산') {
+                const tr = el.closest('tr');
+                const dateInput = tr.querySelector('.inline-date');
+                if(dateInput) dateInput.value = d;
+            }
         });
-        
-        if (selected.length === 0) return alert('정산 취소할 내역을 선택해주세요.');
-        if (!confirm(`선택한 ${selected.length}건의 정산을 취소(미정산으로 되돌림)하시겠습니까?`)) return;
-        
-        try {
-            await window.authFetch(`${API_BASE}/settlement/outbound`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    ids: selected,
-                    tax_invoice_date: null,
-                    is_zero_tax: false
-                })
-            });
-            alert('정산 취소 처리가 완료되었습니다.');
-            this.loadData();
-        } catch (err) {
-            alert('정산 취소 실패: ' + err.message);
-        }
     },
 
-    submitSettlement: async function() {
-        const itemsToSettle = [];
-        const isZeroTax = $('isZeroTax').checked;
+    submitInlineSettlement: async function(id) {
+        const tr = document.querySelector(`tr[data-id="${id}"]`);
+        if(!tr) return;
         
-        let hasEmptyDate = false;
+        const taxDate = tr.querySelector('.inline-date').value;
+        const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
+        const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
+        const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
         
-        document.querySelectorAll('#settleModalTableBody tr').forEach(tr => {
-            const id = parseInt(tr.dataset.id);
-            const sqty = parseFloat(tr.querySelector('.settle-qty').value) || 0;
-            const sprice = parseFloat(tr.querySelector('.settle-price').value) || 0;
-            const sdate = tr.querySelector('.settle-date').value;
-            
-            if (!sdate) hasEmptyDate = true;
-            
-            itemsToSettle.push({
-                id: id,
-                settlement_qty: sqty,
-                settlement_price: sprice,
-                tax_invoice_date: sdate,
-                is_zero_tax: isZeroTax
-            });
-        });
-        
-        if (hasEmptyDate) return alert('모든 항목의 정산일자를 입력해주세요.');
-        
-        if (itemsToSettle.length === 0) return;
+        if(!taxDate) return alert('정산일자를 입력해주세요.');
         
         try {
-            await window.authFetch(`${API_BASE}/settlement/outbound`, {
+            const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
                 method: 'POST',
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    items: itemsToSettle
+                    updates: [{
+                        id: id,
+                        tax_invoice_date: taxDate,
+                        settlement_qty: qty,
+                        settlement_price: price,
+                        is_zero_tax: isZeroTax ? 1 : 0
+                    }]
                 })
             });
-            alert(`정산 ${this.isEditMode ? '수정' : '처리'}가 완료되었습니다.`);
-            bootstrap.Modal.getInstance(document.getElementById('settleModal')).hide();
-            this.loadData();
-        } catch (err) {
-            alert('처리 실패: ' + err.message);
+            if (res.ok) {
+                this.loadData();
+            } else {
+                alert('정산 처리에 실패했습니다.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('오류가 발생했습니다.');
         }
     },
     
+    submitBatchSettlement: async function() {
+        const checked = document.querySelectorAll('.row-chk:checked');
+        const updates = [];
+        
+        checked.forEach(el => {
+            if(el.dataset.status === '미정산') {
+                const id = parseInt(el.value);
+                const tr = el.closest('tr');
+                const taxDate = tr.querySelector('.inline-date').value;
+                const qty = parseFloat(tr.querySelector('.inline-qty').value) || 0;
+                const price = parseFloat(tr.querySelector('.inline-price').value) || 0;
+                const isZeroTax = tr.querySelector('.inline-zero-tax').checked;
+                
+                updates.push({
+                    id: id,
+                    tax_invoice_date: taxDate,
+                    settlement_qty: qty,
+                    settlement_price: price,
+                    is_zero_tax: isZeroTax ? 1 : 0
+                });
+            }
+        });
+        
+        if(updates.length === 0) return alert('선택된 미정산 내역이 없습니다.');
+        
+        if(updates.some(u => !u.tax_invoice_date)) {
+            return alert('정산일자가 입력되지 않은 항목이 있습니다.');
+        }
+        
+        if(!confirm(`선택한 ${updates.length}건을 일괄 정산완료 처리하시겠습니까?`)) return;
+        
+        try {
+            const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ updates })
+            });
+            if (res.ok) {
+                this.loadData();
+            } else {
+                alert('일괄 정산 처리에 실패했습니다.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('오류가 발생했습니다.');
+        }
+    },
+    
+    cancelSettlementBatch: async function() {
+        const checked = document.querySelectorAll('.row-chk:checked');
+        const ids = [];
+        checked.forEach(el => {
+            if(el.dataset.status === '정산완료') {
+                ids.push(parseInt(el.value));
+            }
+        });
+        
+        if(ids.length === 0) return alert('취소할 정산완료 내역이 선택되지 않았습니다.');
+        if(!confirm(`선택한 ${ids.length}건을 정산 취소하시겠습니까?\n(다시 미정산 상태로 돌아가며 정산일자는 초기화됩니다.)`)) return;
+        
+        try {
+            const res = await window.authFetch(`${API_BASE}/settlement/outbound/cancel`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ids })
+            });
+            if (res.ok) {
+                this.loadData();
+            } else {
+                alert('취소 처리에 실패했습니다.');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('오류가 발생했습니다.');
+        }
+    },
     // 거래내역서 출력
     
     downloadSelectedExcel: async function() {
-        if (this.checkedIds.size === 0) {
+        const checkedBoxes = document.querySelectorAll('.row-chk:checked');
+        if (checkedBoxes.length === 0) {
             alert('엑셀로 다운로드할 항목을 선택해주세요.');
             return;
         }
 
-        const selectedRows = this.items.filter(r => this.checkedIds.has(r.id));
+        const selectedIds = Array.from(checkedBoxes).map(el => parseInt(el.value));
+        const selectedRows = this.items.filter(r => selectedIds.includes(r.id));
         if (selectedRows.length === 0) return;
 
         try {
@@ -442,47 +530,74 @@ const app = {
             }
             
             const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('유류자재공급내역');
+            const worksheet = workbook.addWorksheet('매출정산내역');
 
             worksheet.columns = [
-                { header: '일자', key: 'date', width: 15 },
+                { header: '출고일자', key: 'date', width: 15 },
+                { header: '정산일자', key: 'tax_date', width: 15 },
+                { header: '상태', key: 'status', width: 12 },
                 { header: '매출처', key: 'destination', width: 25 },
                 { header: '품명', key: 'item', width: 25 },
                 { header: '규격', key: 'spec', width: 15 },
                 { header: '단위', key: 'unit', width: 10 },
-                { header: '수량', key: 'qty', width: 15 },
-                { header: '단가', key: 'price', width: 15 },
-                { header: '금액(총액)', key: 'total', width: 15 },
-                { header: '상태', key: 'status', width: 15 },
-                { header: '정산일자', key: 'tax_date', width: 15 },
-                { header: '비고', key: 'note', width: 30 }
+                { header: '정산(출고)수량', key: 'qty', width: 15 },
+                { header: '정산(출고)단가', key: 'price', width: 15 },
+                { header: '배송비', key: 'ship', width: 15 },
+                { header: '공급가액', key: 'supply', width: 15 },
+                { header: '부가세', key: 'vat', width: 15 },
+                { header: '합계금액', key: 'total', width: 15 }
             ];
 
             worksheet.getRow(1).font = { bold: true };
-            worksheet.getRow(1).fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFE0E0E0' }
-            };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
             selectedRows.forEach(r => {
+                const isSettled = r.settlement_status === '정산완료';
+                const qty = isSettled ? (r.settlement_qty || 0) : (r.qty || 0);
+                const price = isSettled ? (r.settlement_price || 0) : (r.outbound_price || 0);
+                
+                let shipAmount = 0;
+                if (r.shipping_fee > 0) {
+                    shipAmount = r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee;
+                }
+                
+                const itemSupply = qty * price;
+                const supplyAmt = itemSupply + shipAmount;
+                
+                let vat = 0;
+                if (!r.is_zero_tax) {
+                    const itemVat = Math.floor(itemSupply * 0.1);
+                    let shipVat = 0;
+                    if (r.shipping_fee > 0) {
+                        shipVat = r.shipping_fee_vat_included === 1 ? r.shipping_fee - shipAmount : Math.floor(shipAmount * 0.1);
+                    }
+                    vat = itemVat + shipVat;
+                }
+                
+                const totalAmt = supplyAmt + vat;
+
                 worksheet.addRow({
                     date: r.date ? r.date.split('T')[0] : '',
+                    tax_date: r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '',
+                    status: r.settlement_status || '미정산',
                     destination: r.destination,
-                    item: r.item,
+                    item: r.item + (r.is_direct ? ' (직출고)' : ''),
                     spec: r.spec,
                     unit: r.unit,
-                    qty: r.qty,
-                    price: r.selling_price,
-                    total: r.selling_price * r.qty,
-                    status: r.settlement_status,
-                    tax_date: r.tax_date ? r.tax_date.split('T')[0] : '',
-                    note: r.note || ''
+                    qty: qty,
+                    price: price,
+                    ship: r.shipping_fee || 0,
+                    supply: supplyAmt,
+                    vat: vat,
+                    total: totalAmt
                 });
             });
 
             worksheet.getColumn('qty').numFmt = '#,##0.00';
             worksheet.getColumn('price').numFmt = '#,##0';
+            worksheet.getColumn('ship').numFmt = '#,##0';
+            worksheet.getColumn('supply').numFmt = '#,##0';
+            worksheet.getColumn('vat').numFmt = '#,##0';
             worksheet.getColumn('total').numFmt = '#,##0';
 
             const buffer = await workbook.xlsx.writeBuffer();
@@ -491,7 +606,7 @@ const app = {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `유류자재공급내역_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.download = `매출정산내역_${new Date().toISOString().split('T')[0]}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -515,7 +630,9 @@ const app = {
         let sumGrand = 0;
         
         const rowsHtml = selectedItems.map((r, index) => {
-            const qtyTotal = (r.qty || 0) * (r.outbound_price || 0);
+            const isSettled = r.settlement_status === '정산완료';
+            const qty = isSettled ? (r.settlement_qty || 0) : (r.qty || 0);
+            const price = isSettled ? (r.settlement_price || 0) : (r.outbound_price || 0);
             
             let shipAmount = 0;
             let shipVat = 0;
@@ -530,8 +647,8 @@ const app = {
                 }
             }
             
-            const total = qtyTotal + shipAmount;
-            const vat = r.is_zero_tax ? 0 : (Math.floor(qtyTotal * 0.1) + shipVat);
+            const total = (qty * price) + shipAmount;
+            const vat = r.is_zero_tax ? 0 : (Math.floor(qty * price * 0.1) + shipVat);
             const grand = total + vat;
             
             sumTotal += total;
@@ -547,12 +664,12 @@ const app = {
             return `
             <tr>
                 <td>${index + 1}</td>
-                <td>${r.date}</td>
-                <td>${r.tax_invoice_date || '-'}</td>
+                <td>${r.date ? r.date.split('T')[0] : ''}</td>
+                <td>${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
                 <td>${r.destination || ''}</td>
                 <td>${itemHtml}</td>
-                <td class="text-right">${r.qty}</td>
-                <td class="text-right">${Number(r.outbound_price || 0).toLocaleString()}</td>
+                <td class="text-right">${qty.toLocaleString()}</td>
+                <td class="text-right">${Number(price).toLocaleString()}</td>
                 <td class="text-right">${Number(total).toLocaleString()}</td>
                 <td class="text-right">${Number(vat).toLocaleString()}</td>
                 <td class="text-right fw-bold">${Number(grand).toLocaleString()}</td>

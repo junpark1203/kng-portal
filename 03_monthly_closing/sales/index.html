@@ -140,12 +140,15 @@
                 </select>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            <div id="batchDateContainer" class="input-group input-group-sm me-2" style="display: none; width: 250px;">
+                <input type="date" class="form-control" id="batchSettleDate" title="일괄 적용할 정산일자">
+                <button class="btn btn-outline-primary fw-bold" type="button" onclick="app.applyBatchDate()">일괄적용</button>
+            </div>
             <button class="btn btn-outline-success btn-sm fw-bold" onclick="app.downloadSelectedExcel()"><i class='bx bx-table'></i> 엑셀 다운로드</button>
-            <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="app.printSelected()"><i class='bx bx-printer'></i> 선택내역 거래내역서 출력</button>
-            <button id="cancelSettleBtn" class="btn btn-outline-danger btn-sm fw-bold" onclick="app.cancelSettlement()" style="display: none;"><i class='bx bx-x-circle'></i> 정산 취소</button>
-            <button id="editSettleBtn" class="btn btn-outline-primary btn-sm fw-bold" onclick="app.editSettlement()" style="display: none;"><i class='bx bx-pencil'></i> 정산일자 수정</button>
-            <button id="batchSettleBtn" class="btn btn-primary btn-sm fw-bold" onclick="app.openSettlementModal()" style="display: none;"><i class='bx bx-check-circle'></i> 일괄 정산하기</button>
+            <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="app.printSelected()"><i class='bx bx-printer'></i> 거래내역서 출력</button>
+            <button id="cancelSettleBtn" class="btn btn-outline-danger btn-sm fw-bold" onclick="app.cancelSettlementBatch()" style="display: none;"><i class='bx bx-x-circle'></i> 선택 정산취소</button>
+            <button id="batchSettleBtn" class="btn btn-primary btn-sm fw-bold" onclick="app.submitBatchSettlement()" style="display: none;"><i class='bx bx-check-circle'></i> 선택 일괄정산</button>
         </div>
     </div>
 
@@ -155,14 +158,15 @@
             <thead class="table-light text-secondary">
                 <tr>
                     <th class="chk-col"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
-                    <th>일자</th>
-                    <th>매출처</th>
-                    <th>품명</th>
-                    <th>규격/단위</th>
-                    <th>수량</th>
-                    <th>단가</th>
-                    <th>금액(총액)</th>
-                    <th>상태</th>
+                    <th style="width: 130px;">일자<br><small class="text-muted fw-normal">출고 / 정산</small></th>
+                    <th style="width: 120px;">매출처</th>
+                    <th style="min-width: 150px;">품명<br><small class="text-muted fw-normal">규격 / 단위</small></th>
+                    <th class="text-end" style="width: 110px;">수량<br><small class="text-muted fw-normal">출고 / 정산</small></th>
+                    <th class="text-end" style="width: 120px;">단가<br><small class="text-muted fw-normal">출고 / 정산</small></th>
+                    <th class="text-end" style="width: 130px;">금액<br><small class="text-muted fw-normal">총액 / 공급가액</small></th>
+                    <th class="text-end" style="width: 120px;">부가세<br><small class="text-muted fw-normal">정산 부가세</small></th>
+                    <th class="text-end" style="width: 130px;">합계금액<br><small class="text-muted fw-normal">정산 합계</small></th>
+                    <th class="text-center" style="width: 100px;">상태/작업</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
@@ -184,72 +188,12 @@
 <!-- 인쇄용 컨테이너 (평소에는 숨김) -->
 <div id="printContainer" class="print-only"></div>
 
-<!-- 정산 처리 모달 -->
-<div class="modal fade" id="settleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fs-6 fw-bold">매출정산 처리</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-2">선택한 <strong id="selectedCount" class="text-primary">0</strong>건의 내역을 정산완료 처리합니다.</p>
-                
-                <!-- 선택된 항목들의 정산 수량/단가를 수정할 수 있는 테이블 -->
-                <div class="table-responsive mb-3 border rounded" style="max-height: 250px; overflow-y: auto;">
-                    <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th style="width: 120px;">매출처</th>
-                                <th>품명</th>
-                                <th class="text-center" style="width: 100px;">출고일자</th>
-                                <th class="text-center" style="width: 130px;">정산일자</th>
-                                <th class="text-end" style="width: 80px;">출고수량</th>
-                                <th class="text-end" style="width: 100px;">정산수량</th>
-                                <th class="text-end" style="width: 90px;">출고단가</th>
-                                <th class="text-end" style="width: 110px;">정산단가</th>
-                                <th class="text-end" style="width: 110px;">공급가액</th>
-                                <th class="text-end" style="width: 100px;">부가세</th>
-                            </tr>
-                        </thead>
-                        <tbody id="settleModalTableBody">
-                            <!-- JS 렌더링 -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="row g-2 align-items-center">
-                    <div class="col-md-7">
-                        <label class="form-label fw-bold mb-1">일괄 적용 정산일자</label>
-                        <div class="input-group input-group-sm">
-                            <input type="date" class="form-control" id="taxDate">
-                            <button class="btn btn-outline-secondary" type="button" onclick="app.applyBatchDate()">일괄 적용</button>
-                        </div>
-                    </div>
-                    <div class="col-md-5 d-flex align-items-end h-100">
-                        <div class="form-check mt-3 mb-1">
-                            <input class="form-check-input" type="checkbox" id="isZeroTax" onchange="app.updateAllVat()">
-                            <label class="form-check-label small fw-bold" for="isZeroTax">
-                                전체 영세율 (부가세 0%) 적용
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary" onclick="app.submitSettlement()">정산 완료 처리</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script type="module">
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
