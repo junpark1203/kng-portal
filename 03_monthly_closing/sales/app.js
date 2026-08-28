@@ -297,14 +297,19 @@ const app = {
                 const settleQty = r.settlement_qty ?? qty;
                 const settlePrice = r.settlement_price ?? price;
                 
+                const defaultTaxDate = r.tax_invoice_date || (r.date ? r.date.split('T')[0] : '');
                 return `
                     <tr data-id="${r.id}">
                         <td class="text-truncate" style="max-width: 150px;" title="${r.item}">${r.item}</td>
-                        <td class="text-end">${qty.toLocaleString()}</td>
+                        <td class="text-center align-middle">${r.date ? r.date.split('T')[0] : ''}</td>
+                        <td class="text-center px-1">
+                            <input type="date" class="form-control form-control-sm text-center settle-date" value="${defaultTaxDate}">
+                        </td>
+                        <td class="text-end align-middle">${qty.toLocaleString()}</td>
                         <td class="text-end px-1">
                             <input type="number" class="form-control form-control-sm text-end settle-qty" value="${settleQty}">
                         </td>
-                        <td class="text-end">${price.toLocaleString()}</td>
+                        <td class="text-end align-middle">${price.toLocaleString()}</td>
                         <td class="text-end px-1">
                             <input type="number" class="form-control form-control-sm text-end settle-price" value="${settlePrice}">
                         </td>
@@ -318,6 +323,12 @@ const app = {
     
     editSettlement: function() {
         this.openSettlementModal(true);
+    },
+    
+    applyBatchDate: function() {
+        const d = $('taxDate').value;
+        if(!d) return alert('적용할 일자를 먼저 선택해주세요.');
+        document.querySelectorAll('.settle-date').forEach(el => el.value = d);
     },
     
     cancelSettlement: async function() {
@@ -347,24 +358,28 @@ const app = {
 
     submitSettlement: async function() {
         const itemsToSettle = [];
-        const taxDate = $('taxDate').value;
         const isZeroTax = $('isZeroTax').checked;
         
-        if (!taxDate) return alert('정산 일자를 입력해주세요.');
+        let hasEmptyDate = false;
         
         document.querySelectorAll('#settleModalTableBody tr').forEach(tr => {
             const id = parseInt(tr.dataset.id);
             const sqty = parseFloat(tr.querySelector('.settle-qty').value) || 0;
             const sprice = parseFloat(tr.querySelector('.settle-price').value) || 0;
+            const sdate = tr.querySelector('.settle-date').value;
+            
+            if (!sdate) hasEmptyDate = true;
             
             itemsToSettle.push({
                 id: id,
                 settlement_qty: sqty,
                 settlement_price: sprice,
-                tax_invoice_date: taxDate,
+                tax_invoice_date: sdate,
                 is_zero_tax: isZeroTax
             });
         });
+        
+        if (hasEmptyDate) return alert('모든 항목의 정산일자를 입력해주세요.');
         
         if (itemsToSettle.length === 0) return;
         

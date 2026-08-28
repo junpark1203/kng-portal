@@ -21,7 +21,7 @@ module.exports = (database) => {
                        COALESCE(settlement_price, unit_price) as price, 
                        is_direct, note, id, supplier as site_name
                 FROM logistics_inbound 
-                WHERE supplier IN (${placeholders}) AND date >= ? AND date <= ? AND settlement_status = '정산완료'
+                WHERE supplier IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
             `;
             
             // 출고(매출) 데이터 조회
@@ -31,7 +31,7 @@ module.exports = (database) => {
                        COALESCE(settlement_price, selling_price) as price, 
                        is_direct, note, id, destination as site_name
                 FROM logistics_outbound
-                WHERE destination IN (${placeholders}) AND date >= ? AND date <= ? AND settlement_status = '정산완료'
+                WHERE destination IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
             `;
 
             const inParams = [...partnersList, startDate, endDate];

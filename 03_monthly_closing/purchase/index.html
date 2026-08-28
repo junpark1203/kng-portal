@@ -200,9 +200,11 @@
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th>품명</th>
-                                <th class="text-end" style="width: 80px;">원수량</th>
+                                <th class="text-center" style="width: 110px;">입/출고일자</th>
+                                <th class="text-center" style="width: 130px;">정산일자</th>
+                                <th class="text-end" style="width: 80px;">입/출고수량</th>
                                 <th class="text-end" style="width: 100px;">정산수량</th>
-                                <th class="text-end" style="width: 100px;">원단가</th>
+                                <th class="text-end" style="width: 100px;">입/출고단가</th>
                                 <th class="text-end" style="width: 110px;">정산단가</th>
                             </tr>
                         </thead>
@@ -214,8 +216,11 @@
 
                 <div class="row g-2 align-items-center">
                     <div class="col-md-7">
-                        <label class="form-label fw-bold mb-1">일괄 정산 일자 (세금계산서 발행/수취일)</label>
-                        <input type="date" class="form-control form-control-sm" id="taxDate">
+                        <label class="form-label fw-bold mb-1">일괄 적용 정산일자</label>
+                        <div class="input-group input-group-sm">
+                            <input type="date" class="form-control" id="taxDate">
+                            <button class="btn btn-outline-secondary" type="button" onclick="app.applyBatchDate()">일괄 적용</button>
+                        </div>
                     </div>
                     <div class="col-md-5 d-flex align-items-end h-100">
                         <div class="form-check mt-3 mb-1">
