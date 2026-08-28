@@ -284,8 +284,14 @@ const app = {
                 const settlePrice = r.settlement_price ?? price;
                 
                 const defaultTaxDate = r.tax_invoice_date || (r.date ? r.date.split('T')[0] : '');
+                
+                const isZeroTax = $('isZeroTax').checked;
+                const total = settleQty * settlePrice;
+                const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
+                
                 return `
                     <tr data-id="${r.id}">
+                        <td class="text-truncate" style="max-width: 120px;" title="${r.supplier || ''}">${r.supplier || ''}</td>
                         <td class="text-truncate" style="max-width: 150px;" title="${r.item}">${r.item}</td>
                         <td class="text-center align-middle">${r.date ? r.date.split('T')[0] : ''}</td>
                         <td class="text-center px-1">
@@ -293,12 +299,14 @@ const app = {
                         </td>
                         <td class="text-end align-middle">${qty.toLocaleString()}</td>
                         <td class="text-end px-1">
-                            <input type="number" class="form-control form-control-sm text-end settle-qty" value="${settleQty}">
+                            <input type="number" class="form-control form-control-sm text-end settle-qty" value="${settleQty}" oninput="app.recalculateSettlement(this.closest('tr'))">
                         </td>
                         <td class="text-end align-middle">${price.toLocaleString()}</td>
                         <td class="text-end px-1">
-                            <input type="number" class="form-control form-control-sm text-end settle-price" value="${settlePrice}">
+                            <input type="number" class="form-control form-control-sm text-end settle-price" value="${settlePrice}" oninput="app.recalculateSettlement(this.closest('tr'))">
                         </td>
+                        <td class="text-end align-middle settle-total fw-bold">${total.toLocaleString()}</td>
+                        <td class="text-end align-middle settle-vat text-muted">${vat.toLocaleString()}</td>
                     </tr>
                 `;
             }).join('');
@@ -309,6 +317,23 @@ const app = {
     
     editSettlement: function() {
         this.openSettlementModal(true);
+    },
+    
+    recalculateSettlement: function(row) {
+        const qty = parseFloat(row.querySelector('.settle-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.settle-price').value) || 0;
+        const isZeroTax = $('isZeroTax').checked;
+        const total = qty * price;
+        const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
+        
+        row.querySelector('.settle-total').innerText = total.toLocaleString();
+        row.querySelector('.settle-vat').innerText = vat.toLocaleString();
+    },
+    
+    updateAllVat: function() {
+        document.querySelectorAll('#settleModalTableBody tr').forEach(tr => {
+            this.recalculateSettlement(tr);
+        });
     },
     
     applyBatchDate: function() {

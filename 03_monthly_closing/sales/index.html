@@ -186,7 +186,7 @@
 
 <!-- 정산 처리 모달 -->
 <div class="modal fade" id="settleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fs-6 fw-bold">매출정산 처리</h5>
@@ -200,13 +200,16 @@
                     <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top">
                             <tr>
+                                <th style="width: 120px;">매출처</th>
                                 <th>품명</th>
-                                <th class="text-center" style="width: 110px;">입/출고일자</th>
+                                <th class="text-center" style="width: 100px;">출고일자</th>
                                 <th class="text-center" style="width: 130px;">정산일자</th>
-                                <th class="text-end" style="width: 80px;">입/출고수량</th>
+                                <th class="text-end" style="width: 80px;">출고수량</th>
                                 <th class="text-end" style="width: 100px;">정산수량</th>
-                                <th class="text-end" style="width: 100px;">입/출고단가</th>
+                                <th class="text-end" style="width: 90px;">출고단가</th>
                                 <th class="text-end" style="width: 110px;">정산단가</th>
+                                <th class="text-end" style="width: 110px;">공급가액</th>
+                                <th class="text-end" style="width: 100px;">부가세</th>
                             </tr>
                         </thead>
                         <tbody id="settleModalTableBody">
@@ -225,7 +228,7 @@
                     </div>
                     <div class="col-md-5 d-flex align-items-end h-100">
                         <div class="form-check mt-3 mb-1">
-                            <input class="form-check-input" type="checkbox" id="isZeroTax">
+                            <input class="form-check-input" type="checkbox" id="isZeroTax" onchange="app.updateAllVat()">
                             <label class="form-check-label small fw-bold" for="isZeroTax">
                                 전체 영세율 (부가세 0%) 적용
                             </label>
