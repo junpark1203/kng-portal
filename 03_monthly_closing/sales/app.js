@@ -293,7 +293,7 @@ const app = {
         if (tbody) {
             tbody.innerHTML = selected.map(r => {
                 const qty = r.qty || 0;
-                const price = r.selling_price || 0;
+                const price = r.outbound_price || 0;
                 const settleQty = r.settlement_qty ?? qty;
                 const settlePrice = r.settlement_price ?? price;
                 
