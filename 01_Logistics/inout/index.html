@@ -802,6 +802,119 @@
         </div>
     </div>
 </div>
+
+<!-- 출고 내역 수정 모달 -->
+<div class="modal fade" id="editOutboundModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-outbound">
+                <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-edit'></i> 출고 내역 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editOutboundForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editOutboundId">
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class='bx bx-info-circle'></i> 출고 수량이나 품목을 수정하려면 우측의 <strong>Lot 설정</strong> 버튼을 눌러 차감할 재고를 다시 지정해야 합니다. (수정 모달에서는 품목 변경을 지원하지 않습니다. 필요 시 삭제 후 재등록하세요.)
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-3">
+                            <label class="form-label mb-1">출고일자</label>
+                            <input type="date" class="form-control form-control-sm" id="edit_out_date" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label mb-1">출고처(고객/현장)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="edit_out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_out_destination');}">
+                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label mb-1">구분</label>
+                            <select class="form-select form-select-sm" id="edit_out_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수출">수출</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-5">
+                            <label class="form-label mb-1">품목명</label>
+                            <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_item" readonly disabled>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label mb-1">규격</label>
+                            <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_spec" readonly disabled>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label mb-1">단위</label>
+                            <input type="text" class="form-control form-control-sm bg-light text-muted" id="edit_out_unit" readonly disabled>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3 align-items-end">
+                        <div class="col-4">
+                            <label class="form-label mb-1">출고수량</label>
+                            <input type="number" class="form-control form-control-sm" id="edit_out_qty" step="0.01" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label mb-1">단가</label>
+                            <input type="number" class="form-control form-control-sm" id="edit_out_price" min="0" step="1" required>
+                        </div>
+                        <div class="col-4">
+                            <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnEditOutboundLot" style="height: 31px;">Lot 설정</button>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-4">
+                            <label class="form-label fw-bold mb-1 d-flex align-items-center gap-2" style="font-size:0.85rem;">
+                                <span class="mb-0">배송비</span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <input class="form-check-input m-0" type="checkbox" id="edit_out_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
+                                    <label class="text-nowrap text-muted fw-normal m-0" style="font-size: 0.7rem; cursor: pointer; padding-top: 1px;" for="edit_out_shipping_vat">
+                                        (부가세 포함)
+                                    </label>
+                                </div>
+                            </label>
+                            <input type="number" class="form-control form-control-sm" id="edit_out_shipping" min="0" step="1" value="0">
+                        </div>
+                        <div class="col-8">
+                            <label class="form-label mb-1">비고</label>
+                            <input type="text" class="form-control form-control-sm" id="edit_out_note">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-danger fw-bold me-auto" id="editOutboundErrorMsg" style="display:none;"><i class='bx bx-error'></i> Lot 설정을 다시 완료해주세요.</small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-danger">수정 저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 엑셀 등록 메뉴 모달 -->
+<div class="modal fade" id="excelMenuModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold"><i class='bx bx-table'></i> 엑셀 일괄 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <button class="btn btn-warning w-100 py-3 fw-bold fs-6 shadow-sm" onclick="app.closeExcelMenuAndOpenDirect()">
+                    <i class='bx bx-shuffle'></i> 직출고 일괄등록
+                </button>
+                <div class="mt-4 text-muted small text-start">
+                    <i class='bx bx-info-circle'></i> 입고 및 출고 일괄등록은 추후 지원 예정입니다.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- 직출고 엑셀 업로드 모달 -->
 <div class="modal fade" id="directExcelModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">

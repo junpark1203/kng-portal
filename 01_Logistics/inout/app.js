@@ -285,7 +285,7 @@ const app = {
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const checkbox = `<input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}">`;
-            const editFn = isOut ? (r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
+            const editFn = isOut ? (r.type === '직출고' || r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
@@ -2315,6 +2315,7 @@ const app = {
             $('edit_out_shipping').value = item.shipping_fee || 0;
             $('edit_out_shipping_vat').checked = item.shipping_fee_vat_included === 1;
             $('edit_out_note').value = item.note || '';
+            if ($('edit_out_trade_type')) $('edit_out_trade_type').value = item.trade_type || '내수';
             
             $('edit_out_item').value = item.item;
             $('edit_out_spec').value = item.spec || '';
@@ -2412,6 +2413,8 @@ const app = {
             qty: targetQty,
             selling_price: parseFloat($('edit_out_price').value) || 0,
             shipping_fee: parseFloat($('edit_out_shipping').value) || 0,
+            shipping_fee_vat_included: $('edit_out_shipping_vat').checked ? 1 : 0,
+            trade_type: $('edit_out_trade_type') ? $('edit_out_trade_type').value : '내수',
             note: $('edit_out_note').value,
             consumed_lots: this.editOutboundState.consumedLots
         };
