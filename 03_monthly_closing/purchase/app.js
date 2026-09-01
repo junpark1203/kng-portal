@@ -196,6 +196,7 @@ const app = {
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(vatOrig).toLocaleString()}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small text-muted"></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm py-1" style="font-size: 0.75rem;" onclick="app.submitInlineSettlement(${r.id})">정산</button>
@@ -219,9 +220,12 @@ const app = {
                             <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.inbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
+                        <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
-                    </tr>
+                        <td class="align-middle bg-settle-input small">
+                            <input type="text" class="inline-memo edit-input" value="${r.settlement_memo || ''}" placeholder="정산 비고 입력">
+                        </td>
                     </tr>
                 `;
             } else {
@@ -248,6 +252,7 @@ const app = {
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(vatOrig).toLocaleString()}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small text-muted"></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
@@ -260,8 +265,8 @@ const app = {
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_price).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(supplyAmt).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(vat).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-settle-input text-dark fw-bold px-2 small">${Number(totalAmt).toLocaleString()}</td>
-                    </tr>
+                        <td class="align-middle bg-settle-input text-end small fw-bold text-dark" style="color: #0f172a !important;">${Number(totalAmt).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input small text-dark">${escapeAttr(r.settlement_memo || '')}</td>
                     </tr>
                 `;
             }
@@ -423,19 +428,13 @@ const app = {
         });
     },
 
-    submitInlineSettlement: async function(id) {
-        const container = document.querySelector(`tr.settle-input-row[data-id="${id}"]`);
+    submitInlineSettlement: async function(rowId) {
+        const container = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
         if(!container) return;
         
         const taxDate = container.querySelector('.inline-date').value;
-        const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
-        const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
-        const vatStr = container.querySelector('.inline-vat').value.replace(/,/g, '');
-        
-        const qty = parseFloat(qtyStr) || 0;
-        const price = parseFloat(priceStr) || 0;
-        const vat = parseFloat(vatStr) || 0;
-        const isZeroTax = (vat === 0);
+        const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
+        const isZeroTax = (vat === 0) ? 1 : 0;
         
         if(!taxDate) return alert('정산일자를 입력해주세요.');
         
@@ -444,18 +443,18 @@ const app = {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    items: [{ // updates -> items
-                        id: id,
+                    items: [{
+                        id: rowId,
                         tax_invoice_date: taxDate,
-                        settlement_qty: qty,
-                        settlement_price: price,
+                        is_zero_tax: isZeroTax,
+                        settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
+                        settlement_price: parseFloat(container.querySelector('.inline-price').value.replace(/,/g, '')),
                         settlement_vat: vat,
-                        is_zero_tax: isZeroTax ? 1 : 0
+                        settlement_memo: container.querySelector('.inline-memo').value
                     }]
                 })
             });
             if (res.ok) {
-                // 부분 리로드 대신 화면 전체 리로드 (페이징 유지)
                 this.loadData();
             } else {
                 alert('정산 처리에 실패했습니다.');
@@ -468,29 +467,23 @@ const app = {
     
     submitBatchSettlement: async function() {
         const checked = document.querySelectorAll('.row-chk:checked');
-        const items = []; // updates -> items
+        const items = [];
         
-        checked.forEach(el => {
-            if(el.dataset.status === '미정산') {
-                const id = parseInt(el.value);
-                const container = el.closest('tr').nextElementSibling;
+        checked.forEach(chk => {
+            if(chk.dataset.status === '미정산') {
+                const container = chk.closest('tr').nextElementSibling;
                 const taxDate = container.querySelector('.inline-date').value;
-                const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
-                const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
-                const vatStr = container.querySelector('.inline-vat').value.replace(/,/g, '');
-                
-                const qty = parseFloat(qtyStr) || 0;
-                const price = parseFloat(priceStr) || 0;
-                const vat = parseFloat(vatStr) || 0;
-                const isZeroTax = (vat === 0);
+                const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
+                const isZeroTax = (vat === 0) ? 1 : 0;
                 
                 items.push({
-                    id: id,
+                    id: parseInt(chk.value),
                     tax_invoice_date: taxDate,
-                    settlement_qty: qty,
-                    settlement_price: price,
+                    is_zero_tax: isZeroTax,
+                    settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
+                    settlement_price: parseFloat(container.querySelector('.inline-price').value.replace(/,/g, '')),
                     settlement_vat: vat,
-                    is_zero_tax: isZeroTax ? 1 : 0
+                    settlement_memo: container.querySelector('.inline-memo').value
                 });
             }
         });

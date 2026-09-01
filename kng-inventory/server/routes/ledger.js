@@ -19,7 +19,7 @@ module.exports = (database) => {
                 SELECT '입고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
                        COALESCE(settlement_qty, qty_initial) as qty, 
                        COALESCE(settlement_price, unit_price) as price, 
-                       is_direct, note, id, supplier as site_name
+                       is_direct, note, id, supplier as site_name, settlement_memo
                 FROM logistics_inbound 
                 WHERE supplier IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
             `;
@@ -29,7 +29,7 @@ module.exports = (database) => {
                 SELECT '출고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
                        COALESCE(settlement_qty, qty) as qty, 
                        COALESCE(settlement_price, selling_price) as price, 
-                       is_direct, note, id, destination as site_name
+                       is_direct, note, id, destination as site_name, settlement_memo
                 FROM logistics_outbound
                 WHERE destination IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
             `;

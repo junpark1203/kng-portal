@@ -514,7 +514,7 @@ router.get('/history', (req, res) => {
                 (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
                 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
                 i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax,
-                i.transaction_group_id, i.settlement_qty, i.settlement_price
+                i.transaction_group_id, i.settlement_qty, i.settlement_price, i.settlement_memo
             FROM logistics_inbound i
             ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
@@ -530,7 +530,7 @@ router.get('/history', (req, res) => {
                 (o.selling_price * o.qty) as outbound_total,
                 o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax,
-                o.transaction_group_id, o.settlement_qty, o.settlement_price
+                o.transaction_group_id, o.settlement_qty, o.settlement_price, o.settlement_memo
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -962,10 +962,10 @@ router.post('/settlement/:type', (req, res) => {
         let hasError = false;
 
         if (items && Array.isArray(items)) {
-            // 개별 정산 (수량, 단가 포함)
-            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ? WHERE id = ?`);
+            // 개별 정산 (수량, 단가, 비고 포함)
+            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ? WHERE id = ?`);
             for (let i of items) {
-                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.id, function(e) { if(e) hasError = true; });
+                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', i.id, function(e) { if(e) hasError = true; });
             }
             stmt.finalize();
         } else if (ids && Array.isArray(ids)) {

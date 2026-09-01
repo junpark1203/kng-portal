@@ -185,8 +185,8 @@ const app = {
                             <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-end">${row.price.toLocaleString()}</td>
-                            <td class="text-end fw-bold">${amount.toLocaleString()}</td>
-                            <td class="text-muted small">${row.note || ''}</td>
+                            <td class="text-end fw-bold text-dark">${amount.toLocaleString()}</td>
+                            <td class="text-muted small">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
                         </tr>
                     `;
                 }).join('');
