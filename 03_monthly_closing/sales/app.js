@@ -205,17 +205,17 @@ const app = {
                         </td>
                     </tr>
                     <tr class="unsettled-row">
-                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;">정산(입력)</td>
-                        <td class="align-middle bg-settle-input px-1">
+                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;"><span class="text-danger me-1">●</span>정산(입력)</td>
+                        <td class="align-middle bg-settle-input">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
                         </td>
-                        <td class="align-middle bg-settle-input px-1">
+                        <td class="align-middle bg-settle-input">
                             <input type="text" class="text-end inline-qty edit-input" value="${Number(r.qty).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
-                        <td class="align-middle bg-settle-input px-1">
+                        <td class="align-middle bg-settle-input">
                             <input type="text" class="text-end inline-price edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
-                        <td class="align-middle bg-settle-input px-1">
+                        <td class="align-middle bg-settle-input">
                             <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">0</td>
@@ -244,7 +244,7 @@ const app = {
                 
                 return `
                 <tbody data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee}" data-shipvatinc="${r.shipping_fee_vat_included}">
-                    <tr class="settled-row">
+                    <tr class="settled-row bg-settled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
@@ -264,13 +264,13 @@ const app = {
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
                         </td>
                     </tr>
-                    <tr class="settled-row">
-                        <td class="align-middle text-center bg-original text-primary small fw-bold" style="border-left: 1px solid #dee2e6;">정산(완료)</td>
-                        <td class="align-middle text-center text-primary fw-bold small">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
-                        <td class="text-end align-middle text-primary fw-bold small">${r.settlement_qty}</td>
-                        <td class="text-end align-middle text-primary fw-bold small">${Number(r.settlement_price || 0).toLocaleString()}</td>
-                        <td class="text-end align-middle text-primary fw-bold small">${Number(vat).toLocaleString()}</td>
-                        <td class="text-end align-middle text-primary fw-bold small">${Number(totalAmt).toLocaleString()}</td>
+                    <tr class="settled-row bg-settled-row">
+                        <td class="align-middle text-center bg-settle-input text-success small fw-bold" style="border-left: 1px solid #dee2e6;">정산완료</td>
+                        <td class="align-middle bg-settle-input text-center small text-dark">${r.date.split('T')[0]}</td>
+                        <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_price).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input text-end small text-dark">${Number(vat).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-settle-input text-dark fw-bold px-2 small">${Number(totalAmt).toLocaleString()}</td>
                     </tr>
                 </tbody>
                 `;
@@ -281,6 +281,9 @@ const app = {
         this.items.filter(r => (!r.settlement_status || r.settlement_status === '미정산')).forEach(r => {
             this.calcInline(r.id);
         });
+        
+        // 데이터가 렌더링 된 후 리사이저 이벤트 등록 (최초 1회만 등록되도록 내부에서 방어)
+        this.makeTableResizable(document.getElementById('mainTable'));
     },
 
     updatePagination: function() {
@@ -332,6 +335,47 @@ const app = {
         let val = input.value.replace(/[^0-9-]/g, '');
         if (val === '' || val === '-') return;
         input.value = Number(val).toLocaleString();
+    },
+    
+    makeTableResizable: function(table) {
+        if (!table) return;
+        const cols = table.querySelectorAll('th');
+        [].forEach.call(cols, function(col) {
+            if (col.querySelector('.resizer')) return; // 이미 있으면 추가 안함
+            
+            const resizer = document.createElement('div');
+            resizer.classList.add('resizer');
+            
+            // set explicitly style width to allow resizing
+            col.style.width = col.offsetWidth + 'px';
+            
+            col.appendChild(resizer);
+            
+            let x = 0;
+            let w = 0;
+            
+            const mouseDownHandler = function(e) {
+                x = e.clientX;
+                w = col.offsetWidth;
+                
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+                resizer.classList.add('resizing');
+            };
+            
+            const mouseMoveHandler = function(e) {
+                const dx = e.clientX - x;
+                col.style.width = `${w + dx}px`;
+            };
+            
+            const mouseUpHandler = function() {
+                resizer.classList.remove('resizing');
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+            };
+            
+            resizer.addEventListener('mousedown', mouseDownHandler);
+        });
     },
     
     updateBatchButton: function() {

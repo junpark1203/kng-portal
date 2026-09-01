@@ -80,14 +80,15 @@
         }
         .edit-input {
             border: 1px solid transparent;
-            color: #6c757d; /* text-muted와 동일 */
+            color: inherit; /* 부모 폰트 색상 완벽 상속 */
             font-weight: normal;
             transition: all 0.2s;
             padding: 0; /* 우측 정렬 시 원본 데이터와 픽셀 일치 */
             border-radius: 2px;
             width: 100%;
             background-color: transparent;
-            font-size: 0.875rem; /* 원본 데이터와 동일한 크기 */
+            font-size: inherit; /* 부모 폰트 크기 완벽 상속 */
+            font-family: inherit;
         }
         .edit-input:hover {
             border-color: #e2e8f0;
@@ -103,6 +104,33 @@
         input[type="date"]::-webkit-calendar-picker-indicator {
             display: none;
             -webkit-appearance: none;
+        }
+        
+        /* 정산 완료된 행 시각적 구분 */
+        .bg-settled-row td {
+            background-color: #f4fcf7 !important; /* 매우 옅은 초록색 */
+        }
+        
+        /* 엑셀식 열 너비 조절 기능 */
+        #mainTable {
+            table-layout: fixed; /* 리사이징을 위해 고정 레이아웃 */
+            width: 100%;
+        }
+        th {
+            position: relative;
+        }
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            cursor: col-resize;
+            user-select: none;
+            height: 100%;
+            z-index: 1;
+        }
+        .resizer:hover, .resizing {
+            border-right: 2px solid #3b82f6;
         }
     </style>
 </head>
