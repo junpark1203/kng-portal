@@ -79,15 +79,18 @@
             background-color: #f1f5f9; 
         }
         .edit-input {
-            border: 1px solid #94a3b8;
-            color: #1d4ed8;
-            font-weight: 600;
+            border: 1px solid transparent;
+            color: #6c757d; /* text-muted와 동일 */
+            font-weight: normal;
             transition: all 0.2s;
-            padding: 0.1rem 0.3rem; /* 더 타이트한 패딩 */
+            padding: 0; /* 우측 정렬 시 원본 데이터와 픽셀 일치 */
             border-radius: 2px;
             width: 100%;
-            background-color: #ffffff;
+            background-color: transparent;
             font-size: 0.875rem; /* 원본 데이터와 동일한 크기 */
+        }
+        .edit-input:hover {
+            border-color: #e2e8f0;
         }
         .edit-input:focus {
             background-color: #ffffff;

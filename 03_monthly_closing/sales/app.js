@@ -205,20 +205,20 @@ const app = {
                         </td>
                     </tr>
                     <tr class="unsettled-row">
-                        <td class="align-middle text-center bg-settle-input text-primary small fw-bold" style="border-left: 1px solid #dee2e6;">정산(입력)</td>
+                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;">정산(입력)</td>
                         <td class="align-middle bg-settle-input px-1">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
                         </td>
                         <td class="align-middle bg-settle-input px-1">
-                            <input type="number" class="text-end inline-qty edit-input" value="${r.qty}" oninput="app.calcInline(${r.id}, true)">
+                            <input type="text" class="text-end inline-qty edit-input" value="${Number(r.qty).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
                         <td class="align-middle bg-settle-input px-1">
-                            <input type="number" class="text-end inline-price edit-input" value="${r.outbound_price || 0}" oninput="app.calcInline(${r.id}, true)">
+                            <input type="text" class="text-end inline-price edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
                         <td class="align-middle bg-settle-input px-1">
-                            <input type="number" class="text-end inline-vat edit-input" value="0" oninput="app.calcInline(${r.id}, false)">
+                            <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
-                        <td class="text-end align-middle bg-settle-input text-primary fw-bold px-2 small inline-total-amt">0</td>
+                        <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">0</td>
                     </tr>
                 </tbody>
                 `;
@@ -328,6 +328,12 @@ const app = {
         if (!hasUnsettled) alert('현재 목록에 미정산 항목이 없습니다.');
     },
     
+    formatNumberInput: function(input) {
+        let val = input.value.replace(/[^0-9-]/g, '');
+        if (val === '' || val === '-') return;
+        input.value = Number(val).toLocaleString();
+    },
+    
     updateBatchButton: function() {
         const checkedBoxes = document.querySelectorAll('.row-chk:checked');
         let hasUnsettled = false;
@@ -349,8 +355,10 @@ const app = {
     calcInline: function(id, autoCalcVat = false) {
         const container = document.querySelector(`tbody[data-id="${id}"]`);
         if(!container) return;
-        const qty = parseFloat(container.querySelector('.inline-qty').value) || 0;
-        const price = parseFloat(container.querySelector('.inline-price').value) || 0;
+        const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
+        const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
+        const qty = parseFloat(qtyStr) || 0;
+        const price = parseFloat(priceStr) || 0;
         const vatInput = container.querySelector('.inline-vat');
         
         const shipAmount = parseFloat(container.dataset.shipamt) || 0;
@@ -366,10 +374,10 @@ const app = {
             if (shipFee > 0) {
                 shipVat = shipVatInc === 1 ? shipFee - shipAmount : Math.floor(shipAmount * 0.1);
             }
-            vatInput.value = itemVat + shipVat;
+            vatInput.value = (itemVat + shipVat).toLocaleString();
         }
         
-        const vat = parseFloat(vatInput.value) || 0;
+        const vat = parseFloat(vatInput.value.replace(/,/g, '')) || 0;
         const total = supplyAmt + vat;
         
         const supplyAmtEl = container.querySelector('.inline-supply-amt');
@@ -396,9 +404,13 @@ const app = {
         if(!container) return;
         
         const taxDate = container.querySelector('.inline-date').value;
-        const qty = parseFloat(container.querySelector('.inline-qty').value) || 0;
-        const price = parseFloat(container.querySelector('.inline-price').value) || 0;
-        const vat = parseFloat(container.querySelector('.inline-vat').value) || 0;
+        const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
+        const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
+        const vatStr = container.querySelector('.inline-vat').value.replace(/,/g, '');
+        
+        const qty = parseFloat(qtyStr) || 0;
+        const price = parseFloat(priceStr) || 0;
+        const vat = parseFloat(vatStr) || 0;
         const isZeroTax = (vat === 0);
         
         if(!taxDate) return alert('정산일자를 입력해주세요.');
@@ -438,9 +450,13 @@ const app = {
                 const id = parseInt(el.value);
                 const container = el.closest('tbody');
                 const taxDate = container.querySelector('.inline-date').value;
-                const qty = parseFloat(container.querySelector('.inline-qty').value) || 0;
-                const price = parseFloat(container.querySelector('.inline-price').value) || 0;
-                const vat = parseFloat(container.querySelector('.inline-vat').value) || 0;
+                const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
+                const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
+                const vatStr = container.querySelector('.inline-vat').value.replace(/,/g, '');
+                
+                const qty = parseFloat(qtyStr) || 0;
+                const price = parseFloat(priceStr) || 0;
+                const vat = parseFloat(vatStr) || 0;
                 const isZeroTax = (vat === 0);
                 
                 items.push({
