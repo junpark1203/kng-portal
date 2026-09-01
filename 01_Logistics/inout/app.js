@@ -98,6 +98,9 @@ const app = {
     filterByCategory(cat) {
         this.detailedFilters.category = cat;
         this.resetPageAndLoadHistory();
+        if($('inboundForm')) { $('inboundForm').dataset.mode = ''; $('inboundForm').dataset.txId = ''; }
+        if($('outboundForm')) { $('outboundForm').dataset.mode = ''; $('outboundForm').dataset.txId = ''; }
+        if($('directForm')) { $('directForm').dataset.mode = ''; $('directForm').dataset.txId = ''; }
     },
 
     bindEvents: function() {
@@ -285,7 +288,7 @@ const app = {
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const checkbox = `<input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}">`;
-            const editFn = isOut ? (r.type === '직출고' || r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
+            const editFn = isOut ? (r.type === '직출고' || r.is_direct === 1 ? `app.openEditDirectOutboundTx('${r.transaction_group_id}')` : `app.openEditOutboundTx('${r.transaction_group_id}')`) : `app.openEditInboundTx('${r.transaction_group_id}')`;
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
@@ -747,6 +750,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        return rowId;
     },
 
     removeInboundItemRow: function(rowId) {
@@ -782,7 +786,7 @@ const app = {
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, unit_price, note, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price, note, trade_type });
             }
         });
 
@@ -795,9 +799,18 @@ const app = {
             items: items
         };
 
-        if (confirm(`총 ${items.length}건의 품목을 입고하시겠습니까?`)) {
+        const mode = $('inboundForm').dataset.mode;
+        const txId = $('inboundForm').dataset.txId;
+        const confirmMsg = mode === 'edit' ? `총 ${items.length}건의 품목으로 입고 내역을 수정하시겠습니까?` : `총 ${items.length}건의 품목을 입고하시겠습니까?`;
+        if (confirm(confirmMsg)) {
             try {
-                await authFetch(`${API_BASE}/inbound`, { method: 'POST', body: JSON.stringify(payload) });
+                if (mode === 'edit') {
+                    await authFetch(`${API_BASE}/inbound/tx/${txId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    $('inboundForm').dataset.mode = '';
+                    $('inboundForm').dataset.txId = '';
+                } else {
+                    await authFetch(`${API_BASE}/inbound`, { method: 'POST', body: JSON.stringify(payload) });
+                }
                 alert('입고 완료되었습니다.');
                 $('inboundForm').reset();
                 $('inboundItemsContainer').innerHTML = '';
@@ -921,6 +934,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        return rowId;
     },
 
     removeDirectItemRow: function(rowId) {
@@ -1090,6 +1104,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        return rowId;
     },
 
     removeOutboundItemRow: function(rowId) {
@@ -1366,9 +1381,18 @@ const app = {
             items: items
         };
 
-        if (confirm(`총 ${items.length}건의 품목을 출고하시겠습니까?`)) {
+        const mode = $('outboundForm').dataset.mode;
+        const txId = $('outboundForm').dataset.txId;
+        const confirmMsg = mode === 'edit' ? `총 ${items.length}건의 품목으로 출고 내역을 수정하시겠습니까?` : `총 ${items.length}건의 품목을 출고하시겠습니까?`;
+        if (confirm(confirmMsg)) {
             try {
-                await authFetch(`${API_BASE}/outbound`, { method: 'POST', body: JSON.stringify(payload) });
+                if (mode === 'edit') {
+                    await authFetch(`${API_BASE}/outbound/tx/${txId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    $('outboundForm').dataset.mode = '';
+                    $('outboundForm').dataset.txId = '';
+                } else {
+                    await authFetch(`${API_BASE}/outbound`, { method: 'POST', body: JSON.stringify(payload) });
+                }
                 alert('출고 완료되었습니다.');
                 $('outboundForm').reset();
                 $('outboundItemsContainer').innerHTML = '';
@@ -1547,7 +1571,116 @@ const app = {
         }
     },
     
-    closeDrawer: function() {
+    
+    openEditInboundTx: async function(txId) {
+        try {
+            const items = await authFetch(`${API_BASE}/history/inbound/tx/${encodeURIComponent(txId)}`);
+            if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
+            
+            $('inboundForm').dataset.mode = 'edit';
+            $('inboundForm').dataset.txId = txId;
+            $('inboundItemsContainer').innerHTML = '';
+            
+            const first = items[0];
+            $('in_date').value = first.date;
+            $('in_supplier').value = first.supplier || '';
+            $('in_location').value = first.location_id || '';
+            $('in_note').value = first.note || '';
+            if ($('in_trade_type')) $('in_trade_type').value = first.trade_type || '내수';
+
+            items.forEach(item => {
+                const rowId = this.addInboundItemRow();
+                const newRow = $(rowId);
+                newRow.dataset.dbId = item.id;
+                newRow.querySelector('.in-item').value = item.item;
+                newRow.querySelector('.in-spec').value = item.spec || '';
+                newRow.querySelector('.in-unit').value = item.unit || '';
+                newRow.querySelector('.in-qty').value = item.qty_initial;
+                newRow.querySelector('.in-price').value = item.unit_price || 0;
+                
+                const consumed = item.qty_initial - item.qty_remaining;
+                if (consumed > 0) {
+                    newRow.querySelector('.in-qty').min = consumed;
+                    const delBtn = newRow.querySelector('.btn-outline-danger');
+                    if(delBtn) delBtn.disabled = true;
+                }
+            });
+            this.openDrawer('inbound_create');
+        } catch(err) { alert(err.message); }
+    },
+
+    openEditOutboundTx: async function(txId) {
+        try {
+            const items = await authFetch(`${API_BASE}/history/outbound/tx/${encodeURIComponent(txId)}`);
+            if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
+            
+            $('outboundForm').dataset.mode = 'edit';
+            $('outboundForm').dataset.txId = txId;
+            $('outboundItemsContainer').innerHTML = '';
+            
+            const first = items[0];
+            $('out_date').value = first.date;
+            $('out_destination').value = first.destination || '';
+            $('out_actual_destination').value = first.actual_destination || '';
+            $('out_note').value = first.note || '';
+            if ($('out_trade_type')) $('out_trade_type').value = first.trade_type || '내수';
+
+            for (let item of items) {
+                const rowId = this.addOutboundItemRow();
+                const newRow = $(rowId);
+                newRow.dataset.dbId = item.id;
+                newRow.querySelector('.out-item').value = item.item;
+                newRow.querySelector('.out-spec').value = item.spec || '';
+                newRow.querySelector('.out-unit').value = item.unit || '';
+                newRow.querySelector('.out-qty').value = item.qty;
+                newRow.querySelector('.out-price').value = item.selling_price || 0;
+                newRow.querySelector('.out-shipping').value = item.shipping_fee || 0;
+                newRow.querySelector('.out-shipping-vat').checked = item.shipping_fee_vat_included === 1;
+
+                this.outboundState[rowId] = {
+                    consumedLots: item.consumed_lots || [],
+                    availableLots: []
+                };
+                newRow.querySelector('.outbound-status-badge').innerHTML = `<span class="badge bg-success">출고가능 (로트 맵핑됨)</span>`;
+            }
+            this.openDrawer('outbound_create');
+        } catch(err) { alert(err.message); }
+    },
+
+    openEditDirectOutboundTx: async function(txId) {
+        try {
+            const items = await authFetch(`${API_BASE}/history/direct/tx/${encodeURIComponent(txId)}`);
+            if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
+            
+            $('directForm').dataset.mode = 'edit';
+            $('directForm').dataset.txId = txId;
+            $('directItemsContainer').innerHTML = '';
+            
+            const first = items[0];
+            $('direct_date').value = first.date;
+            $('direct_supplier').value = first.supplier || '';
+            $('direct_destination').value = first.destination || '';
+            $('direct_actual_destination').value = first.actual_destination || '';
+            $('direct_note').value = first.note || '';
+            if ($('direct_trade_type')) $('direct_trade_type').value = first.trade_type || '내수';
+
+            items.forEach(item => {
+                const rowId = this.addDirectItemRow();
+                const newRow = $(rowId);
+                newRow.dataset.dbId = item.id;
+                newRow.querySelector('.dir-item').value = item.item;
+                newRow.querySelector('.dir-spec').value = item.spec || '';
+                newRow.querySelector('.dir-unit').value = item.unit || '';
+                newRow.querySelector('.dir-qty').value = item.qty;
+                newRow.querySelector('.dir-in-price').value = item.inbound_price || 0;
+                newRow.querySelector('.dir-out-price').value = item.selling_price || 0;
+                newRow.querySelector('.dir-shipping').value = item.shipping_fee || 0;
+                newRow.querySelector('.dir-shipping-vat').checked = item.shipping_fee_vat_included === 1;
+            });
+            this.openDrawer('direct_create');
+        } catch(err) { alert(err.message); }
+    },
+\n    closeDrawer: function() {
         const modals = ['inboundModal', 'outboundModal', 'directModal', 'detailModal'];
         modals.forEach(id => {
             const modalEl = document.getElementById(id);
