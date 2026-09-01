@@ -218,11 +218,15 @@ const app = {
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-price edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
-                        <td class="text-end align-middle bg-settle-input text-muted small inline-supply-amt">${Number(supplyAmtOrig).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input small">
+                            <input type="text" class="text-end inline-supply-amt edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" readonly tabindex="-1">
+                        </td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
-                        <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">${Number(totalOrig).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input small">
+                            <input type="text" class="text-end inline-total-amt edit-input fw-bold px-2" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
+                        </td>
                     </tr>
                 </tbody>
                 `;
@@ -431,10 +435,10 @@ const app = {
         const total = supplyAmt + vat;
         
         const supplyAmtEl = container.querySelector('.inline-supply-amt');
-        if (supplyAmtEl) supplyAmtEl.innerText = supplyAmt.toLocaleString();
+        if (supplyAmtEl) supplyAmtEl.value = supplyAmt.toLocaleString();
         
         const totalAmtEl = container.querySelector('.inline-total-amt');
-        if (totalAmtEl) totalAmtEl.innerText = total.toLocaleString();
+        if (totalAmtEl) totalAmtEl.value = total.toLocaleString();
     },
     
     applyBatchDate: function() {
