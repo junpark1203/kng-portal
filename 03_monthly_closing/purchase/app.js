@@ -221,7 +221,6 @@ const app = {
                             <input type="text" class="text-end inline-vat edit-input" value="${(r.trade_type && r.trade_type !== '내수') ? 0 : Number(Math.floor((r.qty || 0) * (r.inbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
-                        <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                         <td class="align-middle bg-settle-input small">
