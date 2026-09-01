@@ -296,7 +296,7 @@ const app = {
             };
 
             return `
-            <tr style="cursor:pointer;" class="inbound-item-row" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
+            <tr style="cursor:pointer;" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
                 <td class="d-print-none text-muted small">${r.transaction_group_id || ''}</td>
                 <td class="text-center">${badge}</td>
@@ -766,7 +766,7 @@ const app = {
     handleInboundSubmit: async function(e) {
         e.preventDefault();
         
-        const rows = document.querySelectorAll('.inbound-item-row');
+        const rows = $('inboundItemsContainer').querySelectorAll('.inbound-item-row');
         if (rows.length === 0) return alert('입고할 품목을 추가하세요.');
 
         const items = [];
@@ -945,7 +945,7 @@ const app = {
     handleDirectSubmit: async function(e) {
         e.preventDefault();
         
-        const rows = document.querySelectorAll('.direct-item-row');
+        const rows = $('directItemsContainer').querySelectorAll('.direct-item-row');
         if (rows.length === 0) return alert('직출고할 품목을 추가하세요.');
 
         const items = [];
@@ -1295,7 +1295,7 @@ const app = {
     },
 
     validateAllOutboundLots: function() {
-        const rows = document.querySelectorAll('.outbound-item-row');
+        const rows = $('outboundItemsContainer').querySelectorAll('.outbound-item-row');
         let allValid = true;
         let hasItems = false;
         
@@ -1343,7 +1343,7 @@ const app = {
 
     handleOutboundSubmit: async function(e) {
         e.preventDefault();
-        const rows = document.querySelectorAll('.outbound-item-row');
+        const rows = $('outboundItemsContainer').querySelectorAll('.outbound-item-row');
         if (rows.length === 0) return alert('출고할 품목을 추가하세요.');
 
         const items = [];
