@@ -190,6 +190,7 @@ const app = {
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
+                        <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${r.destination || ''}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${r.item}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${r.spec}">${r.spec || '-'}</td>
@@ -256,6 +257,7 @@ const app = {
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
+                        <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${r.destination || ''}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${r.item}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${r.spec}">${r.spec || '-'}</td>
