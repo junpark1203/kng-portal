@@ -1680,7 +1680,7 @@ const app = {
             this.openDrawer('direct_create');
         } catch(err) { alert(err.message); }
     },
-\n    closeDrawer: function() {
+    closeDrawer: function() {
         const modals = ['inboundModal', 'outboundModal', 'directModal', 'detailModal'];
         modals.forEach(id => {
             const modalEl = document.getElementById(id);
