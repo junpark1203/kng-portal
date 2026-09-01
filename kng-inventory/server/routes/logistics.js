@@ -1466,7 +1466,7 @@ router.get('/history/direct/tx/:tx_id', (req, res) => {
 // --- Transaction Group PUT APIs ---
 router.put('/inbound/tx/:tx_id', (req, res) => {
     const txId = req.params.tx_id;
-    const { items } = req.body;
+    const { date, supplier, location_id, items } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Items are required' });
@@ -1502,8 +1502,8 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
                 });
             }
 
-            const commonDate = items[0].date;
-            const commonSupplier = items[0].supplier;
+            const commonDate = date;
+            const commonSupplier = supplier;
 
             const updateSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ? WHERE id = ?`;
             const insertSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`;
@@ -1524,11 +1524,11 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
                     }
                     const new_qty_remaining = parseFloat(i.qty) - consumed;
 
-                    stmtUpdate.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), new_qty_remaining, parseFloat(i.unit_price) || 0, i.location_id, i.note || '', i.trade_type || '내수', parseInt(i.id), function(e) {
+                    stmtUpdate.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), new_qty_remaining, parseFloat(i.unit_price) || 0, location_id, i.note || '', i.trade_type || '내수', parseInt(i.id), function(e) {
                         if(e) { hasError = true; errorMsg = e.message; }
                     });
                 } else {
-                    stmtInsert.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.qty), parseFloat(i.unit_price) || 0, i.location_id, i.note || '', txId, i.trade_type || '내수', function(e) {
+                    stmtInsert.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.qty), parseFloat(i.unit_price) || 0, location_id, i.note || '', txId, i.trade_type || '내수', function(e) {
                         if(e) { hasError = true; errorMsg = e.message; }
                     });
                 }
@@ -1554,7 +1554,7 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
 
 router.put('/outbound/tx/:tx_id', (req, res) => {
     const txId = req.params.tx_id;
-    const { items } = req.body;
+    const { date, destination, actual_destination, items } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Items are required' });
@@ -1591,9 +1591,9 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
                 });
             }
 
-            const commonDate = items[0].date;
-            const commonDest = items[0].destination;
-            const commonActualDest = items[0].actual_destination || '';
+            const commonDate = date;
+            const commonDest = destination;
+            const commonActualDest = actual_destination || '';
 
             const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ? WHERE id = ?`;
             const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`;
@@ -1660,7 +1660,7 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
 
 router.put('/direct/tx/:tx_id', (req, res) => {
     const txId = req.params.tx_id;
-    const { items } = req.body;
+    const { date, supplier, destination, actual_destination, items } = req.body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Items are required' });
@@ -1696,10 +1696,10 @@ router.put('/direct/tx/:tx_id', (req, res) => {
                 });
             }
 
-            const commonDate = items[0].date;
-            const commonSupplier = items[0].supplier;
-            const commonDest = items[0].destination;
-            const commonActualDest = items[0].actual_destination || '';
+            const commonDate = date;
+            const commonSupplier = supplier;
+            const commonDest = destination;
+            const commonActualDest = actual_destination || '';
             const txInGroupId = txId.replace('OUT', 'IN');
 
             const updateInSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, note = ?, trade_type = ? WHERE id = ?`;

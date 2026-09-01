@@ -979,7 +979,7 @@ const app = {
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type });
             }
         });
 
@@ -1368,7 +1368,7 @@ const app = {
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type });
             }
         });
 
