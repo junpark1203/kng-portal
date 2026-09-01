@@ -95,6 +95,12 @@
             outline: 2px solid #93c5fd;
             box-shadow: none;
         }
+        
+        /* 달력 아이콘 숨기기 (텍스트처럼 보이게) */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            display: none;
+            -webkit-appearance: none;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -200,26 +206,18 @@
         <table id="mainTable">
             <thead>
                 <tr>
-                    <th rowspan="2" class="chk-col bg-original" style="width: 30px;"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
-                    <th rowspan="2" class="bg-original" style="width: 110px;">매입처</th>
-                    <th rowspan="2" class="bg-original" style="min-width: 140px;">품명</th>
-                    <th rowspan="2" class="bg-original" style="width: 80px;">규격</th>
-                    <th rowspan="2" class="bg-original" style="width: 60px;">단위</th>
-                    <th colspan="4" class="bg-original">입고 내역 (원본)</th>
-                    <th colspan="5" class="bg-settle-header">정산 확정 (입력)</th>
-                    <th rowspan="2" class="bg-original text-center" style="width: 80px;">상태/작업</th>
-                </tr>
-                <tr>
-                    <th class="bg-original" style="width: 90px;">입고일자</th>
-                    <th class="bg-original" style="width: 70px;">입고수량</th>
-                    <th class="bg-original" style="width: 80px;">입고단가</th>
-                    <th class="bg-original" style="width: 90px;">입고금액</th>
-                    
-                    <th class="bg-settle-header" style="width: 110px;">매입(정산)일자</th>
-                    <th class="bg-settle-header" style="width: 70px;">정산수량</th>
-                    <th class="bg-settle-header" style="width: 90px;">매입단가</th>
-                    <th class="bg-settle-header" style="width: 90px;">부가세</th>
-                    <th class="bg-settle-header" style="width: 100px;">매입금액(합계)</th>
+                    <th class="chk-col bg-original" style="width: 30px;"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
+                    <th class="bg-original" style="width: 110px;">매입처</th>
+                    <th class="bg-original" style="min-width: 180px;">품명</th>
+                    <th class="bg-original" style="width: 80px;">규격</th>
+                    <th class="bg-original" style="width: 60px;">단위</th>
+                    <th class="bg-original text-center" style="width: 80px;">구분</th>
+                    <th class="bg-original" style="width: 110px;">일자</th>
+                    <th class="bg-original" style="width: 70px;">수량</th>
+                    <th class="bg-original" style="width: 90px;">단가</th>
+                    <th class="bg-original" style="width: 90px;">부가세</th>
+                    <th class="bg-original" style="width: 100px;">합계금액</th>
+                    <th class="bg-original text-center" style="width: 80px;">상태/작업</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
