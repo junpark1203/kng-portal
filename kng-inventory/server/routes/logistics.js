@@ -66,7 +66,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN transaction_group_id TEXT",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_qty REAL",
-                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_price REAL"
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_price REAL",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_memo TEXT"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -101,7 +102,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN is_zero_tax INTEGER DEFAULT 0",
                         "ALTER TABLE logistics_outbound ADD COLUMN transaction_group_id TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_qty REAL",
-                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL"
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
