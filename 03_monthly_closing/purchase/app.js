@@ -176,7 +176,6 @@ const app = {
             if (statusVal === '미정산') {
                 const defaultTaxDate = r.date ? r.date.split('T')[0] : '';
                 return `
-                <tbody data-id="${r.id}">
                     <tr class="unsettled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
@@ -199,7 +198,7 @@ const app = {
                             <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm py-1" style="font-size: 0.75rem;" onclick="app.submitInlineSettlement(${r.id})">정산</button>
                         </td>
                     </tr>
-                    <tr class="unsettled-row">
+                    <tr class="unsettled-row settle-input-row" data-id="${r.id}">
                         <td class="align-middle text-center bg-settle-input text-primary" style="border-left: 1px solid #dee2e6; font-size: 0.75rem;">정산</td>
                         <td class="align-middle bg-settle-input small">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
@@ -220,7 +219,7 @@ const app = {
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                     </tr>
-                </tbody>
+                    </tr>
                 `;
             } else {
                 const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0);
@@ -229,7 +228,6 @@ const app = {
                 const totalAmt = supplyAmt + vat;
                 
                 return `
-                <tbody data-id="${r.id}">
                     <tr class="settled-row bg-settled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
@@ -252,7 +250,7 @@ const app = {
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
                         </td>
                     </tr>
-                    <tr class="settled-row bg-settled-row">
+                    <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}">
                         <td class="align-middle text-center bg-settle-input text-success small fw-bold" style="border-left: 1px solid #dee2e6;">정산완료</td>
                         <td class="align-middle bg-settle-input text-center small text-dark">${r.date.split('T')[0]}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
@@ -261,7 +259,7 @@ const app = {
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(vat).toLocaleString()}</td>
                         <td class="text-end align-middle bg-settle-input text-dark fw-bold px-2 small">${Number(totalAmt).toLocaleString()}</td>
                     </tr>
-                </tbody>
+                    </tr>
                 `;
             }
         }).join('');
@@ -386,7 +384,7 @@ const app = {
     },
 
     calcInline: function(id, autoCalcVat = false) {
-        const container = document.querySelector(`tbody[data-id="${id}"]`);
+        const container = document.querySelector(`tr.settle-input-row[data-id="${id}"]`);
         if(!container) return;
         const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
         const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
@@ -415,7 +413,7 @@ const app = {
         if(!d) return alert('일괄 적용할 정산일자를 선택해주세요.');
         document.querySelectorAll('.row-chk:checked').forEach(el => {
             if(el.dataset.status === '미정산') {
-                const container = el.closest('tbody');
+                const container = el.closest('tr').nextElementSibling;
                 const dateInput = container.querySelector('.inline-date');
                 if(dateInput) dateInput.value = d;
             }
@@ -423,7 +421,7 @@ const app = {
     },
 
     submitInlineSettlement: async function(id) {
-        const container = document.querySelector(`tbody[data-id="${id}"]`);
+        const container = document.querySelector(`tr.settle-input-row[data-id="${id}"]`);
         if(!container) return;
         
         const taxDate = container.querySelector('.inline-date').value;
@@ -472,7 +470,7 @@ const app = {
         checked.forEach(el => {
             if(el.dataset.status === '미정산') {
                 const id = parseInt(el.value);
-                const container = el.closest('tbody');
+                const container = el.closest('tr').nextElementSibling;
                 const taxDate = container.querySelector('.inline-date').value;
                 const qtyStr = container.querySelector('.inline-qty').value.replace(/,/g, '');
                 const priceStr = container.querySelector('.inline-price').value.replace(/,/g, '');
