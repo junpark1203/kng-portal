@@ -1632,9 +1632,17 @@ const app = {
                 const newRow = $(rowId);
                 newRow.dataset.dbId = item.id;
                 newRow.querySelector('.out-item').value = item.item;
-                newRow.querySelector('.out-spec').value = item.spec || '';
+                
+                const specSel = newRow.querySelector('.out-spec');
+                specSel.innerHTML = `<option value="${item.spec || ''}" selected>${item.spec || '규격 없음'}</option>`;
+                specSel.disabled = false;
+                
                 newRow.querySelector('.out-unit').value = item.unit || '';
-                newRow.querySelector('.out-qty').value = item.qty;
+                
+                const qtyInput = newRow.querySelector('.out-qty');
+                qtyInput.value = item.qty;
+                qtyInput.disabled = false;
+                
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
 
                 this.outboundRows[rowId] = {
