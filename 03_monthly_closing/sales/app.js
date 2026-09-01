@@ -169,7 +169,9 @@ const app = {
                              ? Math.round(r.shipping_fee / 1.1) 
                              : r.shipping_fee;
             }
-            const originalTotal = qtyTotal + shipAmount;
+            const supplyAmtOrig = qtyTotal + shipAmount;
+            const vatOrig = Math.floor(supplyAmtOrig * 0.1);
+            const totalOrig = supplyAmtOrig + vatOrig;
             
             let itemDisplay = `<strong>${r.item}</strong>`;
             if (r.is_direct) itemDisplay += `<span class="badge bg-secondary ms-1">직출고</span>`;
@@ -197,8 +199,9 @@ const app = {
                         <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
                         <td class="text-end align-middle bg-original text-muted small">${r.qty}</td>
                         <td class="text-end align-middle bg-original text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">-</td>
-                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(originalTotal).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted small">${Number(supplyAmtOrig).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted small">${Number(vatOrig).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(totalOrig).toLocaleString()}</td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="app.submitInlineSettlement(${r.id})">정산확정</button>
@@ -215,10 +218,11 @@ const app = {
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-price edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
+                        <td class="text-end align-middle bg-settle-input text-muted small inline-supply-amt">${Number(supplyAmtOrig).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
-                        <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">0</td>
+                        <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">${Number(totalOrig).toLocaleString()}</td>
                     </tr>
                 </tbody>
                 `;
@@ -257,8 +261,9 @@ const app = {
                         <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
                         <td class="text-end align-middle bg-original text-muted small">${r.qty}</td>
                         <td class="text-end align-middle bg-original text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">-</td>
-                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(originalTotal).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted small">${Number(supplyAmtOrig).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted small">${Number(vatOrig).toLocaleString()}</td>
+                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(totalOrig).toLocaleString()}</td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
@@ -269,6 +274,7 @@ const app = {
                         <td class="align-middle bg-settle-input text-center small text-dark">${r.date.split('T')[0]}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_price).toLocaleString()}</td>
+                        <td class="align-middle bg-settle-input text-end small text-dark">${Number(supplyAmt).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(vat).toLocaleString()}</td>
                         <td class="text-end align-middle bg-settle-input text-dark fw-bold px-2 small">${Number(totalAmt).toLocaleString()}</td>
                     </tr>
