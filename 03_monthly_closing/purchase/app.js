@@ -181,7 +181,7 @@ const app = {
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${r.spec}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
-                        <td class="align-middle text-center bg-original text-muted small fw-bold">입고</td>
+                        <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">입고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${r.qty}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(r.inbound_price || 0).toLocaleString()}" disabled></td>
@@ -190,11 +190,11 @@ const app = {
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" disabled></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="app.submitInlineSettlement(${r.id})">정산</button>
+                            <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm py-1" style="font-size: 0.75rem;" onclick="app.submitInlineSettlement(${r.id})">정산</button>
                         </td>
                     </tr>
                     <tr class="unsettled-row">
-                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;">정산</td>
+                        <td class="align-middle text-center bg-settle-input text-primary" style="border-left: 1px solid #dee2e6; font-size: 0.75rem;">정산</td>
                         <td class="align-middle bg-settle-input small">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
                         </td>
@@ -229,7 +229,7 @@ const app = {
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${r.spec}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
-                        <td class="align-middle text-center bg-original text-muted small fw-bold">입고</td>
+                        <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">입고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${r.qty}" disabled></td>
                         <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(r.inbound_price || 0).toLocaleString()}" disabled></td>
