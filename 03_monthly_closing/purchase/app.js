@@ -48,8 +48,8 @@ const app = {
         // 체크박스 헤더
         $('checkAllHeader').addEventListener('change', this.onCheckAllHeaderChange.bind(this));
         
-        // 초기 날짜 세팅 (당월)
-        this.applyDatePreset('당월');
+        // 초기 날짜 세팅 (전월 기본)
+        this.applyDatePreset('전월');
         
         // 데이터 로드
         this.loadData();
@@ -70,7 +70,10 @@ const app = {
             return `${yy}-${mm}-${dd}`;
         };
 
-        if (preset === '당월') {
+        if (preset === '전월') {
+            start = new Date(y, m - 1, 1);
+            end = new Date(y, m, 0); // 전월 말일
+        } else if (preset === '당월') {
             start = new Date(y, m, 1);
             end = new Date(y, m + 1, 0); // 말일
         } else if (preset === '3개월') {
