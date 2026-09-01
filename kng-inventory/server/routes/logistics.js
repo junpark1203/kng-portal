@@ -1410,7 +1410,355 @@ router.get('/migrate-tx-ids', async (req, res) => {
     }
 });
 
-module.exports = {
+
+// --- Transaction Group GET APIs ---
+router.get('/history/inbound/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    const sql = `
+        SELECT i.*, l.name as location_name
+        FROM logistics_inbound i
+        LEFT JOIN logistics_locations l ON i.location_id = l.id
+        WHERE i.transaction_group_id = ?
+        ORDER BY i.id ASC
+    `;
+    db.all(sql, [txId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+router.get('/history/outbound/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    const sql = `
+        SELECT o.*,
+            (SELECT json_group_array(json_object('inbound_id', inbound_id, 'consumed_qty', consumed_qty)) 
+             FROM logistics_outbound_lots WHERE outbound_id = o.id) as consumed_lots
+        FROM logistics_outbound o
+        WHERE o.transaction_group_id = ?
+        ORDER BY o.id ASC
+    `;
+    db.all(sql, [txId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        rows.forEach(r => {
+            if (r.consumed_lots) r.consumed_lots = JSON.parse(r.consumed_lots);
+        });
+        res.json(rows);
+    });
+});
+
+router.get('/history/direct/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    // Direct requires fetching inbound_price too
+    const sql = `
+        SELECT o.*, i.unit_price as inbound_price, i.supplier as supplier
+        FROM logistics_outbound o
+        JOIN logistics_outbound_lots l ON o.id = l.outbound_id
+        JOIN logistics_inbound i ON l.inbound_id = i.id
+        WHERE o.transaction_group_id = ?
+        ORDER BY o.id ASC
+    `;
+    db.all(sql, [txId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// --- Transaction Group PUT APIs ---
+router.put('/inbound/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        let hasError = false;
+        let errorMsg = null;
+
+        db.all("SELECT id, qty_initial, qty_remaining FROM logistics_inbound WHERE transaction_group_id = ?", [txId], (err, existingRows) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+
+            const existingIds = existingRows.map(r => r.id);
+            const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
+            const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+
+            for (let id of idsToDelete) {
+                const row = existingRows.find(r => r.id === id);
+                if (row.qty_initial > row.qty_remaining) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: '이미 사용(출고)된 입고 내역은 삭제할 수 없습니다.' });
+                }
+            }
+
+            if (idsToDelete.length > 0) {
+                const placeholders = idsToDelete.map(() => '?').join(',');
+                db.run(`DELETE FROM logistics_inbound WHERE id IN (${placeholders})`, idsToDelete, function(e) {
+                    if(e) { hasError = true; errorMsg = e.message; }
+                });
+            }
+
+            const commonDate = items[0].date;
+            const commonSupplier = items[0].supplier;
+
+            const updateSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ? WHERE id = ?`;
+            const insertSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`;
+
+            const stmtUpdate = db.prepare(updateSql);
+            const stmtInsert = db.prepare(insertSql);
+
+            for (let i of items) {
+                if (i.id) {
+                    const row = existingRows.find(r => r.id === parseInt(i.id));
+                    if (!row) continue;
+                    
+                    const consumed = row.qty_initial - row.qty_remaining;
+                    if (parseFloat(i.qty) < consumed) {
+                        hasError = true;
+                        errorMsg = `이미 출고 차감된 수량(${consumed})보다 적게 수정할 수 없습니다.`;
+                        break;
+                    }
+                    const new_qty_remaining = parseFloat(i.qty) - consumed;
+
+                    stmtUpdate.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), new_qty_remaining, parseFloat(i.unit_price) || 0, i.location_id, i.note || '', i.trade_type || '내수', parseInt(i.id), function(e) {
+                        if(e) { hasError = true; errorMsg = e.message; }
+                    });
+                } else {
+                    stmtInsert.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.qty), parseFloat(i.unit_price) || 0, i.location_id, i.note || '', txId, i.trade_type || '내수', function(e) {
+                        if(e) { hasError = true; errorMsg = e.message; }
+                    });
+                }
+            }
+
+            db.run("SELECT 1", function() {
+                stmtUpdate.finalize();
+                stmtInsert.finalize();
+
+                if (hasError) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: errorMsg || 'Update failed' });
+                }
+                
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    res.json({ success: true, message: 'Inbound transaction updated' });
+                });
+            });
+        });
+    });
+});
+
+router.put('/outbound/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        let hasError = false;
+        let errorMsg = null;
+
+        db.all("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txId], (err, existingRows) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+
+            const existingIds = existingRows.map(r => r.id);
+            const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
+            const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+
+            if (idsToDelete.length > 0) {
+                const placeholders = idsToDelete.map(() => '?').join(',');
+                db.all(`SELECT outbound_id, inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete, (err2, oldLots) => {
+                    if(err2) { hasError = true; errorMsg = err2.message; return; }
+                    
+                    const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
+                    oldLots.forEach(lot => {
+                        stmtRestore.run(lot.consumed_qty, lot.inbound_id);
+                    });
+                    stmtRestore.finalize();
+
+                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+                    db.run(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
+                });
+            }
+
+            const commonDate = items[0].date;
+            const commonDest = items[0].destination;
+            const commonActualDest = items[0].actual_destination || '';
+
+            const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ? WHERE id = ?`;
+            const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)`;
+
+            const stmtUpdate = db.prepare(updateSql);
+            const stmtInsert = db.prepare(insertSql);
+            
+            const stmtRestoreLots = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
+            const stmtDeleteLots = db.prepare(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`);
+            const stmtConsumeLots = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`);
+            const stmtInsertLots = db.prepare(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`);
+
+            for (let i of items) {
+                if (i.id) {
+                    const oId = parseInt(i.id);
+                    stmtUpdate.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', oId, function(e) {
+                        if(e) { hasError = true; errorMsg = e.message; }
+                    });
+
+                    db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, oldLots) => {
+                        if(oldLots) {
+                            oldLots.forEach(l => stmtRestoreLots.run(l.consumed_qty, l.inbound_id));
+                            stmtDeleteLots.run(oId);
+                            if (i.consumed_lots) {
+                                i.consumed_lots.forEach(lot => {
+                                    stmtConsumeLots.run(lot.consumed_qty, lot.inbound_id);
+                                    stmtInsertLots.run(oId, lot.inbound_id, lot.consumed_qty);
+                                });
+                            }
+                        }
+                    });
+                } else {
+                    stmtInsert.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', txId, i.trade_type || '내수', function(e) {
+                        if(e) { hasError = true; errorMsg = e.message; return; }
+                        const newId = this.lastID;
+                        if (i.consumed_lots) {
+                            i.consumed_lots.forEach(lot => {
+                                stmtConsumeLots.run(lot.consumed_qty, lot.inbound_id);
+                                stmtInsertLots.run(newId, lot.inbound_id, lot.consumed_qty);
+                            });
+                        }
+                    });
+                }
+            }
+
+            db.run("SELECT 1", function() {
+                stmtUpdate.finalize(); stmtInsert.finalize();
+                stmtRestoreLots.finalize(); stmtDeleteLots.finalize();
+                stmtConsumeLots.finalize(); stmtInsertLots.finalize();
+
+                if (hasError) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: errorMsg || 'Update failed' });
+                }
+                
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    res.json({ success: true, message: 'Outbound transaction updated' });
+                });
+            });
+        });
+    });
+});
+
+router.put('/direct/tx/:tx_id', (req, res) => {
+    const txId = req.params.tx_id;
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Items are required' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        let hasError = false;
+        let errorMsg = null;
+
+        db.all("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txId], (err, existingRows) => {
+            if (err) {
+                db.run("ROLLBACK");
+                return res.status(500).json({ error: err.message });
+            }
+
+            const existingIds = existingRows.map(r => r.id);
+            const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
+            const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+
+            if (idsToDelete.length > 0) {
+                const placeholders = idsToDelete.map(() => '?').join(',');
+                db.all(`SELECT outbound_id, inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete, (err2, oldLots) => {
+                    if(err2) { hasError = true; errorMsg = err2.message; return; }
+                    
+                    const inboundIdsToDelete = oldLots.map(l => l.inbound_id);
+                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+                    db.run(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
+                    if (inboundIdsToDelete.length > 0) {
+                        const inPlaceholders = inboundIdsToDelete.map(() => '?').join(',');
+                        db.run(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders})`, inboundIdsToDelete);
+                    }
+                });
+            }
+
+            const commonDate = items[0].date;
+            const commonSupplier = items[0].supplier;
+            const commonDest = items[0].destination;
+            const commonActualDest = items[0].actual_destination || '';
+            const txInGroupId = txId.replace('OUT', 'IN');
+
+            const updateInSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, note = ?, trade_type = ? WHERE id = ?`;
+            const updateOutSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ? WHERE id = ?`;
+            const updateLotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
+
+            const insertInSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, '', ?, ?)`;
+            const insertOutSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, '', ?, ?)`;
+            const insertLotSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
+
+            const stmtUpIn = db.prepare(updateInSql);
+            const stmtUpOut = db.prepare(updateOutSql);
+            const stmtUpLot = db.prepare(updateLotSql);
+
+            const stmtInIn = db.prepare(insertInSql);
+            const stmtInOut = db.prepare(insertOutSql);
+            const stmtInLot = db.prepare(insertLotSql);
+
+            for (let i of items) {
+                if (i.id) {
+                    const oId = parseInt(i.id);
+                    db.get(`SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, lotRow) => {
+                        if (lotRow) {
+                            stmtUpIn.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, i.note || '', i.trade_type || '내수', lotRow.inbound_id);
+                            stmtUpOut.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', oId);
+                            stmtUpLot.run(parseFloat(i.qty), oId, lotRow.inbound_id);
+                        }
+                    });
+                } else {
+                    stmtInIn.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, i.note || '', txInGroupId, i.trade_type || '내수', function(e1) {
+                        if (e1) { hasError = true; return; }
+                        const newInId = this.lastID;
+                        stmtInOut.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', txId, i.trade_type || '내수', function(e2) {
+                            if (e2) { hasError = true; return; }
+                            const newOutId = this.lastID;
+                            stmtInLot.run(newOutId, newInId, parseFloat(i.qty));
+                        });
+                    });
+                }
+            }
+
+            db.run("SELECT 1", function() {
+                stmtUpIn.finalize(); stmtUpOut.finalize(); stmtUpLot.finalize();
+                stmtInIn.finalize(); stmtInOut.finalize(); stmtInLot.finalize();
+
+                if (hasError) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: errorMsg || 'Update failed' });
+                }
+                
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    res.json({ success: true, message: 'Direct transaction updated' });
+                });
+            });
+        });
+    });
+});
+\nmodule.exports = {
     router,
     initLogisticsTables,
     setDb
