@@ -1758,7 +1758,7 @@ router.put('/direct/tx/:tx_id', (req, res) => {
         });
     });
 });
-\nmodule.exports = {
+module.exports = {
     router,
     initLogisticsTables,
     setDb
