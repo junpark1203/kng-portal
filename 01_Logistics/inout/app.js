@@ -687,7 +687,7 @@ const app = {
     // ----------------------------------------
     addInboundItemRow: function() {
         const container = $('inboundItemsContainer');
-        const rowId = 'in_row_' + Date.now();
+        const rowId = 'in_row_' + Date.now() + Math.floor(Math.random() * 1000);
         const rowHtml = `
             <div class="p-2 mb-2 border rounded bg-light inbound-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
