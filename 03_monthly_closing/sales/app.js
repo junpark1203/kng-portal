@@ -178,7 +178,8 @@ const app = {
                              : r.shipping_fee;
             }
             const supplyAmtOrig = qtyTotal + shipAmount;
-            const vatOrig = Math.floor(supplyAmtOrig * 0.1);
+            const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+            const vatOrig = isZeroTax ? 0 : Math.floor(supplyAmtOrig * 0.1);
             const totalOrig = supplyAmtOrig + vatOrig;
             
             let itemDisplay = `<strong>${r.item}</strong>`;
@@ -231,7 +232,7 @@ const app = {
                             <input type="text" class="text-end inline-supply-amt edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                         <td class="align-middle bg-settle-input small">
-                            <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
+                            <input type="text" class="text-end inline-vat edit-input" value="${(r.trade_type && r.trade_type !== '내수') ? 0 : Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
@@ -247,7 +248,7 @@ const app = {
                 
                 if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
                     vat = r.settlement_vat;
-                } else if (r.is_zero_tax) {
+                } else if (r.is_zero_tax || (r.trade_type && r.trade_type !== '내수')) {
                     vat = 0;
                 } else {
                     const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
@@ -435,10 +436,17 @@ const app = {
         const supplyAmt = itemSupplyAmt + shipAmount;
         
         if (autoCalcVat) {
-            const itemVat = Math.floor(itemSupplyAmt * 0.1);
+            let itemVat = Math.floor(itemSupplyAmt * 0.1);
             let shipVat = 0;
             if (shipFee > 0) {
                 shipVat = shipVatInc === 1 ? shipFee - shipAmount : Math.floor(shipAmount * 0.1);
+            }
+            
+            // 내수가 아니면 VAT 0원
+            const rowData = this.currentData.find(item => item.id == id);
+            if (rowData && rowData.trade_type && rowData.trade_type !== '내수') {
+                itemVat = 0;
+                shipVat = 0;
             }
             vatInput.value = (itemVat + shipVat).toLocaleString();
         }
@@ -717,7 +725,8 @@ const app = {
             }
             
             const total = (qty * price) + shipAmount;
-            const vat = r.is_zero_tax ? 0 : (Math.floor(qty * price * 0.1) + shipVat);
+            const isZeroTax = r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+            const vat = isZeroTax ? 0 : (Math.floor(qty * price * 0.1) + shipVat);
             const grand = total + vat;
             
             sumTotal += total;

@@ -67,7 +67,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN transaction_group_id TEXT",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_qty REAL",
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_price REAL",
-                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_memo TEXT"
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_memo TEXT",
+                        "ALTER TABLE logistics_inbound ADD COLUMN trade_type TEXT DEFAULT '내수'"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -103,7 +104,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN transaction_group_id TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_qty REAL",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL",
-                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT"
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT",
+                        "ALTER TABLE logistics_outbound ADD COLUMN trade_type TEXT DEFAULT '내수'"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -321,8 +323,8 @@ router.post('/inbound', (req, res) => {
         db.run("BEGIN TRANSACTION");
         const sql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const stmt = db.prepare(sql);
         
@@ -331,7 +333,7 @@ router.post('/inbound', (req, res) => {
         
         try {
             for (let i of items) {
-                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId);
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId, i.trade_type || '내수');
             }
         } catch (e) {
             hasError = true;
@@ -370,8 +372,8 @@ router.post('/outbound', (req, res) => {
         
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
         const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
@@ -385,7 +387,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txGroupId, function(err) {
+            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txGroupId, i.trade_type || '내수', function(err) {
                 if (err) {
                     hasError = true;
                     return;
@@ -516,7 +518,7 @@ router.get('/history', (req, res) => {
                 (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
                 0 as shipping_fee, 0 as shipping_fee_vat_included, i.note, i.created_at,
                 i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax,
-                i.transaction_group_id, i.settlement_qty, i.settlement_price, i.settlement_memo
+                i.transaction_group_id, i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type
             FROM logistics_inbound i
             ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
@@ -532,7 +534,7 @@ router.get('/history', (req, res) => {
                 (o.selling_price * o.qty) as outbound_total,
                 o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax,
-                o.transaction_group_id, o.settlement_qty, o.settlement_price, o.settlement_memo
+                o.transaction_group_id, o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -894,18 +896,16 @@ router.post('/direct', (req, res) => {
         const txInGroupId = `IN-${dateStr}-${timeStr}`;
         const txOutGroupId = `OUT-${dateStr}-${timeStr}`;
         
-        // 1. Inbound insert (is_direct = 1, qty_remaining = 0)
         const inSql = `
             INSERT INTO logistics_inbound 
-            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category, transaction_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, ?, ?)
+            (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category, transaction_group_id, trade_type)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, 1, ?, ?, ?)
         `;
         
-        // 2. Outbound insert (is_direct = 1)
         const outSql = `
             INSERT INTO logistics_outbound 
-            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+            (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
         `;
         
         // 3. Mapping insert
@@ -917,11 +917,11 @@ router.post('/direct', (req, res) => {
 
         for (let i of items) {
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', txInGroupId, function(errIn) {
+            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -998,7 +998,7 @@ router.post('/settlement/:type', (req, res) => {
 // --- Inbound Update (입고 내역 수정) ---
 router.put('/direct/:id', (req, res) => {
     const id = req.params.id; // This is the outbound_id
-    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, shipping_fee, shipping_fee_vat_included, note, category } = req.body;
+    const { date, supplier, destination, actual_destination, qty, inbound_price, selling_price, shipping_fee, shipping_fee_vat_included, note, category, trade_type } = req.body;
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
@@ -1020,18 +1020,18 @@ router.put('/direct/:id', (req, res) => {
             // 1. Update Inbound
             const inSql = `
                 UPDATE logistics_inbound
-                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, note = ?, category = ?
+                SET date = ?, supplier = ?, qty_initial = ?, unit_price = ?, note = ?, category = ?, trade_type = ?
                 WHERE id = ?
             `;
-            db.run(inSql, [date, supplier, qty, inbound_price, note || '', category || '', inboundId], function(e) { if(e) hasError = true; });
+            db.run(inSql, [date, supplier, qty, inbound_price, note || '', category || '', trade_type || '내수', inboundId], function(e) { if(e) hasError = true; });
 
             // 2. Update Outbound
             const outSql = `
                 UPDATE logistics_outbound
-                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?
+                SET date = ?, destination = ?, actual_destination = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, category = ?, trade_type = ?
                 WHERE id = ?
             `;
-            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', category || '', id], function(e) { if(e) hasError = true; });
+            db.run(outSql, [date, destination, actual_destination || '', qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', category || '', trade_type || '내수', id], function(e) { if(e) hasError = true; });
 
             // 3. Update Lots
             const lotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
@@ -1053,7 +1053,7 @@ router.put('/direct/:id', (req, res) => {
 
 router.put('/inbound/:id', (req, res) => {
     const id = req.params.id;
-    const { date, supplier, item, spec, unit, qty, unit_price, location_id, note } = req.body;
+    const { date, supplier, item, spec, unit, qty, unit_price, location_id, note, trade_type } = req.body;
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
@@ -1093,11 +1093,11 @@ router.put('/inbound/:id', (req, res) => {
             const updateSql = `
                 UPDATE logistics_inbound 
                 SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, 
-                    qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?
+                    qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?
                 WHERE id = ?
             `;
             
-            db.run(updateSql, [date, supplier, finalItem, finalSpec, finalUnit, qty, new_qty_remaining, unit_price, location_id, note || '', id], function(err2) {
+            db.run(updateSql, [date, supplier, finalItem, finalSpec, finalUnit, qty, new_qty_remaining, unit_price, location_id, note || '', trade_type || '내수', id], function(err2) {
                 if (err2) {
                     db.run("ROLLBACK");
                     return res.status(500).json({ error: err2.message });

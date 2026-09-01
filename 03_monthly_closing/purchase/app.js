@@ -171,7 +171,8 @@ const app = {
 
         tbody.innerHTML = this.items.map(r => {
             const supplyAmtOrig = (r.qty || 0) * (r.inbound_price || 0);
-            const vatOrig = Math.floor(supplyAmtOrig * 0.1);
+            const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+            const vatOrig = isZeroTax ? 0 : Math.floor(supplyAmtOrig * 0.1);
             const totalOrig = supplyAmtOrig + vatOrig;
             let statusVal = r.settlement_status || '미정산';
             const directBadge = r.is_direct ? `<span class="badge bg-secondary ms-1">직출고</span>` : '';
@@ -217,7 +218,7 @@ const app = {
                             <input type="text" class="text-end inline-supply-amt edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                         <td class="align-middle bg-settle-input small">
-                            <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.inbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
+                            <input type="text" class="text-end inline-vat edit-input" value="${(r.trade_type && r.trade_type !== '내수') ? 0 : Number(Math.floor((r.qty || 0) * (r.inbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
                         <td class="align-middle bg-settle-input small">
@@ -230,7 +231,7 @@ const app = {
                 `;
             } else {
                 const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0);
-                const isZeroTax = !!r.is_zero_tax; // DB에 영세율 플래그가 남은 경우 하위 호환
+                const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수'); // DB에 영세율 플래그가 남은 경우 하위 호환
                 const vat = isZeroTax ? 0 : (r.settlement_vat !== undefined ? r.settlement_vat : Math.floor(supplyAmt * 0.1));
                 const totalAmt = supplyAmt + vat;
                 
@@ -563,7 +564,8 @@ const app = {
             const price = isSettled ? (r.settlement_price || 0) : (r.inbound_price || 0);
             
             const total = qty * price;
-            const vat = r.is_zero_tax ? 0 : Math.floor(total * 0.1);
+            const isZeroTax = r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+            const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
             const grand = total + vat;
             
             sumTotal += total;

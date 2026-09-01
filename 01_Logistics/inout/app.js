@@ -280,6 +280,9 @@ const app = {
             if (isOut && r.is_direct === 1) {
                 badge = `<span class="badge bg-warning text-dark">직출고</span>`;
             }
+            if (r.trade_type && r.trade_type !== '내수') {
+                badge += ` <span class="badge bg-info text-dark">${r.trade_type}</span>`;
+            }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const checkbox = `<input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}">`;
             const editFn = isOut ? (r.is_direct === 1 ? `app.openEditDirectOutbound(${r.id})` : `app.openEditOutbound(${r.id})`) : `app.openEditInbound(${r.id})`;
@@ -774,11 +777,12 @@ const app = {
             const qty = parseFloat(row.querySelector('.in-qty').value);
             const unit_price = parseFloat(row.querySelector('.in-price').value);
             const note = docNote;
+            const trade_type = $('in_trade_type') ? $('in_trade_type').value : '내수';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, unit_price, note });
+                items.push({ item, spec, unit, qty, unit_price, note, trade_type });
             }
         });
 
@@ -956,11 +960,12 @@ const app = {
             const shipping_fee = idx === 0 ? docShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? docShippingFeeVatIncluded : 0;
             const note = docNote;
+            const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note });
+                items.push({ item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type });
             }
         });
 
@@ -1342,12 +1347,13 @@ const app = {
             const shipping_fee = idx === 0 ? docShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? ($('out_shipping_vat').checked ? 1 : 0) : 0;
             const note = docNote;
+            const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
-                items.push({ item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots });
+                items.push({ item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type });
             }
         });
 
@@ -2212,7 +2218,8 @@ const app = {
             unit: $('edit_in_unit').value,
             qty: parseFloat($('edit_in_qty').value),
             unit_price: parseFloat($('edit_in_price').value),
-            note: $('edit_in_note').value
+            note: $('edit_in_note').value,
+            trade_type: $('edit_in_trade_type') ? $('edit_in_trade_type').value : '내수'
         };
         
         try {
@@ -2277,7 +2284,8 @@ const app = {
             selling_price: parseFloat($('edit_direct_outbound_price').value) || 0,
             shipping_fee: parseFloat($('edit_direct_shipping').value) || 0,
             shipping_fee_vat_included: $('edit_direct_shipping_vat').checked ? 1 : 0,
-            note: $('edit_direct_note').value
+            note: $('edit_direct_note').value,
+            trade_type: $('edit_direct_trade_type') ? $('edit_direct_trade_type').value : '내수'
         };
 
         try {

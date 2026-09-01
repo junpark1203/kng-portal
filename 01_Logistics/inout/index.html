@@ -240,16 +240,23 @@
             <div class="modal-body bg-light">
                 <form id="inboundForm">
                     <div class="row g-2">
-                        <div class="col-6">
+                        <div class="col-4">
                             <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="in_date" required>
                         </div>
-                        <div class="col-6">
+                        <div class="col-5">
                             <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label mb-1">구분</label>
+                            <select class="form-select form-select-sm" id="in_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수입">수입</option>
+                            </select>
                         </div>
                         <div class="col-12">
                             <label class="form-label mb-1">재고 위치</label>
@@ -295,20 +302,27 @@
             <div class="modal-body bg-light">
                 <form id="outboundForm">
                     <div class="row g-2">
-                        <div class="col-4">
+                        <div class="col-3">
                             <label class="form-label mb-1">출고일자</label>
                             <input type="date" class="form-control form-control-sm" id="out_date" required>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <label class="form-label mb-1">매출처 (계산서 발행)</label>
                             <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
+                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <label class="form-label mb-1">실출고처 (배송지/현장)</label>
-                            <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="실제 배송지 또는 하청업체명 자유 입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="배송지 입력" autocomplete="off">
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label mb-1">구분</label>
+                            <select class="form-select form-select-sm" id="out_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수출">수출</option>
+                            </select>
                         </div>
                     </div>
 
@@ -365,16 +379,24 @@
             <div class="modal-body bg-light">
                 <form id="directForm">
                     <div class="row g-3 mb-2">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label mb-1">거래일자</label>
                             <input type="date" class="form-control form-control-sm" id="dir_date" required>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label class="form-label mb-1">매입처 (공급처)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label mb-1">구분</label>
+                            <select class="form-select form-select-sm" id="dir_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수입">수입</option>
+                                <option value="수출">수출</option>
+                            </select>
                         </div>
                     </div>
                     <div class="row g-3">
@@ -632,16 +654,23 @@
                         <i class='bx bx-info-circle'></i> 이미 일부 출고되어 <strong>품명, 규격, 단위</strong>는 수정할 수 없으며, 수량은 <strong><span id="editInboundMinQty">0</span> 이상</strong>으로만 수정 가능합니다.
                     </div>
                     <div class="row g-2 mb-2">
-                        <div class="col-6">
+                        <div class="col-4">
                             <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="edit_in_date" required>
                         </div>
-                        <div class="col-6">
+                        <div class="col-5">
                             <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="edit_in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('edit_in_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('edit_in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label mb-1">구분</label>
+                            <select class="form-select form-select-sm" id="edit_in_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수입">수입</option>
+                            </select>
                         </div>
                     </div>
                     <div class="mb-2">
@@ -703,17 +732,25 @@
                     </div>
                     
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-muted small mb-1">일자</label>
                             <input type="date" class="form-control" id="edit_direct_date" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-muted small mb-1">매입처</label>
                             <input type="text" class="form-control" id="edit_direct_supplier" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label text-muted small mb-1">출고처(고객/현장)</label>
                             <input type="text" class="form-control" id="edit_direct_destination" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small mb-1">구분</label>
+                            <select class="form-select" id="edit_direct_trade_type" required>
+                                <option value="내수" selected>내수</option>
+                                <option value="수입">수입</option>
+                                <option value="수출">수출</option>
+                            </select>
                         </div>
                         
                         <div class="col-md-5">
