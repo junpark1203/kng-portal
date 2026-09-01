@@ -1624,6 +1624,8 @@ const app = {
             $('out_actual_destination').value = first.actual_destination || '';
             $('out_note').value = first.note || '';
             if ($('out_trade_type')) $('out_trade_type').value = first.trade_type || '내수';
+            if ($('out_shipping')) $('out_shipping').value = first.shipping_fee || 0;
+            if ($('out_shipping_vat')) $('out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
             for (let item of items) {
                 const rowId = this.addOutboundItemRow();
@@ -1634,8 +1636,6 @@ const app = {
                 newRow.querySelector('.out-unit').value = item.unit || '';
                 newRow.querySelector('.out-qty').value = item.qty;
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
-                newRow.querySelector('.out-shipping').value = item.shipping_fee || 0;
-                newRow.querySelector('.out-shipping-vat').checked = item.shipping_fee_vat_included === 1;
 
                 this.outboundState[rowId] = {
                     consumedLots: item.consumed_lots || [],
@@ -1663,6 +1663,8 @@ const app = {
             $('direct_actual_destination').value = first.actual_destination || '';
             $('direct_note').value = first.note || '';
             if ($('direct_trade_type')) $('direct_trade_type').value = first.trade_type || '내수';
+            if ($('dir_shipping')) $('dir_shipping').value = first.shipping_fee || 0;
+            if ($('dir_shipping_vat')) $('dir_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
             items.forEach(item => {
                 const rowId = this.addDirectItemRow();
@@ -1674,8 +1676,6 @@ const app = {
                 newRow.querySelector('.dir-qty').value = item.qty;
                 newRow.querySelector('.dir-in-price').value = item.inbound_price || 0;
                 newRow.querySelector('.dir-out-price').value = item.selling_price || 0;
-                newRow.querySelector('.dir-shipping').value = item.shipping_fee || 0;
-                newRow.querySelector('.dir-shipping-vat').checked = item.shipping_fee_vat_included === 1;
             });
             this.openDrawer('direct_create');
         } catch(err) { alert(err.message); }
