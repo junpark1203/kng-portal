@@ -187,10 +187,10 @@ const app = {
                     <td class="text-center align-middle bg-original">
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
-                    <td class="align-middle text-truncate bg-original" style="max-width: 110px;" title="${r.destination || ''}">${r.destination || ''}</td>
-                    <td class="align-middle text-truncate fw-bold bg-original" style="max-width: 140px;" title="${r.item}">${itemDisplay}</td>
-                    <td class="align-middle text-truncate small bg-original" style="max-width: 80px;" title="${r.spec}">${r.spec || '-'}</td>
-                    <td class="align-middle text-truncate small text-center bg-original" style="max-width: 60px;">${r.unit || '-'}</td>
+                    <td class="align-middle bg-original" style="max-width: 110px; word-break: keep-all;" title="${r.destination || ''}">${r.destination || ''}</td>
+                    <td class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all;" title="${r.item}">${itemDisplay}</td>
+                    <td class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all;" title="${r.spec}">${r.spec || '-'}</td>
+                    <td class="align-middle small text-center bg-original" style="max-width: 60px;">${r.unit || '-'}</td>
                     
                     <!-- Original Data -->
                     <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
@@ -211,7 +211,7 @@ const app = {
                     <td class="align-middle bg-settle-input px-1">
                         <input type="number" class="text-end inline-vat edit-input" value="0" oninput="app.calcInline(${r.id}, false)">
                     </td>
-                    <td class="text-end align-middle bg-settle-input text-primary fw-bold px-2 inline-total-amt">0</td>
+                    <td class="text-end align-middle bg-settle-input text-primary fw-bold px-2 small inline-total-amt">0</td>
                     
                     <td class="text-center align-middle bg-original">
                         <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="app.submitInlineSettlement(${r.id})">정산확정</button>
@@ -243,10 +243,10 @@ const app = {
                     <td class="text-center align-middle bg-original">
                         <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                     </td>
-                    <td class="align-middle text-truncate bg-original" style="max-width: 110px;" title="${r.destination || ''}">${r.destination || ''}</td>
-                    <td class="align-middle text-truncate fw-bold bg-original" style="max-width: 140px;" title="${r.item}">${itemDisplay}</td>
-                    <td class="align-middle text-truncate small bg-original" style="max-width: 80px;" title="${r.spec}">${r.spec || '-'}</td>
-                    <td class="align-middle text-truncate small text-center bg-original" style="max-width: 60px;">${r.unit || '-'}</td>
+                    <td class="align-middle bg-original" style="max-width: 110px; word-break: keep-all;" title="${r.destination || ''}">${r.destination || ''}</td>
+                    <td class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all;" title="${r.item}">${itemDisplay}</td>
+                    <td class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all;" title="${r.spec}">${r.spec || '-'}</td>
+                    <td class="align-middle small text-center bg-original" style="max-width: 60px;">${r.unit || '-'}</td>
                     
                     <!-- Original Data -->
                     <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
@@ -255,11 +255,11 @@ const app = {
                     <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(originalTotal).toLocaleString()}</td>
                     
                     <!-- Settled Data -->
-                    <td class="align-middle text-center text-primary fw-bold" style="font-size: 0.95rem;">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
-                    <td class="text-end align-middle text-primary fw-bold" style="font-size: 0.95rem;">${r.settlement_qty}</td>
-                    <td class="text-end align-middle text-primary fw-bold" style="font-size: 0.95rem;">${Number(r.settlement_price || 0).toLocaleString()}</td>
-                    <td class="text-end align-middle text-primary fw-bold" style="font-size: 0.95rem;">${Number(vat).toLocaleString()}</td>
-                    <td class="text-end align-middle text-primary fw-bold" style="font-size: 0.95rem;">${Number(totalAmt).toLocaleString()}</td>
+                    <td class="align-middle text-center text-primary fw-bold small">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
+                    <td class="text-end align-middle text-primary fw-bold small">${r.settlement_qty}</td>
+                    <td class="text-end align-middle text-primary fw-bold small">${Number(r.settlement_price || 0).toLocaleString()}</td>
+                    <td class="text-end align-middle text-primary fw-bold small">${Number(vat).toLocaleString()}</td>
+                    <td class="text-end align-middle text-primary fw-bold small">${Number(totalAmt).toLocaleString()}</td>
                     
                     <td class="text-center align-middle bg-original">
                         <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
