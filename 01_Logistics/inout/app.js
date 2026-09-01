@@ -1637,7 +1637,7 @@ const app = {
                 newRow.querySelector('.out-qty').value = item.qty;
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
 
-                this.outboundState[rowId] = {
+                this.outboundRows[rowId] = {
                     consumedLots: item.consumed_lots || [],
                     availableLots: []
                 };
