@@ -196,12 +196,12 @@ const app = {
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
                         <td class="align-middle text-center bg-original text-muted small fw-bold">출고(원본)</td>
-                        <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${r.qty}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(supplyAmtOrig).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(vatOrig).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(totalOrig).toLocaleString()}</td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${r.qty}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(vatOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" disabled></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="app.submitInlineSettlement(${r.id})">정산확정</button>
@@ -258,12 +258,12 @@ const app = {
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
                         <td class="align-middle text-center bg-original text-muted small fw-bold">출고(원본)</td>
-                        <td class="align-middle text-center bg-original text-muted small">${r.date.split('T')[0]}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${r.qty}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(r.outbound_price || 0).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(supplyAmtOrig).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted small">${Number(vatOrig).toLocaleString()}</td>
-                        <td class="text-end align-middle bg-original text-muted fw-bold small">${Number(totalOrig).toLocaleString()}</td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${r.qty}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input" value="${Number(vatOrig).toLocaleString()}" disabled></td>
+                        <td class="align-middle bg-original small"><input type="text" class="text-end edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" disabled></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
