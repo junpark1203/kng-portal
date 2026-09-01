@@ -1641,7 +1641,13 @@ const app = {
                     consumedLots: item.consumed_lots || [],
                     availableLots: []
                 };
-                newRow.querySelector('.outbound-status-badge').innerHTML = `<span class="badge bg-success">출고가능 (로트 맵핑됨)</span>`;
+                const lotBtn = newRow.querySelector('.btn-lot');
+                if (lotBtn) {
+                    lotBtn.disabled = false;
+                    lotBtn.classList.remove('btn-outline-primary');
+                    lotBtn.classList.add('btn-success');
+                    lotBtn.innerHTML = 'Lot 확인/수정';
+                }
             }
             this.openDrawer('outbound_create');
         } catch(err) { alert(err.message); }
