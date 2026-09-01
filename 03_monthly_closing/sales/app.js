@@ -205,17 +205,17 @@ const app = {
                         </td>
                     </tr>
                     <tr class="unsettled-row">
-                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;"><span class="text-danger me-1">●</span>정산(입력)</td>
-                        <td class="align-middle bg-settle-input">
+                        <td class="align-middle text-center bg-settle-input text-primary small" style="border-left: 1px solid #dee2e6;">정산(입력)</td>
+                        <td class="align-middle bg-settle-input small">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
                         </td>
-                        <td class="align-middle bg-settle-input">
+                        <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-qty edit-input" value="${Number(r.qty).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
-                        <td class="align-middle bg-settle-input">
+                        <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-price edit-input" value="${Number(r.outbound_price || 0).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
                         </td>
-                        <td class="align-middle bg-settle-input">
+                        <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-vat edit-input" value="${Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="text-end align-middle bg-settle-input text-muted fw-bold px-2 small inline-total-amt">0</td>
