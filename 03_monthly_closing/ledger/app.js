@@ -15,8 +15,12 @@ const app = {
     setupDatePresets() {
         const today = new Date();
         const setDateRange = (start, end) => {
-            document.getElementById('startDate').value = start.toISOString().split('T')[0];
-            document.getElementById('endDate').value = end.toISOString().split('T')[0];
+            const formatLocal = (d) => {
+                const offset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - offset).toISOString().split('T')[0];
+            };
+            document.getElementById('startDate').value = formatLocal(start);
+            document.getElementById('endDate').value = formatLocal(end);
             this.loadLedger();
         };
 
