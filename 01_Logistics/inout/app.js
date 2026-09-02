@@ -74,29 +74,159 @@ const app = {
 
     
     categoryList: [],
+    topCategories: ['유압유', '기어유', '그리스', '테일씰그리스', '절삭유', '작동유'],
 
     async loadCategories() {
         try {
             const res = await authFetch(`${API_BASE}/categories`);
-            this.categoryList = Array.isArray(res) ? res : [];
-            const datalist = $('categoryDatalist');
-            const pillsContainer = $('categoryPillsContainer');
+            const rawList = Array.isArray(res) ? res : [];
             
+            // 한글 가나다순 정렬 (ㄱ~ㅎ, A~Z, 0~9)
+            this.categoryList = rawList
+                .filter(c => c && c.trim())
+                .map(c => c.trim())
+                .sort((a, b) => a.localeCompare(b, 'ko', { numeric: true, sensitivity: 'base' }));
+
+            const datalist = $('categoryDatalist');
             if (datalist) {
                 datalist.innerHTML = this.categoryList.map(c => `<option value="${c}"></option>`).join('');
             }
-            if (pillsContainer) {
-                const pillsHtml = this.categoryList.map(c => 
-                    `<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="app.filterByCategory('${c}')">${c}</button>`
-                ).join('');
-                pillsContainer.innerHTML = `
-                    <button type="button" class="btn btn-sm btn-secondary rounded-pill" onclick="app.filterByCategory('')">전체보기</button>
-                    ${pillsHtml}
-                `;
-            }
+
+            this.renderCategoryPills();
             this.setupCategoryAutocomplete();
         } catch (err) {
             console.error('Failed to load categories', err);
+        }
+    },
+
+    renderCategoryPills() {
+        const pillsContainer = $('categoryPillsContainer');
+        if (!pillsContainer) return;
+
+        const currentCat = this.detailedFilters.category || '';
+        
+        // 상위 6개 퀵 버튼 결정 (지정된 대표 항목 중 존재하는 것 우선 + 부족하면 상위 가나다순 항목 채움)
+        const topSet = new Set();
+        const quickList = [];
+        this.topCategories.forEach(c => {
+            if (this.categoryList.includes(c)) {
+                topSet.add(c);
+                quickList.push(c);
+            }
+        });
+        this.categoryList.forEach(c => {
+            if (quickList.length < 6 && !topSet.has(c)) {
+                topSet.add(c);
+                quickList.push(c);
+            }
+        });
+
+        // 1. 전체보기 버튼
+        const isAllActive = !currentCat;
+        let html = `
+            <div class="d-flex align-items-center gap-2 flex-wrap w-100">
+                <span class="text-secondary fw-semibold d-inline-flex align-items-center me-1" style="font-size:0.85rem;">
+                    <i class='bx bx-purchase-tag-alt text-primary me-1'></i>분류:
+                </span>
+                <button type="button" class="btn btn-sm ${isAllActive ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3" onclick="app.filterByCategory('')">
+                    전체보기
+                </button>
+        `;
+
+        // 2. 상위 6개 퀵 버튼
+        quickList.forEach(c => {
+            const isActive = currentCat === c;
+            html += `
+                <button type="button" class="btn btn-sm ${isActive ? 'btn-primary text-white shadow-sm fw-bold' : 'btn-outline-secondary'} rounded-pill px-3" onclick="app.filterByCategory('${c}')">
+                    ${c}
+                </button>
+            `;
+        });
+
+        // 3. 퀵 버튼에 없는 분류가 선택된 경우 -> 활성 칩 추가
+        const isCustomSelected = currentCat && !topSet.has(currentCat);
+        if (isCustomSelected) {
+            html += `
+                <button type="button" class="btn btn-sm btn-primary text-white rounded-pill px-3 d-inline-flex align-items-center gap-1 shadow-sm fw-bold" onclick="app.filterByCategory('')" title="필터 해제">
+                    <span>${currentCat}</span>
+                    <i class='bx bx-x' style="font-size: 1.15rem;"></i>
+                </button>
+            `;
+        }
+
+        // 4. [ 🔍 분류 전체 선택/검색 (전체 N개) ▾ ] 드롭다운
+        const dropdownBtnText = currentCat ? `분류: ${currentCat}` : `분류 전체 선택 / 검색 (${this.categoryList.length}개)`;
+        const isDropdownHighlight = isCustomSelected;
+
+        html += `
+            <div class="dropdown d-inline-block position-relative" id="categoryDropdownContainer">
+                <button type="button" class="btn btn-sm ${isDropdownHighlight ? 'btn-primary text-white fw-bold' : 'btn-outline-secondary'} rounded-pill dropdown-toggle px-3 d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" id="btnCategoryDropdown">
+                    <i class='bx bx-search-alt-2'></i>
+                    <span>${dropdownBtnText}</span>
+                </button>
+                <div class="dropdown-menu shadow-lg p-2 border-0" style="min-width: 270px; max-width: 320px; z-index: 1080; border-radius: 10px;" id="categoryDropdownMenu">
+                    <div class="p-1 mb-2 position-relative">
+                        <input type="text" class="form-control form-control-sm ps-4" id="categoryDropdownSearchInput" placeholder="분류 검색 (가나다순)..." autocomplete="off" oninput="app.filterCategoryDropdownList(this.value)">
+                        <i class='bx bx-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted' style="font-size:0.9rem;"></i>
+                    </div>
+                    <div class="list-group list-group-flush overflow-auto" id="categoryDropdownList" style="max-height: 240px;">
+                        <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start ${!currentCat ? 'active fw-bold' : ''}" onclick="app.filterByCategory(''); app.closeCategoryDropdown();" style="font-size:0.85rem;">
+                            <i class='bx bx-check-circle me-1'></i> 전체보기
+                        </button>
+                        ${this.categoryList.map(c => {
+                            const isItemActive = currentCat === c;
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action py-2 px-3 border-0 rounded text-start cat-drop-item ${isItemActive ? 'active fw-bold' : ''}" data-category="${c}" onclick="app.filterByCategory('${c}'); app.closeCategoryDropdown();" style="font-size:0.85rem;">
+                                    <i class='bx bx-purchase-tag-alt text-secondary me-1'></i> ${c}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+            </div>
+        `;
+
+        pillsContainer.innerHTML = html;
+    },
+
+    filterCategoryDropdownList(query) {
+        const q = (query || '').trim().toLowerCase();
+        const items = document.querySelectorAll('#categoryDropdownList .cat-drop-item');
+        let visibleCount = 0;
+        
+        items.forEach(item => {
+            const cat = (item.dataset.category || '').toLowerCase();
+            if (!q || cat.includes(q)) {
+                item.style.setProperty('display', 'block', 'important');
+                visibleCount++;
+            } else {
+                item.style.setProperty('display', 'none', 'important');
+            }
+        });
+
+        let noResultEl = $('categoryDropdownNoResult');
+        if (visibleCount === 0 && q) {
+            if (!noResultEl) {
+                noResultEl = document.createElement('div');
+                noResultEl.id = 'categoryDropdownNoResult';
+                noResultEl.className = 'text-center py-3 text-muted';
+                noResultEl.style.fontSize = '0.8rem';
+                noResultEl.innerHTML = "<i class='bx bx-info-circle me-1'></i> 일치하는 분류가 없습니다.";
+                const listEl = $('categoryDropdownList');
+                if (listEl) listEl.appendChild(noResultEl);
+            }
+            noResultEl.style.display = 'block';
+        } else if (noResultEl) {
+            noResultEl.style.display = 'none';
+        }
+    },
+
+    closeCategoryDropdown() {
+        const btn = $('btnCategoryDropdown');
+        if (btn) {
+            const dropdown = bootstrap.Dropdown.getInstance(btn);
+            if (dropdown) dropdown.hide();
         }
     },
 
@@ -172,7 +302,8 @@ const app = {
     },
 
     filterByCategory(cat) {
-        this.detailedFilters.category = cat;
+        this.detailedFilters.category = cat || '';
+        this.renderCategoryPills();
         this.resetPageAndLoadHistory();
         if($('inboundForm')) { $('inboundForm').dataset.mode = ''; $('inboundForm').dataset.txId = ''; }
         if($('outboundForm')) { $('outboundForm').dataset.mode = ''; $('outboundForm').dataset.txId = ''; }
@@ -277,6 +408,16 @@ const app = {
         this.loadHistory();
     },
 
+    resetSearch: function() {
+        if ($('searchStartDate')) $('searchStartDate').value = '';
+        if ($('searchEndDate')) $('searchEndDate').value = '';
+        if ($('searchTarget')) $('searchTarget').value = '';
+        if ($('historySearch')) $('historySearch').value = '';
+        this.detailedFilters.category = '';
+        this.renderCategoryPills();
+        this.resetPageAndLoadHistory();
+    },
+
     loadHistory: async function() {
         const typeFilter = document.querySelector('input[name="historyFilter"]:checked').value;
         const searchRaw = $('historySearch').value.trim();
@@ -291,6 +432,7 @@ const app = {
             sortDir: this.sortDir,
             startDate: $('searchStartDate')?.value || '',
             endDate: $('searchEndDate')?.value || '',
+            category: this.detailedFilters.category || '',
             searchTarget: $('searchTarget')?.value || '',
             searchKeyword: searchRaw
         });
