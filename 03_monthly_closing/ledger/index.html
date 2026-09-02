@@ -24,11 +24,14 @@
         .print-header { display: none; }
         
         @media print {
-            @page { margin: 10mm; size: A4; }
-            body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: white; padding: 0; margin: 0; }
-            body * { visibility: hidden; }
-            #printableArea, #printableArea * { visibility: visible; }
-            #printableArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+            @page { margin: 10mm; size: A4 portrait; }
+            html, body { height: auto !important; min-height: auto !important; background: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+            
+            /* Hide everything outside of printable area */
+            body > *:not(#printableArea) { display: none !important; }
+            
+            /* Make printableArea static so margins and pagination work natively */
+            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .no-print { display: none !important; }
             
             /* 프린트 전용 헤더 표시 */
@@ -60,14 +63,13 @@
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             
-            .table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 5px; border: 2px solid #000 !important; table-layout: fixed; }
+            .table { width: 100%; border-collapse: collapse !important; font-size: 9.5px; margin-bottom: 5px; border: 1px solid #000 !important; table-layout: fixed; }
             .table th, .table td { border: 1px solid #000 !important; padding: 2px 2px !important; text-align: center; height: 23px; line-height: 1.1 !important; white-space: nowrap; letter-spacing: -0.5px; }
+            .table tr { border: none !important; }
             .table td.wrap-cell { white-space: normal !important; text-align: left !important; padding-left: 4px !important; letter-spacing: normal; }
-            .table th:first-child, .table td:first-child { border-left: none !important; }
-            .table th:last-child, .table td:last-child { border-right: none !important; }
-            .table th { border-bottom: 1px solid black !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }
+            .table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }
             
-            .table tr.total-row td { border-top: 2px solid black !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 12px; padding: 6px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table tr.total-row td { border-top: 2px solid #000 !important; border-bottom: 1px solid #000 !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 11px; padding: 4px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .table tr.empty-marker td { text-align: center; letter-spacing: 2px; color: #555; }
         }
     </style>
