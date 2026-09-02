@@ -235,16 +235,19 @@ const app = {
                 // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
                 html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
 
-                // 빈 줄 채우기 (화면에서는 숨김, 인쇄 시에만 표시)
-                const rowsFirstPage = 14; 
-                const rowsOtherPage = 32; 
+                // 동적 빈 줄 채우기 (기본 20줄, 20줄 초과 시 최대 24줄까지 1페이지 수용, 그 이상은 2페이지 분할)
+                const defaultFirstPage = 20;
+                const maxFirstPage = 24;
+                const rowsOtherPage = 32;
                 let emptyRowsCount = 0;
                 const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
                 
-                if (totalRendered <= rowsFirstPage) {
-                    emptyRowsCount = rowsFirstPage - totalRendered;
+                if (totalRendered <= defaultFirstPage) {
+                    emptyRowsCount = defaultFirstPage - totalRendered;
+                } else if (totalRendered <= maxFirstPage) {
+                    emptyRowsCount = maxFirstPage - totalRendered;
                 } else {
-                    const overflow = totalRendered - rowsFirstPage;
+                    const overflow = totalRendered - maxFirstPage;
                     const remainder = overflow % rowsOtherPage;
                     if (remainder > 0) {
                         emptyRowsCount = rowsOtherPage - remainder;
