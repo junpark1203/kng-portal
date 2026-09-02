@@ -24,14 +24,14 @@
         .print-header { display: none; }
         
         @media print {
-            @page { margin: 10mm; size: A4 portrait; }
+            @page { margin: 0; size: A4 portrait; }
             html, body { height: auto !important; min-height: auto !important; background: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
             
-            /* Remove padding from container to prevent margin interference */
+            /* 부모 컨테이너 여백 제거 */
             .container-fluid { padding: 0 !important; margin: 0 !important; }
             
-            /* Make printableArea static so margins and pagination work natively */
-            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            /* printableArea에 padding으로 여백 확보 (브라우저 여백 설정과 무관하게 항상 유지) */
+            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 10mm !important; box-sizing: border-box !important; }
             .no-print { display: none !important; }
             
             /* 프린트 전용 헤더 표시 */
@@ -47,7 +47,7 @@
             .date-info { font-size: 12px; color: #333; }
 
             /* 공급자 표 */
-            .supplier-table { border-collapse: collapse; border: 2px solid #000; width: 380px; font-size: 10.5px; margin-left: auto; }
+            .supplier-table { border-collapse: collapse; border: 1px solid #000; width: 380px; font-size: 10.5px; margin-left: auto; }
             .supplier-table th, .supplier-table td { border: 1px solid #000; padding: 3px 3px; text-align: center; height: 22px; white-space: nowrap; }
             .supplier-table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .vertical-th { width: 20px; writing-mode: vertical-lr; letter-spacing: 12px; padding-top: 12px !important; }
@@ -56,20 +56,24 @@
             .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; font-size: 9.5px; }
 
             /* 금액 표기 란 */
-            .amount-box { border: 2px solid #000; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
+            .amount-box { border: 1px solid #000; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
 
-            /* 메인 데이터 표 인쇄 스타일 오버라이드 */
+            /* 메인 데이터 표 - 부트스트랩 border 완전 리셋 */
             .card { box-shadow: none !important; border: none !important; }
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             
-            .table { width: 100%; border-collapse: collapse !important; font-size: 9.5px; margin-bottom: 5px; border: 1px solid #000 !important; table-layout: fixed; }
+            .table { width: 100%; border-collapse: collapse !important; font-size: 9.5px; margin-bottom: 5px; table-layout: fixed; }
+            .table, .table > :not(caption) > * > * { border: none !important; }
+            .table thead, .table tbody, .table tfoot, .table tr { border: none !important; }
+            
+            /* 셀 단위로만 균일한 1px border 적용 */
             .table th, .table td { border: 1px solid #000 !important; padding: 2px 2px !important; text-align: center; height: 23px; line-height: 1.1 !important; white-space: nowrap; letter-spacing: -0.5px; }
-            .table tr { border: none !important; }
             .table td.wrap-cell { white-space: normal !important; text-align: left !important; padding-left: 4px !important; letter-spacing: normal; }
             .table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }
             
-            .table tr.total-row td { border-top: 2px solid #000 !important; border-bottom: 1px solid #000 !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 11px; padding: 4px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* 합계행도 동일한 1px border (2px 제거) */
+            .table tr.total-row td { border: 1px solid #000 !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 11px; padding: 4px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .table tr.empty-marker td { text-align: center; letter-spacing: 2px; color: #555; }
         }
     </style>
