@@ -24,7 +24,7 @@
         .print-header { display: none; }
         
         @media print {
-            @page { margin: 15mm; size: auto; }
+            @page { margin: 10mm; size: A4; }
             body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: white; padding: 0; margin: 0; }
             body * { visibility: hidden; }
             #printableArea, #printableArea * { visibility: visible; }
@@ -44,24 +44,25 @@
             .date-info { font-size: 12px; color: #333; }
 
             /* 공급자 표 */
-            .supplier-table { border-collapse: collapse; border: 2px solid black; width: 380px; font-size: 11px; margin-left: auto; }
-            .supplier-table th, .supplier-table td { border: 1px solid black; padding: 4px 4px; text-align: center; height: 24px; white-space: nowrap; }
+            .supplier-table { border-collapse: collapse; border: 2px solid #000; width: 380px; font-size: 10.5px; margin-left: auto; }
+            .supplier-table th, .supplier-table td { border: 1px solid #000; padding: 3px 3px; text-align: center; height: 22px; white-space: nowrap; }
             .supplier-table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .vertical-th { width: 20px; writing-mode: vertical-lr; letter-spacing: 12px; padding-top: 12px !important; }
             .stamp-cell { position: relative; }
             .stamp { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; opacity: 0.9; mix-blend-mode: multiply; }
-            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; }
+            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; font-size: 9.5px; }
 
             /* 금액 표기 란 */
-            .amount-box { border: 2px solid black; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+            .amount-box { border: 2px solid #000; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
 
             /* 메인 데이터 표 인쇄 스타일 오버라이드 */
             .card { box-shadow: none !important; border: none !important; }
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             
-            .table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 5px; border-top: 2px solid black !important; border-bottom: 2px solid black !important; table-layout: fixed; }
-            .table th, .table td { border-left: 1px solid #555 !important; border-right: 1px solid #555 !important; border-bottom: 1px dotted #555 !important; padding: 3px 2px !important; text-align: center; word-break: break-all; height: 24px; line-height: 1.2 !important; }
+            .table { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 5px; border: 2px solid #000 !important; table-layout: fixed; }
+            .table th, .table td { border: 1px solid #000 !important; padding: 2px 2px !important; text-align: center; height: 23px; line-height: 1.1 !important; white-space: nowrap; letter-spacing: -0.5px; }
+            .table td.wrap-cell { white-space: normal !important; text-align: left !important; padding-left: 4px !important; letter-spacing: normal; }
             .table th:first-child, .table td:first-child { border-left: none !important; }
             .table th:last-child, .table td:last-child { border-right: none !important; }
             .table th { border-bottom: 1px solid black !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }

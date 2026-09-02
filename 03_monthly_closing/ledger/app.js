@@ -220,14 +220,14 @@ const app = {
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="text-center text-nowrap">${dateStr}</td>
-                            <td class="text-start fw-bold">${row.item} ${isDirect}${siteBadge}</td>
+                            <td class="text-start fw-bold wrap-cell">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.price.toLocaleString()}</td>
                             <td class="text-end">${amount.toLocaleString()}</td>
                             <td class="text-end">${vat.toLocaleString()}</td>
-                            <td class="text-start text-muted small">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
+                            <td class="text-start text-muted small wrap-cell">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
                         </tr>
                     `;
                 }).join('');
@@ -236,8 +236,8 @@ const app = {
                 html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
 
                 // 빈 줄 채우기 (화면에서는 숨김, 인쇄 시에만 표시)
-                const rowsFirstPage = 28; 
-                const rowsOtherPage = 35; 
+                const rowsFirstPage = 23; 
+                const rowsOtherPage = 31; 
                 let emptyRowsCount = 0;
                 const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
                 
