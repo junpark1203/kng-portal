@@ -1,5 +1,29 @@
 const API_BASE = 'https://kng.junparks.com/api';
 
+function numberToKorean(number) {
+    if (number === 0) return '영';
+    const han = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+    const danA = ['', '십', '백', '천'];
+    const danG = ['', '만', '억', '조'];
+    let result = '';
+    let numStr = String(number);
+    for (let i = 0; i < numStr.length; i++) {
+        let str = '';
+        let num = parseInt(numStr.charAt(numStr.length - 1 - i));
+        if (num > 0) {
+            str = han[num] + danA[i % 4];
+        }
+        if (i % 4 === 0) {
+            let chunk = numStr.substr(Math.max(0, numStr.length - 1 - i - 3), 4);
+            if (parseInt(chunk) > 0) {
+                str += danG[Math.floor(i / 4)];
+            }
+        }
+        result = str + result;
+    }
+    return result;
+}
+
 const app = {
     partners: [],
     
@@ -148,7 +172,7 @@ const app = {
         const tfoot = document.getElementById('ledgerTableFoot');
 
         if (!partner) {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
             tfoot.style.display = 'none';
             document.getElementById('printTitle').innerText = '매출/매입 정산내역';
             document.getElementById('printPeriod').innerText = '';
@@ -156,7 +180,7 @@ const app = {
         }
 
         try {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
             const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
             if (!response.ok) throw new Error('API Error');
@@ -168,14 +192,14 @@ const app = {
             }
             
             if (res.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
                 tfoot.style.display = 'none';
             } else {
                 let sumTotal = 0;
                 let sumVat = 0;
                 let sumGrand = 0;
 
-                tbody.innerHTML = res.map(row => {
+                let html = res.map(row => {
                     const amount = row.qty * row.price;
                     const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
                     const vat = isZeroTax ? 0 : Math.floor(amount * 0.1);
@@ -190,27 +214,67 @@ const app = {
                         ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
                         : '';
 
+                    let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
+                    if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
+
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
-                            <td class="d-print-none text-muted small">${row.transaction_group_id || ''}</td>
-                            <td class="text-center fw-bold text-nowrap">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
-                            <td class="fw-bold">${row.item} ${isDirect}${siteBadge}</td>
+                            <td class="text-center text-nowrap">${dateStr}</td>
+                            <td class="text-start fw-bold">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
-                            <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
+                            <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.price.toLocaleString()}</td>
                             <td class="text-end">${amount.toLocaleString()}</td>
                             <td class="text-end">${vat.toLocaleString()}</td>
-                            <td class="text-end fw-bold text-dark">${grand.toLocaleString()}</td>
-                            <td class="text-muted small">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
+                            <td class="text-start text-muted small">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
                         </tr>
                     `;
                 }).join('');
 
-                document.getElementById('sumTotal').innerText = sumTotal.toLocaleString();
-                document.getElementById('sumVat').innerText = sumVat.toLocaleString();
-                document.getElementById('sumGrand').innerText = sumGrand.toLocaleString();
-                tfoot.style.display = 'table-footer-group';
+                // [ 이하 여백 ] 추가
+                html += `<tr class="empty-marker"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
+
+                // 빈 줄 채우기
+                const rowsFirstPage = 28; 
+                const rowsOtherPage = 35; 
+                let emptyRowsCount = 0;
+                const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
+                
+                if (totalRendered <= rowsFirstPage) {
+                    emptyRowsCount = rowsFirstPage - totalRendered;
+                } else {
+                    const overflow = totalRendered - rowsFirstPage;
+                    const remainder = overflow % rowsOtherPage;
+                    if (remainder > 0) {
+                        emptyRowsCount = rowsOtherPage - remainder;
+                    }
+                }
+                
+                for (let i = 0; i < emptyRowsCount; i++) {
+                    html += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                }
+
+                // 합계 행 추가
+                html += `
+                    <tr class="total-row">
+                        <td colspan="6" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
+                        <td class="text-end">${sumTotal.toLocaleString()}</td>
+                        <td class="text-end">${sumVat.toLocaleString()}</td>
+                        <td></td>
+                    </tr>
+                `;
+                
+                tbody.innerHTML = html;
+                tfoot.style.display = 'none';
+
+                // 상단 금액 표시 (숫자 -> 한글 변환 적용)
+                if(document.getElementById('printAmountKor')) {
+                    document.getElementById('printAmountKor').innerText = `합 계 금 액 : 금 ${numberToKorean(sumGrand)} 원 정`;
+                }
+                if(document.getElementById('printAmountNum')) {
+                    document.getElementById('printAmountNum').innerText = `(₩ ${sumGrand.toLocaleString()})`;
+                }
             }
 
             // 프린트 헤더 세팅
@@ -227,7 +291,7 @@ const app = {
 
         } catch (error) {
             console.error('Failed to load ledger', error);
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
             tfoot.style.display = 'none';
         }
     },

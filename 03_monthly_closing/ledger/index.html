@@ -20,35 +20,54 @@
         
         .direct-row { background-color: #fefce8 !important; }
         
-        /* 화면 공통 및 출력용 하이브리드 헤더 스타일 */
-        .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; }
-        .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
-        .print-title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
-        .date-text { font-size: 15px; color: #495057; margin-bottom: 25px; text-align: center; }
-        .recipient-text { font-size: 18px; text-align: left; margin-left: 20px; font-weight: 700; }
-        .header-right { width: 420px; }
-        .supplier-table { width: 100%; border-collapse: collapse; font-size: 13px; border: 2px solid #212529; }
-        .supplier-table th, .supplier-table td { border: 1px solid #dee2e6; padding: 6px 8px; }
-        .supplier-table th { background-color: #f8f9fa; color: #495057; text-align: center; font-weight: 600; }
-        .supplier-table td { color: #212529; }
-        .supplier-th { width: 30px; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 5px; padding: 10px 5px !important; }
-        .stamp-cell { position: relative; }
-        .stamp { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); width: 45px; height: 45px; opacity: 0.85; mix-blend-mode: multiply; }
+        /* 화면 표시용 스타일 (프린트에서는 숨김) */
+        .print-header { display: none; }
         
         @media print {
             @page { margin: 15mm; size: A4; }
-            body { padding: 0; margin: 0; }
+            body { font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: white; padding: 0; margin: 0; }
             body * { visibility: hidden; }
             #printableArea, #printableArea * { visibility: visible; }
-            #printableArea { position: static; width: 100%; margin: 0; padding: 0; }
+            #printableArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
             .no-print { display: none !important; }
-            /* 인쇄 시 여백 및 스타일 최소화 */
+            
+            /* 프린트 전용 헤더 표시 */
+            .print-header { display: block !important; }
+            
+            /* 헤더 영역 */
+            .header-container { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: flex-end; width: 100%; }
+            .header-left { flex: 1; padding-right: 15px; text-align: center; }
+            .title-box { text-align: center; padding-bottom: 5px; margin-bottom: 10px; display: inline-block; }
+            .title-box h1 { margin: 0; font-size: 26px; letter-spacing: 2px; font-weight: 800; white-space: nowrap; }
+            .recipient-box { margin-bottom: 10px; }
+            .recipient-name { font-size: 18px; font-weight: bold; display: inline-block; text-align: center; }
+            .date-info { font-size: 12px; color: #333; }
+
+            /* 공급자 표 */
+            .supplier-table { border-collapse: collapse; border: 2px solid black; width: 380px; font-size: 11px; margin-left: auto; }
+            .supplier-table th, .supplier-table td { border: 1px solid black; padding: 4px 4px; text-align: center; height: 24px; white-space: nowrap; }
+            .supplier-table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .vertical-th { width: 20px; writing-mode: vertical-lr; letter-spacing: 12px; padding-top: 12px !important; }
+            .stamp-cell { position: relative; }
+            .stamp { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; opacity: 0.8; border: 2px solid red; border-radius: 50%; color: red; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; background: white; white-space: nowrap; }
+            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; }
+
+            /* 금액 표기 란 */
+            .amount-box { border: 2px solid black; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+
+            /* 메인 데이터 표 인쇄 스타일 오버라이드 */
             .card { box-shadow: none !important; border: none !important; }
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             
-            /* 인쇄 시 색상 보장 */
-            .supplier-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 5px; border-top: 2px solid black !important; border-bottom: 2px solid black !important; table-layout: fixed; }
+            .table th, .table td { border-left: 1px solid #ccc !important; border-right: 1px solid #ccc !important; border-bottom: 1px dotted #ccc !important; padding: 5px 3px !important; text-align: center; word-break: break-all; height: 26px; }
+            .table th:first-child, .table td:first-child { border-left: none !important; }
+            .table th:last-child, .table td:last-child { border-right: none !important; }
+            .table th { border-bottom: 1px solid black !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }
+            
+            .table tr.total-row td { border-top: 2px solid black !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 12px; padding: 6px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table tr.empty-marker td { text-align: center; letter-spacing: 2px; color: #555; }
         }
     </style>
 </head>
@@ -118,38 +137,52 @@
     </div>
 
     <div id="printableArea">
-        <div class="d-none d-print-block mb-4">
-            <div class="hybrid-header">
+        <!-- 인쇄 시에만 보이는 전용 헤더 -->
+        <div class="print-header mb-4">
+            <div class="header-container">
                 <div class="header-left">
-                    <h2 class="print-title" id="printTitle">거 래 내 역 서</h2>
-                    <div class="date-text" id="printPeriod"></div>
-                    <div class="recipient-text"><span id="printPartnerName"></span> 귀하</div>
+                    <div class="title-box">
+                        <h1 id="printTitle">거래(공급)내역서</h1>
+                    </div>
+                    <div class="recipient-box">
+                        <span class="recipient-name" id="printPartnerName"></span> 貴中
+                    </div>
+                    <div class="date-info" id="printPeriod">
+                        거래기간 : 2026-08-01 ~ 2026-08-31
+                    </div>
                 </div>
+                
                 <div class="header-right">
                     <table class="supplier-table">
                         <tr>
-                            <th rowspan="4" class="supplier-th">공급자</th>
-                            <th style="width: 25%">등록번호</th>
+                            <th rowspan="4" class="vertical-th">공급자</th>
+                            <th style="width: 55px;">등록번호</th>
                             <td colspan="3" id="printBizNo"></td>
                         </tr>
                         <tr>
-                            <th>상호</th>
-                            <td style="width: 35%" id="printBizName"></td>
-                            <th style="width: 15%">대표자</th>
-                            <td class="stamp-cell"><span id="printCeo"></span> <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
+                            <th>상 호</th>
+                            <td style="width: 110px;" id="printBizName"></td>
+                            <th style="width: 45px;">대표자</th>
+                            <td class="stamp-cell" style="width: 70px;"><span id="printCeo"></span> <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
                         </tr>
                         <tr>
-                            <th>주소</th>
-                            <td colspan="3" id="printAddress"></td>
+                            <th>주 소</th>
+                            <td colspan="3" class="address-cell" id="printAddress"></td>
                         </tr>
                         <tr>
-                            <th>업태</th>
+                            <th>업 태</th>
                             <td><span id="printBizType"></span></td>
-                            <th>종목</th>
+                            <th>종 목</th>
                             <td><span id="printBizItem"></span></td>
                         </tr>
                     </table>
                 </div>
+            </div>
+
+            <!-- 금액란 -->
+            <div class="amount-box">
+                <span id="printAmountKor">합 계 금 액 : </span>
+                <span id="printAmountNum"></span>
             </div>
         </div>
         
@@ -159,30 +192,22 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
-                                <th class="d-print-none" style="width: 130px;">고유번호</th>
-                                <th class="text-center text-nowrap" style="width: 90px;">일자</th>
-                                <th>품목명</th>
-                                <th style="width: 120px;">규격</th>
-                                <th class="text-center" style="width: 60px;">단위</th>
-                                <th class="text-end" style="width: 80px;">수량</th>
-                                <th class="text-end" style="width: 90px;">단가</th>
-                                <th class="text-end" style="width: 100px;">공급가액</th>
-                                <th class="text-end" style="width: 100px;">부가세</th>
-                                <th class="text-end" style="width: 100px;">합계</th>
-                                <th style="width: 150px;">비고</th>
+                                <th class="text-center text-nowrap" style="width: 7%;">일자</th>
+                                <th style="width: 25%;">품목명</th>
+                                <th style="width: 12%;">규격</th>
+                                <th class="text-end" style="width: 7%;">수량</th>
+                                <th class="text-center" style="width: 7%;">단위</th>
+                                <th class="text-end" style="width: 9%;">단가</th>
+                                <th class="text-end" style="width: 11%;">공급가액</th>
+                                <th class="text-end" style="width: 10%;">부가세</th>
+                                <th style="width: 12%;">비고</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
-                            <tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                            <tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
                         </tbody>
-                        <tfoot id="ledgerTableFoot" class="table-secondary fw-bold" style="display: none;">
-                            <tr>
-                                <td colspan="7" class="text-end">합계</td>
-                                <td class="text-end text-primary" id="sumTotal">0</td>
-                                <td class="text-end text-primary" id="sumVat">0</td>
-                                <td class="text-end text-primary" id="sumGrand">0</td>
-                                <td></td>
-                            </tr>
+                        <!-- tfoot은 이제 더이상 쓰지 않고 tbody 마지막에 tr로 주입할 예정이지만, 화면 표시나 안전성을 위해 숨겨둠 -->
+                        <tfoot id="ledgerTableFoot" style="display: none;">
                         </tfoot>
                     </table>
                 </div>
