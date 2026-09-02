@@ -783,19 +783,23 @@ const app = {
             const note = docNote;
             const trade_type = $('in_trade_type') ? $('in_trade_type').value : '내수';
 
+            const category = $('in_category') ? $('in_category').value.trim() : '';
+
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price, note, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price, note, trade_type, category });
             }
         });
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
+        const category = $('in_category') ? $('in_category').value.trim() : '';
         const payload = {
             date: $('in_date').value,
             supplier: $('in_supplier').value,
             location_id: $('in_location').value,
+            category: category,
             items: items
         };
 
@@ -975,21 +979,24 @@ const app = {
             const shipping_fee_vat_included = idx === 0 ? docShippingFeeVatIncluded : 0;
             const note = docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
+            const category = $('dir_category') ? $('dir_category').value.trim() : '';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type, category });
             }
         });
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
+        const category = $('dir_category') ? $('dir_category').value.trim() : '';
         const payload = {
             date: date,
             supplier: supplier,
             destination: destination,
             actual_destination: actual_destination,
+            category: category,
             items: items
         };
 
@@ -1383,21 +1390,24 @@ const app = {
             const shipping_fee_vat_included = idx === 0 ? ($('out_shipping_vat').checked ? 1 : 0) : 0;
             const note = docNote;
             const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
+            const category = $('out_category') ? $('out_category').value.trim() : '';
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type });
+                items.push({ id: row.dataset.dbId, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category });
             }
         });
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
+        const category = $('out_category') ? $('out_category').value.trim() : '';
         const payload = {
             date: $('out_date').value,
             destination: $('out_destination').value,
             actual_destination: $('out_actual_destination') ? $('out_actual_destination').value.trim() : '',
+            category: category,
             items: items
         };
 
@@ -1613,6 +1623,7 @@ const app = {
             $('in_location').value = first.location_id || '';
             $('in_note').value = first.note || '';
             if ($('in_trade_type')) $('in_trade_type').value = first.trade_type || '내수';
+            if ($('in_category')) $('in_category').value = first.category || '';
 
             items.forEach(item => {
                 const rowId = this.addInboundItemRow();
@@ -1650,6 +1661,7 @@ const app = {
             $('out_actual_destination').value = first.actual_destination || '';
             $('out_note').value = first.note || '';
             if ($('out_trade_type')) $('out_trade_type').value = first.trade_type || '내수';
+            if ($('out_category')) $('out_category').value = first.category || '';
             if ($('out_shipping')) $('out_shipping').value = first.shipping_fee || 0;
             if ($('out_shipping_vat')) $('out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
@@ -1703,6 +1715,7 @@ const app = {
             if ($('dir_actual_destination')) $('dir_actual_destination').value = first.actual_destination || '';
             if ($('dir_note')) $('dir_note').value = first.note || '';
             if ($('dir_trade_type')) $('dir_trade_type').value = first.trade_type || '내수';
+            if ($('dir_category')) $('dir_category').value = first.category || '';
             if ($('dir_shipping')) $('dir_shipping').value = first.shipping_fee || 0;
             if ($('dir_shipping_vat')) $('dir_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
@@ -2348,6 +2361,8 @@ const app = {
             $('edit_in_qty').value = data.qty_initial;
             $('edit_in_price').value = data.unit_price;
             $('edit_in_note').value = data.note || '';
+            if ($('edit_in_category')) $('edit_in_category').value = data.category || '';
+            if ($('edit_in_trade_type')) $('edit_in_trade_type').value = data.trade_type || '내수';
             
             const consumed = data.qty_initial - data.qty_remaining;
             if (consumed > 0) {
@@ -2398,7 +2413,8 @@ const app = {
             qty: parseFloat($('edit_in_qty').value),
             unit_price: parseFloat($('edit_in_price').value),
             note: $('edit_in_note').value,
-            trade_type: $('edit_in_trade_type') ? $('edit_in_trade_type').value : '내수'
+            trade_type: $('edit_in_trade_type') ? $('edit_in_trade_type').value : '내수',
+            category: $('edit_in_category') ? $('edit_in_category').value.trim() : ''
         };
         
         try {
@@ -2432,6 +2448,8 @@ const app = {
             $('edit_direct_shipping').value = item.shipping_fee || 0;
             $('edit_direct_shipping_vat').checked = item.shipping_fee_vat_included === 1;
             $('edit_direct_note').value = item.note || '';
+            if ($('edit_direct_trade_type')) $('edit_direct_trade_type').value = item.trade_type || '내수';
+            if ($('edit_direct_category')) $('edit_direct_category').value = item.category || '';
             
             $('edit_direct_item').value = item.item;
             $('edit_direct_spec').value = item.spec || '';
@@ -2464,7 +2482,8 @@ const app = {
             shipping_fee: parseFloat($('edit_direct_shipping').value) || 0,
             shipping_fee_vat_included: $('edit_direct_shipping_vat').checked ? 1 : 0,
             note: $('edit_direct_note').value,
-            trade_type: $('edit_direct_trade_type') ? $('edit_direct_trade_type').value : '내수'
+            trade_type: $('edit_direct_trade_type') ? $('edit_direct_trade_type').value : '내수',
+            category: $('edit_direct_category') ? $('edit_direct_category').value.trim() : ''
         };
 
         try {
@@ -2495,6 +2514,7 @@ const app = {
             $('edit_out_shipping_vat').checked = item.shipping_fee_vat_included === 1;
             $('edit_out_note').value = item.note || '';
             if ($('edit_out_trade_type')) $('edit_out_trade_type').value = item.trade_type || '내수';
+            if ($('edit_out_category')) $('edit_out_category').value = item.category || '';
             
             $('edit_out_item').value = item.item;
             $('edit_out_spec').value = item.spec || '';
@@ -2594,6 +2614,7 @@ const app = {
             shipping_fee: parseFloat($('edit_out_shipping').value) || 0,
             shipping_fee_vat_included: $('edit_out_shipping_vat').checked ? 1 : 0,
             trade_type: $('edit_out_trade_type') ? $('edit_out_trade_type').value : '내수',
+            category: $('edit_out_category') ? $('edit_out_category').value.trim() : '',
             note: $('edit_out_note').value,
             consumed_lots: this.editOutboundState.consumedLots
         };
