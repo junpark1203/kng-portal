@@ -220,7 +220,7 @@ const app = {
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="text-center">${dateStr}</td>
-                            <td class="text-start fw-bold wrap-cell">${row.item} ${isDirect}${siteBadge}</td>
+                            <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}</td>
                             <td class="text-center">${row.spec || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-center">${row.unit || ''}</td>
@@ -286,7 +286,7 @@ const app = {
             document.getElementById('printTitle').innerText = aggregateByBizNum 
                 ? `(사업자 통합) ${displayTitle}`
                 : displayTitle;
-            document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
+            document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
             document.getElementById('printPartnerName').innerText = partner;
 
         } catch (error) {
@@ -307,7 +307,7 @@ const app = {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         
-        document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
+        document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
         document.getElementById('printPartnerName').innerText = partner;
         
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
