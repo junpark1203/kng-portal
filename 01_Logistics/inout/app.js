@@ -512,6 +512,20 @@ const app = {
                 return isNumber ? val.toLocaleString() : val;
             };
 
+            let destHtml = '<span class="text-muted">-</span>';
+            if (r.destination) {
+                const hasActual = r.actual_destination && r.actual_destination.trim() && r.actual_destination.trim() !== r.destination.trim();
+                destHtml = `
+                    <div class="text-dark">${r.destination}</div>
+                    ${hasActual ? `
+                        <div class="text-secondary small d-flex align-items-center gap-1" style="font-size: 0.78rem; margin-top: 1px;">
+                            <i class='bx bx-subdirectory-right text-muted'></i>
+                            <span>(${r.actual_destination.trim()})</span>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
@@ -523,7 +537,7 @@ const app = {
                 <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
                 <td class="text-center">${r.date.split('T')[0]}</td>
                 <td>${renderCell(r.supplier)}</td>
-                <td>${renderCell(r.destination)}</td>
+                <td>${destHtml}</td>
                 <td><strong class="text-primary">${r.item}</strong></td>
                 <td>${r.spec}</td>
                 <td>${r.unit}</td>
