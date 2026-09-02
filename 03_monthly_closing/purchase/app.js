@@ -620,13 +620,11 @@ const app = {
                 </tbody>
                 <tbody style="border-top: 2px solid #000;">
                     <tr>
-                        <td colspan="6" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
-                        <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 공급가액</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()}</td>
-                        <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 부가세</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumVat).toLocaleString()}</td>
-                        <td style="background-color:#e9ecef; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 합계금액</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumGrand).toLocaleString()}</td>
+                        <td colspan="8" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
+                        <td class="text-right" style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()}</td>
+                        <td class="text-right" style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumVat).toLocaleString()}</td>
+                        <td class="text-right" style="background-color:#e9ecef; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumGrand).toLocaleString()}</td>
+                        <td style="border: 2px solid #000; background-color: #f8f9fa;"></td>
                     </tr>
                 </tbody>
                 <tfoot>
