@@ -526,12 +526,14 @@ const app = {
                 `;
             }
 
+            const txIdDisplay = r.transaction_group_id || (r.is_direct === 1 ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
+
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
                 <td class="d-print-none text-muted small user-select-none text-nowrap">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}"></i>
-                    <span>${r.transaction_group_id || ''}</span>
+                    <span>${txIdDisplay}</span>
                 </td>
                 <td class="text-center">${badge}</td>
                 <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
@@ -843,11 +845,13 @@ const app = {
                 `;
             }
 
+            const txIdDisplay = data.transaction_group_id || (data.is_direct === 1 ? `OUT-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}` : (type === 'outbound' ? `OUT-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}` : `IN-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}`));
+
             contentBox.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:0.88rem;">
                         ${badgeHtml}
-                        <span class="badge bg-secondary">${data.transaction_group_id || '-'}</span>
+                        <span class="badge bg-secondary">${txIdDisplay}</span>
                         <span class="text-muted"><i class='bx bx-calendar'></i> <strong>${data.date.split('T')[0]}</strong></span>
                         <span class="text-muted">|</span>
                         ${partnerSummary}
