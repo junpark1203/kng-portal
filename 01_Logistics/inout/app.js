@@ -993,20 +993,40 @@ const app = {
             items: items
         };
 
-        if (confirm(`총 ${items.length}건의 품목을 직출고로 동시 처리하시겠습니까? (입고/출고 장부에 동시 반영됨)`)) {
+        const mode = $('directForm').dataset.mode;
+        const txId = $('directForm').dataset.txId;
+        const confirmMsg = mode === 'edit'
+            ? `총 ${items.length}건의 품목으로 직출고 내역을 수정하시겠습니까?`
+            : `총 ${items.length}건의 품목을 직출고로 동시 처리하시겠습니까? (입고/출고 장부에 동시 반영됨)`;
+
+        if (confirm(confirmMsg)) {
             try {
-                const res = await authFetch(`${API_BASE}/direct`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                if (mode === 'edit') {
+                    await authFetch(`${API_BASE}/direct/tx/${encodeURIComponent(txId)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    $('directForm').dataset.mode = '';
+                    $('directForm').dataset.txId = '';
+                    alert('직출고 수정이 완료되었습니다.');
+                } else {
+                    await authFetch(`${API_BASE}/direct`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    alert('직출고 처리가 완료되었습니다.');
+                }
                 
-                alert('직출고 처리가 완료되었습니다.');
+                $('directForm').reset();
+                $('directItemsContainer').innerHTML = '';
+                this.addDirectItemRow();
+                this.initTodayDates();
+                this.loadHistory();
                 this.closeDrawer();
-                $('btnFilterAll').checked = true;
-                this.resetPageAndLoadHistory();
             } catch (err) {
-                alert('직출고 실패: ' + err.message);
+                alert('직출고 처리 실패: ' + err.message);
             }
         }
     },
@@ -1556,6 +1576,12 @@ const app = {
             const modalEl = document.getElementById('directModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
+            if ($('directForm').dataset.mode !== 'edit') {
+                const title = document.querySelector('#directModal .modal-title');
+                if (title) title.innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
+                const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
+                if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 동시 처리";
+            }
             modal.show();
             if ($('directItemsContainer').children.length === 0) {
                 this.addDirectItemRow();
@@ -1671,12 +1697,12 @@ const app = {
             $('directItemsContainer').innerHTML = '';
             
             const first = items[0];
-            $('direct_date').value = first.date;
-            $('direct_supplier').value = first.supplier || '';
-            $('direct_destination').value = first.destination || '';
-            $('direct_actual_destination').value = first.actual_destination || '';
-            $('direct_note').value = first.note || '';
-            if ($('direct_trade_type')) $('direct_trade_type').value = first.trade_type || '내수';
+            $('dir_date').value = first.date ? first.date.split('T')[0] : '';
+            $('dir_supplier').value = first.supplier || '';
+            $('dir_destination').value = first.destination || '';
+            if ($('dir_actual_destination')) $('dir_actual_destination').value = first.actual_destination || '';
+            if ($('dir_note')) $('dir_note').value = first.note || '';
+            if ($('dir_trade_type')) $('dir_trade_type').value = first.trade_type || '내수';
             if ($('dir_shipping')) $('dir_shipping').value = first.shipping_fee || 0;
             if ($('dir_shipping_vat')) $('dir_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
@@ -1684,13 +1710,19 @@ const app = {
                 const rowId = this.addDirectItemRow();
                 const newRow = $(rowId);
                 newRow.dataset.dbId = item.id;
-                newRow.querySelector('.dir-item').value = item.item;
+                newRow.querySelector('.dir-item').value = item.item || '';
                 newRow.querySelector('.dir-spec').value = item.spec || '';
                 newRow.querySelector('.dir-unit').value = item.unit || '';
-                newRow.querySelector('.dir-qty').value = item.qty;
-                newRow.querySelector('.dir-in-price').value = item.inbound_price || 0;
-                newRow.querySelector('.dir-out-price').value = item.selling_price || 0;
+                newRow.querySelector('.dir-qty').value = item.qty || 0;
+                newRow.querySelector('.dir-in-price').value = item.inbound_price !== undefined ? item.inbound_price : (item.unit_price || 0);
+                newRow.querySelector('.dir-out-price').value = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
             });
+
+            const title = document.querySelector('#directModal .modal-title');
+            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 직출고 내역 수정";
+            const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
+            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 수정 저장";
+
             this.openDrawer('direct_create');
         } catch(err) { alert(err.message); }
     },
