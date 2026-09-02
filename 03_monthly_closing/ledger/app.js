@@ -214,10 +214,16 @@ const app = {
             }
 
             // 프린트 헤더 세팅
+            let displayTitle = '';
+            if (ledgerType === '입고') displayTitle = '거래(매입)내역서';
+            else if (ledgerType === '출고') displayTitle = '거래(공급)내역서';
+            else displayTitle = '매출/매입 정산내역';
+            
             document.getElementById('printTitle').innerText = aggregateByBizNum 
-                ? `${partner} (사업자 통합) 매출/매입 정산내역`
-                : `${partner} 매출/매입 정산내역`;
+                ? `(사업자 통합) ${displayTitle}`
+                : displayTitle;
             document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
+            document.getElementById('printPartnerName').innerText = partner;
 
         } catch (error) {
             console.error('Failed to load ledger', error);
@@ -237,14 +243,6 @@ const app = {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         
-        let titleStr = '';
-        if (ledgerType === '입고') {
-            titleStr = '거래(매입)내역서';
-        } else if (ledgerType === '출고') {
-            titleStr = '거래(공급)내역서';
-        }
-        
-        document.getElementById('printTitle').innerText = titleStr;
         document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
         document.getElementById('printPartnerName').innerText = partner;
         
