@@ -232,10 +232,10 @@ const app = {
                     `;
                 }).join('');
 
-                // [ 이하 여백 ] 추가
-                html += `<tr class="empty-marker"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
+                // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
+                html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
 
-                // 빈 줄 채우기
+                // 빈 줄 채우기 (화면에서는 숨김, 인쇄 시에만 표시)
                 const rowsFirstPage = 28; 
                 const rowsOtherPage = 35; 
                 let emptyRowsCount = 0;
@@ -252,7 +252,7 @@ const app = {
                 }
                 
                 for (let i = 0; i < emptyRowsCount; i++) {
-                    html += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+                    html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
                 }
 
                 // 합계 행 추가
