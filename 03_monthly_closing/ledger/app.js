@@ -219,15 +219,15 @@ const app = {
 
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
-                            <td class="text-center text-nowrap">${dateStr}</td>
+                            <td class="text-center">${dateStr}</td>
                             <td class="text-start fw-bold wrap-cell">${row.item} ${isDirect}${siteBadge}</td>
-                            <td>${row.spec || ''}</td>
+                            <td class="text-center">${row.spec || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.price.toLocaleString()}</td>
                             <td class="text-end">${amount.toLocaleString()}</td>
                             <td class="text-end">${vat.toLocaleString()}</td>
-                            <td class="text-start text-muted small wrap-cell">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
+                            <td class="text-start wrap-cell">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
                         </tr>
                     `;
                 }).join('');

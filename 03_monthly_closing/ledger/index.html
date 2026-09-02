@@ -30,8 +30,8 @@
             /* 부모 컨테이너 여백 제거 */
             .container-fluid { padding: 0 !important; margin: 0 !important; }
             
-            /* printableArea에 padding으로 여백 확보 (브라우저 여백 설정과 무관하게 항상 유지) */
-            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 10mm !important; box-sizing: border-box !important; }
+            /* printableArea에 padding으로 여백 확보 */
+            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 15mm !important; box-sizing: border-box !important; }
             .no-print { display: none !important; }
             
             /* 프린트 전용 헤더 표시 */
@@ -47,35 +47,47 @@
             .date-info { font-size: 12px; color: #333; }
 
             /* 공급자 표 */
-            .supplier-table { border-collapse: collapse; border: 1px solid #000; width: 380px; font-size: 10.5px; margin-left: auto; }
-            .supplier-table th, .supplier-table td { border: 1px solid #000; padding: 3px 3px; text-align: center; height: 22px; white-space: nowrap; }
+            .supplier-table { border-collapse: collapse; border: 2px solid black; width: 380px; font-size: 11px; margin-left: auto; }
+            .supplier-table th, .supplier-table td { border: 1px solid black; padding: 4px 4px; text-align: center; height: 24px; white-space: nowrap; }
             .supplier-table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .vertical-th { width: 20px; writing-mode: vertical-lr; letter-spacing: 12px; padding-top: 12px !important; }
             .stamp-cell { position: relative; }
             .stamp { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; opacity: 0.9; mix-blend-mode: multiply; }
-            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; font-size: 9.5px; }
+            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; }
 
             /* 금액 표기 란 */
-            .amount-box { border: 1px solid #000; padding: 6px 12px; margin-bottom: 5px; display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; }
+            .amount-box { border: 2px solid black; padding: 6px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
 
-            /* 메인 데이터 표 - 부트스트랩 border 완전 리셋 */
+            /* ── 메인 데이터 표: 목업과 동일한 스타일 ── */
+            /* 라운드 모서리 제거 */
+            .card, .card-body, .table-responsive, .table { border-radius: 0 !important; }
             .card { box-shadow: none !important; border: none !important; }
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             
-            /* separate 모드로 각 셀 border를 독립적으로 렌더링 */
-            .table { width: 100%; border-collapse: separate !important; border-spacing: 0 !important; font-size: 9.5px; margin-bottom: 5px; table-layout: fixed; border-top: 1px solid #000 !important; border-left: 1px solid #000 !important; border-right: none !important; border-bottom: none !important; }
-            .table, .table > :not(caption) > * > * { border-color: #000 !important; }
+            /* 부트스트랩 border 완전 리셋 */
+            .table, .table > :not(caption) > * > * { border: none !important; }
             .table thead, .table tbody, .table tfoot, .table tr { border: none !important; }
             
-            /* 셀: 오른쪽+아래쪽에만 border → 테이블의 위+왼쪽 border와 합쳐져 균일한 1px 그리드 완성 */
-            .table th, .table td { border-top: none !important; border-left: none !important; border-right: 1px solid #000 !important; border-bottom: 1px solid #000 !important; padding: 2px 2px !important; text-align: center; height: 23px; line-height: 1.1 !important; white-space: nowrap; letter-spacing: -0.5px; }
-            .table td.wrap-cell { white-space: normal !important; text-align: left !important; padding-left: 4px !important; letter-spacing: normal; }
-            .table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; }
+            /* 테이블 본체: 상하 외곽선만 2px */
+            .table { width: 100%; border-collapse: collapse !important; font-size: 11px; margin-bottom: 5px; table-layout: fixed; border-top: 2px solid black !important; border-bottom: 2px solid black !important; }
             
-            /* 합계행도 동일한 1px border */
-            .table tr.total-row td { border-right: 1px solid #000 !important; border-bottom: 1px solid #000 !important; border-top: none !important; border-left: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 11px; padding: 4px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .table tr.empty-marker td { text-align: center; letter-spacing: 2px; color: #555; }
+            /* 셀: 세로선 1px solid #ccc, 가로선 1px dotted #ccc */
+            .table th, .table td { border-left: 1px solid #ccc !important; border-right: 1px solid #ccc !important; border-bottom: 1px dotted #ccc !important; border-top: none !important; padding: 5px 3px !important; text-align: center !important; height: 26px; line-height: 1.2 !important; }
+            .table th:first-child, .table td:first-child { border-left: none !important; }
+            .table th:last-child, .table td:last-child { border-right: none !important; }
+            
+            /* 헤더: 하단 실선, 중앙 정렬 강제 */
+            .table th { border-bottom: 1px solid black !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; text-align: center !important; }
+            
+            /* 데이터 정렬 (헤더는 모두 center, 데이터는 컬럼별) */
+            .table td.text-end { text-align: right !important; }
+            .table td.text-start, .table td.wrap-cell { text-align: left !important; padding-left: 4px !important; }
+            .table td.text-center { text-align: center !important; }
+            
+            /* 합계행 */
+            .table tr.total-row td { border-top: 2px solid black !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 12px; padding: 6px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table tr.empty-marker td { text-align: center !important; letter-spacing: 2px; color: #555; }
         }
     </style>
 </head>
@@ -200,15 +212,15 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
-                                <th class="text-center text-nowrap" style="width: 7%;">일자</th>
-                                <th style="width: 25%;">품목명</th>
-                                <th style="width: 12%;">규격</th>
-                                <th class="text-end" style="width: 7%;">수량</th>
+                                <th class="text-center" style="width: 7%;">일자</th>
+                                <th class="text-center" style="width: 25%;">품목명</th>
+                                <th class="text-center" style="width: 12%;">규격</th>
+                                <th class="text-center" style="width: 7%;">수량</th>
                                 <th class="text-center" style="width: 7%;">단위</th>
-                                <th class="text-end" style="width: 9%;">단가</th>
-                                <th class="text-end" style="width: 11%;">공급가액</th>
-                                <th class="text-end" style="width: 10%;">부가세</th>
-                                <th style="width: 12%;">비고</th>
+                                <th class="text-center" style="width: 9%;">단가</th>
+                                <th class="text-center" style="width: 11%;">공급가액</th>
+                                <th class="text-center" style="width: 10%;">부가세</th>
+                                <th class="text-center" style="width: 12%;">비고</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
