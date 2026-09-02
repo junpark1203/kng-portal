@@ -160,10 +160,14 @@ const app = {
             
             const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
             if (!response.ok) throw new Error('API Error');
-            const res = await response.json();
+            let res = await response.json();
+            
+            if (ledgerType !== '전체') {
+                res = res.filter(row => row.type === ledgerType);
+            }
             
             if (res.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
                 tfoot.style.display = 'none';
             } else {
                 let sumTotal = 0;
@@ -181,10 +185,6 @@ const app = {
                     sumGrand += grand;
                     
                     const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1">직출고</span>' : '';
-                    const typeBadge = row.type === '입고' 
-                        ? `<span class="badge bg-success bg-opacity-75">매입</span>`
-                        : `<span class="badge bg-danger bg-opacity-75">매출</span>`;
-
                     const siteBadge = aggregateByBizNum && row.site_name 
                         ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
                         : '';
@@ -192,8 +192,7 @@ const app = {
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="d-print-none text-muted small">${row.transaction_group_id || ''}</td>
-                            <td class="text-center fw-bold">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
-                            <td class="text-center">${typeBadge}</td>
+                            <td class="text-center fw-bold text-nowrap">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
                             <td class="fw-bold">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
                             <td class="text-center">${row.unit || ''}</td>
@@ -221,9 +220,42 @@ const app = {
 
         } catch (error) {
             console.error('Failed to load ledger', error);
-            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
             tfoot.style.display = 'none';
         }
+    },
+
+    printLedger() {
+        const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
+        if (ledgerType === '전체') {
+            alert('인쇄를 진행하려면 매입장부 또는 매출장부를 선택해주세요.');
+            return;
+        }
+
+        const partner = document.getElementById('partnerInput').value.trim();
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        let titleStr = '';
+        if (ledgerType === '입고') {
+            titleStr = '거래(매입)내역서';
+        } else if (ledgerType === '출고') {
+            titleStr = '거래(공급)내역서';
+        }
+        
+        document.getElementById('printTitle').innerText = titleStr;
+        document.getElementById('printPeriod').innerText = `조회기간: ${startDate} ~ ${endDate}`;
+        document.getElementById('printPartnerName').innerText = partner;
+        
+        const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
+        document.getElementById('printBizNo').innerText = preset.bizNo || '845-88-00551';
+        document.getElementById('printBizName').innerText = preset.bizName || '주식회사 케앤지';
+        document.getElementById('printCeo').innerText = preset.ceo || '윤종';
+        document.getElementById('printAddress').innerText = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
+        document.getElementById('printBizType').innerText = preset.bizType || '도소매/임대업';
+        document.getElementById('printBizItem').innerText = preset.bizItem || '건설자재, 용품외';
+        
+        window.print();
     }
 };
 

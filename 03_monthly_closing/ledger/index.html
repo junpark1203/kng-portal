@@ -16,10 +16,28 @@
     <link rel="stylesheet" href="../../styles.css?v=3">
     <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=3">
     <style>
+        .segmented-control .btn-check:checked + label { background-color: #0d6efd; color: #fff; border-color: #0d6efd; z-index: 2; }
+        
         .direct-row { background-color: #fefce8 !important; }
         
+        /* 화면 공통 및 출력용 하이브리드 헤더 스타일 */
+        .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 25px; }
+        .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
+        .print-title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
+        .date-text { font-size: 15px; color: #495057; margin-bottom: 25px; text-align: center; }
+        .recipient-text { font-size: 18px; text-align: left; margin-left: 20px; font-weight: 700; }
+        .header-right { width: 420px; }
+        .supplier-table { width: 100%; border-collapse: collapse; font-size: 13px; border: 2px solid #212529; }
+        .supplier-table th, .supplier-table td { border: 1px solid #dee2e6; padding: 6px 8px; }
+        .supplier-table th { background-color: #f8f9fa; color: #495057; text-align: center; font-weight: 600; }
+        .supplier-table td { color: #212529; }
+        .supplier-th { width: 30px; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 5px; padding: 10px 5px !important; }
+        .stamp-cell { position: relative; }
+        .stamp { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); width: 45px; height: 45px; opacity: 0.85; mix-blend-mode: multiply; }
+        
         @media print {
-            @page { margin: 15mm; }
+            @page { margin: 15mm; size: A4; }
+            body { padding: 0; margin: 0; }
             body * { visibility: hidden; }
             #printableArea, #printableArea * { visibility: visible; }
             #printableArea { position: static; width: 100%; margin: 0; padding: 0; }
@@ -28,6 +46,9 @@
             .card { box-shadow: none !important; border: none !important; }
             .card-body { padding: 0 !important; }
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
+            
+            /* 인쇄 시 색상 보장 */
+            .supplier-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -35,9 +56,9 @@
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4 no-print">
-        <h4 class="mb-0 fw-bold"><i class='bx bx-book-content text-primary'></i> 매출/매입 정산내역</h4>
-        <div>
-            <button class="btn btn-outline-secondary shadow-sm fw-bold bg-white" onclick="window.print()">
+        <h4 class="mb-0 fw-bold"><i class='bx bx-book-bookmark text-primary'></i> 정산장부</h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary shadow-sm fw-bold bg-white" onclick="app.printLedger()">
                 <i class='bx bx-printer'></i> 인쇄
             </button>
         </div>
@@ -65,6 +86,17 @@
                         <label class="text-nowrap" for="presetAll">전체</label>
                     </div>
                     
+                    <div class="segmented-control flex-shrink-0 ms-2" id="ledgerTypeFilters">
+                        <input type="radio" class="btn-check" name="ledgerType" id="typeIn" value="입고" onchange="app.loadLedger()">
+                        <label class="text-nowrap" for="typeIn">매입장부</label>
+                        
+                        <input type="radio" class="btn-check" name="ledgerType" id="typeOut" value="출고" onchange="app.loadLedger()">
+                        <label class="text-nowrap" for="typeOut">매출장부</label>
+                        
+                        <input type="radio" class="btn-check" name="ledgerType" id="typeAll" value="전체" checked onchange="app.loadLedger()">
+                        <label class="text-nowrap" for="typeAll">전체</label>
+                    </div>
+                    
                     <input type="date" class="form-control form-control-sm" id="startDate" title="시작일">
                     <span class="text-muted flex-shrink-0">~</span>
                     <input type="date" class="form-control form-control-sm" id="endDate" title="종료일">
@@ -85,11 +117,40 @@
         </div>
     </div>
 
-    <!-- 프린트 가능한 장부 영역 -->
     <div id="printableArea">
-        <div class="d-none d-print-block mb-3 text-center">
-            <h3 class="fw-bold border-bottom border-2 border-dark pb-2 d-inline-block" id="printTitle">매출/매입 정산내역</h3>
-            <p class="mt-2 text-muted fw-bold" id="printPeriod"></p>
+        <div class="d-none d-print-block mb-4">
+            <div class="hybrid-header">
+                <div class="header-left">
+                    <h2 class="print-title" id="printTitle">거 래 내 역 서</h2>
+                    <div class="date-text" id="printPeriod"></div>
+                    <div class="recipient-text"><span id="printPartnerName"></span> 귀하</div>
+                </div>
+                <div class="header-right">
+                    <table class="supplier-table">
+                        <tr>
+                            <th rowspan="4" class="supplier-th">공급자</th>
+                            <th style="width: 25%">등록번호</th>
+                            <td colspan="3" id="printBizNo"></td>
+                        </tr>
+                        <tr>
+                            <th>상호</th>
+                            <td style="width: 35%" id="printBizName"></td>
+                            <th style="width: 15%">대표자</th>
+                            <td class="stamp-cell"><span id="printCeo"></span> <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
+                        </tr>
+                        <tr>
+                            <th>주소</th>
+                            <td colspan="3" id="printAddress"></td>
+                        </tr>
+                        <tr>
+                            <th>업태</th>
+                            <td><span id="printBizType"></span></td>
+                            <th>종목</th>
+                            <td><span id="printBizItem"></span></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
         </div>
         
         <div class="card shadow-sm border-0">
@@ -99,8 +160,7 @@
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
                                 <th class="d-print-none" style="width: 130px;">고유번호</th>
-                                <th class="text-center" style="width: 90px;">일자</th>
-                                <th class="text-center" style="width: 80px;">구분</th>
+                                <th class="text-center text-nowrap" style="width: 90px;">일자</th>
                                 <th>품목명</th>
                                 <th style="width: 120px;">규격</th>
                                 <th class="text-center" style="width: 60px;">단위</th>
@@ -113,11 +173,11 @@
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
-                            <tr><td colspan="12" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                            <tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
                         </tbody>
                         <tfoot id="ledgerTableFoot" class="table-secondary fw-bold" style="display: none;">
                             <tr>
-                                <td colspan="8" class="text-end">합계</td>
+                                <td colspan="7" class="text-end">합계</td>
                                 <td class="text-end text-primary" id="sumTotal">0</td>
                                 <td class="text-end text-primary" id="sumVat">0</td>
                                 <td class="text-end text-primary" id="sumGrand">0</td>
