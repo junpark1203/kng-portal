@@ -19,9 +19,10 @@
         .direct-row { background-color: #fefce8 !important; }
         
         @media print {
+            @page { margin: 15mm; }
             body * { visibility: hidden; }
             #printableArea, #printableArea * { visibility: visible; }
-            #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
+            #printableArea { position: static; width: 100%; margin: 0; padding: 0; }
             .no-print { display: none !important; }
             /* 인쇄 시 여백 및 스타일 최소화 */
             .card { box-shadow: none !important; border: none !important; }
@@ -48,7 +49,10 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex gap-2 align-items-center" style="overflow-x: auto; padding-bottom: 5px;">
                     <div class="segmented-control flex-shrink-0" id="datePresets">
-                        <input type="radio" class="btn-check" name="datePreset" id="presetMonth" value="당월" checked>
+                        <input type="radio" class="btn-check" name="datePreset" id="presetPrevMonth" value="전월" checked>
+                        <label class="text-nowrap" for="presetPrevMonth">전월</label>
+                        
+                        <input type="radio" class="btn-check" name="datePreset" id="presetMonth" value="당월">
                         <label class="text-nowrap" for="presetMonth">당월</label>
                         
                         <input type="radio" class="btn-check" name="datePreset" id="preset3M" value="3개월">
@@ -95,27 +99,28 @@
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
                                 <th class="d-print-none" style="width: 130px;">고유번호</th>
-                                <th class="text-center" style="width: 90px;">입출고일자</th>
-                                <th class="text-center text-primary" style="width: 90px;">정산일자</th>
+                                <th class="text-center" style="width: 90px;">일자</th>
                                 <th class="text-center" style="width: 80px;">구분</th>
                                 <th>품목명</th>
                                 <th style="width: 120px;">규격</th>
                                 <th class="text-center" style="width: 60px;">단위</th>
                                 <th class="text-end" style="width: 80px;">수량</th>
-                                <th class="text-end" style="width: 100px;">단가</th>
-                                <th class="text-end" style="width: 120px;">공급가액</th>
+                                <th class="text-end" style="width: 90px;">단가</th>
+                                <th class="text-end" style="width: 100px;">공급가액</th>
+                                <th class="text-end" style="width: 100px;">부가세</th>
+                                <th class="text-end" style="width: 100px;">합계</th>
                                 <th style="width: 150px;">비고</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
-                            <tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                            <tr><td colspan="12" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
                         </tbody>
                         <tfoot id="ledgerTableFoot" class="table-secondary fw-bold" style="display: none;">
                             <tr>
-                                <td colspan="7" class="text-end">합계</td>
-                                <td class="text-end text-primary" id="sumQty">0</td>
-                                <td></td>
-                                <td class="text-end text-primary" id="sumAmount">0</td>
+                                <td colspan="8" class="text-end">합계</td>
+                                <td class="text-end text-primary" id="sumTotal">0</td>
+                                <td class="text-end text-primary" id="sumVat">0</td>
+                                <td class="text-end text-primary" id="sumGrand">0</td>
                                 <td></td>
                             </tr>
                         </tfoot>

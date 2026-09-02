@@ -21,6 +21,11 @@ const app = {
         };
 
         const presets = {
+            '전월': () => {
+                const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const end = new Date(today.getFullYear(), today.getMonth(), 0);
+                setDateRange(start, end);
+            },
             '당월': () => {
                 const start = new Date(today.getFullYear(), today.getMonth(), 1);
                 const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -48,8 +53,8 @@ const app = {
             });
         });
 
-        // 초기값 당월 세팅
-        presets['당월']();
+        // 초기값 전월 세팅
+        presets['전월']();
     },
 
     async loadPartners() {
@@ -154,21 +159,27 @@ const app = {
             const res = await response.json();
             
             if (res.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
                 tfoot.style.display = 'none';
             } else {
-                let sumQty = 0;
-                let sumAmount = 0;
+                let sumTotal = 0;
+                let sumVat = 0;
+                let sumGrand = 0;
 
                 tbody.innerHTML = res.map(row => {
                     const amount = row.qty * row.price;
-                    sumQty += row.qty;
-                    sumAmount += amount;
+                    const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
+                    const vat = isZeroTax ? 0 : Math.floor(amount * 0.1);
+                    const grand = amount + vat;
+
+                    sumTotal += amount;
+                    sumVat += vat;
+                    sumGrand += grand;
                     
                     const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1">직출고</span>' : '';
                     const typeBadge = row.type === '입고' 
-                        ? `<span class="badge bg-success bg-opacity-75">입고(매입)</span>`
-                        : `<span class="badge bg-danger bg-opacity-75">출고(매출)</span>`;
+                        ? `<span class="badge bg-success bg-opacity-75">매입</span>`
+                        : `<span class="badge bg-danger bg-opacity-75">매출</span>`;
 
                     const siteBadge = aggregateByBizNum && row.site_name 
                         ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
@@ -177,22 +188,24 @@ const app = {
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="d-print-none text-muted small">${row.transaction_group_id || ''}</td>
-                            <td class="text-center">${row.date.split('T')[0]}</td>
-                            <td class="text-center text-primary fw-bold">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
+                            <td class="text-center fw-bold">${row.settlement_date ? row.settlement_date.split('T')[0] : ''}</td>
                             <td class="text-center">${typeBadge}</td>
                             <td class="fw-bold">${row.item} ${isDirect}${siteBadge}</td>
                             <td>${row.spec || ''}</td>
                             <td class="text-center">${row.unit || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-end">${row.price.toLocaleString()}</td>
-                            <td class="text-end fw-bold text-dark">${amount.toLocaleString()}</td>
+                            <td class="text-end">${amount.toLocaleString()}</td>
+                            <td class="text-end">${vat.toLocaleString()}</td>
+                            <td class="text-end fw-bold text-dark">${grand.toLocaleString()}</td>
                             <td class="text-muted small">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
                         </tr>
                     `;
                 }).join('');
 
-                document.getElementById('sumQty').innerText = sumQty.toLocaleString();
-                document.getElementById('sumAmount').innerText = sumAmount.toLocaleString();
+                document.getElementById('sumTotal').innerText = sumTotal.toLocaleString();
+                document.getElementById('sumVat').innerText = sumVat.toLocaleString();
+                document.getElementById('sumGrand').innerText = sumGrand.toLocaleString();
                 tfoot.style.display = 'table-footer-group';
             }
 
@@ -204,7 +217,7 @@ const app = {
 
         } catch (error) {
             console.error('Failed to load ledger', error);
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
             tfoot.style.display = 'none';
         }
     }
