@@ -594,14 +594,12 @@ router.get('/history/inbound/:id', (req, res) => {
         
         row.type = 'inbound';
         
-        const groupSql = `
-            SELECT i.*, l.name as location_name
-            FROM logistics_inbound i
-            LEFT JOIN logistics_locations l ON i.location_id = l.id
-            WHERE i.date = ? AND i.supplier = ? AND i.created_at = ?
-            ORDER BY i.id ASC
-        `;
-        db.all(groupSql, [row.date, row.supplier, row.created_at], (err2, items) => {
+        const groupSql = row.transaction_group_id 
+            ? `SELECT i.*, l.name as location_name FROM logistics_inbound i LEFT JOIN logistics_locations l ON i.location_id = l.id WHERE i.transaction_group_id = ? ORDER BY i.id ASC`
+            : `SELECT i.*, l.name as location_name FROM logistics_inbound i LEFT JOIN logistics_locations l ON i.location_id = l.id WHERE i.date = ? AND i.supplier = ? AND i.created_at = ? ORDER BY i.id ASC`;
+        const groupParams = row.transaction_group_id ? [row.transaction_group_id] : [row.date, row.supplier, row.created_at];
+
+        db.all(groupSql, groupParams, (err2, items) => {
             if (err2) return res.status(500).json({ error: err2.message });
             row.items = items;
             res.json(row);
@@ -618,8 +616,12 @@ router.get('/history/outbound/:id', (req, res) => {
         
         row.type = 'outbound';
         
-        const groupSql = `SELECT * FROM logistics_outbound WHERE date = ? AND destination = ? AND created_at = ? ORDER BY id ASC`;
-        db.all(groupSql, [row.date, row.destination, row.created_at], (err2, items) => {
+        const groupSql = row.transaction_group_id
+            ? `SELECT * FROM logistics_outbound WHERE transaction_group_id = ? ORDER BY id ASC`
+            : `SELECT * FROM logistics_outbound WHERE date = ? AND destination = ? AND created_at = ? ORDER BY id ASC`;
+        const groupParams = row.transaction_group_id ? [row.transaction_group_id] : [row.date, row.destination, row.created_at];
+
+        db.all(groupSql, groupParams, (err2, items) => {
             if (err2) return res.status(500).json({ error: err2.message });
             
             const itemIds = items.map(i => i.id);

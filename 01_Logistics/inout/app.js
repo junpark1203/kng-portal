@@ -363,7 +363,6 @@ const app = {
                 badge += ` <span class="badge bg-info text-dark">${r.trade_type}</span>`;
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
-            const checkbox = `<input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}">`;
             const editFn = isOut ? (r.type === '직출고' || r.is_direct === 1 ? `app.openEditDirectOutboundTx('${r.transaction_group_id}')` : `app.openEditOutboundTx('${r.transaction_group_id}')`) : `app.openEditInboundTx('${r.transaction_group_id}')`;
             
             const renderCell = (val, isNumber = false) => {
@@ -372,9 +371,12 @@ const app = {
             };
 
             return `
-            <tr style="cursor:pointer;" onclick="app.openDrawer('detail', {id: ${r.id}, type: '${r.type}'})">
+            <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
-                <td class="d-print-none text-muted small">${r.transaction_group_id || ''}</td>
+                <td class="d-print-none text-muted small user-select-none text-nowrap">
+                    <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}"></i>
+                    <span class="font-monospace">${r.transaction_group_id || ''}</span>
+                </td>
                 <td class="text-center">${badge}</td>
                 <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
                 <td class="text-center">${r.date.split('T')[0]}</td>
@@ -388,7 +390,7 @@ const app = {
                 <td class="text-end">${renderCell(r.inbound_total, true)}</td>
                 <td class="text-end">${renderCell(r.outbound_price, true)}</td>
                 <td class="text-end">${renderCell(r.outbound_total, true)}</td>
-                <td class="text-center text-nowrap">
+                <td class="text-center text-nowrap" onclick="event.stopPropagation()">
                     ${r.settlement_status === '정산완료' 
                         ? `<span class="badge bg-secondary">정산완료</span>` 
                         : `<button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
@@ -396,18 +398,327 @@ const app = {
                     }
                 </td>
             </tr>
+            <tr id="accordion_row_${r.id}" class="accordion-sub-row d-none">
+                <td colspan="16" class="p-0 border-0">
+                    <div id="accordion_content_${r.id}" class="accordion-content-box">
+                        <div class="text-center py-3 text-muted"><i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...</div>
+                    </div>
+                </td>
+            </tr>
             `;
         }).join('');
     },
 
-    toggleSelectAllHistory: function() {
-        const selectAll = $('selectAllHistory').checked;
-        document.querySelectorAll('.history-checkbox').forEach(cb => {
-            cb.checked = selectAll;
-        });
+    toggleAccordion: async function(id, type) {
+        const accRow = $(`accordion_row_${id}`);
+        const accIcon = $(`acc_icon_${id}`);
+        const mainRow = $(`row_${id}`);
+        
+        if (!accRow) return;
+
+        const isOpening = accRow.classList.contains('d-none');
+
+        if (!isOpening) {
+            accRow.classList.add('d-none');
+            if (accIcon) {
+                accIcon.classList.remove('bx-chevron-down', 'text-primary');
+                accIcon.classList.add('bx-chevron-right');
+            }
+            if (mainRow) mainRow.classList.remove('table-active');
+            return;
+        }
+
+        // Open accordion
+        accRow.classList.remove('d-none');
+        if (accIcon) {
+            accIcon.classList.remove('bx-chevron-right');
+            accIcon.classList.add('bx-chevron-down', 'text-primary');
+        }
+        if (mainRow) mainRow.classList.add('table-active');
+
+        const contentBox = $(`accordion_content_${id}`);
+        if (!contentBox) return;
+
+        contentBox.innerHTML = `<div class="p-4 text-center text-muted"><i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...</div>`;
+
+        try {
+            const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
+            if (type === 'inbound') {
+                data.qty = data.qty_initial;
+            }
+            
+            const items = data.items || [data];
+            const isDirect = type === 'outbound' && data.is_direct === 1;
+
+            let badgeHtml = type === 'inbound' 
+                ? '<span class="badge bg-success px-2 py-1">입고</span>' 
+                : '<span class="badge bg-danger px-2 py-1">출고</span>';
+            if (isDirect) {
+                badgeHtml = '<span class="badge bg-warning text-dark px-2 py-1">직출고</span>';
+            }
+
+            const borderColor = isDirect ? 'border-warning' : (type === 'inbound' ? 'border-success' : 'border-danger');
+            contentBox.className = `accordion-content-box p-3 bg-white border-start border-4 ${borderColor} shadow-sm my-2 rounded-3 mx-2`;
+
+            // Partner Summary
+            let partnerSummary = '';
+            if (isDirect) {
+                partnerSummary = `
+                    <span class="me-3"><i class='bx bx-buildings text-muted'></i> 매입처: <strong class="text-dark">${data.supplier || '-'}</strong></span>
+                    <span class="me-3"><i class='bx bx-store-alt text-muted'></i> 매출처: <strong class="text-primary">${data.destination || '-'}</strong></span>
+                    ${data.actual_destination ? `<span class="me-3"><i class='bx bx-map text-muted'></i> 실출고처: <strong class="text-secondary">${data.actual_destination}</strong></span>` : ''}
+                `;
+            } else if (type === 'inbound') {
+                partnerSummary = `
+                    <span class="me-3"><i class='bx bx-buildings text-muted'></i> 매입처: <strong class="text-dark">${data.supplier || '-'}</strong></span>
+                    <span class="me-3"><i class='bx bx-cube text-muted'></i> 창고: <strong class="text-secondary">${data.location_name || '-'}</strong></span>
+                `;
+            } else {
+                partnerSummary = `
+                    <span class="me-3"><i class='bx bx-store-alt text-muted'></i> 매출처: <strong class="text-primary">${data.destination || '-'}</strong></span>
+                    ${data.actual_destination ? `<span class="me-3"><i class='bx bx-map text-muted'></i> 실출고처: <strong class="text-secondary">${data.actual_destination}</strong></span>` : ''}
+                `;
+            }
+
+            // Extra info
+            let extraInfo = '';
+            if (type === 'outbound' && data.shipping_fee && data.shipping_fee > 0) {
+                const shipVat = data.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가)';
+                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-car text-secondary'></i> 배송비: ${data.shipping_fee.toLocaleString()}원 ${shipVat}</span> `;
+            }
+            if (data.category) {
+                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-purchase-tag-alt text-primary'></i> ${data.category}</span>`;
+            }
+            if (data.trade_type && data.trade_type !== '내수') {
+                extraInfo += `<span class="badge bg-info text-dark me-1">${data.trade_type}</span>`;
+            }
+
+            // Print & Action Buttons
+            let printBtns = '';
+            if (type === 'inbound') {
+                printBtns = `
+                    <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'inbound', 'inbound_receipt')">
+                        <i class='bx bx-printer'></i> 입고내역서
+                    </button>
+                `;
+            } else {
+                printBtns = `
+                    <button type="button" class="btn btn-sm btn-primary py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'transaction_statement')">
+                        <i class='bx bx-file'></i> 거래명세서
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'outbound_statement')">
+                        <i class='bx bx-printer'></i> 출고내역서
+                    </button>
+                `;
+                if (isDirect) {
+                    printBtns += `
+                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'inbound_receipt')">
+                            <i class='bx bx-printer'></i> 입고내역서
+                        </button>
+                    `;
+                }
+            }
+
+            const editTxFn = isDirect 
+                ? `app.openEditDirectOutboundTx('${data.transaction_group_id || ''}')` 
+                : (type === 'outbound' ? `app.openEditOutboundTx('${data.transaction_group_id || ''}')` : `app.openEditInboundTx('${data.transaction_group_id || ''}')`);
+
+            let editBtn = `
+                <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="event.stopPropagation(); ${editTxFn}" title="전표 수정">
+                    <i class='bx bx-edit'></i> 전표 수정
+                </button>
+            `;
+
+            // Table Rows
+            let totalQty = 0;
+            let totalInboundAmt = 0;
+            let totalOutboundAmt = 0;
+
+            let rowsHtml = items.map((item, idx) => {
+                const itemQty = type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
+                const inPrice = item.unit_price !== undefined ? item.unit_price : (item.inbound_price || 0);
+                const outPrice = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
+                
+                const inAmt = inPrice * itemQty;
+                const outAmt = outPrice * itemQty;
+
+                totalQty += itemQty;
+                totalInboundAmt += inAmt;
+                totalOutboundAmt += outAmt;
+
+                let lotInfoHtml = '';
+                if (type === 'outbound' && item.consumed_lots && item.consumed_lots.length > 0) {
+                    const lotsBadges = item.consumed_lots.map(l => 
+                        `<span class="badge bg-light text-dark border me-1 py-1" style="font-size:0.75rem; font-weight:normal;">
+                            ${l.inbound_date} 입고 (${l.supplier || '-'}) <strong class="text-danger">-${l.consumed_qty}</strong>
+                         </span>`
+                    ).join('');
+                    lotInfoHtml = `
+                        <div class="mt-1 ps-2 text-muted" style="font-size:0.75rem;">
+                            <i class='bx bx-layer text-secondary'></i> 차감 Lot: ${lotsBadges}
+                        </div>
+                    `;
+                }
+
+                if (isDirect) {
+                    return `
+                        <tr>
+                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td>
+                                <strong class="text-primary">${item.item}</strong>
+                                ${lotInfoHtml}
+                            </td>
+                            <td class="text-center">${item.spec || '-'}</td>
+                            <td class="text-center">${item.unit || '-'}</td>
+                            <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-muted">${inPrice ? inPrice.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end text-muted">${inAmt ? inAmt.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-bold text-dark">${outPrice ? outPrice.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-bold text-danger">${outAmt ? outAmt.toLocaleString() + '원' : '-'}</td>
+                        </tr>
+                    `;
+                } else if (type === 'inbound') {
+                    return `
+                        <tr>
+                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td><strong class="text-primary">${item.item}</strong></td>
+                            <td class="text-center">${item.spec || '-'}</td>
+                            <td class="text-center">${item.unit || '-'}</td>
+                            <td class="text-end fw-bold text-success">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-dark">${inPrice.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-success">${inAmt.toLocaleString()}원</td>
+                            <td class="text-center">${item.location_name || '-'}</td>
+                        </tr>
+                    `;
+                } else {
+                    return `
+                        <tr>
+                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td>
+                                <strong class="text-primary">${item.item}</strong>
+                                ${lotInfoHtml}
+                            </td>
+                            <td class="text-center">${item.spec || '-'}</td>
+                            <td class="text-center">${item.unit || '-'}</td>
+                            <td class="text-end fw-bold text-danger">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-dark">${outPrice.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-danger">${outAmt.toLocaleString()}원</td>
+                        </tr>
+                    `;
+                }
+            }).join('');
+
+            // Headers and Summary
+            let tableHeaderHtml = '';
+            let tableSummaryHtml = '';
+
+            if (isDirect) {
+                tableHeaderHtml = `
+                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
+                        <th style="width: 40px;">#</th>
+                        <th>품명</th>
+                        <th style="width: 120px;">규격</th>
+                        <th style="width: 70px;">단위</th>
+                        <th style="width: 90px;" class="text-end">수량</th>
+                        <th style="width: 110px;" class="text-end">매입단가</th>
+                        <th style="width: 120px;" class="text-end">매입금액</th>
+                        <th style="width: 110px;" class="text-end">매출단가</th>
+                        <th style="width: 120px;" class="text-end">매출금액</th>
+                    </tr>
+                `;
+                tableSummaryHtml = `
+                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
+                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
+                        <td class="text-end text-primary">${totalQty.toLocaleString()}</td>
+                        <td></td>
+                        <td class="text-end text-muted">${totalInboundAmt.toLocaleString()}원</td>
+                        <td></td>
+                        <td class="text-end text-danger">${totalOutboundAmt.toLocaleString()}원</td>
+                    </tr>
+                `;
+            } else if (type === 'inbound') {
+                tableHeaderHtml = `
+                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
+                        <th style="width: 40px;">#</th>
+                        <th>품명</th>
+                        <th style="width: 140px;">규격</th>
+                        <th style="width: 80px;">단위</th>
+                        <th style="width: 100px;" class="text-end">수량</th>
+                        <th style="width: 130px;" class="text-end">단가</th>
+                        <th style="width: 140px;" class="text-end">총액</th>
+                        <th style="width: 120px;">창고위치</th>
+                    </tr>
+                `;
+                tableSummaryHtml = `
+                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
+                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
+                        <td class="text-end text-success">${totalQty.toLocaleString()}</td>
+                        <td></td>
+                        <td class="text-end text-success">${totalInboundAmt.toLocaleString()}원</td>
+                        <td></td>
+                    </tr>
+                `;
+            } else {
+                tableHeaderHtml = `
+                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
+                        <th style="width: 40px;">#</th>
+                        <th>품명</th>
+                        <th style="width: 140px;">규격</th>
+                        <th style="width: 80px;">단위</th>
+                        <th style="width: 100px;" class="text-end">수량</th>
+                        <th style="width: 130px;" class="text-end">단가</th>
+                        <th style="width: 140px;" class="text-end">총액</th>
+                    </tr>
+                `;
+                tableSummaryHtml = `
+                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
+                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
+                        <td class="text-end text-danger">${totalQty.toLocaleString()}</td>
+                        <td></td>
+                        <td class="text-end text-danger">${totalOutboundAmt.toLocaleString()}원</td>
+                    </tr>
+                `;
+            }
+
+            contentBox.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:0.88rem;">
+                        ${badgeHtml}
+                        <span class="badge bg-secondary font-monospace">${data.transaction_group_id || '-'}</span>
+                        <span class="text-muted"><i class='bx bx-calendar'></i> <strong>${data.date.split('T')[0]}</strong></span>
+                        <span class="text-muted">|</span>
+                        ${partnerSummary}
+                        ${extraInfo}
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        ${printBtns}
+                        ${editBtn}
+                        <button type="button" class="btn btn-sm btn-light border py-1 px-2 ms-1" onclick="event.stopPropagation(); app.toggleAccordion(${id}, '${type}')" title="접기">
+                            <i class='bx bx-chevron-up'></i> 접기
+                        </button>
+                    </div>
+                </div>
+
+                ${data.note ? `<div class="mb-2 px-3 py-2 bg-light rounded text-muted" style="font-size:0.83rem;"><i class='bx bx-message-square-detail text-primary me-1'></i><strong>비고:</strong> ${data.note}</div>` : ''}
+
+                <div class="table-responsive bg-white rounded border shadow-sm mt-2">
+                    <table class="table table-sm table-bordered table-hover align-middle mb-0" style="font-size:0.85rem;">
+                        <thead>
+                            ${tableHeaderHtml}
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                            ${items.length > 1 ? tableSummaryHtml : ''}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+        } catch (err) {
+            contentBox.innerHTML = `<div class="text-center py-3 text-danger"><i class='bx bx-error me-1'></i>상세 내역을 불러오는데 실패했습니다: ${err.message}</div>`;
+        }
     },
 
-    
     toggleSelectAllHistory() {
         const isChecked = $('selectAllHistory').checked;
         document.querySelectorAll('.history-checkbox').forEach(cb => {
@@ -2052,11 +2363,25 @@ const app = {
         alert('기본값이 저장되었습니다.');
     },
     
-    printHistoryDetail: function() {
-        if (!this.currentHistoryDetail) return;
+    printDirectStatement: async function(id, type, printType) {
+        try {
+            const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
+            this.currentHistoryDetail = data;
+            this.printHistoryDetail(printType, data);
+        } catch (err) {
+            alert('인쇄 데이터를 가져오지 못했습니다: ' + err.message);
+        }
+    },
+
+    printHistoryDetail: function(customPrintType = null, customData = null) {
+        const data = customData || this.currentHistoryDetail;
+        if (!data) return;
         
-        const data = this.currentHistoryDetail;
-        const printType = document.querySelector('input[name="printType"]:checked').value;
+        let printType = customPrintType;
+        if (!printType) {
+            const checkedRadio = document.querySelector('input[name="printType"]:checked');
+            printType = checkedRadio ? checkedRadio.value : (data.type === 'inbound' ? 'inbound_receipt' : 'transaction_statement');
+        }
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
         
         // Defaults if preset not set
