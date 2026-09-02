@@ -27,8 +27,8 @@
             @page { margin: 10mm; size: A4 portrait; }
             html, body { height: auto !important; min-height: auto !important; background: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
             
-            /* Hide everything outside of printable area */
-            body > *:not(#printableArea) { display: none !important; }
+            /* Remove padding from container to prevent margin interference */
+            .container-fluid { padding: 0 !important; margin: 0 !important; }
             
             /* Make printableArea static so margins and pagination work natively */
             #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
