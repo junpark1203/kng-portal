@@ -560,12 +560,15 @@ const app = {
                     `;
                 }
 
+                const catBadge = item.category ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.75rem; font-weight:normal;"><i class='bx bx-purchase-tag-alt text-primary'></i> ${item.category}</span>` : '';
+
                 if (isDirect) {
                     return `
                         <tr>
                             <td class="text-center text-muted">${idx + 1}</td>
                             <td>
                                 <strong class="text-primary">${item.item}</strong>
+                                ${catBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
@@ -581,7 +584,10 @@ const app = {
                     return `
                         <tr>
                             <td class="text-center text-muted">${idx + 1}</td>
-                            <td><strong class="text-primary">${item.item}</strong></td>
+                            <td>
+                                <strong class="text-primary">${item.item}</strong>
+                                ${catBadge}
+                            </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
                             <td class="text-end fw-bold text-success">${itemQty.toLocaleString()}</td>
@@ -596,6 +602,7 @@ const app = {
                             <td class="text-center text-muted">${idx + 1}</td>
                             <td>
                                 <strong class="text-primary">${item.item}</strong>
+                                ${catBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
@@ -1078,12 +1085,16 @@ const app = {
         const rowHtml = `
             <div class="p-2 mb-2 border rounded bg-light inbound-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-6 position-relative">
+                    <div class="col-5 position-relative">
                         <input type="text" class="form-control form-control-sm in-item" placeholder="품목명" autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <input type="text" class="form-control form-control-sm in-spec" placeholder="규격" required>
+                    </div>
+                    <div class="col-3 position-relative">
+                        <input type="text" class="form-control form-control-sm in-category category-input" placeholder="분류 선택/직접입력" autocomplete="off">
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="row g-2 align-items-center">
@@ -1137,6 +1148,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        this.setupCategoryAutocomplete();
         return rowId;
     },
 
@@ -1158,19 +1170,17 @@ const app = {
 
         const items = [];
         let hasError = false;
+        const docNote = $('in_note') ? $('in_note').value.trim() : '';
 
-        const docNote = $('in_note').value.trim();
-
-        rows.forEach(row => {
+        rows.forEach((row) => {
             const item = row.querySelector('.in-item').value.trim();
             const spec = row.querySelector('.in-spec').value.trim();
             const unit = row.querySelector('.in-unit').value.trim();
             const qty = parseFloat(row.querySelector('.in-qty').value);
             const unit_price = parseFloat(row.querySelector('.in-price').value);
+            const category = row.querySelector('.in-category') ? row.querySelector('.in-category').value.trim() : '';
             const note = docNote;
             const trade_type = $('in_trade_type') ? $('in_trade_type').value : '내수';
-
-            const category = $('in_category') ? $('in_category').value.trim() : '';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
@@ -1181,12 +1191,10 @@ const app = {
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
-        const category = $('in_category') ? $('in_category').value.trim() : '';
         const payload = {
             date: $('in_date').value,
             supplier: $('in_supplier').value,
             location_id: $('in_location').value,
-            category: category,
             items: items
         };
 
@@ -1265,12 +1273,16 @@ const app = {
         const rowHtml = `
             <div class="p-2 mb-2 border rounded bg-light direct-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-7 position-relative">
+                    <div class="col-5 position-relative">
                         <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                    <div class="col-5">
+                    <div class="col-4">
                         <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
+                    </div>
+                    <div class="col-3 position-relative">
+                        <input type="text" class="form-control form-control-sm dir-category category-input" placeholder="분류 선택/직접입력" autocomplete="off">
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="row g-2 align-items-center">
@@ -1325,6 +1337,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        this.setupCategoryAutocomplete();
         return rowId;
     },
 
@@ -1362,11 +1375,11 @@ const app = {
             const qty = parseFloat(row.querySelector('.dir-qty').value);
             const in_price = parseFloat(row.querySelector('.dir-in-price').value);
             const out_price = parseFloat(row.querySelector('.dir-out-price').value);
+            const category = row.querySelector('.dir-category') ? row.querySelector('.dir-category').value.trim() : '';
             const shipping_fee = idx === 0 ? docShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? docShippingFeeVatIncluded : 0;
             const note = docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
-            const category = $('dir_category') ? $('dir_category').value.trim() : '';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
@@ -1377,13 +1390,11 @@ const app = {
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
-        const category = $('dir_category') ? $('dir_category').value.trim() : '';
         const payload = {
             date: date,
             supplier: supplier,
             destination: destination,
             actual_destination: actual_destination,
-            category: category,
             items: items
         };
 
@@ -1444,14 +1455,18 @@ const app = {
         const rowHtml = `
             <div class="p-2 mb-2 border rounded bg-light outbound-item-row" id="${rowId}">
                 <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-6 position-relative">
+                    <div class="col-5 position-relative">
                         <input type="text" class="form-control form-control-sm out-item" placeholder="품목명" autocomplete="off" required>
                         <div class="autocomplete-suggestions"></div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <select class="form-select form-select-sm out-spec" disabled required onchange="app.handleOutboundSpecChange('${rowId}', this)">
                             <option value="">품목 먼저 선택</option>
                         </select>
+                    </div>
+                    <div class="col-3 position-relative">
+                        <input type="text" class="form-control form-control-sm out-category category-input" placeholder="분류 선택/입력" autocomplete="off">
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                 </div>
                 <div class="row g-2 align-items-center">
@@ -1518,6 +1533,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        this.setupCategoryAutocomplete();
         return rowId;
     },
 
@@ -1552,7 +1568,8 @@ const app = {
         }
     },
 
-    handleOutboundSpecChange: function(rowId, sel) {
+    handleOutboundSpecChange: function(rowId, selectEl) {
+        const selectedOpt = selectEl.options[selectEl.selectedIndex];
         const row = $(rowId);
         const qtyInput = row.querySelector('.out-qty');
         const unitInput = row.querySelector('.out-unit');
@@ -1773,11 +1790,11 @@ const app = {
             const unit = row.querySelector('.out-unit').value.trim();
             const qty = parseFloat(row.querySelector('.out-qty').value);
             const selling_price = parseFloat(row.querySelector('.out-price').value);
+            const category = row.querySelector('.out-category') ? row.querySelector('.out-category').value.trim() : '';
             const shipping_fee = idx === 0 ? docShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? ($('out_shipping_vat').checked ? 1 : 0) : 0;
             const note = docNote;
             const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
-            const category = $('out_category') ? $('out_category').value.trim() : '';
             const consumed_lots = this.outboundRows[rowId].consumedLots;
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
@@ -1789,12 +1806,10 @@ const app = {
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
 
-        const category = $('out_category') ? $('out_category').value.trim() : '';
         const payload = {
             date: $('out_date').value,
             destination: $('out_destination').value,
             actual_destination: $('out_actual_destination') ? $('out_actual_destination').value.trim() : '',
-            category: category,
             items: items
         };
 
@@ -2021,6 +2036,7 @@ const app = {
                 newRow.querySelector('.in-unit').value = item.unit || '';
                 newRow.querySelector('.in-qty').value = item.qty_initial;
                 newRow.querySelector('.in-price').value = item.unit_price || 0;
+                if (newRow.querySelector('.in-category')) newRow.querySelector('.in-category').value = item.category || '';
                 
                 const consumed = item.qty_initial - item.qty_remaining;
                 if (consumed > 0) {
@@ -2048,7 +2064,6 @@ const app = {
             $('out_actual_destination').value = first.actual_destination || '';
             $('out_note').value = first.note || '';
             if ($('out_trade_type')) $('out_trade_type').value = first.trade_type || '내수';
-            if ($('out_category')) $('out_category').value = first.category || '';
             if ($('out_shipping')) $('out_shipping').value = first.shipping_fee || 0;
             if ($('out_shipping_vat')) $('out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
@@ -2069,6 +2084,7 @@ const app = {
                 qtyInput.disabled = false;
                 
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
+                if (newRow.querySelector('.out-category')) newRow.querySelector('.out-category').value = item.category || '';
 
                 this.outboundRows[rowId] = {
                     consumedLots: item.consumed_lots || [],
@@ -2102,7 +2118,6 @@ const app = {
             if ($('dir_actual_destination')) $('dir_actual_destination').value = first.actual_destination || '';
             if ($('dir_note')) $('dir_note').value = first.note || '';
             if ($('dir_trade_type')) $('dir_trade_type').value = first.trade_type || '내수';
-            if ($('dir_category')) $('dir_category').value = first.category || '';
             if ($('dir_shipping')) $('dir_shipping').value = first.shipping_fee || 0;
             if ($('dir_shipping_vat')) $('dir_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
@@ -2116,6 +2131,7 @@ const app = {
                 newRow.querySelector('.dir-qty').value = item.qty || 0;
                 newRow.querySelector('.dir-in-price').value = item.inbound_price !== undefined ? item.inbound_price : (item.unit_price || 0);
                 newRow.querySelector('.dir-out-price').value = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
+                if (newRow.querySelector('.dir-category')) newRow.querySelector('.dir-category').value = item.category || '';
             });
 
             const title = document.querySelector('#directModal .modal-title');

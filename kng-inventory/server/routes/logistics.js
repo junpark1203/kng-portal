@@ -346,7 +346,7 @@ router.post('/inbound', (req, res) => {
         
         try {
             for (let i of items) {
-                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || req.body.category || '', txGroupId, i.trade_type || '내수');
+                stmt.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.qty, i.unit_price, location_id, i.note || '', i.category || '', txGroupId, i.trade_type || '내수');
             }
         } catch (e) {
             hasError = true;
@@ -400,7 +400,7 @@ router.post('/outbound', (req, res) => {
                 hasError = true;
                 continue;
             }
-            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || req.body.category || '', txGroupId, i.trade_type || '내수', function(err) {
+            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txGroupId, i.trade_type || '내수', function(err) {
                 if (err) {
                     hasError = true;
                     return;
@@ -932,11 +932,11 @@ router.post('/direct', (req, res) => {
 
         for (let i of items) {
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || req.body.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
+            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || req.body.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -1164,10 +1164,10 @@ router.put('/outbound/:id', (req, res) => {
                     const outUpdateSql = `
                         UPDATE logistics_outbound 
                         SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, 
-                            qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?
+                            qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?
                         WHERE id = ?
                     `;
-                    db.run(outUpdateSql, [date, destination, req.body.actual_destination || '', item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', id], function(err4) {
+                    db.run(outUpdateSql, [date, destination, req.body.actual_destination || '', item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', trade_type || '내수', category || '', id], function(err4) {
                         if (err4) {
                             db.run("ROLLBACK");
                             return res.status(500).json({ error: err4.message });
@@ -1510,7 +1510,6 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
 
             const commonDate = date;
             const commonSupplier = supplier;
-            const commonCategory = req.body.category || (items[0] && items[0].category) || '';
 
             const updateSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, qty_remaining = ?, unit_price = ?, location_id = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
             const insertSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -1519,7 +1518,7 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
             const stmtInsert = db.prepare(insertSql);
 
             for (let i of items) {
-                const cat = i.category || commonCategory;
+                const cat = i.category || '';
                 if (i.id) {
                     const row = existingRows.find(r => r.id === parseInt(i.id));
                     if (!row) continue;
@@ -1602,7 +1601,6 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
             const commonDate = date;
             const commonDest = destination;
             const commonActualDest = actual_destination || '';
-            const commonCategory = req.body.category || (items[0] && items[0].category) || '';
 
             const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
             const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -1616,7 +1614,7 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
             const stmtInsertLots = db.prepare(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`);
 
             for (let i of items) {
-                const cat = i.category || commonCategory;
+                const cat = i.category || '';
                 if (i.id) {
                     const oId = parseInt(i.id);
                     stmtUpdate.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, oId, function(e) {
@@ -1710,7 +1708,6 @@ router.put('/direct/tx/:tx_id', (req, res) => {
             const commonSupplier = supplier;
             const commonDest = destination;
             const commonActualDest = actual_destination || '';
-            const commonCategory = req.body.category || (items[0] && items[0].category) || '';
             const txInGroupId = txId.replace('OUT', 'IN');
 
             const updateInSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
@@ -1730,7 +1727,7 @@ router.put('/direct/tx/:tx_id', (req, res) => {
             const stmtInLot = db.prepare(insertLotSql);
 
             for (let i of items) {
-                const cat = i.category || commonCategory;
+                const cat = i.category || '';
                 if (i.id) {
                     const oId = parseInt(i.id);
                     db.get(`SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, lotRow) => {

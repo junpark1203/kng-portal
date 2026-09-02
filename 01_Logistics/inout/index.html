@@ -253,24 +253,19 @@
                             <label class="form-label mb-1">입고일자</label>
                             <input type="date" class="form-control form-control-sm" id="in_date" required>
                         </div>
-                        <div class="col-4">
+                        <div class="col-6">
                             <label class="form-label mb-1">매입처</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-2">
+                        <div class="col-3">
                             <label class="form-label mb-1">구분</label>
                             <select class="form-select form-select-sm" id="in_trade_type" required>
                                 <option value="내수" selected>내수</option>
                                 <option value="수입">수입</option>
                             </select>
-                        </div>
-                        <div class="col-3 position-relative">
-                            <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm category-input" id="in_category" placeholder="분류 선택/직접입력" autocomplete="off">
-                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                         <div class="col-12">
                             <label class="form-label mb-1">재고 위치</label>
@@ -320,14 +315,14 @@
                             <label class="form-label mb-1">출고일자</label>
                             <input type="date" class="form-control form-control-sm" id="out_date" required>
                         </div>
-                        <div class="col-3">
+                        <div class="col-4">
                             <label class="form-label mb-1">매출처 (계산서 발행)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-2">
+                        <div class="col-3">
                             <label class="form-label mb-1">실출고처 (배송지)</label>
                             <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="배송지 입력" autocomplete="off">
                         </div>
@@ -337,11 +332,6 @@
                                 <option value="내수" selected>내수</option>
                                 <option value="수출">수출</option>
                             </select>
-                        </div>
-                        <div class="col-2 position-relative">
-                            <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm category-input" id="out_category" placeholder="분류 선택/입력" autocomplete="off">
-                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
 
@@ -402,25 +392,20 @@
                             <label class="form-label mb-1">거래일자</label>
                             <input type="date" class="form-control form-control-sm" id="dir_date" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label mb-1">매입처 (공급처)</label>
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
                                 <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label mb-1">구분</label>
                             <select class="form-select form-select-sm" id="dir_trade_type" required>
                                 <option value="내수" selected>내수</option>
                                 <option value="수입">수입</option>
                                 <option value="수출">수출</option>
                             </select>
-                        </div>
-                        <div class="col-md-3 position-relative">
-                            <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm category-input" id="dir_category" placeholder="분류 선택/직접입력" autocomplete="off">
-                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
                     <div class="row g-3">
