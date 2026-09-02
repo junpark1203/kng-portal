@@ -162,6 +162,7 @@ const app = {
             if (!response.ok) throw new Error('API Error');
             let res = await response.json();
             
+            const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
             if (ledgerType !== '전체') {
                 res = res.filter(row => row.type === ledgerType);
             }
