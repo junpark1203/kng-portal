@@ -236,8 +236,8 @@ const app = {
                 html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
 
                 // 빈 줄 채우기 (화면에서는 숨김, 인쇄 시에만 표시)
-                const rowsFirstPage = 16; 
-                const rowsOtherPage = 31; 
+                const rowsFirstPage = 20; 
+                const rowsOtherPage = 32; 
                 let emptyRowsCount = 0;
                 const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
                 

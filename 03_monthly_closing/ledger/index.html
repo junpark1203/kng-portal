@@ -70,23 +70,23 @@
             .table thead, .table tbody, .table tfoot, .table tr { border: none !important; }
             
             /* 테이블 본체: 상하 외곽선만 2px */
-            .table { width: 100%; border-collapse: collapse !important; font-size: 11px; margin-bottom: 5px; table-layout: fixed; border-top: 2px solid black !important; border-bottom: 2px solid black !important; }
+            .table { width: 100%; border-collapse: collapse !important; font-size: 10px !important; margin-bottom: 5px; table-layout: fixed; border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; }
             
-            /* 셀: 세로선 1px solid #ccc, 가로선 1px dotted #ccc */
-            .table th, .table td { border-left: 1px solid #ccc !important; border-right: 1px solid #ccc !important; border-bottom: 1px dotted #ccc !important; border-top: none !important; padding: 5px 3px !important; text-align: center !important; height: 26px; line-height: 1.2 !important; }
+            /* 셀: 세로선 1px solid #bbb, 가로선 1px solid #e0e0e0, 한 줄 강제(nowrap) */
+            .table th, .table td { border-left: 1px solid #bbb !important; border-right: 1px solid #bbb !important; border-bottom: 1px solid #e0e0e0 !important; border-top: none !important; padding: 4px 2px !important; text-align: center !important; height: 25px; line-height: 1.1 !important; white-space: nowrap !important; }
             .table th:first-child, .table td:first-child { border-left: none !important; }
             .table th:last-child, .table td:last-child { border-right: none !important; }
             
             /* 헤더: 하단 실선, 중앙 정렬 강제 */
-            .table th { border-bottom: 1px solid black !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; text-align: center !important; }
+            .table th { border-bottom: 1px solid #000 !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; color: black; text-align: center !important; font-size: 10.5px !important; }
             
-            /* 데이터 정렬 (헤더는 모두 center, 데이터는 컬럼별) */
-            .table td.text-end { text-align: right !important; }
-            .table td.text-start, .table td.wrap-cell { text-align: left !important; padding-left: 4px !important; }
-            .table td.text-center { text-align: center !important; }
+            /* 데이터 정렬 및 자간 (헤더는 모두 center, 데이터는 컬럼별) */
+            .table td.text-end { text-align: right !important; letter-spacing: -0.5px !important; padding-right: 4px !important; }
+            .table td.text-start, .table td.wrap-cell { text-align: left !important; padding-left: 4px !important; white-space: normal !important; word-break: break-word !important; }
+            .table td.text-center { text-align: center !important; letter-spacing: -0.3px !important; }
             
             /* 합계행 */
-            .table tr.total-row td { border-top: 2px solid black !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 12px; padding: 6px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .table tr.total-row td { border-top: 2px solid #000 !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold; font-size: 11px !important; padding: 5px 3px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .table tr.empty-marker td { text-align: center !important; letter-spacing: 2px; color: #555; }
         }
     </style>
@@ -212,14 +212,14 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
-                                <th class="text-center" style="width: 7%;">일자</th>
-                                <th class="text-center" style="width: 25%;">품목명</th>
-                                <th class="text-center" style="width: 12%;">규격</th>
+                                <th class="text-center" style="width: 8%;">일자</th>
+                                <th class="text-center" style="width: 24%;">품목명</th>
+                                <th class="text-center" style="width: 10%;">규격</th>
                                 <th class="text-center" style="width: 7%;">수량</th>
-                                <th class="text-center" style="width: 7%;">단위</th>
-                                <th class="text-center" style="width: 9%;">단가</th>
-                                <th class="text-center" style="width: 11%;">공급가액</th>
-                                <th class="text-center" style="width: 10%;">부가세</th>
+                                <th class="text-center" style="width: 6%;">단위</th>
+                                <th class="text-center" style="width: 10%;">단가</th>
+                                <th class="text-center" style="width: 12%;">공급가액</th>
+                                <th class="text-center" style="width: 11%;">부가세</th>
                                 <th class="text-center" style="width: 12%;">비고</th>
                             </tr>
                         </thead>
