@@ -742,15 +742,17 @@ const app = {
             return `
             <tr>
                 <td>${index + 1}</td>
+                <td>출고</td>
                 <td>${r.date ? r.date.split('T')[0] : ''}</td>
-                <td>${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
                 <td>${r.destination || ''}</td>
                 <td>${itemHtml}</td>
+                <td>${r.spec || ''} ${r.unit ? '/ ' + r.unit : ''}</td>
                 <td class="text-right">${qty.toLocaleString()}</td>
                 <td class="text-right">${Number(price).toLocaleString()}</td>
                 <td class="text-right">${Number(total).toLocaleString()}</td>
                 <td class="text-right">${Number(vat).toLocaleString()}</td>
                 <td class="text-right fw-bold">${Number(grand).toLocaleString()}</td>
+                <td>${r.memo || ''}</td>
             </tr>
             `;
         }).join('');
@@ -768,8 +770,8 @@ const app = {
                     </tr>
                     <tr>
                         <th style="width:40px;">No.</th>
+                        <th>구분</th>
                         <th>발생일자</th>
-                        <th>정산일자</th>
                         <th>거래처</th>
                         <th>품명</th>
                         <th>규격/단위</th>
@@ -778,6 +780,7 @@ const app = {
                         <th>공급가액</th>
                         <th>부가세</th>
                         <th>합계금액</th>
+                        <th>비고</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -785,13 +788,13 @@ const app = {
                 </tbody>
                 <tbody style="border-top: 2px solid #000;">
                     <tr>
-                        <td colspan="5" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
+                        <td colspan="6" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
                         <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 공급가액</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()} 원</td>
+                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()}</td>
                         <td style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 부가세</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumVat).toLocaleString()} 원</td>
+                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumVat).toLocaleString()}</td>
                         <td style="background-color:#e9ecef; font-weight:bold; border: 2px solid #000; text-align:center; font-size:14px; padding:10px;">총 합계금액</td>
-                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumGrand).toLocaleString()} 원</td>
+                        <td class="text-right" style="font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumGrand).toLocaleString()}</td>
                     </tr>
                 </tbody>
                 <tfoot>
