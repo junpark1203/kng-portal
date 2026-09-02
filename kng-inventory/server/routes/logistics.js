@@ -296,14 +296,27 @@ router.put('/bulk-update', (req, res) => {
 
 // --- Categories API ---
 router.get('/categories', (req, res) => {
+    const defaults = [
+        '유압유', '기어유', '그리스', '테일씰그리스', '절삭유', '작동유', 
+        '방청유', '엔진오일', '열매체유', '콤프레샤유', '세척유', '방전유', 
+        '안전용품', '기타'
+    ];
     const sql = `
         SELECT DISTINCT category FROM logistics_inbound WHERE category IS NOT NULL AND category != ''
         UNION
         SELECT DISTINCT category FROM logistics_outbound WHERE category IS NOT NULL AND category != ''
+        UNION
+        SELECT DISTINCT category FROM unit_prices_v2 WHERE category IS NOT NULL AND category != ''
+        UNION
+        SELECT DISTINCT category FROM supply_history WHERE category IS NOT NULL AND category != '' AND category != '미분류'
+        UNION
+        SELECT DISTINCT category FROM oil_supply_history WHERE category IS NOT NULL AND category != ''
     `;
     db.all(sql, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows.map(r => r.category).filter(c => c));
+        const dbCats = (rows || []).map(r => r.category).filter(c => c && c.trim());
+        const set = new Set([...defaults, ...dbCats]);
+        const result = Array.from(set).filter(c => c && c.trim());
+        res.json(result);
     });
 });
 

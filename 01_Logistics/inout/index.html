@@ -11,9 +11,9 @@
     <style>
         .lot-qty-input { width: 80px; text-align: right; }
         
-        .autocomplete-suggestions { border: 1px solid #ced4da; max-height: 200px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1060; background: #fff; width: 100%; border-radius: 0 0 4px 4px; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .autocomplete-suggestion { padding: 8px; cursor: pointer; }
-        .autocomplete-suggestion:hover { background-color: #f1f1f1; }
+        .autocomplete-suggestions { border: 1px solid #cbd5e1; max-height: 220px; overflow-y: auto; position: absolute; top: 100%; left: 0; z-index: 1090; background: #ffffff; width: 100%; border-radius: 6px; display: none; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
+        .autocomplete-suggestion { padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease; }
+        .autocomplete-suggestion:hover { background-color: #f1f5f9; color: #0284c7; font-weight: 600; }
         
         input.form-control[readonly], input.form-control[disabled] {
             background-color: #e9ecef !important;
@@ -209,9 +209,10 @@
                         </div>
                     </div>
                     
-                    <div class="mb-3">
+                    <div class="mb-3 position-relative">
                         <label class="form-label fw-bold">분류 (카테고리)</label>
-                        <input type="text" class="form-control form-control-sm" id="bulkCategory" list="categoryDatalist" placeholder="새 분류 선택 또는 직접 입력" autocomplete="off">
+                        <input type="text" class="form-control form-control-sm category-input" id="bulkCategory" placeholder="새 분류 선택 또는 직접 입력" autocomplete="off">
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                 </form>
             </div>
@@ -258,9 +259,10 @@
                                 <option value="수입">수입</option>
                             </select>
                         </div>
-                        <div class="col-3">
+                        <div class="col-3 position-relative">
                             <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm" id="in_category" list="categoryDatalist" placeholder="분류 선택/입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm category-input" id="in_category" placeholder="분류 선택/직접입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                         <div class="col-12">
                             <label class="form-label mb-1">재고 위치</label>
@@ -328,9 +330,10 @@
                                 <option value="수출">수출</option>
                             </select>
                         </div>
-                        <div class="col-2">
+                        <div class="col-2 position-relative">
                             <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm" id="out_category" list="categoryDatalist" placeholder="분류 선택/입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm category-input" id="out_category" placeholder="분류 선택/입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
 
@@ -406,9 +409,10 @@
                                 <option value="수출">수출</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3 position-relative">
                             <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm" id="dir_category" list="categoryDatalist" placeholder="분류 선택/직접입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm category-input" id="dir_category" placeholder="분류 선택/직접입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
                     <div class="row g-3">
@@ -684,9 +688,10 @@
                                 <option value="수입">수입</option>
                             </select>
                         </div>
-                        <div class="col-3">
+                        <div class="col-3 position-relative">
                             <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm" id="edit_in_category" list="categoryDatalist" placeholder="분류 선택/입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm category-input" id="edit_in_category" placeholder="분류 선택/입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
                     <div class="mb-2">
@@ -768,9 +773,10 @@
                                 <option value="수출">수출</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-2 position-relative">
                             <label class="form-label text-muted small mb-1">분류</label>
-                            <input type="text" class="form-control" id="edit_direct_category" list="categoryDatalist" placeholder="분류 선택/입력" autocomplete="off">
+                            <input type="text" class="form-control category-input" id="edit_direct_category" placeholder="분류 선택/입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                         
                         <div class="col-md-5">
@@ -856,9 +862,10 @@
                                 <option value="수출">수출</option>
                             </select>
                         </div>
-                        <div class="col-3">
+                        <div class="col-3 position-relative">
                             <label class="form-label mb-1">분류</label>
-                            <input type="text" class="form-control form-control-sm" id="edit_out_category" list="categoryDatalist" placeholder="분류 선택/입력" autocomplete="off">
+                            <input type="text" class="form-control form-control-sm category-input" id="edit_out_category" placeholder="분류 선택/입력" autocomplete="off">
+                            <div class="autocomplete-suggestions" style="display:none;"></div>
                         </div>
                     </div>
                     

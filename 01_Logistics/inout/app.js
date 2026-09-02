@@ -73,17 +73,20 @@ const app = {
     },
 
     
+    categoryList: [],
+
     async loadCategories() {
         try {
             const res = await authFetch(`${API_BASE}/categories`);
+            this.categoryList = Array.isArray(res) ? res : [];
             const datalist = $('categoryDatalist');
             const pillsContainer = $('categoryPillsContainer');
             
             if (datalist) {
-                datalist.innerHTML = res.map(c => `<option value="${c}"></option>`).join('');
+                datalist.innerHTML = this.categoryList.map(c => `<option value="${c}"></option>`).join('');
             }
             if (pillsContainer) {
-                const pillsHtml = res.map(c => 
+                const pillsHtml = this.categoryList.map(c => 
                     `<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="app.filterByCategory('${c}')">${c}</button>`
                 ).join('');
                 pillsContainer.innerHTML = `
@@ -91,10 +94,83 @@ const app = {
                     ${pillsHtml}
                 `;
             }
+            this.setupCategoryAutocomplete();
         } catch (err) {
             console.error('Failed to load categories', err);
         }
     },
+
+    setupCategoryAutocomplete() {
+        const inputs = document.querySelectorAll('.category-input, #in_category, #out_category, #dir_category, #bulkCategory, #edit_in_category, #edit_out_category, #edit_direct_category');
+        
+        inputs.forEach(input => {
+            if (input.dataset.autocompleteAttached) return;
+            input.dataset.autocompleteAttached = 'true';
+
+            const container = input.parentElement;
+            let sug = container.querySelector('.autocomplete-suggestions');
+            if (!sug) {
+                sug = document.createElement('div');
+                sug.className = 'autocomplete-suggestions';
+                sug.style.display = 'none';
+                container.appendChild(sug);
+            }
+
+            const renderSuggestions = (query) => {
+                const q = (query || '').trim().toLowerCase();
+                const list = this.categoryList && this.categoryList.length > 0 
+                    ? this.categoryList 
+                    : ['유압유', '기어유', '그리스', '테일씰그리스', '절삭유', '작동유', '방청유', '엔진오일', '열매체유', '콤프레샤유', '세척유', '방전유', '안전용품', '기타'];
+                
+                const filtered = q ? list.filter(c => c.toLowerCase().includes(q)) : list;
+                if (filtered.length === 0) {
+                    sug.style.display = 'none';
+                    return;
+                }
+                sug.innerHTML = filtered.map(c => {
+                    return `<div class="autocomplete-suggestion" style="padding: 7px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9;"><i class='bx bx-purchase-tag-alt text-primary me-1' style='font-size: 0.85rem;'></i>${c}</div>`;
+                }).join('');
+                sug.style.display = 'block';
+
+                sug.querySelectorAll('.autocomplete-suggestion').forEach(itemDiv => {
+                    itemDiv.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        input.value = itemDiv.textContent.trim();
+                        sug.style.display = 'none';
+                        input.dispatchEvent(new Event('change'));
+                    });
+                });
+            };
+
+            input.addEventListener('focus', () => {
+                renderSuggestions(input.value);
+            });
+
+            input.addEventListener('click', () => {
+                renderSuggestions(input.value);
+            });
+
+            input.addEventListener('input', (e) => {
+                renderSuggestions(e.target.value);
+            });
+
+            input.addEventListener('blur', () => {
+                setTimeout(() => { sug.style.display = 'none'; }, 200);
+            });
+        });
+
+        if (!this._globalCategoryClickListener) {
+            this._globalCategoryClickListener = true;
+            document.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('category-input') && !e.target.closest('.autocomplete-suggestions')) {
+                    document.querySelectorAll('.category-input + .autocomplete-suggestions, .position-relative > .autocomplete-suggestions').forEach(s => {
+                        s.style.display = 'none';
+                    });
+                }
+            });
+        }
+    },
+
     filterByCategory(cat) {
         this.detailedFilters.category = cat;
         this.resetPageAndLoadHistory();
