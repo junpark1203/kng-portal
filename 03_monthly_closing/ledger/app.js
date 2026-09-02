@@ -209,7 +209,7 @@ const app = {
                     sumVat += vat;
                     sumGrand += grand;
                     
-                    const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1">직출고</span>' : '';
+                    const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1 d-print-none">직출고</span>' : '';
                     const siteBadge = aggregateByBizNum && row.site_name 
                         ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
                         : '';
