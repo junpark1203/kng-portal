@@ -517,7 +517,7 @@ const app = {
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
                 <td class="d-print-none text-muted small user-select-none text-nowrap">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}"></i>
-                    <span class="font-monospace">${r.transaction_group_id || ''}</span>
+                    <span>${r.transaction_group_id || ''}</span>
                 </td>
                 <td class="text-center">${badge}</td>
                 <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
@@ -833,7 +833,7 @@ const app = {
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:0.88rem;">
                         ${badgeHtml}
-                        <span class="badge bg-secondary font-monospace">${data.transaction_group_id || '-'}</span>
+                        <span class="badge bg-secondary">${data.transaction_group_id || '-'}</span>
                         <span class="text-muted"><i class='bx bx-calendar'></i> <strong>${data.date.split('T')[0]}</strong></span>
                         <span class="text-muted">|</span>
                         ${partnerSummary}
