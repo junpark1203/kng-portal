@@ -136,7 +136,34 @@ function initLogisticsTables(database) {
                 database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_lots_outbound ON logistics_outbound_lots(outbound_id)`);
                 database.run(`CREATE INDEX IF NOT EXISTS idx_outbound_lots_inbound ON logistics_outbound_lots(inbound_id)`, (err2) => {
                     if (err2) reject(err2);
-                    else resolve();
+                    else {
+                        // 미부여된 고유번호(transaction_group_id) 자동 백필
+                        database.all(`SELECT id, date FROM logistics_inbound WHERE transaction_group_id IS NULL OR transaction_group_id = '' ORDER BY date ASC, id ASC`, [], (errIn, inRows) => {
+                            if (!errIn && inRows && inRows.length > 0) {
+                                const inStmt = database.prepare(`UPDATE logistics_inbound SET transaction_group_id = ? WHERE id = ?`);
+                                inRows.forEach((r, idx) => {
+                                    const dateStr = (r.date || '').substring(0, 10).replace(/-/g, '') || '20260101';
+                                    const txId = `IN-${dateStr}-${String(idx + 1).padStart(4, '0')}`;
+                                    inStmt.run(txId, r.id);
+                                });
+                                inStmt.finalize();
+                            }
+                        });
+
+                        database.all(`SELECT id, date FROM logistics_outbound WHERE transaction_group_id IS NULL OR transaction_group_id = '' ORDER BY date ASC, id ASC`, [], (errOut, outRows) => {
+                            if (!errOut && outRows && outRows.length > 0) {
+                                const outStmt = database.prepare(`UPDATE logistics_outbound SET transaction_group_id = ? WHERE id = ?`);
+                                outRows.forEach((r, idx) => {
+                                    const dateStr = (r.date || '').substring(0, 10).replace(/-/g, '') || '20260101';
+                                    const txId = `OUT-${dateStr}-${String(idx + 1).padStart(4, '0')}`;
+                                    outStmt.run(txId, r.id);
+                                });
+                                outStmt.finalize();
+                            }
+                        });
+
+                        resolve();
+                    }
                 });
             });
         });
@@ -683,7 +710,8 @@ router.get('/direct/template', async (req, res) => {
             { header: '매출단가', key: 'out_price', width: 15 },
             { header: '운반비 (매출)', key: 'shipping_fee', width: 15 },
             { header: '운반비 부가세포함(Y/N)', key: 'shipping_vat', width: 15 },
-            { header: '비고', key: 'note', width: 25 }
+            { header: '비고', key: 'note', width: 25 },
+            { header: '구분(내수/수출)', key: 'trade_type', width: 15 }
         ];
 
         // Header style
@@ -748,13 +776,14 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             const shipping_vat_raw = getVal(13).toUpperCase();
             const shipping_vat = (shipping_vat_raw === 'Y' || shipping_vat_raw === '1' || shipping_vat_raw === 'TRUE') ? 1 : 0;
             const note = getVal(14);
+            const trade_type = getVal(15) || '내수';
 
             if (!date || !supplier || !destination || !item || qty === 0 || in_price < 0) {
                 return; // Skip invalid rows
             }
 
             rows.push({
-                date, supplier, destination, actual_destination, category, item, spec, unit, qty, in_price, out_price, shipping_fee, shipping_vat, note
+                date, supplier, destination, actual_destination, category, item, spec, unit, qty, in_price, out_price, shipping_fee, shipping_vat, note, trade_type
             });
         });
 
@@ -791,20 +820,20 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         }
         // ------------------------
 
-        // Group rows by date + supplier + destination + category
+        // Group rows by date + supplier + destination + actual_destination + shipping_fee + shipping_vat + note + trade_type
         const grouped = {};
         for (const r of rows) {
-            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.shipping_fee}|${r.shipping_vat}|${r.note}|${r.category}`;
+            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.shipping_fee}|${r.shipping_vat}|${r.note}|${r.trade_type}`;
             if (!grouped[key]) {
                 grouped[key] = {
                     date: r.date,
                     supplier: r.supplier,
                     destination: r.destination,
                     actual_destination: r.actual_destination,
-                    category: r.category,
                     shipping_fee: r.shipping_fee,
                     shipping_fee_vat_included: r.shipping_vat,
                     note: r.note,
+                    trade_type: r.trade_type || '내수',
                     items: []
                 };
             }
@@ -813,6 +842,7 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 spec: r.spec,
                 unit: r.unit,
                 qty: r.qty,
+                category: r.category,
                 in_price: r.in_price,
                 out_price: r.out_price
             });
@@ -821,7 +851,15 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         const groups = Object.values(grouped);
 
         // Process each group inside a transaction sequentially
+        let groupSeq = 0;
         for (const g of groups) {
+            groupSeq++;
+            const dateStr = (g.date || '').substring(0, 10).replace(/-/g, '');
+            const timeStr = Date.now().toString().slice(-4);
+            const randSuffix = String(groupSeq).padStart(3, '0') + Math.floor(10 + Math.random() * 90);
+            const txInGroupId = `IN-${dateStr}-${timeStr}${randSuffix}`;
+            const txOutGroupId = `OUT-${dateStr}-${timeStr}${randSuffix}`;
+
             await new Promise((resolve, reject) => {
                 db.serialize(() => {
                     db.run("BEGIN TRANSACTION");
@@ -840,9 +878,9 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                         const currentItem = g.items[idx];
                         // 1. Insert Inbound
                         db.run(`
-                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?)
-                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, g.note, g.category], function(err) {
+                            INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, location_id, note, is_direct, category, transaction_group_id, trade_type)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 1, ?, ?, ?)
+                        `, [g.date, g.supplier, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, 0, currentItem.in_price, g.note, currentItem.category || '', txInGroupId, g.trade_type || '내수'], function(err) {
                             if (err) {
                                 hasError = true;
                                 db.run("ROLLBACK");
@@ -856,9 +894,9 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                             const itemShippingVat = idx === 0 ? g.shipping_fee_vat_included : 0;
 
                             db.run(`
-                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                            `, [g.date, g.destination, g.actual_destination, currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemShipping, itemShippingVat, g.note, g.category], function(err) {
+                                INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
+                            `, [g.date, g.destination, g.actual_destination || '', currentItem.item, currentItem.spec, currentItem.unit, currentItem.qty, currentItem.out_price, itemShipping, itemShippingVat, g.note, currentItem.category || '', txOutGroupId, g.trade_type || '내수'], function(err) {
                                 if (err) {
                                     hasError = true;
                                     db.run("ROLLBACK");
