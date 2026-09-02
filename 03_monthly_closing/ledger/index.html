@@ -66,20 +66,64 @@
             .table-responsive { box-shadow: none !important; overflow: visible !important; }
             thead.sticky-top, thead { position: static !important; }
             
-            /* 부트스트랩 border 완전 리셋 */
-            .table, .table > :not(caption) > * > * { border: none !important; }
+            /* 부트스트랩 CSS 변수 및 그림자 완전 무력화 */
+            .table, .table *, .table > :not(caption) > * > * {
+                box-shadow: none !important;
+                border: none !important;
+                --bs-table-bg: transparent !important;
+                --bs-table-accent-bg: transparent !important;
+                --bs-table-striped-bg: transparent !important;
+                --bs-table-hover-bg: transparent !important;
+                --bs-table-border-color: transparent !important;
+            }
             .table thead, .table tbody, .table tfoot, .table tr { border: none !important; }
             
             /* 테이블 본체: 상하 외곽선만 2px 실선 */
-            .table { width: 100%; border-collapse: collapse !important; font-size: 11px !important; margin-bottom: 5px; table-layout: fixed; border-top: 2px solid #000 !important; border-bottom: 2px solid #000 !important; }
+            .table {
+                width: 100%;
+                border-collapse: collapse !important;
+                font-size: 11px !important;
+                margin-bottom: 5px;
+                table-layout: fixed;
+                border-top: 2px solid #000 !important;
+                border-bottom: 2px solid #000 !important;
+            }
             
-            /* 셀: 단방향 세로선(border-right 0.75px solid #999), 가로선(0.75px dotted #999), 한 줄 강제(nowrap), 높이 24px */
-            .table th, .table td { border-left: none !important; border-top: none !important; border-right: 0.75px solid #999 !important; border-bottom: 0.75px dotted #999 !important; padding: 2px 2px !important; text-align: center !important; vertical-align: middle !important; height: 24px !important; line-height: 1.1 !important; white-space: nowrap !important; font-size: 11px !important; }
-            .table th:last-child, .table td:last-child { border-right: none !important; }
+            /* 셀: 단방향 세로선(border-right 1px solid #ccc), 가로선(1px dotted #aaa), 한 줄 강제(nowrap), 높이 24px */
+            .table th, .table td {
+                border-left: none !important;
+                border-top: none !important;
+                border-right: 1px solid #ccc !important;
+                border-bottom: 1px dotted #aaa !important;
+                padding: 2px 2px !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                height: 24px !important;
+                line-height: 1.1 !important;
+                white-space: nowrap !important;
+                font-size: 11px !important;
+                box-shadow: none !important;
+            }
+            .table th:last-child, .table td:last-child {
+                border-right: none !important;
+            }
             
-            /* 헤더: 하단 1.5px 검정 실선, 세로선 0.75px solid #999, 중앙 정렬, 볼드체 */
-            .table th { border-bottom: 1.5px solid #000 !important; border-right: 0.75px solid #999 !important; background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold !important; color: black; text-align: center !important; vertical-align: middle !important; font-size: 11px !important; }
-            .table th:last-child { border-right: none !important; }
+            /* 헤더: 하단 1.5px 검정 실선, 세로선 1px solid #ccc, 중앙 정렬, 볼드체 */
+            .table th {
+                border-bottom: 1.5px solid #000 !important;
+                border-right: 1px solid #ccc !important;
+                background-color: #f9f9f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-weight: bold !important;
+                color: black;
+                text-align: center !important;
+                vertical-align: middle !important;
+                font-size: 11px !important;
+            }
+            .table th:last-child {
+                border-right: none !important;
+            }
             
             /* 데이터 정렬 및 자간 (헤더는 볼드, 데이터는 보통) */
             .table td { font-weight: normal !important; }
@@ -88,8 +132,23 @@
             .table td.text-center { text-align: center !important; vertical-align: middle !important; letter-spacing: -0.3px !important; }
             
             /* 합계행 */
-            .table tr.total-row td { border-top: 2px solid #000 !important; border-bottom: none !important; background-color: #f9f9f9 !important; font-weight: bold !important; font-size: 11px !important; padding: 4px 3px !important; vertical-align: middle !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .table tr.empty-marker td { text-align: center !important; vertical-align: middle !important; letter-spacing: 2px; color: #555; }
+            .table tr.total-row td {
+                border-top: 2px solid #000 !important;
+                border-bottom: none !important;
+                background-color: #f9f9f9 !important;
+                font-weight: bold !important;
+                font-size: 11px !important;
+                padding: 4px 3px !important;
+                vertical-align: middle !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .table tr.empty-marker td {
+                text-align: center !important;
+                vertical-align: middle !important;
+                letter-spacing: 2px;
+                color: #555;
+            }
         }
     </style>
 </head>
