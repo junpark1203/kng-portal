@@ -215,6 +215,10 @@ const app = {
             $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
 
             const res = await window.authFetch(url.toString());
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `서버 응답 오류 (${res.status})`);
+            }
             const result = await res.json();
             
             this.items = result.data || [];
@@ -233,7 +237,7 @@ const app = {
             
         } catch (err) {
             console.error('Purchase data load error:', err);
-            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">데이터 로드에 실패했습니다.</td></tr>`;
+            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">데이터 로드에 실패했습니다. (${err.message || '네트워크/서버 오류'})</td></tr>`;
         }
     },
 
@@ -334,6 +338,7 @@ const app = {
         const misc = b.misc || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
         const etc = b.etc || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
         const mall = b.mall || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const unclass = b.unclassified || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
         const safeTotalCount = (safeGen.count || 0) + (safeEnv.count || 0);
         const safeTotalSupply = (safeGen.supplyAmt || 0) + (safeEnv.supplyAmt || 0);
 
