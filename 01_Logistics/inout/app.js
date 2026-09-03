@@ -456,7 +456,7 @@ const app = {
             const btn = $(`btnPreset_${p}`);
             if (btn) {
                 if (p === activePreset) {
-                    btn.className = 'btn btn-sm btn-primary text-white fw-bold text-nowrap';
+                    btn.className = 'btn btn-sm btn-primary active text-white fw-bold text-nowrap';
                 } else {
                     btn.className = 'btn btn-sm btn-outline-secondary text-nowrap';
                 }
@@ -464,9 +464,50 @@ const app = {
         });
     },
 
+    detectDatePreset: function(start, end) {
+        if (!start && !end) return 'all';
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const pad = n => String(n).padStart(2, '0');
+
+        // 당월
+        const thisMonthLastDay = new Date(year, month, 0).getDate();
+        if (start === `${year}-${pad(month)}-01` && end === `${year}-${pad(month)}-${pad(thisMonthLastDay)}`) {
+            return 'thisMonth';
+        }
+
+        // 전월
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear -= 1;
+        }
+        const prevMonthLastDay = new Date(prevYear, prevMonth, 0).getDate();
+        if (start === `${prevYear}-${pad(prevMonth)}-01` && end === `${prevYear}-${pad(prevMonth)}-${pad(prevMonthLastDay)}`) {
+            return 'prevMonth';
+        }
+
+        // 금년도
+        if (start === `${year}-01-01` && end === `${year}-12-31`) {
+            return 'thisYear';
+        }
+
+        // 전년도
+        if (start === `${year - 1}-01-01` && end === `${year - 1}-12-31`) {
+            return 'prevYear';
+        }
+
+        return '';
+    },
+
     onDateInputChange: function() {
-        this.currentDatePreset = '';
-        this.updatePresetButtons('');
+        const start = $('searchStartDate') ? $('searchStartDate').value : '';
+        const end = $('searchEndDate') ? $('searchEndDate').value : '';
+        const detected = this.detectDatePreset(start, end);
+        this.currentDatePreset = detected;
+        this.updatePresetButtons(detected);
         this.resetPageAndLoadHistory();
     },
 

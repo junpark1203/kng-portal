@@ -404,3 +404,47 @@ h4 {
 .segmented-control .btn-check + label:hover:not(.active) {
     color: #334155;
 }
+
+/* ========================================================
+   ERP Filter Toolbar & Active Button Enhancements
+   ======================================================== */
+.btn-group-sm .btn,
+.erp-preset-btn {
+    font-size: 0.82rem !important;
+    padding: 0.28rem 0.65rem !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
+    background-color: #ffffff !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease-in-out !important;
+}
+
+.btn-group-sm .btn:hover,
+.erp-preset-btn:hover {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+}
+
+/* 활성화된 버튼 강조 스타일 (날짜 프리셋, 활성 탭 등) */
+.btn-group-sm .btn.active,
+.btn-group-sm .btn.btn-primary,
+.erp-preset-btn.active,
+.btn-group-sm .btn-check:checked + label {
+    background-color: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3) !important;
+    z-index: 2;
+}
+
+/* 매출/출고 전용 붉은색 선택 하이라이트 */
+.btn-group-sm .btn-check#typeOut:checked + label,
+.btn-group-sm .btn-check#btnFilterOut:checked + label {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 5px rgba(220, 38, 38, 0.3) !important;
+}
+

@@ -16,7 +16,32 @@
     <link rel="stylesheet" href="../../styles.css?v=3">
     <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=3">
     <style>
-        .segmented-control .btn-check:checked + label { background-color: #0d6efd; color: #fff; border-color: #0d6efd; z-index: 2; }
+        /* 상단 활성 버튼 강조 스타일 */
+        #datePresetGroup .btn.active,
+        #datePresetGroup .btn.btn-primary,
+        .erp-preset-btn.active {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25) !important;
+            z-index: 2;
+        }
+
+        #ledgerTypeFilters .btn-check:checked + label {
+            background-color: #2563eb !important;
+            border-color: #2563eb !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25) !important;
+            z-index: 2;
+        }
+        #ledgerTypeFilters #typeOut:checked + label {
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
+            color: #ffffff !important;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.25) !important;
+        }
         
         .direct-row { background-color: #fefce8 !important; }
         
