@@ -514,36 +514,46 @@ router.get('/history', (req, res) => {
         params.push(category);
     }
     
-    if (searchTarget && searchKeyword) {
-        const kw = `%${searchKeyword.trim()}%`;
-        switch(searchTarget) {
-            case 'supplier':
-                whereClauses.push("supplier LIKE ?"); params.push(kw); break;
-            case 'destination':
-                whereClauses.push("destination LIKE ?"); params.push(kw); break;
-            case 'item':
-                whereClauses.push("item LIKE ?"); params.push(kw); break;
-            case 'spec':
-                whereClauses.push("spec LIKE ?"); params.push(kw); break;
-            case 'note':
-                whereClauses.push("note LIKE ?"); params.push(kw); break;
-            case 'category':
-                whereClauses.push("category LIKE ?"); params.push(kw); break;
-            default:
-                whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ?)");
-                params.push(kw, kw, kw, kw, kw, kw);
-                break;
-        }
-    }
-
-
-    // General search (from the main search bar) (Kept for compatibility if used)
-    const searchTerms = search.trim().split(/\s+/).filter(Boolean);
-    if (searchTerms.length > 0) {
-        searchTerms.forEach(term => {
-            whereClauses.push(`(date LIKE ? OR supplier LIKE ? OR destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ?)`);
-            const likeTerm = `%${term}%`;
-            params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
+    // Smart Multi-token AND Search (현대적 스마트 교집합 검색)
+    const rawSearch = (searchKeyword || search || '').trim();
+    if (rawSearch) {
+        const tokens = rawSearch.split(/\s+/).filter(Boolean);
+        tokens.forEach(token => {
+            const kw = `%${token}%`;
+            switch(searchTarget) {
+                case 'supplier':
+                    whereClauses.push("supplier LIKE ?");
+                    params.push(kw);
+                    break;
+                case 'destination':
+                    whereClauses.push("(destination LIKE ? OR actual_destination LIKE ?)");
+                    params.push(kw, kw);
+                    break;
+                case 'item':
+                    whereClauses.push("item LIKE ?");
+                    params.push(kw);
+                    break;
+                case 'spec':
+                    whereClauses.push("spec LIKE ?");
+                    params.push(kw);
+                    break;
+                case 'note':
+                    whereClauses.push("note LIKE ?");
+                    params.push(kw);
+                    break;
+                case 'category':
+                    whereClauses.push("category LIKE ?");
+                    params.push(kw);
+                    break;
+                case 'tx_id':
+                    whereClauses.push("transaction_group_id LIKE ?");
+                    params.push(kw);
+                    break;
+                default:
+                    whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR actual_destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ? OR transaction_group_id LIKE ?)");
+                    params.push(kw, kw, kw, kw, kw, kw, kw, kw);
+                    break;
+            }
         });
     }
 
@@ -587,16 +597,39 @@ router.get('/history', (req, res) => {
         ${whereStr}
     `;
 
-    const countSql = `SELECT COUNT(*) as total FROM (${baseSql})`;
+    // 조건별 실시간 집계 요약 쿼리 (공급가, 부가세, 합계, 총수량 등)
+    const summarySql = `
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(qty), 0) as total_qty,
+            COALESCE(SUM(CASE WHEN inbound_total IS NOT NULL THEN inbound_total ELSE 0 END), 0) as inbound_supply_amt,
+            COALESCE(SUM(CASE WHEN inbound_total IS NOT NULL AND is_zero_tax = 0 THEN ROUND(inbound_total * 0.1) ELSE 0 END), 0) as inbound_vat,
+            COALESCE(SUM(CASE WHEN outbound_total IS NOT NULL THEN outbound_total ELSE 0 END), 0) as outbound_supply_amt,
+            COALESCE(SUM(CASE WHEN outbound_total IS NOT NULL AND is_zero_tax = 0 THEN ROUND(outbound_total * 0.1) ELSE 0 END), 0) as outbound_vat,
+            COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as inbound_count,
+            COALESCE(SUM(CASE WHEN type = 'outbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as outbound_count,
+            COALESCE(SUM(CASE WHEN is_direct = 1 THEN 1 ELSE 0 END), 0) as direct_count
+        FROM (${baseSql})
+    `;
+
     const dataSql = `
         ${baseSql}
         ORDER BY ${safeSortCol} ${safeSortDir}, created_at DESC
         LIMIT ? OFFSET ?
     `;
 
-    db.get(countSql, params, (err, row) => {
+    db.get(summarySql, params, (err, summaryRow) => {
         if (err) return res.status(500).json({ error: err.message });
-        const total = row.total;
+        const total = summaryRow ? (summaryRow.total || 0) : 0;
+        const totalQty = summaryRow ? (summaryRow.total_qty || 0) : 0;
+
+        const inboundSupply = summaryRow ? (summaryRow.inbound_supply_amt || 0) : 0;
+        const inboundVat = summaryRow ? (summaryRow.inbound_vat || 0) : 0;
+        const inboundTotal = inboundSupply + inboundVat;
+
+        const outboundSupply = summaryRow ? (summaryRow.outbound_supply_amt || 0) : 0;
+        const outboundVat = summaryRow ? (summaryRow.outbound_vat || 0) : 0;
+        const outboundTotal = outboundSupply + outboundVat;
 
         db.all(dataSql, [...params, limit, offset], (err2, rows) => {
             if (err2) return res.status(500).json({ error: err2.message });
@@ -604,7 +637,24 @@ router.get('/history', (req, res) => {
                 data: rows,
                 total,
                 page,
-                limit
+                limit,
+                summary: {
+                    totalCount: total,
+                    totalQty: totalQty,
+                    inboundCount: summaryRow ? summaryRow.inbound_count : 0,
+                    outboundCount: summaryRow ? summaryRow.outbound_count : 0,
+                    directCount: summaryRow ? summaryRow.direct_count : 0,
+                    inbound: {
+                        supplyAmt: inboundSupply,
+                        vat: inboundVat,
+                        totalAmt: inboundTotal
+                    },
+                    outbound: {
+                        supplyAmt: outboundSupply,
+                        vat: outboundVat,
+                        totalAmt: outboundTotal
+                    }
+                }
             });
         });
     });

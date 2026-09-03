@@ -130,25 +130,51 @@
                         </div>
                         
                         <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일" style="width: 130px; min-width: 120px; flex-shrink: 0;">
+                            <!-- 날짜 퀵 프리셋 버튼 그룹 -->
+                            <div class="btn-group btn-group-sm" role="group" id="datePresetGroup">
+                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevMonth" onclick="app.setDatePreset('prevMonth')">전월</button>
+                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisMonth" onclick="app.setDatePreset('thisMonth')">당월</button>
+                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevYear" onclick="app.setDatePreset('prevYear')">전년도</button>
+                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisYear" onclick="app.setDatePreset('thisYear')">금년도</button>
+                                <button type="button" class="btn btn-primary text-white fw-bold text-nowrap" id="btnPreset_all" onclick="app.setDatePreset('all')">전체</button>
+                            </div>
+                            
+                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
                             <span class="text-muted">~</span>
-                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일" style="width: 130px; min-width: 120px; flex-shrink: 0;">
-                            <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;">
+                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
+                            <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;" onchange="app.onSearchTargetChange()">
                                 <option value="">전체 검색</option>
                                 <option value="supplier">매입처</option>
                                 <option value="destination">매출처</option>
                                 <option value="category">분류</option>
                                 <option value="item">품목명</option>
                                 <option value="spec">규격</option>
+                                <option value="note">비고</option>
+                                <option value="tx_id">고유번호</option>
                             </select>
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="검색어 입력..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()" style="width: 170px; min-width: 130px;">
+                            <div class="position-relative" style="width: 180px; min-width: 140px;">
+                                <input type="text" class="form-control form-control-sm pe-4" id="historySearch" placeholder="스마트 다중 검색..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합 검색이 가능합니다">
+                                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-2 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="검색어 지우기" style="font-size: 0.85rem;">
+                                    <i class='bx bx-x-circle'></i>
+                                </button>
+                            </div>
                             <button class="btn btn-sm btn-primary text-nowrap flex-shrink-0" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
                             <button class="btn btn-sm btn-outline-secondary text-nowrap flex-shrink-0" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
                         </div>
                     </div>
                     
-                    <div class="mb-3 d-flex gap-2 flex-wrap" id="categoryPillsContainer">
+                    <div class="mb-2 d-flex gap-2 flex-wrap" id="categoryPillsContainer">
                         <!-- 카테고리 필터 버튼 렌더링 -->
+                    </div>
+
+                    <!-- 활성 필터 태그 칩 바 -->
+                    <div id="activeFilterChipsContainer" class="d-none mb-2 d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.8rem;">
+                        <!-- 활성 필터 칩 렌더링 -->
+                    </div>
+
+                    <!-- 실시간 검색 결과 요약 통계 바 (공급가, 부가세, 합계, 총수량 등) -->
+                    <div id="historySummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 0.83rem;">
+                        <span class="text-muted"><i class='bx bx-loader-alt bx-spin'></i> 통계 데이터를 집계 중입니다...</span>
                     </div>
                     
                     <div class="table-responsive">

@@ -408,20 +408,304 @@ const app = {
         this.loadHistory();
     },
 
+    currentDatePreset: 'all',
+
+    setDatePreset: function(preset) {
+        this.currentDatePreset = preset;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1; // 1-12
+
+        let startDate = '';
+        let endDate = '';
+
+        if (preset === 'thisMonth') {
+            const lastDay = new Date(year, month, 0).getDate();
+            startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'prevMonth') {
+            let prevYear = year;
+            let prevMonth = month - 1;
+            if (prevMonth === 0) {
+                prevMonth = 12;
+                prevYear -= 1;
+            }
+            const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+            startDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+            endDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'thisYear') {
+            startDate = `${year}-01-01`;
+            endDate = `${year}-12-31`;
+        } else if (preset === 'prevYear') {
+            startDate = `${year - 1}-01-01`;
+            endDate = `${year - 1}-12-31`;
+        } else if (preset === 'all') {
+            startDate = '';
+            endDate = '';
+        }
+
+        if ($('searchStartDate')) $('searchStartDate').value = startDate;
+        if ($('searchEndDate')) $('searchEndDate').value = endDate;
+
+        this.updatePresetButtons(preset);
+        this.resetPageAndLoadHistory();
+    },
+
+    updatePresetButtons: function(activePreset) {
+        ['prevMonth', 'thisMonth', 'prevYear', 'thisYear', 'all'].forEach(p => {
+            const btn = $(`btnPreset_${p}`);
+            if (btn) {
+                if (p === activePreset) {
+                    btn.className = 'btn btn-sm btn-primary text-white fw-bold text-nowrap';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline-secondary text-nowrap';
+                }
+            }
+        });
+    },
+
+    onDateInputChange: function() {
+        this.currentDatePreset = '';
+        this.updatePresetButtons('');
+        this.resetPageAndLoadHistory();
+    },
+
+    onSearchInputKeyup: function(e) {
+        const val = $('historySearch') ? $('historySearch').value : '';
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) {
+            if (val.length > 0) {
+                clearBtn.classList.remove('d-none');
+            } else {
+                clearBtn.classList.add('d-none');
+            }
+        }
+        if (e.key === 'Enter') {
+            this.resetPageAndLoadHistory();
+        }
+    },
+
+    clearSearchInput: function() {
+        if ($('historySearch')) {
+            $('historySearch').value = '';
+        }
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) {
+            clearBtn.classList.add('d-none');
+        }
+        this.resetPageAndLoadHistory();
+    },
+
+    onSearchTargetChange: function() {
+        if ($('historySearch') && $('historySearch').value.trim()) {
+            this.resetPageAndLoadHistory();
+        }
+    },
+
+    clearDateFilter: function() {
+        this.setDatePreset('all');
+    },
+
+    clearTypeFilter: function() {
+        const rAll = $('btnFilterAll');
+        if (rAll) {
+            rAll.checked = true;
+            this.resetPageAndLoadHistory();
+        }
+    },
+
     resetSearch: function() {
+        this.currentDatePreset = 'all';
+        this.updatePresetButtons('all');
         if ($('searchStartDate')) $('searchStartDate').value = '';
         if ($('searchEndDate')) $('searchEndDate').value = '';
         if ($('searchTarget')) $('searchTarget').value = '';
         if ($('historySearch')) $('historySearch').value = '';
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        const rAll = $('btnFilterAll');
+        if (rAll) rAll.checked = true;
         this.detailedFilters.category = '';
         this.renderCategoryPills();
         this.resetPageAndLoadHistory();
     },
 
+    renderActiveFilterChips: function() {
+        const container = $('activeFilterChipsContainer');
+        if (!container) return;
+
+        const typeFilter = document.querySelector('input[name="historyFilter"]:checked')?.value || 'all';
+        const startDate = $('searchStartDate')?.value || '';
+        const endDate = $('searchEndDate')?.value || '';
+        const searchTarget = $('searchTarget')?.value || '';
+        const searchKeyword = $('historySearch')?.value.trim() || '';
+        const category = this.detailedFilters.category || '';
+
+        let chips = [];
+
+        // 1. 구분 필터
+        if (typeFilter !== 'all') {
+            const typeLabels = { inbound: '입고만', outbound: '출고만', direct: '직출고만' };
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal">구분:</span> <strong>${typeLabels[typeFilter] || typeFilter}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearTypeFilter()" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 2. 날짜 필터
+        if (startDate || endDate) {
+            let dateLabel = '';
+            if (this.currentDatePreset && this.currentDatePreset !== 'all') {
+                const presetLabels = { prevMonth: '전월', thisMonth: '당월', prevYear: '전년도', thisYear: '금년도' };
+                dateLabel = `${presetLabels[this.currentDatePreset]} (${startDate} ~ ${endDate})`;
+            } else {
+                dateLabel = `${startDate || '~'} ~ ${endDate || '~'}`;
+            }
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-calendar'></i> 기간:</span> <strong>${dateLabel}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearDateFilter()" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 3. 분류 필터
+        if (category) {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-purchase-tag-alt'></i> 분류:</span> <strong>${category}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.filterByCategory('')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 4. 검색어 필터
+        if (searchKeyword) {
+            const targetLabels = {
+                supplier: '매입처', destination: '매출처', item: '품목명', spec: '규격', note: '비고', tx_id: '고유번호'
+            };
+            const targetName = targetLabels[searchTarget] || '전체';
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-search'></i> ${targetName}:</span> <strong>"${searchKeyword}"</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearSearchInput()" title="해제"></i>
+                </span>
+            `);
+        }
+
+        if (chips.length > 0) {
+            container.innerHTML = `
+                <span class="text-secondary me-1"><i class='bx bx-filter-alt'></i> <strong>활성 조건:</strong></span>
+                ${chips.join('')}
+                <button class="btn btn-link btn-sm text-danger p-0 ms-2 text-decoration-none" onclick="app.resetSearch()" style="font-size:0.78rem;">
+                    <i class='bx bx-reset'></i> 전체 초기화
+                </button>
+            `;
+            container.classList.remove('d-none');
+        } else {
+            container.innerHTML = '';
+            container.classList.add('d-none');
+        }
+    },
+
+    renderSummaryStrip: function(summary, typeFilter) {
+        const strip = $('historySummaryStrip');
+        if (!strip) return;
+
+        if (!summary) {
+            strip.innerHTML = `<span class="text-muted">통계 집계 없음</span>`;
+            return;
+        }
+
+        const totalCount = summary.totalCount || 0;
+        const totalQty = summary.totalQty || 0;
+        const inbound = summary.inbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
+        const outbound = summary.outbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
+
+        let amountHtml = '';
+
+        if (typeFilter === 'inbound') {
+            amountHtml = `
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div><span class="text-muted">매입 공급가:</span> <strong class="text-dark">${inbound.supplyAmt.toLocaleString()}원</strong></div>
+                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${inbound.vat.toLocaleString()}원</strong></div>
+                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size:0.85rem;">
+                        매입 합계: <strong class="fs-6">${inbound.totalAmt.toLocaleString()}</strong>원
+                    </div>
+                </div>
+            `;
+        } else if (typeFilter === 'outbound') {
+            amountHtml = `
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
+                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${outbound.vat.toLocaleString()}원</strong></div>
+                    <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size:0.85rem;">
+                        매출 합계: <strong class="fs-6">${outbound.totalAmt.toLocaleString()}</strong>원
+                    </div>
+                </div>
+            `;
+        } else if (typeFilter === 'direct') {
+            const margin = outbound.totalAmt - inbound.totalAmt;
+            amountHtml = `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div><span class="text-muted">매입합계:</span> <strong class="text-primary">${inbound.totalAmt.toLocaleString()}원</strong></div>
+                    <span class="text-muted">|</span>
+                    <div><span class="text-muted">매출합계:</span> <strong class="text-danger">${outbound.totalAmt.toLocaleString()}원</strong></div>
+                    <span class="text-muted">|</span>
+                    <div class="badge ${margin >= 0 ? 'bg-success' : 'bg-secondary'} px-2 py-1" style="font-size:0.85rem;">
+                        수익(마진): <strong>${margin.toLocaleString()}</strong>원
+                    </div>
+                </div>
+            `;
+        } else {
+            // 전체 보기
+            amountHtml = `
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div>
+                        <span class="text-muted">매입(공급+세):</span> 
+                        <strong class="text-primary">${inbound.totalAmt.toLocaleString()}원</strong>
+                        <span class="text-muted small">(${inbound.supplyAmt.toLocaleString()} + ${inbound.vat.toLocaleString()})</span>
+                    </div>
+                    <span class="text-muted d-none d-md-inline">|</span>
+                    <div>
+                        <span class="text-muted">매출(공급+세):</span> 
+                        <strong class="text-danger">${outbound.totalAmt.toLocaleString()}원</strong>
+                        <span class="text-muted small">(${outbound.supplyAmt.toLocaleString()} + ${outbound.vat.toLocaleString()})</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        strip.innerHTML = `
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
+                <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
+                ${typeFilter === 'all' ? `
+                    <span class="badge bg-light text-secondary border">입고 ${summary.inboundCount || 0}</span>
+                    <span class="badge bg-light text-secondary border">출고 ${summary.outboundCount || 0}</span>
+                    <span class="badge bg-light text-secondary border">직출고 ${summary.directCount || 0}</span>
+                ` : ''}
+                <span class="text-muted ms-1 me-1">|</span>
+                <span class="text-muted">총 수량:</span>
+                <strong class="text-dark">${totalQty.toLocaleString()}</strong>
+            </div>
+            ${amountHtml}
+        `;
+    },
+
     loadHistory: async function() {
-        const typeFilter = document.querySelector('input[name="historyFilter"]:checked').value;
-        const searchRaw = $('historySearch').value.trim();
-        const limit = parseInt($('historyLimit').value) || 50;
+        const typeFilter = document.querySelector('input[name="historyFilter"]:checked')?.value || 'all';
+        const searchRaw = $('historySearch') ? $('historySearch').value.trim() : '';
+        const limit = parseInt($('historyLimit')?.value) || 50;
+
+        // Toggle clear search button
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) {
+            if (searchRaw.length > 0) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
 
         const params = new URLSearchParams({
             page: this.currentPage,
@@ -444,6 +728,8 @@ const app = {
             this.currentHistoryData = res.data;
             this.renderHistoryTable(res.data);
             this.renderPagination(res.total, res.page, res.limit);
+            this.renderSummaryStrip(res.summary, typeFilter);
+            this.renderActiveFilterChips();
         } catch (err) {
             console.error('History load error:', err);
             $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
