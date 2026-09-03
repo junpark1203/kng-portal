@@ -470,7 +470,7 @@ const app = {
             summaryStrip.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="text-secondary"><i class='bx bx-receipt text-primary'></i> <strong>거래처 실거래 요약</strong></span>
+                        <span class="text-secondary"><strong>거래처 실거래 요약</strong></span>
                         <span class="badge ${badgeTypeClass} px-2 py-1">${partner} (${res.length}건)</span>
                         ${accountFilter ? `<span class="badge bg-secondary px-2 py-1">${accountFilter}</span>` : ''}
                         <span class="text-muted ms-1 me-1">|</span>
@@ -486,7 +486,7 @@ const app = {
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
-                    <span class="text-secondary fw-bold me-1"><i class='bx bx-category'></i> 계정별 집계:</span>
+                    <span class="text-secondary fw-bold me-1">계정별 집계:</span>
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1">
                         안전(일반): <strong>${accountStats['안전자재-일반'].count}건</strong> (${accountStats['안전자재-일반'].supplyAmt.toLocaleString()}원)
                     </span>

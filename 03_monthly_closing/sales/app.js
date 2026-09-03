@@ -339,7 +339,7 @@ const app = {
         strip.innerHTML = `
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
+                    <span class="text-secondary"><strong>검색 결과</strong></span>
                     <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
                     <span class="text-muted ms-1 me-1">|</span>
                     <span class="text-muted">총 수량:</span>
@@ -354,7 +354,7 @@ const app = {
                 </div>
             </div>
             <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
-                <span class="text-secondary fw-bold me-1"><i class='bx bx-category'></i> 계정별 집계:</span>
+                <span class="text-secondary fw-bold me-1">계정별 집계:</span>
                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-inline-flex align-items-center gap-1">
                     안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
                 </span>

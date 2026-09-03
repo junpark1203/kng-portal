@@ -721,7 +721,7 @@ const app = {
 
         strip.innerHTML = `
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
+                <span class="text-secondary"><strong>검색 결과</strong></span>
                 <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
                 ${typeFilter === 'all' ? `
                     <span class="badge bg-light text-secondary border">입고 ${summary.inboundCount || 0}</span>
