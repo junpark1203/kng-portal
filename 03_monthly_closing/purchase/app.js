@@ -356,23 +356,23 @@ const app = {
             <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
                 <span class="text-secondary fw-bold me-1"><i class='bx bx-category'></i> 계정별 집계:</span>
                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-inline-flex align-items-center gap-1">
-                    🛡️ 안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
+                    안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
                 </span>
                 <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1 d-inline-flex align-items-center gap-1">
-                    🌿 안전(환경): <strong>${safeEnv.count}건</strong> (${safeEnv.supplyAmt.toLocaleString()}원)
+                    안전(환경): <strong>${safeEnv.count}건</strong> (${safeEnv.supplyAmt.toLocaleString()}원)
                 </span>
                 <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1 d-inline-flex align-items-center gap-1">
-                    📦 잡자재: <strong>${misc.count}건</strong> (${misc.supplyAmt.toLocaleString()}원)
+                    잡자재: <strong>${misc.count}건</strong> (${misc.supplyAmt.toLocaleString()}원)
                 </span>
                 <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1 d-inline-flex align-items-center gap-1">
-                    🔧 기타자재: <strong>${etc.count}건</strong> (${etc.supplyAmt.toLocaleString()}원)
+                    기타자재: <strong>${etc.count}건</strong> (${etc.supplyAmt.toLocaleString()}원)
                 </span>
                 <span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1 d-inline-flex align-items-center gap-1">
-                    🛒 쇼핑몰: <strong>${mall.count}건</strong> (${mall.supplyAmt.toLocaleString()}원)
+                    쇼핑몰: <strong>${mall.count}건</strong> (${mall.supplyAmt.toLocaleString()}원)
                 </span>
                 ${unclass.count > 0 ? `
                 <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1 d-inline-flex align-items-center gap-1">
-                    ⚠️ 미분류: <strong>${unclass.count}건</strong> (계정 지정 필요)
+                    미분류: <strong>${unclass.count}건</strong> (계정 지정 필요)
                 </span>
                 ` : ''}
             </div>
@@ -426,15 +426,15 @@ const app = {
 
             let accountBadge = `<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.77rem;">-</span>`;
             if (r.settlement_account === '안전자재-일반') {
-                accountBadge = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size: 0.77rem;">🛡️ 안전(일반)</span>`;
+                accountBadge = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size: 0.77rem;">안전(일반)</span>`;
             } else if (r.settlement_account === '안전자재-환경') {
-                accountBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1" style="font-size: 0.77rem;">🌿 안전(환경)</span>`;
+                accountBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1" style="font-size: 0.77rem;">안전(환경)</span>`;
             } else if (r.settlement_account === '잡자재') {
-                accountBadge = `<span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1" style="font-size: 0.77rem;">📦 잡자재</span>`;
+                accountBadge = `<span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1" style="font-size: 0.77rem;">잡자재</span>`;
             } else if (r.settlement_account === '기타자재') {
-                accountBadge = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1" style="font-size: 0.77rem;">🔧 기타자재</span>`;
+                accountBadge = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1" style="font-size: 0.77rem;">기타자재</span>`;
             } else if (r.settlement_account === '쇼핑몰') {
-                accountBadge = `<span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1" style="font-size: 0.77rem;">🛒 쇼핑몰</span>`;
+                accountBadge = `<span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1" style="font-size: 0.77rem;">쇼핑몰</span>`;
             }
             
             if (statusVal === '미정산') {
@@ -450,15 +450,15 @@ const app = {
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         <td rowspan="2" class="align-middle text-center bg-original p-1" style="max-width: 125px; border-bottom-width: 1px;">
-                            <select class="form-select form-select-sm inline-account fw-bold border-primary shadow-sm" style="font-size: 0.78rem; height: 28px !important; padding: 2px 4px !important;">
-                                <option value="">-- 계정 필수 --</option>
+                            <select class="form-select form-select-sm inline-account fw-bold border-secondary-subtle shadow-sm" style="font-size: 0.78rem; height: 28px !important; padding: 2px 4px !important;" onchange="app.changeInlineAccount(${r.id}, this)">
+                                <option value="">-- 계정 선택 --</option>
                                 <optgroup label="안전자재">
-                                    <option value="안전자재-일반" ${r.settlement_account==='안전자재-일반'?'selected':''}>🛡️ 안전(일반)</option>
-                                    <option value="안전자재-환경" ${r.settlement_account==='안전자재-환경'?'selected':''}>🌿 안전(환경)</option>
+                                    <option value="안전자재-일반" ${r.settlement_account==='안전자재-일반'?'selected':''}>안전(일반)</option>
+                                    <option value="안전자재-환경" ${r.settlement_account==='안전자재-환경'?'selected':''}>안전(환경)</option>
                                 </optgroup>
-                                <option value="잡자재" ${r.settlement_account==='잡자재'?'selected':''}>📦 잡자재</option>
-                                <option value="기타자재" ${r.settlement_account==='기타자재'?'selected':''}>🔧 기타자재</option>
-                                <option value="쇼핑몰" ${r.settlement_account==='쇼핑몰'?'selected':''}>🛒 쇼핑몰</option>
+                                <option value="잡자재" ${r.settlement_account==='잡자재'?'selected':''}>잡자재</option>
+                                <option value="기타자재" ${r.settlement_account==='기타자재'?'selected':''}>기타자재</option>
+                                <option value="쇼핑몰" ${r.settlement_account==='쇼핑몰'?'selected':''}>쇼핑몰</option>
                             </select>
                         </td>
                         
@@ -760,6 +760,90 @@ const app = {
         } catch (err) {
             console.error(err);
             alert('자재계정 변경 중 오류가 발생했습니다.');
+        }
+    },
+
+    showToast: function(msg) {
+        let toast = document.getElementById('accountToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'accountToast';
+            toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #f8fafc; padding: 8px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.18); z-index: 9999; transition: opacity 0.25s ease, transform 0.25s ease; opacity: 0; transform: translateY(10px); pointer-events: none;';
+            document.body.appendChild(toast);
+        }
+        toast.innerText = msg;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
+        }, 1800);
+    },
+
+    changeInlineAccount: async function(rowId, selectEl) {
+        const accountVal = selectEl.value;
+        try {
+            const res = await window.authFetch(`${API_BASE}/settlement/inbound`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'update_account',
+                    ids: [rowId],
+                    settlement_account: accountVal
+                })
+            });
+            if (res.ok) {
+                const chk = document.querySelector(`input.row-chk[value="${rowId}"]`);
+                if (chk) chk.dataset.account = accountVal;
+                
+                const item = this.items.find(it => it.id == rowId);
+                if (item) item.settlement_account = accountVal;
+
+                selectEl.classList.remove('border-secondary-subtle');
+                selectEl.classList.add('border-success');
+                setTimeout(() => {
+                    selectEl.classList.remove('border-success');
+                    selectEl.classList.add('border-secondary-subtle');
+                }, 1200);
+
+                this.showToast(accountVal ? `자재계정이 '${accountVal}'(으)로 자동 저장되었습니다.` : '자재계정 분류가 해제되었습니다.');
+                this.refreshSummaryOnly();
+            } else {
+                alert('자재계정 자동 저장에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error('changeInlineAccount error:', err);
+        }
+    },
+
+    refreshSummaryOnly: async function() {
+        try {
+            const startDate = $('startDate')?.value || '';
+            const endDate = $('endDate')?.value || '';
+            const searchKeyword = $('searchInput') ? $('searchInput').value.trim() : '';
+            const searchTarget = $('searchTarget')?.value || '';
+            const statusVal = $('statusFilter')?.value || '미정산';
+            const accountVal = $('accountFilter')?.value || '';
+
+            const url = new URL(`${API_BASE}/history`);
+            url.searchParams.append('type', 'inbound');
+            url.searchParams.append('page', 1);
+            url.searchParams.append('limit', 1);
+            if (statusVal && statusVal !== '전체보기') url.searchParams.append('settlement_status', statusVal);
+            if (accountVal) url.searchParams.append('settlement_account', accountVal);
+            if (startDate) url.searchParams.append('startDate', startDate);
+            if (endDate) url.searchParams.append('endDate', endDate);
+            if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
+            if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
+
+            const res = await window.authFetch(url.toString());
+            const result = await res.json();
+            if (result && result.summary) {
+                this.renderSummaryStrip(result.summary);
+            }
+        } catch (e) {
+            console.error('refreshSummaryOnly error:', e);
         }
     },
 
