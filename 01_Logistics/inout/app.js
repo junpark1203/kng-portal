@@ -531,8 +531,8 @@ const app = {
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
-                <td class="d-print-none text-muted small user-select-none text-nowrap">
-                    <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}"></i>
+                <td class="d-print-none user-select-none text-nowrap" style="font-size: 0.73rem; letter-spacing: -0.2px; color: #64748b;">
+                    <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
                     <span>${txIdDisplay}</span>
                 </td>
                 <td class="text-center">${badge}</td>
