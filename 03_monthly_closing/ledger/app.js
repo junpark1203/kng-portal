@@ -200,9 +200,25 @@ const app = {
                 let sumGrand = 0;
 
                 let html = res.map(row => {
-                    const amount = row.qty * row.price;
+                    let shipAmount = 0;
+                    if (row.shipping_fee > 0) {
+                        shipAmount = row.shipping_fee_vat_included === 1 ? Math.round(row.shipping_fee / 1.1) : row.shipping_fee;
+                    }
+                    const amount = (row.qty * row.price) + shipAmount;
                     const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
-                    const vat = isZeroTax ? 0 : Math.floor(amount * 0.1);
+                    let vat = 0;
+                    if (!isZeroTax) {
+                        if (row.settlement_vat !== undefined && row.settlement_vat !== null) {
+                            vat = row.settlement_vat;
+                        } else {
+                            const itemVat = Math.floor(row.qty * row.price * 0.1);
+                            let shipVat = 0;
+                            if (row.shipping_fee > 0) {
+                                shipVat = row.shipping_fee_vat_included === 1 ? (row.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                            }
+                            vat = itemVat + shipVat;
+                        }
+                    }
                     const grand = amount + vat;
 
                     sumTotal += amount;
@@ -213,6 +229,9 @@ const app = {
                     const siteBadge = aggregateByBizNum && row.site_name 
                         ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
                         : '';
+                    const shipBadge = row.shipping_fee > 0 
+                        ? `<span class="badge bg-light text-secondary border ms-1 d-print-none">배송비 ${row.shipping_fee.toLocaleString()}</span>` 
+                        : '';
 
                     let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
                     if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
@@ -220,7 +239,7 @@ const app = {
                     return `
                         <tr class="${row.is_direct ? 'direct-row' : ''}">
                             <td class="text-center">${dateStr}</td>
-                            <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}</td>
+                            <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
                             <td class="text-center">${row.spec || ''}</td>
                             <td class="text-end">${row.qty.toLocaleString()}</td>
                             <td class="text-center">${row.unit || ''}</td>

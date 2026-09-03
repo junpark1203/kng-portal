@@ -170,12 +170,34 @@ const app = {
         };
 
         tbody.innerHTML = this.items.map(r => {
-            const supplyAmtOrig = (r.qty || 0) * (r.inbound_price || 0);
+            const qtyTotal = (r.qty || 0) * (r.inbound_price || 0);
+            let shipAmount = 0;
+            if (r.shipping_fee > 0) {
+                shipAmount = r.shipping_fee_vat_included === 1 
+                             ? Math.round(r.shipping_fee / 1.1) 
+                             : r.shipping_fee;
+            }
+            const supplyAmtOrig = qtyTotal + shipAmount;
             const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
-            const vatOrig = isZeroTax ? 0 : Math.floor(supplyAmtOrig * 0.1);
+            let vatOrig = 0;
+            if (!isZeroTax) {
+                const itemVat = Math.floor(qtyTotal * 0.1);
+                let shipVat = 0;
+                if (r.shipping_fee > 0) {
+                    shipVat = r.shipping_fee_vat_included === 1 ? (r.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                }
+                vatOrig = itemVat + shipVat;
+            }
             const totalOrig = supplyAmtOrig + vatOrig;
+            
+            let itemDisplay = `<strong>${r.item}</strong>`;
+            if (r.is_direct) itemDisplay += `<span class="badge bg-secondary ms-1">직출고</span>`;
+            if (r.shipping_fee > 0) {
+                const shipVatText = r.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가 기준)';
+                itemDisplay += `<div class="small text-muted mt-1">+ 배송비 ${r.shipping_fee.toLocaleString()}원 ${shipVatText}</div>`;
+            }
+            
             let statusVal = r.settlement_status || '미정산';
-            const directBadge = r.is_direct ? `<span class="badge bg-secondary ms-1">직출고</span>` : '';
             
             if (statusVal === '미정산') {
                 const defaultTaxDate = r.date ? r.date.split('T')[0] : '';
@@ -186,7 +208,7 @@ const app = {
                         </td>
                         <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
-                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${r.item}${directBadge}</td>
+                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
@@ -203,7 +225,7 @@ const app = {
                             <button class="btn btn-sm btn-primary w-100 fw-bold shadow-sm py-1" style="font-size: 0.75rem;" onclick="app.submitInlineSettlement(${r.id})">정산</button>
                         </td>
                     </tr>
-                    <tr class="unsettled-row settle-input-row" data-id="${r.id}">
+                    <tr class="unsettled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee || 0}" data-shipvatinc="${r.shipping_fee_vat_included || 0}">
                         <td class="align-middle text-center bg-settle-input text-primary" style="border-left: 1px solid #dee2e6; font-size: 0.75rem;">정산</td>
                         <td class="align-middle bg-settle-input small">
                             <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
@@ -218,7 +240,7 @@ const app = {
                             <input type="text" class="text-end inline-supply-amt edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                         <td class="align-middle bg-settle-input small">
-                            <input type="text" class="text-end inline-vat edit-input" value="${(r.trade_type && r.trade_type !== '내수') ? 0 : Number(Math.floor((r.qty || 0) * (r.inbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
+                            <input type="text" class="text-end inline-vat edit-input" value="${Number(vatOrig).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
@@ -229,9 +251,23 @@ const app = {
                     </tr>
                 `;
             } else {
-                const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0);
-                const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수'); // DB에 영세율 플래그가 남은 경우 하위 호환
-                const vat = isZeroTax ? 0 : (r.settlement_vat !== undefined ? r.settlement_vat : Math.floor(supplyAmt * 0.1));
+                const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0) + shipAmount;
+                let vat = 0;
+                
+                if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                    vat = r.settlement_vat;
+                } else if (r.is_zero_tax || (r.trade_type && r.trade_type !== '내수')) {
+                    vat = 0;
+                } else {
+                    const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
+                    let shipVat = 0;
+                    if (r.shipping_fee > 0) {
+                        shipVat = r.shipping_fee_vat_included === 1 
+                                  ? r.shipping_fee - shipAmount 
+                                  : Math.floor(shipAmount * 0.1);
+                    }
+                    vat = itemVat + shipVat;
+                }
                 const totalAmt = supplyAmt + vat;
                 
                 return `
@@ -241,7 +277,7 @@ const app = {
                         </td>
                         <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
-                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${r.item}${directBadge}</td>
+                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
@@ -258,7 +294,7 @@ const app = {
                             <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
                         </td>
                     </tr>
-                    <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}">
+                    <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee || 0}" data-shipvatinc="${r.shipping_fee_vat_included || 0}">
                         <td class="align-middle text-center bg-settle-input text-success small fw-bold" style="border-left: 1px solid #dee2e6;">정산완료</td>
                         <td class="align-middle bg-settle-input text-center small text-dark">${r.date.split('T')[0]}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
@@ -400,10 +436,27 @@ const app = {
         const price = parseFloat(priceStr) || 0;
         const vatInput = container.querySelector('.inline-vat');
         
-        const supplyAmt = qty * price;
+        const shipAmount = parseFloat(container.dataset.shipamt) || 0;
+        const shipFee = parseFloat(container.dataset.shipfee) || 0;
+        const shipVatInc = parseInt(container.dataset.shipvatinc) || 0;
+
+        const itemSupplyAmt = qty * price;
+        const supplyAmt = itemSupplyAmt + shipAmount;
         
         if (autoCalcVat) {
-            vatInput.value = Math.floor(supplyAmt * 0.1).toLocaleString();
+            let itemVat = Math.floor(itemSupplyAmt * 0.1);
+            let shipVat = 0;
+            if (shipFee > 0) {
+                shipVat = shipVatInc === 1 ? shipFee - shipAmount : Math.floor(shipAmount * 0.1);
+            }
+            
+            // 내수가 아니면 VAT 0원
+            const rowData = this.items.find(item => item.id == id);
+            if (rowData && rowData.trade_type && rowData.trade_type !== '내수') {
+                itemVat = 0;
+                shipVat = 0;
+            }
+            vatInput.value = (itemVat + shipVat).toLocaleString();
         }
         
         const vat = parseFloat(vatInput.value.replace(/,/g, '')) || 0;
@@ -562,9 +615,21 @@ const app = {
             const qty = isSettled ? (r.settlement_qty || 0) : (r.qty || 0);
             const price = isSettled ? (r.settlement_price || 0) : (r.inbound_price || 0);
             
-            const total = qty * price;
+            let shipAmount = 0;
+            if (r.shipping_fee > 0) {
+                shipAmount = r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee;
+            }
+            const total = qty * price + shipAmount;
             const isZeroTax = r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
-            const vat = isZeroTax ? 0 : Math.floor(total * 0.1);
+            let vat = 0;
+            if (!isZeroTax) {
+                const itemVat = Math.floor(qty * price * 0.1);
+                let shipVat = 0;
+                if (r.shipping_fee > 0) {
+                    shipVat = r.shipping_fee_vat_included === 1 ? (r.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                }
+                vat = (isSettled && r.settlement_vat !== undefined && r.settlement_vat !== null) ? r.settlement_vat : (itemVat + shipVat);
+            }
             const grand = total + vat;
             
             sumTotal += total;

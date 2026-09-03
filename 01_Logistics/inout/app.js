@@ -640,9 +640,10 @@ const app = {
 
             // Extra info
             let extraInfo = '';
-            if (type === 'outbound' && data.shipping_fee && data.shipping_fee > 0) {
+            if (data.shipping_fee && data.shipping_fee > 0) {
                 const shipVat = data.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가)';
-                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-car text-secondary'></i> 배송비: ${data.shipping_fee.toLocaleString()}원 ${shipVat}</span> `;
+                const shipLabel = type === 'inbound' ? '매입 배송비' : '배송비';
+                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-car text-secondary'></i> ${shipLabel}: ${data.shipping_fee.toLocaleString()}원 ${shipVat}</span> `;
             }
             if (data.category) {
                 extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-purchase-tag-alt text-primary'></i> ${data.category}</span>`;
@@ -1524,8 +1525,10 @@ const app = {
             return alert('매입처와 매출처를 모두 입력해주세요.');
         }
 
-        const docShippingFee = parseFloat($('dir_shipping') ? $('dir_shipping').value : 0) || 0;
-        const docShippingFeeVatIncluded = $('dir_shipping_vat') && $('dir_shipping_vat').checked ? 1 : 0;
+        const docInShippingFee = parseFloat($('dir_in_shipping') ? $('dir_in_shipping').value : 0) || 0;
+        const docInShippingFeeVatIncluded = $('dir_in_shipping_vat') && $('dir_in_shipping_vat').checked ? 1 : 0;
+        const docOutShippingFee = parseFloat($('dir_out_shipping') ? $('dir_out_shipping').value : 0) || 0;
+        const docOutShippingFeeVatIncluded = $('dir_out_shipping_vat') && $('dir_out_shipping_vat').checked ? 1 : 0;
         const docNote = $('dir_note') ? $('dir_note').value.trim() : '';
 
         rows.forEach((row, idx) => {
@@ -1536,15 +1539,23 @@ const app = {
             const in_price = parseFloat(row.querySelector('.dir-in-price').value);
             const out_price = parseFloat(row.querySelector('.dir-out-price').value);
             const category = row.querySelector('.dir-category') ? row.querySelector('.dir-category').value.trim() : '';
-            const shipping_fee = idx === 0 ? docShippingFee : 0;
-            const shipping_fee_vat_included = idx === 0 ? docShippingFeeVatIncluded : 0;
+            const in_shipping_fee = idx === 0 ? docInShippingFee : 0;
+            const in_shipping_fee_vat_included = idx === 0 ? docInShippingFeeVatIncluded : 0;
+            const shipping_fee = idx === 0 ? docOutShippingFee : 0;
+            const shipping_fee_vat_included = idx === 0 ? docOutShippingFeeVatIncluded : 0;
             const note = docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
-                items.push({ id: row.dataset.dbId, item, spec, unit, qty, unit_price: in_price, selling_price: out_price, shipping_fee, shipping_fee_vat_included, note, trade_type, category });
+                items.push({ 
+                    id: row.dataset.dbId, item, spec, unit, qty, 
+                    unit_price: in_price, selling_price: out_price, 
+                    in_shipping_fee, in_shipping_fee_vat_included,
+                    shipping_fee, shipping_fee_vat_included, 
+                    note, trade_type, category 
+                });
             }
         });
 
@@ -2153,6 +2164,10 @@ const app = {
                 if (title) title.innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
                 const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
                 if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 동시 처리";
+                if ($('dir_in_shipping')) $('dir_in_shipping').value = 0;
+                if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = false;
+                if ($('dir_out_shipping')) $('dir_out_shipping').value = 0;
+                if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = false;
             }
             modal.show();
             if ($('directItemsContainer').children.length === 0) {
@@ -2278,8 +2293,10 @@ const app = {
             if ($('dir_actual_destination')) $('dir_actual_destination').value = first.actual_destination || '';
             if ($('dir_note')) $('dir_note').value = first.note || '';
             if ($('dir_trade_type')) $('dir_trade_type').value = first.trade_type || '내수';
-            if ($('dir_shipping')) $('dir_shipping').value = first.shipping_fee || 0;
-            if ($('dir_shipping_vat')) $('dir_shipping_vat').checked = first.shipping_fee_vat_included === 1;
+            if ($('dir_in_shipping')) $('dir_in_shipping').value = first.in_shipping_fee || 0;
+            if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = first.in_shipping_vat === 1;
+            if ($('dir_out_shipping')) $('dir_out_shipping').value = first.shipping_fee || 0;
+            if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
             items.forEach(item => {
                 const rowId = this.addDirectItemRow();
@@ -3022,8 +3039,10 @@ const app = {
             $('edit_direct_date').value = item.date;
             $('edit_direct_supplier').value = item.supplier || '';
             $('edit_direct_destination').value = item.actual_destination || item.destination || item.party || '';
-            $('edit_direct_shipping').value = item.shipping_fee || 0;
-            $('edit_direct_shipping_vat').checked = item.shipping_fee_vat_included === 1;
+            if ($('edit_direct_in_shipping')) $('edit_direct_in_shipping').value = item.in_shipping_fee || 0;
+            if ($('edit_direct_in_shipping_vat')) $('edit_direct_in_shipping_vat').checked = (item.in_shipping_fee_vat_included === 1 || item.in_shipping_vat === 1);
+            if ($('edit_direct_out_shipping')) $('edit_direct_out_shipping').value = item.shipping_fee || 0;
+            if ($('edit_direct_out_shipping_vat')) $('edit_direct_out_shipping_vat').checked = item.shipping_fee_vat_included === 1;
             $('edit_direct_note').value = item.note || '';
             if ($('edit_direct_trade_type')) $('edit_direct_trade_type').value = item.trade_type || '내수';
             if ($('edit_direct_category')) $('edit_direct_category').value = item.category || '';
@@ -3056,8 +3075,10 @@ const app = {
             qty: parseFloat($('edit_direct_qty').value) || 0,
             inbound_price: parseFloat($('edit_direct_inbound_price').value) || 0,
             selling_price: parseFloat($('edit_direct_outbound_price').value) || 0,
-            shipping_fee: parseFloat($('edit_direct_shipping').value) || 0,
-            shipping_fee_vat_included: $('edit_direct_shipping_vat').checked ? 1 : 0,
+            in_shipping_fee: parseFloat($('edit_direct_in_shipping') ? $('edit_direct_in_shipping').value : 0) || 0,
+            in_shipping_fee_vat_included: ($('edit_direct_in_shipping_vat') && $('edit_direct_in_shipping_vat').checked) ? 1 : 0,
+            shipping_fee: parseFloat($('edit_direct_out_shipping') ? $('edit_direct_out_shipping').value : 0) || 0,
+            shipping_fee_vat_included: ($('edit_direct_out_shipping_vat') && $('edit_direct_out_shipping_vat').checked) ? 1 : 0,
             note: $('edit_direct_note').value,
             trade_type: $('edit_direct_trade_type') ? $('edit_direct_trade_type').value : '내수',
             category: $('edit_direct_category') ? $('edit_direct_category').value.trim() : ''
