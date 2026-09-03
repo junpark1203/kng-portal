@@ -487,12 +487,16 @@ const app = {
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
                     <span class="text-secondary fw-bold me-1">계정별 집계:</span>
+                    <span class="badge bg-primary text-white px-2 py-1 shadow-sm">
+                        안전자재 통합: <strong>${(accountStats['안전자재-일반'].count + accountStats['안전자재-환경'].count)}건</strong> (${(accountStats['안전자재-일반'].supplyAmt + accountStats['안전자재-환경'].supplyAmt).toLocaleString()}원)
+                    </span>
                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1">
                         안전(일반): <strong>${accountStats['안전자재-일반'].count}건</strong> (${accountStats['안전자재-일반'].supplyAmt.toLocaleString()}원)
                     </span>
                     <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
                         안전(환경): <strong>${accountStats['안전자재-환경'].count}건</strong> (${accountStats['안전자재-환경'].supplyAmt.toLocaleString()}원)
                     </span>
+                    <span class="text-muted mx-1">|</span>
                     <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1">
                         잡자재: <strong>${accountStats['잡자재'].count}건</strong> (${accountStats['잡자재'].supplyAmt.toLocaleString()}원)
                     </span>
