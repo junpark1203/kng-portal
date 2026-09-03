@@ -28,6 +28,8 @@ const app = {
     partners: [],
     currentDatePreset: 'prevMonth',
     rawRows: [],
+    currentSortCol: 'settlement_date',
+    currentSortDir: 'asc',
     
     init() {
         this.loadPartners();
@@ -284,6 +286,8 @@ const app = {
                 }
             }
 
+            this.sortLedgerRows();
+            this.updateSortHeaderUI();
             this.filterLedgerRows();
 
         } catch (err) {
@@ -292,6 +296,61 @@ const app = {
             if (summaryStrip) summaryStrip.classList.add('d-none');
             if (searchContainer) searchContainer.classList.add('d-none');
         }
+    },
+
+    handleSort: function(col) {
+        if (this.currentSortCol === col) {
+            this.currentSortDir = this.currentSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSortCol = col;
+            this.currentSortDir = 'asc';
+        }
+        this.updateSortHeaderUI();
+        this.sortLedgerRows();
+        this.filterLedgerRows();
+    },
+
+    updateSortHeaderUI: function() {
+        document.querySelectorAll('table thead th.sortable').forEach(th => {
+            const col = th.dataset.col;
+            const icon = th.querySelector('.sort-icon');
+            if (col === this.currentSortCol) {
+                th.classList.add('active-sort');
+                if (icon) {
+                    icon.className = `bx bx-sort-${this.currentSortDir === 'asc' ? 'up' : 'down'} sort-icon`;
+                }
+            } else {
+                th.classList.remove('active-sort');
+                if (icon) {
+                    icon.className = 'bx bx-sort sort-icon';
+                }
+            }
+        });
+    },
+
+    sortLedgerRows: function() {
+        const col = this.currentSortCol;
+        const dir = this.currentSortDir === 'asc' ? 1 : -1;
+        
+        this.rawRows.sort((a, b) => {
+            let valA, valB;
+            if (col === 'qty') {
+                valA = Number(a.qty) || 0;
+                valB = Number(b.qty) || 0;
+            } else if (col === 'price') {
+                valA = Number(a.price) || 0;
+                valB = Number(b.price) || 0;
+            } else if (col === 'amount') {
+                valA = (Number(a.qty) || 0) * (Number(a.price) || 0);
+                valB = (Number(b.qty) || 0) * (Number(b.price) || 0);
+            } else {
+                valA = (a[col] || '').toString().toLowerCase();
+                valB = (b[col] || '').toString().toLowerCase();
+            }
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
     },
 
     filterLedgerRows: function() {
@@ -312,7 +371,8 @@ const app = {
                     row.unit || '',
                     row.settlement_account || '',
                     row.settlement_memo || '',
-                    row.site_name || ''
+                    row.site_name || '',
+                    row.relative_partner || ''
                 ].join(' ').toLowerCase();
                 return tokens.every(token => combined.includes(token));
             });
@@ -402,6 +462,17 @@ const app = {
                 ? `<span class="badge bg-light text-secondary border ms-1 d-print-none">배송비 ${row.shipping_fee.toLocaleString()}</span>` 
                 : '';
 
+            let relativeBadge = '';
+            if (row.relative_partner) {
+                if (ledgerType === '입고') {
+                    relativeBadge = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary ms-1 d-print-none" title="매출처" style="font-size: 0.76rem;">매출: ${row.relative_partner}</span>`;
+                } else if (ledgerType === '출고') {
+                    relativeBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success ms-1 d-print-none" title="매입처" style="font-size: 0.76rem;">매입: ${row.relative_partner}</span>`;
+                } else {
+                    relativeBadge = `<span class="badge bg-secondary bg-opacity-10 text-secondary border ms-1 d-print-none" title="상대거래처" style="font-size: 0.76rem;">${row.relative_partner}</span>`;
+                }
+            }
+
             let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
             if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
 
@@ -413,7 +484,7 @@ const app = {
                 <tr class="${row.is_direct ? 'direct-row' : ''}">
                     <td class="text-center">${dateStr}</td>
                     <td class="text-center fw-bold" style="font-size: 0.78rem;">${accountDisplay}</td>
-                    <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
+                    <td class="text-start wrap-cell">${row.item} ${relativeBadge}${isDirect}${siteBadge}${shipBadge}</td>
                     <td class="text-center spec-cell wrap-cell">${row.spec || ''}</td>
                     <td class="text-end">${row.qty.toLocaleString()}</td>
                     <td class="text-center">${row.unit || ''}</td>

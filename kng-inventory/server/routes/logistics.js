@@ -479,7 +479,7 @@ router.get('/history', (req, res) => {
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account'];
+    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account', 'transaction_group_id', 'tax_invoice_date', 'settlement_status'];
     const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
     const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -602,8 +602,19 @@ router.get('/history', (req, res) => {
         WITH combined AS (
             SELECT 
                 'inbound' as type, i.id, i.date, 
-                i.supplier as supplier, NULL as destination, 
-                NULL as actual_destination, i.item, i.spec, i.unit, i.category, 
+                i.supplier as supplier, 
+                CASE 
+                    WHEN i.is_direct = 1 THEN do.destination 
+                    ELSE (SELECT GROUP_CONCAT(DISTINCT o_sub.destination) 
+                          FROM logistics_outbound_lots lol 
+                          JOIN logistics_outbound o_sub ON lol.outbound_id = o_sub.id 
+                          WHERE lol.inbound_id = i.id) 
+                END as destination, 
+                CASE 
+                    WHEN i.is_direct = 1 THEN do.actual_destination 
+                    ELSE NULL 
+                END as actual_destination, 
+                i.item, i.spec, i.unit, i.category, 
                 i.qty_initial as qty, 
                 i.unit_price as inbound_price, NULL as outbound_price,
                 (i.unit_price * i.qty_initial) as inbound_total, NULL as outbound_total,
@@ -613,11 +624,19 @@ router.get('/history', (req, res) => {
                 i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
                 COALESCE(i.settlement_account, '') as settlement_account
             FROM logistics_inbound i
+            LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
+            LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
             ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, 
-                CASE WHEN o.is_direct = 1 THEN di.supplier ELSE NULL END as supplier, 
+                CASE 
+                    WHEN o.is_direct = 1 THEN di.supplier 
+                    ELSE (SELECT GROUP_CONCAT(DISTINCT i_sub.supplier) 
+                          FROM logistics_outbound_lots lol 
+                          JOIN logistics_inbound i_sub ON lol.inbound_id = i_sub.id 
+                          WHERE lol.outbound_id = o.id) 
+                END as supplier, 
                 o.destination as destination, 
                 o.actual_destination, o.item, o.spec, o.unit, o.category, 
                 o.qty as qty, 

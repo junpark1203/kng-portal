@@ -73,6 +73,28 @@
             text-align: center;
             white-space: nowrap;
         }
+
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.15s ease;
+        }
+        th.sortable:hover {
+            background-color: #e2e8f0 !important;
+        }
+        th.sortable .sort-icon {
+            font-size: 0.85rem;
+            margin-left: 2px;
+            opacity: 0.45;
+            vertical-align: middle;
+        }
+        th.sortable.active-sort {
+            color: #2563eb !important;
+        }
+        th.sortable.active-sort .sort-icon {
+            opacity: 1;
+            color: #2563eb !important;
+        }
         
         .bg-original { background-color: #f8fafc; } /* 옅은 회색 (원본) */
         .bg-settle-header { background-color: #eef2ff; } /* 옅은 파란색 (정산 헤더) */
@@ -215,6 +237,7 @@
                     <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;">
                         <option value="">전체 검색</option>
                         <option value="supplier">매입처</option>
+                        <option value="destination">매출처</option>
                         <option value="item">품목명</option>
                         <option value="spec">규격</option>
                         <option value="note">비고</option>
@@ -245,11 +268,19 @@
         <span class="text-muted"><i class='bx bx-loader-alt bx-spin'></i> 통계 데이터를 집계 중입니다...</span>
     </div>
 
-    <!-- 배치 액션 바 (정산일자 일괄적용, 자재계정 일괄적용, 출력, 정산/취소) -->
+    <!-- 배치 액션 바 (정산일자 일괄적용, 자재계정 일괄적용, 출력, 정산/취소, 결과 내 검색) -->
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
             <span id="selectedCountBadge" class="badge bg-light text-secondary border px-2 py-1">선택 0건</span>
             <span id="selectedSumBadge" class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-none" style="font-size: 0.82rem;">선택 합계: 0원</span>
+            
+            <!-- 결과 내 재검색 인풋 -->
+            <div class="input-group input-group-sm ms-2 shadow-sm" style="width: 220px;">
+                <span class="input-group-text bg-white border-end-0 py-0 text-muted"><i class='bx bx-filter'></i></span>
+                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 검색..." oninput="app.onSubSearchInput(this.value)" style="font-size: 0.8rem;">
+                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
+            </div>
+            <span id="subSearchCountBadge" class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1 d-none" style="font-size: 0.78rem;"></span>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <!-- 자재계정 일괄적용 -->
@@ -283,25 +314,48 @@
             <thead>
                 <tr>
                     <th class="chk-col bg-original" style="width: 30px;"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
-                    <th class="bg-original" style="width: 135px; min-width: 125px;">고유번호</th>
-                    <th class="bg-original" style="width: 110px;">매입처</th>
-                    <th class="bg-original" style="min-width: 180px;">품명</th>
-                    <th class="bg-original" style="width: 90px;">규격</th>
+                    <th class="bg-original sortable" data-col="transaction_group_id" onclick="app.handleSort('transaction_group_id')" style="width: 135px; min-width: 125px;" title="클릭하여 고유번호 정렬">
+                        고유번호 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable" data-col="supplier" onclick="app.handleSort('supplier')" style="width: 110px;" title="클릭하여 매입처 정렬">
+                        매입처 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable" data-col="destination" onclick="app.handleSort('destination')" style="width: 110px;" title="클릭하여 매출처 정렬">
+                        매출처 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable" data-col="item" onclick="app.handleSort('item')" style="min-width: 180px;" title="클릭하여 품명 정렬">
+                        품명 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable" data-col="spec" onclick="app.handleSort('spec')" style="width: 90px;" title="클릭하여 규격 정렬">
+                        규격 <i class='bx bx-sort sort-icon'></i>
+                    </th>
                     <th class="bg-original" style="width: 50px;">단위</th>
-                    <th class="bg-original" style="width: 125px; min-width: 115px;">자재계정</th>
+                    <th class="bg-original sortable" data-col="settlement_account" onclick="app.handleSort('settlement_account')" style="width: 125px; min-width: 115px;" title="클릭하여 자재계정 정렬">
+                        자재계정 <i class='bx bx-sort sort-icon'></i>
+                    </th>
                     <th class="bg-original text-center" style="width: 70px;">구분</th>
-                    <th class="bg-original" style="width: 110px;">일자</th>
-                    <th class="bg-original" style="width: 70px;">수량</th>
-                    <th class="bg-original" style="width: 90px;">단가</th>
-                    <th class="bg-original" style="width: 100px;">공급가</th>
-                    <th class="bg-original" style="width: 90px;">부가세</th>
-                    <th class="bg-original" style="width: 100px;">합계금액</th>
+                    <th class="bg-original sortable" data-col="date" onclick="app.handleSort('date')" style="width: 110px;" title="클릭하여 일자 정렬">
+                        일자 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable text-end" data-col="qty" onclick="app.handleSort('qty')" style="width: 70px;" title="클릭하여 수량 정렬">
+                        수량 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable text-end" data-col="inbound_price" onclick="app.handleSort('inbound_price')" style="width: 90px;" title="클릭하여 단가 정렬">
+                        단가 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original sortable text-end" data-col="inbound_total" onclick="app.handleSort('inbound_total')" style="width: 100px;" title="클릭하여 공급가 정렬">
+                        공급가 <i class='bx bx-sort sort-icon'></i>
+                    </th>
+                    <th class="bg-original text-end" style="width: 90px;">부가세</th>
+                    <th class="bg-original text-end" style="width: 100px;">합계금액</th>
                     <th class="bg-original" style="width: 140px;">비고</th>
-                    <th class="bg-original text-center" style="width: 80px;">상태/작업</th>
+                    <th class="bg-original text-center sortable" data-col="settlement_status" onclick="app.handleSort('settlement_status')" style="width: 80px;" title="클릭하여 정산상태 정렬">
+                        상태/작업 <i class='bx bx-sort sort-icon'></i>
+                    </th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
-                <tr><td colspan="16" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                <tr><td colspan="17" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>
             </tbody>
         </table>
     </div>

@@ -10,6 +10,9 @@ const app = {
     items: [],
     totalItems: 0,
     currentSummary: null,
+    currentSortCol: 'date',
+    currentSortDir: 'desc',
+    subSearchKeyword: '',
 
     init: function() {
         // 체크박스 헤더
@@ -211,8 +214,10 @@ const app = {
             if (endDate) url.searchParams.append('endDate', endDate);
             if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
             if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
+            if (this.currentSortCol) url.searchParams.append('sortCol', this.currentSortCol);
+            if (this.currentSortDir) url.searchParams.append('sortDir', this.currentSortDir);
 
-            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
+            $('dataTableBody').innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
 
             const res = await window.authFetch(url.toString());
             if (!res.ok) {
@@ -226,7 +231,8 @@ const app = {
             this.currentSummary = result.summary || null;
             
             // 화면 렌더링
-            this.renderTable();
+            this.updateSortHeaderUI();
+            this.renderFilteredTable();
             this.updatePagination();
             this.renderSummaryStrip(result.summary);
             this.renderActiveFilterChips();
@@ -237,7 +243,7 @@ const app = {
             
         } catch (err) {
             console.error('Purchase data load error:', err);
-            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">데이터 로드에 실패했습니다. (${err.message || '네트워크/서버 오류'})</td></tr>`;
+            $('dataTableBody').innerHTML = `<tr><td colspan="17" class="text-center text-danger py-5">데이터 로드에 실패했습니다. (${err.message || '네트워크/서버 오류'})</td></tr>`;
         }
     },
 
@@ -389,22 +395,130 @@ const app = {
         `;
     },
 
-    renderTable: function() {
+    handleSort: function(col) {
+        if (this.currentSortCol === col) {
+            this.currentSortDir = this.currentSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSortCol = col;
+            this.currentSortDir = (col === 'date' || col === 'transaction_group_id') ? 'desc' : 'asc';
+        }
+        this.updateSortHeaderUI();
+        this.sortItems();
+        this.renderFilteredTable();
+    },
+
+    updateSortHeaderUI: function() {
+        document.querySelectorAll('#mainTable thead th.sortable').forEach(th => {
+            const col = th.dataset.col;
+            const icon = th.querySelector('.sort-icon');
+            if (col === this.currentSortCol) {
+                th.classList.add('active-sort');
+                if (icon) {
+                    icon.className = `bx bx-sort-${this.currentSortDir === 'asc' ? 'up' : 'down'} sort-icon`;
+                }
+            } else {
+                th.classList.remove('active-sort');
+                if (icon) {
+                    icon.className = 'bx bx-sort sort-icon';
+                }
+            }
+        });
+    },
+
+    sortItems: function() {
+        const col = this.currentSortCol;
+        const dir = this.currentSortDir === 'asc' ? 1 : -1;
+        
+        this.items.sort((a, b) => {
+            let valA, valB;
+            if (col === 'qty') {
+                valA = Number(a.settlement_qty ?? a.qty) || 0;
+                valB = Number(b.settlement_qty ?? b.qty) || 0;
+            } else if (col === 'inbound_price') {
+                valA = Number(a.settlement_price ?? a.inbound_price) || 0;
+                valB = Number(b.settlement_price ?? b.inbound_price) || 0;
+            } else if (col === 'inbound_total') {
+                const priceA = Number(a.settlement_price ?? a.inbound_price) || 0;
+                const qtyA = Number(a.settlement_qty ?? a.qty) || 0;
+                valA = priceA * qtyA;
+                const priceB = Number(b.settlement_price ?? b.inbound_price) || 0;
+                const qtyB = Number(b.settlement_qty ?? b.qty) || 0;
+                valB = priceB * qtyB;
+            } else {
+                valA = (a[col] || '').toString().toLowerCase();
+                valB = (b[col] || '').toString().toLowerCase();
+            }
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+    },
+
+    onSubSearchInput: function(val) {
+        this.subSearchKeyword = (val || '').trim().toLowerCase();
+        const clearBtn = $('clearSubSearchBtn');
+        if (clearBtn) {
+            if (this.subSearchKeyword) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        this.renderFilteredTable();
+    },
+
+    clearSubSearch: function() {
+        const input = $('subSearchInput');
+        if (input) input.value = '';
+        this.onSubSearchInput('');
+    },
+
+    renderFilteredTable: function() {
+        let displayList = this.items;
+        if (this.subSearchKeyword) {
+            const kw = this.subSearchKeyword;
+            displayList = this.items.filter(r => {
+                return (
+                    (r.transaction_group_id && r.transaction_group_id.toLowerCase().includes(kw)) ||
+                    (r.supplier && r.supplier.toLowerCase().includes(kw)) ||
+                    (r.destination && r.destination.toLowerCase().includes(kw)) ||
+                    (r.item && r.item.toLowerCase().includes(kw)) ||
+                    (r.spec && r.spec.toLowerCase().includes(kw)) ||
+                    (r.settlement_account && r.settlement_account.toLowerCase().includes(kw)) ||
+                    (r.settlement_memo && r.settlement_memo.toLowerCase().includes(kw)) ||
+                    (r.date && r.date.toLowerCase().includes(kw)) ||
+                    (r.tax_invoice_date && r.tax_invoice_date.toLowerCase().includes(kw))
+                );
+            });
+        }
+        
+        const countBadge = $('subSearchCountBadge');
+        if (countBadge) {
+            if (this.subSearchKeyword) {
+                countBadge.innerText = `필터 결과: ${displayList.length}건`;
+                countBadge.classList.remove('d-none');
+            } else {
+                countBadge.classList.add('d-none');
+            }
+        }
+        
+        this.renderTable(displayList);
+    },
+
+    renderTable: function(data) {
+        const itemsToRender = data || this.items;
         const tbody = $('dataTableBody');
-        if (this.items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">해당하는 내역이 없습니다.</td></tr>`;
+        if (itemsToRender.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">해당하는 내역이 없습니다.</td></tr>`;
             $('totalCount').innerText = 0;
             return;
         }
         
-        $('totalCount').innerText = this.items.length;
+        $('totalCount').innerText = itemsToRender.length;
 
         const escapeAttr = (str) => {
             if (!str) return '';
             return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         };
 
-        tbody.innerHTML = this.items.map(r => {
+        tbody.innerHTML = itemsToRender.map(r => {
             const qtyTotal = (r.qty || 0) * (r.inbound_price || 0);
             let shipAmount = 0;
             if (r.shipping_fee > 0) {
@@ -456,6 +570,9 @@ const app = {
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
+                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">
+                            ${r.destination ? `<span class="text-primary fw-semibold" style="font-size: 0.8rem;">${escapeAttr(r.destination)}</span>` : `<span class="text-muted small">-</span>`}
+                        </td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
@@ -537,6 +654,9 @@ const app = {
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
+                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">
+                            ${r.destination ? `<span class="text-primary fw-semibold" style="font-size: 0.8rem;">${escapeAttr(r.destination)}</span>` : `<span class="text-muted small">-</span>`}
+                        </td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
@@ -572,7 +692,7 @@ const app = {
         }).join('');
         
         // 초기 렌더링 후 모든 미정산 행에 대해 초기 계산 실행
-        this.items.filter(r => (!r.settlement_status || r.settlement_status === '미정산')).forEach(r => {
+        itemsToRender.filter(r => (!r.settlement_status || r.settlement_status === '미정산')).forEach(r => {
             this.calcInline(r.id);
         });
         
