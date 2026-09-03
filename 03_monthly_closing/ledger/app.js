@@ -26,63 +26,88 @@ function numberToKorean(number) {
 
 const app = {
     partners: [],
+    currentDatePreset: 'prevMonth',
+    rawRows: [],
     
     init() {
-        this.setupDatePresets();
         this.loadPartners();
         
-        // Event Listeners
-        document.getElementById('startDate').addEventListener('change', () => this.loadLedger());
-        document.getElementById('endDate').addEventListener('change', () => this.loadLedger());
+        // 날짜 직접 변경 이벤트
+        document.getElementById('startDate').addEventListener('change', () => this.onDateInputChange());
+        document.getElementById('endDate').addEventListener('change', () => this.onDateInputChange());
+
+        // 초기 날짜 세팅 (전월 기본)
+        this.setDatePreset('prevMonth');
     },
 
-    setupDatePresets() {
-        const today = new Date();
-        const setDateRange = (start, end) => {
-            const formatLocal = (d) => {
-                const offset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - offset).toISOString().split('T')[0];
-            };
-            document.getElementById('startDate').value = formatLocal(start);
-            document.getElementById('endDate').value = formatLocal(end);
-            this.loadLedger();
-        };
+    setDatePreset: function(preset) {
+        this.currentDatePreset = preset;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1; // 1-12
 
-        const presets = {
-            '전월': () => {
-                const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                const end = new Date(today.getFullYear(), today.getMonth(), 0);
-                setDateRange(start, end);
-            },
-            '당월': () => {
-                const start = new Date(today.getFullYear(), today.getMonth(), 1);
-                const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                setDateRange(start, end);
-            },
-            '3개월': () => {
-                const start = new Date(today.getFullYear(), today.getMonth() - 3, 1);
-                setDateRange(start, today);
-            },
-            '6개월': () => {
-                const start = new Date(today.getFullYear(), today.getMonth() - 6, 1);
-                setDateRange(start, today);
-            },
-            '전체': () => {
-                const start = new Date(2000, 0, 1);
-                setDateRange(start, today);
+        let startDate = '';
+        let endDate = '';
+
+        if (preset === 'thisMonth') {
+            const lastDay = new Date(year, month, 0).getDate();
+            startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'prevMonth') {
+            let prevYear = year;
+            let prevMonth = month - 1;
+            if (prevMonth === 0) {
+                prevMonth = 12;
+                prevYear -= 1;
             }
-        };
+            const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+            startDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+            endDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'thisYear') {
+            startDate = `${year}-01-01`;
+            endDate = `${year}-12-31`;
+        } else if (preset === 'prevYear') {
+            startDate = `${year - 1}-01-01`;
+            endDate = `${year - 1}-12-31`;
+        } else if (preset === 'all') {
+            startDate = '2000-01-01';
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            endDate = `${y}-${m}-${d}`;
+        }
 
-        document.querySelectorAll('input[name="datePreset"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    presets[e.target.value]();
+        if (document.getElementById('startDate')) document.getElementById('startDate').value = startDate;
+        if (document.getElementById('endDate')) document.getElementById('endDate').value = endDate;
+
+        this.updatePresetButtons(preset);
+
+        const partner = document.getElementById('partnerInput') ? document.getElementById('partnerInput').value.trim() : '';
+        if (partner) {
+            this.loadLedger();
+        }
+    },
+
+    updatePresetButtons: function(activePreset) {
+        ['prevMonth', 'thisMonth', 'prevYear', 'thisYear', 'all'].forEach(p => {
+            const btn = document.getElementById(`btnPreset_${p}`);
+            if (btn) {
+                if (p === activePreset) {
+                    btn.className = 'btn btn-sm btn-primary text-white fw-bold text-nowrap';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline-secondary text-nowrap';
                 }
-            });
+            }
         });
+    },
 
-        // 초기값 전월 세팅
-        presets['전월']();
+    onDateInputChange: function() {
+        this.currentDatePreset = '';
+        this.updatePresetButtons('');
+        const partner = document.getElementById('partnerInput') ? document.getElementById('partnerInput').value.trim() : '';
+        if (partner) {
+            this.loadLedger();
+        }
     },
 
     async loadPartners() {
@@ -164,23 +189,27 @@ const app = {
     },
 
     async loadLedger() {
-        const partner = document.getElementById('partnerInput').value;
+        const partner = document.getElementById('partnerInput').value.trim();
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
         const tbody = document.getElementById('ledgerTableBody');
         const tfoot = document.getElementById('ledgerTableFoot');
+        const summaryStrip = document.getElementById('ledgerSummaryStrip');
+        const searchContainer = document.getElementById('ledgerInlineSearchContainer');
 
         if (!partner) {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
             tfoot.style.display = 'none';
+            if (summaryStrip) summaryStrip.classList.add('d-none');
+            if (searchContainer) searchContainer.classList.add('d-none');
             document.getElementById('printTitle').innerText = '매출/매입 정산내역';
             document.getElementById('printPeriod').innerText = '';
             return;
         }
 
         try {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
             
             const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
             if (!response.ok) throw new Error('API Error');
@@ -190,132 +219,218 @@ const app = {
             if (ledgerType !== '전체') {
                 res = res.filter(row => row.type === ledgerType);
             }
-            
-            if (res.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">해당 기간에 정산된 내역이 없습니다.</td></tr>`;
-                tfoot.style.display = 'none';
-            } else {
-                let sumTotal = 0;
-                let sumVat = 0;
-                let sumGrand = 0;
 
-                let html = res.map(row => {
-                    let shipAmount = 0;
-                    if (row.shipping_fee > 0) {
-                        shipAmount = row.shipping_fee_vat_included === 1 ? Math.round(row.shipping_fee / 1.1) : row.shipping_fee;
-                    }
-                    const amount = (row.qty * row.price) + shipAmount;
-                    const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
-                    let vat = 0;
-                    if (!isZeroTax) {
-                        if (row.settlement_vat !== undefined && row.settlement_vat !== null) {
-                            vat = row.settlement_vat;
-                        } else {
-                            const itemVat = Math.floor(row.qty * row.price * 0.1);
-                            let shipVat = 0;
-                            if (row.shipping_fee > 0) {
-                                shipVat = row.shipping_fee_vat_included === 1 ? (row.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
-                            }
-                            vat = itemVat + shipVat;
-                        }
-                    }
-                    const grand = amount + vat;
+            this.rawRows = res || [];
 
-                    sumTotal += amount;
-                    sumVat += vat;
-                    sumGrand += grand;
-                    
-                    const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1 d-print-none">직출고</span>' : '';
-                    const siteBadge = aggregateByBizNum && row.site_name 
-                        ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
-                        : '';
-                    const shipBadge = row.shipping_fee > 0 
-                        ? `<span class="badge bg-light text-secondary border ms-1 d-print-none">배송비 ${row.shipping_fee.toLocaleString()}</span>` 
-                        : '';
-
-                    let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
-                    if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
-
-                    return `
-                        <tr class="${row.is_direct ? 'direct-row' : ''}">
-                            <td class="text-center">${dateStr}</td>
-                            <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
-                            <td class="text-center">${row.spec || ''}</td>
-                            <td class="text-end">${row.qty.toLocaleString()}</td>
-                            <td class="text-center">${row.unit || ''}</td>
-                            <td class="text-end">${row.price.toLocaleString()}</td>
-                            <td class="text-end">${amount.toLocaleString()}</td>
-                            <td class="text-end">${vat.toLocaleString()}</td>
-                            <td class="text-start wrap-cell">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
-                        </tr>
-                    `;
-                }).join('');
-
-                // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
-                html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
-
-                // 동적 빈 줄 채우기 (기본 20줄, 20줄 초과 시 최대 24줄까지 1페이지 수용, 그 이상은 2페이지 분할)
-                const defaultFirstPage = 20;
-                const maxFirstPage = 24;
-                const rowsOtherPage = 32;
-                let emptyRowsCount = 0;
-                const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
-                
-                if (totalRendered <= defaultFirstPage) {
-                    emptyRowsCount = defaultFirstPage - totalRendered;
-                } else if (totalRendered <= maxFirstPage) {
-                    emptyRowsCount = maxFirstPage - totalRendered;
-                } else {
-                    const overflow = totalRendered - maxFirstPage;
-                    const remainder = overflow % rowsOtherPage;
-                    if (remainder > 0) {
-                        emptyRowsCount = rowsOtherPage - remainder;
-                    }
-                }
-                
-                for (let i = 0; i < emptyRowsCount; i++) {
-                    html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
-                }
-
-                // 합계 행 추가
-                html += `
-                    <tr class="total-row">
-                        <td colspan="6" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
-                        <td class="text-end">${sumTotal.toLocaleString()}</td>
-                        <td class="text-end">${sumVat.toLocaleString()}</td>
-                        <td></td>
-                    </tr>
-                `;
-                
-                tbody.innerHTML = html;
-                tfoot.style.display = 'none';
-
-                // 상단 금액 표시 (숫자 -> 한글 변환 적용)
-                if(document.getElementById('printAmountKor')) {
-                    document.getElementById('printAmountKor').innerText = `합 계 금 액 : 금 ${numberToKorean(sumGrand)} 원 정`;
-                }
-                if(document.getElementById('printAmountNum')) {
-                    document.getElementById('printAmountNum').innerText = `(₩ ${sumGrand.toLocaleString()})`;
+            if (searchContainer) {
+                searchContainer.classList.remove('d-none');
+                const partnerInfoEl = document.getElementById('ledgerPartnerInfo');
+                if (partnerInfoEl) {
+                    partnerInfoEl.innerHTML = `거래처: <strong>${partner}</strong> | 전체 <strong>${this.rawRows.length}</strong>건`;
                 }
             }
 
-            // 프린트 헤더 세팅
-            let displayTitle = '';
-            if (ledgerType === '입고') displayTitle = '거래(매입)내역서';
-            else if (ledgerType === '출고') displayTitle = '거래(공급)내역서';
-            else displayTitle = '매출/매입 정산내역';
-            
-            document.getElementById('printTitle').innerText = aggregateByBizNum 
-                ? `(사업자 통합) ${displayTitle}`
-                : displayTitle;
-            document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
-            document.getElementById('printPartnerName').innerText = partner;
+            this.filterLedgerRows();
 
-        } catch (error) {
-            console.error('Failed to load ledger', error);
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">데이터를 불러오는 중 오류가 발생했습니다.</td></tr>`;
-            tfoot.style.display = 'none';
+        } catch (err) {
+            console.error('Ledger error:', err);
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">데이터 로드에 실패했습니다.</td></tr>`;
+            if (summaryStrip) summaryStrip.classList.add('d-none');
+            if (searchContainer) searchContainer.classList.add('d-none');
         }
+    },
+
+    filterLedgerRows: function() {
+        const filterVal = document.getElementById('ledgerFilterInput') ? document.getElementById('ledgerFilterInput').value.trim() : '';
+        const clearBtn = document.getElementById('clearLedgerFilterBtn');
+        if (clearBtn) {
+            if (filterVal.length > 0) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+
+        let filtered = this.rawRows;
+        if (filterVal) {
+            const tokens = filterVal.split(/\s+/).filter(Boolean).map(t => t.toLowerCase());
+            filtered = this.rawRows.filter(row => {
+                const combined = [
+                    row.item || '',
+                    row.spec || '',
+                    row.unit || '',
+                    row.settlement_memo || '',
+                    row.site_name || ''
+                ].join(' ').toLowerCase();
+                return tokens.every(token => combined.includes(token));
+            });
+        }
+
+        this.renderLedgerTable(filtered);
+    },
+
+    clearLedgerFilter: function() {
+        if (document.getElementById('ledgerFilterInput')) {
+            document.getElementById('ledgerFilterInput').value = '';
+        }
+        const clearBtn = document.getElementById('clearLedgerFilterBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.filterLedgerRows();
+    },
+
+    renderLedgerTable: function(res) {
+        const tbody = document.getElementById('ledgerTableBody');
+        const tfoot = document.getElementById('ledgerTableFoot');
+        const summaryStrip = document.getElementById('ledgerSummaryStrip');
+        const partner = document.getElementById('partnerInput').value.trim();
+        const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
+        const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
+
+        if (res.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">해당 조건에 부합하는 정산 내역이 없습니다.</td></tr>`;
+            tfoot.style.display = 'none';
+            if (summaryStrip) summaryStrip.classList.add('d-none');
+            return;
+        }
+
+        let sumTotal = 0;
+        let sumVat = 0;
+        let sumGrand = 0;
+        let sumQty = 0;
+
+        let html = res.map(row => {
+            let shipAmount = 0;
+            if (row.shipping_fee > 0) {
+                shipAmount = row.shipping_fee_vat_included === 1 ? Math.round(row.shipping_fee / 1.1) : row.shipping_fee;
+            }
+            const amount = (row.qty * row.price) + shipAmount;
+            const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
+            let vat = 0;
+            if (!isZeroTax) {
+                if (row.settlement_vat !== undefined && row.settlement_vat !== null) {
+                    vat = row.settlement_vat;
+                } else {
+                    const itemVat = Math.floor(row.qty * row.price * 0.1);
+                    let shipVat = 0;
+                    if (row.shipping_fee > 0) {
+                        shipVat = row.shipping_fee_vat_included === 1 ? (row.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                    }
+                    vat = itemVat + shipVat;
+                }
+            }
+            const grand = amount + vat;
+
+            sumQty += (Number(row.qty) || 0);
+            sumTotal += amount;
+            sumVat += vat;
+            sumGrand += grand;
+            
+            const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1 d-print-none">직출고</span>' : '';
+            const siteBadge = aggregateByBizNum && row.site_name 
+                ? `<span class="badge border border-secondary text-secondary ms-1 fw-normal">${row.site_name}</span>` 
+                : '';
+            const shipBadge = row.shipping_fee > 0 
+                ? `<span class="badge bg-light text-secondary border ms-1 d-print-none">배송비 ${row.shipping_fee.toLocaleString()}</span>` 
+                : '';
+
+            let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
+            if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
+
+            return `
+                <tr class="${row.is_direct ? 'direct-row' : ''}">
+                    <td class="text-center">${dateStr}</td>
+                    <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
+                    <td class="text-center">${row.spec || ''}</td>
+                    <td class="text-end">${row.qty.toLocaleString()}</td>
+                    <td class="text-center">${row.unit || ''}</td>
+                    <td class="text-end">${row.price.toLocaleString()}</td>
+                    <td class="text-end">${amount.toLocaleString()}</td>
+                    <td class="text-end">${vat.toLocaleString()}</td>
+                    <td class="text-start wrap-cell">${row.settlement_memo ? row.settlement_memo.replace(/"/g, '&quot;') : ''}</td>
+                </tr>
+            `;
+        }).join('');
+
+        // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
+        html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
+
+        // 동적 빈 줄 채우기 (기본 20줄, 20줄 초과 시 최대 24줄까지 1페이지 수용, 그 이상은 2페이지 분할)
+        const defaultFirstPage = 20;
+        const maxFirstPage = 24;
+        const rowsOtherPage = 32;
+        let emptyRowsCount = 0;
+        const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
+        
+        if (totalRendered <= defaultFirstPage) {
+            emptyRowsCount = defaultFirstPage - totalRendered;
+        } else if (totalRendered <= maxFirstPage) {
+            emptyRowsCount = maxFirstPage - totalRendered;
+        } else {
+            const overflow = totalRendered - maxFirstPage;
+            const remainder = overflow % rowsOtherPage;
+            if (remainder > 0) {
+                emptyRowsCount = rowsOtherPage - remainder;
+            }
+        }
+        
+        for (let i = 0; i < emptyRowsCount; i++) {
+            html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+        }
+
+        // 합계 행 추가
+        html += `
+            <tr class="total-row">
+                <td colspan="6" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
+                <td class="text-end">${sumTotal.toLocaleString()}</td>
+                <td class="text-end">${sumVat.toLocaleString()}</td>
+                <td></td>
+            </tr>
+        `;
+        
+        tbody.innerHTML = html;
+        tfoot.style.display = 'none';
+
+        // 실거래 요약 스트립 렌더링 (보류된 상계 잔액 제외하고 실거래 요약 스트립으로 구성)
+        if (summaryStrip) {
+            const badgeTypeClass = ledgerType === '입고' ? 'bg-primary' : (ledgerType === '출고' ? 'bg-danger' : 'bg-dark');
+            summaryStrip.innerHTML = `
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-secondary"><i class='bx bx-receipt text-primary'></i> <strong>거래처 실거래 요약</strong></span>
+                    <span class="badge ${badgeTypeClass} px-2 py-1">${partner} (${res.length}건)</span>
+                    <span class="text-muted ms-1 me-1">|</span>
+                    <span class="text-muted">총 수량:</span>
+                    <strong class="text-dark">${sumQty.toLocaleString()}</strong>
+                </div>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div><span class="text-muted">공급가액:</span> <strong class="text-dark">${sumTotal.toLocaleString()}원</strong></div>
+                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${sumVat.toLocaleString()}원</strong></div>
+                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size:0.85rem;">
+                        합계금액: <strong class="fs-6">${sumGrand.toLocaleString()}</strong>원
+                    </div>
+                </div>
+            `;
+            summaryStrip.classList.remove('d-none');
+            summaryStrip.classList.add('d-flex');
+        }
+
+        // 상단 금액 표시 (숫자 -> 한글 변환 적용)
+        if(document.getElementById('printAmountKor')) {
+            document.getElementById('printAmountKor').innerText = `합 계 금 액 : 금 ${numberToKorean(sumGrand)} 원 정`;
+        }
+        if(document.getElementById('printAmountNum')) {
+            document.getElementById('printAmountNum').innerText = `(₩ ${sumGrand.toLocaleString()})`;
+        }
+
+        // 프린트 헤더 세팅
+        let displayTitle = '';
+        if (ledgerType === '입고') displayTitle = '거래(매입)내역서';
+        else if (ledgerType === '출고') displayTitle = '거래(공급)내역서';
+        else displayTitle = '매출/매입 정산내역';
+        
+        document.getElementById('printTitle').innerText = aggregateByBizNum 
+            ? `(사업자 통합) ${displayTitle}`
+            : displayTitle;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
+        document.getElementById('printPartnerName').innerText = partner;
     },
 
     printLedger() {

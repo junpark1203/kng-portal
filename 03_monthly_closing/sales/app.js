@@ -4,111 +4,150 @@ const $ = id => document.getElementById(id);
 
 const app = {
     currentStatus: '미정산', // 기본: 미정산
+    currentDatePreset: 'prevMonth',
     currentPage: 1,
     limit: 50,
     items: [],
     totalItems: 0,
+    currentSummary: null,
 
     init: function() {
-        // 이벤트 리스너 등록
-        $('statusFilter').addEventListener('change', (e) => {
-            this.currentStatus = e.target.value;
-            this.currentPage = 1;
-            this.loadData();
-        });
-        
-        $('limitSelect').addEventListener('change', (e) => {
-            this.limit = parseInt(e.target.value, 10);
-            this.currentPage = 1;
-            this.loadData();
-        });
-        
-        $('searchInput').addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') { this.currentPage = 1; this.loadData(); }
-        });
-        
-        // 날짜 프리셋 이벤트
-        document.querySelectorAll('.date-preset-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.applyDatePreset(e.target.dataset.preset);
-                this.currentPage = 1;
-                this.loadData();
-            });
-        });
-        
-        // 직접 날짜 변경 시 프리셋 액티브 해제
-        const clearPreset = () => {
-            document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
-        };
-        $('startDate').addEventListener('change', clearPreset);
-        $('endDate').addEventListener('change', clearPreset);
-        
         // 체크박스 헤더
         $('checkAllHeader').addEventListener('change', this.onCheckAllHeaderChange.bind(this));
         
         // 초기 날짜 세팅 (전월 기본)
-        this.applyDatePreset('전월');
-        
-        // 데이터 로드
-        this.loadData();
+        this.setDatePreset('prevMonth');
     },
 
-    applyDatePreset: function(preset) {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = today.getMonth();
-        const d = today.getDate();
-        
-        let start, end;
-        
-        const formatDate = (date) => {
-            const yy = date.getFullYear();
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            return `${yy}-${mm}-${dd}`;
-        };
+    setDatePreset: function(preset) {
+        this.currentDatePreset = preset;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1; // 1-12
 
-        if (preset === '전월') {
-            start = new Date(y, m - 1, 1);
-            end = new Date(y, m, 0); // 전월 말일
-        } else if (preset === '당월') {
-            start = new Date(y, m, 1);
-            end = new Date(y, m + 1, 0); // 말일
-        } else if (preset === '3개월') {
-            start = new Date(y, m - 3, d);
-            end = today;
-        } else if (preset === '6개월') {
-            start = new Date(y, m - 6, d);
-            end = today;
-        } else if (preset === '전체') {
-            $('startDate').value = '';
-            $('endDate').value = '';
-            return;
+        let startDate = '';
+        let endDate = '';
+
+        if (preset === 'thisMonth') {
+            const lastDay = new Date(year, month, 0).getDate();
+            startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+            endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'prevMonth') {
+            let prevYear = year;
+            let prevMonth = month - 1;
+            if (prevMonth === 0) {
+                prevMonth = 12;
+                prevYear -= 1;
+            }
+            const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+            startDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+            endDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        } else if (preset === 'thisYear') {
+            startDate = `${year}-01-01`;
+            endDate = `${year}-12-31`;
+        } else if (preset === 'prevYear') {
+            startDate = `${year - 1}-01-01`;
+            endDate = `${year - 1}-12-31`;
+        } else if (preset === 'all') {
+            startDate = '';
+            endDate = '';
         }
-        
-        if (start && end) {
-            $('startDate').value = formatDate(start);
-            $('endDate').value = formatDate(end);
+
+        if ($('startDate')) $('startDate').value = startDate;
+        if ($('endDate')) $('endDate').value = endDate;
+
+        this.updatePresetButtons(preset);
+        this.resetPageAndLoadData();
+    },
+
+    updatePresetButtons: function(activePreset) {
+        ['prevMonth', 'thisMonth', 'prevYear', 'thisYear', 'all'].forEach(p => {
+            const btn = $(`btnPreset_${p}`);
+            if (btn) {
+                if (p === activePreset) {
+                    btn.className = 'btn btn-sm btn-primary text-white fw-bold text-nowrap';
+                } else {
+                    btn.className = 'btn btn-sm btn-outline-secondary text-nowrap';
+                }
+            }
+        });
+    },
+
+    onDateInputChange: function() {
+        this.currentDatePreset = '';
+        this.updatePresetButtons('');
+        this.resetPageAndLoadData();
+    },
+
+    onSearchInputKeyup: function(e) {
+        const val = $('searchInput') ? $('searchInput').value : '';
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) {
+            if (val.length > 0) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        if (e.key === 'Enter') {
+            this.resetPageAndLoadData();
         }
     },
-    
-    resetAdvancedSearch: function() {
-        $('searchParty').value = '';
-        $('searchItem').value = '';
-        $('searchSpec').value = '';
+
+    clearSearchInput: function() {
+        if ($('searchInput')) $('searchInput').value = '';
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.resetPageAndLoadData();
+    },
+
+    onSearchTargetChange: function() {
+        if ($('searchInput') && $('searchInput').value.trim()) {
+            this.resetPageAndLoadData();
+        }
+    },
+
+    clearFilter: function(key) {
+        if (key === 'date') {
+            this.setDatePreset('all');
+        } else if (key === 'search') {
+            this.clearSearchInput();
+        } else if (key === 'status') {
+            if ($('statusFilter')) $('statusFilter').value = '전체보기';
+            this.resetPageAndLoadData();
+        }
+    },
+
+    resetSearch: function() {
+        this.currentDatePreset = 'all';
+        this.updatePresetButtons('all');
+        if ($('startDate')) $('startDate').value = '';
+        if ($('endDate')) $('endDate').value = '';
+        if ($('searchTarget')) $('searchTarget').value = '';
+        if ($('searchInput')) $('searchInput').value = '';
+        const clearBtn = $('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        if ($('statusFilter')) $('statusFilter').value = '미정산';
+        this.resetPageAndLoadData();
+    },
+
+    resetPageAndLoadData: function() {
+        this.currentPage = 1;
         this.loadData();
     },
 
     loadData: async function() {
         try {
-            const startDate = $('startDate').value;
-            const endDate = $('endDate').value;
-            const search = $('searchInput').value.trim();
-            const searchParty = $('searchParty').value.trim();
-            const searchItem = $('searchItem').value.trim();
-            const searchSpec = $('searchSpec').value.trim();
+            const startDate = $('startDate')?.value || '';
+            const endDate = $('endDate')?.value || '';
+            const searchKeyword = $('searchInput') ? $('searchInput').value.trim() : '';
+            const searchTarget = $('searchTarget')?.value || '';
+            const statusVal = $('statusFilter')?.value || '미정산';
+            this.currentStatus = statusVal;
+            this.limit = parseInt($('limitSelect')?.value, 10) || 50;
+
+            const clearBtn = $('clearSearchBtn');
+            if (clearBtn) {
+                if (searchKeyword.length > 0) clearBtn.classList.remove('d-none');
+                else clearBtn.classList.add('d-none');
+            }
 
             const url = new URL(`${API_BASE}/history`);
             url.searchParams.append('type', 'outbound');
@@ -116,42 +155,136 @@ const app = {
             url.searchParams.append('page', this.currentPage);
             url.searchParams.append('limit', this.limit);
             
+            if (statusVal && statusVal !== '전체보기') {
+                url.searchParams.append('settlement_status', statusVal);
+            }
             if (startDate) url.searchParams.append('startDate', startDate);
             if (endDate) url.searchParams.append('endDate', endDate);
-            if (search) url.searchParams.append('search', search);
-            if (searchParty) url.searchParams.append('searchParty', searchParty);
-            if (searchItem) url.searchParams.append('searchItem', searchItem);
-            if (searchSpec) url.searchParams.append('searchSpec', searchSpec);
+            if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
+            if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
+
+            $('dataTableBody').innerHTML = `<tr><td colspan="15" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
 
             const res = await window.authFetch(url.toString());
             const result = await res.json();
             
-            let allData = result.data || [];
-            
-            // 상태 필터링 (클라이언트 단 - API가 상태 필터를 미지원할 수 있으므로 넉넉히 가져와서 필터링, 단 페이징 이슈 주의)
-            // 백엔드가 상태 필터를 받지 않으므로, 사실 이상적으로는 백엔드에 맡겨야함.
-            // 하지만 당장 화면 레벨에서 걸러주는 것이 기존 방식임.
-            const filteredData = allData.filter(r => 
-                this.currentStatus === '전체보기' ||
-                (this.currentStatus === '미정산' && (!r.settlement_status || r.settlement_status === '미정산')) ||
-                (this.currentStatus === '정산완료' && r.settlement_status === '정산완료')
-            );
-            
-            this.items = filteredData;
-            this.totalItems = result.total; // 백엔드 토탈
+            this.items = result.data || [];
+            this.totalItems = result.total || 0;
+            this.currentSummary = result.summary || null;
             
             // 화면 렌더링
             this.renderTable();
             this.updatePagination();
+            this.renderSummaryStrip(result.summary);
+            this.renderActiveFilterChips();
             
             // UI 초기화
             $('checkAllHeader').checked = false;
             this.updateBatchButton();
             
         } catch (err) {
-            console.error(err);
-            $('dataTableBody').innerHTML = `<tr><td colspan="9" class="text-center text-danger">데이터 로드 실패</td></tr>`;
+            console.error('Sales data load error:', err);
+            $('dataTableBody').innerHTML = `<tr><td colspan="15" class="text-center text-danger py-5">데이터 로드에 실패했습니다.</td></tr>`;
         }
+    },
+
+    renderActiveFilterChips: function() {
+        const container = $('activeFilterChipsContainer');
+        if (!container) return;
+
+        const statusVal = $('statusFilter')?.value || '미정산';
+        const startDate = $('startDate')?.value || '';
+        const endDate = $('endDate')?.value || '';
+        const searchTarget = $('searchTarget')?.value || '';
+        const searchKeyword = $('searchInput')?.value.trim() || '';
+
+        let chips = [];
+
+        // 1. 상태 필터
+        if (statusVal && statusVal !== '전체보기') {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal">상태:</span> <strong>${statusVal}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('status')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 2. 날짜 필터
+        if (startDate || endDate) {
+            let dateLabel = '';
+            if (this.currentDatePreset && this.currentDatePreset !== 'all') {
+                const presetLabels = { prevMonth: '전월', thisMonth: '당월', prevYear: '전년도', thisYear: '금년도' };
+                dateLabel = `${presetLabels[this.currentDatePreset]} (${startDate} ~ ${endDate})`;
+            } else {
+                dateLabel = `${startDate || '~'} ~ ${endDate || '~'}`;
+            }
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-calendar'></i> 기간:</span> <strong>${dateLabel}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('date')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 3. 검색어 필터
+        if (searchKeyword) {
+            const targetLabels = {
+                destination: '매출처', item: '품목명', spec: '규격', note: '비고', tx_id: '고유번호'
+            };
+            const targetName = targetLabels[searchTarget] || '전체';
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-search'></i> ${targetName}:</span> <strong>"${searchKeyword}"</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('search')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        if (chips.length > 0) {
+            container.innerHTML = `
+                <span class="text-secondary me-1"><i class='bx bx-filter-alt'></i> <strong>활성 조건:</strong></span>
+                ${chips.join('')}
+                <button class="btn btn-link btn-sm text-danger p-0 ms-2 text-decoration-none" onclick="app.resetSearch()" style="font-size:0.78rem;">
+                    <i class='bx bx-reset'></i> 전체 초기화
+                </button>
+            `;
+            container.classList.remove('d-none');
+        } else {
+            container.innerHTML = '';
+            container.classList.add('d-none');
+        }
+    },
+
+    renderSummaryStrip: function(summary) {
+        const strip = $('salesSummaryStrip');
+        if (!strip) return;
+
+        if (!summary) {
+            strip.innerHTML = `<span class="text-muted">통계 집계 없음</span>`;
+            return;
+        }
+
+        const totalCount = summary.totalCount || 0;
+        const totalQty = summary.totalQty || 0;
+        const outbound = summary.outbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
+
+        strip.innerHTML = `
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
+                <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
+                <span class="text-muted ms-1 me-1">|</span>
+                <span class="text-muted">총 수량:</span>
+                <strong class="text-dark">${totalQty.toLocaleString()}</strong>
+            </div>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
+                <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${outbound.vat.toLocaleString()}원</strong></div>
+                <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size:0.85rem;">
+                    매출 합계: <strong class="fs-6">${outbound.totalAmt.toLocaleString()}</strong>원
+                </div>
+            </div>
+        `;
     },
 
     renderTable: function() {
@@ -198,7 +331,7 @@ const app = {
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
-                        <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
+                        <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
@@ -267,7 +400,7 @@ const app = {
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
-                        <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
+                        <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
@@ -405,10 +538,25 @@ const app = {
         const checkedBoxes = document.querySelectorAll('.row-chk:checked');
         let hasUnsettled = false;
         let hasSettled = false;
+        let selectedSum = 0;
         
         checkedBoxes.forEach(el => {
             if (el.dataset.status === '미정산') hasUnsettled = true;
             if (el.dataset.status === '정산완료') hasSettled = true;
+
+            const rowId = el.value;
+            const inputRow = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
+            if (inputRow) {
+                const totalInput = inputRow.querySelector('.inline-total-amt');
+                if (totalInput && totalInput.value) {
+                    selectedSum += parseFloat(totalInput.value.replace(/,/g, '')) || 0;
+                } else {
+                    const totalCell = inputRow.querySelector('td:nth-child(7)');
+                    if (totalCell) {
+                        selectedSum += parseFloat(totalCell.innerText.replace(/,/g, '')) || 0;
+                    }
+                }
+            }
         });
         
         $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
@@ -417,6 +565,20 @@ const app = {
         
         const allChecks = document.querySelectorAll('.row-chk');
         $('checkAllHeader').checked = allChecks.length > 0 && checkedBoxes.length === allChecks.length;
+
+        // 선택 카운트 및 합계 뱃지 갱신
+        const countBadge = $('selectedCountBadge');
+        if (countBadge) countBadge.innerText = `선택 ${checkedBoxes.length}건`;
+
+        const sumBadge = $('selectedSumBadge');
+        if (sumBadge) {
+            if (checkedBoxes.length > 0) {
+                sumBadge.innerText = `선택 합계: ${Math.round(selectedSum).toLocaleString()}원`;
+                sumBadge.classList.remove('d-none');
+            } else {
+                sumBadge.classList.add('d-none');
+            }
+        }
     },
 
     calcInline: function(id, autoCalcVat = false) {

@@ -468,6 +468,7 @@ router.get('/history', (req, res) => {
         sortCol = 'date', sortDir = 'desc',
         startDate = '', endDate = '',
         searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = '',
+        settlement_status = '',
         include_direct = 'false'
     } = req.query;
 
@@ -504,7 +505,6 @@ router.get('/history', (req, res) => {
         params.push(endDate);
     }
     
-    
     if (type === 'direct') {
         whereClauses.push("is_direct = 1");
     }
@@ -512,6 +512,30 @@ router.get('/history', (req, res) => {
     if (category) {
         whereClauses.push("category = ?");
         params.push(category);
+    }
+
+    // 정산 상태 필터링 (미정산 / 정산완료)
+    if (settlement_status && settlement_status !== '전체' && settlement_status !== '전체보기') {
+        if (settlement_status === '미정산') {
+            whereClauses.push("(settlement_status = '미정산' OR settlement_status IS NULL OR settlement_status = '')");
+        } else if (settlement_status === '정산완료') {
+            whereClauses.push("settlement_status = '정산완료'");
+        }
+    }
+
+    // 개별 상세 검색 필터 지원
+    if (searchParty && searchParty.trim()) {
+        const pKw = `%${searchParty.trim()}%`;
+        whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR actual_destination LIKE ?)");
+        params.push(pKw, pKw, pKw);
+    }
+    if (searchItem && searchItem.trim()) {
+        whereClauses.push("item LIKE ?");
+        params.push(`%${searchItem.trim()}%`);
+    }
+    if (searchSpec && searchSpec.trim()) {
+        whereClauses.push("spec LIKE ?");
+        params.push(`%${searchSpec.trim()}%`);
     }
     
     // Smart Multi-token AND Search (현대적 스마트 교집합 검색)
@@ -598,14 +622,31 @@ router.get('/history', (req, res) => {
     `;
 
     // 조건별 실시간 집계 요약 쿼리 (공급가, 부가세, 합계, 총수량 등)
+    // 정산완료/미정산 상태에 따라 settlement_qty / settlement_price 유무를 고려하여 집계
     const summarySql = `
         SELECT 
             COUNT(*) as total,
-            COALESCE(SUM(qty), 0) as total_qty,
-            COALESCE(SUM(CASE WHEN inbound_total IS NOT NULL THEN inbound_total ELSE 0 END), 0) as inbound_supply_amt,
-            COALESCE(SUM(CASE WHEN inbound_total IS NOT NULL AND is_zero_tax = 0 THEN ROUND(inbound_total * 0.1) ELSE 0 END), 0) as inbound_vat,
-            COALESCE(SUM(CASE WHEN outbound_total IS NOT NULL THEN outbound_total ELSE 0 END), 0) as outbound_supply_amt,
-            COALESCE(SUM(CASE WHEN outbound_total IS NOT NULL AND is_zero_tax = 0 THEN ROUND(outbound_total * 0.1) ELSE 0 END), 0) as outbound_vat,
+            COALESCE(SUM(COALESCE(settlement_qty, qty)), 0) as total_qty,
+            COALESCE(SUM(CASE 
+                WHEN inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN inbound_total IS NOT NULL THEN inbound_total 
+                ELSE 0 
+            END), 0) as inbound_supply_amt,
+            COALESCE(SUM(CASE 
+                WHEN is_zero_tax = 0 AND inbound_price IS NOT NULL THEN ROUND((COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price)) * 0.1)
+                WHEN is_zero_tax = 0 AND inbound_total IS NOT NULL THEN ROUND(inbound_total * 0.1)
+                ELSE 0 
+            END), 0) as inbound_vat,
+            COALESCE(SUM(CASE 
+                WHEN outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN outbound_total IS NOT NULL THEN outbound_total 
+                ELSE 0 
+            END), 0) as outbound_supply_amt,
+            COALESCE(SUM(CASE 
+                WHEN is_zero_tax = 0 AND outbound_price IS NOT NULL THEN ROUND((COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price)) * 0.1)
+                WHEN is_zero_tax = 0 AND outbound_total IS NOT NULL THEN ROUND(outbound_total * 0.1)
+                ELSE 0 
+            END), 0) as outbound_vat,
             COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as inbound_count,
             COALESCE(SUM(CASE WHEN type = 'outbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as outbound_count,
             COALESCE(SUM(CASE WHEN is_direct = 1 THEN 1 ELSE 0 END), 0) as direct_count
