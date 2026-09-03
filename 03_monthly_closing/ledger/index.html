@@ -236,6 +236,20 @@
                         <input type="radio" class="btn-check" name="ledgerType" id="typeOut" value="출고" onchange="app.loadLedger()">
                         <label class="btn btn-outline-secondary text-nowrap" for="typeOut">매출장부</label>
                     </div>
+
+                    <!-- 자재계정 필터 -->
+                    <select class="form-select form-select-sm" id="accountFilter" style="width: 140px; min-width: 130px; flex-shrink: 0;" onchange="app.loadLedger()">
+                        <option value="">전체 자재계정</option>
+                        <optgroup label="안전자재">
+                            <option value="안전자재">🛡️ 안전자재 전체</option>
+                            <option value="안전자재-일반">　└ 안전(일반)</option>
+                            <option value="안전자재-환경">　└ 안전(환경)</option>
+                        </optgroup>
+                        <option value="잡자재">📦 잡자재</option>
+                        <option value="기타자재">🔧 기타자재</option>
+                        <option value="쇼핑몰">🛒 쇼핑몰</option>
+                        <option value="미분류">⚠️ 미분류</option>
+                    </select>
                 </div>
 
                 <!-- 우측: 거래처 검색, 사업자 합산 스위치, 조회 버튼 -->
@@ -259,7 +273,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <span class="small text-muted"><i class='bx bx-filter'></i> 장부 내 빠른 검색:</span>
                     <div class="position-relative" style="width: 220px;">
-                        <input type="text" id="ledgerFilterInput" class="form-control form-control-sm pe-4" placeholder="품목명, 규격, 비고 필터..." onkeyup="app.filterLedgerRows()">
+                        <input type="text" id="ledgerFilterInput" class="form-control form-control-sm pe-4" placeholder="품목명, 규격, 자재계정, 비고 필터..." onkeyup="app.filterLedgerRows()">
                         <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-2 d-none" id="clearLedgerFilterBtn" onclick="app.clearLedgerFilter()">
                             <i class='bx bx-x-circle'></i>
                         </button>
@@ -271,7 +285,7 @@
     </div>
 
     <!-- 정산장부 실거래 요약 스트립 -->
-    <div id="ledgerSummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-none align-items-center justify-content-between flex-wrap gap-2 no-print" style="font-size: 0.83rem;">
+    <div id="ledgerSummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-none flex-column gap-2 no-print" style="font-size: 0.83rem;">
         <!-- JS Render -->
     </div>
 
@@ -331,19 +345,20 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
-                                <th class="text-center" style="width: 9%;">일자</th>
-                                <th class="text-center" style="width: 23%;">품목명</th>
-                                <th class="text-center" style="width: 10%;">규격</th>
-                                <th class="text-center" style="width: 7%;">수량</th>
-                                <th class="text-center" style="width: 7%;">단위</th>
-                                <th class="text-center" style="width: 10%;">단가</th>
-                                <th class="text-center" style="width: 12%;">공급가액</th>
-                                <th class="text-center" style="width: 10%;">부가세</th>
+                                <th class="text-center" style="width: 8%;">일자</th>
+                                <th class="text-center" style="width: 10%;">자재계정</th>
+                                <th class="text-center" style="width: 21%;">품목명</th>
+                                <th class="text-center" style="width: 9%;">규격</th>
+                                <th class="text-center" style="width: 6%;">수량</th>
+                                <th class="text-center" style="width: 5%;">단위</th>
+                                <th class="text-center" style="width: 9%;">단가</th>
+                                <th class="text-center" style="width: 11%;">공급가액</th>
+                                <th class="text-center" style="width: 9%;">부가세</th>
                                 <th class="text-center" style="width: 12%;">비고</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
-                            <tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                            <tr><td colspan="10" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
                         </tbody>
                         <!-- tfoot은 이제 더이상 쓰지 않고 tbody 마지막에 tr로 주입할 예정이지만, 화면 표시나 안전성을 위해 숨겨둠 -->
                         <tfoot id="ledgerTableFoot" style="display: none;">

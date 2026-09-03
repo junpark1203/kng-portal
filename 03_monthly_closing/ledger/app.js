@@ -240,13 +240,14 @@ const app = {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
+        const accountFilter = document.getElementById('accountFilter')?.value || '';
         const tbody = document.getElementById('ledgerTableBody');
         const tfoot = document.getElementById('ledgerTableFoot');
         const summaryStrip = document.getElementById('ledgerSummaryStrip');
         const searchContainer = document.getElementById('ledgerInlineSearchContainer');
 
         if (!partner) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
             tfoot.style.display = 'none';
             if (summaryStrip) summaryStrip.classList.add('d-none');
             if (searchContainer) searchContainer.classList.add('d-none');
@@ -256,9 +257,14 @@ const app = {
         }
 
         try {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
             
-            const response = await window.authFetch(`${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`);
+            let url = `${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`;
+            if (accountFilter) {
+                url += `&settlement_account=${encodeURIComponent(accountFilter)}`;
+            }
+
+            const response = await window.authFetch(url);
             if (!response.ok) throw new Error('API Error');
             let res = await response.json();
             
@@ -273,7 +279,8 @@ const app = {
                 searchContainer.classList.remove('d-none');
                 const partnerInfoEl = document.getElementById('ledgerPartnerInfo');
                 if (partnerInfoEl) {
-                    partnerInfoEl.innerHTML = `거래처: <strong>${partner}</strong> | 전체 <strong>${this.rawRows.length}</strong>건`;
+                    const accLabel = accountFilter ? ` | 계정: <strong>${accountFilter}</strong>` : '';
+                    partnerInfoEl.innerHTML = `거래처: <strong>${partner}</strong>${accLabel} | 전체 <strong>${this.rawRows.length}</strong>건`;
                 }
             }
 
@@ -281,7 +288,7 @@ const app = {
 
         } catch (err) {
             console.error('Ledger error:', err);
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-danger">데이터 로드에 실패했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-danger">데이터 로드에 실패했습니다.</td></tr>`;
             if (summaryStrip) summaryStrip.classList.add('d-none');
             if (searchContainer) searchContainer.classList.add('d-none');
         }
@@ -303,6 +310,7 @@ const app = {
                     row.item || '',
                     row.spec || '',
                     row.unit || '',
+                    row.settlement_account || '',
                     row.settlement_memo || '',
                     row.site_name || ''
                 ].join(' ').toLowerCase();
@@ -329,9 +337,10 @@ const app = {
         const partner = document.getElementById('partnerInput').value.trim();
         const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
         const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
+        const accountFilter = document.getElementById('accountFilter')?.value || '';
 
         if (res.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted">해당 조건에 부합하는 정산 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">해당 조건에 부합하는 정산 내역이 없습니다.</td></tr>`;
             tfoot.style.display = 'none';
             if (summaryStrip) summaryStrip.classList.add('d-none');
             return;
@@ -341,6 +350,16 @@ const app = {
         let sumVat = 0;
         let sumGrand = 0;
         let sumQty = 0;
+
+        // 계정별 통계 집계
+        const accountStats = {
+            '안전자재-일반': { count: 0, supplyAmt: 0 },
+            '안전자재-환경': { count: 0, supplyAmt: 0 },
+            '잡자재': { count: 0, supplyAmt: 0 },
+            '기타자재': { count: 0, supplyAmt: 0 },
+            '쇼핑몰': { count: 0, supplyAmt: 0 },
+            '미분류': { count: 0, supplyAmt: 0 }
+        };
 
         let html = res.map(row => {
             let shipAmount = 0;
@@ -368,6 +387,12 @@ const app = {
             sumTotal += amount;
             sumVat += vat;
             sumGrand += grand;
+
+            const accKey = row.settlement_account || '미분류';
+            if (accountStats[accKey]) {
+                accountStats[accKey].count++;
+                accountStats[accKey].supplyAmt += amount;
+            }
             
             const isDirect = row.is_direct ? '<span class="badge bg-warning text-dark ms-1 d-print-none">직출고</span>' : '';
             const siteBadge = aggregateByBizNum && row.site_name 
@@ -380,9 +405,14 @@ const app = {
             let dateStr = row.settlement_date ? row.settlement_date.split('T')[0] : '';
             if (dateStr.length === 10) dateStr = dateStr.substring(5); // MM-DD
 
+            let accountDisplay = row.settlement_account || '-';
+            if (row.settlement_account === '안전자재-일반') accountDisplay = '안전(일반)';
+            else if (row.settlement_account === '안전자재-환경') accountDisplay = '안전(환경)';
+
             return `
                 <tr class="${row.is_direct ? 'direct-row' : ''}">
                     <td class="text-center">${dateStr}</td>
+                    <td class="text-center fw-bold" style="font-size: 0.78rem;">${accountDisplay}</td>
                     <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
                     <td class="text-center">${row.spec || ''}</td>
                     <td class="text-end">${row.qty.toLocaleString()}</td>
@@ -396,14 +426,14 @@ const app = {
         }).join('');
 
         // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
-        html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="9">[ 이 하 여 백 ]</td></tr>`;
+        html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="10">[ 이 하 여 백 ]</td></tr>`;
 
-        // 동적 빈 줄 채우기 (기본 20줄, 20줄 초과 시 최대 24줄까지 1페이지 수용, 그 이상은 2페이지 분할)
+        // 동적 빈 줄 채우기
         const defaultFirstPage = 20;
         const maxFirstPage = 24;
         const rowsOtherPage = 32;
         let emptyRowsCount = 0;
-        const totalRendered = res.length + 2; // Data + 이하 여백 + 합계
+        const totalRendered = res.length + 2;
         
         if (totalRendered <= defaultFirstPage) {
             emptyRowsCount = defaultFirstPage - totalRendered;
@@ -418,13 +448,13 @@ const app = {
         }
         
         for (let i = 0; i < emptyRowsCount; i++) {
-            html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
+            html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
         }
 
-        // 합계 행 추가
+        // 합계 행 추가 (앞 7칸이 일자~단가)
         html += `
             <tr class="total-row">
-                <td colspan="6" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
+                <td colspan="7" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
                 <td class="text-end">${sumTotal.toLocaleString()}</td>
                 <td class="text-end">${sumVat.toLocaleString()}</td>
                 <td></td>
@@ -434,23 +464,49 @@ const app = {
         tbody.innerHTML = html;
         tfoot.style.display = 'none';
 
-        // 실거래 요약 스트립 렌더링 (보류된 상계 잔액 제외하고 실거래 요약 스트립으로 구성)
+        // 실거래 요약 스트립 렌더링 (2단 구조: 상단 총괄, 하단 계정별 브레이크다운)
         if (summaryStrip) {
             const badgeTypeClass = ledgerType === '입고' ? 'bg-primary' : (ledgerType === '출고' ? 'bg-danger' : 'bg-dark');
             summaryStrip.innerHTML = `
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="text-secondary"><i class='bx bx-receipt text-primary'></i> <strong>거래처 실거래 요약</strong></span>
-                    <span class="badge ${badgeTypeClass} px-2 py-1">${partner} (${res.length}건)</span>
-                    <span class="text-muted ms-1 me-1">|</span>
-                    <span class="text-muted">총 수량:</span>
-                    <strong class="text-dark">${sumQty.toLocaleString()}</strong>
-                </div>
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div><span class="text-muted">공급가액:</span> <strong class="text-dark">${sumTotal.toLocaleString()}원</strong></div>
-                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${sumVat.toLocaleString()}원</strong></div>
-                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size:0.85rem;">
-                        합계금액: <strong class="fs-6">${sumGrand.toLocaleString()}</strong>원
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="text-secondary"><i class='bx bx-receipt text-primary'></i> <strong>거래처 실거래 요약</strong></span>
+                        <span class="badge ${badgeTypeClass} px-2 py-1">${partner} (${res.length}건)</span>
+                        ${accountFilter ? `<span class="badge bg-secondary px-2 py-1">${accountFilter}</span>` : ''}
+                        <span class="text-muted ms-1 me-1">|</span>
+                        <span class="text-muted">총 수량:</span>
+                        <strong class="text-dark">${sumQty.toLocaleString()}</strong>
                     </div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div><span class="text-muted">공급가액:</span> <strong class="text-dark">${sumTotal.toLocaleString()}원</strong></div>
+                        <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${sumVat.toLocaleString()}원</strong></div>
+                        <div class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size:0.85rem;">
+                            합계금액: <strong class="fs-6">${sumGrand.toLocaleString()}</strong>원
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
+                    <span class="text-secondary fw-bold me-1"><i class='bx bx-category'></i> 계정별 집계:</span>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1">
+                        🛡️ 안전(일반): <strong>${accountStats['안전자재-일반'].count}건</strong> (${accountStats['안전자재-일반'].supplyAmt.toLocaleString()}원)
+                    </span>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
+                        🌿 안전(환경): <strong>${accountStats['안전자재-환경'].count}건</strong> (${accountStats['안전자재-환경'].supplyAmt.toLocaleString()}원)
+                    </span>
+                    <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1">
+                        📦 잡자재: <strong>${accountStats['잡자재'].count}건</strong> (${accountStats['잡자재'].supplyAmt.toLocaleString()}원)
+                    </span>
+                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1">
+                        🔧 기타자재: <strong>${accountStats['기타자재'].count}건</strong> (${accountStats['기타자재'].supplyAmt.toLocaleString()}원)
+                    </span>
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1">
+                        🛒 쇼핑몰: <strong>${accountStats['쇼핑몰'].count}건</strong> (${accountStats['쇼핑몰'].supplyAmt.toLocaleString()}원)
+                    </span>
+                    ${accountStats['미분류'].count > 0 ? `
+                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1">
+                        ⚠️ 미분류: <strong>${accountStats['미분류'].count}건</strong>
+                    </span>
+                    ` : ''}
                 </div>
             `;
             summaryStrip.classList.remove('d-none');
@@ -465,15 +521,20 @@ const app = {
             document.getElementById('printAmountNum').innerText = `(₩ ${sumGrand.toLocaleString()})`;
         }
 
-        // 프린트 헤더 세팅
+        // 프린트 헤더 세팅 (자재계정 필터 선택 시 제목에 명시 [안전자재-일반] 등)
         let displayTitle = '';
         if (ledgerType === '입고') displayTitle = '거래(매입)내역서';
         else if (ledgerType === '출고') displayTitle = '거래(공급)내역서';
         else displayTitle = '매출/매입 정산내역';
+
+        let accountSuffix = '';
+        if (accountFilter) {
+            accountSuffix = ` [${accountFilter}]`;
+        }
         
         document.getElementById('printTitle').innerText = aggregateByBizNum 
-            ? `(사업자 통합) ${displayTitle}`
-            : displayTitle;
+            ? `(사업자 통합) ${displayTitle}${accountSuffix}`
+            : `${displayTitle}${accountSuffix}`;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
@@ -490,7 +551,23 @@ const app = {
         const partner = document.getElementById('partnerInput').value.trim();
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
+        const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
+        const accountFilter = document.getElementById('accountFilter')?.value || '';
         
+        let displayTitle = '';
+        if (ledgerType === '입고') displayTitle = '거래(매입)내역서';
+        else if (ledgerType === '출고') displayTitle = '거래(공급)내역서';
+        else displayTitle = '매출/매입 정산내역';
+
+        let accountSuffix = '';
+        if (accountFilter) {
+            accountSuffix = ` [${accountFilter}]`;
+        }
+        
+        document.getElementById('printTitle').innerText = aggregateByBizNum 
+            ? `(사업자 통합) ${displayTitle}${accountSuffix}`
+            : `${displayTitle}${accountSuffix}`;
+
         document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
         document.getElementById('printPartnerName').innerText = partner;
         

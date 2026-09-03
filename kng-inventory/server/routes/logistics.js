@@ -70,7 +70,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN settlement_memo TEXT",
                         "ALTER TABLE logistics_inbound ADD COLUMN trade_type TEXT DEFAULT '내수'",
                         "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee REAL DEFAULT 0",
-                        "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0"
+                        "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_account TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -107,7 +108,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_qty REAL",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT",
-                        "ALTER TABLE logistics_outbound ADD COLUMN trade_type TEXT DEFAULT '내수'"
+                        "ALTER TABLE logistics_outbound ADD COLUMN trade_type TEXT DEFAULT '내수'",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_account TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -469,6 +471,7 @@ router.get('/history', (req, res) => {
         startDate = '', endDate = '',
         searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = '',
         settlement_status = '',
+        settlement_account = '',
         include_direct = 'false'
     } = req.query;
 
@@ -476,7 +479,7 @@ router.get('/history', (req, res) => {
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category'];
+    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account'];
     const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
     const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -520,6 +523,18 @@ router.get('/history', (req, res) => {
             whereClauses.push("(settlement_status = '미정산' OR settlement_status IS NULL OR settlement_status = '')");
         } else if (settlement_status === '정산완료') {
             whereClauses.push("settlement_status = '정산완료'");
+        }
+    }
+
+    // 자재계정 필터링 (안전자재-일반 / 안전자재-환경 / 잡자재 / 기타자재 / 쇼핑몰 / 미분류)
+    if (settlement_account && settlement_account !== '전체' && settlement_account !== '전체보기') {
+        if (settlement_account === '안전자재' || settlement_account === '안전자재_전체') {
+            whereClauses.push("(settlement_account LIKE '안전자재%')");
+        } else if (settlement_account === '미분류') {
+            whereClauses.push("(settlement_account IS NULL OR settlement_account = '')");
+        } else {
+            whereClauses.push("settlement_account = ?");
+            params.push(settlement_account);
         }
     }
 
@@ -595,7 +610,8 @@ router.get('/history', (req, res) => {
                 COALESCE(i.shipping_fee, 0) as shipping_fee, COALESCE(i.shipping_fee_vat_included, 0) as shipping_fee_vat_included, i.note, i.created_at,
                 i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax,
                 COALESCE(NULLIF(i.transaction_group_id, ''), 'IN-' || REPLACE(SUBSTR(i.date, 1, 10), '-', '') || '-' || printf('%04d', i.id)) as transaction_group_id,
-                i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type
+                i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
+                COALESCE(i.settlement_account, '') as settlement_account
             FROM logistics_inbound i
             ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
@@ -612,7 +628,8 @@ router.get('/history', (req, res) => {
                 o.shipping_fee, o.shipping_fee_vat_included, o.note, o.created_at,
                 o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax,
                 COALESCE(NULLIF(o.transaction_group_id, ''), 'OUT-' || REPLACE(SUBSTR(o.date, 1, 10), '-', '') || '-' || printf('%04d', o.id)) as transaction_group_id,
-                o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type
+                o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type,
+                COALESCE(o.settlement_account, '') as settlement_account
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -622,7 +639,7 @@ router.get('/history', (req, res) => {
     `;
 
     // 조건별 실시간 집계 요약 쿼리 (공급가, 부가세, 합계, 총수량 등)
-    // 정산완료/미정산 상태에 따라 settlement_qty / settlement_price 유무를 고려하여 집계
+    // 자재계정별(안전자재-일반 / 안전자재-환경 / 잡자재 / 기타자재 / 쇼핑몰 / 미분류) 세부 집계 포함
     const summarySql = `
         SELECT 
             COUNT(*) as total,
@@ -649,7 +666,74 @@ router.get('/history', (req, res) => {
             END), 0) as outbound_vat,
             COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as inbound_count,
             COALESCE(SUM(CASE WHEN type = 'outbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as outbound_count,
-            COALESCE(SUM(CASE WHEN is_direct = 1 THEN 1 ELSE 0 END), 0) as direct_count
+            COALESCE(SUM(CASE WHEN is_direct = 1 THEN 1 ELSE 0 END), 0) as direct_count,
+
+            -- 자재계정별 브레이크다운: 안전자재(일반)
+            COALESCE(SUM(CASE WHEN settlement_account = '안전자재-일반' THEN 1 ELSE 0 END), 0) as safety_gen_count,
+            COALESCE(SUM(CASE WHEN settlement_account = '안전자재-일반' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as safety_gen_qty,
+            COALESCE(SUM(CASE 
+                WHEN settlement_account = '안전자재-일반' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '안전자재-일반' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '안전자재-일반' AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN settlement_account = '안전자재-일반' AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as safety_gen_supply,
+
+            -- 자재계정별 브레이크다운: 안전자재(환경)
+            COALESCE(SUM(CASE WHEN settlement_account = '안전자재-환경' THEN 1 ELSE 0 END), 0) as safety_env_count,
+            COALESCE(SUM(CASE WHEN settlement_account = '안전자재-환경' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as safety_env_qty,
+            COALESCE(SUM(CASE 
+                WHEN settlement_account = '안전자재-환경' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '안전자재-환경' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '안전자재-환경' AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN settlement_account = '안전자재-환경' AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as safety_env_supply,
+
+            -- 자재계정별 브레이크다운: 잡자재
+            COALESCE(SUM(CASE WHEN settlement_account = '잡자재' THEN 1 ELSE 0 END), 0) as misc_count,
+            COALESCE(SUM(CASE WHEN settlement_account = '잡자재' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as misc_qty,
+            COALESCE(SUM(CASE 
+                WHEN settlement_account = '잡자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '잡자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '잡자재' AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN settlement_account = '잡자재' AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as misc_supply,
+
+            -- 자재계정별 브레이크다운: 기타자재
+            COALESCE(SUM(CASE WHEN settlement_account = '기타자재' THEN 1 ELSE 0 END), 0) as etc_count,
+            COALESCE(SUM(CASE WHEN settlement_account = '기타자재' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as etc_qty,
+            COALESCE(SUM(CASE 
+                WHEN settlement_account = '기타자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '기타자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '기타자재' AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN settlement_account = '기타자재' AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as etc_supply,
+
+            -- 자재계정별 브레이크다운: 쇼핑몰
+            COALESCE(SUM(CASE WHEN settlement_account = '쇼핑몰' THEN 1 ELSE 0 END), 0) as mall_count,
+            COALESCE(SUM(CASE WHEN settlement_account = '쇼핑몰' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as mall_qty,
+            COALESCE(SUM(CASE 
+                WHEN settlement_account = '쇼핑몰' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '쇼핑몰' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '쇼핑몰' AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN settlement_account = '쇼핑몰' AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as mall_supply,
+
+            -- 자재계정별 브레이크다운: 미분류
+            COALESCE(SUM(CASE WHEN settlement_account IS NULL OR settlement_account = '' THEN 1 ELSE 0 END), 0) as unclassified_count,
+            COALESCE(SUM(CASE WHEN settlement_account IS NULL OR settlement_account = '' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as unclassified_qty,
+            COALESCE(SUM(CASE 
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND inbound_total IS NOT NULL THEN inbound_total
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND outbound_total IS NOT NULL THEN outbound_total
+                ELSE 0 
+            END), 0) as unclassified_supply
+
         FROM (${baseSql})
     `;
 
@@ -694,6 +778,44 @@ router.get('/history', (req, res) => {
                         supplyAmt: outboundSupply,
                         vat: outboundVat,
                         totalAmt: outboundTotal
+                    },
+                    breakdown: {
+                        safetyGeneral: {
+                            count: summaryRow ? (summaryRow.safety_gen_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.safety_gen_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.safety_gen_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.safety_gen_supply || 0) * 1.1) : 0
+                        },
+                        safetyEnv: {
+                            count: summaryRow ? (summaryRow.safety_env_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.safety_env_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.safety_env_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.safety_env_supply || 0) * 1.1) : 0
+                        },
+                        misc: {
+                            count: summaryRow ? (summaryRow.misc_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.misc_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.misc_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.misc_supply || 0) * 1.1) : 0
+                        },
+                        etc: {
+                            count: summaryRow ? (summaryRow.etc_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.etc_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.etc_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.etc_supply || 0) * 1.1) : 0
+                        },
+                        mall: {
+                            count: summaryRow ? (summaryRow.mall_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.mall_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.mall_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.mall_supply || 0) * 1.1) : 0
+                        },
+                        unclassified: {
+                            count: summaryRow ? (summaryRow.unclassified_count || 0) : 0,
+                            qty: summaryRow ? (summaryRow.unclassified_qty || 0) : 0,
+                            supplyAmt: summaryRow ? (summaryRow.unclassified_supply || 0) : 0,
+                            totalAmt: summaryRow ? Math.round((summaryRow.unclassified_supply || 0) * 1.1) : 0
+                        }
                     }
                 }
             });
@@ -1195,11 +1317,34 @@ router.post('/settlement/:type', (req, res) => {
         db.run("BEGIN TRANSACTION");
         let hasError = false;
 
+        if (req.body.action === 'update_account' && ids && Array.isArray(ids)) {
+            // 자재계정 일괄 변경
+            const placeholders = ids.map(() => '?').join(',');
+            const sql = `UPDATE ${table} SET settlement_account = ? WHERE id IN (${placeholders})`;
+            db.run(sql, [req.body.settlement_account || '', ...ids], function(err) {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
+                db.run("COMMIT");
+                return res.json({ message: '자재계정이 성공적으로 변경되었습니다.' });
+            });
+            return;
+        }
+
         if (items && Array.isArray(items)) {
-            // 개별 정산 (수량, 단가, 비고 포함)
-            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ? WHERE id = ?`);
+            // 개별 정산 (수량, 단가, 비고, 자재계정 포함)
+            // 필수 검증: settlement_account 지정 여부 확인
             for (let i of items) {
-                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', i.id, function(e) { if(e) hasError = true; });
+                if (!i.settlement_account || !String(i.settlement_account).trim()) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: '정산 처리를 위해 먼저 자재계정(안전자재/잡자재 등)을 선택해주세요.' });
+                }
+            }
+
+            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ? WHERE id = ?`);
+            for (let i of items) {
+                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', String(i.settlement_account).trim(), i.id, function(e) { if(e) hasError = true; });
             }
             stmt.finalize();
         } else if (ids && Array.isArray(ids)) {

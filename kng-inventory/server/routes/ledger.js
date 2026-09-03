@@ -5,7 +5,7 @@ const authMiddleware = require('../auth-middleware');
 module.exports = (database) => {
 
     router.get('/', authMiddleware.verifyToken, (req, res) => {
-        const { partner, startDate, endDate, aggregateByBizNum } = req.query;
+        const { partner, startDate, endDate, aggregateByBizNum, settlement_account } = req.query;
         
         if (!partner) {
             return res.status(400).json({ error: 'Partner is required' });
@@ -14,14 +14,32 @@ module.exports = (database) => {
         const fetchLedger = (partnersList) => {
             const placeholders = partnersList.map(() => '?').join(',');
             
+            let accountWhere = '';
+            const inAccountParams = [];
+            const outAccountParams = [];
+
+            if (settlement_account && settlement_account !== '전체' && settlement_account !== '전체보기') {
+                if (settlement_account === '안전자재' || settlement_account === '안전자재_전체') {
+                    accountWhere = " AND (settlement_account LIKE '안전자재%')";
+                } else if (settlement_account === '미분류') {
+                    accountWhere = " AND (settlement_account IS NULL OR settlement_account = '')";
+                } else {
+                    accountWhere = " AND settlement_account = ?";
+                    inAccountParams.push(settlement_account);
+                    outAccountParams.push(settlement_account);
+                }
+            }
+
             // 입고(매입) 데이터 조회
             const inSql = `
                 SELECT '입고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
                        COALESCE(settlement_qty, qty_initial) as qty, 
                        COALESCE(settlement_price, unit_price) as price, 
+                       COALESCE(settlement_account, '') as settlement_account,
                        is_direct, note, id, supplier as site_name, *
                 FROM logistics_inbound 
                 WHERE supplier IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
+                ${accountWhere}
             `;
             
             // 출고(매출) 데이터 조회
@@ -29,13 +47,15 @@ module.exports = (database) => {
                 SELECT '출고' as type, transaction_group_id, date, tax_invoice_date as settlement_date, item, spec, unit, 
                        COALESCE(settlement_qty, qty) as qty, 
                        COALESCE(settlement_price, selling_price) as price, 
+                       COALESCE(settlement_account, '') as settlement_account,
                        is_direct, note, id, destination as site_name, *
                 FROM logistics_outbound
                 WHERE destination IN (${placeholders}) AND tax_invoice_date >= ? AND tax_invoice_date <= ? AND settlement_status = '정산완료'
+                ${accountWhere}
             `;
 
-            const inParams = [...partnersList, startDate, endDate];
-            const outParams = [...partnersList, startDate, endDate];
+            const inParams = [...partnersList, startDate, endDate, ...inAccountParams];
+            const outParams = [...partnersList, startDate, endDate, ...outAccountParams];
 
             database.all(inSql, inParams, (err, inRows) => {
                 if (err) return res.status(500).json({ error: err.message });

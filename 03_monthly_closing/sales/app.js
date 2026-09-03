@@ -153,6 +153,9 @@ const app = {
         } else if (key === 'status') {
             if ($('statusFilter')) $('statusFilter').value = '전체보기';
             this.resetPageAndLoadData();
+        } else if (key === 'account') {
+            if ($('accountFilter')) $('accountFilter').value = '';
+            this.resetPageAndLoadData();
         }
     },
 
@@ -161,6 +164,7 @@ const app = {
         this.updatePresetButtons('all');
         if ($('startDate')) $('startDate').value = '';
         if ($('endDate')) $('endDate').value = '';
+        if ($('accountFilter')) $('accountFilter').value = '';
         if ($('searchTarget')) $('searchTarget').value = '';
         if ($('searchInput')) $('searchInput').value = '';
         const clearBtn = $('clearSearchBtn');
@@ -181,6 +185,7 @@ const app = {
             const searchKeyword = $('searchInput') ? $('searchInput').value.trim() : '';
             const searchTarget = $('searchTarget')?.value || '';
             const statusVal = $('statusFilter')?.value || '미정산';
+            const accountVal = $('accountFilter')?.value || '';
             this.currentStatus = statusVal;
             this.limit = parseInt($('limitSelect')?.value, 10) || 50;
 
@@ -199,12 +204,15 @@ const app = {
             if (statusVal && statusVal !== '전체보기') {
                 url.searchParams.append('settlement_status', statusVal);
             }
+            if (accountVal) {
+                url.searchParams.append('settlement_account', accountVal);
+            }
             if (startDate) url.searchParams.append('startDate', startDate);
             if (endDate) url.searchParams.append('endDate', endDate);
             if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
             if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
 
-            $('dataTableBody').innerHTML = `<tr><td colspan="15" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
+            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
 
             const res = await window.authFetch(url.toString());
             const result = await res.json();
@@ -225,7 +233,7 @@ const app = {
             
         } catch (err) {
             console.error('Sales data load error:', err);
-            $('dataTableBody').innerHTML = `<tr><td colspan="15" class="text-center text-danger py-5">데이터 로드에 실패했습니다.</td></tr>`;
+            $('dataTableBody').innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">데이터 로드에 실패했습니다.</td></tr>`;
         }
     },
 
@@ -234,6 +242,7 @@ const app = {
         if (!container) return;
 
         const statusVal = $('statusFilter')?.value || '미정산';
+        const accountVal = $('accountFilter')?.value || '';
         const startDate = $('startDate')?.value || '';
         const endDate = $('endDate')?.value || '';
         const searchTarget = $('searchTarget')?.value || '';
@@ -251,7 +260,17 @@ const app = {
             `);
         }
 
-        // 2. 날짜 필터
+        // 2. 자재계정 필터
+        if (accountVal) {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-category'></i> 계정:</span> <strong>${accountVal}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('account')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 3. 날짜 필터
         if (startDate || endDate) {
             let dateLabel = '';
             if (this.currentDatePreset && this.currentDatePreset !== 'all') {
@@ -268,7 +287,7 @@ const app = {
             `);
         }
 
-        // 3. 검색어 필터
+        // 4. 검색어 필터
         if (searchKeyword) {
             const targetLabels = {
                 destination: '매출처', item: '품목명', spec: '규격', note: '비고', tx_id: '고유번호'
@@ -309,21 +328,53 @@ const app = {
         const totalCount = summary.totalCount || 0;
         const totalQty = summary.totalQty || 0;
         const outbound = summary.outbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
+        const b = summary.breakdown || {};
+        const safeGen = b.safetyGeneral || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const safeEnv = b.safetyEnv || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const misc = b.misc || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const etc = b.etc || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const mall = b.mall || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
+        const unclass = b.unclassified || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
 
         strip.innerHTML = `
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
-                <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
-                <span class="text-muted ms-1 me-1">|</span>
-                <span class="text-muted">총 수량:</span>
-                <strong class="text-dark">${totalQty.toLocaleString()}</strong>
-            </div>
-            <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
-                <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${outbound.vat.toLocaleString()}원</strong></div>
-                <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size:0.85rem;">
-                    매출 합계: <strong class="fs-6">${outbound.totalAmt.toLocaleString()}</strong>원
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-secondary"><i class='bx bx-bar-chart-alt-2 text-primary'></i> <strong>검색 결과</strong></span>
+                    <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
+                    <span class="text-muted ms-1 me-1">|</span>
+                    <span class="text-muted">총 수량:</span>
+                    <strong class="text-dark">${totalQty.toLocaleString()}</strong>
                 </div>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
+                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${outbound.vat.toLocaleString()}원</strong></div>
+                    <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size:0.85rem;">
+                        매출 합계: <strong class="fs-6">${outbound.totalAmt.toLocaleString()}</strong>원
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
+                <span class="text-secondary fw-bold me-1"><i class='bx bx-category'></i> 계정별 집계:</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-inline-flex align-items-center gap-1">
+                    🛡️ 안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
+                </span>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1 d-inline-flex align-items-center gap-1">
+                    🌿 안전(환경): <strong>${safeEnv.count}건</strong> (${safeEnv.supplyAmt.toLocaleString()}원)
+                </span>
+                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1 d-inline-flex align-items-center gap-1">
+                    📦 잡자재: <strong>${misc.count}건</strong> (${misc.supplyAmt.toLocaleString()}원)
+                </span>
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1 d-inline-flex align-items-center gap-1">
+                    🔧 기타자재: <strong>${etc.count}건</strong> (${etc.supplyAmt.toLocaleString()}원)
+                </span>
+                <span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1 d-inline-flex align-items-center gap-1">
+                    🛒 쇼핑몰: <strong>${mall.count}건</strong> (${mall.supplyAmt.toLocaleString()}원)
+                </span>
+                ${unclass.count > 0 ? `
+                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1 d-inline-flex align-items-center gap-1">
+                    ⚠️ 미분류: <strong>${unclass.count}건</strong> (계정 지정 필요)
+                </span>
+                ` : ''}
             </div>
         `;
     },
@@ -331,7 +382,7 @@ const app = {
     renderTable: function() {
         const tbody = $('dataTableBody');
         if (this.items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="15" class="text-center py-5 text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">해당하는 내역이 없습니다.</td></tr>`;
             $('totalCount').innerText = 0;
             return;
         }
@@ -364,19 +415,44 @@ const app = {
             }
             
             let statusVal = r.settlement_status || '미정산';
+
+            let accountBadge = `<span class="badge bg-light text-muted border px-2 py-1" style="font-size: 0.77rem;">-</span>`;
+            if (r.settlement_account === '안전자재-일반') {
+                accountBadge = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size: 0.77rem;">🛡️ 안전(일반)</span>`;
+            } else if (r.settlement_account === '안전자재-환경') {
+                accountBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1" style="font-size: 0.77rem;">🌿 안전(환경)</span>`;
+            } else if (r.settlement_account === '잡자재') {
+                accountBadge = `<span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1" style="font-size: 0.77rem;">📦 잡자재</span>`;
+            } else if (r.settlement_account === '기타자재') {
+                accountBadge = `<span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1" style="font-size: 0.77rem;">🔧 기타자재</span>`;
+            } else if (r.settlement_account === '쇼핑몰') {
+                accountBadge = `<span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1" style="font-size: 0.77rem;">🛒 쇼핑몰</span>`;
+            }
             
             if (statusVal === '미정산') {
                 const defaultTaxDate = r.date ? r.date.split('T')[0] : '';
                 return `
                     <tr class="unsettled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
+                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
+                        <td rowspan="2" class="align-middle text-center bg-original p-1" style="max-width: 125px; border-bottom-width: 1px;">
+                            <select class="form-select form-select-sm inline-account fw-bold border-primary shadow-sm" style="font-size: 0.78rem; height: 28px !important; padding: 2px 4px !important;">
+                                <option value="">-- 계정 필수 --</option>
+                                <optgroup label="안전자재">
+                                    <option value="안전자재-일반" ${r.settlement_account==='안전자재-일반'?'selected':''}>🛡️ 안전(일반)</option>
+                                    <option value="안전자재-환경" ${r.settlement_account==='안전자재-환경'?'selected':''}>🌿 안전(환경)</option>
+                                </optgroup>
+                                <option value="잡자재" ${r.settlement_account==='잡자재'?'selected':''}>📦 잡자재</option>
+                                <option value="기타자재" ${r.settlement_account==='기타자재'?'selected':''}>🔧 기타자재</option>
+                                <option value="쇼핑몰" ${r.settlement_account==='쇼핑몰'?'selected':''}>🛒 쇼핑몰</option>
+                            </select>
+                        </td>
                         
                         <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">출고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
@@ -439,13 +515,16 @@ const app = {
                 return `
                     <tr class="settled-row bg-settled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
+                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
                         <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
+                        <td rowspan="2" class="align-middle text-center bg-original p-1" style="max-width: 125px; border-bottom-width: 1px;">
+                            ${accountBadge}
+                        </td>
                         
                         <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">출고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
@@ -602,6 +681,7 @@ const app = {
         
         $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
         $('batchDateContainer').style.display = hasUnsettled ? 'flex' : 'none';
+        $('batchAccountContainer').style.display = checkedBoxes.length > 0 ? 'flex' : 'none';
         $('cancelSettleBtn').style.display = hasSettled ? 'inline-block' : 'none';
         
         const allChecks = document.querySelectorAll('.row-chk');
@@ -619,6 +699,59 @@ const app = {
             } else {
                 sumBadge.classList.add('d-none');
             }
+        }
+    },
+
+    checkAllUnclassified: function() {
+        let count = 0;
+        document.querySelectorAll('.row-chk').forEach(el => {
+            const acc = el.dataset.account;
+            if (!acc || acc === '') {
+                el.checked = true;
+                count++;
+            } else {
+                el.checked = false;
+            }
+        });
+        $('checkAllHeader').checked = false;
+        this.updateBatchButton();
+        if (count === 0) alert('현재 목록에 미분류 항목이 없습니다.');
+    },
+
+    applyBatchAccount: async function() {
+        const accountVal = $('batchAccountSelect')?.value;
+        if (!accountVal) return alert('일괄 적용할 자재계정을 선택해주세요.');
+
+        const checkedBoxes = Array.from(document.querySelectorAll('.row-chk:checked'));
+        if (checkedBoxes.length === 0) return alert('자재계정을 적용할 대상을 먼저 선택해주세요.');
+
+        const ids = [];
+        checkedBoxes.forEach(chk => {
+            const tr = chk.closest('tr');
+            const select = tr ? tr.querySelector('.inline-account') : null;
+            if (select) select.value = accountVal;
+            chk.dataset.account = accountVal;
+            ids.push(parseInt(chk.value));
+        });
+
+        try {
+            const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'update_account',
+                    ids: ids,
+                    settlement_account: accountVal
+                })
+            });
+            if (res.ok) {
+                this.loadData();
+            } else {
+                alert('자재계정 일괄 변경에 실패했습니다.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('자재계정 변경 중 오류가 발생했습니다.');
         }
     },
 
@@ -646,7 +779,7 @@ const app = {
             }
             
             // 내수가 아니면 VAT 0원
-            const rowData = this.currentData.find(item => item.id == id);
+            const rowData = this.items.find(item => item.id == id);
             if (rowData && rowData.trade_type && rowData.trade_type !== '내수') {
                 itemVat = 0;
                 shipVat = 0;
@@ -677,9 +810,22 @@ const app = {
     },
 
     submitInlineSettlement: async function(rowId) {
+        const tr = document.querySelector(`input.row-chk[value="${rowId}"]`)?.closest('tr');
         const container = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
-        if(!container) return;
+        if(!container || !tr) return;
         
+        const accountSelect = tr.querySelector('.inline-account');
+        const accountVal = accountSelect ? accountSelect.value : '';
+        if (!accountVal) {
+            alert('정산 처리를 위해 먼저 자재계정(안전자재 / 잡자재 등)을 선택해주세요.');
+            if (accountSelect) {
+                accountSelect.focus();
+                accountSelect.classList.add('border-danger', 'bg-danger-subtle');
+                setTimeout(() => accountSelect.classList.remove('border-danger', 'bg-danger-subtle'), 2000);
+            }
+            return;
+        }
+
         const taxDate = container.querySelector('.inline-date').value;
         const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
         const isZeroTax = (vat === 0) ? 1 : 0;
@@ -693,6 +839,7 @@ const app = {
                 body: JSON.stringify({
                     items: [{
                         id: rowId,
+                        settlement_account: accountVal,
                         tax_invoice_date: taxDate,
                         is_zero_tax: isZeroTax,
                         settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
@@ -705,7 +852,8 @@ const app = {
             if (res.ok) {
                 this.loadData();
             } else {
-                alert('정산 처리에 실패했습니다.');
+                const errJson = await res.json().catch(() => ({}));
+                alert(errJson.error || '정산 처리에 실패했습니다.');
             }
         } catch(err) {
             console.error(err);
@@ -719,13 +867,19 @@ const app = {
         
         checked.forEach(chk => {
             if(chk.dataset.status === '미정산') {
-                const container = chk.closest('tr').nextElementSibling;
+                const tr = chk.closest('tr');
+                const accountSelect = tr ? tr.querySelector('.inline-account') : null;
+                const accountVal = accountSelect ? accountSelect.value : '';
+                const container = tr ? tr.nextElementSibling : null;
+                if (!container) return;
+
                 const taxDate = container.querySelector('.inline-date').value;
                 const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
                 const isZeroTax = (vat === 0) ? 1 : 0;
                 
                 items.push({
                     id: parseInt(chk.value),
+                    settlement_account: accountVal,
                     tax_invoice_date: taxDate,
                     is_zero_tax: isZeroTax,
                     settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
@@ -738,6 +892,10 @@ const app = {
         
         if(items.length === 0) return alert('선택된 미정산 내역이 없습니다.');
         
+        if(items.some(u => !u.settlement_account)) {
+            return alert('자재계정(안전자재 / 잡자재 등)이 선택되지 않은 항목이 있습니다.\n먼저 자재계정을 선택해주세요.');
+        }
+
         if(items.some(u => !u.tax_invoice_date)) {
             return alert('정산일자가 입력되지 않은 항목이 있습니다.');
         }
@@ -748,12 +906,13 @@ const app = {
             const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ items }) // updates -> items
+                body: JSON.stringify({ items })
             });
             if (res.ok) {
                 this.loadData();
             } else {
-                alert('일괄 정산 처리에 실패했습니다.');
+                const errJson = await res.json().catch(() => ({}));
+                alert(errJson.error || '일괄 정산 처리에 실패했습니다.');
             }
         } catch(err) {
             console.error(err);
@@ -820,6 +979,7 @@ const app = {
                 { header: '품명', key: 'item', width: 25 },
                 { header: '규격', key: 'spec', width: 15 },
                 { header: '단위', key: 'unit', width: 10 },
+                { header: '자재계정', key: 'account', width: 15 },
                 { header: '정산(출고)수량', key: 'qty', width: 15 },
                 { header: '정산(출고)단가', key: 'price', width: 15 },
                 { header: '배송비', key: 'ship', width: 15 },
@@ -864,6 +1024,7 @@ const app = {
                     item: r.item + (r.is_direct ? ' (직출고)' : ''),
                     spec: r.spec,
                     unit: r.unit,
+                    account: r.settlement_account || '',
                     qty: qty,
                     price: price,
                     ship: r.shipping_fee || 0,
@@ -948,6 +1109,7 @@ const app = {
                 <td>출고</td>
                 <td>${r.date ? r.date.split('T')[0] : ''}</td>
                 <td>${r.destination || ''}</td>
+                <td>${r.settlement_account || '-'}</td>
                 <td>${itemHtml}</td>
                 <td>${r.spec || ''} ${r.unit ? '/ ' + r.unit : ''}</td>
                 <td class="text-right">${qty.toLocaleString()}</td>
@@ -964,9 +1126,9 @@ const app = {
             <table class="print-table" style="width:100%; border:none;">
                 <thead>
                     <tr>
-                        <td colspan="11" style="border:none; padding: 15mm 0 15px 0;">
+                        <td colspan="13" style="border:none; padding: 15mm 0 15px 0;">
                             <div class="print-header" style="text-align:center; margin-bottom:0;">
-                                <h2 style="margin: 0; font-size: 24px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 10px; display: inline-block;">거래내역서</h2>
+                                <h2 style="margin: 0; font-size: 24px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 10px; display: inline-block;">거래내역서 (매출)</h2>
                                 <div style="text-align:right; font-size:12px; margin-top:10px;">출력일시: ${new Date().toLocaleString()}</div>
                             </div>
                         </td>
@@ -976,6 +1138,7 @@ const app = {
                         <th>구분</th>
                         <th>발생일자</th>
                         <th>거래처</th>
+                        <th>자재계정</th>
                         <th>품명</th>
                         <th>규격/단위</th>
                         <th>수량</th>
@@ -991,7 +1154,7 @@ const app = {
                 </tbody>
                 <tbody style="border-top: 2px solid #000;">
                     <tr>
-                        <td colspan="8" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
+                        <td colspan="9" style="border: 2px solid #000; background-color: #f8f9fa; font-weight: bold; text-align: center; font-size: 14px; letter-spacing: 5px;">[ 합 계 ]</td>
                         <td class="text-right" style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumTotal).toLocaleString()}</td>
                         <td class="text-right" style="background-color:#f8f9fa; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumVat).toLocaleString()}</td>
                         <td class="text-right" style="background-color:#e9ecef; font-weight:bold; border: 2px solid #000; font-size:14px; padding:10px;">${Number(sumGrand).toLocaleString()}</td>
@@ -1000,7 +1163,7 @@ const app = {
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="11" style="border:none; height: 15mm; padding: 0;"></td>
+                        <td colspan="13" style="border:none; height: 15mm; padding: 0;"></td>
                     </tr>
                 </tfoot>
             </table>

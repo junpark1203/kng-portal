@@ -179,6 +179,7 @@
                     <div class="vr d-none d-md-block"></div>
                     <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.toggleCheckAllRows(true)">전체선택</button>
                     <button class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.checkAllUnsettled()">미정산건 선택</button>
+                    <button class="btn btn-sm btn-outline-warning text-dark text-nowrap fw-bold" onclick="app.checkAllUnclassified()">미분류건 선택</button>
                     <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.toggleCheckAllRows(false)">선택해제</button>
                 </div>
 
@@ -196,6 +197,20 @@
                     <input type="date" id="startDate" class="form-control form-control-sm" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
                     <span class="text-muted">~</span>
                     <input type="date" id="endDate" class="form-control form-control-sm" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
+
+                    <!-- 자재계정 필터 -->
+                    <select class="form-select form-select-sm" id="accountFilter" style="width: 140px; min-width: 130px; flex-shrink: 0;" onchange="app.resetPageAndLoadData()">
+                        <option value="">전체 자재계정</option>
+                        <optgroup label="안전자재">
+                            <option value="안전자재">🛡️ 안전자재 전체</option>
+                            <option value="안전자재-일반">　└ 안전(일반)</option>
+                            <option value="안전자재-환경">　└ 안전(환경)</option>
+                        </optgroup>
+                        <option value="잡자재">📦 잡자재</option>
+                        <option value="기타자재">🔧 기타자재</option>
+                        <option value="쇼핑몰">🛒 쇼핑몰</option>
+                        <option value="미분류">⚠️ 미분류</option>
+                    </select>
 
                     <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;">
                         <option value="">전체 검색</option>
@@ -225,8 +240,8 @@
         <!-- 활성 칩 렌더링 -->
     </div>
 
-    <!-- 실시간 매출 정산 요약 통계 바 (공급가, 부가세, 합계, 총수량 등) -->
-    <div id="salesSummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 0.83rem;">
+    <!-- 실시간 매출 정산 요약 통계 바 (공급가, 부가세, 합계, 총수량 및 자재계정 브레이크다운) -->
+    <div id="salesSummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-flex flex-column gap-2" style="font-size: 0.83rem;">
         <span class="text-muted"><i class='bx bx-loader-alt bx-spin'></i> 통계 데이터를 집계 중입니다...</span>
     </div>
 
@@ -237,7 +252,22 @@
             <span id="selectedSumBadge" class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1 d-none" style="font-size: 0.82rem;">선택 합계: 0원</span>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap">
-            <div id="batchDateContainer" class="input-group input-group-sm me-2" style="display: none; width: 250px;">
+            <!-- 자재계정 일괄적용 -->
+            <div id="batchAccountContainer" class="input-group input-group-sm me-2" style="display: none; width: 230px;">
+                <select class="form-select" id="batchAccountSelect">
+                    <option value="">-- 자재계정 선택 --</option>
+                    <optgroup label="안전자재">
+                        <option value="안전자재-일반">🛡️ 안전(일반)</option>
+                        <option value="안전자재-환경">🌿 안전(환경)</option>
+                    </optgroup>
+                    <option value="잡자재">📦 잡자재</option>
+                    <option value="기타자재">🔧 기타자재</option>
+                    <option value="쇼핑몰">🛒 쇼핑몰</option>
+                </select>
+                <button class="btn btn-outline-primary fw-bold" type="button" onclick="app.applyBatchAccount()">일괄적용</button>
+            </div>
+            <!-- 정산일자 일괄적용 -->
+            <div id="batchDateContainer" class="input-group input-group-sm me-2" style="display: none; width: 220px;">
                 <input type="date" class="form-control" id="batchSettleDate" title="일괄 적용할 정산일자">
                 <button class="btn btn-outline-primary fw-bold" type="button" onclick="app.applyBatchDate()">일괄적용</button>
             </div>
@@ -259,19 +289,20 @@
                     <th class="bg-original" style="min-width: 180px;">품명</th>
                     <th class="bg-original" style="width: 90px;">규격</th>
                     <th class="bg-original" style="width: 50px;">단위</th>
-                    <th class="bg-original text-center" style="width: 80px;">구분</th>
+                    <th class="bg-original" style="width: 125px; min-width: 115px;">자재계정</th>
+                    <th class="bg-original text-center" style="width: 70px;">구분</th>
                     <th class="bg-original" style="width: 110px;">일자</th>
                     <th class="bg-original" style="width: 70px;">수량</th>
                     <th class="bg-original" style="width: 90px;">단가</th>
                     <th class="bg-original" style="width: 100px;">공급가</th>
                     <th class="bg-original" style="width: 90px;">부가세</th>
                     <th class="bg-original" style="width: 100px;">합계금액</th>
-                    <th class="bg-original" style="width: 150px;">비고</th>
+                    <th class="bg-original" style="width: 140px;">비고</th>
                     <th class="bg-original text-center" style="width: 80px;">상태/작업</th>
                 </tr>
             </thead>
             <tbody id="dataTableBody">
-                <tr><td colspan="15" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                <tr><td colspan="16" class="text-center py-5 text-muted">데이터를 불러오는 중입니다...</td></tr>
             </tbody>
         </table>
     </div>
