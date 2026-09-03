@@ -414,7 +414,7 @@ const app = {
                     <td class="text-center">${dateStr}</td>
                     <td class="text-center fw-bold" style="font-size: 0.78rem;">${accountDisplay}</td>
                     <td class="text-start wrap-cell">${row.item} ${isDirect}${siteBadge}${shipBadge}</td>
-                    <td class="text-center">${row.spec || ''}</td>
+                    <td class="text-center spec-cell wrap-cell">${row.spec || ''}</td>
                     <td class="text-end">${row.qty.toLocaleString()}</td>
                     <td class="text-center">${row.unit || ''}</td>
                     <td class="text-end">${row.price.toLocaleString()}</td>
@@ -428,23 +428,15 @@ const app = {
         // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
         html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="10">[ 이 하 여 백 ]</td></tr>`;
 
-        // 동적 빈 줄 채우기
+        // 동적 빈 줄 채우기:
+        // 단일 페이지(총 행수 20개 미만) 서식 완성 시에만 20행까지 빈칸을 채움.
+        // 다중 페이지(20행 초과)일 때는 인쇄 시 마지막 페이지 하단 여백 확보 및 불필요한 빈 페이지(page 6 등) 방지를 위해 빈 줄을 채우지 않음.
         const defaultFirstPage = 20;
-        const maxFirstPage = 24;
-        const rowsOtherPage = 32;
         let emptyRowsCount = 0;
         const totalRendered = res.length + 2;
         
-        if (totalRendered <= defaultFirstPage) {
+        if (totalRendered < defaultFirstPage) {
             emptyRowsCount = defaultFirstPage - totalRendered;
-        } else if (totalRendered <= maxFirstPage) {
-            emptyRowsCount = maxFirstPage - totalRendered;
-        } else {
-            const overflow = totalRendered - maxFirstPage;
-            const remainder = overflow % rowsOtherPage;
-            if (remainder > 0) {
-                emptyRowsCount = rowsOtherPage - remainder;
-            }
         }
         
         for (let i = 0; i < emptyRowsCount; i++) {
@@ -454,10 +446,10 @@ const app = {
         // 합계 행 추가 (앞 7칸이 일자~단가)
         html += `
             <tr class="total-row">
-                <td colspan="7" style="text-align: center; letter-spacing: 5px;">[ 합 계 ]</td>
-                <td class="text-end">${sumTotal.toLocaleString()}</td>
-                <td class="text-end">${sumVat.toLocaleString()}</td>
-                <td></td>
+                <td colspan="7" class="text-center fw-bold">[ 합 계 ]</td>
+                <td class="text-end fw-bold">${sumTotal.toLocaleString()}</td>
+                <td class="text-end fw-bold">${sumVat.toLocaleString()}</td>
+                <td class="text-center">&nbsp;</td>
             </tr>
         `;
         
@@ -466,7 +458,7 @@ const app = {
 
         // 실거래 요약 스트립 렌더링 (2단 구조: 상단 총괄, 하단 계정별 브레이크다운)
         if (summaryStrip) {
-            const badgeTypeClass = ledgerType === '입고' ? 'bg-primary' : (ledgerType === '출고' ? 'bg-danger' : 'bg-dark');
+            const badgeTypeClass = ledgerType === '출고' ? 'bg-danger' : (ledgerType === '입고' ? 'bg-primary' : 'bg-secondary');
             summaryStrip.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -542,10 +534,53 @@ const app = {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
-        document.getElementById('printPartnerName').innerText = partner;
+        
+        // 공급자 및 수신처(귀중) 세팅
+        this.setupPrintSupplierInfo(ledgerType, partner);
     },
 
-    printLedger() {
+    async setupPrintSupplierInfo(ledgerType, partner) {
+        if (!this.partners || this.partners.length === 0) {
+            await this.loadPartners();
+        }
+        const partnerObj = (this.partners || []).find(p => p.name === partner || p.company_name === partner);
+        const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
+        const ourCompany = preset.bizName || '주식회사 케앤지';
+        const ourCeo = preset.ceo || '윤종';
+        const ourBizNo = preset.bizNo || '845-88-00551';
+        const ourAddress = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
+        const ourBizType = preset.bizType || '도소매/임대업';
+        const ourBizItem = preset.bizItem || '건설자재, 용품외';
+        const stampImg = document.querySelector('.stamp');
+
+        if (ledgerType === '입고') {
+            // [매입장부]: 우리가 매입함
+            // 공급받는자(수신처): (주)케앤지 貴中
+            // 공급자: 매입처(partner) 정보
+            document.getElementById('printPartnerName').innerText = ourCompany;
+            document.getElementById('printBizNo').innerText = partnerObj?.business_number || '';
+            document.getElementById('printBizName').innerText = partnerObj?.company_name || partnerObj?.name || partner;
+            document.getElementById('printCeo').innerText = partnerObj?.ceo_name || '';
+            document.getElementById('printAddress').innerText = partnerObj?.address || '';
+            document.getElementById('printBizType').innerText = '';
+            document.getElementById('printBizItem').innerText = '';
+            if (stampImg) stampImg.style.display = 'none';
+        } else {
+            // [매출장부 / 전체]: 우리가 공급함
+            // 공급받는자(수신처): [거래처명] 貴中
+            // 공급자: 주식회사 케앤지 정보
+            document.getElementById('printPartnerName').innerText = partner;
+            document.getElementById('printBizNo').innerText = ourBizNo;
+            document.getElementById('printBizName').innerText = ourCompany;
+            document.getElementById('printCeo').innerText = ourCeo;
+            document.getElementById('printAddress').innerText = ourAddress;
+            document.getElementById('printBizType').innerText = ourBizType;
+            document.getElementById('printBizItem').innerText = ourBizItem;
+            if (stampImg) stampImg.style.display = 'block';
+        }
+    },
+
+    async printLedger() {
         const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
         if (ledgerType === '전체') {
             alert('인쇄를 진행하려면 매입장부 또는 매출장부를 선택해주세요.');
@@ -573,15 +608,8 @@ const app = {
             : `${displayTitle}${accountSuffix}`;
 
         document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
-        document.getElementById('printPartnerName').innerText = partner;
         
-        const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
-        document.getElementById('printBizNo').innerText = preset.bizNo || '845-88-00551';
-        document.getElementById('printBizName').innerText = preset.bizName || '주식회사 케앤지';
-        document.getElementById('printCeo').innerText = preset.ceo || '윤종';
-        document.getElementById('printAddress').innerText = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
-        document.getElementById('printBizType').innerText = preset.bizType || '도소매/임대업';
-        document.getElementById('printBizItem').innerText = preset.bizItem || '건설자재, 용품외';
+        await this.setupPrintSupplierInfo(ledgerType, partner);
         
         window.print();
     }

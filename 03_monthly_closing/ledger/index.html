@@ -49,14 +49,31 @@
         .print-header { display: none; }
         
         @media print {
-            @page { margin: 0; size: A4 portrait; }
-            html, body { height: auto !important; min-height: auto !important; background: white !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+            @page {
+                size: A4 portrait;
+                margin: 12mm 10mm 15mm 10mm; /* 상 12mm, 우 10mm, 하 15mm(하단 잘림 완벽 방지), 좌 10mm */
+            }
+            html, body {
+                height: auto !important;
+                min-height: auto !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
             
             /* 부모 컨테이너 여백 제거 */
             .container-fluid { padding: 0 !important; margin: 0 !important; }
             
-            /* printableArea에 padding으로 여백 확보 */
-            #printableArea { display: block !important; position: static !important; width: 100% !important; margin: 0 !important; padding: 15mm !important; box-sizing: border-box !important; }
+            /* printableArea는 @page margin이 있으므로 padding 0 */
+            #printableArea {
+                display: block !important;
+                position: static !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
             .no-print, .d-print-none { display: none !important; }
             
             /* 프린트 전용 헤더 표시 */
@@ -84,14 +101,12 @@
             .amount-box { border: 2px solid black; padding: 6px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
 
             /* ── 메인 데이터 표: 목업과 동일한 스타일 ── */
-            /* 라운드 모서리 제거 및 thead sticky 해제 */
             #printableArea .card, #printableArea .card-body, #printableArea .table-responsive, #printableArea .table { border-radius: 0 !important; }
             #printableArea .card { box-shadow: none !important; border: none !important; }
             #printableArea .card-body { padding: 0 !important; }
             #printableArea .table-responsive { box-shadow: none !important; overflow: visible !important; }
             #printableArea thead.sticky-top, #printableArea thead { position: static !important; }
             
-            /* 부트스트랩 및 테마 CSS 변수, 그림자, 테두리 완전 무력화 */
             #printableArea .table, #printableArea .table *, #printableArea .table > :not(caption) > * > * {
                 box-shadow: none !important;
                 border: none !important;
@@ -103,7 +118,7 @@
             }
             #printableArea .table thead, #printableArea .table tbody, #printableArea .table tfoot, #printableArea .table tr { border: none !important; }
             
-            /* 테이블 본체: 상하 2px 검정 실선 외곽 마감 */
+            /* 테이블 본체 */
             #printableArea .table {
                 width: 100% !important;
                 border-collapse: collapse !important;
@@ -114,9 +129,19 @@
                 border-bottom: 2px solid #000 !important;
                 border-left: none !important;
                 border-right: none !important;
+                page-break-inside: auto !important;
             }
             
-            /* 셀: 단방향 세로선(border-right 1px solid #ccc), 가로 실선(1px solid #aaa), 한 줄 강제(nowrap), 높이 24px */
+            /* 테이블 헤더 및 행 분할 제어 */
+            #printableArea .table thead {
+                display: table-header-group !important;
+            }
+            #printableArea .table tbody tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+            
+            /* 셀 기본 스타일 */
             #printableArea .table tbody td,
             #printableArea .table td {
                 border-left: none !important;
@@ -127,19 +152,20 @@
                 text-align: center !important;
                 vertical-align: middle !important;
                 height: 24px !important;
-                line-height: 1.1 !important;
+                line-height: 1.15 !important;
                 white-space: nowrap !important;
                 font-size: 11px !important;
                 color: #000 !important;
                 background-color: transparent !important;
                 box-shadow: none !important;
+                overflow: hidden !important;
             }
             #printableArea .table tbody tr td:last-child,
             #printableArea .table td:last-child {
                 border-right: none !important;
             }
             
-            /* 헤더: 하단 1.5px 검정 실선, 세로선 1px solid #ccc, 배경 #f9f9f9, 중앙 정렬, 볼드체 */
+            /* 헤더 */
             #printableArea .table thead th,
             #printableArea .table th {
                 border-left: none !important;
@@ -162,10 +188,26 @@
                 border-right: none !important;
             }
             
-            /* 데이터 정렬 및 자간 (헤더는 볼드, 데이터는 보통) */
+            /* 데이터 정렬 및 규격 줄바꿈 지원 */
             #printableArea .table td { font-weight: normal !important; }
             #printableArea .table td.text-end { text-align: right !important; vertical-align: middle !important; letter-spacing: -0.5px !important; padding-right: 4px !important; }
-            #printableArea .table td.text-start, #printableArea .table td.wrap-cell { text-align: left !important; vertical-align: middle !important; padding-left: 4px !important; white-space: normal !important; word-break: break-word !important; }
+            #printableArea .table td.text-start,
+            #printableArea .table td.wrap-cell,
+            #printableArea .table td.spec-cell {
+                text-align: left !important;
+                vertical-align: middle !important;
+                padding-left: 3px !important;
+                padding-right: 3px !important;
+                white-space: normal !important;
+                word-break: break-all !important;
+                overflow-wrap: anywhere !important;
+                line-height: 1.15 !important;
+            }
+            #printableArea .table td.spec-cell {
+                text-align: center !important;
+                font-size: 10px !important;
+                letter-spacing: -0.3px !important;
+            }
             #printableArea .table td.text-center { text-align: center !important; vertical-align: middle !important; letter-spacing: -0.3px !important; }
             
             /* 합계행 */
@@ -181,6 +223,8 @@
                 vertical-align: middle !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
             #printableArea .table tbody tr.total-row td:last-child,
             #printableArea .table tr.total-row td:last-child {
@@ -345,15 +389,15 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
-                                <th class="text-center" style="width: 8%;">일자</th>
-                                <th class="text-center" style="width: 10%;">자재계정</th>
-                                <th class="text-center" style="width: 21%;">품목명</th>
-                                <th class="text-center" style="width: 9%;">규격</th>
-                                <th class="text-center" style="width: 6%;">수량</th>
-                                <th class="text-center" style="width: 5%;">단위</th>
+                                <th class="text-center" style="width: 7%;">일자</th>
+                                <th class="text-center" style="width: 7%;">자재계정</th>
+                                <th class="text-center" style="width: 20%;">품목명</th>
+                                <th class="text-center" style="width: 15%;">규격</th>
+                                <th class="text-center" style="width: 5%;">수량</th>
+                                <th class="text-center" style="width: 4%;">단위</th>
                                 <th class="text-center" style="width: 9%;">단가</th>
                                 <th class="text-center" style="width: 11%;">공급가액</th>
-                                <th class="text-center" style="width: 9%;">부가세</th>
+                                <th class="text-center" style="width: 10%;">부가세</th>
                                 <th class="text-center" style="width: 12%;">비고</th>
                             </tr>
                         </thead>
