@@ -551,7 +551,7 @@ const app = {
                     </tr>
                     <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee}" data-shipvatinc="${r.shipping_fee_vat_included}">
                         <td class="align-middle text-center bg-settle-input text-success small fw-bold" style="border-left: 1px solid #dee2e6;">정산완료</td>
-                        <td class="align-middle bg-settle-input text-center small text-dark">${r.date.split('T')[0]}</td>
+                        <td class="align-middle bg-settle-input text-center small text-dark">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : r.date.split('T')[0]}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_price).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(supplyAmt).toLocaleString()}</td>
