@@ -102,8 +102,8 @@
     <div>
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex gap-3 align-items-center">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
                             <div class="segmented-control">
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
                                 <label class="text-nowrap" for="btnFilterAll">전체 보기</label>
@@ -117,23 +117,23 @@
                                 <input type="radio" class="btn-check" name="historyFilter" id="btnFilterDirect" value="direct" onchange="app.resetPageAndLoadHistory()">
                                 <label class="text-nowrap" for="btnFilterDirect">직출고만 보기</label>
                             </div>
-                            <select class="form-select form-select-sm w-auto" style="min-width: 130px;" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
+                            <select class="form-select form-select-sm w-auto" style="min-width: 120px;" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
                                 <option value="50">50개씩 보기</option>
                                 <option value="100">100개씩 보기</option>
                                 <option value="150">150개씩 보기</option>
                                 <option value="200">200개씩 보기</option>
                             </select>
-                            <div class="vr"></div>
+                            <div class="vr d-none d-md-block"></div>
                             <button class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
                             <button class="btn btn-sm btn-outline-primary text-nowrap ms-1" onclick="app.openBulkUpdateModal()"><i class='bx bx-edit'></i> 일괄 수정</button>
                             <button class="btn btn-sm btn-outline-secondary text-nowrap ms-1" onclick="app.printSelectedHistory()"><i class='bx bx-printer'></i> 거래명세서 출력</button>
                         </div>
                         
-                        <div class="d-flex gap-2 align-items-center">
-                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일" style="width: 130px; min-width: 120px; flex-shrink: 0;">
                             <span class="text-muted">~</span>
-                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일">
-                            <select class="form-select form-select-sm" id="searchTarget" style="width: 130px;">
+                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일" style="width: 130px; min-width: 120px; flex-shrink: 0;">
+                            <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;">
                                 <option value="">전체 검색</option>
                                 <option value="supplier">매입처</option>
                                 <option value="destination">매출처</option>
@@ -141,9 +141,9 @@
                                 <option value="item">품목명</option>
                                 <option value="spec">규격</option>
                             </select>
-                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="검색어 입력..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()" style="width: 180px;">
-                            <button class="btn btn-sm btn-primary text-nowrap" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
-                            <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
+                            <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="검색어 입력..." onkeyup="if(event.key === 'Enter') app.resetPageAndLoadHistory()" style="width: 170px; min-width: 130px;">
+                            <button class="btn btn-sm btn-primary text-nowrap flex-shrink-0" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
+                            <button class="btn btn-sm btn-outline-secondary text-nowrap flex-shrink-0" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
                         </div>
                     </div>
                     
