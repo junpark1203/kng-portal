@@ -199,10 +199,10 @@ const app = {
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
-                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
-                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
-                        <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
-                        <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
+                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
+                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
+                        <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
+                        <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
                         <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">출고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
@@ -268,10 +268,10 @@ const app = {
                             <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted small bg-original text-center" style="border-bottom-width: 1px;">${r.transaction_group_id || ''}</td>
-                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
-                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
-                        <td rowspan="2" class="align-middle small bg-original" style="max-width: 80px; word-break: keep-all; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
-                        <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 60px; border-bottom-width: 1px;">${r.unit || '-'}</td>
+                        <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.destination || '')}">${r.destination || ''}</td>
+                        <td rowspan="2" class="align-middle fw-bold bg-original" style="max-width: 160px; font-size: 0.825rem; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.item)}">${itemDisplay}</td>
+                        <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
+                        <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         
                         <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">출고</td>
                         <td class="align-middle bg-original small"><input type="text" class="text-center edit-input" value="${r.date.split('T')[0]}" disabled></td>
