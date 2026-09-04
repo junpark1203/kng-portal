@@ -705,7 +705,7 @@ const app = {
                     <td></td>
                     <td class="text-end text-nowrap">${totalSupply.toLocaleString()}원</td>
                     <td class="text-end text-nowrap">${totalVat.toLocaleString()}원</td>
-                    <td class="text-end text-dark fs-6 fw-bold text-nowrap">${totalGrand.toLocaleString()}원</td>
+                    <td class="text-end text-dark fw-bold text-nowrap">${totalGrand.toLocaleString()}원</td>
                     <td colspan="2"></td>
                 </tr>
             `;
