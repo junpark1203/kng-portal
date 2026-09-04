@@ -541,8 +541,19 @@ router.get('/history', (req, res) => {
     }
 
     if (req.query.settlement_month) {
-        whereClauses.push("settlement_month = ?");
-        params.push(req.query.settlement_month);
+        const sMonth = req.query.settlement_month;
+        const confirmStatus = req.query.confirm_status || 'all';
+        if (confirmStatus === 'confirmed') {
+            whereClauses.push("settlement_month = ?");
+            params.push(sMonth);
+        } else if (confirmStatus === 'unconfirmed') {
+            whereClauses.push("(settlement_month IS NULL OR settlement_month = '') AND SUBSTR(COALESCE(tax_invoice_date, date), 1, 7) = ?");
+            params.push(sMonth);
+        } else {
+            // all: 해당 월로 확정된 건 + 해당 월의 미확정 건
+            whereClauses.push("(settlement_month = ? OR ((settlement_month IS NULL OR settlement_month = '') AND SUBSTR(COALESCE(tax_invoice_date, date), 1, 7) = ?))");
+            params.push(sMonth, sMonth);
+        }
     }
 
     // 개별 상세 검색 필터 지원
@@ -630,7 +641,8 @@ router.get('/history', (req, res) => {
                 COALESCE(NULLIF(i.transaction_group_id, ''), 'IN-' || REPLACE(SUBSTR(i.date, 1, 10), '-', '') || '-' || printf('%04d', i.id)) as transaction_group_id,
                 i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
                 COALESCE(i.settlement_account, '') as settlement_account,
-                COALESCE(NULLIF(i.settlement_month, ''), SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7)) as settlement_month
+                i.settlement_month as settlement_month,
+                SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7) as original_month
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
@@ -657,7 +669,8 @@ router.get('/history', (req, res) => {
                 COALESCE(NULLIF(o.transaction_group_id, ''), 'OUT-' || REPLACE(SUBSTR(o.date, 1, 10), '-', '') || '-' || printf('%04d', o.id)) as transaction_group_id,
                 o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type,
                 COALESCE(o.settlement_account, '') as settlement_account,
-                COALESCE(NULLIF(o.settlement_month, ''), SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7)) as settlement_month
+                o.settlement_month as settlement_month,
+                SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7) as original_month
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -1512,16 +1525,19 @@ router.post('/settlement/:type', (req, res) => {
         }
 
         if (req.body.action === 'update_month' && ids && Array.isArray(ids)) {
-            // 정산월(이월) 일괄 변경
+            // 정산월(확정 및 확정취소) 일괄 변경
             const placeholders = ids.map(() => '?').join(',');
+            const targetMonth = (req.body.settlement_month && String(req.body.settlement_month).trim()) ? String(req.body.settlement_month).trim() : null;
             const sql = `UPDATE ${table} SET settlement_month = ? WHERE id IN (${placeholders})`;
-            db.run(sql, [req.body.settlement_month || '', ...ids], function(err) {
+            db.run(sql, [targetMonth, ...ids], function(err) {
                 if (err) {
                     db.run("ROLLBACK");
                     return res.status(500).json({ error: err.message });
                 }
                 db.run("COMMIT");
-                return res.json({ message: '정산월이 성공적으로 변경(이월)되었습니다.' });
+                return res.json({ 
+                    message: targetMonth ? `선택한 건이 [${targetMonth}]로 확정되었습니다.` : '선택한 건의 확정이 취소되어 미확정 상태로 변경되었습니다.' 
+                });
             });
             return;
         }

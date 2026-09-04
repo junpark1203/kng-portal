@@ -29,6 +29,7 @@ const $ = id => document.getElementById(id);
 const app = {
     currentMonth: '',
     activeTab: 'sales', // 'sales' (매출/청구) | 'purchase' (매입/정산)
+    confirmFilter: 'all', // 'all' | 'unconfirmed' | 'confirmed'
     allPartners: [],
     selectedPartner: null, // { name, company_name, business_number, ceo_name, address, ... }
     aggregateByBizNum: false,
@@ -39,22 +40,15 @@ const app = {
     init: async function() {
         // 기본값: 전월
         this.setMonthPreset('prev');
-        this.initNextMonthInput();
+        this.initTargetMonthInput();
         await this.loadAllPartners();
         await this.loadData();
     },
 
-    initNextMonthInput: function() {
+    initTargetMonthInput: function() {
         if (!this.currentMonth) return;
-        const [y, m] = this.currentMonth.split('-').map(Number);
-        let nextY = y;
-        let nextM = m + 1;
-        if (nextM > 12) {
-            nextM = 1;
-            nextY += 1;
-        }
-        const nextMonthStr = `${nextY}-${String(nextM).padStart(2, '0')}`;
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = nextMonthStr;
+        // 기본 확정 대상월은 현재 보고 있는 기준월로 설정
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
     },
 
     setMonthPreset: function(preset) {
@@ -71,7 +65,7 @@ const app = {
         }
         this.currentMonth = `${y}-${String(m).padStart(2, '0')}`;
         if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        this.initNextMonthInput();
+        this.initTargetMonthInput();
         this.loadData();
     },
 
@@ -79,7 +73,7 @@ const app = {
         const val = $('targetMonth')?.value;
         if (val) {
             this.currentMonth = val;
-            this.initNextMonthInput();
+            this.initTargetMonthInput();
             this.loadData();
         }
     },
@@ -92,7 +86,7 @@ const app = {
         let nextM = String(date.getMonth() + 1).padStart(2, '0');
         this.currentMonth = `${nextY}-${nextM}`;
         if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        this.initNextMonthInput();
+        this.initTargetMonthInput();
         this.loadData();
     },
 
@@ -351,6 +345,7 @@ const app = {
             }
 
             this.currentRows = items;
+            this.updateFilterCounts();
             this.renderTable();
             this.updateKpiSummary();
 
@@ -359,8 +354,42 @@ const app = {
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
         }
+    },
+
+    setConfirmFilter: function(filter) {
+        this.confirmFilter = filter;
+        const allBtn = $('filterStatusAll');
+        const unconfBtn = $('filterStatusUnconfirmed');
+        const confBtn = $('filterStatusConfirmed');
+
+        if (allBtn) allBtn.className = filter === 'all' ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
+        if (unconfBtn) unconfBtn.className = filter === 'unconfirmed' ? 'btn btn-warning text-dark fw-bold' : 'btn btn-outline-warning text-dark fw-bold';
+        if (confBtn) confBtn.className = filter === 'confirmed' ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
+
+        this.renderTable();
+        this.updateKpiSummary();
+    },
+
+    updateFilterCounts: function() {
+        const allCount = this.currentRows.length;
+        const unconfCount = this.currentRows.filter(r => !r.settlement_month).length;
+        const confCount = this.currentRows.filter(r => !!r.settlement_month).length;
+
+        if ($('badgeFilterAll')) $('badgeFilterAll').innerText = allCount.toLocaleString();
+        if ($('badgeFilterUnconfirmed')) $('badgeFilterUnconfirmed').innerText = unconfCount.toLocaleString();
+        if ($('badgeFilterConfirmed')) $('badgeFilterConfirmed').innerText = confCount.toLocaleString();
+    },
+
+    getFilteredRows: function() {
+        if (!this.currentRows) return [];
+        if (this.confirmFilter === 'unconfirmed') {
+            return this.currentRows.filter(r => !r.settlement_month);
+        } else if (this.confirmFilter === 'confirmed') {
+            return this.currentRows.filter(r => !!r.settlement_month);
+        }
+        return this.currentRows;
     },
 
     fetchTabCounts: async function() {
@@ -405,9 +434,16 @@ const app = {
         if ($('tableHeaderCheck')) $('tableHeaderCheck').checked = false;
         this.updateSelectedCountBadge();
 
-        if (this.currentRows.length === 0) {
+        const rows = this.getFilteredRows();
+
+        if (rows.length === 0) {
+            let msg = '';
+            if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
+            else if (this.confirmFilter === 'confirmed') msg = '확정 완료된 정산 내역이 없습니다.';
+            else msg = `${this.currentMonth}에 등록된 정산 내역이 없습니다.`;
+
             const targetName = this.selectedPartner ? `[${this.selectedPartner.name || this.selectedPartner.company_name}] 거래처의 ` : '';
-            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">${targetName}${this.currentMonth}에 확정된 정산 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
             if (tfoot) tfoot.innerHTML = '';
             return;
         }
@@ -418,7 +454,7 @@ const app = {
         let totalVat = 0;
         let totalGrand = 0;
 
-        tbody.innerHTML = this.currentRows.map((r, idx) => {
+        tbody.innerHTML = rows.map((r, idx) => {
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -449,20 +485,17 @@ const app = {
             totalGrand += grandTotal;
 
             // 확정 상태 판별
-            const occurMonth = r.date ? r.date.substring(0, 7) : '';
-            const settleMonth = r.settlement_month || occurMonth;
-            const isCarried = occurMonth && settleMonth && (occurMonth !== settleMonth);
-
-            const statusBadge = isCarried
-                ? `<span class="badge badge-carryover" title="원 발생월: ${occurMonth}에서 ${settleMonth}로 이월"><i class='bx bx-redo'></i> ${occurMonth.split('-')[1]}월 이월</span>`
-                : `<span class="badge bg-light text-secondary border">당월확정</span>`;
+            const isConfirmed = !!r.settlement_month;
+            const statusBadge = isConfirmed
+                ? `<span class="badge badge-confirmed" title="확정월: ${r.settlement_month}"><i class='bx bx-check-circle'></i> ${r.settlement_month} 확정</span>`
+                : `<span class="badge badge-unconfirmed" title="아직 확정되지 않은 정산 건입니다"><i class='bx bx-time-five'></i> 미확정</span>`;
 
             const partyName = isSales ? (r.destination || r.actual_destination || '-') : (r.supplier || '-');
 
             return `
                 <tr>
                     <td class="text-center">
-                        <input class="form-check-input item-chk" type="checkbox" value="${r.id}" data-date="${r.date}" data-month="${settleMonth}" onchange="app.onItemCheckChange()">
+                        <input class="form-check-input item-chk" type="checkbox" value="${r.id}" data-confirmed="${isConfirmed ? '1' : '0'}" onchange="app.onItemCheckChange()">
                     </td>
                     <td class="text-center text-muted small">${idx + 1}</td>
                     <td class="text-center small">${r.date ? r.date.split('T')[0] : '-'}</td>
@@ -481,10 +514,7 @@ const app = {
                     <td class="text-end text-muted small">${vat.toLocaleString()}원</td>
                     <td class="text-end fw-bold text-dark small">${grandTotal.toLocaleString()}원</td>
                     <td class="text-center">${statusBadge}</td>
-                    <td class="text-start small text-muted text-truncate" style="max-width: 110px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
-                    <td class="text-center">
-                        <button class="btn btn-outline-warning btn-sm py-0 px-1 fw-bold" style="font-size: 0.72rem;" onclick="app.carryOverSingle(${r.id})" title="익월로 1개월 이월">+1월</button>
-                    </td>
+                    <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
                 </tr>
             `;
         }).join('');
@@ -492,13 +522,13 @@ const app = {
         if (tfoot) {
             tfoot.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center">합 계 (총 ${this.currentRows.length.toLocaleString()}건)</td>
+                    <td colspan="9" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
                     <td class="text-end">${totalQty.toLocaleString()}</td>
                     <td></td>
                     <td class="text-end">${totalSupply.toLocaleString()}원</td>
                     <td class="text-end">${totalVat.toLocaleString()}원</td>
                     <td class="text-end text-primary fs-6">${totalGrand.toLocaleString()}원</td>
-                    <td colspan="3"></td>
+                    <td colspan="2"></td>
                 </tr>
             `;
         }
@@ -510,7 +540,8 @@ const app = {
         let totalVat = 0;
         let totalGrand = 0;
 
-        this.currentRows.forEach(r => {
+        const rows = this.getFilteredRows();
+        rows.forEach(r => {
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -548,6 +579,20 @@ const app = {
         this.updateSelectedCountBadge();
     },
 
+    toggleCheckAllRows: function(checked) {
+        document.querySelectorAll('.item-chk').forEach(chk => chk.checked = checked);
+        if ($('checkAllTable')) $('checkAllTable').checked = checked;
+        if ($('tableHeaderCheck')) $('tableHeaderCheck').checked = checked;
+        this.updateSelectedCountBadge();
+    },
+
+    checkAllUnconfirmed: function() {
+        document.querySelectorAll('.item-chk').forEach(chk => {
+            chk.checked = (chk.dataset.confirmed === '0');
+        });
+        this.onItemCheckChange();
+    },
+
     onItemCheckChange: function() {
         const total = document.querySelectorAll('.item-chk').length;
         const checked = document.querySelectorAll('.item-chk:checked').length;
@@ -558,99 +603,56 @@ const app = {
     },
 
     updateSelectedCountBadge: function() {
-        const count = document.querySelectorAll('.item-chk:checked').length;
-        if ($('selectedCountBadge')) $('selectedCountBadge').innerText = `선택 ${count}건`;
-    },
-
-    // ── 4. 확정 및 이월 (Carryover) 실행 ──
-    carryOverSelectedNextMonth: async function() {
-        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
-        if (checked.length === 0) return alert('이월할 항목을 선택해주세요.');
-
-        const [y, m] = this.currentMonth.split('-').map(Number);
-        let nextY = y;
-        let nextM = m + 1;
-        if (nextM > 12) {
-            nextM = 1;
-            nextY += 1;
-        }
-        const nextMonth = `${nextY}-${String(nextM).padStart(2, '0')}`;
-
-        if (!confirm(`선택한 ${checked.length}건을 [${nextMonth}]로 이월하시겠습니까?\n이월된 건은 당월(${this.currentMonth})에서 제외되고 익월에 반영됩니다.`)) {
-            return;
-        }
-
-        await this.executeUpdateMonth(checked, nextMonth);
-    },
-
-    changeSelectedMonth: async function() {
-        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
-        if (checked.length === 0) return alert('확정월을 변경할 항목을 선택해주세요.');
-
-        const targetMonth = $('batchTargetMonth')?.value;
-        if (!targetMonth) return alert('변경할 확정월(YYYY-MM)을 선택해주세요.');
-
-        if (!confirm(`선택한 ${checked.length}건의 확정월을 [${targetMonth}]로 변경하시겠습니까?`)) {
-            return;
-        }
-
-        await this.executeUpdateMonth(checked, targetMonth);
-    },
-
-    carryOverSingle: async function(rowId) {
-        const [y, m] = this.currentMonth.split('-').map(Number);
-        let nextY = y;
-        let nextM = m + 1;
-        if (nextM > 12) {
-            nextM = 1;
-            nextY += 1;
-        }
-        const nextMonth = `${nextY}-${String(nextM).padStart(2, '0')}`;
-
-        if (!confirm(`해당 1건을 다음 달 [${nextMonth}]로 이월하시겠습니까?`)) {
-            return;
-        }
-
-        await this.executeUpdateMonth([rowId], nextMonth);
-    },
-
-    revertCarryOverSelected: async function() {
         const checkedBoxes = Array.from(document.querySelectorAll('.item-chk:checked'));
-        if (checkedBoxes.length === 0) return alert('이월을 취소할 항목을 선택해주세요.');
+        const count = checkedBoxes.length;
+        if ($('selectedCountBadge')) $('selectedCountBadge').innerText = `선택 ${count}건`;
 
-        if (!confirm(`선택한 ${checkedBoxes.length}건을 원래 발생일자의 월로 되돌리시겠습니까?`)) {
-            return;
-        }
+        let sum = 0;
+        checkedBoxes.forEach(chk => {
+            const id = parseInt(chk.value);
+            const r = this.currentRows.find(x => x.id === id);
+            if (r) {
+                const qty = Number(r.settlement_qty || r.qty || 0);
+                const price = Number(r.settlement_price || (this.activeTab === 'sales' ? r.outbound_price : r.inbound_price) || 0);
+                const ship = Number(r.shipping_fee || 0);
+                const shipVatInc = r.shipping_fee_vat_included === 1;
+                let shipSupply = (ship > 0 && shipVatInc) ? Math.round(ship / 1.1) : ship;
+                const supply = (qty * price) + shipSupply;
+                let vat = 0;
+                if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                    vat = r.settlement_vat;
+                } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
+                    const itemVat = Math.floor(qty * price * 0.1);
+                    let shipVat = (ship > 0) ? (shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1)) : 0;
+                    vat = itemVat + shipVat;
+                }
+                sum += (supply + vat);
+            }
+        });
 
-        const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
-        let successCount = 0;
-
-        for (const el of checkedBoxes) {
-            const id = parseInt(el.value);
-            const origDate = el.dataset.date || '';
-            const origMonth = origDate ? origDate.substring(0, 7) : this.currentMonth;
-
-            try {
-                const res = await window.authFetch(`${API_BASE}/settlement/${type}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        action: 'update_month',
-                        ids: [id],
-                        settlement_month: origMonth
-                    })
-                });
-                if (res.ok) successCount++;
-            } catch (e) {
-                console.error(e);
+        const sumBadge = $('selectedSumBadge');
+        if (sumBadge) {
+            if (count > 0) {
+                sumBadge.innerText = `선택 합계: ${sum.toLocaleString()}원`;
+                sumBadge.classList.remove('d-none');
+            } else {
+                sumBadge.classList.add('d-none');
             }
         }
-
-        alert(`${successCount}건이 원래 발생월로 복구되었습니다.`);
-        this.loadData();
     },
 
-    executeUpdateMonth: async function(ids, newMonth) {
+    // ── 4. 확정 및 확정취소(미확정 전환) 실행 ──
+    confirmSelectedMonth: async function() {
+        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
+        if (checked.length === 0) return alert('확정할 항목을 선택해주세요.');
+
+        const targetMonth = $('batchTargetMonth')?.value || this.currentMonth;
+        if (!targetMonth) return alert('확정 대상월(YYYY-MM)을 선택해주세요.');
+
+        if (!confirm(`선택한 ${checked.length}건을 [${targetMonth}]로 확정하시겠습니까?`)) {
+            return;
+        }
+
         const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
         try {
             const res = await window.authFetch(`${API_BASE}/settlement/${type}`, {
@@ -658,27 +660,59 @@ const app = {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     action: 'update_month',
-                    ids: ids,
-                    settlement_month: newMonth
+                    ids: checked,
+                    settlement_month: targetMonth
                 })
             });
-
-            if (res.ok) {
-                alert(`${ids.length}건의 확정월이 [${newMonth}]로 변경되었습니다.`);
-                this.loadData();
-            } else {
-                const err = await res.json().catch(() => ({}));
-                alert(err.error || '확정월 변경에 실패했습니다.');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || '확정 처리에 실패했습니다.');
             }
-        } catch (e) {
-            console.error(e);
-            alert('오류가 발생했습니다.');
+            const data = await res.json();
+            alert(data.message || `${checked.length}건이 [${targetMonth}]로 확정되었습니다.`);
+            this.loadData();
+        } catch (err) {
+            console.error(err);
+            alert(`오류: ${err.message}`);
+        }
+    },
+
+    cancelConfirmationSelected: async function() {
+        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
+        if (checked.length === 0) return alert('확정을 취소할 항목을 선택해주세요.');
+
+        if (!confirm(`선택한 ${checked.length}건의 확정을 취소하고 [미확정] 상태로 되돌리시겠습니까?`)) {
+            return;
+        }
+
+        const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
+        try {
+            const res = await window.authFetch(`${API_BASE}/settlement/${type}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'update_month',
+                    ids: checked,
+                    settlement_month: '' // 빈 문자열로 전송하여 미확정(NULL) 처리
+                })
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || '확정 취소 처리에 실패했습니다.');
+            }
+            const data = await res.json();
+            alert(data.message || `${checked.length}건이 미확정 상태로 변경되었습니다.`);
+            this.loadData();
+        } catch (err) {
+            console.error(err);
+            alert(`오류: ${err.message}`);
         }
     },
 
     // ── 5. 청구서 및 매입정산내역 인쇄 (A4 포맷) ──
     printInvoice: function() {
-        if (this.currentRows.length === 0) {
+        const rowsToPrint = this.getFilteredRows();
+        if (rowsToPrint.length === 0) {
             alert('인쇄할 품목 내역이 없습니다.');
             return;
         }
@@ -697,8 +731,8 @@ const app = {
         } else {
             // 거래처가 선택되어 있지 않은 경우 첫 번째 행의 거래처명 또는 '전체'
             partnerName = isSales 
-                ? (this.currentRows[0].destination || this.currentRows[0].actual_destination || '전체 거래처')
-                : (this.currentRows[0].supplier || '전체 매입처');
+                ? (rowsToPrint[0].destination || rowsToPrint[0].actual_destination || '전체 거래처')
+                : (rowsToPrint[0].supplier || '전체 매입처');
             partnerObj = this.allPartners.find(p => p.name === partnerName || p.company_name === partnerName) || { name: partnerName };
         }
 
@@ -751,7 +785,7 @@ const app = {
         let sumQty = 0;
 
         const tbody = $('printTableBody');
-        tbody.innerHTML = this.currentRows.map(r => {
+        tbody.innerHTML = rowsToPrint.map(r => {
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -820,7 +854,8 @@ const app = {
 
     // ── 6. 엑셀 다운로드 ──
     downloadExcel: function() {
-        if (this.currentRows.length === 0) {
+        const exportRows = this.getFilteredRows();
+        if (exportRows.length === 0) {
             alert('다운로드할 데이터가 없습니다.');
             return;
         }
@@ -828,7 +863,7 @@ const app = {
         const isSales = this.activeTab === 'sales';
         const partnerName = this.selectedPartner ? (this.selectedPartner.company_name || this.selectedPartner.name) : '전체';
 
-        const excelData = this.currentRows.map((r, idx) => {
+        const excelData = exportRows.map((r, idx) => {
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -863,7 +898,7 @@ const app = {
                 '공급가액': supply,
                 '세액': vat,
                 '합계금액': grand,
-                '확정월': r.settlement_month || (r.date ? r.date.substring(0, 7) : ''),
+                '확정상태': r.settlement_month ? `${r.settlement_month} 확정` : '미확정',
                 '비고': r.settlement_memo || ''
             };
         });
@@ -872,7 +907,8 @@ const app = {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, isSales ? '매출확정내역' : '매입확정내역');
 
-        const fileName = `${this.currentMonth}_${partnerName}_${isSales ? '매출청구확정' : '매입확정'}.xlsx`;
+        const filterLabel = this.confirmFilter === 'unconfirmed' ? '_미확정' : (this.confirmFilter === 'confirmed' ? '_확정' : '');
+        const fileName = `${this.currentMonth}_${partnerName}_${isSales ? '매출청구' : '매입'}${filterLabel}.xlsx`;
         XLSX.writeFile(wb, fileName);
     }
 };

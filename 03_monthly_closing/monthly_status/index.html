@@ -56,11 +56,18 @@
             box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
         }
 
-        .badge-carryover {
+        .badge-unconfirmed {
             background-color: #fef3c7;
             color: #b45309;
             border: 1px solid #fde68a;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-confirmed {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            font-size: 0.75rem;
             font-weight: 600;
         }
 
@@ -303,43 +310,67 @@
         </div>
     </div>
 
-    <!-- 3. 확정 및 이월 액션 툴바 -->
+    <!-- 3. 확정 상태 필터 및 액션 툴바 -->
     <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <!-- 좌측: 선택 항목 확정 및 이월 작업 버튼들 -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <div class="form-check me-1 mb-0">
-                    <input class="form-check-input" type="checkbox" id="checkAllTable" onchange="app.onCheckAllChange(this.checked)">
-                    <label class="form-check-label small fw-bold" for="checkAllTable">전체선택</label>
+        <div class="card-body p-2 px-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- 좌측: 확정상태 필터 탭 & 선택 체크 관리 -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <!-- 확정상태 필터 세그먼트 버튼 -->
+                    <div class="btn-group btn-group-sm me-1" role="group" id="confirmStatusGroup">
+                        <button type="button" class="btn btn-primary text-white fw-bold" id="filterStatusAll" onclick="app.setConfirmFilter('all')">
+                            전체 <span class="badge bg-white text-dark ms-1" id="badgeFilterAll">0</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-warning text-dark fw-bold" id="filterStatusUnconfirmed" onclick="app.setConfirmFilter('unconfirmed')">
+                            <i class='bx bx-time-five text-warning'></i> 미확정 <span class="badge bg-warning text-dark ms-1" id="badgeFilterUnconfirmed">0</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-success fw-bold" id="filterStatusConfirmed" onclick="app.setConfirmFilter('confirmed')">
+                            <i class='bx bx-check-circle text-success'></i> 확정완료 <span class="badge bg-success text-white ms-1" id="badgeFilterConfirmed">0</span>
+                        </button>
+                    </div>
+
+                    <div class="vr d-none d-md-block my-1"></div>
+
+                    <div class="form-check me-1 mb-0">
+                        <input class="form-check-input" type="checkbox" id="checkAllTable" onchange="app.onCheckAllChange(this.checked)">
+                        <label class="form-check-label small fw-bold" for="checkAllTable">전체선택</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" type="button" onclick="app.checkAllUnconfirmed()" title="미확정 건만 한 번에 체크합니다">
+                        <i class='bx bx-check-square'></i> 미확정건 선택
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="app.toggleCheckAllRows(false)">
+                        선택해제
+                    </button>
+                    <span class="badge bg-light text-secondary border px-2 py-1" id="selectedCountBadge">선택 0건</span>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 d-none" id="selectedSumBadge">선택 합계: 0원</span>
                 </div>
-                <span class="badge bg-light text-secondary border px-2 py-1" id="selectedCountBadge">선택 0건</span>
 
-                <!-- 익월로 이월 (+1월) 버튼 -->
-                <button class="btn btn-warning btn-sm fw-bold shadow-sm" type="button" onclick="app.carryOverSelectedNextMonth()" title="선택한 건을 다음 달(+1월)로 이월합니다.">
-                    <i class='bx bx-redo'></i> 익월로 이월 (+1월)
-                </button>
+                <!-- 우측: 확정 대상월 선택 + 확정 / 확정취소 + 출력 -->
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <!-- 확정 대상월 지정 -->
+                    <div class="input-group input-group-sm" style="width: 210px;">
+                        <span class="input-group-text bg-light text-secondary py-0 small">확정대상월</span>
+                        <input type="month" id="batchTargetMonth" class="form-control fw-bold text-center" title="선택한 건을 확정할 대상 월(YYYY-MM)을 지정합니다">
+                    </div>
+                    <!-- 선택건 확정 버튼 -->
+                    <button class="btn btn-primary btn-sm fw-bold shadow-sm" type="button" onclick="app.confirmSelectedMonth()" title="선택한 건을 지정된 월로 확정합니다">
+                        <i class='bx bx-check-circle'></i> 선택건 확정
+                    </button>
+                    <!-- 선택 확정취소 버튼 -->
+                    <button class="btn btn-outline-danger btn-sm fw-semibold" type="button" onclick="app.cancelConfirmationSelected()" title="확정된 건을 다시 미확정 상태로 되돌립니다">
+                        <i class='bx bx-undo'></i> 선택 확정취소
+                    </button>
 
-                <!-- 확정월 직접 지정 이월 -->
-                <div class="input-group input-group-sm" style="width: 220px;">
-                    <span class="input-group-text bg-light text-secondary py-0" style="font-size: 0.76rem;">확정월</span>
-                    <input type="month" id="batchTargetMonth" class="form-control" title="선택한 건의 확정월을 직접 지정합니다">
-                    <button class="btn btn-outline-primary fw-bold" type="button" onclick="app.changeSelectedMonth()">지정변경</button>
+                    <div class="vr d-none d-md-block my-1"></div>
+
+                    <!-- 엑셀 & 인쇄 -->
+                    <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
+                        <i class='bx bx-download'></i> 엑셀
+                    </button>
+                    <button class="btn btn-primary btn-sm fw-bold shadow-sm" id="printInvoiceBtn" type="button" onclick="app.printInvoice()">
+                        <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서 인쇄</span>
+                    </button>
                 </div>
-
-                <!-- 이월 취소 (원발생월 복귀) -->
-                <button class="btn btn-outline-secondary btn-sm fw-semibold" type="button" onclick="app.revertCarryOverSelected()" title="이월된 건을 원래 발생월로 복구합니다">
-                    <i class='bx bx-undo'></i> 이월 취소
-                </button>
-            </div>
-
-            <!-- 우측: 출력 및 다운로드 버튼들 -->
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
-                    <i class='bx bx-download'></i> 엑셀 다운로드
-                </button>
-                <button class="btn btn-primary btn-sm fw-bold shadow-sm" id="printInvoiceBtn" type="button" onclick="app.printInvoice()">
-                    <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서 인쇄</span>
-                </button>
             </div>
         </div>
     </div>
@@ -354,24 +385,23 @@
                         <th style="width: 40px;">No.</th>
                         <th style="width: 85px;">발생일자</th>
                         <th style="width: 85px;">정산일자</th>
-                        <th style="width: 120px;" class="text-start" id="colPartnerHeader">거래처명</th>
+                        <th style="width: 130px;" class="text-start" id="colPartnerHeader">거래처명</th>
                         <th style="width: 90px;">자재계정</th>
-                        <th style="min-width: 160px;" class="text-start">품목명</th>
-                        <th style="width: 80px;">규격</th>
+                        <th style="min-width: 170px;" class="text-start">품목명</th>
+                        <th style="width: 85px;">규격</th>
                         <th style="width: 45px;">단위</th>
                         <th style="width: 60px;" class="text-end">수량</th>
-                        <th style="width: 75px;" class="text-end">단가</th>
+                        <th style="width: 80px;" class="text-end">단가</th>
                         <th style="width: 90px;" class="text-end">공급가액</th>
                         <th style="width: 75px;" class="text-end">세액</th>
                         <th style="width: 100px;" class="text-end fw-bold">합계금액</th>
-                        <th style="width: 80px;">확정상태</th>
+                        <th style="width: 95px;">확정상태</th>
                         <th style="min-width: 90px;" class="text-start">비고</th>
-                        <th style="width: 65px;">작업</th>
                     </tr>
                 </thead>
                 <tbody id="mainStatusTableBody">
                     <tr>
-                        <td colspan="17" class="text-center py-5 text-muted">
+                        <td colspan="16" class="text-center py-5 text-muted">
                             <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
                         </td>
                     </tr>
