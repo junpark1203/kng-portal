@@ -663,7 +663,7 @@ const app = {
 
         const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
         try {
-            const res = await window.authFetch(`${API_BASE}/settlement/${type}`, {
+            const res = await window.authFetch(`${API_BASE}/logistics/settlement/${type}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -695,7 +695,7 @@ const app = {
 
         const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
         try {
-            const res = await window.authFetch(`${API_BASE}/settlement/${type}`, {
+            const res = await window.authFetch(`${API_BASE}/logistics/settlement/${type}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({

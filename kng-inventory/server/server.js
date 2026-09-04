@@ -1111,6 +1111,11 @@ app.use('/api/projects', projectsRoutes.router);
 app.use('/api/leave-request', leaveRequestRoutes.router);
 app.use('/api/margin-calculator', marginCalculatorRoutes.router);
 app.use('/api/logistics', logisticsRoutes.router);
+// 정산 API 별칭 라우팅 (/api/settlement/:type 지원)
+app.use('/api/settlement', (req, res, next) => {
+    req.url = '/settlement' + req.url;
+    logisticsRoutes.router(req, res, next);
+});
 app.use('/api/partners', partnersRoutes(db));
 app.use('/api/ledger', ledgerRoutes(db));
 app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
