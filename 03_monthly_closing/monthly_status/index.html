@@ -70,6 +70,38 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
+        .badge-sales {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-purchase {
+            background-color: #f0fdf4;
+            color: #15803d;
+            border: 1px solid #bbf7d0;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .partner-chip {
+            cursor: pointer;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            background-color: #f1f5f9;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s;
+            user-select: none;
+        }
+        .partner-chip:hover {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+            transform: translateY(-1px);
+        }
 
         /* 거래처 자동완성 드롭다운 */
         .partner-autocomplete-list {
@@ -215,59 +247,40 @@
         </div>
     </div>
 
-    <!-- 1. 메인 검색 & 기준월 컨트롤 바 -->
+    <!-- 1. 거래처 중심 검색 바 (Partner-First) -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body p-3">
             <div class="row g-2 align-items-center">
-                <!-- 기준 확정월 선택기 -->
-                <div class="col-12 col-md-auto d-flex align-items-center gap-1">
-                    <span class="fw-bold text-secondary small me-1"><i class='bx bx-calendar'></i> 기준월:</span>
-                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(-1)" title="이전달">
-                        <i class='bx bx-chevron-left'></i>
-                    </button>
-                    <input type="month" id="targetMonth" class="form-control form-control-sm text-center fw-bold text-primary" style="width: 125px;" onchange="app.onMonthChange()">
-                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(1)" title="다음달">
-                        <i class='bx bx-chevron-right'></i>
-                    </button>
-                    <div class="btn-group btn-group-sm ms-1">
-                        <button class="btn btn-outline-primary py-0" type="button" onclick="app.setMonthPreset('prev')">전월</button>
-                        <button class="btn btn-outline-primary py-0" type="button" onclick="app.setMonthPreset('current')">당월</button>
-                    </div>
-                </div>
-
-                <!-- 거래처 검색 및 선택 인풋 (자동완성 + 거래처 찾기 모달) -->
-                <div class="col-12 col-md position-relative">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white"><i class='bx bx-search'></i> 거래처</span>
-                        <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명을 검색하거나 모달에서 선택하세요..." autocomplete="off" oninput="app.onPartnerInput(this.value)" onfocus="app.onPartnerFocus()">
-                        <button class="btn btn-outline-secondary d-none" id="clearPartnerBtn" type="button" onclick="app.clearSelectedPartner()" title="선택 해제"><i class='bx bx-x'></i></button>
-                        <button class="btn btn-primary fw-bold" type="button" onclick="app.openPartnerSelectModal()"><i class='bx bx-buildings'></i> 거래처 찾기</button>
+                <!-- 거래처 검색 입력창 (Enter 지원 + 자동완성 + 거래처 찾기 모달) -->
+                <div class="col-12 col-lg-8 position-relative">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white px-3"><i class='bx bx-search fs-5 text-primary'></i></span>
+                        <input type="text" id="partnerSearchInput" class="form-control form-control-lg fs-6" placeholder="거래처명을 검색하고 Enter를 누르세요 (예: 광림상사)..." autocomplete="off" onkeydown="app.handlePartnerKeydown(event)" oninput="app.onPartnerInput(this.value)" onfocus="app.onPartnerFocus()">
+                        <button class="btn btn-outline-secondary d-none px-3" id="clearPartnerBtn" type="button" onclick="app.clearSelectedPartner()" title="선택 해제"><i class='bx bx-x fs-5'></i></button>
+                        <button class="btn btn-primary px-3 fw-bold" type="button" onclick="app.openPartnerSelectModal()"><i class='bx bx-buildings'></i> 거래처 찾기</button>
                     </div>
                     <!-- 자동완성 드롭다운 -->
                     <div id="partnerAutocompleteList" class="partner-autocomplete-list"></div>
                 </div>
 
-                <!-- 자재계정 필터 -->
-                <div class="col-12 col-md-auto">
-                    <select id="accountFilter" class="form-select form-select-sm" onchange="app.onFilterChange()">
-                        <option value="">전체 자재계정</option>
-                        <option value="안전자재_전체">안전자재 통합</option>
-                        <option value="안전자재-일반">-- 안전(일반)</option>
-                        <option value="안전자재-환경">-- 안전(환경)</option>
-                        <option value="잡자재">잡자재</option>
-                        <option value="기타자재">기타자재</option>
-                        <option value="쇼핑몰">쇼핑몰</option>
-                        <option value="미분류">미분류</option>
-                    </select>
+                <!-- 자주 찾는 거래처 퀵 칩 -->
+                <div class="col-12 col-lg-4">
+                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                        <span class="text-secondary small fw-bold me-1 text-nowrap"><i class='bx bx-history'></i> 자주 찾는 거래처:</span>
+                        <div id="quickPartnerChips" class="d-flex align-items-center gap-1 flex-wrap">
+                            <!-- JS 렌더링 -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- 선택된 거래처 정보 배너 (거래처 선택 시 표시) -->
-            <div id="selectedPartnerBanner" class="mt-2 p-2 px-3 bg-light rounded border d-none">
+            <div id="selectedPartnerBanner" class="mt-3 p-2 px-3 bg-light rounded border d-none">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div class="d-flex align-items-center gap-3 flex-wrap small">
-                        <span class="fs-6 fw-bold text-dark" id="bannerPartnerName">-</span>
-                        <span><strong class="text-secondary">사업자번호:</strong> <span class="font-monospace fw-semibold" id="bannerBizNo">-</span></span>
+                        <span class="badge bg-primary px-2 py-1"><i class='bx bx-check'></i> 선택된 거래처</span>
+                        <span class="fs-5 fw-bold text-dark" id="bannerPartnerName">-</span>
+                        <span><strong class="text-secondary">사업자번호:</strong> <span class="fw-semibold" id="bannerBizNo">-</span></span>
                         <span><strong class="text-secondary">대표자:</strong> <span id="bannerCeo">-</span></span>
                         <span><strong class="text-secondary">주소:</strong> <span class="text-muted" id="bannerAddress">-</span></span>
                     </div>
@@ -276,8 +289,11 @@
                             <input class="form-check-input" type="checkbox" id="aggregateBizChk" onchange="app.onBizAggChange()">
                             <label class="form-check-label fw-bold text-secondary" for="aggregateBizChk">동일 사업자번호 통합</label>
                         </div>
-                        <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="app.clearSelectedPartner()" title="거래처 전체보기로 돌아가기">
-                            <i class='bx bx-x'></i> 선택 해제
+                        <button class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" onclick="app.openPartnerSelectModal()" title="다른 거래처로 변경">
+                            <i class='bx bx-transfer'></i> 거래처 변경
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm py-1 px-2" onclick="app.clearSelectedPartner()" title="선택 해제">
+                            <i class='bx bx-x'></i> 해제
                         </button>
                     </div>
                 </div>
@@ -285,134 +301,189 @@
         </div>
     </div>
 
-    <!-- 2. 상단 탭: 매출 (청구확정) vs 매입 (매입확정) -->
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <ul class="nav nav-pills gap-2" id="closingTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active d-flex align-items-center gap-2 shadow-sm" id="sales-tab" type="button" onclick="app.switchTab('sales')">
-                    <i class='bx bx-export'></i> 매출 (청구확정)
-                    <span class="badge bg-white text-primary ms-1" id="tabSalesBadge">0건</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link d-flex align-items-center gap-2 shadow-sm" id="purchase-tab" type="button" onclick="app.switchTab('purchase')">
-                    <i class='bx bx-import'></i> 매입 (매입확정)
-                    <span class="badge bg-white text-success ms-1" id="tabPurchaseBadge">0건</span>
-                </button>
-            </li>
-        </ul>
-
-        <!-- 상단 통계 요약 뱃지 바 -->
-        <div class="d-flex align-items-center gap-3 bg-white p-2 px-3 rounded border shadow-sm small">
-            <span>공급가: <strong class="text-dark" id="kpiSupplyAmt">0원</strong></span>
-            <span>세액: <strong class="text-secondary" id="kpiVatAmt">0원</strong></span>
-            <span class="fs-6 fw-bold" id="kpiTotalLabel">청구합계: <span class="text-primary" id="kpiTotalAmt">0원</span></span>
+    <!-- 2. 거래처 미선택 시 Empty State 안내 박스 -->
+    <div id="emptyPartnerState" class="card border-0 shadow-sm p-5 text-center my-3 bg-white">
+        <div class="py-4">
+            <div class="d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary mb-3">
+                <i class='bx bx-buildings fs-1'></i>
+            </div>
+            <h5 class="fw-bold text-dark mb-2">거래처를 먼저 선택해주세요</h5>
+            <p class="text-muted small mx-auto mb-3" style="max-width: 500px;">
+                상단 검색창에서 거래처명을 입력 후 <strong>Enter</strong>를 누르시거나 <strong>[거래처 찾기]</strong> 버튼을 통해 거래처를 지정하면, 해당 거래처의 모든 매출(청구) 및 매입 내역과 월별 확정 상태가 표시됩니다.
+            </p>
+            <button class="btn btn-primary px-4 py-2 fw-bold shadow-sm" onclick="app.openPartnerSelectModal()">
+                <i class='bx bx-buildings'></i> 거래처 찾기
+            </button>
         </div>
     </div>
 
-    <!-- 3. 확정 상태 필터 및 액션 툴바 -->
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-2 px-3">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <!-- 좌측: 확정상태 필터 탭 & 선택 체크 관리 -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <!-- 확정상태 필터 세그먼트 버튼 -->
-                    <div class="btn-group btn-group-sm me-1" role="group" id="confirmStatusGroup">
-                        <button type="button" class="btn btn-primary text-white fw-bold" id="filterStatusAll" onclick="app.setConfirmFilter('all')">
-                            전체 <span class="badge bg-white text-dark ms-1" id="badgeFilterAll">0</span>
-                        </button>
-                        <button type="button" class="btn btn-outline-warning text-dark fw-bold" id="filterStatusUnconfirmed" onclick="app.setConfirmFilter('unconfirmed')">
-                            <i class='bx bx-time-five text-warning'></i> 미확정 <span class="badge bg-warning text-dark ms-1" id="badgeFilterUnconfirmed">0</span>
-                        </button>
-                        <button type="button" class="btn btn-outline-success fw-bold" id="filterStatusConfirmed" onclick="app.setConfirmFilter('confirmed')">
-                            <i class='bx bx-check-circle text-success'></i> 확정완료 <span class="badge bg-success text-white ms-1" id="badgeFilterConfirmed">0</span>
-                        </button>
+    <!-- 3. 거래처 선택 후 작업 영역 (기본 d-none) -->
+    <div id="partnerWorkArea" class="d-none">
+        <!-- 3-1. 필터 및 KPI 요약 스트립 -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-2 px-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <!-- 좌측: 거래구분(전체/매출/매입) + 확정상태 + 기간/월 + 자재계정 -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <!-- 거래구분 필터 세그먼트 -->
+                        <div class="btn-group btn-group-sm" role="group" id="tradeTypeGroup">
+                            <button type="button" class="btn btn-primary text-white fw-bold" id="tradeTypeAll" onclick="app.setTradeTypeFilter('all')">
+                                전체 <span class="badge bg-white text-dark ms-1" id="badgeTradeAll">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary fw-bold" id="tradeTypeSales" onclick="app.setTradeTypeFilter('outbound')">
+                                <i class='bx bx-export'></i> 매출건만 <span class="badge bg-primary text-white ms-1" id="badgeTradeSales">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-success fw-bold" id="tradeTypePurchase" onclick="app.setTradeTypeFilter('inbound')">
+                                <i class='bx bx-import'></i> 매입건만 <span class="badge bg-success text-white ms-1" id="badgeTradePurchase">0</span>
+                            </button>
+                        </div>
+
+                        <div class="vr d-none d-md-block my-1"></div>
+
+                        <!-- 확정상태 필터 세그먼트 -->
+                        <div class="btn-group btn-group-sm" role="group" id="confirmStatusGroup">
+                            <button type="button" class="btn btn-primary text-white fw-bold" id="filterStatusAll" onclick="app.setConfirmFilter('all')">
+                                전체 <span class="badge bg-white text-dark ms-1" id="badgeFilterAll">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-warning text-dark fw-bold" id="filterStatusUnconfirmed" onclick="app.setConfirmFilter('unconfirmed')">
+                                <i class='bx bx-time-five text-warning'></i> 미확정 <span class="badge bg-warning text-dark ms-1" id="badgeFilterUnconfirmed">0</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-success fw-bold" id="filterStatusConfirmed" onclick="app.setConfirmFilter('confirmed')">
+                                <i class='bx bx-check-circle text-success'></i> 확정완료 <span class="badge bg-success text-white ms-1" id="badgeFilterConfirmed">0</span>
+                            </button>
+                        </div>
+
+                        <div class="vr d-none d-md-block my-1"></div>
+
+                        <!-- 조회기간/월 필터 -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-secondary small fw-bold">조회월:</span>
+                            <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(-1)" title="이전달"><i class='bx bx-chevron-left'></i></button>
+                            <input type="month" id="targetMonth" class="form-control form-control-sm text-center fw-bold text-primary" style="width: 125px;" onchange="app.onMonthChange()">
+                            <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(1)" title="다음달"><i class='bx bx-chevron-right'></i></button>
+                            <div class="btn-group btn-group-sm ms-1">
+                                <button class="btn btn-outline-primary py-0" id="btnMonthAll" type="button" onclick="app.setMonthAll()">전체기간</button>
+                                <button class="btn btn-outline-secondary py-0" id="btnMonthPrev" type="button" onclick="app.setMonthPreset('prev')">전월</button>
+                                <button class="btn btn-outline-secondary py-0" id="btnMonthCurrent" type="button" onclick="app.setMonthPreset('current')">당월</button>
+                            </div>
+                        </div>
+
+                        <!-- 자재계정 필터 -->
+                        <select id="accountFilter" class="form-select form-select-sm" style="width: 130px;" onchange="app.onFilterChange()">
+                            <option value="">전체 자재계정</option>
+                            <option value="안전자재_전체">안전자재 통합</option>
+                            <option value="안전자재-일반">-- 안전(일반)</option>
+                            <option value="안전자재-환경">-- 안전(환경)</option>
+                            <option value="잡자재">잡자재</option>
+                            <option value="기타자재">기타자재</option>
+                            <option value="쇼핑몰">쇼핑몰</option>
+                            <option value="미분류">미분류</option>
+                        </select>
                     </div>
 
-                    <div class="vr d-none d-md-block my-1"></div>
-
-                    <div class="form-check me-1 mb-0">
-                        <input class="form-check-input" type="checkbox" id="checkAllTable" onchange="app.onCheckAllChange(this.checked)">
-                        <label class="form-check-label small fw-bold" for="checkAllTable">전체선택</label>
+                    <!-- 우측: KPI 금액 요약 바 -->
+                    <div class="d-flex align-items-center gap-3 bg-light p-1 px-3 rounded border small" id="kpiSummaryContainer">
+                        <span id="kpiSalesBox">매출(청구): <strong class="text-primary" id="kpiSalesAmt">0원</strong></span>
+                        <span id="kpiPurchaseBox">매입: <strong class="text-success" id="kpiPurchaseAmt">0원</strong></span>
+                        <span class="fs-6 fw-bold" id="kpiTotalLabel">합계: <span class="text-dark" id="kpiTotalAmt">0원</span></span>
                     </div>
-                    <button class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" type="button" onclick="app.checkAllUnconfirmed()" title="미확정 건만 한 번에 체크합니다">
-                        <i class='bx bx-check-square'></i> 미확정건 선택
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="app.toggleCheckAllRows(false)">
-                        선택해제
-                    </button>
-                    <span class="badge bg-light text-secondary border px-2 py-1" id="selectedCountBadge">선택 0건</span>
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 d-none" id="selectedSumBadge">선택 합계: 0원</span>
-                </div>
-
-                <!-- 우측: 확정 대상월 선택 + 확정 / 확정취소 + 출력 -->
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <!-- 확정 대상월 지정 -->
-                    <div class="input-group input-group-sm" style="width: 210px;">
-                        <span class="input-group-text bg-light text-secondary py-0 small">확정대상월</span>
-                        <input type="month" id="batchTargetMonth" class="form-control fw-bold text-center" title="선택한 건을 확정할 대상 월(YYYY-MM)을 지정합니다">
-                    </div>
-                    <!-- 선택건 확정 버튼 -->
-                    <button class="btn btn-primary btn-sm fw-bold shadow-sm" type="button" onclick="app.confirmSelectedMonth()" title="선택한 건을 지정된 월로 확정합니다">
-                        <i class='bx bx-check-circle'></i> 선택건 확정
-                    </button>
-                    <!-- 선택 확정취소 버튼 -->
-                    <button class="btn btn-outline-danger btn-sm fw-semibold" type="button" onclick="app.cancelConfirmationSelected()" title="확정된 건을 다시 미확정 상태로 되돌립니다">
-                        <i class='bx bx-undo'></i> 선택 확정취소
-                    </button>
-
-                    <div class="vr d-none d-md-block my-1"></div>
-
-                    <!-- 엑셀 & 인쇄 -->
-                    <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
-                        <i class='bx bx-download'></i> 엑셀
-                    </button>
-                    <button class="btn btn-primary btn-sm fw-bold shadow-sm" id="printInvoiceBtn" type="button" onclick="app.printInvoice()">
-                        <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서 인쇄</span>
-                    </button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- 4. 상세 품목 테이블 -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="mainStatusTable">
-                <thead>
-                    <tr>
-                        <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
-                        <th style="width: 40px;">No.</th>
-                        <th style="width: 85px;">발생일자</th>
-                        <th style="width: 85px;">정산일자</th>
-                        <th style="width: 130px;" class="text-start" id="colPartnerHeader">거래처명</th>
-                        <th style="width: 90px;">자재계정</th>
-                        <th style="min-width: 170px;" class="text-start">품목명</th>
-                        <th style="width: 85px;">규격</th>
-                        <th style="width: 45px;">단위</th>
-                        <th style="width: 60px;" class="text-end">수량</th>
-                        <th style="width: 80px;" class="text-end">단가</th>
-                        <th style="width: 90px;" class="text-end">공급가액</th>
-                        <th style="width: 75px;" class="text-end">세액</th>
-                        <th style="width: 100px;" class="text-end fw-bold">합계금액</th>
-                        <th style="width: 95px;">확정상태</th>
-                        <th style="min-width: 90px;" class="text-start">비고</th>
-                    </tr>
-                </thead>
-                <tbody id="mainStatusTableBody">
-                    <tr>
-                        <td colspan="16" class="text-center py-5 text-muted">
-                            <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot class="table-light fw-bold small" id="mainStatusTableFoot">
-                    <!-- 합계 렌더링 -->
-                </tfoot>
-            </table>
+        <!-- 3-2. 선택 액션 툴바 (체크 관리 + 확정/취소 + 엑셀/인쇄) -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-2 px-3">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <!-- 좌측: 선택 체크 관리 -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="form-check me-1 mb-0">
+                            <input class="form-check-input" type="checkbox" id="checkAllTable" onchange="app.onCheckAllChange(this.checked)">
+                            <label class="form-check-label small fw-bold" for="checkAllTable">전체선택</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-warning text-dark fw-bold py-0 px-2" type="button" onclick="app.checkAllUnconfirmed()" title="미확정 건만 한 번에 체크합니다">
+                            <i class='bx bx-check-square'></i> 미확정건 선택
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="app.toggleCheckAllRows(false)">
+                            선택해제
+                        </button>
+                        <span class="badge bg-light text-secondary border px-2 py-1" id="selectedCountBadge">선택 0건</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 d-none" id="selectedSumBadge">선택 합계: 0원</span>
+                    </div>
+
+                    <!-- 우측: 확정 대상월 선택 + 확정 / 확정취소 + 출력 -->
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="input-group input-group-sm" style="width: 210px;">
+                            <span class="input-group-text bg-light text-secondary py-0 small">확정대상월</span>
+                            <input type="month" id="batchTargetMonth" class="form-control fw-bold text-center" title="선택한 건을 확정할 대상 월(YYYY-MM)을 지정합니다">
+                        </div>
+                        <button class="btn btn-primary btn-sm fw-bold shadow-sm" type="button" onclick="app.confirmSelectedMonth()" title="선택한 건을 지정된 월로 확정합니다">
+                            <i class='bx bx-check-circle'></i> 선택건 확정
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm fw-semibold" type="button" onclick="app.cancelConfirmationSelected()" title="확정된 건을 다시 미확정 상태로 되돌립니다">
+                            <i class='bx bx-undo'></i> 선택 확정취소
+                        </button>
+
+                        <div class="vr d-none d-md-block my-1"></div>
+
+                        <!-- 엑셀 & 인쇄 -->
+                        <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
+                            <i class='bx bx-download'></i> 엑셀
+                        </button>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-primary btn-sm fw-bold shadow-sm dropdown-toggle" id="printInvoiceBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서/정산서 인쇄</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <li><a class="dropdown-item py-2 fw-semibold text-primary" href="javascript:void(0)" onclick="app.printInvoiceWithType('outbound')"><i class='bx bx-export'></i> 매출 청구서 인쇄</a></li>
+                                <li><a class="dropdown-item py-2 fw-semibold text-success" href="javascript:void(0)" onclick="app.printInvoiceWithType('inbound')"><i class='bx bx-import'></i> 매입정산내역 인쇄</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
+
+        <!-- 3-3. 상세 품목 테이블 -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="mainStatusTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
+                            <th style="width: 40px;">No.</th>
+                            <th style="width: 65px;">구분</th>
+                            <th style="width: 85px;">발생일자</th>
+                            <th style="width: 85px;">정산일자</th>
+                            <th style="width: 130px;" class="text-start" id="colPartnerHeader">상대처/납품처</th>
+                            <th style="width: 90px;">자재계정</th>
+                            <th style="min-width: 170px;" class="text-start">품목명</th>
+                            <th style="width: 85px;">규격</th>
+                            <th style="width: 45px;">단위</th>
+                            <th style="width: 60px;" class="text-end">수량</th>
+                            <th style="width: 80px;" class="text-end">단가</th>
+                            <th style="width: 90px;" class="text-end">공급가액</th>
+                            <th style="width: 75px;" class="text-end">세액</th>
+                            <th style="width: 100px;" class="text-end fw-bold">합계금액</th>
+                            <th style="width: 95px;">확정상태</th>
+                            <th style="min-width: 90px;" class="text-start">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mainStatusTableBody">
+                        <tr>
+                            <td colspan="17" class="text-center py-5 text-muted">
+                                <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot class="table-light fw-bold small" id="mainStatusTableFoot">
+                        <!-- 합계 렌더링 -->
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div> <!-- /#partnerWorkArea -->
+</div> <!-- /.container-fluid -->
 
 <!-- ================================================================ -->
 <!-- 5. 거래처 검색 및 선택 모달 (거래처 관리에 등록된 거래처) -->

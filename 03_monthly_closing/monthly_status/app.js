@@ -27,28 +27,95 @@ function numberToKorean(number) {
 const $ = id => document.getElementById(id);
 
 const app = {
-    currentMonth: '',
-    activeTab: 'sales', // 'sales' (매출/청구) | 'purchase' (매입/정산)
+    currentMonth: '', // '' = 전체기간, 'YYYY-MM' = 특정 기준월
+    tradeTypeFilter: 'all', // 'all' (전체) | 'outbound' (매출) | 'inbound' (매입)
     confirmFilter: 'all', // 'all' | 'unconfirmed' | 'confirmed'
     allPartners: [],
+    recentPartners: [],
     selectedPartner: null, // { name, company_name, business_number, ceo_name, address, ... }
     aggregateByBizNum: false,
     currentRows: [],
     modalPartnerList: [],
     partnerModalInstance: null,
+    activeAutocompleteIndex: -1,
 
     init: async function() {
-        // 기본값: 전월
-        this.setMonthPreset('prev');
-        this.initTargetMonthInput();
+        // 1. 기본 확정 대상월 설정 (전월 기준)
+        const now = new Date();
+        let y = now.getFullYear();
+        let m = now.getMonth(); // 전월 1-12
+        if (m === 0) { m = 12; y -= 1; }
+        const prevMonthStr = `${y}-${String(m).padStart(2, '0')}`;
+        
+        // 기준월 기본값: 전체기간 (빈 문자열)
+        this.currentMonth = '';
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = prevMonthStr;
+        if ($('targetMonth')) $('targetMonth').value = '';
+        this.updateMonthPresetButtons();
+
+        // 2. 거래처 및 최근 거래처 로드
+        this.loadRecentPartners();
+        this.renderQuickPartnerChips();
         await this.loadAllPartners();
-        await this.loadData();
+
+        // 3. 초기 상태는 거래처 미선택 (Empty State 표시)
+        this.renderEmptyState();
     },
 
-    initTargetMonthInput: function() {
-        if (!this.currentMonth) return;
-        // 기본 확정 대상월은 현재 보고 있는 기준월로 설정
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
+    loadRecentPartners: function() {
+        try {
+            const saved = localStorage.getItem('kng_recent_partners');
+            if (saved) {
+                this.recentPartners = JSON.parse(saved);
+            } else {
+                this.recentPartners = ['광림상사', '행복안전', '포에버'];
+            }
+        } catch (e) {
+            this.recentPartners = ['광림상사', '행복안전', '포에버'];
+        }
+    },
+
+    saveRecentPartner: function(partnerName) {
+        if (!partnerName) return;
+        this.recentPartners = [partnerName, ...this.recentPartners.filter(p => p !== partnerName)].slice(0, 6);
+        try {
+            localStorage.setItem('kng_recent_partners', JSON.stringify(this.recentPartners));
+        } catch (e) {}
+        this.renderQuickPartnerChips();
+    },
+
+    renderQuickPartnerChips: function() {
+        const container = $('quickPartnerChips');
+        if (!container) return;
+        if (this.recentPartners.length === 0) {
+            container.innerHTML = '<span class="text-muted small">최근 내역 없음</span>';
+            return;
+        }
+        container.innerHTML = this.recentPartners.map(p => `
+            <span class="partner-chip shadow-sm" onclick="app.selectPartnerByName('${p.replace(/'/g, "\\'")}')" title="${p} 바로 조회">
+                ${p}
+            </span>
+        `).join('');
+    },
+
+    renderEmptyState: function() {
+        const emptyBox = $('emptyPartnerState');
+        const workArea = $('partnerWorkArea');
+        const banner = $('selectedPartnerBanner');
+        const clearBtn = $('clearPartnerBtn');
+
+        if (emptyBox) emptyBox.classList.remove('d-none');
+        if (workArea) workArea.classList.add('d-none');
+        if (banner) banner.classList.add('d-none');
+        if (clearBtn) clearBtn.classList.add('d-none');
+    },
+
+    // ── 기간/월 프리셋 관리 ──
+    setMonthAll: function() {
+        this.currentMonth = '';
+        if ($('targetMonth')) $('targetMonth').value = '';
+        this.updateMonthPresetButtons();
+        if (this.selectedPartner) this.loadData();
     },
 
     setMonthPreset: function(preset) {
@@ -65,70 +132,97 @@ const app = {
         }
         this.currentMonth = `${y}-${String(m).padStart(2, '0')}`;
         if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        this.initTargetMonthInput();
-        this.loadData();
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
+        this.updateMonthPresetButtons();
+        if (this.selectedPartner) this.loadData();
     },
 
     onMonthChange: function() {
         const val = $('targetMonth')?.value;
-        if (val) {
-            this.currentMonth = val;
-            this.initTargetMonthInput();
-            this.loadData();
-        }
+        this.currentMonth = val || '';
+        if (val && $('batchTargetMonth')) $('batchTargetMonth').value = val;
+        this.updateMonthPresetButtons();
+        if (this.selectedPartner) this.loadData();
     },
 
     changeMonth: function(delta) {
-        if (!this.currentMonth) return;
-        const [y, m] = this.currentMonth.split('-').map(Number);
-        let date = new Date(y, m - 1 + delta, 1);
-        let nextY = date.getFullYear();
-        let nextM = String(date.getMonth() + 1).padStart(2, '0');
+        let baseDate = new Date();
+        if (this.currentMonth) {
+            const [y, m] = this.currentMonth.split('-').map(Number);
+            baseDate = new Date(y, m - 1 + delta, 1);
+        }
+        let nextY = baseDate.getFullYear();
+        let nextM = String(baseDate.getMonth() + 1).padStart(2, '0');
         this.currentMonth = `${nextY}-${nextM}`;
         if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        this.initTargetMonthInput();
-        this.loadData();
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
+        this.updateMonthPresetButtons();
+        if (this.selectedPartner) this.loadData();
     },
 
-    switchTab: function(tab) {
-        this.activeTab = tab;
-        const salesBtn = $('sales-tab');
-        const purchaseBtn = $('purchase-tab');
-        const colHeader = $('colPartnerHeader');
-        const printBtnLabel = $('printBtnLabel');
-        const kpiTotalLabel = $('kpiTotalLabel');
+    updateMonthPresetButtons: function() {
+        const btnAll = $('btnMonthAll');
+        const btnPrev = $('btnMonthPrev');
+        const btnCurrent = $('btnMonthCurrent');
+        if (!btnAll) return;
 
-        if (tab === 'sales') {
-            salesBtn?.classList.add('active');
-            purchaseBtn?.classList.remove('active', 'purchase-tab');
-            if (colHeader) colHeader.innerText = '매출처 (거래처명)';
-            if (printBtnLabel) printBtnLabel.innerText = '청구서 인쇄';
-            if (kpiTotalLabel) kpiTotalLabel.innerHTML = `청구합계: <span class="text-primary" id="kpiTotalAmt">0원</span>`;
-        } else {
-            salesBtn?.classList.remove('active');
-            purchaseBtn?.classList.add('active', 'purchase-tab');
-            if (colHeader) colHeader.innerText = '매입처 (공급자명)';
-            if (printBtnLabel) printBtnLabel.innerText = '매입정산내역 인쇄';
-            if (kpiTotalLabel) kpiTotalLabel.innerHTML = `매입합계: <span class="text-success" id="kpiTotalAmt">0원</span>`;
-        }
+        btnAll.className = !this.currentMonth ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
 
-        this.loadData();
+        const now = new Date();
+        const curM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        let prevY = now.getFullYear();
+        let prevM = now.getMonth();
+        if (prevM === 0) { prevM = 12; prevY -= 1; }
+        const prevMStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+
+        if (btnPrev) btnPrev.className = (this.currentMonth === prevMStr) ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
+        if (btnCurrent) btnCurrent.className = (this.currentMonth === curM) ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
+    },
+
+    // ── 거래구분 (전체 / 매출건만 / 매입건만) 필터 ──
+    setTradeTypeFilter: function(type) {
+        this.tradeTypeFilter = type;
+        const btnAll = $('tradeTypeAll');
+        const btnSales = $('tradeTypeSales');
+        const btnPurchase = $('tradeTypePurchase');
+
+        if (btnAll) btnAll.className = (type === 'all') ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
+        if (btnSales) btnSales.className = (type === 'outbound') ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-primary fw-bold';
+        if (btnPurchase) btnPurchase.className = (type === 'inbound') ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
+
+        this.renderTable();
+        this.updateKpiSummary();
+    },
+
+    // ── 확정상태 (전체 / 미확정 / 확정완료) 필터 ──
+    setConfirmFilter: function(filter) {
+        this.confirmFilter = filter;
+        const allBtn = $('filterStatusAll');
+        const unconfBtn = $('filterStatusUnconfirmed');
+        const confBtn = $('filterStatusConfirmed');
+
+        if (allBtn) allBtn.className = filter === 'all' ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
+        if (unconfBtn) unconfBtn.className = filter === 'unconfirmed' ? 'btn btn-warning text-dark fw-bold' : 'btn btn-outline-warning text-dark fw-bold';
+        if (confBtn) confBtn.className = filter === 'confirmed' ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
+
+        this.renderTable();
+        this.updateKpiSummary();
     },
 
     onFilterChange: function() {
-        this.loadData();
+        if (this.selectedPartner) this.loadData();
     },
 
     onBizAggChange: function() {
         this.aggregateByBizNum = $('aggregateBizChk')?.checked || false;
-        this.loadData();
+        if (this.selectedPartner) this.loadData();
     },
 
     refreshCurrentView: function() {
-        this.loadData();
+        if (this.selectedPartner) this.loadData();
     },
 
-    // ── 1. 거래처 데이터 로드 및 자동완성 / 모달 ──
+    // ── 1. 거래처 데이터 로드 및 자동완성 / 키보드 탐색 / 모달 ──
     loadAllPartners: async function() {
         try {
             const res = await window.authFetch(`${API_BASE}/partners`);
@@ -147,12 +241,83 @@ const app = {
     },
 
     onPartnerInput: function(val) {
+        this.activeAutocompleteIndex = -1;
         this.renderAutocomplete(val);
         const clearBtn = $('clearPartnerBtn');
         if (clearBtn) {
             if (val) clearBtn.classList.remove('d-none');
             else if (!this.selectedPartner) clearBtn.classList.add('d-none');
         }
+    },
+
+    handlePartnerKeydown: function(e) {
+        const listEl = $('partnerAutocompleteList');
+        const items = listEl ? listEl.querySelectorAll('.partner-autocomplete-item') : [];
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (items.length > 0) {
+                this.activeAutocompleteIndex = (this.activeAutocompleteIndex + 1) % items.length;
+                this.highlightAutocompleteItem(items);
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (items.length > 0) {
+                this.activeAutocompleteIndex = (this.activeAutocompleteIndex - 1 + items.length) % items.length;
+                this.highlightAutocompleteItem(items);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (this.activeAutocompleteIndex >= 0 && items[this.activeAutocompleteIndex]) {
+                items[this.activeAutocompleteIndex].click();
+                return;
+            }
+
+            const kw = ($('partnerSearchInput')?.value || '').trim().toLowerCase();
+            if (!kw) {
+                this.openPartnerSelectModal();
+                return;
+            }
+
+            // 1. 정확 일치 검사
+            const exact = this.allPartners.find(p => 
+                (p.name && p.name.toLowerCase() === kw) || 
+                (p.company_name && p.company_name.toLowerCase() === kw)
+            );
+            if (exact) {
+                this.selectPartner(exact);
+                return;
+            }
+
+            // 2. 부분 일치 검색
+            const matched = this.allPartners.filter(p => {
+                const name = (p.name || '').toLowerCase();
+                const comp = (p.company_name || '').toLowerCase();
+                const biz = (p.business_number || '').replace(/[^0-9]/g, '');
+                const ceo = (p.ceo_name || '').toLowerCase();
+                return name.includes(kw) || comp.includes(kw) || biz.includes(kw.replace(/[^0-9]/g, '')) || ceo.includes(kw);
+            });
+
+            if (matched.length === 1) {
+                this.selectPartner(matched[0]);
+            } else {
+                // 여러 개 매칭되거나 없는 경우 검색 모달을 즉시 띄움
+                this.openPartnerSelectModal(kw);
+            }
+        } else if (e.key === 'Escape') {
+            if (listEl) listEl.style.display = 'none';
+        }
+    },
+
+    highlightAutocompleteItem: function(items) {
+        items.forEach((item, idx) => {
+            if (idx === this.activeAutocompleteIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
     },
 
     renderAutocomplete: function(query) {
@@ -172,17 +337,17 @@ const app = {
         }
 
         if (filtered.length === 0) {
-            listEl.innerHTML = `<div class="p-2 text-muted text-center small">일치하는 거래처가 없습니다.</div>`;
+            listEl.innerHTML = `<div class="p-2 text-muted text-center small">일치하는 거래처가 없습니다. [Enter]를 누르면 거래처 찾기가 열립니다.</div>`;
             listEl.style.display = 'block';
             return;
         }
 
-        listEl.innerHTML = filtered.slice(0, 15).map(p => {
+        listEl.innerHTML = filtered.slice(0, 15).map((p, idx) => {
             const displayName = p.name || p.company_name;
             const biz = p.business_number ? ` (${p.business_number})` : '';
             const ceo = p.ceo_name ? ` · ${p.ceo_name}` : '';
             return `
-                <div class="partner-autocomplete-item" onclick="app.selectPartnerByName('${displayName.replace(/'/g, "\\'")}')">
+                <div class="partner-autocomplete-item ${idx === this.activeAutocompleteIndex ? 'active' : ''}" onclick="app.selectPartnerByName('${displayName.replace(/'/g, "\\'")}')">
                     <strong>${displayName}</strong>${biz}<span class="text-muted small">${ceo}</span>
                 </div>
             `;
@@ -201,11 +366,14 @@ const app = {
 
     selectPartner: function(partner) {
         this.selectedPartner = partner;
+        const pName = partner.company_name || partner.name || '';
+        this.saveRecentPartner(pName);
+
         const listEl = $('partnerAutocompleteList');
         if (listEl) listEl.style.display = 'none';
 
         const searchInput = $('partnerSearchInput');
-        if (searchInput) searchInput.value = partner.name || partner.company_name || '';
+        if (searchInput) searchInput.value = pName;
 
         const clearBtn = $('clearPartnerBtn');
         if (clearBtn) clearBtn.classList.remove('d-none');
@@ -214,11 +382,17 @@ const app = {
         const banner = $('selectedPartnerBanner');
         if (banner) {
             banner.classList.remove('d-none');
-            $('bannerPartnerName').innerText = partner.company_name || partner.name || '-';
+            $('bannerPartnerName').innerText = pName || '-';
             $('bannerBizNo').innerText = partner.business_number || '-';
             $('bannerCeo').innerText = partner.ceo_name || '-';
             $('bannerAddress').innerText = partner.address || '-';
         }
+
+        // Empty state 숨기고 작업 영역 노출
+        const emptyBox = $('emptyPartnerState');
+        const workArea = $('partnerWorkArea');
+        if (emptyBox) emptyBox.classList.add('d-none');
+        if (workArea) workArea.classList.remove('d-none');
 
         // 모달이 열려있다면 닫기
         if (this.partnerModalInstance) {
@@ -230,29 +404,29 @@ const app = {
 
     clearSelectedPartner: function() {
         this.selectedPartner = null;
+        this.currentRows = [];
+
         const searchInput = $('partnerSearchInput');
         if (searchInput) searchInput.value = '';
 
-        const clearBtn = $('clearPartnerBtn');
-        if (clearBtn) clearBtn.classList.add('d-none');
-
-        const banner = $('selectedPartnerBanner');
-        if (banner) banner.classList.add('d-none');
-
-        const listEl = $('partnerAutocompleteList');
-        if (listEl) listEl.style.display = 'none';
-
-        this.loadData();
+        this.renderEmptyState();
     },
 
-    openPartnerSelectModal: function() {
+    openPartnerSelectModal: function(prefillKeyword = '') {
         const modalEl = $('partnerSelectModal');
         if (!modalEl) return;
         this.partnerModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
-        $('modalPartnerSearchInput').value = '';
-        this.modalPartnerList = [...this.allPartners];
-        this.renderModalPartnerTable();
+        
+        const searchInput = $('modalPartnerSearchInput');
+        if (searchInput) {
+            searchInput.value = prefillKeyword || ($('partnerSearchInput')?.value || '');
+        }
+        this.filterModalPartners();
         this.partnerModalInstance.show();
+
+        setTimeout(() => {
+            if (searchInput) searchInput.focus();
+        }, 400);
     },
 
     filterModalPartners: function() {
@@ -286,7 +460,7 @@ const app = {
                 <tr style="cursor: pointer;" onclick="app.selectPartnerByName('${(p.name || p.company_name).replace(/'/g, "\\'")}')">
                     <td class="text-center text-muted">${idx + 1}</td>
                     <td class="fw-bold text-primary">${displayName}</td>
-                    <td class="text-center font-monospace text-secondary">${p.business_number || '-'}</td>
+                    <td class="text-center text-secondary">${p.business_number || '-'}</td>
                     <td class="text-center">${p.ceo_name || '-'}</td>
                     <td class="text-center"><span class="badge bg-light text-dark border">${p.type || '일반'}</span></td>
                     <td class="text-truncate text-muted small" style="max-width: 220px;" title="${p.address || ''}">${p.address || '-'}</td>
@@ -298,37 +472,42 @@ const app = {
         }).join('');
     },
 
-    // ── 2. 품목 데이터 로드 (월별 / 거래처별 정산완료 내역) ──
+    // ── 2. 품목 데이터 로드 (거래처 중심 + 매출/매입 통합) ──
     loadData: async function() {
+        if (!this.selectedPartner) {
+            this.renderEmptyState();
+            return;
+        }
+
         const tbody = $('mainStatusTableBody');
         if (!tbody) return;
-        tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
 
         try {
-            const isSales = this.activeTab === 'sales';
-            const reqType = isSales ? 'outbound' : 'inbound';
             const accVal = $('accountFilter')?.value || '';
+            const pName = this.selectedPartner.name || this.selectedPartner.company_name;
 
-            // 1. 현재 탭 품목 목록 요청 (날짜 오름차순: 오래된 건이 가장 위)
-            let url = `${API_BASE}/logistics/history?settlement_month=${encodeURIComponent(this.currentMonth)}&settlement_status=${encodeURIComponent('정산완료')}&type=${reqType}&include_direct=true&limit=1000&sortCol=date&sortDir=asc`;
-            if (accVal) url += `&settlement_account=${encodeURIComponent(accVal)}`;
+            // 1. type=all 요청으로 매출(outbound)과 매입(inbound)을 단일 쿼리로 모두 수집
+            let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=2000&sortCol=date&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
+            
+            // 기준월이 지정되어 있는 경우에만 settlement_month 필터 적용 (전체기간이면 파라미터 제외)
+            if (this.currentMonth) {
+                url += `&settlement_month=${encodeURIComponent(this.currentMonth)}`;
+            }
+            if (accVal) {
+                url += `&settlement_account=${encodeURIComponent(accVal)}`;
+            }
 
-            // 거래처 필터 조건
-            let targetPartnerNames = [];
-            if (this.selectedPartner) {
-                const pName = this.selectedPartner.name || this.selectedPartner.company_name;
-                targetPartnerNames.push(pName);
-
-                if (this.aggregateByBizNum && this.selectedPartner.business_number) {
-                    const bNum = this.selectedPartner.business_number.replace(/[^0-9]/g, '');
-                    this.allPartners.forEach(p => {
-                        if (p.business_number && p.business_number.replace(/[^0-9]/g, '') === bNum) {
-                            if (p.name && !targetPartnerNames.includes(p.name)) targetPartnerNames.push(p.name);
-                            if (p.company_name && !targetPartnerNames.includes(p.company_name)) targetPartnerNames.push(p.company_name);
-                        }
-                    });
-                }
-                url += `&searchParty=${encodeURIComponent(pName)}`;
+            // 동일 사업자번호 통합 조회 처리
+            let targetPartnerNames = [pName];
+            if (this.aggregateByBizNum && this.selectedPartner.business_number) {
+                const bNum = this.selectedPartner.business_number.replace(/[^0-9]/g, '');
+                this.allPartners.forEach(p => {
+                    if (p.business_number && p.business_number.replace(/[^0-9]/g, '') === bNum) {
+                        if (p.name && !targetPartnerNames.includes(p.name)) targetPartnerNames.push(p.name);
+                        if (p.company_name && !targetPartnerNames.includes(p.company_name)) targetPartnerNames.push(p.company_name);
+                    }
+                });
             }
 
             const res = await window.authFetch(url);
@@ -337,9 +516,9 @@ const app = {
             let items = data.data || data.items || (Array.isArray(data) ? data : []);
 
             // 거래처 다중(동일 사업자번호) 필터링 보정
-            if (this.selectedPartner && targetPartnerNames.length > 1) {
+            if (targetPartnerNames.length > 1) {
                 items = items.filter(r => {
-                    const party = isSales ? (r.destination || r.actual_destination) : r.supplier;
+                    const party = (r.type === 'outbound') ? (r.destination || r.actual_destination) : r.supplier;
                     return targetPartnerNames.some(tn => (party || '').includes(tn));
                 });
             }
@@ -357,33 +536,32 @@ const app = {
             this.renderTable();
             this.updateKpiSummary();
 
-            // 2. 탭 배지(건수) 갱신 (전체/거래처별 요약 통계)
-            this.fetchTabCounts();
-
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
         }
     },
 
-    setConfirmFilter: function(filter) {
-        this.confirmFilter = filter;
-        const allBtn = $('filterStatusAll');
-        const unconfBtn = $('filterStatusUnconfirmed');
-        const confBtn = $('filterStatusConfirmed');
-
-        if (allBtn) allBtn.className = filter === 'all' ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
-        if (unconfBtn) unconfBtn.className = filter === 'unconfirmed' ? 'btn btn-warning text-dark fw-bold' : 'btn btn-outline-warning text-dark fw-bold';
-        if (confBtn) confBtn.className = filter === 'confirmed' ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
-
-        this.renderTable();
-        this.updateKpiSummary();
-    },
-
     updateFilterCounts: function() {
-        const allCount = this.currentRows.length;
-        const unconfCount = this.currentRows.filter(r => !r.settlement_month).length;
-        const confCount = this.currentRows.filter(r => !!r.settlement_month).length;
+        const rows = this.currentRows || [];
+        
+        // 거래구분 건수
+        const allTradeCount = rows.length;
+        const salesCount = rows.filter(r => r.type === 'outbound').length;
+        const purchaseCount = rows.filter(r => r.type === 'inbound').length;
+
+        if ($('badgeTradeAll')) $('badgeTradeAll').innerText = allTradeCount.toLocaleString();
+        if ($('badgeTradeSales')) $('badgeTradeSales').innerText = salesCount.toLocaleString();
+        if ($('badgeTradePurchase')) $('badgeTradePurchase').innerText = purchaseCount.toLocaleString();
+
+        // 현재 tradeTypeFilter가 적용된 기준에서의 확정/미확정 건수
+        let tradeFiltered = rows;
+        if (this.tradeTypeFilter === 'outbound') tradeFiltered = rows.filter(r => r.type === 'outbound');
+        else if (this.tradeTypeFilter === 'inbound') tradeFiltered = rows.filter(r => r.type === 'inbound');
+
+        const allCount = tradeFiltered.length;
+        const unconfCount = tradeFiltered.filter(r => !r.settlement_month).length;
+        const confCount = tradeFiltered.filter(r => !!r.settlement_month).length;
 
         if ($('badgeFilterAll')) $('badgeFilterAll').innerText = allCount.toLocaleString();
         if ($('badgeFilterUnconfirmed')) $('badgeFilterUnconfirmed').innerText = unconfCount.toLocaleString();
@@ -392,44 +570,23 @@ const app = {
 
     getFilteredRows: function() {
         if (!this.currentRows) return [];
+        let list = this.currentRows;
+
+        // 1. 거래구분 필터
+        if (this.tradeTypeFilter === 'outbound') {
+            list = list.filter(r => r.type === 'outbound');
+        } else if (this.tradeTypeFilter === 'inbound') {
+            list = list.filter(r => r.type === 'inbound');
+        }
+
+        // 2. 확정상태 필터
         if (this.confirmFilter === 'unconfirmed') {
-            return this.currentRows.filter(r => !r.settlement_month);
+            list = list.filter(r => !r.settlement_month);
         } else if (this.confirmFilter === 'confirmed') {
-            return this.currentRows.filter(r => !!r.settlement_month);
+            list = list.filter(r => !!r.settlement_month);
         }
-        return this.currentRows;
-    },
 
-    fetchTabCounts: async function() {
-        try {
-            const accVal = $('accountFilter')?.value || '';
-            let url = `${API_BASE}/ledger/monthly-summary?month=${encodeURIComponent(this.currentMonth)}`;
-            if (accVal) url += `&settlement_account=${encodeURIComponent(accVal)}`;
-            const res = await window.authFetch(url);
-            if (res.ok) {
-                const sumData = await res.json();
-                const partners = sumData.partners || [];
-                let sCount = 0;
-                let pCount = 0;
-
-                if (!this.selectedPartner) {
-                    sCount = sumData.totals?.outbound?.count || 0;
-                    pCount = sumData.totals?.inbound?.count || 0;
-                } else {
-                    const pName = this.selectedPartner.name || this.selectedPartner.company_name;
-                    const matched = partners.filter(p => (p.partner || '').includes(pName));
-                    matched.forEach(p => {
-                        sCount += (p.outbound?.count || 0);
-                        pCount += (p.inbound?.count || 0);
-                    });
-                }
-
-                if ($('tabSalesBadge')) $('tabSalesBadge').innerText = `${sCount.toLocaleString()}건`;
-                if ($('tabPurchaseBadge')) $('tabPurchaseBadge').innerText = `${pCount.toLocaleString()}건`;
-            }
-        } catch (e) {
-            // 조용히 무시
-        }
+        return list;
     },
 
     renderTable: function() {
@@ -437,7 +594,7 @@ const app = {
         const tfoot = $('mainStatusTableFoot');
         if (!tbody) return;
 
-        // 헤더 체크박스 해제
+        // 헤더 체크박스 초기화
         if ($('checkAllTable')) $('checkAllTable').checked = false;
         if ($('tableHeaderCheck')) $('tableHeaderCheck').checked = false;
         this.updateSelectedCountBadge();
@@ -448,21 +605,21 @@ const app = {
             let msg = '';
             if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
             else if (this.confirmFilter === 'confirmed') msg = '확정 완료된 정산 내역이 없습니다.';
-            else msg = `${this.currentMonth}에 등록된 정산 내역이 없습니다.`;
+            else msg = `${this.currentMonth ? '[' + this.currentMonth + ']에 ' : ''}등록된 정산 내역이 없습니다.`;
 
-            const targetName = this.selectedPartner ? `[${this.selectedPartner.name || this.selectedPartner.company_name}] 거래처의 ` : '';
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
+            const targetName = this.selectedPartner ? `[${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 ` : '';
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
             if (tfoot) tfoot.innerHTML = '';
             return;
         }
 
-        const isSales = this.activeTab === 'sales';
         let totalQty = 0;
         let totalSupply = 0;
         let totalVat = 0;
         let totalGrand = 0;
 
         tbody.innerHTML = rows.map((r, idx) => {
+            const isSales = (r.type === 'outbound');
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -498,17 +655,24 @@ const app = {
                 ? `<span class="badge badge-confirmed" title="확정월: ${r.settlement_month}"><i class='bx bx-check-circle'></i> ${r.settlement_month} 확정</span>`
                 : `<span class="badge badge-unconfirmed" title="아직 확정되지 않은 정산 건입니다"><i class='bx bx-time-five'></i> 미확정</span>`;
 
+            // 구분 배지 (매출 vs 매입)
+            const typeBadge = isSales
+                ? `<span class="badge badge-sales"><i class='bx bx-export'></i> 매출</span>`
+                : `<span class="badge badge-purchase"><i class='bx bx-import'></i> 매입</span>`;
+
+            // 상대처 명 (매출: 납품처/현장, 매입: 매입처)
             const partyName = isSales ? (r.destination || r.actual_destination || '-') : (r.supplier || '-');
 
             return `
                 <tr>
                     <td class="text-center">
-                        <input class="form-check-input item-chk" type="checkbox" value="${r.id}" data-confirmed="${isConfirmed ? '1' : '0'}" onchange="app.onItemCheckChange()">
+                        <input class="form-check-input item-chk" type="checkbox" value="${r.id}" data-type="${r.type}" data-confirmed="${isConfirmed ? '1' : '0'}" onchange="app.onItemCheckChange()">
                     </td>
                     <td class="text-center text-muted small">${idx + 1}</td>
+                    <td class="text-center">${typeBadge}</td>
                     <td class="text-center small">${r.date ? r.date.split('T')[0] : '-'}</td>
-                    <td class="text-center font-monospace small ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
-                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 140px;" title="${partyName}">${partyName}</td>
+                    <td class="text-center small ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
+                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 130px;" title="${partyName}">${partyName}</td>
                     <td class="text-center small"><span class="badge bg-light text-dark border">${r.settlement_account || '-'}</span></td>
                     <td class="text-start">
                         <strong>${r.item}</strong>
@@ -520,7 +684,7 @@ const app = {
                     <td class="text-end small">${price.toLocaleString()}원</td>
                     <td class="text-end small">${supply.toLocaleString()}원</td>
                     <td class="text-end text-muted small">${vat.toLocaleString()}원</td>
-                    <td class="text-end fw-bold text-dark small">${grandTotal.toLocaleString()}원</td>
+                    <td class="text-end fw-bold ${isSales ? 'text-primary' : 'text-success'} small">${grandTotal.toLocaleString()}원</td>
                     <td class="text-center">${statusBadge}</td>
                     <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
                 </tr>
@@ -530,12 +694,12 @@ const app = {
         if (tfoot) {
             tfoot.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
+                    <td colspan="10" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
                     <td class="text-end">${totalQty.toLocaleString()}</td>
                     <td></td>
                     <td class="text-end">${totalSupply.toLocaleString()}원</td>
                     <td class="text-end">${totalVat.toLocaleString()}원</td>
-                    <td class="text-end text-primary fs-6">${totalGrand.toLocaleString()}원</td>
+                    <td class="text-end text-dark fs-6 fw-bold">${totalGrand.toLocaleString()}원</td>
                     <td colspan="2"></td>
                 </tr>
             `;
@@ -543,13 +707,12 @@ const app = {
     },
 
     updateKpiSummary: function() {
-        const isSales = this.activeTab === 'sales';
-        let totalSupply = 0;
-        let totalVat = 0;
-        let totalGrand = 0;
+        let salesSupply = 0, salesVat = 0, salesGrand = 0;
+        let purchaseSupply = 0, purchaseVat = 0, purchaseGrand = 0;
 
         const rows = this.getFilteredRows();
         rows.forEach(r => {
+            const isSales = (r.type === 'outbound');
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -568,15 +731,45 @@ const app = {
                 if (ship > 0) shipVat = shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1);
                 vat = itemVat + shipVat;
             }
+            const grand = supply + vat;
 
-            totalSupply += supply;
-            totalVat += vat;
-            totalGrand += (supply + vat);
+            if (isSales) {
+                salesSupply += supply;
+                salesVat += vat;
+                salesGrand += grand;
+            } else {
+                purchaseSupply += supply;
+                purchaseVat += vat;
+                purchaseGrand += grand;
+            }
         });
 
-        if ($('kpiSupplyAmt')) $('kpiSupplyAmt').innerText = `${totalSupply.toLocaleString()}원`;
-        if ($('kpiVatAmt')) $('kpiVatAmt').innerText = `${totalVat.toLocaleString()}원`;
-        if ($('kpiTotalAmt')) $('kpiTotalAmt').innerText = `${totalGrand.toLocaleString()}원`;
+        const salesBox = $('kpiSalesBox');
+        const purchaseBox = $('kpiPurchaseBox');
+        const salesAmt = $('kpiSalesAmt');
+        const purchaseAmt = $('kpiPurchaseAmt');
+        const totalLabel = $('kpiTotalLabel');
+        const totalAmt = $('kpiTotalAmt');
+
+        if (this.tradeTypeFilter === 'outbound') {
+            if (salesBox) salesBox.classList.remove('d-none');
+            if (purchaseBox) purchaseBox.classList.add('d-none');
+            if (salesAmt) salesAmt.innerText = `${salesGrand.toLocaleString()}원`;
+            if (totalLabel) totalLabel.innerHTML = `청구합계: <span class="text-primary">${salesGrand.toLocaleString()}원</span>`;
+        } else if (this.tradeTypeFilter === 'inbound') {
+            if (salesBox) salesBox.classList.add('d-none');
+            if (purchaseBox) purchaseBox.classList.remove('d-none');
+            if (purchaseAmt) purchaseAmt.innerText = `${purchaseGrand.toLocaleString()}원`;
+            if (totalLabel) totalLabel.innerHTML = `매입합계: <span class="text-success">${purchaseGrand.toLocaleString()}원</span>`;
+        } else {
+            // 전체보기
+            if (salesBox) salesBox.classList.remove('d-none');
+            if (purchaseBox) purchaseBox.classList.remove('d-none');
+            if (salesAmt) salesAmt.innerText = `${salesGrand.toLocaleString()}원`;
+            if (purchaseAmt) purchaseAmt.innerText = `${purchaseGrand.toLocaleString()}원`;
+            const netDiff = salesGrand - purchaseGrand;
+            if (totalLabel) totalLabel.innerHTML = `순청구(차액): <span class="${netDiff >= 0 ? 'text-primary' : 'text-danger'} fw-bold">${netDiff.toLocaleString()}원</span>`;
+        }
     },
 
     // ── 3. 체크박스 및 선택 관리 ──
@@ -620,8 +813,9 @@ const app = {
             const id = parseInt(chk.value);
             const r = this.currentRows.find(x => x.id === id);
             if (r) {
+                const isSales = (r.type === 'outbound');
                 const qty = Number(r.settlement_qty || r.qty || 0);
-                const price = Number(r.settlement_price || (this.activeTab === 'sales' ? r.outbound_price : r.inbound_price) || 0);
+                const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
                 const ship = Number(r.shipping_fee || 0);
                 const shipVatInc = r.shipping_fee_vat_included === 1;
                 let shipSupply = (ship > 0 && shipVatInc) ? Math.round(ship / 1.1) : ship;
@@ -651,33 +845,53 @@ const app = {
 
     // ── 4. 확정 및 확정취소(미확정 전환) 실행 ──
     confirmSelectedMonth: async function() {
-        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
-        if (checked.length === 0) return alert('확정할 항목을 선택해주세요.');
+        const checkedBoxes = Array.from(document.querySelectorAll('.item-chk:checked'));
+        if (checkedBoxes.length === 0) return alert('확정할 항목을 선택해주세요.');
 
         const targetMonth = $('batchTargetMonth')?.value || this.currentMonth;
         if (!targetMonth) return alert('확정 대상월(YYYY-MM)을 선택해주세요.');
 
-        if (!confirm(`선택한 ${checked.length}건을 [${targetMonth}]로 확정하시겠습니까?`)) {
+        if (!confirm(`선택한 ${checkedBoxes.length}건을 [${targetMonth}]로 확정하시겠습니까?`)) {
             return;
         }
 
-        const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
+        const outboundIds = checkedBoxes.filter(chk => chk.dataset.type === 'outbound').map(chk => parseInt(chk.value));
+        const inboundIds = checkedBoxes.filter(chk => chk.dataset.type === 'inbound').map(chk => parseInt(chk.value));
+
         try {
-            const res = await window.authFetch(`${API_BASE}/logistics/settlement/${type}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'update_month',
-                    ids: checked,
-                    settlement_month: targetMonth
-                })
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || '확정 처리에 실패했습니다.');
+            const promises = [];
+            if (outboundIds.length > 0) {
+                promises.push(window.authFetch(`${API_BASE}/logistics/settlement/outbound`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'update_month',
+                        ids: outboundIds,
+                        settlement_month: targetMonth
+                    })
+                }));
             }
-            const data = await res.json();
-            alert(data.message || `${checked.length}건이 [${targetMonth}]로 확정되었습니다.`);
+            if (inboundIds.length > 0) {
+                promises.push(window.authFetch(`${API_BASE}/logistics/settlement/inbound`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'update_month',
+                        ids: inboundIds,
+                        settlement_month: targetMonth
+                    })
+                }));
+            }
+
+            const responses = await Promise.all(promises);
+            for (let res of responses) {
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || '확정 처리에 실패했습니다.');
+                }
+            }
+
+            alert(`${checkedBoxes.length}건이 [${targetMonth}]로 확정되었습니다.`);
             this.loadData();
         } catch (err) {
             console.error(err);
@@ -686,30 +900,50 @@ const app = {
     },
 
     cancelConfirmationSelected: async function() {
-        const checked = Array.from(document.querySelectorAll('.item-chk:checked')).map(el => parseInt(el.value));
-        if (checked.length === 0) return alert('확정을 취소할 항목을 선택해주세요.');
+        const checkedBoxes = Array.from(document.querySelectorAll('.item-chk:checked'));
+        if (checkedBoxes.length === 0) return alert('확정을 취소할 항목을 선택해주세요.');
 
-        if (!confirm(`선택한 ${checked.length}건의 확정을 취소하고 [미확정] 상태로 되돌리시겠습니까?`)) {
+        if (!confirm(`선택한 ${checkedBoxes.length}건의 확정을 취소하고 [미확정] 상태로 되돌리시겠습니까?`)) {
             return;
         }
 
-        const type = this.activeTab === 'sales' ? 'outbound' : 'inbound';
+        const outboundIds = checkedBoxes.filter(chk => chk.dataset.type === 'outbound').map(chk => parseInt(chk.value));
+        const inboundIds = checkedBoxes.filter(chk => chk.dataset.type === 'inbound').map(chk => parseInt(chk.value));
+
         try {
-            const res = await window.authFetch(`${API_BASE}/logistics/settlement/${type}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    action: 'update_month',
-                    ids: checked,
-                    settlement_month: '' // 빈 문자열로 전송하여 미확정(NULL) 처리
-                })
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || '확정 취소 처리에 실패했습니다.');
+            const promises = [];
+            if (outboundIds.length > 0) {
+                promises.push(window.authFetch(`${API_BASE}/logistics/settlement/outbound`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'update_month',
+                        ids: outboundIds,
+                        settlement_month: '' // 미확정
+                    })
+                }));
             }
-            const data = await res.json();
-            alert(data.message || `${checked.length}건이 미확정 상태로 변경되었습니다.`);
+            if (inboundIds.length > 0) {
+                promises.push(window.authFetch(`${API_BASE}/logistics/settlement/inbound`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'update_month',
+                        ids: inboundIds,
+                        settlement_month: '' // 미확정
+                    })
+                }));
+            }
+
+            const responses = await Promise.all(promises);
+            for (let res of responses) {
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || '확정 취소 처리에 실패했습니다.');
+                }
+            }
+
+            alert(`${checkedBoxes.length}건이 미확정 상태로 변경되었습니다.`);
             this.loadData();
         } catch (err) {
             console.error(err);
@@ -719,42 +953,51 @@ const app = {
 
     // ── 5. 청구서 및 매입정산내역 인쇄 (A4 포맷) ──
     printInvoice: function() {
-        const rowsToPrint = this.getFilteredRows();
+        if (this.tradeTypeFilter === 'outbound') {
+            this.printInvoiceWithType('outbound');
+        } else if (this.tradeTypeFilter === 'inbound') {
+            this.printInvoiceWithType('inbound');
+        } else {
+            // 전체보기 상태인 경우 매출건/매입건 존재 여부 확인
+            const rows = this.getFilteredRows();
+            const hasSales = rows.some(r => r.type === 'outbound');
+            const hasPurchases = rows.some(r => r.type === 'inbound');
+
+            if (hasSales && !hasPurchases) {
+                this.printInvoiceWithType('outbound');
+            } else if (!hasSales && hasPurchases) {
+                this.printInvoiceWithType('inbound');
+            } else if (hasSales && hasPurchases) {
+                if (confirm('현재 매출건과 매입건이 모두 조회되어 있습니다.\n\n[확인]을 누르면 "매출 청구서"를 인쇄하고,\n[취소]를 누르면 "매입정산내역"을 인쇄합니다.')) {
+                    this.printInvoiceWithType('outbound');
+                } else {
+                    this.printInvoiceWithType('inbound');
+                }
+            } else {
+                alert('인쇄할 품목 내역이 없습니다.');
+            }
+        }
+    },
+
+    printInvoiceWithType: function(type) {
+        let rowsToPrint = this.getFilteredRows().filter(r => r.type === type);
         if (rowsToPrint.length === 0) {
-            alert('인쇄할 품목 내역이 없습니다.');
+            alert(`인쇄할 ${type === 'outbound' ? '매출 청구' : '매입정산'} 내역이 없습니다.`);
             return;
         }
 
-        const isSales = this.activeTab === 'sales';
-        const [year, monthStr] = this.currentMonth.split('-');
-        const monthNum = parseInt(monthStr, 10);
+        const isSales = (type === 'outbound');
+        const partnerName = this.selectedPartner ? (this.selectedPartner.company_name || this.selectedPartner.name) : '거래처';
+        const partnerObj = this.selectedPartner || { name: partnerName };
 
-        // 거래처 지정 확인
-        let partnerName = '';
-        let partnerObj = null;
+        // 기간 및 타이틀 설정
+        let periodStr = this.currentMonth ? `${this.currentMonth.split('-')[0]}년 ${parseInt(this.currentMonth.split('-')[1], 10)}월` : '전체';
+        const titleText = isSales ? `${periodStr} 청구서` : `${periodStr} 매입정산내역`;
 
-        if (this.selectedPartner) {
-            partnerName = this.selectedPartner.company_name || this.selectedPartner.name;
-            partnerObj = this.selectedPartner;
-        } else {
-            // 거래처가 선택되어 있지 않은 경우 첫 번째 행의 거래처명 또는 '전체'
-            partnerName = isSales 
-                ? (rowsToPrint[0].destination || rowsToPrint[0].actual_destination || '전체 거래처')
-                : (rowsToPrint[0].supplier || '전체 매입처');
-            partnerObj = this.allPartners.find(p => p.name === partnerName || p.company_name === partnerName) || { name: partnerName };
-        }
-
-        // 1. 타이틀 설정
-        const titleText = isSales 
-            ? `${year}년 ${monthNum}월 청구서`
-            : `${year}년 ${monthNum}월 매입정산내역`;
-        
         $('printTitle').innerText = this.aggregateByBizNum ? `(사업자 통합) ${titleText}` : titleText;
-        $('printBillingMonth').innerText = isSales 
-            ? `청구월: ${year}년 ${monthStr}월`
-            : `정산월: ${year}년 ${monthStr}월`;
+        $('printBillingMonth').innerText = isSales ? `청구월: ${periodStr}` : `정산월: ${periodStr}`;
 
-        // 2. 회사 및 거래처 정보 세팅
+        // 회사 및 거래처 정보 세팅
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
         const ourCompany = preset.bizName || '주식회사 케앤지';
         const ourCeo = preset.ceo || '윤종';
@@ -786,7 +1029,7 @@ const app = {
             if (stampImg) stampImg.style.display = 'none';
         }
 
-        // 3. 품목 행 렌더링
+        // 품목 행 렌더링
         let sumGrand = 0;
         let sumSupply = 0;
         let sumVat = 0;
@@ -856,7 +1099,6 @@ const app = {
             </tr>
         `;
 
-        // 인쇄 실행
         window.print();
     },
 
@@ -868,10 +1110,10 @@ const app = {
             return;
         }
 
-        const isSales = this.activeTab === 'sales';
         const partnerName = this.selectedPartner ? (this.selectedPartner.company_name || this.selectedPartner.name) : '전체';
 
         const excelData = exportRows.map((r, idx) => {
+            const isSales = (r.type === 'outbound');
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
@@ -894,9 +1136,10 @@ const app = {
 
             return {
                 'No': idx + 1,
+                '구분': isSales ? '매출' : '매입',
                 '발생일자': r.date ? r.date.split('T')[0] : '',
                 '정산일자': r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '',
-                '거래처': isSales ? (r.destination || r.actual_destination || '') : (r.supplier || ''),
+                '상대처/납품처': isSales ? (r.destination || r.actual_destination || '') : (r.supplier || ''),
                 '자재계정': r.settlement_account || '',
                 '품목명': r.item || '',
                 '규격': r.spec || '',
@@ -913,10 +1156,11 @@ const app = {
 
         const ws = XLSX.utils.json_to_sheet(excelData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, isSales ? '매출확정내역' : '매입확정내역');
+        XLSX.utils.book_append_sheet(wb, ws, '월간현황정산내역');
 
-        const filterLabel = this.confirmFilter === 'unconfirmed' ? '_미확정' : (this.confirmFilter === 'confirmed' ? '_확정' : '');
-        const fileName = `${this.currentMonth}_${partnerName}_${isSales ? '매출청구' : '매입'}${filterLabel}.xlsx`;
+        const tradeLabel = (this.tradeTypeFilter === 'outbound') ? '_매출' : ((this.tradeTypeFilter === 'inbound') ? '_매입' : '_통합');
+        const monthLabel = this.currentMonth || '전체기간';
+        const fileName = `${monthLabel}_${partnerName}${tradeLabel}_정산현황.xlsx`;
         XLSX.writeFile(wb, fileName);
     }
 };
