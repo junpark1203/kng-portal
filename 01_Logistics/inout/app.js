@@ -48,7 +48,12 @@ async function authFetch(url, options = {}) {
     if (token) options.headers['Authorization'] = 'Bearer ' + token;
     options.headers['Content-Type'] = 'application/json';
     
-    const res = await fetch(url, options);
+    let res;
+    try {
+        res = await fetch(url, options);
+    } catch (netErr) {
+        throw new Error(`서버 통신 실패 (네트워크 또는 서버 응답 오류: ${netErr.message})`);
+    }
     if (!res.ok) {
         const err = await res.json().catch(()=>({}));
         throw new Error(err.error || `HTTP error ${res.status}`);
@@ -894,7 +899,9 @@ const app = {
                 badge += ` <span class="badge bg-info text-dark">${r.trade_type}</span>`;
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
-            const editFn = isOut ? (r.type === '직출고' || r.is_direct === 1 ? `app.openEditDirectOutboundTx('${r.transaction_group_id}')` : `app.openEditOutboundTx('${r.transaction_group_id}')`) : `app.openEditInboundTx('${r.transaction_group_id}')`;
+            const editFn = (r.type === '직출고' || r.is_direct === 1)
+                ? `app.openEditDirectOutboundTx('${r.transaction_group_id || ''}')`
+                : (isOut ? `app.openEditOutboundTx('${r.transaction_group_id || ''}')` : `app.openEditInboundTx('${r.transaction_group_id || ''}')`);
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
@@ -1940,7 +1947,8 @@ const app = {
             } else {
                 items.push({ 
                     id: row.dataset.dbId, item, spec: spec || '', unit, qty, 
-                    unit_price: in_price, selling_price: out_price, 
+                    unit_price: in_price, inbound_price: in_price,
+                    selling_price: out_price, outbound_price: out_price, 
                     in_shipping_fee, in_shipping_fee_vat_included,
                     shipping_fee, shipping_fee_vat_included, 
                     note, trade_type, category 
@@ -2811,8 +2819,9 @@ const app = {
             const items = await authFetch(`${API_BASE}/history/direct/tx/${encodeURIComponent(txId)}`);
             if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
             
+            const normTxId = txId && txId.startsWith('IN-') ? txId.replace('IN-', 'OUT-') : txId;
             $('directForm').dataset.mode = 'edit';
-            $('directForm').dataset.txId = txId;
+            $('directForm').dataset.txId = normTxId || txId;
             $('directItemsContainer').innerHTML = '';
             
             const first = items[0];

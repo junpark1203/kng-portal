@@ -13,6 +13,25 @@ function setDb(database) {
     db = database;
 }
 
+const dbRun = (sql, params = []) => new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+        if (err) reject(err);
+        else resolve(this);
+    });
+});
+const dbAll = (sql, params = []) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+    });
+});
+const dbGet = (sql, params = []) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+    });
+});
+
 /** DB 테이블 초기화 */
 function initLogisticsTables(database) {
     return new Promise((resolve, reject) => {
@@ -2058,6 +2077,7 @@ router.get('/history/outbound/tx/:tx_id', (req, res) => {
 
 router.get('/history/direct/tx/:tx_id', (req, res) => {
     const txId = req.params.tx_id;
+    const txOutGroupId = txId.startsWith('IN-') ? txId.replace('IN-', 'OUT-') : txId;
     // Direct requires fetching inbound_price too
     const sql = `
         SELECT o.*, i.unit_price as inbound_price, i.supplier as supplier,
@@ -2065,10 +2085,10 @@ router.get('/history/direct/tx/:tx_id', (req, res) => {
         FROM logistics_outbound o
         JOIN logistics_outbound_lots l ON o.id = l.outbound_id
         JOIN logistics_inbound i ON l.inbound_id = i.id
-        WHERE o.transaction_group_id = ?
+        WHERE o.transaction_group_id = ? OR o.transaction_group_id = ?
         ORDER BY o.id ASC
     `;
-    db.all(sql, [txId], (err, rows) => {
+    db.all(sql, [txOutGroupId, txId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
@@ -2271,7 +2291,7 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
     });
 });
 
-router.put('/direct/tx/:tx_id', (req, res) => {
+router.put('/direct/tx/:tx_id', async (req, res) => {
     const txId = req.params.tx_id;
     const { date, supplier, destination, actual_destination, items } = req.body;
 
@@ -2279,99 +2299,100 @@ router.put('/direct/tx/:tx_id', (req, res) => {
         return res.status(400).json({ error: 'Items are required' });
     }
 
-    db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
-        let hasError = false;
-        let errorMsg = null;
+    const txOutGroupId = txId.startsWith('IN-') ? txId.replace('IN-', 'OUT-') : txId;
+    const txInGroupId = txId.startsWith('OUT-') ? txId.replace('OUT-', 'IN-') : txId;
 
-        db.all("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txId], (err, existingRows) => {
-            if (err) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: err.message });
+    try {
+        await dbRun("BEGIN TRANSACTION");
+
+        let existingRows = await dbAll("SELECT id FROM logistics_outbound WHERE transaction_group_id = ? OR transaction_group_id = ?", [txOutGroupId, txId]);
+        if (existingRows.length === 0) {
+            existingRows = await dbAll("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txInGroupId]);
+        }
+
+        const existingIds = existingRows.map(r => r.id);
+        const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
+        const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+
+        if (idsToDelete.length > 0) {
+            const placeholders = idsToDelete.map(() => '?').join(',');
+            const oldLots = await dbAll(`SELECT outbound_id, inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+            const inboundIdsToDelete = oldLots.map(l => l.inbound_id);
+            await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+            await dbRun(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
+            if (inboundIdsToDelete.length > 0) {
+                const inPlaceholders = inboundIdsToDelete.map(() => '?').join(',');
+                await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders})`, inboundIdsToDelete);
             }
+        }
 
-            const existingIds = existingRows.map(r => r.id);
-            const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
-            const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+        const commonDate = date;
+        const commonSupplier = supplier;
+        const commonDest = destination;
+        const commonActualDest = actual_destination || '';
 
-            if (idsToDelete.length > 0) {
-                const placeholders = idsToDelete.map(() => '?').join(',');
-                db.all(`SELECT outbound_id, inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete, (err2, oldLots) => {
-                    if(err2) { hasError = true; errorMsg = err2.message; return; }
-                    
-                    const inboundIdsToDelete = oldLots.map(l => l.inbound_id);
-                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
-                    db.run(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
-                    if (inboundIdsToDelete.length > 0) {
-                        const inPlaceholders = inboundIdsToDelete.map(() => '?').join(',');
-                        db.run(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders})`, inboundIdsToDelete);
-                    }
-                });
-            }
+        for (let i of items) {
+            const cat = i.category || '';
+            const itemSpec = i.spec || '';
+            const inPrice = parseFloat(i.inbound_price !== undefined ? i.inbound_price : (i.unit_price || 0)) || 0;
+            const outPrice = parseFloat(i.selling_price !== undefined ? i.selling_price : (i.outbound_price || 0)) || 0;
+            const qty = parseFloat(i.qty) || 0;
+            const inShipFee = parseFloat(i.in_shipping_fee) || 0;
+            const inShipVat = i.in_shipping_fee_vat_included ? 1 : 0;
+            const outShipFee = parseFloat(i.shipping_fee) || 0;
+            const outShipVat = i.shipping_fee_vat_included ? 1 : 0;
+            const note = i.note || '';
+            const tradeType = i.trade_type || '내수';
 
-            const commonDate = date;
-            const commonSupplier = supplier;
-            const commonDest = destination;
-            const commonActualDest = actual_destination || '';
-            const txInGroupId = txId.replace('OUT', 'IN');
-
-            const updateInSql = `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
-            const updateOutSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
-            const updateLotSql = `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`;
-
-            const insertInSql = `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?)`;
-            const insertOutSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`;
-            const insertLotSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
-
-            const stmtUpIn = db.prepare(updateInSql);
-            const stmtUpOut = db.prepare(updateOutSql);
-            const stmtUpLot = db.prepare(updateLotSql);
-
-            const stmtInIn = db.prepare(insertInSql);
-            const stmtInOut = db.prepare(insertOutSql);
-            const stmtInLot = db.prepare(insertLotSql);
-
-            for (let i of items) {
-                const cat = i.category || '';
-                const itemSpec = i.spec || '';
-                if (i.id) {
-                    const oId = parseInt(i.id);
-                    db.get(`SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, lotRow) => {
-                        if (lotRow) {
-                            stmtUpIn.run(commonDate, commonSupplier, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, lotRow.inbound_id);
-                            stmtUpOut.run(commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, oId);
-                            stmtUpLot.run(parseFloat(i.qty), oId, lotRow.inbound_id);
-                        }
-                    });
+            if (i.id) {
+                const oId = parseInt(i.id);
+                const lotRow = await dbGet("SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?", [oId]);
+                if (lotRow && lotRow.inbound_id) {
+                    await dbRun(
+                        `UPDATE logistics_inbound SET date = ?, supplier = ?, item = ?, spec = ?, unit = ?, qty_initial = ?, unit_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
+                        [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, tradeType, cat, lotRow.inbound_id]
+                    );
+                    await dbRun(
+                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
+                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, oId]
+                    );
+                    await dbRun(
+                        `UPDATE logistics_outbound_lots SET consumed_qty = ? WHERE outbound_id = ? AND inbound_id = ?`,
+                        [qty, oId, lotRow.inbound_id]
+                    );
                 } else {
-                    stmtInIn.run(commonDate, commonSupplier, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txInGroupId, i.trade_type || '내수', function(e1) {
-                        if (e1) { hasError = true; return; }
-                        const newInId = this.lastID;
-                        stmtInOut.run(commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txId, i.trade_type || '내수', function(e2) {
-                            if (e2) { hasError = true; return; }
-                            const newOutId = this.lastID;
-                            stmtInLot.run(newOutId, newInId, parseFloat(i.qty));
-                        });
-                    });
+                    await dbRun(
+                        `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`,
+                        [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, tradeType, cat, oId]
+                    );
                 }
+            } else {
+                const inRes = await dbRun(
+                    `INSERT INTO logistics_inbound (date, supplier, item, spec, unit, qty_initial, qty_remaining, unit_price, shipping_fee, shipping_fee_vat_included, location_id, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, NULL, ?, 1, ?, ?, ?)`,
+                    [commonDate, commonSupplier, i.item, itemSpec, i.unit, qty, inPrice, inShipFee, inShipVat, note, cat, txInGroupId, tradeType]
+                );
+                const newInId = inRes.lastID;
+
+                const outRes = await dbRun(
+                    `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, is_direct, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+                    [commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, qty, outPrice, outShipFee, outShipVat, note, cat, txOutGroupId, tradeType]
+                );
+                const newOutId = outRes.lastID;
+
+                await dbRun(
+                    `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`,
+                    [newOutId, newInId, qty]
+                );
             }
+        }
 
-            db.run("SELECT 1", function() {
-                stmtUpIn.finalize(); stmtUpOut.finalize(); stmtUpLot.finalize();
-                stmtInIn.finalize(); stmtInOut.finalize(); stmtInLot.finalize();
-
-                if (hasError) {
-                    db.run("ROLLBACK");
-                    return res.status(400).json({ error: errorMsg || 'Update failed' });
-                }
-                
-                db.run("COMMIT", (commitErr) => {
-                    if (commitErr) return res.status(500).json({ error: commitErr.message });
-                    res.json({ success: true, message: 'Direct transaction updated' });
-                });
-            });
-        });
-    });
+        await dbRun("COMMIT");
+        res.json({ success: true, message: 'Direct transaction updated' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch(e) {}
+        console.error('Error updating direct transaction:', err);
+        return res.status(500).json({ error: err.message || '직출고 수정 중 오류가 발생했습니다.' });
+    }
 });
 module.exports = {
     router,
