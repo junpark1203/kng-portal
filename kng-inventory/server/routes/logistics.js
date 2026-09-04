@@ -788,6 +788,7 @@ router.get('/history', (req, res) => {
             if (err2) return res.status(500).json({ error: err2.message });
             res.json({
                 data: rows,
+                items: rows,
                 total,
                 page,
                 limit,

@@ -340,7 +340,7 @@ const app = {
             const res = await window.authFetch(url);
             if (!res.ok) throw new Error('정산 내역을 불러오지 못했습니다.');
             const data = await res.json();
-            let items = data.items || [];
+            let items = data.data || data.items || (Array.isArray(data) ? data : []);
 
             // 거래처 다중(동일 사업자번호) 필터링 보정
             if (this.selectedPartner && targetPartnerNames.length > 1) {
