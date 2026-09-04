@@ -2471,6 +2471,7 @@ const app = {
                         tbody.innerHTML = '';
                         (data.duplicates || []).forEach(r => {
                             const tr = document.createElement('tr');
+                            tr.className = 'text-nowrap';
                             tr.innerHTML = `
                                 <td><span class="badge bg-secondary text-white">${r.rowNumber}행</span></td>
                                 <td>${r.date || ''}</td>

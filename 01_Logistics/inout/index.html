@@ -1063,7 +1063,7 @@
 
 <!-- 직출고 엑셀 중복 의심 내역 확인 모달 (스마트 중복 처리) -->
 <div class="modal fade" id="directDuplicateModal" tabindex="-1" data-bs-backdrop="static" style="z-index: 1090;">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width: 95vw; width: 1400px; margin: 1.5rem auto;">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-warning text-dark py-3">
                 <h5 class="modal-title fw-bold">
@@ -1101,19 +1101,19 @@
                     <span><i class='bx bx-list-ul'></i> 중복 의심 상세 항목 (최대 100건 표시)</span>
                     <span class="text-muted" style="font-size:0.8rem;">* 일자, 매입처, 매출처, 품목, 규격, 수량, 단가가 100% 동일한 건</span>
                 </div>
-                <div class="table-responsive border rounded" style="max-height: 320px;">
-                    <table class="table table-sm table-hover align-middle mb-0 text-center" style="font-size: 0.85rem;">
+                <div class="table-responsive border rounded" style="max-height: 520px;">
+                    <table class="table table-sm table-hover align-middle mb-0 text-center text-nowrap" style="font-size: 0.88rem;">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th style="width:60px;">줄번호</th>
-                                <th style="width:90px;">일자</th>
-                                <th>매입처</th>
-                                <th>매출처</th>
-                                <th>품목명</th>
-                                <th>규격</th>
-                                <th style="width:70px;">수량</th>
-                                <th style="width:90px;">매입단가</th>
-                                <th style="width:90px;">매출단가</th>
+                                <th style="width:70px; min-width:70px;">줄번호</th>
+                                <th style="width:110px; min-width:110px;">일자</th>
+                                <th style="min-width:140px;" class="text-start">매입처</th>
+                                <th style="min-width:160px;" class="text-start">매출처</th>
+                                <th style="min-width:180px;" class="text-start">품목명</th>
+                                <th style="min-width:130px;">규격</th>
+                                <th style="width:80px; min-width:80px;" class="text-end">수량</th>
+                                <th style="width:100px; min-width:100px;" class="text-end">매입단가</th>
+                                <th style="width:100px; min-width:100px;" class="text-end">매출단가</th>
                             </tr>
                         </thead>
                         <tbody id="dupTableBody">
