@@ -103,27 +103,38 @@
             transform: translateY(-1px);
         }
 
-        /* 거래처 자동완성 드롭다운 */
+        /* 거래처 검색 카드 및 자동완성 드롭다운 오버레이 */
+        .partner-search-card {
+            position: relative;
+            z-index: 1020 !important;
+            overflow: visible !important;
+        }
+        .partner-search-card .card-body {
+            overflow: visible !important;
+        }
         .partner-autocomplete-list {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 4px);
             left: 0;
             right: 0;
-            z-index: 1050;
-            max-height: 280px;
+            z-index: 1050 !important;
+            max-height: 360px;
             overflow-y: auto;
             background: #ffffff;
             border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            box-shadow: 0 16px 36px -6px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
             display: none;
         }
         .partner-autocomplete-item {
-            padding: 8px 12px;
+            padding: 9px 14px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
-            font-size: 0.83rem;
-            transition: background 0.15s;
+            font-size: 0.84rem;
+            transition: background 0.12s;
+        }
+        .partner-autocomplete-item:last-child {
+            border-bottom: none;
         }
         .partner-autocomplete-item:hover, .partner-autocomplete-item.active {
             background-color: #eff6ff;
@@ -248,7 +259,7 @@
     </div>
 
     <!-- 1. 거래처 중심 검색 바 (Partner-First) -->
-    <div class="card border-0 shadow-sm mb-3">
+    <div class="card border-0 shadow-sm mb-3 partner-search-card">
         <div class="card-body p-3">
             <div class="row g-2 align-items-center">
                 <!-- 거래처 검색 입력창 (Enter 지원 + 자동완성 + 거래처 찾기 모달) -->
