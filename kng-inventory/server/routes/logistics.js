@@ -1430,12 +1430,13 @@ router.post('/direct', (req, res) => {
         const stmtLots = db.prepare(lotsSql);
 
         for (let i of items) {
+            const itemSpec = i.spec || '';
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, i.spec, i.unit, i.qty, i.unit_price, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
+            stmtIn.run(date, supplier, i.item, itemSpec, i.unit, i.qty, i.unit_price, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, itemSpec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
@@ -2304,20 +2305,21 @@ router.put('/direct/tx/:tx_id', (req, res) => {
 
             for (let i of items) {
                 const cat = i.category || '';
+                const itemSpec = i.spec || '';
                 if (i.id) {
                     const oId = parseInt(i.id);
                     db.get(`SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, lotRow) => {
                         if (lotRow) {
-                            stmtUpIn.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, lotRow.inbound_id);
-                            stmtUpOut.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, oId);
+                            stmtUpIn.run(commonDate, commonSupplier, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, lotRow.inbound_id);
+                            stmtUpOut.run(commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, oId);
                             stmtUpLot.run(parseFloat(i.qty), oId, lotRow.inbound_id);
                         }
                     });
                 } else {
-                    stmtInIn.run(commonDate, commonSupplier, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txInGroupId, i.trade_type || '내수', function(e1) {
+                    stmtInIn.run(commonDate, commonSupplier, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.inbound_price) || 0, parseFloat(i.in_shipping_fee) || 0, i.in_shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txInGroupId, i.trade_type || '내수', function(e1) {
                         if (e1) { hasError = true; return; }
                         const newInId = this.lastID;
-                        stmtInOut.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txId, i.trade_type || '내수', function(e2) {
+                        stmtInOut.run(commonDate, commonDest, commonActualDest, i.item, itemSpec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txId, i.trade_type || '내수', function(e2) {
                             if (e2) { hasError = true; return; }
                             const newOutId = this.lastID;
                             stmtInLot.run(newOutId, newInId, parseFloat(i.qty));

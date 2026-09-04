@@ -1766,7 +1766,7 @@ const app = {
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
                     <div class="col-4">
-                        <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격" required>
+                        <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격">
                     </div>
                     <div class="col-3 position-relative">
                         <input type="text" class="form-control form-control-sm dir-category category-input" placeholder="분류 선택/직접입력" autocomplete="off">
@@ -1873,11 +1873,11 @@ const app = {
             const note = docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
 
-            if (!item || !spec || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
+            if (!item || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
                 hasError = true;
             } else {
                 items.push({ 
-                    id: row.dataset.dbId, item, spec, unit, qty, 
+                    id: row.dataset.dbId, item, spec: spec || '', unit, qty, 
                     unit_price: in_price, selling_price: out_price, 
                     in_shipping_fee, in_shipping_fee_vat_included,
                     shipping_fee, shipping_fee_vat_included, 
