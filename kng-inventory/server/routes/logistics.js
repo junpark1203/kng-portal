@@ -630,7 +630,7 @@ router.get('/history', (req, res) => {
                 COALESCE(NULLIF(i.transaction_group_id, ''), 'IN-' || REPLACE(SUBSTR(i.date, 1, 10), '-', '') || '-' || printf('%04d', i.id)) as transaction_group_id,
                 i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
                 COALESCE(i.settlement_account, '') as settlement_account,
-                COALESCE(i.settlement_month, '') as settlement_month
+                COALESCE(NULLIF(i.settlement_month, ''), SUBSTR(COALESCE(i.tax_invoice_date, i.date), 1, 7)) as settlement_month
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
@@ -657,7 +657,7 @@ router.get('/history', (req, res) => {
                 COALESCE(NULLIF(o.transaction_group_id, ''), 'OUT-' || REPLACE(SUBSTR(o.date, 1, 10), '-', '') || '-' || printf('%04d', o.id)) as transaction_group_id,
                 o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type,
                 COALESCE(o.settlement_account, '') as settlement_account,
-                COALESCE(o.settlement_month, '') as settlement_month
+                COALESCE(NULLIF(o.settlement_month, ''), SUBSTR(COALESCE(o.tax_invoice_date, o.date), 1, 7)) as settlement_month
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
