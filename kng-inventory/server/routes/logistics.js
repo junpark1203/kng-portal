@@ -614,6 +614,17 @@ router.get('/history', (req, res) => {
         });
     }
 
+    // 결과 내 재검색 (Sub-Search) 지원: 전체 주요 필드 대상 AND 교집합 검색
+    const subRaw = (req.query.subSearch || req.query.subKeyword || '').trim();
+    if (subRaw) {
+        const subTokens = subRaw.split(/\s+/).filter(Boolean);
+        subTokens.forEach(token => {
+            const kw = `%${token}%`;
+            whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR actual_destination LIKE ? OR item LIKE ? OR spec LIKE ? OR note LIKE ? OR category LIKE ? OR transaction_group_id LIKE ? OR settlement_account LIKE ? OR settlement_memo LIKE ? OR date LIKE ? OR tax_invoice_date LIKE ?)");
+            params.push(kw, kw, kw, kw, kw, kw, kw, kw, kw, kw, kw, kw);
+        });
+    }
+
     const whereStr = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
     const baseSql = `

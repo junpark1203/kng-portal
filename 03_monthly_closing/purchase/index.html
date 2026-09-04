@@ -277,7 +277,7 @@
             <!-- 결과 내 재검색 인풋 -->
             <div class="input-group input-group-sm ms-2 shadow-sm" style="width: 220px;">
                 <span class="input-group-text bg-white border-end-0 py-0 text-muted"><i class='bx bx-filter'></i></span>
-                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 검색..." oninput="app.onSubSearchInput(this.value)" style="font-size: 0.8rem;">
+                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 검색..." oninput="app.onSubSearchInput(this.value)" onkeydown="if(event.key==='Enter'){if(app.subSearchTimer)clearTimeout(app.subSearchTimer);app.resetPageAndLoadData();}" style="font-size: 0.8rem;">
                 <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
             </div>
             <span id="subSearchCountBadge" class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1 d-none" style="font-size: 0.78rem;"></span>

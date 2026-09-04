@@ -643,6 +643,16 @@ const app = {
             `);
         }
 
+        // 5. 결과 내 재검색 필터
+        if (this.subSearchKeyword) {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-filter'></i> 재검색:</span> <strong>"${this.subSearchKeyword}"</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearSubSearch()" title="해제"></i>
+                </span>
+            `);
+        }
+
         if (chips.length > 0) {
             container.innerHTML = `
                 <span class="text-secondary me-1"><i class='bx bx-filter-alt'></i> <strong>활성 조건:</strong></span>
@@ -768,17 +778,17 @@ const app = {
             searchTarget: $('searchTarget')?.value || '',
             searchKeyword: searchRaw
         });
+        if (this.subSearchKeyword) {
+            params.append('subSearch', this.subSearchKeyword);
+        }
 
         try {
             $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>`;
             
             const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
             this.currentHistoryData = res.data;
-            if (this.subSearchKeyword) {
-                this.renderFilteredHistoryTable();
-            } else {
-                this.renderHistoryTable(res.data);
-            }
+            this.totalHistoryCount = res.total;
+            this.renderFilteredHistoryTable();
             this.renderPagination(res.total, res.page, res.limit);
             this.renderSummaryStrip(res.summary, typeFilter);
             this.renderActiveFilterChips();
@@ -789,63 +799,44 @@ const app = {
     },
 
     // ── 결과 내 재검색 (Sub-Search) 로직 ──
+    subSearchTimer: null,
     onSubSearchInput: function(val) {
-        this.subSearchKeyword = (val || '').trim().toLowerCase();
+        this.subSearchKeyword = (val || '').trim();
         const clearBtn = $('clearSubSearchBtn');
         if (clearBtn) {
             if (this.subSearchKeyword) clearBtn.classList.remove('d-none');
             else clearBtn.classList.add('d-none');
         }
-        this.renderFilteredHistoryTable();
+        if (this.subSearchTimer) clearTimeout(this.subSearchTimer);
+        this.subSearchTimer = setTimeout(() => {
+            this.resetPageAndLoadHistory();
+        }, 350);
     },
 
     clearSubSearch: function() {
         const input = $('subSearchInput');
         if (input) input.value = '';
-        this.onSubSearchInput('');
+        if (this.subSearchTimer) clearTimeout(this.subSearchTimer);
+        this.subSearchKeyword = '';
+        const clearBtn = $('clearSubSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.resetPageAndLoadHistory();
     },
 
     renderFilteredHistoryTable: function() {
         if (!this.currentHistoryData) return;
-        let displayList = this.currentHistoryData;
-        if (this.subSearchKeyword) {
-            const keywords = this.subSearchKeyword.split(/\s+/).filter(k => k.length > 0);
-            displayList = this.currentHistoryData.filter(r => {
-                const searchStr = [
-                    r.date || '',
-                    r.type === 'outbound' ? (r.is_direct === 1 ? '직출고 출고' : '출고') : '입고',
-                    r.supplier || '',
-                    r.destination || '',
-                    r.actual_destination || '',
-                    r.party || '',
-                    r.category || '',
-                    r.item || '',
-                    r.spec || '',
-                    r.unit || '',
-                    r.note || '',
-                    r.transaction_group_id || '',
-                    r.trade_type || '',
-                    String(r.qty || ''),
-                    String(r.unit_price || ''),
-                    String(r.selling_price || ''),
-                    String(r.price || '')
-                ].join(' ').toLowerCase();
-
-                return keywords.every(kw => searchStr.includes(kw));
-            });
-        }
 
         const countBadge = $('subSearchCountBadge');
         if (countBadge) {
             if (this.subSearchKeyword) {
-                countBadge.innerText = `재검색: ${displayList.length}건`;
+                countBadge.innerText = `재검색: ${this.totalHistoryCount !== undefined ? this.totalHistoryCount : this.currentHistoryData.length}건`;
                 countBadge.classList.remove('d-none');
             } else {
                 countBadge.classList.add('d-none');
             }
         }
 
-        this.renderHistoryTable(displayList);
+        this.renderHistoryTable(this.currentHistoryData);
     },
 
     renderPagination: function(total, currentPage, limit) {

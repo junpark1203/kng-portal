@@ -176,6 +176,12 @@ const app = {
         const clearBtn = $('clearSearchBtn');
         if (clearBtn) clearBtn.classList.add('d-none');
         if ($('statusFilter')) $('statusFilter').value = '미정산';
+        this.subSearchKeyword = '';
+        if ($('subSearchInput')) $('subSearchInput').value = '';
+        const clearSubBtn = $('clearSubSearchBtn');
+        if (clearSubBtn) clearSubBtn.classList.add('d-none');
+        const countBadge = $('subSearchCountBadge');
+        if (countBadge) countBadge.classList.add('d-none');
         this.resetPageAndLoadData();
     },
 
@@ -217,6 +223,7 @@ const app = {
             if (endDate) url.searchParams.append('endDate', endDate);
             if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
             if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
+            if (this.subSearchKeyword) url.searchParams.append('subSearch', this.subSearchKeyword);
             if (this.currentSortCol) url.searchParams.append('sortCol', this.currentSortCol);
             if (this.currentSortDir) url.searchParams.append('sortDir', this.currentSortDir);
 
@@ -310,6 +317,16 @@ const app = {
                 <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
                     <span class="text-secondary fw-normal"><i class='bx bx-search'></i> ${targetName}:</span> <strong>"${searchKeyword}"</strong>
                     <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('search')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 5. 결과 내 재검색 필터
+        if (this.subSearchKeyword) {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-filter'></i> 재검색:</span> <strong>"${this.subSearchKeyword}"</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearSubSearch()" title="해제"></i>
                 </span>
             `);
         }
@@ -457,52 +474,42 @@ const app = {
         });
     },
 
+    subSearchTimer: null,
     onSubSearchInput: function(val) {
-        this.subSearchKeyword = (val || '').trim().toLowerCase();
+        this.subSearchKeyword = (val || '').trim();
         const clearBtn = $('clearSubSearchBtn');
         if (clearBtn) {
             if (this.subSearchKeyword) clearBtn.classList.remove('d-none');
             else clearBtn.classList.add('d-none');
         }
-        this.renderFilteredTable();
+        if (this.subSearchTimer) clearTimeout(this.subSearchTimer);
+        this.subSearchTimer = setTimeout(() => {
+            this.resetPageAndLoadData();
+        }, 350);
     },
 
     clearSubSearch: function() {
         const input = $('subSearchInput');
         if (input) input.value = '';
-        this.onSubSearchInput('');
+        if (this.subSearchTimer) clearTimeout(this.subSearchTimer);
+        this.subSearchKeyword = '';
+        const clearBtn = $('clearSubSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.resetPageAndLoadData();
     },
 
     renderFilteredTable: function() {
-        let displayList = this.items;
-        if (this.subSearchKeyword) {
-            const kw = this.subSearchKeyword;
-            displayList = this.items.filter(r => {
-                return (
-                    (r.transaction_group_id && r.transaction_group_id.toLowerCase().includes(kw)) ||
-                    (r.supplier && r.supplier.toLowerCase().includes(kw)) ||
-                    (r.destination && r.destination.toLowerCase().includes(kw)) ||
-                    (r.item && r.item.toLowerCase().includes(kw)) ||
-                    (r.spec && r.spec.toLowerCase().includes(kw)) ||
-                    (r.settlement_account && r.settlement_account.toLowerCase().includes(kw)) ||
-                    (r.settlement_memo && r.settlement_memo.toLowerCase().includes(kw)) ||
-                    (r.date && r.date.toLowerCase().includes(kw)) ||
-                    (r.tax_invoice_date && r.tax_invoice_date.toLowerCase().includes(kw))
-                );
-            });
-        }
-        
         const countBadge = $('subSearchCountBadge');
         if (countBadge) {
             if (this.subSearchKeyword) {
-                countBadge.innerText = `필터 결과: ${displayList.length}건`;
+                countBadge.innerText = `재검색: ${this.totalItems}건`;
                 countBadge.classList.remove('d-none');
             } else {
                 countBadge.classList.add('d-none');
             }
         }
         
-        this.renderTable(displayList);
+        this.renderTable(this.items);
     },
 
     renderTable: function(data) {
