@@ -225,6 +225,11 @@
                 page-break-inside: auto !important;
             }
             #printableArea .table thead { display: table-header-group !important; }
+            #printableArea .table tfoot {
+                display: table-row-group !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
             #printableArea .table tbody tr { page-break-inside: avoid !important; break-inside: avoid !important; }
             #printableArea .table tbody td, #printableArea .table td {
                 border-left: none !important;

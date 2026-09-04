@@ -620,41 +620,11 @@ const app = {
             return;
         }
 
-        let totalQty = 0;
-        let totalSupply = 0;
-        let totalVat = 0;
-        let totalGrand = 0;
+        // 품목별 정수화 및 누적 차분 부가세 배분 로직 적용 (소수점 제거 및 합계 100% 일치 보장)
+        const { items, totalQty, totalSupply, totalVat, totalGrand } = this.computeAmounts(rows);
 
-        tbody.innerHTML = rows.map((r, idx) => {
-            const isSales = (r.type === 'outbound');
-            const qty = Number(r.settlement_qty || r.qty || 0);
-            const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
-            const ship = Number(r.shipping_fee || 0);
-            const shipVatInc = r.shipping_fee_vat_included === 1;
-
-            let shipSupply = ship;
-            if (ship > 0 && shipVatInc) {
-                shipSupply = Math.round(ship / 1.1);
-            }
-            const supply = (qty * price) + shipSupply;
-
-            let vat = 0;
-            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                vat = r.settlement_vat;
-            } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
-                const itemVat = Math.floor(qty * price * 0.1);
-                let shipVat = 0;
-                if (ship > 0) {
-                    shipVat = shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1);
-                }
-                vat = itemVat + shipVat;
-            }
-            const grandTotal = supply + vat;
-
-            totalQty += qty;
-            totalSupply += supply;
-            totalVat += vat;
-            totalGrand += grandTotal;
+        tbody.innerHTML = items.map((item, idx) => {
+            const { r, isSales, qty, price, supply, vat, grand } = item;
 
             // 확정 상태 판별
             const isConfirmed = !!r.settlement_month;
@@ -690,7 +660,7 @@ const app = {
                     <td class="text-end small text-nowrap">${price.toLocaleString()}원</td>
                     <td class="text-end small text-nowrap">${supply.toLocaleString()}원</td>
                     <td class="text-end text-muted small text-nowrap">${vat.toLocaleString()}원</td>
-                    <td class="text-end fw-bold text-nowrap ${isSales ? 'text-primary' : 'text-success'} small">${grandTotal.toLocaleString()}원</td>
+                    <td class="text-end fw-bold text-nowrap ${isSales ? 'text-primary' : 'text-success'} small">${grand.toLocaleString()}원</td>
                     <td class="text-center text-nowrap">${statusBadge}</td>
                     <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
                 </tr>
@@ -712,43 +682,78 @@ const app = {
         }
     },
 
-    updateKpiSummary: function() {
-        let salesSupply = 0, salesVat = 0, salesGrand = 0;
-        let purchaseSupply = 0, purchaseVat = 0, purchaseGrand = 0;
+    // ── 금액 계산 공통 헬퍼: 품목 정수화 및 누적 차분 부가세 배분 (합계 일치 보장) ──
+    computeAmounts: function(rows) {
+        if (!rows || rows.length === 0) {
+            return { items: [], totalQty: 0, totalSupply: 0, totalVat: 0, totalGrand: 0 };
+        }
 
-        const rows = this.getFilteredRows();
-        rows.forEach(r => {
+        let totalQty = 0;
+        let totalSupply = 0;
+
+        // 1단계: 품목별 정수 공급가액 산출 (소수점 반올림)
+        const initial = rows.map(r => {
             const isSales = (r.type === 'outbound');
             const qty = Number(r.settlement_qty || r.qty || 0);
             const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
             const ship = Number(r.shipping_fee || 0);
-            const shipVatInc = r.shipping_fee_vat_included === 1;
+            const shipVatInc = (r.shipping_fee_vat_included === 1);
 
             let shipSupply = ship;
             if (ship > 0 && shipVatInc) shipSupply = Math.round(ship / 1.1);
-            const supply = (qty * price) + shipSupply;
 
-            let vat = 0;
-            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                vat = r.settlement_vat;
-            } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
-                const itemVat = Math.floor(qty * price * 0.1);
-                let shipVat = 0;
-                if (ship > 0) shipVat = shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1);
-                vat = itemVat + shipVat;
-            }
-            const grand = supply + vat;
+            const supply = Math.round(qty * price) + shipSupply;
+            totalQty += qty;
+            totalSupply += supply;
 
-            if (isSales) {
-                salesSupply += supply;
-                salesVat += vat;
-                salesGrand += grand;
-            } else {
-                purchaseSupply += supply;
-                purchaseVat += vat;
-                purchaseGrand += grand;
-            }
+            const isTaxFree = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+            return { r, isSales, qty, price, ship, shipSupply, shipVatInc, supply, isTaxFree };
         });
+
+        // 2단계: 누적 차분 방식 부가세 배분 (국세청 전자세금계산서 표준)
+        let accumTaxableSupply = 0;
+        let accumVat = 0;
+        let totalVat = 0;
+        let totalGrand = 0;
+
+        const items = initial.map(item => {
+            const { r, supply, isTaxFree } = item;
+            let vat = 0;
+
+            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                vat = Math.round(Number(r.settlement_vat));
+                accumVat += vat;
+            } else if (!isTaxFree) {
+                accumTaxableSupply += supply;
+                const targetAccumVat = Math.floor(accumTaxableSupply * 0.1);
+                vat = targetAccumVat - accumVat;
+                accumVat = targetAccumVat;
+            }
+
+            const grand = supply + vat;
+            totalVat += vat;
+            totalGrand += grand;
+
+            return {
+                ...item,
+                vat,
+                grand
+            };
+        });
+
+        return { items, totalQty, totalSupply, totalVat, totalGrand };
+    },
+
+    updateKpiSummary: function() {
+        const rows = this.getFilteredRows();
+        const salesRows = rows.filter(r => r.type === 'outbound');
+        const purchaseRows = rows.filter(r => r.type === 'inbound');
+
+        const salesCalc = this.computeAmounts(salesRows);
+        const purchaseCalc = this.computeAmounts(purchaseRows);
+
+        const salesGrand = salesCalc.totalGrand;
+        const purchaseGrand = purchaseCalc.totalGrand;
 
         const salesBox = $('kpiSalesBox');
         const purchaseBox = $('kpiPurchaseBox');
@@ -1035,39 +1040,12 @@ const app = {
             if (stampImg) stampImg.style.display = 'none';
         }
 
-        // 품목 행 렌더링
-        let sumGrand = 0;
-        let sumSupply = 0;
-        let sumVat = 0;
-        let sumQty = 0;
+        // 품목 행 렌더링 (computeAmounts 공통 헬퍼로 정수화 및 누적 차분 부가세 배분 적용)
+        const { items, totalQty, totalSupply, totalVat, totalGrand } = this.computeAmounts(rowsToPrint);
 
         const tbody = $('printTableBody');
-        tbody.innerHTML = rowsToPrint.map(r => {
-            const qty = Number(r.settlement_qty || r.qty || 0);
-            const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
-            const ship = Number(r.shipping_fee || 0);
-            const shipVatInc = r.shipping_fee_vat_included === 1;
-
-            let shipSupply = ship;
-            if (ship > 0 && shipVatInc) shipSupply = Math.round(ship / 1.1);
-            const supply = (qty * price) + shipSupply;
-
-            let vat = 0;
-            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                vat = r.settlement_vat;
-            } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
-                const itemVat = Math.floor(qty * price * 0.1);
-                let shipVat = 0;
-                if (ship > 0) shipVat = shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1);
-                vat = itemVat + shipVat;
-            }
-            const grand = supply + vat;
-
-            sumQty += qty;
-            sumSupply += supply;
-            sumVat += vat;
-            sumGrand += grand;
-
+        tbody.innerHTML = items.map(item => {
+            const { r, qty, price, supply, vat, grand } = item;
             const dateStr = r.tax_invoice_date ? r.tax_invoice_date.split('T')[0].substring(5) : (r.date ? r.date.split('T')[0].substring(5) : '-');
 
             return `
@@ -1088,19 +1066,19 @@ const app = {
         }).join('');
 
         // 합계 표시
-        $('printAmountKor').innerText = `합 계 금 액 : 금 ${numberToKorean(sumGrand)} 원 정`;
-        $('printAmountNum').innerText = `(₩ ${sumGrand.toLocaleString()})`;
+        $('printAmountKor').innerText = `합 계 금 액 : 금 ${numberToKorean(totalGrand)} 원 정`;
+        $('printAmountNum').innerText = `(₩ ${totalGrand.toLocaleString()})`;
 
         const tfoot = $('printTableFoot');
         tfoot.innerHTML = `
             <tr style="font-weight: bold; background-color: #f9f9f9;">
                 <td colspan="4">합 계</td>
-                <td>${sumQty.toLocaleString()}</td>
+                <td>${totalQty.toLocaleString()}</td>
                 <td></td>
                 <td></td>
-                <td style="text-align: right; padding-right: 4px !important;">${sumSupply.toLocaleString()}</td>
-                <td style="text-align: right; padding-right: 4px !important;">${sumVat.toLocaleString()}</td>
-                <td style="text-align: right; padding-right: 4px !important;">${sumGrand.toLocaleString()}</td>
+                <td style="text-align: right; padding-right: 4px !important;">${totalSupply.toLocaleString()}</td>
+                <td style="text-align: right; padding-right: 4px !important;">${totalVat.toLocaleString()}</td>
+                <td style="text-align: right; padding-right: 4px !important;">${totalGrand.toLocaleString()}</td>
                 <td></td>
             </tr>
         `;
@@ -1117,28 +1095,10 @@ const app = {
         }
 
         const partnerName = this.selectedPartner ? (this.selectedPartner.company_name || this.selectedPartner.name) : '전체';
+        const { items } = this.computeAmounts(exportRows);
 
-        const excelData = exportRows.map((r, idx) => {
-            const isSales = (r.type === 'outbound');
-            const qty = Number(r.settlement_qty || r.qty || 0);
-            const price = Number(r.settlement_price || (isSales ? r.outbound_price : r.inbound_price) || 0);
-            const ship = Number(r.shipping_fee || 0);
-            const shipVatInc = r.shipping_fee_vat_included === 1;
-
-            let shipSupply = ship;
-            if (ship > 0 && shipVatInc) shipSupply = Math.round(ship / 1.1);
-            const supply = (qty * price) + shipSupply;
-
-            let vat = 0;
-            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                vat = r.settlement_vat;
-            } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
-                const itemVat = Math.floor(qty * price * 0.1);
-                let shipVat = 0;
-                if (ship > 0) shipVat = shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1);
-                vat = itemVat + shipVat;
-            }
-            const grand = supply + vat;
+        const excelData = items.map((item, idx) => {
+            const { r, isSales, qty, price, supply, vat, grand } = item;
 
             return {
                 'No': idx + 1,
