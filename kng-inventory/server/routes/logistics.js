@@ -1351,10 +1351,14 @@ router.post('/settlement/:type', (req, res) => {
             const accountVal = req.body.settlement_account || '';
             const sql = `UPDATE ${table} SET settlement_account = ? WHERE id IN (${placeholders})`;
             
-            // 상대 테이블(매입 <-> 매출) 자동 동기화 쿼리
+            // 상대 테이블(매입 <-> 매출) 자동 동기화 쿼리 (Lots 매핑 테이블 + 고유번호 IN/OUT 매칭 듀얼 연동)
             const syncSql = (type === 'inbound')
-                ? `UPDATE logistics_outbound SET settlement_account = ? WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id IN (${placeholders}))`
-                : `UPDATE logistics_inbound SET settlement_account = ? WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders}))`;
+                ? `UPDATE logistics_outbound SET settlement_account = ? 
+                   WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id IN (${placeholders}))
+                      OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'IN-%')`
+                : `UPDATE logistics_inbound SET settlement_account = ? 
+                   WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders}))
+                      OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'OUT-%')`;
 
             db.run(sql, [accountVal, ...ids], function(err) {
                 if (err) {
@@ -1362,7 +1366,7 @@ router.post('/settlement/:type', (req, res) => {
                     return res.status(500).json({ error: err.message });
                 }
                 
-                db.run(syncSql, [accountVal, ...ids], function(errSync) {
+                db.run(syncSql, [accountVal, ...ids, ...ids], function(errSync) {
                     if (errSync) {
                         console.error('Account counterpart sync error:', errSync.message);
                     }
@@ -1400,10 +1404,14 @@ router.post('/settlement/:type', (req, res) => {
 
             const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ?, settlement_month = ? WHERE id = ?`);
             
-            // 상대 테이블(매입 <-> 매출) 자재계정 자동 동기화 stmt
+            // 상대 테이블(매입 <-> 매출) 자재계정 자동 동기화 stmt (Lots 매핑 + 고유번호 매칭)
             const syncStmt = (type === 'inbound')
-                ? db.prepare(`UPDATE logistics_outbound SET settlement_account = ? WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id = ?)`)
-                : db.prepare(`UPDATE logistics_inbound SET settlement_account = ? WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)`);
+                ? db.prepare(`UPDATE logistics_outbound SET settlement_account = ? 
+                              WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id = ?)
+                                 OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id = ? AND transaction_group_id LIKE 'IN-%')`)
+                : db.prepare(`UPDATE logistics_inbound SET settlement_account = ? 
+                              WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)
+                                 OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id = ? AND transaction_group_id LIKE 'OUT-%')`);
 
             for (let i of items) {
                 const sMonth = (i.settlement_month && String(i.settlement_month).trim()) || (i.tax_invoice_date ? String(i.tax_invoice_date).substring(0, 7) : '');
@@ -1411,7 +1419,7 @@ router.post('/settlement/:type', (req, res) => {
                 stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
                 
                 if (syncStmt) {
-                    syncStmt.run(sAccount, i.id, function(eSync) {
+                    syncStmt.run(sAccount, i.id, i.id, function(eSync) {
                         if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
                     });
                 }

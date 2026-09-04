@@ -13,26 +13,45 @@ const db = new sqlite3.Database(dbPath, (err) => {
 db.serialize(() => {
     console.log('--- 1:1 매칭(직송/로트 연결) 건의 계정과목(settlement_account) 상호 동기화 시작 ---');
 
-    // 1. 매입(inbound)에 계정이 있고 매출(outbound)에 없거나 비어있는 경우 동기화
+    // 1. 매입(inbound)에 계정이 있고 매출(outbound)에 없거나 비어있는 경우 동기화 (Lots 매핑 + 고유번호 매칭)
     db.run(`
         UPDATE logistics_outbound
-        SET settlement_account = (
-            SELECT i.settlement_account
-            FROM logistics_outbound_lots lol
-            JOIN logistics_inbound i ON lol.inbound_id = i.id
-            WHERE lol.outbound_id = logistics_outbound.id
-              AND i.settlement_account IS NOT NULL 
-              AND i.settlement_account != ''
-            LIMIT 1
+        SET settlement_account = COALESCE(
+            (
+                SELECT i.settlement_account
+                FROM logistics_outbound_lots lol
+                JOIN logistics_inbound i ON lol.inbound_id = i.id
+                WHERE lol.outbound_id = logistics_outbound.id
+                  AND i.settlement_account IS NOT NULL 
+                  AND i.settlement_account != ''
+                LIMIT 1
+            ),
+            (
+                SELECT i.settlement_account
+                FROM logistics_inbound i
+                WHERE i.transaction_group_id = REPLACE(logistics_outbound.transaction_group_id, 'OUT-', 'IN-')
+                  AND i.settlement_account IS NOT NULL
+                  AND i.settlement_account != ''
+                LIMIT 1
+            )
         )
         WHERE (settlement_account IS NULL OR settlement_account = '')
-          AND EXISTS (
-            SELECT 1 
-            FROM logistics_outbound_lots lol
-            JOIN logistics_inbound i ON lol.inbound_id = i.id
-            WHERE lol.outbound_id = logistics_outbound.id
-              AND i.settlement_account IS NOT NULL 
-              AND i.settlement_account != ''
+          AND (
+            EXISTS (
+                SELECT 1 
+                FROM logistics_outbound_lots lol
+                JOIN logistics_inbound i ON lol.inbound_id = i.id
+                WHERE lol.outbound_id = logistics_outbound.id
+                  AND i.settlement_account IS NOT NULL 
+                  AND i.settlement_account != ''
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM logistics_inbound i
+                WHERE i.transaction_group_id = REPLACE(logistics_outbound.transaction_group_id, 'OUT-', 'IN-')
+                  AND i.settlement_account IS NOT NULL
+                  AND i.settlement_account != ''
+            )
           )
     `, function(err) {
         if (err) {
@@ -42,26 +61,45 @@ db.serialize(() => {
         }
     });
 
-    // 2. 매출(outbound)에 계정이 있고 매입(inbound)에 없거나 비어있는 경우 동기화
+    // 2. 매출(outbound)에 계정이 있고 매입(inbound)에 없거나 비어있는 경우 동기화 (Lots 매핑 + 고유번호 매칭)
     db.run(`
         UPDATE logistics_inbound
-        SET settlement_account = (
-            SELECT o.settlement_account
-            FROM logistics_outbound_lots lol
-            JOIN logistics_outbound o ON lol.outbound_id = o.id
-            WHERE lol.inbound_id = logistics_inbound.id
-              AND o.settlement_account IS NOT NULL 
-              AND o.settlement_account != ''
-            LIMIT 1
+        SET settlement_account = COALESCE(
+            (
+                SELECT o.settlement_account
+                FROM logistics_outbound_lots lol
+                JOIN logistics_outbound o ON lol.outbound_id = o.id
+                WHERE lol.inbound_id = logistics_inbound.id
+                  AND o.settlement_account IS NOT NULL 
+                  AND o.settlement_account != ''
+                LIMIT 1
+            ),
+            (
+                SELECT o.settlement_account
+                FROM logistics_outbound o
+                WHERE o.transaction_group_id = REPLACE(logistics_inbound.transaction_group_id, 'IN-', 'OUT-')
+                  AND o.settlement_account IS NOT NULL
+                  AND o.settlement_account != ''
+                LIMIT 1
+            )
         )
         WHERE (settlement_account IS NULL OR settlement_account = '')
-          AND EXISTS (
-            SELECT 1 
-            FROM logistics_outbound_lots lol
-            JOIN logistics_outbound o ON lol.outbound_id = o.id
-            WHERE lol.inbound_id = logistics_inbound.id
-              AND o.settlement_account IS NOT NULL 
-              AND o.settlement_account != ''
+          AND (
+            EXISTS (
+                SELECT 1 
+                FROM logistics_outbound_lots lol
+                JOIN logistics_outbound o ON lol.outbound_id = o.id
+                WHERE lol.inbound_id = logistics_inbound.id
+                  AND o.settlement_account IS NOT NULL 
+                  AND o.settlement_account != ''
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM logistics_outbound o
+                WHERE o.transaction_group_id = REPLACE(logistics_inbound.transaction_group_id, 'IN-', 'OUT-')
+                  AND o.settlement_account IS NOT NULL
+                  AND o.settlement_account != ''
+            )
           )
     `, function(err) {
         if (err) {
