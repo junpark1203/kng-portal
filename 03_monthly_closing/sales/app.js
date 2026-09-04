@@ -598,14 +598,7 @@ const app = {
                     <tr class="unsettled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee}" data-shipvatinc="${r.shipping_fee_vat_included}">
                         <td class="align-middle text-center bg-settle-input text-primary" style="border-left: 1px solid #dee2e6; font-size: 0.75rem;">정산</td>
                         <td class="align-middle bg-settle-input small">
-                            <div class="d-flex flex-column gap-1">
-                                <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}" onchange="app.onInlineDateChange(${r.id}, this)">
-                                <div class="d-flex align-items-center gap-1 justify-content-center">
-                                    <span class="text-secondary" style="font-size: 0.7rem; font-weight: 500;">정산월:</span>
-                                    <input type="month" class="inline-month edit-input text-center fw-bold text-primary" value="${defaultSettleMonth}" style="width: 86px; font-size: 0.72rem; padding: 1px 2px;" title="정산월(청구월)">
-                                    <button type="button" class="btn btn-outline-secondary p-0 px-1" style="font-size: 0.68rem;" onclick="app.carryOverNextMonth(${r.id})" title="다음 달로 1개월 이월">+1월</button>
-                                </div>
-                            </div>
+                            <input type="date" class="inline-date edit-input text-center" value="${defaultTaxDate}">
                         </td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-qty edit-input" value="${Number(r.qty).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, true)">
@@ -679,13 +672,7 @@ const app = {
                     </tr>
                     <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee}" data-shipvatinc="${r.shipping_fee_vat_included}">
                         <td class="align-middle text-center bg-settle-input text-success small fw-bold" style="border-left: 1px solid #dee2e6;">정산완료</td>
-                        <td class="align-middle bg-settle-input text-center small text-dark">
-                            <div>${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : r.date.split('T')[0]}</div>
-                            <div class="mt-1 d-flex gap-1 justify-content-center flex-wrap align-items-center">
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-1" style="font-size: 0.7rem;">정산월: ${r.settlement_month || (r.tax_invoice_date || r.date).substring(0, 7)}</span>
-                                ${(r.settlement_month && r.settlement_month !== (r.date || '').substring(0, 7)) ? `<span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-1" style="font-size: 0.68rem;" title="원 발생월: ${(r.date||'').substring(0, 7)}에서 ${r.settlement_month}로 이월"><i class='bx bx-redo'></i> 이월</span>` : ''}
-                            </div>
-                        </td>
+                        <td class="align-middle bg-settle-input text-center small text-dark">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : r.date.split('T')[0]}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_qty).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(r.settlement_price).toLocaleString()}</td>
                         <td class="align-middle bg-settle-input text-end small text-dark">${Number(supplyAmt).toLocaleString()}</td>
@@ -826,7 +813,6 @@ const app = {
         $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
         $('batchDateContainer').style.display = hasUnsettled ? 'flex' : 'none';
         $('batchAccountContainer').style.display = checkedBoxes.length > 0 ? 'flex' : 'none';
-        if ($('batchMonthContainer')) $('batchMonthContainer').style.display = checkedBoxes.length > 0 ? 'flex' : 'none';
         $('cancelSettleBtn').style.display = hasSettled ? 'inline-block' : 'none';
         
         const allChecks = document.querySelectorAll('.row-chk');
@@ -1035,80 +1021,9 @@ const app = {
                 const dateInput = container.querySelector('.inline-date');
                 if(dateInput) {
                     dateInput.value = d;
-                    const monthInput = container.querySelector('.inline-month');
-                    if (monthInput) monthInput.value = d.substring(0, 7);
                 }
             }
         });
-    },
-
-    onInlineDateChange: function(id, dateInput) {
-        if (!dateInput || !dateInput.value) return;
-        const container = document.querySelector(`tr.settle-input-row[data-id="${id}"]`);
-        if (!container) return;
-        const monthInput = container.querySelector('.inline-month');
-        if (monthInput) {
-            monthInput.value = dateInput.value.substring(0, 7);
-        }
-    },
-
-    carryOverNextMonth: function(id) {
-        const container = document.querySelector(`tr.settle-input-row[data-id="${id}"]`);
-        if (!container) return;
-        const monthInput = container.querySelector('.inline-month');
-        if (!monthInput || !monthInput.value) return;
-        const [y, m] = monthInput.value.split('-').map(Number);
-        let nextY = y;
-        let nextM = m + 1;
-        if (nextM > 12) {
-            nextM = 1;
-            nextY += 1;
-        }
-        monthInput.value = `${nextY}-${String(nextM).padStart(2, '0')}`;
-    },
-
-    applyBatchMonth: async function() {
-        const m = $('batchSettleMonth')?.value;
-        if (!m) return alert('일괄 적용할 정산월(YYYY-MM)을 선택해주세요.');
-        const checked = document.querySelectorAll('.row-chk:checked');
-        if (checked.length === 0) return alert('정산월을 적용할 항목을 선택해주세요.');
-
-        // 미정산 항목은 화면상 인풋 값 변경
-        checked.forEach(el => {
-            if (el.dataset.status === '미정산') {
-                const container = el.closest('tr').nextElementSibling;
-                const monthInput = container ? container.querySelector('.inline-month') : null;
-                if (monthInput) monthInput.value = m;
-            }
-        });
-
-        // 이미 정산완료된 항목이 선택되어 있으면 서버에 정산월 일괄 업데이트 요청
-        const settledIds = Array.from(checked).filter(el => el.dataset.status === '정산완료').map(el => parseInt(el.value));
-        if (settledIds.length > 0) {
-            if (confirm(`선택한 항목 중 이미 정산완료된 ${settledIds.length}건의 정산월을 [${m}]로 즉시 변경(이월)하시겠습니까?`)) {
-                try {
-                    const res = await window.authFetch(`${API_BASE}/settlement/outbound`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            action: 'update_month',
-                            ids: settledIds,
-                            settlement_month: m
-                        })
-                    });
-                    if (res.ok) {
-                        alert(`${settledIds.length}건의 정산월이 성공적으로 변경되었습니다.`);
-                        this.loadData();
-                    } else {
-                        const err = await res.json().catch(() => ({}));
-                        alert(err.error || '정산월 일괄 변경에 실패했습니다.');
-                    }
-                } catch (e) {
-                    console.error(e);
-                    alert('오류가 발생했습니다.');
-                }
-            }
-        }
     },
 
     submitInlineSettlement: async function(rowId) {
@@ -1129,8 +1044,6 @@ const app = {
         }
 
         const taxDate = container.querySelector('.inline-date').value;
-        const sMonthInput = container.querySelector('.inline-month');
-        const sMonthVal = sMonthInput ? sMonthInput.value : '';
         const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
         const isZeroTax = (vat === 0) ? 1 : 0;
         
@@ -1145,7 +1058,7 @@ const app = {
                         id: rowId,
                         settlement_account: accountVal,
                         tax_invoice_date: taxDate,
-                        settlement_month: sMonthVal || taxDate.substring(0, 7),
+                        settlement_month: taxDate.substring(0, 7),
                         is_zero_tax: isZeroTax,
                         settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
                         settlement_price: parseFloat(container.querySelector('.inline-price').value.replace(/,/g, '')),
@@ -1179,8 +1092,6 @@ const app = {
                 if (!container) return;
 
                 const taxDate = container.querySelector('.inline-date').value;
-                const sMonthInput = container.querySelector('.inline-month');
-                const sMonthVal = sMonthInput ? sMonthInput.value : '';
                 const vat = parseFloat(container.querySelector('.inline-vat').value.replace(/,/g, '')) || 0;
                 const isZeroTax = (vat === 0) ? 1 : 0;
                 
@@ -1188,7 +1099,7 @@ const app = {
                     id: parseInt(chk.value),
                     settlement_account: accountVal,
                     tax_invoice_date: taxDate,
-                    settlement_month: sMonthVal || taxDate.substring(0, 7),
+                    settlement_month: taxDate ? taxDate.substring(0, 7) : '',
                     is_zero_tax: isZeroTax,
                     settlement_qty: parseFloat(container.querySelector('.inline-qty').value.replace(/,/g, '')),
                     settlement_price: parseFloat(container.querySelector('.inline-price').value.replace(/,/g, '')),

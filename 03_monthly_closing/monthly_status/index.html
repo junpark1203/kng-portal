@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>월간현황 및 청구서 관리</title>
+    <title>월간현황 및 확정·청구 관리</title>
     <!-- Bootstrap 5.3 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Boxicons -->
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../../styles.css?v=3">
-    <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=3">
+    <link rel="stylesheet" href="../../styles.css?v=4">
+    <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=4">
     <style>
         body {
             background-color: #f8fafc;
@@ -17,20 +17,17 @@
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
 
-        .summary-card {
+        .summary-kpi-card {
             border: 1px solid #e2e8f0;
-            border-radius: 10px;
+            border-radius: 8px;
             background: #ffffff;
-            transition: all 0.2s ease-in-out;
-        }
-        .summary-card:hover {
-            box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s;
         }
 
         .table thead th {
             background-color: #f1f5f9;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: #334155;
             text-align: center;
             vertical-align: middle;
@@ -38,37 +35,60 @@
             white-space: nowrap;
         }
         .table tbody td {
-            font-size: 0.82rem;
+            font-size: 0.81rem;
             vertical-align: middle;
         }
 
-        .clickable-row {
-            cursor: pointer;
-            transition: background-color 0.15s ease;
+        .nav-pills .nav-link {
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: #64748b;
+            border-radius: 8px;
+            padding: 8px 18px;
         }
-        .clickable-row:hover {
-            background-color: #f8fafc !important;
+        .nav-pills .nav-link.active {
+            background-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
         }
-        .clickable-row.table-active {
-            background-color: #eff6ff !important;
+        .nav-pills .nav-link.active.purchase-tab {
+            background-color: #16a34a !important;
+            box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
         }
 
-        .badge-sales {
-            background-color: #eff6ff;
-            color: #2563eb;
-            border: 1px solid #bfdbfe;
-        }
-        .badge-purchase {
-            background-color: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
-        }
         .badge-carryover {
             background-color: #fef3c7;
             color: #b45309;
             border: 1px solid #fde68a;
             font-size: 0.72rem;
             font-weight: 600;
+        }
+
+        /* 거래처 자동완성 드롭다운 */
+        .partner-autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            max-height: 280px;
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+        .partner-autocomplete-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.83rem;
+            transition: background 0.15s;
+        }
+        .partner-autocomplete-item:hover, .partner-autocomplete-item.active {
+            background-color: #eff6ff;
+            color: #1d4ed8;
         }
 
         /* ── 인쇄 전용 스타일 (정산장부 A4 최적화 양식 계승) ── */
@@ -171,28 +191,30 @@
 <body class="p-3 p-md-4">
 
 <div class="container-fluid no-print">
-    <!-- 상단 페이지 타이틀 & 설명 -->
+    <!-- 상단 페이지 헤더 -->
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-1 d-flex align-items-center gap-2">
-                <i class='bx bx-calendar-check text-primary'></i> 월간현황 및 청구서 관리
+                <i class='bx bx-calendar-check text-primary'></i> 월간현황 및 확정·청구 관리
             </h4>
-            <p class="text-muted small mb-0">지정된 정산월(이월 내역 반영) 기준으로 거래처별 매입·매출 집계 및 월별 청구서/매입정산서를 관리·출력합니다.</p>
+            <p class="text-muted small mb-0">
+                정산된 품목들을 거래처별로 확인하고, 청구·매입 확정월 지정 및 이월(+1월)을 처리하며 A4 청구서/매입정산서를 인쇄합니다.
+            </p>
         </div>
         <div class="d-flex gap-2 align-items-center">
-            <button class="btn btn-outline-secondary btn-sm shadow-sm" onclick="app.loadMonthlySummary()">
+            <button class="btn btn-outline-secondary btn-sm shadow-sm" onclick="app.refreshCurrentView()">
                 <i class='bx bx-refresh'></i> 새로고침
             </button>
         </div>
     </div>
 
-    <!-- 1. 정산월 선택 & 필터 툴바 -->
+    <!-- 1. 메인 검색 & 기준월 컨트롤 바 -->
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body p-3">
             <div class="row g-2 align-items-center">
-                <!-- 월 선택기 -->
+                <!-- 기준 확정월 선택기 -->
                 <div class="col-12 col-md-auto d-flex align-items-center gap-1">
-                    <span class="fw-bold text-secondary small me-1"><i class='bx bx-calendar'></i> 정산월:</span>
+                    <span class="fw-bold text-secondary small me-1"><i class='bx bx-calendar'></i> 기준월:</span>
                     <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(-1)" title="이전달">
                         <i class='bx bx-chevron-left'></i>
                     </button>
@@ -206,19 +228,21 @@
                     </div>
                 </div>
 
-                <!-- 구분 필터 (전체/매출처/매입처) -->
-                <div class="col-12 col-md-auto d-flex align-items-center gap-1">
-                    <span class="fw-bold text-secondary small ms-md-2 me-1">구분:</span>
-                    <div class="btn-group btn-group-sm" id="typeFilterGroup">
-                        <button type="button" class="btn btn-primary active" data-type="all" onclick="app.setTypeFilter('all')">전체</button>
-                        <button type="button" class="btn btn-outline-secondary" data-type="sales" onclick="app.setTypeFilter('sales')">매출처 (청구)</button>
-                        <button type="button" class="btn btn-outline-secondary" data-type="purchase" onclick="app.setTypeFilter('purchase')">매입처 (정산)</button>
+                <!-- 거래처 검색 및 선택 인풋 (자동완성 + 거래처 찾기 모달) -->
+                <div class="col-12 col-md position-relative">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class='bx bx-search'></i> 거래처</span>
+                        <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명을 검색하거나 모달에서 선택하세요..." autocomplete="off" oninput="app.onPartnerInput(this.value)" onfocus="app.onPartnerFocus()">
+                        <button class="btn btn-outline-secondary d-none" id="clearPartnerBtn" type="button" onclick="app.clearSelectedPartner()" title="선택 해제"><i class='bx bx-x'></i></button>
+                        <button class="btn btn-primary fw-bold" type="button" onclick="app.openPartnerSelectModal()"><i class='bx bx-buildings'></i> 거래처 찾기</button>
                     </div>
+                    <!-- 자동완성 드롭다운 -->
+                    <div id="partnerAutocompleteList" class="partner-autocomplete-list"></div>
                 </div>
 
                 <!-- 자재계정 필터 -->
                 <div class="col-12 col-md-auto">
-                    <select id="accountFilter" class="form-select form-select-sm" onchange="app.loadMonthlySummary()">
+                    <select id="accountFilter" class="form-select form-select-sm" onchange="app.onFilterChange()">
                         <option value="">전체 자재계정</option>
                         <option value="안전자재_전체">안전자재 통합</option>
                         <option value="안전자재-일반">-- 안전(일반)</option>
@@ -229,170 +253,184 @@
                         <option value="미분류">미분류</option>
                     </select>
                 </div>
+            </div>
 
-                <!-- 거래처명 검색창 -->
-                <div class="col-12 col-md">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
-                        <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명, 사업자번호 검색..." oninput="app.filterTableRows()">
-                        <button class="btn btn-outline-secondary d-none" id="clearSearchBtn" type="button" onclick="app.clearSearch()"><i class='bx bx-x'></i></button>
+            <!-- 선택된 거래처 정보 배너 (거래처 선택 시 표시) -->
+            <div id="selectedPartnerBanner" class="mt-2 p-2 px-3 bg-light rounded border d-none">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3 flex-wrap small">
+                        <span class="fs-6 fw-bold text-dark" id="bannerPartnerName">-</span>
+                        <span><strong class="text-secondary">사업자번호:</strong> <span class="font-monospace fw-semibold" id="bannerBizNo">-</span></span>
+                        <span><strong class="text-secondary">대표자:</strong> <span id="bannerCeo">-</span></span>
+                        <span><strong class="text-secondary">주소:</strong> <span class="text-muted" id="bannerAddress">-</span></span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="form-check form-switch small mb-0">
+                            <input class="form-check-input" type="checkbox" id="aggregateBizChk" onchange="app.onBizAggChange()">
+                            <label class="form-check-label fw-bold text-secondary" for="aggregateBizChk">동일 사업자번호 통합</label>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="app.clearSelectedPartner()" title="거래처 전체보기로 돌아가기">
+                            <i class='bx bx-x'></i> 선택 해제
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 2. 월간 KPI 요약 카드 섹션 -->
-    <div class="row g-3 mb-3" id="kpiCardSection">
-        <!-- 매출 청구 합계 -->
-        <div class="col-12 col-md-4">
-            <div class="summary-card p-3 border-start border-4 border-primary shadow-sm h-100">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-secondary small fw-bold"><i class='bx bx-export text-primary'></i> 당월 매출 청구 합계</span>
-                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary" id="kpiSalesCount">0건</span>
-                </div>
-                <div class="h4 fw-bold text-primary mb-1" id="kpiSalesTotal">0원</div>
-                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiSalesSub">
-                    공급가: 0원 | 부가세: 0원 | 수량: 0
-                </div>
-            </div>
-        </div>
+    <!-- 2. 상단 탭: 매출 (청구확정) vs 매입 (매입확정) -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <ul class="nav nav-pills gap-2" id="closingTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active d-flex align-items-center gap-2 shadow-sm" id="sales-tab" type="button" onclick="app.switchTab('sales')">
+                    <i class='bx bx-export'></i> 매출 (청구확정)
+                    <span class="badge bg-white text-primary ms-1" id="tabSalesBadge">0건</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link d-flex align-items-center gap-2 shadow-sm" id="purchase-tab" type="button" onclick="app.switchTab('purchase')">
+                    <i class='bx bx-import'></i> 매입 (매입확정)
+                    <span class="badge bg-white text-success ms-1" id="tabPurchaseBadge">0건</span>
+                </button>
+            </li>
+        </ul>
 
-        <!-- 매입 정산 합계 -->
-        <div class="col-12 col-md-4">
-            <div class="summary-card p-3 border-start border-4 border-success shadow-sm h-100">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-secondary small fw-bold"><i class='bx bx-import text-success'></i> 당월 매입 정산 합계</span>
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success" id="kpiPurchaseCount">0건</span>
-                </div>
-                <div class="h4 fw-bold text-success mb-1" id="kpiPurchaseTotal">0원</div>
-                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiPurchaseSub">
-                    공급가: 0원 | 부가세: 0원 | 수량: 0
-                </div>
-            </div>
+        <!-- 상단 통계 요약 뱃지 바 -->
+        <div class="d-flex align-items-center gap-3 bg-white p-2 px-3 rounded border shadow-sm small">
+            <span>공급가: <strong class="text-dark" id="kpiSupplyAmt">0원</strong></span>
+            <span>세액: <strong class="text-secondary" id="kpiVatAmt">0원</strong></span>
+            <span class="fs-6 fw-bold" id="kpiTotalLabel">청구합계: <span class="text-primary" id="kpiTotalAmt">0원</span></span>
         </div>
+    </div>
 
-        <!-- 월간 차액(마진) -->
-        <div class="col-12 col-md-4">
-            <div class="summary-card p-3 border-start border-4 border-info shadow-sm h-100">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="text-secondary small fw-bold"><i class='bx bx-calculator text-info'></i> 당월 정산 차액 (매출 - 매입)</span>
-                    <span class="badge bg-info bg-opacity-10 text-info border border-info" id="kpiMarginBadge">수지차</span>
+    <!-- 3. 확정 및 이월 액션 툴바 -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- 좌측: 선택 항목 확정 및 이월 작업 버튼들 -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check me-1 mb-0">
+                    <input class="form-check-input" type="checkbox" id="checkAllTable" onchange="app.onCheckAllChange(this.checked)">
+                    <label class="form-check-label small fw-bold" for="checkAllTable">전체선택</label>
                 </div>
-                <div class="h4 fw-bold text-dark mb-1" id="kpiMarginTotal">0원</div>
-                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiMarginSub">
-                    공급가 차액: 0원 (마진율: 0%)
+                <span class="badge bg-light text-secondary border px-2 py-1" id="selectedCountBadge">선택 0건</span>
+
+                <!-- 익월로 이월 (+1월) 버튼 -->
+                <button class="btn btn-warning btn-sm fw-bold shadow-sm" type="button" onclick="app.carryOverSelectedNextMonth()" title="선택한 건을 다음 달(+1월)로 이월합니다.">
+                    <i class='bx bx-redo'></i> 익월로 이월 (+1월)
+                </button>
+
+                <!-- 확정월 직접 지정 이월 -->
+                <div class="input-group input-group-sm" style="width: 220px;">
+                    <span class="input-group-text bg-light text-secondary py-0" style="font-size: 0.76rem;">확정월</span>
+                    <input type="month" id="batchTargetMonth" class="form-control" title="선택한 건의 확정월을 직접 지정합니다">
+                    <button class="btn btn-outline-primary fw-bold" type="button" onclick="app.changeSelectedMonth()">지정변경</button>
                 </div>
+
+                <!-- 이월 취소 (원발생월 복귀) -->
+                <button class="btn btn-outline-secondary btn-sm fw-semibold" type="button" onclick="app.revertCarryOverSelected()" title="이월된 건을 원래 발생월로 복구합니다">
+                    <i class='bx bx-undo'></i> 이월 취소
+                </button>
+            </div>
+
+            <!-- 우측: 출력 및 다운로드 버튼들 -->
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
+                    <i class='bx bx-download'></i> 엑셀 다운로드
+                </button>
+                <button class="btn btn-primary btn-sm fw-bold shadow-sm" id="printInvoiceBtn" type="button" onclick="app.printInvoice()">
+                    <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서 인쇄</span>
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- 3. 대시보드 뷰: 거래처별 월간 집계 요약 테이블 -->
-    <div class="card border-0 shadow-sm mb-4" id="partnerSummaryCard">
-        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="fw-bold small d-flex align-items-center gap-2">
-                <i class='bx bx-list-ul text-primary'></i> 거래처별 월간 청구/정산 목록
-                <span class="badge bg-light text-secondary border" id="tableRowCountBadge">0개 거래처</span>
-            </div>
-            <div class="small text-muted">
-                <i class='bx bx-info-circle'></i> 행을 클릭하면 하단에서 상세 내역 확인 및 청구서 출력이 가능합니다.
-            </div>
-        </div>
+    <!-- 4. 상세 품목 테이블 -->
+    <div class="card border-0 shadow-sm mb-4">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="monthlySummaryTable">
+            <table class="table table-hover align-middle mb-0" id="mainStatusTable">
                 <thead>
                     <tr>
-                        <th style="width: 45px;">No.</th>
-                        <th style="min-width: 140px;" class="text-start">거래처명</th>
-                        <th style="width: 120px;">사업자번호</th>
-                        <th style="width: 80px;">구분</th>
-                        <th style="width: 60px;">건수</th>
-                        <th style="width: 70px;">총수량</th>
-                        <th style="width: 110px;" class="text-end">공급가액</th>
-                        <th style="width: 95px;" class="text-end">세액</th>
-                        <th style="width: 125px;" class="text-end fw-bold">청구/정산합계</th>
-                        <th style="min-width: 150px;">자재계정 요약</th>
-                        <th style="width: 120px;">작업</th>
+                        <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
+                        <th style="width: 40px;">No.</th>
+                        <th style="width: 85px;">발생일자</th>
+                        <th style="width: 85px;">정산일자</th>
+                        <th style="width: 120px;" class="text-start" id="colPartnerHeader">거래처명</th>
+                        <th style="width: 90px;">자재계정</th>
+                        <th style="min-width: 160px;" class="text-start">품목명</th>
+                        <th style="width: 80px;">규격</th>
+                        <th style="width: 45px;">단위</th>
+                        <th style="width: 60px;" class="text-end">수량</th>
+                        <th style="width: 75px;" class="text-end">단가</th>
+                        <th style="width: 90px;" class="text-end">공급가액</th>
+                        <th style="width: 75px;" class="text-end">세액</th>
+                        <th style="width: 100px;" class="text-end fw-bold">합계금액</th>
+                        <th style="width: 80px;">확정상태</th>
+                        <th style="min-width: 90px;" class="text-start">비고</th>
+                        <th style="width: 65px;">작업</th>
                     </tr>
                 </thead>
-                <tbody id="monthlySummaryTableBody">
+                <tbody id="mainStatusTableBody">
                     <tr>
-                        <td colspan="11" class="text-center py-5 text-muted">
-                            <i class='bx bx-loader-alt bx-spin'></i> 월간 현황 데이터를 불러오는 중입니다...
+                        <td colspan="17" class="text-center py-5 text-muted">
+                            <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
                         </td>
                     </tr>
                 </tbody>
+                <tfoot class="table-light fw-bold small" id="mainStatusTableFoot">
+                    <!-- 합계 렌더링 -->
+                </tfoot>
             </table>
         </div>
     </div>
+</div>
 
-    <!-- 4. 거래처 상세 내역 & 청구서 미리보기 영역 (선택 시 노출) -->
-    <div class="card border-0 shadow-sm mb-4 d-none" id="partnerDetailCard">
-        <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-                <h6 class="mb-0 fw-bold" id="detailPartnerTitle">거래처 상세 내역</h6>
-                <span class="badge bg-white text-primary" id="detailPartnerTypeBadge">매출</span>
-                <span class="badge bg-white bg-opacity-25 text-white" id="detailMonthBadge">2026-05</span>
+<!-- ================================================================ -->
+<!-- 5. 거래처 검색 및 선택 모달 (거래처 관리에 등록된 거래처) -->
+<!-- ================================================================ -->
+<div class="modal fade" id="partnerSelectModal" tabindex="-1" aria-labelledby="partnerSelectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title fw-bold" id="partnerSelectModalLabel"><i class='bx bx-buildings'></i> 거래처 선택</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="d-flex gap-2 align-items-center">
-                <div class="form-check form-switch text-white me-2 mb-0" style="font-size: 0.8rem;">
-                    <input class="form-check-input" type="checkbox" id="detailAggregateBizChk" onchange="app.onDetailBizAggChange()">
-                    <label class="form-check-label" for="detailAggregateBizChk">동일 사업자번호 통합</label>
+            <div class="modal-body p-3">
+                <!-- 모달 검색창 -->
+                <div class="input-group input-group-sm mb-3">
+                    <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                    <input type="text" id="modalPartnerSearchInput" class="form-control" placeholder="거래처명, 사업자번호, 대표자 검색..." oninput="app.filterModalPartners()">
+                    <button class="btn btn-outline-secondary" type="button" onclick="$('modalPartnerSearchInput').value=''; app.filterModalPartners();"><i class='bx bx-x'></i></button>
                 </div>
-                <button class="btn btn-light btn-sm fw-bold text-primary shadow-sm" onclick="app.printInvoice()">
-                    <i class='bx bx-printer'></i> <span id="printBtnText">청구서 인쇄</span>
-                </button>
-                <button class="btn btn-outline-light btn-sm" onclick="app.closeDetail()">
-                    <i class='bx bx-x'></i> 닫기
-                </button>
-            </div>
-        </div>
-        <div class="card-body p-3">
-            <!-- 거래처 정보 & 소계 요약 바 -->
-            <div class="p-2 px-3 bg-light rounded border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 0.82rem;">
-                <div class="d-flex gap-3 align-items-center flex-wrap">
-                    <span><strong>대표자:</strong> <span id="detailCeoName">-</span></span>
-                    <span><strong>사업자번호:</strong> <span id="detailBizNum">-</span></span>
-                    <span><strong>청구건수:</strong> <strong class="text-primary" id="detailTotalCount">0건</strong></span>
-                </div>
-                <div class="d-flex gap-3 align-items-center flex-wrap">
-                    <span>공급가: <strong id="detailSupplyAmt">0원</strong></span>
-                    <span>부가세: <strong id="detailVatAmt">0원</strong></span>
-                    <span class="fs-6 fw-bold text-primary">합계금액: <span id="detailGrandTotal">0원</span></span>
-                </div>
-            </div>
 
-            <!-- 세부 품목 테이블 -->
-            <div class="table-responsive">
-                <table class="table table-bordered table-sm align-middle mb-0" style="font-size: 0.8rem;">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width: 40px;">No.</th>
-                            <th style="width: 85px;">발생일자</th>
-                            <th style="width: 85px;">정산일자</th>
-                            <th style="width: 100px;">자재계정</th>
-                            <th style="min-width: 160px;" class="text-start">품목명</th>
-                            <th style="width: 90px;">규격</th>
-                            <th style="width: 45px;">단위</th>
-                            <th style="width: 60px;" class="text-end">수량</th>
-                            <th style="width: 80px;" class="text-end">단가</th>
-                            <th style="width: 95px;" class="text-end">공급가액</th>
-                            <th style="width: 80px;" class="text-end">부가세</th>
-                            <th style="width: 105px;" class="text-end fw-bold">합계금액</th>
-                            <th style="min-width: 110px;">비고</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detailTableBody">
-                        <!-- JS 렌더링 -->
-                    </tbody>
-                </table>
+                <!-- 거래처 테이블 -->
+                <div class="table-responsive" style="max-height: 420px;">
+                    <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.82rem;">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 40px;">No.</th>
+                                <th style="min-width: 140px;" class="text-start">거래처명 (상호)</th>
+                                <th style="width: 110px;">사업자번호</th>
+                                <th style="width: 80px;">대표자</th>
+                                <th style="width: 70px;">구분</th>
+                                <th style="min-width: 160px;" class="text-start">주소</th>
+                                <th style="width: 75px;">선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalPartnerTableBody">
+                            <!-- JS 렌더링 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- ================================================================ -->
-<!-- 5. 프린트 전용 영역 (A4 포맷 - 2026년 O월 청구서 / 매입정산내역) -->
+<!-- 6. 프린트 전용 영역 (A4 포맷 - 2026년 O월 청구서 / 매입정산내역) -->
 <!-- ================================================================ -->
 <div id="printableArea" class="d-none">
     <div class="print-header">
@@ -471,6 +509,8 @@
     </table>
 </div>
 
+<!-- SheetJS (Excel) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Bootstrap 5.3 JS Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module">
