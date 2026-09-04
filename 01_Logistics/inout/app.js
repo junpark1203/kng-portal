@@ -2410,12 +2410,13 @@ const app = {
         const formData = new FormData();
         formData.append('file', file);
         
+        const btn = document.querySelector('#directExcelModal .btn-warning');
         try {
             // Show loading state
-            const btn = event.currentTarget || document.querySelector('#directExcelModal .btn-warning');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 업로드 중...';
-            btn.disabled = true;
+            if (btn) {
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 데이터 분석 및 검증 중...';
+                btn.disabled = true;
+            }
 
             let token = null;
             try {
@@ -2438,7 +2439,68 @@ const app = {
 
             if (res.ok) {
                 const data = await res.json();
-                alert(`총 ${data.count}건의 엑셀 데이터가 성공적으로 일괄 등록되었습니다.`);
+
+                // 중복 의심 건 발견 시 -> 스마트 중복 처리 모달 띄우기
+                if (data.hasDuplicates) {
+                    app.cachedDirectExcelFile = file;
+
+                    // 1. 매입처별 중복 건수 배지 렌더링
+                    const badgesContainer = $('dupSupplierBadges');
+                    if (badgesContainer) {
+                        badgesContainer.innerHTML = '';
+                        if (data.supplierCounts && Object.keys(data.supplierCounts).length > 0) {
+                            for (const [sup, count] of Object.entries(data.supplierCounts)) {
+                                const badge = document.createElement('span');
+                                badge.className = 'badge bg-white text-dark border shadow-sm px-3 py-2 fs-7';
+                                badge.innerHTML = `<span class="fw-normal text-muted">${sup}:</span> <strong class="text-danger ms-1">${count.toLocaleString()}건</strong>`;
+                                badgesContainer.appendChild(badge);
+                            }
+                        } else {
+                            badgesContainer.innerHTML = '<span class="text-muted small">집계 내역 없음</span>';
+                        }
+                    }
+
+                    // 2. 건수 요약 표시
+                    if ($('dupTotalCount')) $('dupTotalCount').innerText = (data.totalCount || 0).toLocaleString();
+                    if ($('dupCount')) $('dupCount').innerText = (data.duplicateCount || 0).toLocaleString();
+                    if ($('dupNewCount')) $('dupNewCount').innerText = (data.newCount || 0).toLocaleString();
+
+                    // 3. 중복 상세 테이블 렌더링
+                    const tbody = $('dupTableBody');
+                    if (tbody) {
+                        tbody.innerHTML = '';
+                        (data.duplicates || []).forEach(r => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><span class="badge bg-secondary text-white">${r.rowNumber}행</span></td>
+                                <td>${r.date || ''}</td>
+                                <td class="text-start">${r.supplier || ''}</td>
+                                <td class="text-start">${r.destination || ''}</td>
+                                <td class="text-start fw-bold">${r.item || ''}</td>
+                                <td>${r.spec || '-'}</td>
+                                <td class="text-end">${Number(r.qty || 0).toLocaleString()}</td>
+                                <td class="text-end">${Number(r.in_price || 0).toLocaleString()}원</td>
+                                <td class="text-end">${Number(r.out_price || 0).toLocaleString()}원</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    }
+
+                    // 4. 모달 전환
+                    const excelModalEl = document.getElementById('directExcelModal');
+                    const excelModal = bootstrap.Modal.getInstance(excelModalEl);
+                    if (excelModal) excelModal.hide();
+
+                    const dupModal = new bootstrap.Modal(document.getElementById('directDuplicateModal'));
+                    dupModal.show();
+                    return;
+                }
+
+                let msg = `총 ${data.count}건의 엑셀 데이터가 성공적으로 일괄 등록되었습니다.`;
+                if (data.skippedCount) {
+                    msg += `\n(중복 제외: ${data.skippedCount}건)`;
+                }
+                alert(msg);
                 
                 const modalEl = document.getElementById('directExcelModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
@@ -2451,17 +2513,94 @@ const app = {
                     const errJson = JSON.parse(errText);
                     errText = errJson.error || errJson.details || errText;
                 } catch(e) {}
-                alert(`업로드 실패: ${errText}`);
+                alert(`업로드 실패:\n${errText}`);
             }
         } catch (err) {
             alert(`업로드 중 오류 발생: ${err.message}`);
         } finally {
             // Reset loading state
-            const btn = document.querySelector('#directExcelModal .btn-warning');
             if (btn) {
                 btn.innerHTML = "<i class='bx bx-upload'></i> 업로드 및 일괄 등록";
                 btn.disabled = false;
             }
+        }
+    },
+
+    proceedDirectDuplicate: async function(action) {
+        const file = app.cachedDirectExcelFile || ($('directExcelFile') && $('directExcelFile').files[0]);
+        if (!file) {
+            alert('업로드할 파일 정보가 없습니다. 파일을 다시 선택해주세요.');
+            return;
+        }
+
+        const confirmText = action === 'skip_duplicates' 
+            ? '중복된 항목을 제외하고 신규 건만 등록하시겠습니까?'
+            : '중복 의심 항목을 포함하여 엑셀 전체를 등록하시겠습니까?';
+        
+        if (!confirm(confirmText)) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('duplicate_action', action);
+
+        const dupModalEl = document.getElementById('directDuplicateModal');
+        const footerBtns = dupModalEl ? dupModalEl.querySelectorAll('button') : [];
+        footerBtns.forEach(b => b.disabled = true);
+
+        try {
+            let token = null;
+            try {
+                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+                    token = await window.parent.getAuthToken();
+                }
+            } catch(e) {}
+            if (!token) {
+                try { token = await waitForAuth(); } catch(e) {}
+            }
+            if (!token) token = localStorage.getItem('token');
+
+            const res = await fetch(`${API_BASE}/direct/upload`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                let msg = '성공적으로 등록되었습니다.';
+                if (data.count !== undefined) {
+                    msg = `총 ${data.count}건이 성공적으로 등록되었습니다.`;
+                }
+                if (data.skippedCount) {
+                    msg += `\n(중복 제외 건너뜀: ${data.skippedCount}건)`;
+                }
+                alert(msg);
+
+                const dupModal = bootstrap.Modal.getInstance(dupModalEl);
+                if (dupModal) dupModal.hide();
+
+                const excelModalEl = document.getElementById('directExcelModal');
+                const excelModal = bootstrap.Modal.getInstance(excelModalEl);
+                if (excelModal) excelModal.hide();
+
+                if ($('directExcelFile')) $('directExcelFile').value = '';
+                app.cachedDirectExcelFile = null;
+
+                app.resetPageAndLoadHistory();
+            } else {
+                let errText = await res.text();
+                try {
+                    const errJson = JSON.parse(errText);
+                    errText = errJson.error || errJson.details || errText;
+                } catch(e) {}
+                alert(`등록 실패:\n${errText}`);
+            }
+        } catch(err) {
+            alert(`등록 처리 중 오류 발생: ${err.message}`);
+        } finally {
+            footerBtns.forEach(b => b.disabled = false);
         }
     },
 

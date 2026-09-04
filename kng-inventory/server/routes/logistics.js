@@ -995,6 +995,11 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         let headerMap = {};
         let is17Col = false;
 
+        // Carry-forward / Fill-down state tracking (일자, 매입처, 매출처 3종만 상속)
+        let lastDate = '';
+        let lastSupplier = '';
+        let lastDestination = '';
+
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) {
                 row.eachCell((cell, colNumber) => {
@@ -1051,17 +1056,50 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 return v !== null && v !== undefined ? String(v).trim() : '';
             };
 
-            const date = getVal(headerMap.date || 1);
-            const supplier = getVal(headerMap.supplier || 2);
-            const destination = getVal(headerMap.destination || 3);
-            const actual_destination = getVal(headerMap.actual_destination || 4);
-            const category = getVal(headerMap.category || 5);
+            const rawDate = getVal(headerMap.date || 1);
+            const rawSupplier = getVal(headerMap.supplier || 2);
+            const rawDestination = getVal(headerMap.destination || 3);
+            const rawActualDest = getVal(headerMap.actual_destination || 4);
+            const rawCategory = getVal(headerMap.category || 5);
             const item = getVal(headerMap.item || 6);
             const spec = getVal(headerMap.spec || 7);
             const unit = getVal(headerMap.unit || 8);
             const qty = parseFloat(getVal(headerMap.qty || 9)) || 0;
             const in_price = parseFloat(getVal(headerMap.in_price || 10)) || 0;
             const out_price = parseFloat(getVal(headerMap.out_price || 11)) || 0;
+            const rawNote = getVal(headerMap.note || (is17Col ? 16 : 14));
+            const rawTradeType = getVal(headerMap.trade_type || (is17Col ? 17 : 15));
+
+            // Completely blank or empty row -> skip
+            if (!item && qty === 0) {
+                return;
+            }
+
+            // Fill-down (상위 값 상속: 일자, 매입처, 매출처만 한정):
+            // 1. Date (YYYY-MM-DD 정규화)
+            if (rawDate) {
+                const formattedDate = rawDate.replace(/\./g, '-').replace(/\//g, '-').trim();
+                lastDate = formattedDate;
+            }
+            const date = lastDate;
+
+            // 2. Supplier (매입처)
+            if (rawSupplier) {
+                lastSupplier = rawSupplier;
+            }
+            const supplier = lastSupplier;
+
+            // 3. Destination (매출처)
+            if (rawDestination) {
+                lastDestination = rawDestination;
+            }
+            const destination = lastDestination;
+
+            // 나머지 항목은 상속하지 않고 빈칸 그대로 저장 (규격 없는 제품에 상위 규격 오염 방지)
+            const actual_destination = rawActualDest || destination;
+            const category = rawCategory || '';
+            const trade_type = rawTradeType || '내수';
+            const note = rawNote || '';
 
             // Inbound shipping
             let in_shipping_fee = 0;
@@ -1100,23 +1138,21 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 out_shipping_vat = (raw === 'Y' || raw === '1' || raw === 'TRUE') ? 1 : 0;
             }
 
-            const note = getVal(headerMap.note || (is17Col ? 16 : 14));
-            const trade_type = getVal(headerMap.trade_type || (is17Col ? 17 : 15)) || '내수';
-
             if (!date || !supplier || !destination || !item || qty === 0 || in_price < 0) {
                 return; // Skip invalid rows
             }
 
             rows.push({
+                rowNumber,
                 date, supplier, destination, actual_destination, category, item, spec, unit, qty, in_price, out_price, in_shipping_fee, in_shipping_vat, out_shipping_fee, out_shipping_vat, note, trade_type
             });
         });
 
         if (rows.length === 0) {
-            return res.status(400).json({ error: 'No valid data found in excel' });
+            return res.status(400).json({ error: '유효한 직출고 데이터가 엑셀에서 발견되지 않았습니다. 첫 번째 품목 행(2행)에는 일자, 매입처, 매출처가 반드시 입력되어야 합니다.' });
         }
 
-        // --- VALIDATION BLOCK (Strategy B) ---
+        // --- LEVEL 1: 거래처 관리 유효성 검증 (Hard Error - 절대 차단) ---
         const partners = await new Promise((resolve, reject) => {
             db.all("SELECT name, company_name FROM partners", [], (err, pRows) => {
                 if (err) reject(err);
@@ -1133,8 +1169,9 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         const invalidPartners = new Set();
         for (let i = 0; i < rows.length; i++) {
             const r = rows[i];
-            if (!validNames.has(r.supplier)) invalidPartners.add(`(줄 ${i+2}) ${r.supplier}`);
-            if (!validNames.has(r.destination)) invalidPartners.add(`(줄 ${i+2}) ${r.destination}`);
+            const lineNo = r.rowNumber || (i + 2);
+            if (!validNames.has(r.supplier)) invalidPartners.add(`(줄 ${lineNo}) ${r.supplier}`);
+            if (!validNames.has(r.destination)) invalidPartners.add(`(줄 ${lineNo}) ${r.destination}`);
         }
 
         if (invalidPartners.size > 0) {
@@ -1143,12 +1180,98 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 error: `다음 텍스트가 등록된 거래처명과 일치하지 않습니다. 공식 명칭을 쓰거나 거래처 관리에 먼저 등록해주세요: ${errList}`
             });
         }
-        // ------------------------
+        // -----------------------------------------------------------
 
-        // Group rows by date + supplier + destination + actual_destination + in_shipping_fee + in_shipping_vat + out_shipping_fee + out_shipping_vat + note + trade_type
-        const grouped = {};
+        // --- LEVEL 2: 기존 DB 중복 검증 (Soft Warning / Smart Skip) ---
+        const duplicateAction = (req.body && req.body.duplicate_action) || ''; // 'skip_duplicates', 'force_all', or ''
+
+        let minDate = rows[0].date;
+        let maxDate = rows[0].date;
         for (const r of rows) {
-            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.in_shipping_fee}|${r.in_shipping_vat}|${r.out_shipping_fee}|${r.out_shipping_vat}|${r.note}|${r.trade_type}`;
+            if (r.date < minDate) minDate = r.date;
+            if (r.date > maxDate) maxDate = r.date;
+        }
+
+        const existingRecords = await new Promise((resolve, reject) => {
+            const checkSql = `
+                SELECT o.id, o.date, di.supplier, o.destination, o.item, COALESCE(o.spec, '') as spec,
+                       o.qty, di.unit_price, o.selling_price
+                FROM logistics_outbound o
+                JOIN logistics_outbound_lots lol ON o.id = lol.outbound_id
+                JOIN logistics_inbound di ON lol.inbound_id = di.id
+                WHERE o.is_direct = 1 AND o.date >= ? AND o.date <= ?
+            `;
+            db.all(checkSql, [minDate, maxDate], (err, records) => {
+                if (err) reject(err);
+                else resolve(records || []);
+            });
+        });
+
+        const makeSig = (d, s, dest, itm, spc, q, inP, outP) => 
+            `${d}|${s}|${dest}|${itm}|${(spc || '').trim()}|${Number(q)}|${Number(inP)}|${Number(outP)}`;
+
+        const existingSigMap = new Map();
+        for (const rec of existingRecords) {
+            const sig = makeSig(rec.date, rec.supplier, rec.destination, rec.item, rec.spec, rec.qty, rec.unit_price, rec.selling_price);
+            existingSigMap.set(sig, (existingSigMap.get(sig) || 0) + 1);
+        }
+
+        const duplicateRows = [];
+        const duplicateRowSet = new Set();
+        const supplierCounts = {};
+
+        for (const r of rows) {
+            const sig = makeSig(r.date, r.supplier, r.destination, r.item, r.spec, r.qty, r.in_price, r.out_price);
+            if (existingSigMap.has(sig)) {
+                duplicateRows.push({
+                    rowNumber: r.rowNumber,
+                    date: r.date,
+                    supplier: r.supplier,
+                    destination: r.destination,
+                    item: r.item,
+                    spec: r.spec || '',
+                    qty: r.qty,
+                    in_price: r.in_price,
+                    out_price: r.out_price
+                });
+                duplicateRowSet.add(r.rowNumber);
+                supplierCounts[r.supplier] = (supplierCounts[r.supplier] || 0) + 1;
+            }
+        }
+
+        // 중복 의심 건이 있고, 사용자가 아직 선택을 하지 않은 경우 -> 경고 데이터 반환
+        if (duplicateRows.length > 0 && duplicateAction !== 'force_all' && duplicateAction !== 'skip_duplicates') {
+            return res.json({
+                hasDuplicates: true,
+                duplicateCount: duplicateRows.length,
+                newCount: rows.length - duplicateRows.length,
+                totalCount: rows.length,
+                supplierCounts: supplierCounts,
+                duplicates: duplicateRows.slice(0, 100) // 최대 100건 미리보기
+            });
+        }
+
+        // 사용자가 '중복 건 제외(skip_duplicates)'를 선택한 경우 신규 행만 필터링
+        let rowsToInsert = rows;
+        let skippedCount = 0;
+        if (duplicateAction === 'skip_duplicates') {
+            rowsToInsert = rows.filter(r => !duplicateRowSet.has(r.rowNumber));
+            skippedCount = duplicateRows.length;
+            if (rowsToInsert.length === 0) {
+                return res.json({
+                    success: true,
+                    count: 0,
+                    skippedCount: skippedCount,
+                    message: `모든 항목(${skippedCount}건)이 이미 등록된 중복 데이터이므로 새로 등록할 데이터가 없습니다.`
+                });
+            }
+        }
+        // -------------------------------------------------------------
+
+        // Group rows by date + supplier + destination + actual_destination + note + trade_type
+        const grouped = {};
+        for (const r of rowsToInsert) {
+            const key = `${r.date}|${r.supplier}|${r.destination}|${r.actual_destination}|${r.note}|${r.trade_type}`;
             if (!grouped[key]) {
                 grouped[key] = {
                     date: r.date,
@@ -1163,6 +1286,16 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                     trade_type: r.trade_type || '내수',
                     items: []
                 };
+            } else {
+                // If subsequent row in the group has shipping fee and group's was 0, capture it
+                if (r.in_shipping_fee && !grouped[key].in_shipping_fee) {
+                    grouped[key].in_shipping_fee = r.in_shipping_fee;
+                    grouped[key].in_shipping_fee_vat_included = r.in_shipping_vat;
+                }
+                if (r.out_shipping_fee && !grouped[key].out_shipping_fee) {
+                    grouped[key].out_shipping_fee = r.out_shipping_fee;
+                    grouped[key].out_shipping_fee_vat_included = r.out_shipping_vat;
+                }
             }
             grouped[key].items.push({
                 item: r.item,
@@ -1174,7 +1307,6 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 out_price: r.out_price
             });
         }
-
         const groups = Object.values(grouped);
 
         // Process each group inside a transaction sequentially

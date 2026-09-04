@@ -1034,7 +1034,7 @@
                 <div class="alert alert-info mb-4" style="font-size:0.9rem;">
                     <strong>안내:</strong><br>
                     1. 엑셀 템플릿을 다운로드하여 정해진 양식에 맞게 직출고 내역을 작성해 주세요.<br>
-                    2. 일자, 매입처, 매출처가 동일한 여러 행은 자동으로 <strong>하나의 직출고 명세서</strong>로 묶여서 처리됩니다.
+                    2. 일자, 매입처, 매출처가 동일한 연속된 행은 <strong>상단 1행에만 입력하고 하위 행을 비워두셔도</strong> 자동으로 상위 값을 적용하여 <strong>하나의 직출고 명세서</strong>로 묶여서 처리됩니다.
                 </div>
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -1056,6 +1056,91 @@
                 <button type="button" class="btn btn-warning fw-bold" onclick="app.uploadDirectExcel()">
                     <i class='bx bx-upload'></i> 업로드 및 일괄 등록
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 직출고 엑셀 중복 의심 내역 확인 모달 (스마트 중복 처리) -->
+<div class="modal fade" id="directDuplicateModal" tabindex="-1" data-bs-backdrop="static" style="z-index: 1090;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class='bx bx-error-circle'></i> 직출고 엑셀 중복 의심 내역 안내
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning d-flex align-items-center mb-3">
+                    <i class='bx bxs-info-circle fs-3 me-3 text-warning'></i>
+                    <div>
+                        <div class="fw-bold fs-6">기존 DB에 이미 등록된 내역과 완전히 일치하는 항목이 발견되었습니다.</div>
+                        <div class="small text-muted mt-1" id="dupSummaryText">
+                            업로드 파일 총 <span id="dupTotalCount" class="fw-bold text-dark">0</span>건 중 
+                            중복 의심 <span id="dupCount" class="fw-bold text-danger">0</span>건 / 
+                            신규 등록 대상 <span id="dupNewCount" class="fw-bold text-primary">0</span>건
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 매입처별 중복 건수 집계 영역 -->
+                <div class="card mb-3 border-light bg-light">
+                    <div class="card-header bg-transparent py-2 border-0 fw-bold d-flex align-items-center">
+                        <i class='bx bx-buildings me-2 text-secondary'></i> 매입처별 중복 건수 현황
+                    </div>
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex flex-wrap gap-2" id="dupSupplierBadges">
+                            <!-- JS로 매입처별 뱃지 렌더링 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중복 상세 테이블 -->
+                <div class="fw-bold mb-2 small text-secondary d-flex justify-content-between align-items-center">
+                    <span><i class='bx bx-list-ul'></i> 중복 의심 상세 항목 (최대 100건 표시)</span>
+                    <span class="text-muted" style="font-size:0.8rem;">* 일자, 매입처, 매출처, 품목, 규격, 수량, 단가가 100% 동일한 건</span>
+                </div>
+                <div class="table-responsive border rounded" style="max-height: 320px;">
+                    <table class="table table-sm table-hover align-middle mb-0 text-center" style="font-size: 0.85rem;">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width:60px;">줄번호</th>
+                                <th style="width:90px;">일자</th>
+                                <th>매입처</th>
+                                <th>매출처</th>
+                                <th>품목명</th>
+                                <th>규격</th>
+                                <th style="width:70px;">수량</th>
+                                <th style="width:90px;">매입단가</th>
+                                <th style="width:90px;">매출단가</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dupTableBody">
+                            <!-- JS Render -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-secondary mt-3 mb-0 py-2 px-3 small">
+                    💡 <strong>어떻게 진행하시겠습니까?</strong><br>
+                    • <strong>[중복 제외 신규건만 등록]</strong>: 기존에 등록된 건은 건너뛰고 신규 데이터만 안전하게 등록합니다. (권장)<br>
+                    • <strong>[중복 포함 전체 등록]</strong>: 동일 일자에 동일 품목이 추가 출고된 정당한 건으로 인정하여 엑셀 내용 전체를 등록합니다.<br>
+                    • <strong>[등록 취소]</strong>: 엑셀 파일 확인 및 수정을 위해 작업을 취소합니다.
+                </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class='bx bx-x'></i> 등록 취소
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-danger" onclick="app.proceedDirectDuplicate('force_all')">
+                        <i class='bx bx-check-double'></i> 중복 포함 전체 등록
+                    </button>
+                    <button type="button" class="btn btn-primary fw-bold" onclick="app.proceedDirectDuplicate('skip_duplicates')">
+                        <i class='bx bx-check'></i> 중복 제외 신규건만 등록
+                    </button>
+                </div>
             </div>
         </div>
     </div>
