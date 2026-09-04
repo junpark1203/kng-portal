@@ -686,23 +686,23 @@ router.get('/history', (req, res) => {
             COUNT(*) as total,
             COALESCE(SUM(COALESCE(settlement_qty, qty)), 0) as total_qty,
             COALESCE(SUM(CASE 
-                WHEN inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN inbound_total IS NOT NULL THEN inbound_total 
+                WHEN inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN inbound_total IS NOT NULL THEN ROUND(inbound_total)
                 ELSE 0 
             END), 0) as inbound_supply_amt,
             COALESCE(SUM(CASE 
-                WHEN is_zero_tax = 0 AND inbound_price IS NOT NULL THEN ROUND((COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price)) * 0.1)
-                WHEN is_zero_tax = 0 AND inbound_total IS NOT NULL THEN ROUND(inbound_total * 0.1)
+                WHEN is_zero_tax = 0 AND inbound_price IS NOT NULL THEN ROUND(ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price)) * 0.1)
+                WHEN is_zero_tax = 0 AND inbound_total IS NOT NULL THEN ROUND(ROUND(inbound_total) * 0.1)
                 ELSE 0 
             END), 0) as inbound_vat,
             COALESCE(SUM(CASE 
-                WHEN outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN outbound_total IS NOT NULL THEN outbound_total 
+                WHEN outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as outbound_supply_amt,
             COALESCE(SUM(CASE 
-                WHEN is_zero_tax = 0 AND outbound_price IS NOT NULL THEN ROUND((COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price)) * 0.1)
-                WHEN is_zero_tax = 0 AND outbound_total IS NOT NULL THEN ROUND(outbound_total * 0.1)
+                WHEN is_zero_tax = 0 AND outbound_price IS NOT NULL THEN ROUND(ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price)) * 0.1)
+                WHEN is_zero_tax = 0 AND outbound_total IS NOT NULL THEN ROUND(ROUND(outbound_total) * 0.1)
                 ELSE 0 
             END), 0) as outbound_vat,
             COALESCE(SUM(CASE WHEN type = 'inbound' AND is_direct = 0 THEN 1 ELSE 0 END), 0) as inbound_count,
@@ -713,10 +713,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account = '안전자재-일반' THEN 1 ELSE 0 END), 0) as safety_gen_count,
             COALESCE(SUM(CASE WHEN settlement_account = '안전자재-일반' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as safety_gen_qty,
             COALESCE(SUM(CASE 
-                WHEN settlement_account = '안전자재-일반' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN settlement_account = '안전자재-일반' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN settlement_account = '안전자재-일반' AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN settlement_account = '안전자재-일반' AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN settlement_account = '안전자재-일반' AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '안전자재-일반' AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '안전자재-일반' AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN settlement_account = '안전자재-일반' AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as safety_gen_supply,
 
@@ -724,10 +724,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account = '안전자재-환경' THEN 1 ELSE 0 END), 0) as safety_env_count,
             COALESCE(SUM(CASE WHEN settlement_account = '안전자재-환경' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as safety_env_qty,
             COALESCE(SUM(CASE 
-                WHEN settlement_account = '안전자재-환경' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN settlement_account = '안전자재-환경' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN settlement_account = '안전자재-환경' AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN settlement_account = '안전자재-환경' AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN settlement_account = '안전자재-환경' AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '안전자재-환경' AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '안전자재-환경' AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN settlement_account = '안전자재-환경' AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as safety_env_supply,
 
@@ -735,10 +735,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account = '잡자재' THEN 1 ELSE 0 END), 0) as misc_count,
             COALESCE(SUM(CASE WHEN settlement_account = '잡자재' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as misc_qty,
             COALESCE(SUM(CASE 
-                WHEN settlement_account = '잡자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN settlement_account = '잡자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN settlement_account = '잡자재' AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN settlement_account = '잡자재' AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN settlement_account = '잡자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '잡자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '잡자재' AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN settlement_account = '잡자재' AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as misc_supply,
 
@@ -746,10 +746,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account = '기타자재' THEN 1 ELSE 0 END), 0) as etc_count,
             COALESCE(SUM(CASE WHEN settlement_account = '기타자재' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as etc_qty,
             COALESCE(SUM(CASE 
-                WHEN settlement_account = '기타자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN settlement_account = '기타자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN settlement_account = '기타자재' AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN settlement_account = '기타자재' AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN settlement_account = '기타자재' AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '기타자재' AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '기타자재' AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN settlement_account = '기타자재' AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as etc_supply,
 
@@ -757,10 +757,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account = '쇼핑몰' THEN 1 ELSE 0 END), 0) as mall_count,
             COALESCE(SUM(CASE WHEN settlement_account = '쇼핑몰' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as mall_qty,
             COALESCE(SUM(CASE 
-                WHEN settlement_account = '쇼핑몰' AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN settlement_account = '쇼핑몰' AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN settlement_account = '쇼핑몰' AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN settlement_account = '쇼핑몰' AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN settlement_account = '쇼핑몰' AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN settlement_account = '쇼핑몰' AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN settlement_account = '쇼핑몰' AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN settlement_account = '쇼핑몰' AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as mall_supply,
 
@@ -768,10 +768,10 @@ router.get('/history', (req, res) => {
             COALESCE(SUM(CASE WHEN settlement_account IS NULL OR settlement_account = '' THEN 1 ELSE 0 END), 0) as unclassified_count,
             COALESCE(SUM(CASE WHEN settlement_account IS NULL OR settlement_account = '' THEN COALESCE(settlement_qty, qty) ELSE 0 END), 0) as unclassified_qty,
             COALESCE(SUM(CASE 
-                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'inbound' AND inbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
-                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'outbound' AND outbound_price IS NOT NULL THEN (COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
-                WHEN (settlement_account IS NULL OR settlement_account = '') AND inbound_total IS NOT NULL THEN inbound_total
-                WHEN (settlement_account IS NULL OR settlement_account = '') AND outbound_total IS NOT NULL THEN outbound_total
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'inbound' AND inbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, inbound_price))
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND type = 'outbound' AND outbound_price IS NOT NULL THEN ROUND(COALESCE(settlement_qty, qty) * COALESCE(settlement_price, outbound_price))
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND inbound_total IS NOT NULL THEN ROUND(inbound_total)
+                WHEN (settlement_account IS NULL OR settlement_account = '') AND outbound_total IS NOT NULL THEN ROUND(outbound_total)
                 ELSE 0 
             END), 0) as unclassified_supply
 

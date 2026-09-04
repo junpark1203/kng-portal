@@ -723,11 +723,12 @@ const app = {
             if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
                 vat = Math.round(Number(r.settlement_vat));
                 accumVat += vat;
+                if (!isTaxFree) accumTaxableSupply += supply;
             } else if (!isTaxFree) {
                 accumTaxableSupply += supply;
                 const targetAccumVat = Math.floor(accumTaxableSupply * 0.1);
-                vat = targetAccumVat - accumVat;
-                accumVat = targetAccumVat;
+                vat = Math.max(0, targetAccumVat - accumVat);
+                accumVat = Math.max(accumVat, targetAccumVat);
             }
 
             const grand = supply + vat;

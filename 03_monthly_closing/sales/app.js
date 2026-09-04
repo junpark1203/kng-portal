@@ -522,7 +522,7 @@ const app = {
         };
 
         tbody.innerHTML = itemsToRender.map(r => {
-            const qtyTotal = (r.qty || 0) * (r.outbound_price || 0);
+            const qtyTotal = Math.round((r.qty || 0) * (r.outbound_price || 0));
             let shipAmount = 0;
             if (r.shipping_fee > 0) {
                 shipAmount = r.shipping_fee_vat_included === 1 
@@ -531,7 +531,15 @@ const app = {
             }
             const supplyAmtOrig = qtyTotal + shipAmount;
             const isZeroTax = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
-            const vatOrig = isZeroTax ? 0 : Math.floor(supplyAmtOrig * 0.1);
+            let vatOrig = 0;
+            if (!isZeroTax) {
+                const itemVat = Math.floor(qtyTotal * 0.1);
+                let shipVat = 0;
+                if (r.shipping_fee > 0) {
+                    shipVat = r.shipping_fee_vat_included === 1 ? (r.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                }
+                vatOrig = itemVat + shipVat;
+            }
             const totalOrig = supplyAmtOrig + vatOrig;
             
             let itemDisplay = `<strong>${r.item}</strong>`;
@@ -613,7 +621,7 @@ const app = {
                             <input type="text" class="text-end inline-supply-amt edit-input" value="${Number(supplyAmtOrig).toLocaleString()}" readonly tabindex="-1">
                         </td>
                         <td class="align-middle bg-settle-input small">
-                            <input type="text" class="text-end inline-vat edit-input" value="${(r.trade_type && r.trade_type !== '내수') ? 0 : Number(Math.floor((r.qty || 0) * (r.outbound_price || 0) * 0.1)).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
+                            <input type="text" class="text-end inline-vat edit-input" value="${Number(vatOrig).toLocaleString()}" oninput="app.formatNumberInput(this); app.calcInline(${r.id}, false)">
                         </td>
                         <td class="align-middle bg-settle-input small">
                             <input type="text" class="text-end inline-total-amt edit-input fw-bold" value="${Number(totalOrig).toLocaleString()}" readonly tabindex="-1">
@@ -624,15 +632,15 @@ const app = {
                     </tr>
                 `;
             } else {
-                const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0) + shipAmount;
+                const supplyAmt = Math.round((r.settlement_qty || 0) * (r.settlement_price || 0)) + shipAmount;
                 let vat = 0;
                 
                 if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                    vat = r.settlement_vat;
+                    vat = Math.round(Number(r.settlement_vat));
                 } else if (r.is_zero_tax || (r.trade_type && r.trade_type !== '내수')) {
                     vat = 0;
                 } else {
-                    const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
+                    const itemVat = Math.floor(Math.round((r.settlement_qty || 0) * (r.settlement_price || 0)) * 0.1);
                     let shipVat = 0;
                     if (r.shipping_fee > 0) {
                         shipVat = r.shipping_fee_vat_included === 1 
@@ -986,7 +994,7 @@ const app = {
         const shipFee = parseFloat(container.dataset.shipfee) || 0;
         const shipVatInc = parseInt(container.dataset.shipvatinc) || 0;
         
-        const itemSupplyAmt = qty * price;
+        const itemSupplyAmt = Math.round(qty * price);
         const supplyAmt = itemSupplyAmt + shipAmount;
         
         if (autoCalcVat) {
@@ -1223,11 +1231,13 @@ const app = {
                     shipAmount = r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee;
                 }
                 
-                const itemSupply = qty * price;
+                const itemSupply = Math.round(qty * price);
                 const supplyAmt = itemSupply + shipAmount;
                 
                 let vat = 0;
-                if (!r.is_zero_tax) {
+                if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                    vat = Math.round(Number(r.settlement_vat));
+                } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
                     const itemVat = Math.floor(itemSupply * 0.1);
                     let shipVat = 0;
                     if (r.shipping_fee > 0) {
@@ -1310,9 +1320,15 @@ const app = {
                 }
             }
             
-            const total = (qty * price) + shipAmount;
+            const total = Math.round(qty * price) + shipAmount;
             const isZeroTax = r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
-            const vat = isZeroTax ? 0 : (Math.floor(qty * price * 0.1) + shipVat);
+            let vat = 0;
+            if (!isZeroTax) {
+                const itemVat = Math.floor(Math.round(qty * price) * 0.1);
+                vat = (isSettled && r.settlement_vat !== undefined && r.settlement_vat !== null) 
+                    ? Math.round(Number(r.settlement_vat)) 
+                    : (itemVat + shipVat);
+            }
             const grand = total + vat;
             
             sumTotal += total;

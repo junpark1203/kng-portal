@@ -390,6 +390,77 @@ const app = {
         this.filterLedgerRows();
     },
 
+    // 정산 금액 계산 공통 헬퍼: 품목 정수화 및 누적 차분 부가세 배분 (합계 일치 보장)
+    computeAmounts: function(rows) {
+        if (!rows || rows.length === 0) {
+            return { items: [], totalQty: 0, totalSupply: 0, totalVat: 0, totalGrand: 0 };
+        }
+
+        let totalQty = 0;
+        let totalSupply = 0;
+
+        const initial = rows.map(r => {
+            const qty = Number(r.qty || 0);
+            const price = Number(r.price || 0);
+            const ship = Number(r.shipping_fee || 0);
+            const shipVatInc = r.shipping_fee_vat_included === 1;
+
+            let shipSupply = ship;
+            if (ship > 0 && shipVatInc) {
+                shipSupply = Math.round(ship / 1.1);
+            }
+            const supply = Math.round(qty * price) + shipSupply;
+            const isTaxFree = !!r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
+
+            totalQty += qty;
+            totalSupply += supply;
+
+            return {
+                r,
+                qty,
+                price,
+                ship,
+                shipVatInc,
+                shipSupply,
+                supply,
+                isTaxFree
+            };
+        });
+
+        let accumTaxableSupply = 0;
+        let accumVat = 0;
+        let totalVat = 0;
+        let totalGrand = 0;
+
+        const items = initial.map(item => {
+            const { r, supply, isTaxFree } = item;
+            let vat = 0;
+
+            if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                vat = Math.round(Number(r.settlement_vat));
+                accumVat += vat;
+                if (!isTaxFree) accumTaxableSupply += supply;
+            } else if (!isTaxFree) {
+                accumTaxableSupply += supply;
+                const targetAccumVat = Math.floor(accumTaxableSupply * 0.1);
+                vat = Math.max(0, targetAccumVat - accumVat);
+                accumVat = Math.max(accumVat, targetAccumVat);
+            }
+
+            const grand = supply + vat;
+            totalVat += vat;
+            totalGrand += grand;
+
+            return {
+                ...item,
+                vat,
+                grand
+            };
+        });
+
+        return { items, totalQty, totalSupply, totalVat, totalGrand };
+    },
+
     renderLedgerTable: function(res) {
         const tbody = document.getElementById('ledgerTableBody');
         const tfoot = document.getElementById('ledgerTableFoot');
@@ -406,10 +477,12 @@ const app = {
             return;
         }
 
-        let sumTotal = 0;
-        let sumVat = 0;
-        let sumGrand = 0;
-        let sumQty = 0;
+        // 공통 계산 모듈 적용 (품목 정수화 및 누적 차분 부가세 배분)
+        const { items, totalQty, totalSupply, totalVat, totalGrand } = this.computeAmounts(res);
+        const sumQty = totalQty;
+        const sumTotal = totalSupply;
+        const sumVat = totalVat;
+        const sumGrand = totalGrand;
 
         // 계정별 통계 집계
         const accountStats = {
@@ -421,32 +494,8 @@ const app = {
             '미분류': { count: 0, supplyAmt: 0 }
         };
 
-        let html = res.map(row => {
-            let shipAmount = 0;
-            if (row.shipping_fee > 0) {
-                shipAmount = row.shipping_fee_vat_included === 1 ? Math.round(row.shipping_fee / 1.1) : row.shipping_fee;
-            }
-            const amount = (row.qty * row.price) + shipAmount;
-            const isZeroTax = row.is_zero_tax || (row.trade_type && row.trade_type !== '내수');
-            let vat = 0;
-            if (!isZeroTax) {
-                if (row.settlement_vat !== undefined && row.settlement_vat !== null) {
-                    vat = row.settlement_vat;
-                } else {
-                    const itemVat = Math.floor(row.qty * row.price * 0.1);
-                    let shipVat = 0;
-                    if (row.shipping_fee > 0) {
-                        shipVat = row.shipping_fee_vat_included === 1 ? (row.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
-                    }
-                    vat = itemVat + shipVat;
-                }
-            }
-            const grand = amount + vat;
-
-            sumQty += (Number(row.qty) || 0);
-            sumTotal += amount;
-            sumVat += vat;
-            sumGrand += grand;
+        let html = items.map(item => {
+            const { r: row, supply: amount, vat, grand } = item;
 
             const accKey = row.settlement_account || '미분류';
             if (accountStats[accKey]) {

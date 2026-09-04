@@ -522,7 +522,7 @@ const app = {
         };
 
         tbody.innerHTML = itemsToRender.map(r => {
-            const qtyTotal = (r.qty || 0) * (r.inbound_price || 0);
+            const qtyTotal = Math.round((r.qty || 0) * (r.inbound_price || 0));
             let shipAmount = 0;
             if (r.shipping_fee > 0) {
                 shipAmount = r.shipping_fee_vat_included === 1 
@@ -632,15 +632,15 @@ const app = {
                     </tr>
                 `;
             } else {
-                const supplyAmt = (r.settlement_qty || 0) * (r.settlement_price || 0) + shipAmount;
+                const supplyAmt = Math.round((r.settlement_qty || 0) * (r.settlement_price || 0)) + shipAmount;
                 let vat = 0;
                 
                 if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                    vat = r.settlement_vat;
+                    vat = Math.round(Number(r.settlement_vat));
                 } else if (r.is_zero_tax || (r.trade_type && r.trade_type !== '내수')) {
                     vat = 0;
                 } else {
-                    const itemVat = Math.floor((r.settlement_qty || 0) * (r.settlement_price || 0) * 0.1);
+                    const itemVat = Math.floor(Math.round((r.settlement_qty || 0) * (r.settlement_price || 0)) * 0.1);
                     let shipVat = 0;
                     if (r.shipping_fee > 0) {
                         shipVat = r.shipping_fee_vat_included === 1 
@@ -994,7 +994,7 @@ const app = {
         const shipFee = parseFloat(container.dataset.shipfee) || 0;
         const shipVatInc = parseInt(container.dataset.shipvatinc) || 0;
 
-        const itemSupplyAmt = qty * price;
+        const itemSupplyAmt = Math.round(qty * price);
         const supplyAmt = itemSupplyAmt + shipAmount;
         
         if (autoCalcVat) {
@@ -1200,16 +1200,16 @@ const app = {
             if (r.shipping_fee > 0) {
                 shipAmount = r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee;
             }
-            const total = qty * price + shipAmount;
+            const total = Math.round(qty * price) + shipAmount;
             const isZeroTax = r.is_zero_tax || (r.trade_type && r.trade_type !== '내수');
             let vat = 0;
             if (!isZeroTax) {
-                const itemVat = Math.floor(qty * price * 0.1);
+                const itemVat = Math.floor(Math.round(qty * price) * 0.1);
                 let shipVat = 0;
                 if (r.shipping_fee > 0) {
                     shipVat = r.shipping_fee_vat_included === 1 ? (r.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
                 }
-                vat = (isSettled && r.settlement_vat !== undefined && r.settlement_vat !== null) ? r.settlement_vat : (itemVat + shipVat);
+                vat = (isSettled && r.settlement_vat !== undefined && r.settlement_vat !== null) ? Math.round(Number(r.settlement_vat)) : (itemVat + shipVat);
             }
             const grand = total + vat;
             

@@ -907,7 +907,7 @@ const app = {
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
-                return isNumber ? val.toLocaleString() : val;
+                return isNumber ? Math.round(Number(val)).toLocaleString() : val;
             };
 
             let destHtml = '<span class="text-muted">-</span>';
@@ -1096,8 +1096,8 @@ const app = {
                 const inPrice = item.unit_price !== undefined ? item.unit_price : (item.inbound_price || 0);
                 const outPrice = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
                 
-                const inAmt = inPrice * itemQty;
-                const outAmt = outPrice * itemQty;
+                const inAmt = Math.round(inPrice * itemQty);
+                const outAmt = Math.round(outPrice * itemQty);
 
                 totalQty += itemQty;
                 totalInboundAmt += inAmt;
