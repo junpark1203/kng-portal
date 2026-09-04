@@ -646,7 +646,7 @@ router.get('/history', (req, res) => {
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
-            ${type === 'inbound' ? '' : 'WHERE i.is_direct = 0'}
+            ${(type === 'inbound' || include_direct === 'true') ? '' : 'WHERE i.is_direct = 0'}
             UNION ALL
             SELECT 
                 'outbound' as type, o.id, o.date, 

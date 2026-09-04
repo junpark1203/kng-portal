@@ -521,13 +521,14 @@ const app = {
             const data = await res.json();
             let items = data.data || data.items || (Array.isArray(data) ? data : []);
 
-            // 거래처 다중(동일 사업자번호) 필터링 보정
-            if (targetPartnerNames.length > 1) {
-                items = items.filter(r => {
-                    const party = (r.type === 'outbound') ? (r.destination || r.actual_destination) : r.supplier;
-                    return targetPartnerNames.some(tn => (party || '').includes(tn));
-                });
-            }
+            // 거래처 정확 매칭 필터링:
+            // - 매출(outbound): 납품처(destination/actual_destination)가 선택 거래처인 건만
+            // - 매입(inbound): 공급처(supplier)가 선택 거래처인 건만
+            // (직출고로 타처에 납품된 출고건이 원공급처의 매출로 오인되지 않도록 엄격 분리)
+            items = items.filter(r => {
+                const party = (r.type === 'outbound') ? (r.destination || r.actual_destination) : r.supplier;
+                return targetPartnerNames.some(tn => (party || '').includes(tn));
+            });
 
             // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬
             items.sort((a, b) => {
