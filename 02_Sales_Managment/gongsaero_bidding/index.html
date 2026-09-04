@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="공새로 B2B 입찰 공고 관리 및 스마트 6% 수수료·마진 계산 시스템">
+    <title>공새로 입찰관리 - K&G Portal</title>
+    
+    <!-- Google Fonts & Boxicons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="header-title">
+            <i class='bx bx-file-find fs-3 text-primary'></i>
+            <div>
+                <h1>공새로 입찰관리 <span class="brand-badge">B2B TENDER</span></h1>
+                <div class="text-muted small mt-1">공고 관리 · 6% 수수료/마진 자동계산기 · 품목별 과거 투찰단가 조회</div>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="app.loadBids()">
+                <i class='bx bx-refresh'></i> 새로고침
+            </button>
+            <button class="btn btn-primary fw-bold px-3 shadow-sm" onclick="app.openNewBidModal()">
+                <i class='bx bx-plus-circle'></i> 새 입찰공고 등록
+            </button>
+        </div>
+    </header>
+
+    <!-- Top KPI Cards Strip -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-icon icon-amber">
+                <i class='bx bx-time-five'></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">진행중인 입찰</div>
+                <div class="kpi-value text-warning" id="kpiBiddingCount">0<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+                <div class="kpi-sub">투찰 마감 임박 포함</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon icon-emerald">
+                <i class='bx bx-trophy'></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">낙찰 성공</div>
+                <div class="kpi-value text-success" id="kpiWonCount">0<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+                <div class="kpi-sub" id="kpiWonAmount">누적 수주: 0원</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon icon-blue">
+                <i class='bx bx-pie-chart-alt-2'></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">평균 수주 마진율</div>
+                <div class="kpi-value text-primary" id="kpiAvgMargin">0.0%</div>
+                <div class="kpi-sub">공새로 6% 수수료 차감 후</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon icon-purple">
+                <i class='bx bx-won'></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">낙찰 누적 순이익</div>
+                <div class="kpi-value text-purple" id="kpiWonProfit">0원</div>
+                <div class="kpi-sub">순수익 실현액</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <!-- View Navigation Tabs -->
+        <div class="view-tabs-bar">
+            <div class="view-tabs">
+                <button class="tab-btn active" id="tabBidsBtn" onclick="app.switchView('bids')">
+                    <i class='bx bx-list-check'></i> 공고별 관리 <span class="badge bg-secondary ms-1" id="badgeBidsCount">0</span>
+                </button>
+                <button class="tab-btn" id="tabItemsBtn" onclick="app.switchView('items')">
+                    <i class='bx bx-search-alt-2'></i> 품목별 투찰 이력 검색 <span class="badge bg-primary ms-1" id="badgeItemsCount">DB</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <div class="control-left">
+                <div class="search-input-group">
+                    <i class='bx bx-search'></i>
+                    <input type="text" id="globalSearchInput" placeholder="공고명, 발주처, 또는 품목명(예: PP로프, 마대) 검색..." oninput="app.handleSearchInput(event)">
+                </div>
+                <!-- Status filter (only for bids tab) -->
+                <div id="statusFilterGroup" class="d-flex align-items-center gap-1">
+                    <select class="form-select form-select-sm" id="statusFilter" onchange="app.loadBids()" style="width: 130px;">
+                        <option value="all">모든 상태</option>
+                        <option value="입찰중">입찰중 (진행)</option>
+                        <option value="낙찰">낙찰 (성공)</option>
+                        <option value="미선정">미선정 (탈락)</option>
+                        <option value="입찰포기">입찰포기</option>
+                    </select>
+                </div>
+                <!-- Sort options -->
+                <select class="form-select form-select-sm" id="sortFilter" onchange="app.loadBids()" style="width: 140px;">
+                    <option value="recent">최신 등록순</option>
+                    <option value="deadline_asc">마감 임박순</option>
+                    <option value="amount_desc">투찰 금액 높은순</option>
+                    <option value="profit_desc">예상 순이익 높은순</option>
+                </select>
+            </div>
+            <div class="control-right">
+                <button class="btn btn-outline-success btn-sm fw-bold" onclick="app.exportToExcel()">
+                    <i class='bx bxs-file-export'></i> 목록 엑셀 저장
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: 공고별 관리 목록 -->
+        <div id="viewBids" class="content-card">
+            <div class="table-responsive">
+                <table class="bid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">상태</th>
+                            <th>공고 / 공사명</th>
+                            <th style="width: 160px;">발주처 (고객사)</th>
+                            <th style="width: 140px;">투찰 마감일시</th>
+                            <th style="width: 120px;">납품조건</th>
+                            <th style="width: 80px;" class="text-center">품목수</th>
+                            <th style="width: 130px;" class="text-end">총 매입원가</th>
+                            <th style="width: 140px;" class="text-end">고객사 납품총액</th>
+                            <th style="width: 120px;" class="text-end">예상 순이익</th>
+                            <th style="width: 90px;" class="text-end">마진율</th>
+                            <th style="width: 110px;" class="text-center">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bidsTableBody">
+                        <tr>
+                            <td colspan="11" class="text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary mb-2"></div>
+                                <div>입찰 공고 데이터를 불러오는 중...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW 2: 품목별 투찰 이력 검색 (핵심 요청 사항) -->
+        <div id="viewItems" class="content-card" style="display: none;">
+            <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                <div class="small text-secondary">
+                    <i class='bx bx-info-circle text-primary me-1'></i> 
+                    과거에 투찰했던 모든 품목의 <strong>매입단가, 공새로 수수료(6%), 납품단가, 낙찰 여부</strong>를 품목 단위로 비교 분석합니다.
+                </div>
+                <div class="small fw-bold text-dark" id="itemHistoryCount">0건 조회됨</div>
+            </div>
+            <div class="table-responsive">
+                <table class="bid-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 110px;">공고일자</th>
+                            <th style="width: 90px;">결과상태</th>
+                            <th style="min-width: 160px;">품목명</th>
+                            <th style="min-width: 120px;">규격</th>
+                            <th style="width: 70px;">단위</th>
+                            <th style="width: 80px;" class="text-end">수량</th>
+                            <th style="width: 110px;" class="text-end text-secondary">우리의 매입단가</th>
+                            <th style="width: 90px;" class="text-end">마진율</th>
+                            <th style="width: 110px;" class="text-end">공새로 희망정산단가</th>
+                            <th style="width: 100px;" class="text-end text-danger">공새로 수수료 (6%)</th>
+                            <th style="width: 120px;" class="text-end text-primary fw-bold">고객사 납품단가</th>
+                            <th style="width: 110px;" class="text-end text-success">품목 순이익</th>
+                            <th>관련 입찰 공고명</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsHistoryTableBody">
+                        <tr>
+                            <td colspan="13" class="text-center py-5 text-muted">
+                                상단 검색창에 검색할 품목명(예: PP로프, 톤마대, 페인트 등)을 입력하시면 과거 투찰 이력이 나타납니다.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- 입찰 공고 및 투찰서 작성/수정 모달 (Modal Drawer)  -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div class="modal fade" id="bidModal" tabindex="-1" data-bs-backdrop="static" style="z-index: 1080;">
+        <div class="modal-dialog modal-dialog-scrollable" style="max-width: 96vw; width: 1480px; margin: 1.2rem auto;">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white py-3">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <i class='bx bx-edit text-warning'></i>
+                        <span id="modalTitle">입찰공고 등록 및 투찰서 작성</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4 bg-light">
+                    <!-- 1. 공고 기본 메타정보 섹션 -->
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-white py-2 fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class='bx bx-notepad text-primary'></i> 입찰공고 기본 정보</span>
+                            <span class="badge bg-primary-subtle text-primary border" id="modalBidIdBadge">NEW</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <input type="hidden" id="editBidId">
+                            <div class="row g-2">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold text-secondary mb-1">공사 / 공고명 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="formTitle" placeholder="예: [(주)범양이앤씨] 청담 1,2교 확장 구조물 공사 | 일회성 입찰" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-secondary mb-1">발주처 (고객사명)</label>
+                                    <input type="text" class="form-control form-control-sm" id="formClientName" placeholder="예: (주)범양이앤씨">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold text-secondary mb-1">입찰 형태</label>
+                                    <select class="form-select form-select-sm" id="formBidType">
+                                        <option value="공개 입찰">공개 입찰</option>
+                                        <option value="일회성 입찰">일회성 입찰</option>
+                                        <option value="지명 경쟁">지명 경쟁</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold text-secondary mb-1">긴급 여부</label>
+                                    <select class="form-select form-select-sm" id="formUrgency">
+                                        <option value="일반">일반</option>
+                                        <option value="긴급">🚨 긴급</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-secondary mb-1">공고 발행일시</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="formIssueDate">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-secondary mb-1">투찰 마감일시 <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="formBidDeadline">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-secondary mb-1">납품 기한</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="formDeliveryDeadline">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold text-secondary mb-1">진행 상태</label>
+                                    <select class="form-select form-select-sm" id="formStatus">
+                                        <option value="입찰중">입찰중 (진행)</option>
+                                        <option value="낙찰">낙찰 (수주성공)</option>
+                                        <option value="미선정">미선정 (탈락)</option>
+                                        <option value="입찰포기">입찰포기</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-secondary mb-1">납품 주소 (현장 상세)</label>
+                                    <input type="text" class="form-control form-control-sm" id="formDeliveryAddress" placeholder="예: 서울 송파구 잠실동 1-1, 내비 종료시 직진 / 담당자 연락">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold text-secondary mb-1">인도 조건</label>
+                                    <select class="form-select form-select-sm" id="formDeliveryCondition">
+                                        <option value="하차도">하차도 (내려줌)</option>
+                                        <option value="차상도">차상도 (도착기준)</option>
+                                        <option value="현장협의">현장협의</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold text-secondary mb-1">납품 방법</label>
+                                    <select class="form-select form-select-sm" id="formDeliveryMethod">
+                                        <option value="납품업체 직접배송">납품업체 직접배송</option>
+                                        <option value="화물/택배">화물/택배</option>
+                                        <option value="현장 직수령">현장 직수령</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold text-secondary mb-1">배송비 포함여부</label>
+                                    <select class="form-select form-select-sm" id="formShippingIncluded">
+                                        <option value="1">포함 (단가에 반영)</option>
+                                        <option value="0">별도 (추가 청구)</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-secondary mb-1">작성자 / 담당자 정보</label>
+                                    <input type="text" class="form-control form-control-sm" id="formManagerInfo" placeholder="예: 작성자: 나종수 주임(010-8006-6945) / 김도현 차장">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-secondary mb-1">예상 용차/운반비 (원)</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" id="formEstimatedShippingFee" placeholder="예: 70000" oninput="app.updateSummaryMetrics()">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="app.distributeShippingFee()" title="입력된 용차비를 각 품목 수량 비율로 매입가에 자동 안분">
+                                            <i class='bx bx-calculator'></i> 품목 안분
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold text-secondary mb-1">특이사항 / 메모</label>
+                                    <input type="text" class="form-control form-control-sm" id="formRemarks" placeholder="특이사항 입력">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 품목 및 스마트 투찰 단가 계산기 섹션 -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold"><i class='bx bx-table text-warning'></i> 투찰 품목 및 단가 계산기</span>
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="small text-muted me-2">공새로 6% 수수료 자동 계산 (소수점 절삭 / 최소 1원 보장)</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addSampleTenderItems()">
+                                    <i class='bx bx-magic-wand'></i> 샘플(13종) 불러오기
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" onclick="app.addItemRow()">
+                                    <i class='bx bx-plus'></i> 품목 추가
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-2 p-md-3">
+                            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                                <table class="modal-items-table" id="itemsInputTable">
+                                    <thead class="sticky-top">
+                                        <tr>
+                                            <th style="width: 45px;">No</th>
+                                            <th style="min-width: 140px;">품목명 <span class="text-danger">*</span></th>
+                                            <th style="min-width: 110px;">규격</th>
+                                            <th style="width: 80px;">단위</th>
+                                            <th style="width: 80px;">수량</th>
+                                            <th style="min-width: 110px;">우리의 매입가</th>
+                                            <th style="width: 85px;">목표마진율(%)</th>
+                                            <th style="min-width: 120px;" class="cell-calc">희망 정산단가</th>
+                                            <th style="min-width: 100px;" class="cell-fee">공새로 수수료</th>
+                                            <th style="min-width: 130px;" class="cell-highlight">고객사 납품단가</th>
+                                            <th style="min-width: 110px;" class="cell-calc">품목 순이익</th>
+                                            <th style="width: 90px;">제조국/비고</th>
+                                            <th style="width: 40px;">삭제</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="itemsInputTbody">
+                                        <!-- Dynamic JS Rows -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Floating Summary Bar inside modal -->
+                            <div class="modal-summary-bar">
+                                <div class="summary-metric">
+                                    <span class="metric-label">총 매입원가</span>
+                                    <span class="metric-val" id="sumBuyCost">0원</span>
+                                </div>
+                                <div class="summary-metric">
+                                    <span class="metric-label">공새로 중개수수료 (약 6%)</span>
+                                    <span class="metric-val fee" id="sumGongsaeroFee">0원</span>
+                                </div>
+                                <div class="summary-metric">
+                                    <span class="metric-label">공새로 정산금액 (세금계산서 발행액)</span>
+                                    <span class="metric-val" id="sumSettlementAmount">0원</span>
+                                </div>
+                                <div class="summary-metric">
+                                    <span class="metric-label">최종 고객사 납품총액 (투찰금액)</span>
+                                    <span class="metric-val delivery" id="sumDeliveryTotal">0원</span>
+                                </div>
+                                <div class="summary-metric">
+                                    <span class="metric-label">예상 순이익 / 마진율</span>
+                                    <span class="metric-val profit" id="sumProfitAndRate">0원 (0.0%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white d-flex justify-content-between py-3">
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-dark btn-sm" onclick="app.copyDeliveryPricesToClipboard()">
+                            <i class='bx bx-copy'></i> 공새로 납품단가 일괄 복사
+                        </button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="app.downloadTenderExcel()">
+                            <i class='bx bx-download'></i> 엑셀 다운로드
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                        <button type="button" class="btn btn-primary fw-bold px-4" onclick="app.saveBid()">
+                            <i class='bx bx-check'></i> 공고 및 투찰서 저장
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Application Logic -->
+    <script src="app.js"></script>
+</body>
+
+</html>

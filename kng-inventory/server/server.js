@@ -90,6 +90,10 @@ const { initLeaveRequestTables } = leaveRequestRoutes;
 const marginCalculatorRoutes = require('./routes/margin-calculator');
 const { initMarginCalculatorTables } = marginCalculatorRoutes;
 
+// 공새로 입찰관리 모듈
+const gongsaeroBiddingRoutes = require('./routes/gongsaero-bidding');
+const { initGongsaeroBiddingTables } = gongsaeroBiddingRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -364,6 +368,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             marginCalculatorRoutes.setDb(db);
             console.log('margin_calculator API 준비 완료');
         });
+        // 공새로 입찰관리 테이블 초기화 + 라우트에 DB 주입
+        initGongsaeroBiddingTables(db).then(() => {
+            gongsaeroBiddingRoutes.setDb(db);
+            console.log('gongsaero_bidding API 준비 완료');
+        }).catch(err => console.error('gongsaero_bidding 초기화 실패:', err));
         // 대시보드
         dashboardRoutes.setDb(db);
     }
@@ -1104,6 +1113,7 @@ app.use('/api/margin-calculator', marginCalculatorRoutes.router);
 app.use('/api/logistics', logisticsRoutes.router);
 app.use('/api/partners', partnersRoutes(db));
 app.use('/api/ledger', ledgerRoutes(db));
+app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 
