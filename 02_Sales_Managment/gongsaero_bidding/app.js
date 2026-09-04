@@ -839,7 +839,7 @@ const app = {
 
         const textToCopy = lines.join('\n');
         navigator.clipboard.writeText(textToCopy).then(() => {
-            alert(`총 ${lines.length}개 품목의 '고객사 납품단가'가 클립보드에 복사되었습니다!\n공새로 투찰창에 순서대로 붙여넣으실 수 있습니다.`);
+            alert(`총 ${lines.length}개 품목의 '납품단가'가 클립보드에 복사되었습니다!\n공새로 투찰창에 순서대로 붙여넣으실 수 있습니다.`);
         }).catch(() => {
             prompt('아래 단가 텍스트를 복사(Ctrl+C)하세요:', textToCopy);
         });
@@ -865,7 +865,7 @@ const app = {
             ['납품주소', document.getElementById('formDeliveryAddress').value || ''],
             ['인도조건', document.getElementById('formDeliveryCondition').value || ''],
             [],
-            ['No', '품목명', '규격', '단위', '수량', '우리의 매입가', '마진율(%)', '정산단가', '공새로 수수료(6%)', '고객사 납품단가', '품목 순이익', '비고']
+            ['No', '품목명', '규격', '단위', '수량', 'K&G 매입가', '마진율(%)', '정산단가', '수수료(6%)', '납품단가', '순이익', '비고']
         ];
 
         rows.forEach((r, idx) => {
@@ -941,12 +941,12 @@ const app = {
                 '규격': i.spec,
                 '단위': i.unit,
                 '수량': i.qty,
-                '우리의 매입가': i.buy_price,
+                'K&G 매입가': i.buy_price,
                 '마진율(%)': i.margin_rate,
                 '희망 정산단가': i.settlement_price,
-                '공새로 수수료': i.gongsaero_fee,
-                '고객사 납품단가': i.delivery_price,
-                '품목 순이익': i.item_profit
+                '수수료(6%)': i.gongsaero_fee,
+                '납품단가': i.delivery_price,
+                '순이익': i.item_profit
             }));
 
             const ws = XLSX.utils.json_to_sheet(excelRows);

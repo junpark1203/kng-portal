@@ -474,3 +474,171 @@ body {
     max-width: 400px;
     margin: 0 auto 1.5rem auto;
 }
+
+/* ── 계산 로직 인포 팝오버 (Tooltip / Popover) ── */
+.calc-logic-info-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.calc-logic-trigger {
+    color: #2563eb;
+    transition: transform 0.15s ease, color 0.15s ease;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.calc-logic-trigger:hover {
+    color: #1d4ed8;
+    transform: scale(1.18);
+}
+
+.calc-logic-popover {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 0;
+    width: 530px;
+    max-width: calc(100vw - 40px);
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.18), 0 2px 8px rgba(0, 0, 0, 0.06);
+    z-index: 1090;
+    padding: 1.15rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.2s;
+    pointer-events: none;
+    font-size: 0.82rem;
+    color: #1e293b;
+    text-align: left;
+}
+
+/* 마우스가 trigger에서 popover로 이동할 때 끊김 방지 브릿지 */
+.calc-logic-popover::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: 0;
+    width: 100%;
+    height: 12px;
+}
+
+/* hover 또는 focus 시 표시 */
+.calc-logic-info-wrapper:hover .calc-logic-popover,
+.calc-logic-info-wrapper:focus-within .calc-logic-popover,
+.calc-logic-info-wrapper.active .calc-logic-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.popover-header-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.75rem;
+}
+
+.popover-header-title h6 {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.logic-section-block {
+    margin-bottom: 0.65rem;
+}
+
+.logic-section-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #334155;
+    margin-bottom: 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.logic-formula-banner {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-weight: 600;
+    color: #1e40af;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logic-rules-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    line-height: 1.5;
+}
+
+.logic-rules-list li {
+    margin-bottom: 0.25rem;
+}
+
+.badge-calc-cut {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.badge-calc-up {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.7rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.logic-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    margin-top: 0.3rem;
+}
+
+.logic-table th {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #cbd5e1;
+    text-align: center;
+    font-weight: 600;
+}
+
+.logic-table td {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.logic-caution-alert {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 0.45rem 0.65rem;
+    color: #92400e;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    margin-top: 0.5rem;
+}
+
