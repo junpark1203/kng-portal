@@ -616,16 +616,40 @@ const app = {
             totalProfit += ((settlement - buy) * qty);
         });
 
-        // 예상 용차비 차감 고려
-        const shippingFee = parseFloat(document.getElementById('formEstimatedShippingFee').value) || 0;
-        const netProfit = totalProfit - shippingFee;
+        // 예상 용차비 차감 고려 (배송비 포함여부 및 안분 여부 반영)
+        const shippingFee = parseFloat(document.getElementById('formEstimatedShippingFee')?.value) || 0;
+        const shippingIncluded = document.getElementById('formShippingIncluded')?.value === '1';
+        
+        let netProfit = totalProfit;
+        let noteTip = '';
+
+        // 배송비가 '포함 (단가에 반영)'이고, 아직 품목 매입가에 직접 안분되지 않은 경우에만 전체 마진에서 차감
+        if (shippingIncluded && !this.shippingDistributed && shippingFee > 0) {
+            netProfit = totalProfit - shippingFee;
+            noteTip = ` (품목마진 ${Math.round(totalProfit).toLocaleString()}원 - 용차비 ${shippingFee.toLocaleString()}원)`;
+        } else if (this.shippingDistributed) {
+            noteTip = ` (용차비 ${shippingFee.toLocaleString()}원 품목 매입가 기반영)`;
+        }
+
         const profitRate = totalBuy > 0 ? ((netProfit / totalBuy) * 100).toFixed(1) : '0.0';
 
         document.getElementById('sumBuyCost').innerText = `${Number(totalBuy).toLocaleString()}원`;
         document.getElementById('sumGongsaeroFee').innerText = `${Number(totalFee).toLocaleString()}원`;
         document.getElementById('sumSettlementAmount').innerText = `${Number(totalSettlement).toLocaleString()}원`;
         document.getElementById('sumDeliveryTotal').innerText = `${Number(totalDelivery).toLocaleString()}원`;
-        document.getElementById('sumProfitAndRate').innerText = `${Number(netProfit).toLocaleString()}원 (${profitRate}%)`;
+        
+        const profitEl = document.getElementById('sumProfitAndRate');
+        if (profitEl) {
+            profitEl.innerText = `${Number(netProfit).toLocaleString()}원 (${profitRate}%)`;
+            profitEl.title = `최종 예상 순이익: ${Number(netProfit).toLocaleString()}원${noteTip}`;
+            if (netProfit < 0) {
+                profitEl.classList.remove('profit');
+                profitEl.style.color = '#f87171';
+            } else {
+                profitEl.classList.add('profit');
+                profitEl.style.color = '';
+            }
+        }
     },
 
     // ── 배송비/용차비 품목별 수량비율 안분 분배 ──
@@ -659,6 +683,8 @@ const app = {
             this.recalcRow(buyInput, 'buy');
         });
 
+        this.shippingDistributed = true;
+        this.updateSummaryMetrics();
         alert('용차비가 각 품목의 매입단가에 정상 안분되었습니다.');
     },
 

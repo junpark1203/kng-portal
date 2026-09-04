@@ -292,7 +292,7 @@
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small fw-bold text-secondary mb-1">배송비 포함여부</label>
-                                    <select class="form-select form-select-sm" id="formShippingIncluded">
+                                    <select class="form-select form-select-sm" id="formShippingIncluded" onchange="app.updateSummaryMetrics()">
                                         <option value="1">포함 (단가에 반영)</option>
                                         <option value="0">별도 (추가 청구)</option>
                                     </select>

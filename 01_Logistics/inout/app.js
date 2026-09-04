@@ -73,6 +73,7 @@ const app = {
     },
 
     
+    subSearchKeyword: '',
     categoryList: [],
     topCategories: ['유압유', '기어유', '그리스', '테일씰그리스', '절삭유', '작동유'],
 
@@ -568,6 +569,12 @@ const app = {
         if (rAll) rAll.checked = true;
         this.detailedFilters.category = '';
         this.renderCategoryPills();
+        this.subSearchKeyword = '';
+        if ($('subSearchInput')) $('subSearchInput').value = '';
+        const clearSubBtn = $('clearSubSearchBtn');
+        if (clearSubBtn) clearSubBtn.classList.add('d-none');
+        const countBadge = $('subSearchCountBadge');
+        if (countBadge) countBadge.classList.add('d-none');
         this.resetPageAndLoadHistory();
     },
 
@@ -767,7 +774,11 @@ const app = {
             
             const res = await authFetch(`${API_BASE}/history?${params.toString()}`);
             this.currentHistoryData = res.data;
-            this.renderHistoryTable(res.data);
+            if (this.subSearchKeyword) {
+                this.renderFilteredHistoryTable();
+            } else {
+                this.renderHistoryTable(res.data);
+            }
             this.renderPagination(res.total, res.page, res.limit);
             this.renderSummaryStrip(res.summary, typeFilter);
             this.renderActiveFilterChips();
@@ -775,6 +786,66 @@ const app = {
             console.error('History load error:', err);
             $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
         }
+    },
+
+    // ── 결과 내 재검색 (Sub-Search) 로직 ──
+    onSubSearchInput: function(val) {
+        this.subSearchKeyword = (val || '').trim().toLowerCase();
+        const clearBtn = $('clearSubSearchBtn');
+        if (clearBtn) {
+            if (this.subSearchKeyword) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        this.renderFilteredHistoryTable();
+    },
+
+    clearSubSearch: function() {
+        const input = $('subSearchInput');
+        if (input) input.value = '';
+        this.onSubSearchInput('');
+    },
+
+    renderFilteredHistoryTable: function() {
+        if (!this.currentHistoryData) return;
+        let displayList = this.currentHistoryData;
+        if (this.subSearchKeyword) {
+            const keywords = this.subSearchKeyword.split(/\s+/).filter(k => k.length > 0);
+            displayList = this.currentHistoryData.filter(r => {
+                const searchStr = [
+                    r.date || '',
+                    r.type === 'outbound' ? (r.is_direct === 1 ? '직출고 출고' : '출고') : '입고',
+                    r.supplier || '',
+                    r.destination || '',
+                    r.actual_destination || '',
+                    r.party || '',
+                    r.category || '',
+                    r.item || '',
+                    r.spec || '',
+                    r.unit || '',
+                    r.note || '',
+                    r.transaction_group_id || '',
+                    r.trade_type || '',
+                    String(r.qty || ''),
+                    String(r.unit_price || ''),
+                    String(r.selling_price || ''),
+                    String(r.price || '')
+                ].join(' ').toLowerCase();
+
+                return keywords.every(kw => searchStr.includes(kw));
+            });
+        }
+
+        const countBadge = $('subSearchCountBadge');
+        if (countBadge) {
+            if (this.subSearchKeyword) {
+                countBadge.innerText = `재검색: ${displayList.length}건`;
+                countBadge.classList.remove('d-none');
+            } else {
+                countBadge.classList.add('d-none');
+            }
+        }
+
+        this.renderHistoryTable(displayList);
     },
 
     renderPagination: function(total, currentPage, limit) {
