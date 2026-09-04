@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>월간현황 및 청구서 관리</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Boxicons -->
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../../styles.css?v=3">
+    <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=3">
+    <style>
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .summary-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            transition: all 0.2s ease-in-out;
+        }
+        .summary-card:hover {
+            box-shadow: 0 6px 16px -2px rgba(0, 0, 0, 0.08);
+        }
+
+        .table thead th {
+            background-color: #f1f5f9;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #334155;
+            text-align: center;
+            vertical-align: middle;
+            border-bottom: 2px solid #cbd5e1;
+            white-space: nowrap;
+        }
+        .table tbody td {
+            font-size: 0.82rem;
+            vertical-align: middle;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .clickable-row:hover {
+            background-color: #f8fafc !important;
+        }
+        .clickable-row.table-active {
+            background-color: #eff6ff !important;
+        }
+
+        .badge-sales {
+            background-color: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
+        }
+        .badge-purchase {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        .badge-carryover {
+            background-color: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        /* ── 인쇄 전용 스타일 (정산장부 A4 최적화 양식 계승) ── */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 12mm 10mm 15mm 10mm;
+            }
+            html, body {
+                height: auto !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            .no-print, .d-print-none {
+                display: none !important;
+            }
+            #printableArea {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            .print-header { display: block !important; }
+            .header-container { display: flex; justify-content: space-between; margin-bottom: 5px; align-items: flex-end; width: 100%; }
+            .header-left { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+            .title-box { padding-bottom: 5px; margin-bottom: 10px; }
+            .title-box h1 { margin: 0; font-size: 26px; letter-spacing: 2px; font-weight: 800; white-space: nowrap; }
+            .recipient-box { margin-bottom: 10px; }
+            .recipient-name { font-size: 18px; font-weight: bold; }
+            .date-info { font-size: 12px; color: #333; }
+
+            .supplier-table { border-collapse: collapse; border: 2px solid black; width: 380px; font-size: 11px; margin-left: auto; }
+            .supplier-table th, .supplier-table td { border: 1px solid black; padding: 4px 4px; text-align: center; height: 24px; white-space: nowrap; }
+            .supplier-table th { background-color: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .vertical-th { width: 20px; writing-mode: vertical-lr; letter-spacing: 12px; padding-top: 12px !important; }
+            .stamp-cell { position: relative; }
+            .stamp { position: absolute; right: -5px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; opacity: 0.9; mix-blend-mode: multiply; }
+            .address-cell { white-space: normal !important; text-align: left !important; padding-left: 6px !important; }
+
+            .amount-box { border: 2px solid black; padding: 6px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; }
+
+            #printableArea .table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 11px !important;
+                margin-bottom: 5px !important;
+                table-layout: fixed !important;
+                border-top: 2px solid #000 !important;
+                border-bottom: 2px solid #000 !important;
+                border-left: none !important;
+                border-right: none !important;
+                page-break-inside: auto !important;
+            }
+            #printableArea .table thead { display: table-header-group !important; }
+            #printableArea .table tbody tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+            #printableArea .table tbody td, #printableArea .table td {
+                border-left: none !important;
+                border-top: none !important;
+                border-right: 1px solid #ccc !important;
+                border-bottom: 1px solid #aaa !important;
+                padding: 2px 2px !important;
+                text-align: center !important;
+                vertical-align: middle !important;
+                height: 24px !important;
+                line-height: 1.15 !important;
+                white-space: nowrap !important;
+                font-size: 11px !important;
+                color: #000 !important;
+                background-color: transparent !important;
+                overflow: hidden !important;
+            }
+            #printableArea .table tbody tr td:last-child, #printableArea .table td:last-child {
+                border-right: none !important;
+            }
+            #printableArea .table thead th, #printableArea .table th {
+                border-left: none !important;
+                border-top: none !important;
+                border-bottom: 1.5px solid #000 !important;
+                border-right: 1px solid #ccc !important;
+                background-color: #f9f9f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-weight: bold !important;
+                color: black !important;
+                text-align: center !important;
+                height: 24px !important;
+                padding: 3px 2px !important;
+                font-size: 11px !important;
+            }
+            #printableArea .table thead th:last-child {
+                border-right: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-3 p-md-4">
+
+<div class="container-fluid no-print">
+    <!-- 상단 페이지 타이틀 & 설명 -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold mb-1 d-flex align-items-center gap-2">
+                <i class='bx bx-calendar-check text-primary'></i> 월간현황 및 청구서 관리
+            </h4>
+            <p class="text-muted small mb-0">지정된 정산월(이월 내역 반영) 기준으로 거래처별 매입·매출 집계 및 월별 청구서/매입정산서를 관리·출력합니다.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-outline-secondary btn-sm shadow-sm" onclick="app.loadMonthlySummary()">
+                <i class='bx bx-refresh'></i> 새로고침
+            </button>
+        </div>
+    </div>
+
+    <!-- 1. 정산월 선택 & 필터 툴바 -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-center">
+                <!-- 월 선택기 -->
+                <div class="col-12 col-md-auto d-flex align-items-center gap-1">
+                    <span class="fw-bold text-secondary small me-1"><i class='bx bx-calendar'></i> 정산월:</span>
+                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(-1)" title="이전달">
+                        <i class='bx bx-chevron-left'></i>
+                    </button>
+                    <input type="month" id="targetMonth" class="form-control form-control-sm text-center fw-bold text-primary" style="width: 125px;" onchange="app.onMonthChange()">
+                    <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(1)" title="다음달">
+                        <i class='bx bx-chevron-right'></i>
+                    </button>
+                    <div class="btn-group btn-group-sm ms-1">
+                        <button class="btn btn-outline-primary py-0" type="button" onclick="app.setMonthPreset('prev')">전월</button>
+                        <button class="btn btn-outline-primary py-0" type="button" onclick="app.setMonthPreset('current')">당월</button>
+                    </div>
+                </div>
+
+                <!-- 구분 필터 (전체/매출처/매입처) -->
+                <div class="col-12 col-md-auto d-flex align-items-center gap-1">
+                    <span class="fw-bold text-secondary small ms-md-2 me-1">구분:</span>
+                    <div class="btn-group btn-group-sm" id="typeFilterGroup">
+                        <button type="button" class="btn btn-primary active" data-type="all" onclick="app.setTypeFilter('all')">전체</button>
+                        <button type="button" class="btn btn-outline-secondary" data-type="sales" onclick="app.setTypeFilter('sales')">매출처 (청구)</button>
+                        <button type="button" class="btn btn-outline-secondary" data-type="purchase" onclick="app.setTypeFilter('purchase')">매입처 (정산)</button>
+                    </div>
+                </div>
+
+                <!-- 자재계정 필터 -->
+                <div class="col-12 col-md-auto">
+                    <select id="accountFilter" class="form-select form-select-sm" onchange="app.loadMonthlySummary()">
+                        <option value="">전체 자재계정</option>
+                        <option value="안전자재_전체">안전자재 통합</option>
+                        <option value="안전자재-일반">-- 안전(일반)</option>
+                        <option value="안전자재-환경">-- 안전(환경)</option>
+                        <option value="잡자재">잡자재</option>
+                        <option value="기타자재">기타자재</option>
+                        <option value="쇼핑몰">쇼핑몰</option>
+                        <option value="미분류">미분류</option>
+                    </select>
+                </div>
+
+                <!-- 거래처명 검색창 -->
+                <div class="col-12 col-md">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                        <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명, 사업자번호 검색..." oninput="app.filterTableRows()">
+                        <button class="btn btn-outline-secondary d-none" id="clearSearchBtn" type="button" onclick="app.clearSearch()"><i class='bx bx-x'></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 월간 KPI 요약 카드 섹션 -->
+    <div class="row g-3 mb-3" id="kpiCardSection">
+        <!-- 매출 청구 합계 -->
+        <div class="col-12 col-md-4">
+            <div class="summary-card p-3 border-start border-4 border-primary shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-bold"><i class='bx bx-export text-primary'></i> 당월 매출 청구 합계</span>
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary" id="kpiSalesCount">0건</span>
+                </div>
+                <div class="h4 fw-bold text-primary mb-1" id="kpiSalesTotal">0원</div>
+                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiSalesSub">
+                    공급가: 0원 | 부가세: 0원 | 수량: 0
+                </div>
+            </div>
+        </div>
+
+        <!-- 매입 정산 합계 -->
+        <div class="col-12 col-md-4">
+            <div class="summary-card p-3 border-start border-4 border-success shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-bold"><i class='bx bx-import text-success'></i> 당월 매입 정산 합계</span>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success" id="kpiPurchaseCount">0건</span>
+                </div>
+                <div class="h4 fw-bold text-success mb-1" id="kpiPurchaseTotal">0원</div>
+                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiPurchaseSub">
+                    공급가: 0원 | 부가세: 0원 | 수량: 0
+                </div>
+            </div>
+        </div>
+
+        <!-- 월간 차액(마진) -->
+        <div class="col-12 col-md-4">
+            <div class="summary-card p-3 border-start border-4 border-info shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-bold"><i class='bx bx-calculator text-info'></i> 당월 정산 차액 (매출 - 매입)</span>
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info" id="kpiMarginBadge">수지차</span>
+                </div>
+                <div class="h4 fw-bold text-dark mb-1" id="kpiMarginTotal">0원</div>
+                <div class="text-muted small" style="font-size: 0.77rem;" id="kpiMarginSub">
+                    공급가 차액: 0원 (마진율: 0%)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 대시보드 뷰: 거래처별 월간 집계 요약 테이블 -->
+    <div class="card border-0 shadow-sm mb-4" id="partnerSummaryCard">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="fw-bold small d-flex align-items-center gap-2">
+                <i class='bx bx-list-ul text-primary'></i> 거래처별 월간 청구/정산 목록
+                <span class="badge bg-light text-secondary border" id="tableRowCountBadge">0개 거래처</span>
+            </div>
+            <div class="small text-muted">
+                <i class='bx bx-info-circle'></i> 행을 클릭하면 하단에서 상세 내역 확인 및 청구서 출력이 가능합니다.
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="monthlySummaryTable">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">No.</th>
+                        <th style="min-width: 140px;" class="text-start">거래처명</th>
+                        <th style="width: 120px;">사업자번호</th>
+                        <th style="width: 80px;">구분</th>
+                        <th style="width: 60px;">건수</th>
+                        <th style="width: 70px;">총수량</th>
+                        <th style="width: 110px;" class="text-end">공급가액</th>
+                        <th style="width: 95px;" class="text-end">세액</th>
+                        <th style="width: 125px;" class="text-end fw-bold">청구/정산합계</th>
+                        <th style="min-width: 150px;">자재계정 요약</th>
+                        <th style="width: 120px;">작업</th>
+                    </tr>
+                </thead>
+                <tbody id="monthlySummaryTableBody">
+                    <tr>
+                        <td colspan="11" class="text-center py-5 text-muted">
+                            <i class='bx bx-loader-alt bx-spin'></i> 월간 현황 데이터를 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. 거래처 상세 내역 & 청구서 미리보기 영역 (선택 시 노출) -->
+    <div class="card border-0 shadow-sm mb-4 d-none" id="partnerDetailCard">
+        <div class="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <h6 class="mb-0 fw-bold" id="detailPartnerTitle">거래처 상세 내역</h6>
+                <span class="badge bg-white text-primary" id="detailPartnerTypeBadge">매출</span>
+                <span class="badge bg-white bg-opacity-25 text-white" id="detailMonthBadge">2026-05</span>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <div class="form-check form-switch text-white me-2 mb-0" style="font-size: 0.8rem;">
+                    <input class="form-check-input" type="checkbox" id="detailAggregateBizChk" onchange="app.onDetailBizAggChange()">
+                    <label class="form-check-label" for="detailAggregateBizChk">동일 사업자번호 통합</label>
+                </div>
+                <button class="btn btn-light btn-sm fw-bold text-primary shadow-sm" onclick="app.printInvoice()">
+                    <i class='bx bx-printer'></i> <span id="printBtnText">청구서 인쇄</span>
+                </button>
+                <button class="btn btn-outline-light btn-sm" onclick="app.closeDetail()">
+                    <i class='bx bx-x'></i> 닫기
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-3">
+            <!-- 거래처 정보 & 소계 요약 바 -->
+            <div class="p-2 px-3 bg-light rounded border mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size: 0.82rem;">
+                <div class="d-flex gap-3 align-items-center flex-wrap">
+                    <span><strong>대표자:</strong> <span id="detailCeoName">-</span></span>
+                    <span><strong>사업자번호:</strong> <span id="detailBizNum">-</span></span>
+                    <span><strong>청구건수:</strong> <strong class="text-primary" id="detailTotalCount">0건</strong></span>
+                </div>
+                <div class="d-flex gap-3 align-items-center flex-wrap">
+                    <span>공급가: <strong id="detailSupplyAmt">0원</strong></span>
+                    <span>부가세: <strong id="detailVatAmt">0원</strong></span>
+                    <span class="fs-6 fw-bold text-primary">합계금액: <span id="detailGrandTotal">0원</span></span>
+                </div>
+            </div>
+
+            <!-- 세부 품목 테이블 -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle mb-0" style="font-size: 0.8rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;">No.</th>
+                            <th style="width: 85px;">발생일자</th>
+                            <th style="width: 85px;">정산일자</th>
+                            <th style="width: 100px;">자재계정</th>
+                            <th style="min-width: 160px;" class="text-start">품목명</th>
+                            <th style="width: 90px;">규격</th>
+                            <th style="width: 45px;">단위</th>
+                            <th style="width: 60px;" class="text-end">수량</th>
+                            <th style="width: 80px;" class="text-end">단가</th>
+                            <th style="width: 95px;" class="text-end">공급가액</th>
+                            <th style="width: 80px;" class="text-end">부가세</th>
+                            <th style="width: 105px;" class="text-end fw-bold">합계금액</th>
+                            <th style="min-width: 110px;">비고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailTableBody">
+                        <!-- JS 렌더링 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- 5. 프린트 전용 영역 (A4 포맷 - 2026년 O월 청구서 / 매입정산내역) -->
+<!-- ================================================================ -->
+<div id="printableArea" class="d-none">
+    <div class="print-header">
+        <div class="header-container">
+            <div class="header-left">
+                <div class="title-box">
+                    <h1 id="printTitle">2026년 O월 청구서</h1>
+                </div>
+                <div class="recipient-box">
+                    <span class="recipient-name" id="printPartnerName">거래처명</span> <span style="font-size:16px;">貴中</span>
+                </div>
+                <div class="date-info">
+                    <span id="printBillingMonth">청구월: 2026년 05월</span>
+                </div>
+            </div>
+
+            <!-- 공급자 표 (매출: 케앤지, 매입: 거래처) -->
+            <table class="supplier-table">
+                <tr>
+                    <th rowspan="4" class="vertical-th">공급자</th>
+                    <th>등록번호</th>
+                    <td colspan="3" id="printBizNo" style="font-weight:bold; letter-spacing: 1px;">845-88-00551</td>
+                </tr>
+                <tr>
+                    <th style="width: 55px;">상호</th>
+                    <td id="printBizName" style="width: 125px;">주식회사 케앤지</td>
+                    <th style="width: 45px;">성명</th>
+                    <td class="stamp-cell" style="width: 95px;">
+                        <span id="printCeo">윤종</span>
+                        <img src="../../img/stamp.png" class="stamp" alt="직인">
+                    </td>
+                </tr>
+                <tr>
+                    <th>사업장</th>
+                    <td colspan="3" class="address-cell" id="printAddress">서울시 강동구 구천면로 159, 1층 2호, 3호</td>
+                </tr>
+                <tr>
+                    <th>업태</th>
+                    <td id="printBizType">도소매/임대업</td>
+                    <th>종목</th>
+                    <td id="printBizItem">건설자재, 용품외</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 금액 표기 박스 -->
+        <div class="amount-box">
+            <span id="printAmountKor">합 계 금 액 : 금 영 원 정</span>
+            <span id="printAmountNum">(₩ 0)</span>
+        </div>
+    </div>
+
+    <!-- 인쇄용 테이블 본체 -->
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width: 45px;">일자</th>
+                <th style="width: 75px;">자재계정</th>
+                <th class="text-start" style="width: 200px;">품목명</th>
+                <th style="width: 75px;">규격</th>
+                <th style="width: 45px;">수량</th>
+                <th style="width: 35px;">단위</th>
+                <th style="width: 60px;">단가</th>
+                <th style="width: 70px;">공급가액</th>
+                <th style="width: 65px;">세액</th>
+                <th style="width: 75px;">합계</th>
+                <th>비고</th>
+            </tr>
+        </thead>
+        <tbody id="printTableBody">
+            <!-- JS 렌더링 -->
+        </tbody>
+        <tfoot id="printTableFoot">
+            <!-- 소계 및 합계 JS 렌더링 -->
+        </tfoot>
+    </table>
+</div>
+
+<!-- Bootstrap 5.3 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="module">
+    import { authFetch } from '../../js/auth.js';
+    window.authFetch = authFetch;
+</script>
+<script src="app.js"></script>
+
+</body>
+</html>

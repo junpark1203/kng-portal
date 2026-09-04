@@ -71,7 +71,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_inbound ADD COLUMN trade_type TEXT DEFAULT '내수'",
                         "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee REAL DEFAULT 0",
                         "ALTER TABLE logistics_inbound ADD COLUMN shipping_fee_vat_included INTEGER DEFAULT 0",
-                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_account TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_account TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_inbound ADD COLUMN settlement_month TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsInbound.forEach(sql => database.run(sql, () => {}));
@@ -109,7 +110,8 @@ function initLogisticsTables(database) {
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_price REAL",
                         "ALTER TABLE logistics_outbound ADD COLUMN settlement_memo TEXT",
                         "ALTER TABLE logistics_outbound ADD COLUMN trade_type TEXT DEFAULT '내수'",
-                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_account TEXT DEFAULT ''"
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_account TEXT DEFAULT ''",
+                        "ALTER TABLE logistics_outbound ADD COLUMN settlement_month TEXT DEFAULT ''"
                     ];
                     database.serialize(() => {
                         addColsOutbound.forEach(sql => database.run(sql, () => {}));
@@ -479,7 +481,7 @@ router.get('/history', (req, res) => {
     limit = parseInt(limit, 10) || 50;
     const offset = (page - 1) * limit;
 
-    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account', 'transaction_group_id', 'tax_invoice_date', 'settlement_status'];
+    const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account', 'transaction_group_id', 'tax_invoice_date', 'settlement_status', 'settlement_month'];
     const safeSortCol = validSortCols.includes(sortCol) ? sortCol : 'date';
     const safeSortDir = sortDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -536,6 +538,11 @@ router.get('/history', (req, res) => {
             whereClauses.push("settlement_account = ?");
             params.push(settlement_account);
         }
+    }
+
+    if (req.query.settlement_month) {
+        whereClauses.push("settlement_month = ?");
+        params.push(req.query.settlement_month);
     }
 
     // 개별 상세 검색 필터 지원
@@ -622,7 +629,8 @@ router.get('/history', (req, res) => {
                 i.is_direct, i.settlement_status, i.tax_invoice_date, i.is_zero_tax,
                 COALESCE(NULLIF(i.transaction_group_id, ''), 'IN-' || REPLACE(SUBSTR(i.date, 1, 10), '-', '') || '-' || printf('%04d', i.id)) as transaction_group_id,
                 i.settlement_qty, i.settlement_price, i.settlement_memo, i.trade_type,
-                COALESCE(i.settlement_account, '') as settlement_account
+                COALESCE(i.settlement_account, '') as settlement_account,
+                COALESCE(i.settlement_month, '') as settlement_month
             FROM logistics_inbound i
             LEFT JOIN logistics_outbound_lots dl ON i.is_direct = 1 AND dl.inbound_id = i.id
             LEFT JOIN logistics_outbound do ON dl.outbound_id = do.id
@@ -648,7 +656,8 @@ router.get('/history', (req, res) => {
                 o.is_direct, o.settlement_status, o.tax_invoice_date, o.is_zero_tax,
                 COALESCE(NULLIF(o.transaction_group_id, ''), 'OUT-' || REPLACE(SUBSTR(o.date, 1, 10), '-', '') || '-' || printf('%04d', o.id)) as transaction_group_id,
                 o.settlement_qty, o.settlement_price, o.settlement_memo, o.trade_type,
-                COALESCE(o.settlement_account, '') as settlement_account
+                COALESCE(o.settlement_account, '') as settlement_account,
+                COALESCE(o.settlement_month, '') as settlement_month
             FROM logistics_outbound o
             LEFT JOIN logistics_outbound_lots dl ON o.is_direct = 1 AND dl.outbound_id = o.id
             LEFT JOIN logistics_inbound di ON dl.inbound_id = di.id
@@ -1351,8 +1360,23 @@ router.post('/settlement/:type', (req, res) => {
             return;
         }
 
+        if (req.body.action === 'update_month' && ids && Array.isArray(ids)) {
+            // 정산월(이월) 일괄 변경
+            const placeholders = ids.map(() => '?').join(',');
+            const sql = `UPDATE ${table} SET settlement_month = ? WHERE id IN (${placeholders})`;
+            db.run(sql, [req.body.settlement_month || '', ...ids], function(err) {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
+                db.run("COMMIT");
+                return res.json({ message: '정산월이 성공적으로 변경(이월)되었습니다.' });
+            });
+            return;
+        }
+
         if (items && Array.isArray(items)) {
-            // 개별 정산 (수량, 단가, 비고, 자재계정 포함)
+            // 개별 정산 (수량, 단가, 비고, 자재계정, 정산월 포함)
             // 필수 검증: settlement_account 지정 여부 확인
             for (let i of items) {
                 if (!i.settlement_account || !String(i.settlement_account).trim()) {
@@ -1361,17 +1385,20 @@ router.post('/settlement/:type', (req, res) => {
                 }
             }
 
-            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ? WHERE id = ?`);
+            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ?, settlement_month = ? WHERE id = ?`);
             for (let i of items) {
-                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', String(i.settlement_account).trim(), i.id, function(e) { if(e) hasError = true; });
+                const sMonth = (i.settlement_month && String(i.settlement_month).trim()) || (i.tax_invoice_date ? String(i.tax_invoice_date).substring(0, 7) : '');
+                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', String(i.settlement_account).trim(), sMonth, i.id, function(e) { if(e) hasError = true; });
             }
             stmt.finalize();
         } else if (ids && Array.isArray(ids)) {
             // 단순 상태 변경 (정산 취소 등)
             const status = tax_invoice_date ? '정산완료' : '미정산';
             const placeholders = ids.map(() => '?').join(',');
-            const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
-            db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
+            const sql = (status === '미정산') 
+                ? `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ?, settlement_month = '' WHERE id IN (${placeholders})`
+                : `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
+            db.run(sql, (status === '미정산') ? [status, null, 0, ...ids] : [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
                 if(err) hasError = true;
             });
         } else {
