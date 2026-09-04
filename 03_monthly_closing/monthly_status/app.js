@@ -487,7 +487,7 @@ const app = {
 
         const tbody = $('mainStatusTableBody');
         if (!tbody) return;
-        tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
 
         try {
             const accVal = $('accountFilter')?.value || '';
@@ -545,7 +545,7 @@ const app = {
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
         }
     },
 
@@ -615,7 +615,7 @@ const app = {
             else msg = `${this.currentMonth ? '[' + this.currentMonth + ']에 ' : ''}등록된 정산 내역이 없습니다.`;
 
             const targetName = this.selectedPartner ? `[${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 ` : '';
-            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
             if (tfoot) tfoot.innerHTML = '';
             return;
         }
@@ -676,23 +676,22 @@ const app = {
                         <input class="form-check-input item-chk" type="checkbox" value="${r.id}" data-type="${r.type}" data-confirmed="${isConfirmed ? '1' : '0'}" onchange="app.onItemCheckChange()">
                     </td>
                     <td class="text-center text-muted small">${idx + 1}</td>
-                    <td class="text-center">${typeBadge}</td>
-                    <td class="text-center small">${r.date ? r.date.split('T')[0] : '-'}</td>
-                    <td class="text-center small ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
-                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 130px;" title="${partyName}">${partyName}</td>
-                    <td class="text-center small"><span class="badge bg-light text-dark border">${r.settlement_account || '-'}</span></td>
+                    <td class="text-center text-nowrap">${typeBadge}</td>
+                    <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
+                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 135px;" title="${partyName}">${partyName}</td>
+                    <td class="text-center small text-nowrap"><span class="badge bg-light text-dark border">${r.settlement_account || '-'}</span></td>
                     <td class="text-start">
                         <strong>${r.item}</strong>
                         ${r.is_direct ? `<span class="badge bg-secondary bg-opacity-10 text-secondary border ms-1" style="font-size:0.68rem;">직출</span>` : ''}
                     </td>
                     <td class="text-center text-muted small">${r.spec || '-'}</td>
-                    <td class="text-center text-muted small">${r.unit || '-'}</td>
-                    <td class="text-end small">${qty.toLocaleString()}</td>
-                    <td class="text-end small">${price.toLocaleString()}원</td>
-                    <td class="text-end small">${supply.toLocaleString()}원</td>
-                    <td class="text-end text-muted small">${vat.toLocaleString()}원</td>
-                    <td class="text-end fw-bold ${isSales ? 'text-primary' : 'text-success'} small">${grandTotal.toLocaleString()}원</td>
-                    <td class="text-center">${statusBadge}</td>
+                    <td class="text-center text-muted small text-nowrap">${r.unit || '-'}</td>
+                    <td class="text-end small text-nowrap">${qty.toLocaleString()}</td>
+                    <td class="text-end small text-nowrap">${price.toLocaleString()}원</td>
+                    <td class="text-end small text-nowrap">${supply.toLocaleString()}원</td>
+                    <td class="text-end text-muted small text-nowrap">${vat.toLocaleString()}원</td>
+                    <td class="text-end fw-bold text-nowrap ${isSales ? 'text-primary' : 'text-success'} small">${grandTotal.toLocaleString()}원</td>
+                    <td class="text-center text-nowrap">${statusBadge}</td>
                     <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
                 </tr>
             `;
@@ -701,12 +700,12 @@ const app = {
         if (tfoot) {
             tfoot.innerHTML = `
                 <tr>
-                    <td colspan="10" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
-                    <td class="text-end">${totalQty.toLocaleString()}</td>
+                    <td colspan="9" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
+                    <td class="text-end text-nowrap">${totalQty.toLocaleString()}</td>
                     <td></td>
-                    <td class="text-end">${totalSupply.toLocaleString()}원</td>
-                    <td class="text-end">${totalVat.toLocaleString()}원</td>
-                    <td class="text-end text-dark fs-6 fw-bold">${totalGrand.toLocaleString()}원</td>
+                    <td class="text-end text-nowrap">${totalSupply.toLocaleString()}원</td>
+                    <td class="text-end text-nowrap">${totalVat.toLocaleString()}원</td>
+                    <td class="text-end text-dark fs-6 fw-bold text-nowrap">${totalGrand.toLocaleString()}원</td>
                     <td colspan="2"></td>
                 </tr>
             `;
