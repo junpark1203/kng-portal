@@ -11,13 +11,16 @@ const app = {
     totalItems: 0,
     currentSummary: null,
     currentSortCol: 'date',
-    currentSortDir: 'desc',
+    currentSortDir: 'asc',
     subSearchKeyword: '',
 
     init: function() {
         // 체크박스 헤더
         $('checkAllHeader').addEventListener('change', this.onCheckAllHeaderChange.bind(this));
         
+        // 정렬 헤더 UI 초기화 (오름차순 화살표)
+        this.updateSortHeaderUI();
+
         // 초기 날짜 세팅 (전월 기본)
         this.setDatePreset('prevMonth');
     },
@@ -400,7 +403,7 @@ const app = {
             this.currentSortDir = this.currentSortDir === 'asc' ? 'desc' : 'asc';
         } else {
             this.currentSortCol = col;
-            this.currentSortDir = (col === 'date' || col === 'transaction_group_id') ? 'desc' : 'asc';
+            this.currentSortDir = 'asc';
         }
         this.updateSortHeaderUI();
         this.sortItems();

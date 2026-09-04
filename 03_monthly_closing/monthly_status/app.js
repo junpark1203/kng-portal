@@ -309,8 +309,8 @@ const app = {
             const reqType = isSales ? 'outbound' : 'inbound';
             const accVal = $('accountFilter')?.value || '';
 
-            // 1. 현재 탭 품목 목록 요청
-            let url = `${API_BASE}/logistics/history?settlement_month=${encodeURIComponent(this.currentMonth)}&settlement_status=${encodeURIComponent('정산완료')}&type=${reqType}&include_direct=true&limit=1000`;
+            // 1. 현재 탭 품목 목록 요청 (날짜 오름차순: 오래된 건이 가장 위)
+            let url = `${API_BASE}/logistics/history?settlement_month=${encodeURIComponent(this.currentMonth)}&settlement_status=${encodeURIComponent('정산완료')}&type=${reqType}&include_direct=true&limit=1000&sortCol=date&sortDir=asc`;
             if (accVal) url += `&settlement_account=${encodeURIComponent(accVal)}`;
 
             // 거래처 필터 조건
@@ -343,6 +343,14 @@ const app = {
                     return targetPartnerNames.some(tn => (party || '').includes(tn));
                 });
             }
+
+            // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬
+            items.sort((a, b) => {
+                const dateA = a.date || a.tax_invoice_date || '';
+                const dateB = b.date || b.tax_invoice_date || '';
+                if (dateA === dateB) return (a.id || 0) - (b.id || 0);
+                return dateA.localeCompare(dateB);
+            });
 
             this.currentRows = items;
             this.updateFilterCounts();
