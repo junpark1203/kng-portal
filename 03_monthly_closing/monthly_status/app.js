@@ -235,6 +235,30 @@ const app = {
         }
     },
 
+    matchPartner: function(p, query) {
+        const kw = (query || '').trim().toLowerCase();
+        if (!kw) return true;
+        const name = (p.name || '').toLowerCase();
+        const comp = (p.company_name || '').toLowerCase();
+        const ceo = (p.ceo_name || '').toLowerCase();
+
+        // 1. 상호명, 거래처명, 대표자명 일치
+        if (name.includes(kw) || comp.includes(kw) || ceo.includes(kw)) {
+            return true;
+        }
+
+        // 2. 사업자번호 검색: 검색어에 숫자가 2자리 이상 포함되어 있을 때만 숫자 매칭
+        const kwDigits = kw.replace(/[^0-9]/g, '');
+        if (kwDigits.length >= 2) {
+            const biz = (p.business_number || '').replace(/[^0-9]/g, '');
+            if (biz.includes(kwDigits)) return true;
+        } else if (p.business_number && p.business_number.toLowerCase().includes(kw)) {
+            return true;
+        }
+
+        return false;
+    },
+
     onPartnerFocus: function() {
         const val = $('partnerSearchInput')?.value || '';
         this.renderAutocomplete(val);
@@ -290,13 +314,7 @@ const app = {
             }
 
             // 2. 부분 일치 검색
-            const matched = this.allPartners.filter(p => {
-                const name = (p.name || '').toLowerCase();
-                const comp = (p.company_name || '').toLowerCase();
-                const biz = (p.business_number || '').replace(/[^0-9]/g, '');
-                const ceo = (p.ceo_name || '').toLowerCase();
-                return name.includes(kw) || comp.includes(kw) || biz.includes(kw.replace(/[^0-9]/g, '')) || ceo.includes(kw);
-            });
+            const matched = this.allPartners.filter(p => this.matchPartner(p, kw));
 
             if (matched.length === 1) {
                 this.selectPartner(matched[0]);
@@ -327,13 +345,7 @@ const app = {
 
         let filtered = this.allPartners;
         if (kw) {
-            filtered = this.allPartners.filter(p => {
-                const name = (p.name || '').toLowerCase();
-                const comp = (p.company_name || '').toLowerCase();
-                const biz = (p.business_number || '').replace(/[^0-9]/g, '');
-                const ceo = (p.ceo_name || '').toLowerCase();
-                return name.includes(kw) || comp.includes(kw) || biz.includes(kw.replace(/[^0-9]/g, '')) || ceo.includes(kw);
-            });
+            filtered = this.allPartners.filter(p => this.matchPartner(p, kw));
         }
 
         if (filtered.length === 0) {
@@ -434,13 +446,7 @@ const app = {
         if (!kw) {
             this.modalPartnerList = [...this.allPartners];
         } else {
-            this.modalPartnerList = this.allPartners.filter(p => {
-                const name = (p.name || '').toLowerCase();
-                const comp = (p.company_name || '').toLowerCase();
-                const biz = (p.business_number || '').replace(/[^0-9]/g, '');
-                const ceo = (p.ceo_name || '').toLowerCase();
-                return name.includes(kw) || comp.includes(kw) || biz.includes(kw.replace(/[^0-9]/g, '')) || ceo.includes(kw);
-            });
+            this.modalPartnerList = this.allPartners.filter(p => this.matchPartner(p, kw));
         }
         this.renderModalPartnerTable();
     },
