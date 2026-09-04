@@ -141,6 +141,23 @@
             color: #1d4ed8;
         }
 
+        /* ── 선택 액션 툴바 및 인쇄 드롭다운 오버레이 ── */
+        .action-toolbar-card {
+            position: relative;
+            z-index: 100 !important;
+            overflow: visible !important;
+        }
+        .action-toolbar-card .card-body {
+            overflow: visible !important;
+        }
+        .action-toolbar-card .dropdown-menu {
+            z-index: 1060 !important;
+            min-width: 175px;
+            box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+            border-radius: 8px;
+            margin-top: 4px !important;
+        }
+
         /* ── 메인 상세 품목 테이블 스타일 (한 줄 표시 및 정형 데이터 최적화) ── */
         #mainStatusTable th, #mainStatusTable td {
             white-space: nowrap !important;
@@ -414,7 +431,7 @@
         </div>
 
         <!-- 3-2. 선택 액션 툴바 (체크 관리 + 확정/취소 + 엑셀/인쇄) -->
-        <div class="card border-0 shadow-sm mb-3">
+        <div class="card border-0 shadow-sm mb-3 action-toolbar-card">
             <div class="card-body p-2 px-3">
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <!-- 좌측: 선택 체크 관리 -->
@@ -452,13 +469,13 @@
                         <button class="btn btn-outline-success btn-sm fw-bold" type="button" onclick="app.downloadExcel()">
                             <i class='bx bx-download'></i> 엑셀
                         </button>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-primary btn-sm fw-bold shadow-sm dropdown-toggle" id="printInvoiceBtn" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="btn-group btn-group-sm position-relative" role="group">
+                            <button class="btn btn-primary btn-sm fw-bold shadow-sm dropdown-toggle" id="printInvoiceBtn" type="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false">
                                 <i class='bx bx-printer'></i> <span id="printBtnLabel">청구서/정산서 인쇄</span>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow">
-                                <li><a class="dropdown-item py-2 fw-semibold text-primary" href="javascript:void(0)" onclick="app.printInvoiceWithType('outbound')"><i class='bx bx-export'></i> 매출 청구서 인쇄</a></li>
-                                <li><a class="dropdown-item py-2 fw-semibold text-success" href="javascript:void(0)" onclick="app.printInvoiceWithType('inbound')"><i class='bx bx-import'></i> 매입정산내역 인쇄</a></li>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border py-1">
+                                <li><a class="dropdown-item py-2 fw-semibold text-primary d-flex align-items-center gap-2" href="javascript:void(0)" onclick="app.printInvoiceWithType('outbound')"><i class='bx bx-export'></i> 매출 청구서 인쇄</a></li>
+                                <li><a class="dropdown-item py-2 fw-semibold text-success d-flex align-items-center gap-2" href="javascript:void(0)" onclick="app.printInvoiceWithType('inbound')"><i class='bx bx-import'></i> 매입정산내역 인쇄</a></li>
                             </ul>
                         </div>
                     </div>
