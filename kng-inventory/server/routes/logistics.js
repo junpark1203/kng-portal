@@ -1348,14 +1348,27 @@ router.post('/settlement/:type', (req, res) => {
         if (req.body.action === 'update_account' && ids && Array.isArray(ids)) {
             // 자재계정 일괄 변경
             const placeholders = ids.map(() => '?').join(',');
+            const accountVal = req.body.settlement_account || '';
             const sql = `UPDATE ${table} SET settlement_account = ? WHERE id IN (${placeholders})`;
-            db.run(sql, [req.body.settlement_account || '', ...ids], function(err) {
+            
+            // 상대 테이블(매입 <-> 매출) 자동 동기화 쿼리
+            const syncSql = (type === 'inbound')
+                ? `UPDATE logistics_outbound SET settlement_account = ? WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id IN (${placeholders}))`
+                : `UPDATE logistics_inbound SET settlement_account = ? WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders}))`;
+
+            db.run(sql, [accountVal, ...ids], function(err) {
                 if (err) {
                     db.run("ROLLBACK");
                     return res.status(500).json({ error: err.message });
                 }
-                db.run("COMMIT");
-                return res.json({ message: '자재계정이 성공적으로 변경되었습니다.' });
+                
+                db.run(syncSql, [accountVal, ...ids], function(errSync) {
+                    if (errSync) {
+                        console.error('Account counterpart sync error:', errSync.message);
+                    }
+                    db.run("COMMIT");
+                    return res.json({ message: '자재계정이 성공적으로 변경 및 상대 건과 동기화되었습니다.' });
+                });
             });
             return;
         }
@@ -1386,11 +1399,25 @@ router.post('/settlement/:type', (req, res) => {
             }
 
             const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ?, settlement_month = ? WHERE id = ?`);
+            
+            // 상대 테이블(매입 <-> 매출) 자재계정 자동 동기화 stmt
+            const syncStmt = (type === 'inbound')
+                ? db.prepare(`UPDATE logistics_outbound SET settlement_account = ? WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id = ?)`)
+                : db.prepare(`UPDATE logistics_inbound SET settlement_account = ? WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)`);
+
             for (let i of items) {
                 const sMonth = (i.settlement_month && String(i.settlement_month).trim()) || (i.tax_invoice_date ? String(i.tax_invoice_date).substring(0, 7) : '');
-                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', String(i.settlement_account).trim(), sMonth, i.id, function(e) { if(e) hasError = true; });
+                const sAccount = String(i.settlement_account).trim();
+                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
+                
+                if (syncStmt) {
+                    syncStmt.run(sAccount, i.id, function(eSync) {
+                        if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
+                    });
+                }
             }
             stmt.finalize();
+            if (syncStmt) syncStmt.finalize();
         } else if (ids && Array.isArray(ids)) {
             // 단순 상태 변경 (정산 취소 등)
             const status = tax_invoice_date ? '정산완료' : '미정산';
