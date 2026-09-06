@@ -411,6 +411,25 @@ function initDb() {
         }
     });
 
+    // 셀러K 상품 수정 히스토리 테이블
+    db.run(`
+        CREATE TABLE IF NOT EXISTS seller_k_product_logs (
+            id TEXT PRIMARY KEY,
+            productId TEXT NOT NULL,
+            summary TEXT,
+            logText TEXT,
+            diffData TEXT,
+            author TEXT,
+            createdAt TEXT
+        )
+    `, (err) => {
+        if (err) console.error('seller_k_product_logs 테이블 생성 오류:', err.message);
+        else {
+            db.run('CREATE INDEX IF NOT EXISTS idx_sk_logs_prod ON seller_k_product_logs(productId)', () => {});
+            db.run('CREATE INDEX IF NOT EXISTS idx_sk_logs_date ON seller_k_product_logs(createdAt)', () => {});
+        }
+    });
+
     // 유류소모품 단가 테이블 (레거시 - 마이그레이션 소스용 유지)
     db.run(`
         CREATE TABLE IF NOT EXISTS unit_prices (
@@ -543,9 +562,117 @@ app.get('/api/seller-k/products', (req, res) => {
     });
 });
 
+// Helper: 원화 포맷
+function formatKRW(n) {
+    return new Intl.NumberFormat('ko-KR').format(n) + '원';
+}
+
+// Helper: 상품 수정 전/후 변경점 감지
+function detectProductChanges(oldP, newP) {
+    const changes = [];
+    const fieldLabels = {
+        supplier: '매입처',
+        brand: '브랜드',
+        name: '상품명',
+        color: '컬러',
+        size: '규격',
+        uploadDate: '업로드일',
+        buyPrice: '매입가',
+        buyShipping: '매입운임',
+        shippingBasis: '운임기준',
+        shippingQty: '수량별기준',
+        sellPrice: '판매가',
+        sellShipping: '판매운임',
+        isLowestPrice: '온라인최저가',
+        isSoldOut: '품절상태',
+        remarks: '비고'
+    };
+
+    // 문자열 필드
+    ['supplier', 'brand', 'name', 'color', 'size', 'uploadDate', 'shippingBasis', 'remarks'].forEach(key => {
+        const oldVal = (oldP[key] || '').trim();
+        const newVal = (newP[key] || '').trim();
+        if (oldVal !== newVal) {
+            changes.push({
+                field: key,
+                label: fieldLabels[key],
+                oldValue: oldVal || '(없음)',
+                newValue: newVal || '(없음)',
+                text: `${fieldLabels[key]}: "${oldVal || '없음'}" ➔ "${newVal || '없음'}"`
+            });
+        }
+    });
+
+    // 금액 필드
+    ['buyPrice', 'buyShipping', 'sellPrice', 'sellShipping'].forEach(key => {
+        const oldVal = Number(oldP[key]) || 0;
+        const newVal = Number(newP[key]) || 0;
+        if (oldVal !== newVal) {
+            const diff = newVal - oldVal;
+            const diffStr = (diff > 0 ? ` (+${formatKRW(diff)})` : ` (${formatKRW(diff)})`);
+            changes.push({
+                field: key,
+                label: fieldLabels[key],
+                oldValue: formatKRW(oldVal),
+                newValue: formatKRW(newVal),
+                text: `${fieldLabels[key]}: ${formatKRW(oldVal)} ➔ ${formatKRW(newVal)}${diffStr}`
+            });
+        }
+    });
+
+    // 수량별 기준
+    if (Number(oldP.shippingQty || 1) !== Number(newP.shippingQty || 1)) {
+        changes.push({
+            field: 'shippingQty',
+            label: '수량별기준',
+            oldValue: `${oldP.shippingQty || 1}개`,
+            newValue: `${newP.shippingQty || 1}개`,
+            text: `수량별기준: ${oldP.shippingQty || 1}개 ➔ ${newP.shippingQty || 1}개`
+        });
+    }
+
+    // 온라인 최저가
+    const oldLowest = Boolean(oldP.isLowestPrice);
+    const newLowest = Boolean(newP.isLowestPrice);
+    if (oldLowest !== newLowest) {
+        changes.push({
+            field: 'isLowestPrice',
+            label: '온라인최저가',
+            oldValue: oldLowest ? '설정' : '해제',
+            newValue: newLowest ? '설정' : '해제',
+            text: `온라인최저가: ${oldLowest ? '설정' : '해제'} ➔ ${newLowest ? '설정' : '해제'}`
+        });
+    }
+
+    // 품절 상태
+    const oldSoldOut = Boolean(oldP.isSoldOut);
+    const newSoldOut = Boolean(newP.isSoldOut);
+    if (oldSoldOut !== newSoldOut) {
+        changes.push({
+            field: 'isSoldOut',
+            label: '품절상태',
+            oldValue: oldSoldOut ? '품절' : '정상',
+            newValue: newSoldOut ? '품절' : '정상',
+            text: `품절상태: ${oldSoldOut ? '품절' : '정상'} ➔ ${newSoldOut ? '품절' : '정상'}`
+        });
+    }
+
+    return changes;
+}
+
+function generateChangeSummary(changes) {
+    if (changes.length === 0) return '수정 내역 없음';
+    const labels = changes.map(c => c.label);
+    if (labels.length <= 2) {
+        return labels.join(', ') + ' 변경';
+    }
+    return `${labels.slice(0, 2).join(', ')} 외 ${labels.length - 2}건 변경`;
+}
+
 // 2. 단일 매입상품 등록
 app.post('/api/seller-k/products', (req, res) => {
     const p = req.body;
+    const now = new Date().toISOString();
     const sql = `
         INSERT INTO seller_k_products (
             id, supplier, brand, name, color, size, uploadDate, 
@@ -555,36 +682,85 @@ app.post('/api/seller-k/products', (req, res) => {
     const params = [
         p.id, p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
         p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
-        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
+        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', p.createdAt || now, p.updatedAt || now
     ];
     
     db.run(sql, params, function(err) {
         if (err) return res.status(500).json({ error: err.message });
+
+        // 최초 등록 히스토리 남기기
+        const logId = 'sk_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        const author = req.user?.name || req.user?.email || p.author || '관리자';
+        const initLogSql = `
+            INSERT INTO seller_k_product_logs (id, productId, summary, logText, diffData, author, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        db.run(initLogSql, [logId, p.id, '신규 상품 등록', '상품이 최초 등록되었습니다.', JSON.stringify([]), author, now], () => {});
+
         res.status(201).json({ message: '등록 성공', id: p.id });
     });
 });
 
-// 3. 단일 매입상품 수정
+// 3. 단일 매입상품 수정 (자동 Diff 분석 및 히스토리 기록)
 app.put('/api/seller-k/products/:id', (req, res) => {
     const id = req.params.id;
     const p = req.body;
-    const sql = `
-        UPDATE seller_k_products SET
-            supplier = ?, brand = ?, name = ?, color = ?, size = ?, uploadDate = ?,
-            buyPrice = ?, buyShipping = ?, shippingBasis = ?, shippingQty = ?, 
-            sellPrice = ?, sellShipping = ?, isLowestPrice = ?, isSoldOut = ?, remarks = ?, updatedAt = ?
-        WHERE id = ?
-    `;
-    const params = [
-        p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
-        p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
-        p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', new Date().toISOString(), id
-    ];
-    
-    db.run(sql, params, function(err) {
+
+    // 1. 기존 레코드 조회
+    db.get('SELECT * FROM seller_k_products WHERE id = ?', [id], (getErr, oldRow) => {
+        if (getErr) return res.status(500).json({ error: getErr.message });
+        if (!oldRow) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+
+        // 2. 변경점 분석
+        const changes = detectProductChanges(oldRow, p);
+        const now = new Date().toISOString();
+
+        // 3. 업데이트 쿼리 실행
+        const sql = `
+            UPDATE seller_k_products SET
+                supplier = ?, brand = ?, name = ?, color = ?, size = ?, uploadDate = ?,
+                buyPrice = ?, buyShipping = ?, shippingBasis = ?, shippingQty = ?, 
+                sellPrice = ?, sellShipping = ?, isLowestPrice = ?, isSoldOut = ?, remarks = ?, updatedAt = ?
+            WHERE id = ?
+        `;
+        const params = [
+            p.supplier || '', p.brand || '', p.name || '', p.color || '', p.size || '', p.uploadDate || '',
+            p.buyPrice || 0, p.buyShipping || 0, p.shippingBasis || '수량별', p.shippingQty || 1, 
+            p.sellPrice || 0, p.sellShipping || 0, p.isLowestPrice ? 1 : 0, p.isSoldOut ? 1 : 0, p.remarks || '', now, id
+        ];
+
+        db.run(sql, params, function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
+
+            // 4. 변경 내용이 있을 때 히스토리 로그 저장
+            if (changes.length > 0) {
+                const logId = 'sk_log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+                const summary = generateChangeSummary(changes);
+                const logText = changes.map(c => '• ' + c.text).join('\n');
+                const diffData = JSON.stringify(changes);
+                const author = req.user?.name || req.user?.email || p.author || '관리자';
+
+                const logSql = `
+                    INSERT INTO seller_k_product_logs (id, productId, summary, logText, diffData, author, createdAt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `;
+                db.run(logSql, [logId, id, summary, logText, diffData, author, now], (logErr) => {
+                    if (logErr) console.error('히스토리 로그 저장 오류:', logErr.message);
+                });
+            }
+
+            res.json({ message: '수정 성공', updatedAt: now, changeCount: changes.length });
+        });
+    });
+});
+
+// 3-1. 특정 상품의 변경 히스토리 조회
+app.get('/api/seller-k/products/:id/logs', (req, res) => {
+    const { id } = req.params;
+    db.all('SELECT * FROM seller_k_product_logs WHERE productId = ? ORDER BY createdAt DESC', [id], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        if (this.changes === 0) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
-        res.json({ message: '수정 성공' });
+        res.json(rows || []);
     });
 });
 
@@ -600,6 +776,8 @@ app.post('/api/seller-k/products/delete', (req, res) => {
     
     db.run(sql, ids, function(err) {
         if (err) return res.status(500).json({ error: err.message });
+        // 관련 히스토리도 함께 정리
+        db.run(`DELETE FROM seller_k_product_logs WHERE productId IN (${placeholders})`, ids, () => {});
         res.json({ message: '삭제 성공', deletedCount: this.changes });
     });
 });

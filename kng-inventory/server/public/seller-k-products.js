@@ -55,10 +55,18 @@ function showToast(message, type) {
     toast.className = 'toast ' + type;
     toast.innerHTML = "<i class='bx " + (icons[type] || icons.info) + "'></i> <span>" + escapeHtml(message) + "</span>";
     container.appendChild(toast);
+    
+    // 클릭하면 즉시 닫히도록 이벤트 추가
+    toast.addEventListener('click', function() {
+        toast.classList.add('fade-out');
+        setTimeout(function() { toast.remove(); }, 300);
+    });
+
+    // 지속 시간 3초 -> 6초(6000ms)로 연장
     setTimeout(function() {
         toast.classList.add('fade-out');
         setTimeout(function() { toast.remove(); }, 300);
-    }, 3000);
+    }, 6000);
 }
 
 function updateConnectionStatus(online) {
@@ -76,13 +84,20 @@ function updateConnectionStatus(online) {
 // ==========================================
 // API 설정
 // ==========================================
-const API_BASE = '/api/seller-k/products';
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api/seller-k/products'
+    : 'https://kng.junparks.com/api/seller-k/products';
 
 // ==========================================
 // 앱 상태
 // ==========================================
 var products = [];
+var filteredProducts = [];
 var editingId = null;
+var currentPage = 1;
+var pageSize = 50;
+var sortField = null;
+var sortDirection = 'asc';
 
 // ==========================================
 // 데이터 로드
@@ -93,7 +108,7 @@ function loadProducts() {
         .then(function(res) { return res.json(); })
         .then(function(data) {
             products = data || [];
-            renderTable();
+            applyFilterAndRender();
             updateConnectionStatus(true);
         })
         .catch(function(err) {
@@ -101,8 +116,101 @@ function loadProducts() {
             showToast('데이터를 불러오는데 실패했습니다.', 'error');
             updateConnectionStatus(false);
             document.getElementById('skTableBody').innerHTML =
-                '<tr><td colspan="17" style="text-align:center; padding:30px;">API 서버 연결 실패</td></tr>';
+                '<tr><td colspan="16" style="text-align:center; padding:30px;">API 서버 연결 실패</td></tr>';
         });
+}
+
+// ==========================================
+// 검색 필터링
+// ==========================================
+function applyFilterAndRender() {
+    var searchField = document.getElementById('skSearchField');
+    var searchInput = document.getElementById('skSearchInput');
+    var field = searchField ? searchField.value : 'all';
+    var keyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    if (!keyword) {
+        filteredProducts = products.slice();
+    } else {
+        filteredProducts = products.filter(function(p) {
+            if (field === 'all') {
+                return (p.supplier || '').toLowerCase().indexOf(keyword) !== -1 ||
+                       (p.brand || '').toLowerCase().indexOf(keyword) !== -1 ||
+                       (p.name || '').toLowerCase().indexOf(keyword) !== -1 ||
+                       (p.color || '').toLowerCase().indexOf(keyword) !== -1 ||
+                       (p.size || '').toLowerCase().indexOf(keyword) !== -1 ||
+                       (p.remarks || '').toLowerCase().indexOf(keyword) !== -1;
+            }
+            return (p[field] || '').toLowerCase().indexOf(keyword) !== -1;
+        });
+    }
+
+    // 정렬 적용
+    if (sortField) {
+        filteredProducts.sort(function(a, b) {
+            var valA = getSortValue(a, sortField);
+            var valB = getSortValue(b, sortField);
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return sortDirection === 'asc' ? valA - valB : valB - valA;
+            }
+            var strA = String(valA || '').toLowerCase();
+            var strB = String(valB || '').toLowerCase();
+            if (strA < strB) return sortDirection === 'asc' ? -1 : 1;
+            if (strA > strB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    renderTable();
+}
+
+// 정렬용 값 가져오기 (계산 필드 포함)
+function getSortValue(p, field) {
+    switch (field) {
+        case 'buyTotal':
+            return calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
+        case 'sellTotal':
+            return calcSellTotal(p.sellPrice, p.sellShipping);
+        case 'commission':
+            return calcCommission(p.sellPrice || 0, p.sellShipping || 0);
+        case 'profit': {
+            var bt = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
+            var st = calcSellTotal(p.sellPrice, p.sellShipping);
+            var cm = calcCommission(p.sellPrice || 0, p.sellShipping || 0);
+            return calcProfit(bt, st, cm);
+        }
+        case 'profitRate': {
+            var bt2 = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
+            var st2 = calcSellTotal(p.sellPrice, p.sellShipping);
+            var cm2 = calcCommission(p.sellPrice || 0, p.sellShipping || 0);
+            var pf = calcProfit(bt2, st2, cm2);
+            return calcProfitRate(pf, st2);
+        }
+        case 'buyPrice': return p.buyPrice || 0;
+        case 'buyShipping': return p.buyShipping || 0;
+        case 'sellPrice': return p.sellPrice || 0;
+        case 'sellShipping': return p.sellShipping || 0;
+        case 'uploadDate': return p.uploadDate || '';
+        case 'updatedAt': return p.updatedAt || '';
+        default:
+            return p[field] || '';
+    }
+}
+
+// 정렬 아이콘 업데이트
+function updateSortIcons() {
+    document.querySelectorAll('.sortable').forEach(function(th) {
+        var icon = th.querySelector('i');
+        if (!icon) return;
+        var field = th.getAttribute('data-sort');
+        if (field === sortField) {
+            icon.className = sortDirection === 'asc' ? 'bx bx-sort-up' : 'bx bx-sort-down';
+            th.classList.add('sort-active');
+        } else {
+            icon.className = 'bx bx-sort';
+            th.classList.remove('sort-active');
+        }
+    });
 }
 
 // ==========================================
@@ -110,6 +218,40 @@ function loadProducts() {
 // ==========================================
 function generateId() {
     return 'sk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+}
+
+function formatDateTime(isoString) {
+    if (!isoString) return '-';
+    var d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    var h = String(d.getHours()).padStart(2, '0');
+    var min = String(d.getMinutes()).padStart(2, '0');
+    return y + '-' + m + '-' + day + ' ' + h + ':' + min;
+}
+
+function formatShortDate(isoString) {
+    if (!isoString) return '-';
+    var d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    var y = String(d.getFullYear()).slice(2);
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '/' + m + '/' + day;
+}
+
+function getCurrentAuthor() {
+    try {
+        if (auth && auth.currentUser) {
+            return auth.currentUser.displayName || auth.currentUser.email || '관리자';
+        }
+        if (window.parent && window.parent.currentUser) {
+            return window.parent.currentUser.name || window.parent.currentUser.email || '관리자';
+        }
+    } catch(e) {}
+    return '관리자';
 }
 
 function calcCommission(sellPrice, sellShipping, shippingBasis) {
@@ -125,18 +267,8 @@ function calcCommission(sellPrice, sellShipping, shippingBasis) {
 }
 
 function calcBuyTotal(buyPrice, buyShipping, shippingBasis, shippingQty) {
-    if (!buyPrice) buyPrice = 0;
-    if (!buyShipping) buyShipping = 0;
-    var finalShipping = 0;
-    if (shippingBasis === '조건부' || shippingBasis === '유료' || shippingBasis === '무료') {
-        finalShipping = buyShipping; // 매입 운임은 무료여도 그대로 둠
-    } else {
-        // 수량별
-        var sq = parseInt(shippingQty, 10);
-        if (isNaN(sq) || sq < 1) sq = 1;
-        finalShipping = Math.round(buyShipping / sq);
-    }
-    return buyPrice + finalShipping;
+    var effectiveShipping = buyShipping || 0;
+    return (buyPrice || 0) + effectiveShipping;
 }
 
 function calcSellTotal(sellPrice, sellShipping, shippingBasis) {
@@ -167,71 +299,215 @@ function renderTable() {
     var tbody = document.getElementById('skTableBody');
     if (!tbody) return;
 
-    var totalBuy = 0;
-    var totalSell = 0;
-    var totalProfit = 0;
+    // 총 상품 수 업데이트
+    var countEl = document.getElementById('skTotalCount');
+    if (countEl) countEl.textContent = products.length + '건';
+
+    // 페이지네이션 계산
+    var totalFiltered = filteredProducts.length;
+    var effectivePageSize = (pageSize === 0) ? totalFiltered : pageSize;
+    var totalPages = effectivePageSize > 0 ? Math.max(1, Math.ceil(totalFiltered / effectivePageSize)) : 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    var startIdx = (currentPage - 1) * effectivePageSize;
+    var endIdx = (pageSize === 0) ? totalFiltered : Math.min(startIdx + effectivePageSize, totalFiltered);
+    var pageProducts = filteredProducts.slice(startIdx, endIdx);
+
+    // 테이블 렌더링
     var html = '';
 
-    if (products.length === 0) {
-        html = '<tr><td colspan="17" style="text-align:center; padding:30px; color:var(--gray-500);">등록된 매입상품이 없습니다.</td></tr>';
+    if (filteredProducts.length === 0) {
+        var emptyMsg = products.length === 0 ? '등록된 매입상품이 없습니다.' : '검색 결과가 없습니다.';
+        html = '<tr><td colspan="17" style="text-align:center; padding:30px; color:var(--gray-500);">' + emptyMsg + '</td></tr>';
     } else {
-        products.forEach(function(p) {
+        pageProducts.forEach(function(p) {
             var buyTotal = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
             var sellTotal = calcSellTotal(p.sellPrice, p.sellShipping, p.shippingBasis);
             var commission = calcCommission(p.sellPrice || 0, p.sellShipping || 0, p.shippingBasis);
             var profit = calcProfit(buyTotal, sellTotal, commission);
             var profitRate = calcProfitRate(profit, sellTotal);
-            totalBuy += buyTotal;
-            totalSell += sellTotal;
-            totalProfit += profit;
 
-            var shippingBasisLabel = p.shippingBasis || '';
-            if (p.shippingBasis === '수량별') shippingBasisLabel += ' (' + (p.shippingQty || 1) + '개당)';
+            // 날짜 yy/mm/dd 포맷
+            var shortDate = '';
+            if (p.uploadDate) {
+                var parts = p.uploadDate.split('-');
+                if (parts.length === 3) shortDate = parts[0].slice(2) + '/' + parts[1] + '/' + parts[2];
+                else shortDate = p.uploadDate;
+            }
+
+            // 최종수정일 포맷 (수정된 경우에만 날짜 표시, 미수정 시 '-')
+            var updatedDateHtml = '<span style="color:#bbb;">-</span>';
+            var isModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
+            if (isModified) {
+                var shortUpdateDate = formatShortDate(p.updatedAt);
+                var fullUpdateDate = formatDateTime(p.updatedAt);
+                var updateTime = new Date(p.updatedAt).getTime();
+                var isRecent = !isNaN(updateTime) && (Date.now() - updateTime < 3 * 24 * 60 * 60 * 1000);
+                if (isRecent) {
+                    updatedDateHtml = '<span class="recent-update-chip" title="최종수정: ' + escapeHtml(fullUpdateDate) + '"><span class="pulse-dot"></span>' + shortUpdateDate + '</span>';
+                } else {
+                    updatedDateHtml = '<span title="최종수정: ' + escapeHtml(fullUpdateDate) + '">' + shortUpdateDate + '</span>';
+                }
+            }
+
+            // 매입운임 툴팁 (수량별이면 "N개당" 표시)
+            var shippingTooltip = '';
+            if (p.shippingBasis === '수량별') shippingTooltip = (p.shippingQty || 1) + '개당';
+            else if (p.shippingBasis) shippingTooltip = p.shippingBasis;
 
             var profitClass = profit > 0 ? 'text-success' : (profit < 0 ? 'text-danger' : '');
             var badgeClass = profitRate > 20 ? 'badge-success' : 'badge-neutral';
 
-            html += '<tr>' +
+            var sellPriceHtml = formatCurrency(p.sellPrice || 0);
+            if (p.isLowestPrice) {
+                sellPriceHtml += '<br><span style="font-size:9px; background:#fff3cd; color:#856404; padding:1px 3px; border-radius:3px; font-weight:600;">최저가</span>';
+            }
+
+            var nameHtml = '<strong>' + escapeHtml(p.name) + '</strong>';
+            if (p.isSoldOut) {
+                nameHtml += ' <span style="font-size:9px; background:#dc3545; color:#fff; padding:1px 3px; border-radius:3px; font-weight:600;">품절</span>';
+            }
+            var trStyle = p.isSoldOut ? 'opacity:0.6; background-color:#fbfbfb; cursor:pointer;' : 'cursor:pointer;';
+
+            html += '<tr class="product-row" data-id="' + escapeHtml(p.id) + '" style="' + trStyle + '">' +
                 '<td class="col-check"><input type="checkbox" class="sk-checkbox" value="' + escapeHtml(p.id) + '"></td>' +
-                '<td>' + escapeHtml(p.supplier) + '</td>' +
-                '<td>' + escapeHtml(p.brand) + '</td>' +
-                '<td><strong>' + escapeHtml(p.name) + '</strong></td>' +
-                '<td>' + escapeHtml(p.color) + '</td>' +
-                '<td>' + escapeHtml(p.size) + '</td>' +
-                '<td>' + escapeHtml(p.uploadDate) + '</td>' +
+                '<td class="col-date">' + shortDate + '</td>' +
+                '<td class="col-updated">' + updatedDateHtml + '</td>' +
+                '<td class="col-supplier">' + escapeHtml(p.supplier) + '</td>' +
+                '<td class="col-brand">' + escapeHtml(p.brand) + '</td>' +
+                '<td class="col-name">' + nameHtml + '</td>' +
+                '<td class="col-color">' + escapeHtml(p.color) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyPrice) + '</td>' +
                 '<td class="col-num buy-col">' + formatCurrency(p.buyShipping || 0) + '</td>' +
                 '<td class="col-num buy-col" style="font-weight:600;">' + formatCurrency(buyTotal) + '</td>' +
-                '<td class="col-num sell-col">' + formatCurrency(p.sellPrice || 0) + '</td>' +
+                '<td class="col-num sell-col">' + sellPriceHtml + '</td>' +
                 '<td class="col-num sell-col">' + formatCurrency(p.sellShipping || 0) + '</td>' +
-                '<td class="sell-col" style="text-align:center; font-size:12px;">' + escapeHtml(shippingBasisLabel) + '</td>' +
+                '<td class="sell-col col-basis"' + (p.shippingBasis === '수량별' ? ' title="' + (p.shippingQty || 1) + '개당"' : '') + '><span class="shipping-basis-tag">' + escapeHtml(p.shippingBasis || '-') + '</span></td>' +
                 '<td class="col-num sell-col" style="font-weight:600;">' + formatCurrency(sellTotal) + '</td>' +
                 '<td class="col-num profit-col" style="color:var(--danger)">' + formatCurrency(commission) + '</td>' +
                 '<td class="col-num profit-col ' + profitClass + '" style="font-weight:bold;">' + formatCurrency(profit) + '</td>' +
                 '<td class="col-num profit-col"><span class="badge ' + badgeClass + '">' + profitRate.toFixed(1) + '%</span></td>' +
-                '<td class="col-action"><button class="btn-icon edit-btn" data-id="' + escapeHtml(p.id) + '"><i class="bx bx-edit-alt"></i></button></td>' +
                 '</tr>';
         });
     }
 
     tbody.innerHTML = html;
 
-    // KPI 업데이트
-    var countEl = document.getElementById('skTotalCount');
-    var buyEl = document.getElementById('skTotalBuy');
-    var sellEl = document.getElementById('skTotalSell');
-    var profitEl = document.getElementById('skTotalProfit');
-    if (countEl) countEl.textContent = products.length;
-    if (buyEl) buyEl.textContent = formatCurrency(totalBuy);
-    if (sellEl) sellEl.textContent = formatCurrency(totalSell);
-    if (profitEl) profitEl.textContent = formatCurrency(totalProfit);
-
-    // 수정 버튼 이벤트 바인딩
-    document.querySelectorAll('.edit-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+    // 행 클릭 시 수정 모달 띄우기
+    document.querySelectorAll('.product-row').forEach(function(tr) {
+        tr.addEventListener('click', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.classList.contains('col-check') || e.target.closest('.col-check')) return;
             openModal(this.getAttribute('data-id'));
         });
     });
+
+    // 페이지네이션 렌더링
+    renderPagination(totalFiltered, totalPages, startIdx, endIdx);
+}
+
+// ==========================================
+// 페이지네이션 렌더링
+// ==========================================
+function renderPagination(totalFiltered, totalPages, startIdx, endIdx) {
+    var container = document.getElementById('skPagination');
+    if (!container) return;
+
+    if (totalFiltered === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    var html = '<div class="pagination-bar">';
+
+    html += '<div class="pagination-info">';
+    html += '<div class="page-size-wrap">';
+    html += '<label for="pageSizeSelect">페이지당</label>';
+    html += '<select id="pageSizeSelect" class="page-size-select">';
+    var sizes = [
+        { value: 50, label: '50개' },
+        { value: 100, label: '100개' },
+        { value: 150, label: '150개' },
+        { value: 200, label: '200개' },
+        { value: 0, label: '전체' }
+    ];
+    sizes.forEach(function(s) {
+        var selected = (s.value === pageSize) ? ' selected' : '';
+        html += '<option value="' + s.value + '"' + selected + '>' + s.label + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+    html += '<span class="pagination-summary">총 <strong>' + totalFiltered + '</strong>건';
+    if (totalFiltered !== products.length) {
+        html += ' <span class="filtered-note">(검색결과, 전체 ' + products.length + '건)</span>';
+    }
+    if (pageSize !== 0 && totalFiltered > 0) {
+        html += '  |  <strong>' + (startIdx + 1) + '</strong> – <strong>' + endIdx + '</strong>번째';
+    }
+    html += '</span>';
+    html += '</div>';
+
+    if (totalPages > 1) {
+        html += '<div class="pagination-controls">';
+        html += '<button class="page-btn" data-page="1"' + (currentPage === 1 ? ' disabled' : '') + ' title="처음"><i class="bx bx-chevrons-left"></i></button>';
+        html += '<button class="page-btn" data-page="' + (currentPage - 1) + '"' + (currentPage === 1 ? ' disabled' : '') + ' title="이전"><i class="bx bx-chevron-left"></i></button>';
+
+        var pages = getPageNumbers(currentPage, totalPages);
+        pages.forEach(function(pg) {
+            if (pg === '...') {
+                html += '<span class="page-ellipsis">…</span>';
+            } else {
+                var activeClass = (pg === currentPage) ? ' active' : '';
+                html += '<button class="page-btn page-num' + activeClass + '" data-page="' + pg + '">' + pg + '</button>';
+            }
+        });
+
+        html += '<button class="page-btn" data-page="' + (currentPage + 1) + '"' + (currentPage === totalPages ? ' disabled' : '') + ' title="다음"><i class="bx bx-chevron-right"></i></button>';
+        html += '<button class="page-btn" data-page="' + totalPages + '"' + (currentPage === totalPages ? ' disabled' : '') + ' title="끝"><i class="bx bx-chevrons-right"></i></button>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    var sizeSelect = document.getElementById('pageSizeSelect');
+    if (sizeSelect) {
+        sizeSelect.addEventListener('change', function() {
+            pageSize = parseInt(this.value, 10);
+            currentPage = 1;
+            renderTable();
+        });
+    }
+
+    container.querySelectorAll('.page-btn[data-page]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (this.disabled) return;
+            var pg = parseInt(this.getAttribute('data-page'), 10);
+            if (pg >= 1 && pg <= totalPages) {
+                currentPage = pg;
+                renderTable();
+                var tableEl = document.getElementById('skTable');
+                if (tableEl) tableEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+}
+
+function getPageNumbers(current, total) {
+    if (total <= 7) {
+        var arr = [];
+        for (var i = 1; i <= total; i++) arr.push(i);
+        return arr;
+    }
+    var pages = [];
+    pages.push(1);
+    if (current > 4) pages.push('...');
+    var start = Math.max(2, current - 2);
+    var end = Math.min(total - 1, current + 2);
+    for (var j = start; j <= end; j++) pages.push(j);
+    if (current < total - 3) pages.push('...');
+    pages.push(total);
+    return pages;
 }
 
 // ==========================================
@@ -264,9 +540,93 @@ function openModal(id) {
             document.getElementById('skShippingQty').value = p.shippingQty || '1';
             document.getElementById('skSellPrice').value = p.sellPrice || '';
             document.getElementById('skSellShipping').value = p.sellShipping || '';
+            document.getElementById('skIsLowestPrice').checked = (p.isLowestPrice === 1);
+            if (document.getElementById('skIsSoldOut')) document.getElementById('skIsSoldOut').checked = (p.isSoldOut === 1);
+            if (document.getElementById('skRemarks')) document.getElementById('skRemarks').value = p.remarks || '';
+            // 타임스탬프 정보 바
+            var tsEl = document.getElementById('skTimestampDisplay');
+            if (tsEl) {
+                var isItemModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
+                var createdStr = p.createdAt ? formatDateTime(p.createdAt) : (p.uploadDate || '-');
+                var updatedStr = isItemModified ? formatDateTime(p.updatedAt) : '수정 이력 없음';
+                tsEl.innerHTML = '<span><i class="bx bx-calendar-plus"></i> 최초등록: <strong>' + escapeHtml(createdStr) + '</strong></span>' +
+                                 '<span><i class="bx bx-edit"></i> 최종수정: <strong>' + escapeHtml(updatedStr) + '</strong></span>';
+                tsEl.style.display = 'flex';
+            }
+
+            // 변경 히스토리 로드
+            var logsSection = document.getElementById('skLogsSection');
+            var logsList = document.getElementById('skLogsList');
+            var logsCount = document.getElementById('skLogsCount');
+
+            if (logsSection && logsList) {
+                logsSection.style.display = 'block';
+                logsList.innerHTML = '<div class="log-empty"><i class="bx bx-loader-alt bx-spin"></i> 변경 이력을 불러오는 중...</div>';
+                if (logsCount) logsCount.textContent = '0건';
+
+                authFetch(API_BASE + '/' + id + '/logs')
+                    .then(function(res) { return res.json(); })
+                    .then(function(logs) {
+                        if (!logs || logs.length === 0) {
+                            if (logsCount) logsCount.textContent = '0건';
+                            logsList.innerHTML = '<div class="log-empty"><i class="bx bx-info-circle"></i> 아직 변경된 내역이 없습니다. (최초 등록 상태)</div>';
+                            return;
+                        }
+
+                        if (logsCount) logsCount.textContent = logs.length + '건';
+                        var logHtml = '';
+                        logs.forEach(function(l) {
+                            var authorText = l.author ? escapeHtml(l.author) : '관리자';
+                            var dateText = formatDateTime(l.createdAt);
+                            var summaryText = l.summary ? escapeHtml(l.summary) : '정보 수정';
+
+                            logHtml += '<div class="log-card">' +
+                                '<div class="log-meta">' +
+                                    '<span class="log-date"><i class="bx bx-time-five"></i> ' + dateText + '</span>' +
+                                    '<span class="log-author"><i class="bx bx-user"></i> ' + authorText + '</span>' +
+                                    '<span class="log-summary-tag">' + summaryText + '</span>' +
+                                '</div>' +
+                                '<div class="log-body">';
+
+                            var diffList = null;
+                            if (l.diffData) {
+                                try { diffList = JSON.parse(l.diffData); } catch(e) {}
+                            }
+
+                            if (Array.isArray(diffList) && diffList.length > 0) {
+                                diffList.forEach(function(d) {
+                                    logHtml += '<div class="diff-row">' +
+                                        '<span class="diff-label">' + escapeHtml(d.label || d.field) + ':</span>' +
+                                        '<span class="diff-old">' + escapeHtml(d.oldValue) + '</span>' +
+                                        '<i class="bx bx-right-arrow-alt diff-arrow"></i>' +
+                                        '<span class="diff-new">' + escapeHtml(d.newValue) + '</span>' +
+                                    '</div>';
+                                });
+                            } else if (l.logText) {
+                                logHtml += '<div class="log-text-fallback">' + escapeHtml(l.logText) + '</div>';
+                            } else {
+                                logHtml += '<div class="log-text-fallback">상세 변경 내용 없음</div>';
+                            }
+
+                            logHtml += '</div></div>';
+                        });
+
+                        logsList.innerHTML = logHtml;
+                    })
+                    .catch(function(err) {
+                        console.error('이력 로딩 실패:', err);
+                        logsList.innerHTML = '<div class="log-empty" style="color:var(--danger)"><i class="bx bx-error"></i> 이력을 불러오지 못했습니다.</div>';
+                    });
+            }
+
             toggleShippingQty();
             updateCalcPreview();
         }
+    } else {
+        var tsEl = document.getElementById('skTimestampDisplay');
+        if (tsEl) tsEl.style.display = 'none';
+        var logsSection = document.getElementById('skLogsSection');
+        if (logsSection) logsSection.style.display = 'none';
     }
 
     modal.classList.add('active');
@@ -303,15 +663,12 @@ function updateCalcPreview() {
     var profit = calcProfit(buyTotal, sellTotal, commission);
     var profitRate = calcProfitRate(profit, sellTotal);
 
-    // 매입 금액 미리보기
     var buyTotalEl = document.getElementById('skBuyTotal');
     if (buyTotalEl) buyTotalEl.value = formatCurrency(buyTotal);
 
-    // 매출 금액 미리보기
     var sellTotalEl = document.getElementById('skSellTotal');
     if (sellTotalEl) sellTotalEl.value = formatCurrency(sellTotal);
 
-    // 정산 미리보기
     var commEl = document.getElementById('skPreviewCommission');
     if (commEl) commEl.value = formatCurrency(commission);
 
@@ -329,59 +686,39 @@ function updateCalcPreview() {
 // 인증 (Firebase Auth)
 // ==========================================
 function setupAuth() {
-    var mainApp = document.getElementById('mainApp');
-    var logoutBtn = document.getElementById('logoutBtn');
-
     // 1. Try to get token from parent iframe first (fast path)
     try {
         if (window.parent && window.parent.getAuthToken) {
             window.parent.getAuthToken().then(function(token) {
                 if (token) {
-                    if (mainApp) mainApp.classList.remove('hidden');
                     loadProducts();
                 } else {
                     waitForFirebaseAuth();
                 }
             }).catch(waitForFirebaseAuth);
-        } else {
-            waitForFirebaseAuth();
+            return;
         }
-    } catch(e) {
-        waitForFirebaseAuth();
-    }
+    } catch(e) {}
+    
+    waitForFirebaseAuth();
+}
 
-    function waitForFirebaseAuth() {
-        let authChecked = false;
-        onAuthStateChanged(auth, function(user) {
-            if (!authChecked) {
-                authChecked = true;
-                if (user) {
-                    if (mainApp) mainApp.classList.remove('hidden');
-                    loadProducts();
-                } else {
-                    window.location.href = 'index.html';
-                }
-            }
-        });
-        
-        // Fallback just in case onAuthStateChanged never fires
-        setTimeout(function() {
-            if (!authChecked) {
-                authChecked = true;
-                if (mainApp) mainApp.classList.remove('hidden');
-                loadProducts();
-            }
-        }, 2000);
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            signOut(auth).then(function() {
-                window.location.href = 'index.html';
-            });
-        });
-    }
+function waitForFirebaseAuth() {
+    let authChecked = false;
+    onAuthStateChanged(auth, function(user) {
+        if (!authChecked) {
+            authChecked = true;
+            loadProducts();
+        }
+    });
+    
+    // Fallback just in case onAuthStateChanged never fires
+    setTimeout(function() {
+        if (!authChecked) {
+            authChecked = true;
+            loadProducts();
+        }
+    }, 2000);
 }
 
 // ==========================================
@@ -410,6 +747,18 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById(id).addEventListener('input', updateCalcPreview);
     });
 
+    // 단축키 설정 (Ctrl + S = 등록/저장)
+    document.addEventListener('keydown', function(e) {
+        var modal = document.getElementById('skModal');
+        // 모달창이 열려있을 때만 작동 ('active' 클래스 확인)
+        if (modal && modal.classList.contains('active')) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault(); // 브라우저 기본 웹 페이지 저장 창 방지
+                document.getElementById('saveSkBtn').click(); // 강제 등록 버튼 클릭
+            }
+        }
+    });
+
     // 폼 제출 (추가/수정)
     document.getElementById('skForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -426,7 +775,11 @@ document.addEventListener('DOMContentLoaded', function() {
             shippingBasis: document.getElementById('skShippingBasis').value,
             shippingQty: parseInt(document.getElementById('skShippingQty').value, 10) || 1,
             sellPrice: parseInt(document.getElementById('skSellPrice').value, 10) || 0,
-            sellShipping: parseInt(document.getElementById('skSellShipping').value, 10) || 0
+            sellShipping: parseInt(document.getElementById('skSellShipping').value, 10) || 0,
+            isLowestPrice: document.getElementById('skIsLowestPrice').checked ? 1 : 0,
+            isSoldOut: (document.getElementById('skIsSoldOut') && document.getElementById('skIsSoldOut').checked) ? 1 : 0,
+            remarks: document.getElementById('skRemarks') ? document.getElementById('skRemarks').value.trim() : '',
+            author: getCurrentAuthor()
         };
 
         if (editingId) {
@@ -464,6 +817,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // 변경 히스토리 접기/펼치기 토글
+    var logsHeader = document.getElementById('skLogsHeader');
+    var logsContent = document.getElementById('skLogsContent');
+    var logsToggleIcon = document.getElementById('skLogsToggleIcon');
+    if (logsHeader && logsContent) {
+        logsHeader.addEventListener('click', function() {
+            var isHidden = logsContent.style.display === 'none';
+            logsContent.style.display = isHidden ? 'block' : 'none';
+            if (logsToggleIcon) {
+                logsToggleIcon.className = isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+            }
+        });
+    }
+
     // 일괄 삭제
     document.getElementById('deleteSkBtn').addEventListener('click', function() {
         var checked = document.querySelectorAll('.sk-checkbox:checked');
@@ -492,13 +859,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 전체 선택
+    // 전체 선택 (현재 페이지만)
     document.getElementById('selectAllSk').addEventListener('change', function() {
         var checked = this.checked;
         document.querySelectorAll('.sk-checkbox').forEach(function(cb) {
             cb.checked = checked;
         });
     });
+
+    // 정렬 헤더 클릭 이벤트
+    document.querySelectorAll('.sortable').forEach(function(th) {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            var field = this.getAttribute('data-sort');
+            if (!field) return;
+            if (sortField === field) {
+                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDirection = 'asc';
+            }
+            currentPage = 1;
+            applyFilterAndRender();
+            updateSortIcons();
+        });
+    });
+
+    // 검색 필터링 이벤트
+    var searchInputEl = document.getElementById('skSearchInput');
+    var searchFieldEl = document.getElementById('skSearchField');
+    var searchTimer = null;
+    if (searchInputEl) {
+        searchInputEl.addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function() {
+                currentPage = 1;
+                applyFilterAndRender();
+            }, 300);
+        });
+    }
+    if (searchFieldEl) {
+        searchFieldEl.addEventListener('change', function() {
+            currentPage = 1;
+            applyFilterAndRender();
+        });
+    }
 
     // 셀러K 아코디언 토글
     var t = document.getElementById('sellerKToggle');
@@ -525,6 +930,276 @@ document.addEventListener('DOMContentLoaded', function() {
             s.classList.remove('open');
             o.classList.remove('active');
         });
+    }
+
+    // 엑셀 양식 다운로드
+    document.getElementById('downloadTemplateBtn').addEventListener('click', function() {
+        if (typeof XLSX === 'undefined') {
+            showToast('엑셀 라이브러리가 로드되지 않았습니다. 새로고침 해주세요.', 'error');
+            return;
+        }
+        var wb = XLSX.utils.book_new();
+        var wsData = [
+            ["매입처", "브랜드", "상품명", "컬러", "사이즈", "업로드일(YYYY-MM-DD)", "매입가(단가)", "매입운임", "운임기준(수량별/무료/조건부/유료)", "수량별기준(공란시1)", "판매가", "판매운임", "최저가설정(O/X)", "비고"],
+            ["예시)동대문K", "K브랜드", "반팔티", "블랙", "Free", "", 15000, 3000, "수량별", 1, 25000, 3000, "X", "마감 좋음"]
+        ];
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{wpx:80},{wpx:100},{wpx:150},{wpx:60},{wpx:60},{wpx:130},{wpx:80},{wpx:80},{wpx:180},{wpx:120},{wpx:80},{wpx:80},{wpx:100},{wpx:150}];
+        XLSX.utils.book_append_sheet(wb, ws, "상품양식");
+        XLSX.writeFile(wb, "매입상품_일괄등록_양식.xlsx");
+    });
+
+    // 엑셀 업로드
+    document.getElementById('bulkUploadBtn').addEventListener('click', function() {
+        document.getElementById('bulkUploadFile').click();
+    });
+
+    document.getElementById('bulkUploadFile').addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        if (typeof XLSX === 'undefined') {
+            showToast('엑셀 라이브러리가 로드되지 않았습니다.', 'error');
+            e.target.value = '';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                var data = new Uint8Array(evt.target.result);
+                var workbook = XLSX.read(data, {type: 'array'});
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+                var rows = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                var uploadProducts = [];
+                for (var i = 1; i < rows.length; i++) {
+                    var row = rows[i];
+                    if (!row || row.length === 0 || !row[0] || String(row[0]).trim() === "예시)동대문K") continue;
+                    var p = {
+                        id: generateId() + '_' + i,
+                        supplier: String(row[0] || '').trim(),
+                        brand: String(row[1] || '').trim(),
+                        name: String(row[2] || '').trim(),
+                        color: String(row[3] || '').trim(),
+                        size: String(row[4] || '').trim(),
+                        uploadDate: (row[5] ? String(row[5]).trim() : ""),
+                        buyPrice: parseInt(row[6], 10) || 0,
+                        buyShipping: parseInt(row[7], 10) || 0,
+                        shippingBasis: String(row[8] || '무료').trim(),
+                        shippingQty: parseInt(row[9], 10) || 1,
+                        sellPrice: parseInt(row[10], 10) || 0,
+                        sellShipping: parseInt(row[11], 10) || 0,
+                        isLowestPrice: (String(row[12] || 'X').trim().toUpperCase() === 'O') ? 1 : 0,
+                        remarks: String(row[13] || '').trim()
+                    };
+                    if (p.name !== '') uploadProducts.push(p);
+                }
+                if (uploadProducts.length === 0) {
+                    showToast('업로드할 유효한 상품 데이터가 없습니다.', 'warning');
+                    e.target.value = '';
+                    return;
+                }
+                if (!confirm(uploadProducts.length + '개의 상품을 엑셀로 일괄 등록하시겠습니까?')) {
+                    e.target.value = '';
+                    return;
+                }
+                authFetch(API_BASE + '/bulk', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ products: uploadProducts })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(result) {
+                    if (result.error) throw new Error(result.error);
+                    showToast(result.count + '개 상품이 성공적으로 일괄 등록되었습니다.', 'success');
+                    e.target.value = '';
+                    loadProducts();
+                })
+                .catch(function(err) {
+                    console.error("Bulk Upload Error:", err);
+                    showToast('대량 등록 실패: ' + err.message, 'error');
+                    e.target.value = '';
+                });
+            } catch (err) {
+                console.error("Excel parsing error:", err);
+                showToast('엑셀 파일 분해 중 오류가 발생했습니다.', 'error');
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // 엑셀 내보내기
+    document.getElementById('exportSkBtn').addEventListener('click', function() {
+        if (typeof XLSX === 'undefined') {
+            showToast('엑셀 라이브러리가 로드되지 않았습니다.', 'error');
+            return;
+        }
+        if (products.length === 0) {
+            showToast('내보낼 데이터가 없습니다.', 'warning');
+            return;
+        }
+        var wsData = [
+            ["업로드일", "매입처", "브랜드", "상품명", "컬러", "사이즈", "매입가", "매입운임", "운임기준", "매입합계", "판매가", "판매운임", "매출합계", "수수료", "정산이익", "수익률", "비고", "최종수정일"]
+        ];
+        products.forEach(function(p) {
+            var buyTotal = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
+            var sellTotal = calcSellTotal(p.sellPrice, p.sellShipping);
+            var commission = calcCommission(p.sellPrice || 0, p.sellShipping || 0);
+            var profit = calcProfit(buyTotal, sellTotal, commission);
+            var profitRate = calcProfitRate(profit, sellTotal);
+            wsData.push([
+                p.uploadDate || '', p.supplier || '', p.brand || '', p.name || '',
+                p.color || '', p.size || '', p.buyPrice || 0, p.buyShipping || 0,
+                p.shippingBasis || '', buyTotal, p.sellPrice || 0, p.sellShipping || 0,
+                sellTotal, commission, profit, profitRate.toFixed(1) + '%',
+                p.remarks || '', formatDateTime(p.updatedAt)
+            ]);
+        });
+        var wb = XLSX.utils.book_new();
+        var ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "매입상품리스트");
+        XLSX.writeFile(wb, "매입상품_리스트_" + new Date().toISOString().split('T')[0] + ".xlsx");
+        showToast('엑셀 파일로 내보냈습니다.', 'success');
+    });
+
+    // ==========================================
+    // 일괄 수정 기능 (프론트엔드 단독 순차적 비동기 처리)
+    // ==========================================
+    var bulkEditModal = document.getElementById('bulkEditSkModal');
+    var bulkEditBtn = document.getElementById('bulkEditSkBtn');
+    var closeBulkBtn = document.getElementById('closeBulkEditSkModalBtn');
+    var cancelBulkBtn = document.getElementById('cancelBulkEditSkBtn');
+    var bulkForm = document.getElementById('bulkEditSkForm');
+    
+    if (bulkEditBtn) {
+        bulkEditBtn.addEventListener('click', function() {
+            var checked = document.querySelectorAll('.sk-checkbox:checked');
+            if (checked.length === 0) {
+                showToast('일괄 수정할 상품을 체크해주세요.', 'warning');
+                return;
+            }
+            // 폼 초기화 및 Datalist 업데이트
+            bulkForm.reset();
+            document.getElementById('bulkSkShippingQtyWrapper').style.display = 'none';
+            setupBulkDatalists();
+            bulkEditModal.style.display = 'flex';
+        });
+    }
+
+    if (closeBulkBtn) closeBulkBtn.addEventListener('click', function() { bulkEditModal.style.display = 'none'; });
+    if (cancelBulkBtn) cancelBulkBtn.addEventListener('click', function() { bulkEditModal.style.display = 'none'; });
+
+    var bulkBasisEl = document.getElementById('bulkSkShippingBasis');
+    if (bulkBasisEl) {
+        bulkBasisEl.addEventListener('change', function() {
+            document.getElementById('bulkSkShippingQtyWrapper').style.display = (this.value === '수량별') ? 'flex' : 'none';
+        });
+    }
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var newDate = document.getElementById('bulkSkDate').value;
+            var newSupplier = document.getElementById('bulkSkSupplier').value.trim();
+            var newBrand = document.getElementById('bulkSkBrand').value.trim();
+            var newBasis = bulkBasisEl.value;
+            var newQty = parseInt(document.getElementById('bulkSkShippingQty').value, 10) || 1;
+
+            if (!newDate && !newSupplier && !newBrand && !newBasis) {
+                showToast('수정할 항목을 하나 이상 입력/선택해주세요.', 'warning');
+                return;
+            }
+
+            var checked = document.querySelectorAll('.sk-checkbox:checked');
+            var idsToUpdate = [];
+            checked.forEach(function(cb) { idsToUpdate.push(cb.value); });
+            
+            if (!confirm('선택한 ' + idsToUpdate.length + '개의 상품을 일괄 수정하시겠습니까?\n(빈칸으로 둔 항목은 기존 값이 유지됩니다)')) return;
+
+            showToast('일괄 수정을 진행 중입니다... 잠시 대기해주세요.', 'info');
+            bulkEditModal.style.display = 'none';
+
+            var successCount = 0;
+            var failCount = 0;
+
+            // 핵심: 순차적 비동기 처리 루프
+            for (var i = 0; i < idsToUpdate.length; i++) {
+                var id = idsToUpdate[i];
+                var existingItem = products.find(function(p) { return p.id === id; });
+                if (!existingItem) {
+                    failCount++;
+                    continue;
+                }
+
+                // 기존 데이터에 새 값(빈칸 아닐 시에만) 덮어쓰기
+                var updatedData = Object.assign({}, existingItem);
+                if (newDate) updatedData.uploadDate = newDate;
+                if (newSupplier) updatedData.supplier = newSupplier;
+                if (newBrand) updatedData.brand = newBrand;
+                if (newBasis) {
+                    updatedData.shippingBasis = newBasis;
+                    if (newBasis === '수량별') {
+                        updatedData.shippingQty = newQty;
+                    }
+                }
+                updatedData.author = getCurrentAuthor();
+
+                try {
+                    var res = await authFetch(API_BASE + '/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedData)
+                    });
+                    if (!res.ok) throw new Error('API Update Error');
+                    successCount++;
+                } catch (err) {
+                    console.error("Bulk update failed for id " + id, err);
+                    failCount++;
+                }
+            }
+
+            // 모든 비동기 루프 완료 후 테이블 리프레시
+            loadProducts();
+            var selectAllCheck = document.getElementById('selectAllSk');
+            if (selectAllCheck) selectAllCheck.checked = false;
+            
+            if (failCount === 0) {
+                showToast(successCount + '개 상품이 성공적으로 일괄 수정되었습니다!', 'success');
+            } else {
+                showToast(successCount + '개 성공, ' + failCount + '개 실패했습니다.', 'warning');
+            }
+        });
+    }
+
+    // 간단하고 강력한 Datalist 기반 자동완성 구성
+    function setupBulkDatalists() {
+        var supplierSet = new Set(), brandSet = new Set();
+        products.forEach(function(p) {
+            if (p.supplier) supplierSet.add(p.supplier);
+            if (p.brand) brandSet.add(p.brand);
+        });
+        
+        var ds = document.getElementById('dlBulkSuppliers');
+        if (!ds) {
+            ds = document.createElement('datalist');
+            ds.id = 'dlBulkSuppliers';
+            if (bulkForm) bulkForm.appendChild(ds);
+            document.getElementById('bulkSkSupplier').setAttribute('list', 'dlBulkSuppliers');
+        }
+        var dsHtml = '';
+        supplierSet.forEach(function(s) { dsHtml += '<option value="' + escapeHtml(s) + '">'; });
+        ds.innerHTML = dsHtml;
+
+        var db = document.getElementById('dlBulkBrands');
+        if (!db) {
+            db = document.createElement('datalist');
+            db.id = 'dlBulkBrands';
+            if (bulkForm) bulkForm.appendChild(db);
+            document.getElementById('bulkSkBrand').setAttribute('list', 'dlBulkBrands');
+        }
+        var dbHtml = '';
+        brandSet.forEach(function(b) { dbHtml += '<option value="' + escapeHtml(b) + '">'; });
+        db.innerHTML = dbHtml;
     }
 
     toggleShippingQty();

@@ -58,6 +58,7 @@
                                 <colgroup>
                                     <col class="col-check">
                                     <col class="col-date">
+                                    <col class="col-updated">
                                     <col class="col-supplier">
                                     <col class="col-brand">
                                     <col class="col-name">
@@ -81,6 +82,7 @@
                                     <tr>
                                         <th rowspan="2" class="col-check"><input type="checkbox" id="selectAllSk"></th>
                                         <th rowspan="2" class="col-date sortable" data-sort="uploadDate">날짜 <i class='bx bx-sort'></i></th>
+                                        <th rowspan="2" class="col-updated sortable" data-sort="updatedAt">최종수정일 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-supplier sortable" data-sort="supplier">매입처 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-brand sortable" data-sort="brand">브랜드 <i class='bx bx-sort'></i></th>
                                         <th rowspan="2" class="col-name sortable" data-sort="name">상품명 <i class='bx bx-sort'></i></th>
@@ -104,8 +106,8 @@
                                     </tr>
                                 </thead>
                                 <tbody id="skTableBody">
-                                    <tr class="loading-row"><td colspan="16"><div class="skeleton"></div></td></tr>
-                                    <tr class="loading-row"><td colspan="16"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
+                                    <tr class="loading-row"><td colspan="17"><div class="skeleton"></div></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -231,9 +233,22 @@
                         </div>
                         </div>
                     </div>
-                    <div id="skTimestampDisplay" style="color:var(--text-secondary); font-size:12px; margin-top:10px; margin-bottom:5px; text-align:right;"></div>
-                    <div id="skLogsContainer" class="fg-full border" style="display:none; margin-top:5px; margin-bottom:15px; background:#fbfbfb; border-radius:6px; padding:10px 15px; font-size:11px; color:#666; max-height:120px; overflow-y:auto;">
-                        <ul id="skLogsList" style="margin:0; padding-left:15px; list-style-type:circle;"></ul>
+                    <!-- 타임스탬프 정보 바 (최초등록 / 최종수정) -->
+                    <div id="skTimestampDisplay" class="timestamp-bar" style="display:none;"></div>
+
+                    <!-- 변경 히스토리 섹션 (타임라인 카드) -->
+                    <div id="skLogsSection" class="logs-section" style="display:none;">
+                        <div class="logs-header" id="skLogsHeader">
+                            <div class="logs-title">
+                                <i class='bx bx-history'></i> 변경 히스토리 <span id="skLogsCount" class="logs-count-badge">0건</span>
+                            </div>
+                            <button type="button" id="skLogsToggleBtn" class="btn-logs-toggle" title="히스토리 접기/펼치기">
+                                <i class='bx bx-chevron-down' id="skLogsToggleIcon"></i>
+                            </button>
+                        </div>
+                        <div id="skLogsContent" class="logs-content">
+                            <div id="skLogsList" class="logs-list"></div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-outline" id="cancelSkBtn">취소</button>

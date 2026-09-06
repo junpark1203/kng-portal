@@ -84,7 +84,9 @@ function updateConnectionStatus(online) {
 // ==========================================
 // API 설정
 // ==========================================
-const API_BASE = 'https://kng.junparks.com/api/seller-k/products';
+const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000/api/seller-k/products'
+    : 'https://kng.junparks.com/api/seller-k/products';
 
 // ==========================================
 // 앱 상태
@@ -188,6 +190,8 @@ function getSortValue(p, field) {
         case 'buyShipping': return p.buyShipping || 0;
         case 'sellPrice': return p.sellPrice || 0;
         case 'sellShipping': return p.sellShipping || 0;
+        case 'uploadDate': return p.uploadDate || '';
+        case 'updatedAt': return p.updatedAt || '';
         default:
             return p[field] || '';
     }
@@ -226,6 +230,28 @@ function formatDateTime(isoString) {
     var h = String(d.getHours()).padStart(2, '0');
     var min = String(d.getMinutes()).padStart(2, '0');
     return y + '-' + m + '-' + day + ' ' + h + ':' + min;
+}
+
+function formatShortDate(isoString) {
+    if (!isoString) return '-';
+    var d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    var y = String(d.getFullYear()).slice(2);
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return y + '/' + m + '/' + day;
+}
+
+function getCurrentAuthor() {
+    try {
+        if (auth && auth.currentUser) {
+            return auth.currentUser.displayName || auth.currentUser.email || '관리자';
+        }
+        if (window.parent && window.parent.currentUser) {
+            return window.parent.currentUser.name || window.parent.currentUser.email || '관리자';
+        }
+    } catch(e) {}
+    return '관리자';
 }
 
 function calcCommission(sellPrice, sellShipping, shippingBasis) {
@@ -293,7 +319,7 @@ function renderTable() {
 
     if (filteredProducts.length === 0) {
         var emptyMsg = products.length === 0 ? '등록된 매입상품이 없습니다.' : '검색 결과가 없습니다.';
-        html = '<tr><td colspan="16" style="text-align:center; padding:30px; color:var(--gray-500);">' + emptyMsg + '</td></tr>';
+        html = '<tr><td colspan="17" style="text-align:center; padding:30px; color:var(--gray-500);">' + emptyMsg + '</td></tr>';
     } else {
         pageProducts.forEach(function(p) {
             var buyTotal = calcBuyTotal(p.buyPrice, p.buyShipping, p.shippingBasis, p.shippingQty);
@@ -308,6 +334,21 @@ function renderTable() {
                 var parts = p.uploadDate.split('-');
                 if (parts.length === 3) shortDate = parts[0].slice(2) + '/' + parts[1] + '/' + parts[2];
                 else shortDate = p.uploadDate;
+            }
+
+            // 최종수정일 포맷 (수정된 경우에만 날짜 표시, 미수정 시 '-')
+            var updatedDateHtml = '<span style="color:#bbb;">-</span>';
+            var isModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
+            if (isModified) {
+                var shortUpdateDate = formatShortDate(p.updatedAt);
+                var fullUpdateDate = formatDateTime(p.updatedAt);
+                var updateTime = new Date(p.updatedAt).getTime();
+                var isRecent = !isNaN(updateTime) && (Date.now() - updateTime < 3 * 24 * 60 * 60 * 1000);
+                if (isRecent) {
+                    updatedDateHtml = '<span class="recent-update-chip" title="최종수정: ' + escapeHtml(fullUpdateDate) + '"><span class="pulse-dot"></span>' + shortUpdateDate + '</span>';
+                } else {
+                    updatedDateHtml = '<span title="최종수정: ' + escapeHtml(fullUpdateDate) + '">' + shortUpdateDate + '</span>';
+                }
             }
 
             // 매입운임 툴팁 (수량별이면 "N개당" 표시)
@@ -332,6 +373,7 @@ function renderTable() {
             html += '<tr class="product-row" data-id="' + escapeHtml(p.id) + '" style="' + trStyle + '">' +
                 '<td class="col-check"><input type="checkbox" class="sk-checkbox" value="' + escapeHtml(p.id) + '"></td>' +
                 '<td class="col-date">' + shortDate + '</td>' +
+                '<td class="col-updated">' + updatedDateHtml + '</td>' +
                 '<td class="col-supplier">' + escapeHtml(p.supplier) + '</td>' +
                 '<td class="col-brand">' + escapeHtml(p.brand) + '</td>' +
                 '<td class="col-name">' + nameHtml + '</td>' +
@@ -501,32 +543,90 @@ function openModal(id) {
             document.getElementById('skIsLowestPrice').checked = (p.isLowestPrice === 1);
             if (document.getElementById('skIsSoldOut')) document.getElementById('skIsSoldOut').checked = (p.isSoldOut === 1);
             if (document.getElementById('skRemarks')) document.getElementById('skRemarks').value = p.remarks || '';
-            if (document.getElementById('skTimestampDisplay')) {
-                document.getElementById('skTimestampDisplay').innerHTML = '최초등록: ' + formatDateTime(p.createdAt) + ' &nbsp;|&nbsp; 최종수정: ' + formatDateTime(p.updatedAt);
+            // 타임스탬프 정보 바
+            var tsEl = document.getElementById('skTimestampDisplay');
+            if (tsEl) {
+                var isItemModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
+                var createdStr = p.createdAt ? formatDateTime(p.createdAt) : (p.uploadDate || '-');
+                var updatedStr = isItemModified ? formatDateTime(p.updatedAt) : '수정 이력 없음';
+                tsEl.innerHTML = '<span><i class="bx bx-calendar-plus"></i> 최초등록: <strong>' + escapeHtml(createdStr) + '</strong></span>' +
+                                 '<span><i class="bx bx-edit"></i> 최종수정: <strong>' + escapeHtml(updatedStr) + '</strong></span>';
+                tsEl.style.display = 'flex';
             }
-            if (document.getElementById('skLogsContainer')) {
-                document.getElementById('skLogsContainer').style.display = 'none';
-                document.getElementById('skLogsList').innerHTML = '';
+
+            // 변경 히스토리 로드
+            var logsSection = document.getElementById('skLogsSection');
+            var logsList = document.getElementById('skLogsList');
+            var logsCount = document.getElementById('skLogsCount');
+
+            if (logsSection && logsList) {
+                logsSection.style.display = 'block';
+                logsList.innerHTML = '<div class="log-empty"><i class="bx bx-loader-alt bx-spin"></i> 변경 이력을 불러오는 중...</div>';
+                if (logsCount) logsCount.textContent = '0건';
+
                 authFetch(API_BASE + '/' + id + '/logs')
                     .then(function(res) { return res.json(); })
                     .then(function(logs) {
-                        if (logs && logs.length > 0) {
-                            var logHtml = '';
-                            logs.forEach(function(l) {
-                                logHtml += '<li style="margin-bottom:6px; line-height:1.4;"><strong>' + formatDateTime(l.createdAt) + '</strong> (' + escapeHtml(l.summary) + ')<br><span style="color:#888;">' + escapeHtml(l.logText) + '</span></li>';
-                            });
-                            document.getElementById('skLogsList').innerHTML = logHtml;
-                            document.getElementById('skLogsContainer').style.display = 'block';
+                        if (!logs || logs.length === 0) {
+                            if (logsCount) logsCount.textContent = '0건';
+                            logsList.innerHTML = '<div class="log-empty"><i class="bx bx-info-circle"></i> 아직 변경된 내역이 없습니다. (최초 등록 상태)</div>';
+                            return;
                         }
+
+                        if (logsCount) logsCount.textContent = logs.length + '건';
+                        var logHtml = '';
+                        logs.forEach(function(l) {
+                            var authorText = l.author ? escapeHtml(l.author) : '관리자';
+                            var dateText = formatDateTime(l.createdAt);
+                            var summaryText = l.summary ? escapeHtml(l.summary) : '정보 수정';
+
+                            logHtml += '<div class="log-card">' +
+                                '<div class="log-meta">' +
+                                    '<span class="log-date"><i class="bx bx-time-five"></i> ' + dateText + '</span>' +
+                                    '<span class="log-author"><i class="bx bx-user"></i> ' + authorText + '</span>' +
+                                    '<span class="log-summary-tag">' + summaryText + '</span>' +
+                                '</div>' +
+                                '<div class="log-body">';
+
+                            var diffList = null;
+                            if (l.diffData) {
+                                try { diffList = JSON.parse(l.diffData); } catch(e) {}
+                            }
+
+                            if (Array.isArray(diffList) && diffList.length > 0) {
+                                diffList.forEach(function(d) {
+                                    logHtml += '<div class="diff-row">' +
+                                        '<span class="diff-label">' + escapeHtml(d.label || d.field) + ':</span>' +
+                                        '<span class="diff-old">' + escapeHtml(d.oldValue) + '</span>' +
+                                        '<i class="bx bx-right-arrow-alt diff-arrow"></i>' +
+                                        '<span class="diff-new">' + escapeHtml(d.newValue) + '</span>' +
+                                    '</div>';
+                                });
+                            } else if (l.logText) {
+                                logHtml += '<div class="log-text-fallback">' + escapeHtml(l.logText) + '</div>';
+                            } else {
+                                logHtml += '<div class="log-text-fallback">상세 변경 내용 없음</div>';
+                            }
+
+                            logHtml += '</div></div>';
+                        });
+
+                        logsList.innerHTML = logHtml;
                     })
-                    .catch(function(err) { console.error('이력 로딩 실패:', err); });
+                    .catch(function(err) {
+                        console.error('이력 로딩 실패:', err);
+                        logsList.innerHTML = '<div class="log-empty" style="color:var(--danger)"><i class="bx bx-error"></i> 이력을 불러오지 못했습니다.</div>';
+                    });
             }
+
             toggleShippingQty();
             updateCalcPreview();
         }
     } else {
-        if (document.getElementById('skTimestampDisplay')) document.getElementById('skTimestampDisplay').innerHTML = '';
-        if (document.getElementById('skLogsContainer')) document.getElementById('skLogsContainer').style.display = 'none';
+        var tsEl = document.getElementById('skTimestampDisplay');
+        if (tsEl) tsEl.style.display = 'none';
+        var logsSection = document.getElementById('skLogsSection');
+        if (logsSection) logsSection.style.display = 'none';
     }
 
     modal.classList.add('active');
@@ -678,7 +778,8 @@ document.addEventListener('DOMContentLoaded', function() {
             sellShipping: parseInt(document.getElementById('skSellShipping').value, 10) || 0,
             isLowestPrice: document.getElementById('skIsLowestPrice').checked ? 1 : 0,
             isSoldOut: (document.getElementById('skIsSoldOut') && document.getElementById('skIsSoldOut').checked) ? 1 : 0,
-            remarks: document.getElementById('skRemarks') ? document.getElementById('skRemarks').value.trim() : ''
+            remarks: document.getElementById('skRemarks') ? document.getElementById('skRemarks').value.trim() : '',
+            author: getCurrentAuthor()
         };
 
         if (editingId) {
@@ -715,6 +816,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+
+    // 변경 히스토리 접기/펼치기 토글
+    var logsHeader = document.getElementById('skLogsHeader');
+    var logsContent = document.getElementById('skLogsContent');
+    var logsToggleIcon = document.getElementById('skLogsToggleIcon');
+    if (logsHeader && logsContent) {
+        logsHeader.addEventListener('click', function() {
+            var isHidden = logsContent.style.display === 'none';
+            logsContent.style.display = isHidden ? 'block' : 'none';
+            if (logsToggleIcon) {
+                logsToggleIcon.className = isHidden ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+            }
+        });
+    }
 
     // 일괄 삭제
     document.getElementById('deleteSkBtn').addEventListener('click', function() {
@@ -1027,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         updatedData.shippingQty = newQty;
                     }
                 }
+                updatedData.author = getCurrentAuthor();
 
                 try {
                     var res = await authFetch(API_BASE + '/' + id, {
