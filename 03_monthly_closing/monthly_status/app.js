@@ -1489,22 +1489,15 @@ const app = {
                 const shipVatInc = r.shipping_fee_vat_included === 1;
                 let shipSupply = (ship > 0 && shipVatInc) ? Math.round(ship / 1.1) : ship;
                 const supply = (qty * price) + shipSupply;
-                let vat = 0;
-                if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
-                    vat = r.settlement_vat;
-                } else if (!r.is_zero_tax && (!r.trade_type || r.trade_type === '내수')) {
-                    const itemVat = Math.floor(qty * price * 0.1);
-                    let shipVat = (ship > 0) ? (shipVatInc ? (ship - shipSupply) : Math.floor(ship * 0.1)) : 0;
-                    vat = itemVat + shipVat;
-                }
-                sum += (supply + vat);
+                sum += supply;
             }
         });
 
         const sumBadge = $('selectedSumBadge');
         if (sumBadge) {
             if (count > 0) {
-                sumBadge.innerText = `선택 합계: ${sum.toLocaleString()}원`;
+                sumBadge.innerText = `선택 합계(공급가): ${Math.round(sum).toLocaleString()}원`;
+                sumBadge.title = '선택된 항목들의 공급가액 합계 (VAT 별도)';
                 sumBadge.classList.remove('d-none');
             } else {
                 sumBadge.classList.add('d-none');

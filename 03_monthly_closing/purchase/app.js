@@ -1141,17 +1141,30 @@ const app = {
 
             const rowId = el.value;
             const inputRow = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
+            let rowSupply = null;
             if (inputRow) {
-                const totalInput = inputRow.querySelector('.inline-total-amt');
-                if (totalInput && totalInput.value) {
-                    selectedSum += parseFloat(totalInput.value.replace(/,/g, '')) || 0;
+                const supplyInput = inputRow.querySelector('.inline-supply-amt');
+                if (supplyInput && supplyInput.value !== undefined && supplyInput.value !== '') {
+                    rowSupply = parseFloat(supplyInput.value.replace(/,/g, '')) || 0;
                 } else {
-                    const totalCell = inputRow.querySelector('td:nth-child(7)');
-                    if (totalCell) {
-                        selectedSum += parseFloat(totalCell.innerText.replace(/,/g, '')) || 0;
+                    const supplyCell = inputRow.querySelector('td:nth-child(5)');
+                    if (supplyCell) {
+                        rowSupply = parseFloat(supplyCell.innerText.replace(/,/g, '')) || 0;
                     }
                 }
             }
+            if (rowSupply === null) {
+                const r = (this.items || []).find(item => item.id == rowId);
+                if (r) {
+                    const shipAmount = r.shipping_fee > 0 ? (r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee) : 0;
+                    const q = Number(r.settlement_qty ?? r.qty ?? 0);
+                    const p = Number(r.settlement_price ?? r.inbound_price ?? 0);
+                    rowSupply = Math.round(q * p) + shipAmount;
+                } else {
+                    rowSupply = 0;
+                }
+            }
+            selectedSum += rowSupply;
         });
         
         $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
@@ -1169,7 +1182,8 @@ const app = {
         const sumBadge = $('selectedSumBadge');
         if (sumBadge) {
             if (checkedBoxes.length > 0) {
-                sumBadge.innerText = `선택 합계: ${Math.round(selectedSum).toLocaleString()}원`;
+                sumBadge.innerText = `선택 합계(공급가): ${Math.round(selectedSum).toLocaleString()}원`;
+                sumBadge.title = '선택된 항목들의 공급가액 합계 (VAT 별도)';
                 sumBadge.classList.remove('d-none');
             } else {
                 sumBadge.classList.add('d-none');
@@ -1367,6 +1381,8 @@ const app = {
         
         const totalAmtEl = container.querySelector('.inline-total-amt');
         if (totalAmtEl) totalAmtEl.value = total.toLocaleString();
+
+        this.updateBatchButton();
     },
     
     applyBatchDate: function() {
