@@ -433,35 +433,29 @@
             </div>
         </div>
 
-        <!-- 3-1-2. 독립 2분할 KPI 대시보드 카드 (매출/매입 공급가·부가세·합계) -->
-        <div class="row g-2 mb-3" id="kpiDashboardCards">
+        <!-- 3-1-2. 독립 2분할 KPI 대시보드 (1줄 인라인 슬림 바형) -->
+        <div class="row g-2 mb-2" id="kpiDashboardCards">
             <!-- 매출 (청구) 카드 -->
             <div class="col-md-6" id="kpiSalesCardCol">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(145deg, #ffffff 0%, #f0f7ff 100%); border-left: 4px solid #2563eb !important;">
-                    <div class="card-body p-2 px-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-1">
-                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1" style="font-size: 0.78rem;">
-                                    <i class='bx bx-export'></i> 매출 (청구)
-                                </span>
-                                <span class="text-muted small fw-semibold" id="kpiSalesCount">(0건)</span>
-                            </div>
-                            <span class="text-secondary small fw-semibold" style="font-size: 0.78rem;">청구 합계금액</span>
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(90deg, #f0f7ff 0%, #ffffff 100%); border-left: 4px solid #2563eb !important; border: 1px solid #dbeafe;">
+                    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <!-- 좌측: 배지 + 건수 -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1" style="font-size: 0.76rem;">
+                                <i class='bx bx-export'></i> 매출 (청구)
+                            </span>
+                            <span class="text-muted small fw-semibold" id="kpiSalesCount">(0건)</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-baseline mb-2">
-                            <div class="text-muted small">공급가액 + 부가세</div>
-                            <div class="text-primary fw-bold" style="font-size: 1.35rem; letter-spacing: -0.5px;" id="kpiSalesGrand">0원</div>
+                        <!-- 중간: 공급가액 & 부가세 -->
+                        <div class="d-flex align-items-center gap-2 small text-secondary" style="font-size: 0.8rem;">
+                            <span>공급가: <strong class="text-dark fw-bold" id="kpiSalesSupply">0원</strong></span>
+                            <span class="text-muted opacity-50">|</span>
+                            <span>부가세: <strong class="text-primary fw-bold" id="kpiSalesVat">0원</strong></span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-80 p-1 px-3 rounded border border-primary-subtle small" style="font-size: 0.8rem;">
-                            <div>
-                                <span class="text-muted">공급가액:</span>
-                                <strong class="text-dark ms-1" id="kpiSalesSupply">0원</strong>
-                            </div>
-                            <div class="text-muted opacity-50">|</div>
-                            <div>
-                                <span class="text-muted">세액(부가세):</span>
-                                <strong class="text-primary ms-1" id="kpiSalesVat">0원</strong>
-                            </div>
+                        <!-- 우측: 청구합계 강조 -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted small" style="font-size: 0.75rem;">청구합계:</span>
+                            <span class="text-primary fw-bold" style="font-size: 1.05rem; letter-spacing: -0.3px;" id="kpiSalesGrand">0원</span>
                         </div>
                     </div>
                 </div>
@@ -469,31 +463,25 @@
 
             <!-- 매입 카드 -->
             <div class="col-md-6" id="kpiPurchaseCardCol">
-                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%); border-left: 4px solid #16a34a !important;">
-                    <div class="card-body p-2 px-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-1">
-                                <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1" style="font-size: 0.78rem;">
-                                    <i class='bx bx-import'></i> 매입
-                                </span>
-                                <span class="text-muted small fw-semibold" id="kpiPurchaseCount">(0건)</span>
-                            </div>
-                            <span class="text-secondary small fw-semibold" style="font-size: 0.78rem;">매입 합계금액</span>
+                <div class="card border-0 shadow-sm" style="background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%); border-left: 4px solid #16a34a !important; border: 1px solid #dcfce7;">
+                    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <!-- 좌측: 배지 + 건수 -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1" style="font-size: 0.76rem;">
+                                <i class='bx bx-import'></i> 매입
+                            </span>
+                            <span class="text-muted small fw-semibold" id="kpiPurchaseCount">(0건)</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-baseline mb-2">
-                            <div class="text-muted small">공급가액 + 부가세</div>
-                            <div class="text-success fw-bold" style="font-size: 1.35rem; letter-spacing: -0.5px;" id="kpiPurchaseGrand">0원</div>
+                        <!-- 중간: 공급가액 & 부가세 -->
+                        <div class="d-flex align-items-center gap-2 small text-secondary" style="font-size: 0.8rem;">
+                            <span>공급가: <strong class="text-dark fw-bold" id="kpiPurchaseSupply">0원</strong></span>
+                            <span class="text-muted opacity-50">|</span>
+                            <span>부가세: <strong class="text-success fw-bold" id="kpiPurchaseVat">0원</strong></span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center bg-white bg-opacity-80 p-1 px-3 rounded border border-success-subtle small" style="font-size: 0.8rem;">
-                            <div>
-                                <span class="text-muted">공급가액:</span>
-                                <strong class="text-dark ms-1" id="kpiPurchaseSupply">0원</strong>
-                            </div>
-                            <div class="text-muted opacity-50">|</div>
-                            <div>
-                                <span class="text-muted">세액(부가세):</span>
-                                <strong class="text-success ms-1" id="kpiPurchaseVat">0원</strong>
-                            </div>
+                        <!-- 우측: 매입합계 강조 -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted small" style="font-size: 0.75rem;">매입합계:</span>
+                            <span class="text-success fw-bold" style="font-size: 1.05rem; letter-spacing: -0.3px;" id="kpiPurchaseGrand">0원</span>
                         </div>
                     </div>
                 </div>
