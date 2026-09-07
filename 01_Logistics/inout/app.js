@@ -845,9 +845,15 @@ const app = {
     },
 
     renderPagination: function(total, currentPage, limit) {
-        const totalPages = Math.ceil(total / limit) || 1;
         const ul = $('historyPagination');
-        
+        if (!ul) return;
+
+        if (limit >= 999999) {
+            ul.innerHTML = '';
+            return;
+        }
+
+        const totalPages = Math.ceil(total / limit) || 1;
         let html = '';
         
         // Prev button
