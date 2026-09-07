@@ -570,7 +570,29 @@ router.get('/history', (req, res) => {
         }
     }
 
-    if (req.query.settlement_month && !startDate && !endDate) {
+    if (dateType === 'confirmed_month' || dateType === 'settlement_month') {
+        const sMonth = req.query.settlement_month || '';
+        const confirmStatus = req.query.confirm_status || 'all';
+        if (sMonth) {
+            if (confirmStatus === 'confirmed') {
+                whereClauses.push("settlement_month = ?");
+                params.push(sMonth);
+            } else if (confirmStatus === 'unconfirmed') {
+                whereClauses.push("(settlement_month IS NULL OR settlement_month = '') AND SUBSTR(COALESCE(tax_invoice_date, date), 1, 7) = ?");
+                params.push(sMonth);
+            } else {
+                whereClauses.push("(settlement_month = ? OR ((settlement_month IS NULL OR settlement_month = '') AND SUBSTR(COALESCE(tax_invoice_date, date), 1, 7) = ?))");
+                params.push(sMonth, sMonth);
+            }
+        } else {
+            // 전체 확정월 조회
+            if (confirmStatus === 'confirmed') {
+                whereClauses.push("(settlement_month IS NOT NULL AND settlement_month != '')");
+            } else if (confirmStatus === 'unconfirmed') {
+                whereClauses.push("(settlement_month IS NULL OR settlement_month = '')");
+            }
+        }
+    } else if (req.query.settlement_month && !startDate && !endDate) {
         const sMonth = req.query.settlement_month;
         const confirmStatus = req.query.confirm_status || 'all';
         if (confirmStatus === 'confirmed') {

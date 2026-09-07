@@ -47,9 +47,10 @@ function escapeAttr(str) {
 const $ = id => document.getElementById(id);
 
 const app = {
-    dateType: 'settlement', // 'settlement' (정산일자) | 'transaction' (입출고일자)
+    dateType: 'settlement', // 'settlement' (정산일자) | 'transaction' (입출고일자) | 'confirmed_month' (확정월)
     startDate: '', // 'YYYY-MM-DD'
     endDate: '', // 'YYYY-MM-DD'
+    confirmedMonth: '', // 'YYYY-MM'
     currentMonth: '', // 레거시 호환
     tradeTypeFilter: 'all', // 'all' (전체) | 'outbound' (매출) | 'inbound' (매입)
     confirmFilter: 'all', // 'all' | 'unconfirmed' | 'confirmed'
@@ -73,6 +74,9 @@ const app = {
     },
 
     getPeriodLabel: function() {
+        if (this.dateType === 'confirmed_month') {
+            return this.confirmedMonth ? `${this.confirmedMonth} 확정월` : '전체 확정월';
+        }
         if (this.startDate && this.endDate) {
             if (this.startDate === this.endDate) return this.startDate;
             return `${this.startDate} ~ ${this.endDate}`;
@@ -92,13 +96,16 @@ const app = {
         if ($('endDate')) $('endDate').value = '';
         this.updateDatePresetUI();
 
-        // 확정 대상월 기본값 (전월)
+        // 확정 대상월 및 확정월 기본값 (전월)
         const now = new Date();
         let y = now.getFullYear();
         let m = now.getMonth(); // 전월 1-12
         if (m === 0) { m = 12; y -= 1; }
         const prevMonthStr = `${y}-${String(m).padStart(2, '0')}`;
+        this.confirmedMonth = prevMonthStr;
+        if ($('targetMonth')) $('targetMonth').value = prevMonthStr;
         if ($('batchTargetMonth')) $('batchTargetMonth').value = prevMonthStr;
+        this.updateConfirmedMonthPresetUI();
 
         // 2. 거래처 및 최근 거래처 로드
         this.loadRecentPartners();
@@ -160,6 +167,23 @@ const app = {
     // ── 기간/일자 기준 관리 ──
     onDateTypeChange: function() {
         this.dateType = $('dateTypeSelect')?.value || 'settlement';
+        const isMonthMode = (this.dateType === 'confirmed_month');
+        
+        const rangeCtrl = $('dateRangeControl');
+        const monthCtrl = $('monthPickerControl');
+        if (rangeCtrl && monthCtrl) {
+            if (isMonthMode) {
+                rangeCtrl.classList.add('d-none');
+                rangeCtrl.classList.remove('d-flex');
+                monthCtrl.classList.remove('d-none');
+                monthCtrl.classList.add('d-flex');
+            } else {
+                monthCtrl.classList.add('d-none');
+                monthCtrl.classList.remove('d-flex');
+                rangeCtrl.classList.remove('d-none');
+                rangeCtrl.classList.add('d-flex');
+            }
+        }
         if (this.selectedPartner) this.loadData();
     },
 
@@ -220,6 +244,71 @@ const app = {
         btnCurrent.className = isCur ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
     },
 
+    onConfirmedMonthChange: function() {
+        this.confirmedMonth = $('targetMonth')?.value || '';
+        if (this.confirmedMonth && $('batchTargetMonth')) {
+            $('batchTargetMonth').value = this.confirmedMonth;
+        }
+        this.updateConfirmedMonthPresetUI();
+        if (this.selectedPartner) this.loadData();
+    },
+
+    changeConfirmedMonth: function(delta) {
+        let baseDate = new Date();
+        if (this.confirmedMonth) {
+            const [y, m] = this.confirmedMonth.split('-').map(Number);
+            baseDate = new Date(y, m - 1 + delta, 1);
+        }
+        const nextY = baseDate.getFullYear();
+        const nextM = String(baseDate.getMonth() + 1).padStart(2, '0');
+        this.confirmedMonth = `${nextY}-${nextM}`;
+        if ($('targetMonth')) $('targetMonth').value = this.confirmedMonth;
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.confirmedMonth;
+        this.updateConfirmedMonthPresetUI();
+        if (this.selectedPartner) this.loadData();
+    },
+
+    setConfirmedMonthPreset: function(preset) {
+        const now = new Date();
+        let y = now.getFullYear();
+        let m = now.getMonth(); // 0-11
+        if (preset === 'prev') {
+            let prevY = y;
+            let prevM = m;
+            if (prevM === 0) { prevM = 12; prevY -= 1; }
+            this.confirmedMonth = `${prevY}-${String(prevM).padStart(2, '0')}`;
+        } else if (preset === 'current') {
+            this.confirmedMonth = `${y}-${String(m + 1).padStart(2, '0')}`;
+        } else {
+            // 'all'
+            this.confirmedMonth = '';
+        }
+        if ($('targetMonth')) $('targetMonth').value = this.confirmedMonth;
+        if (this.confirmedMonth && $('batchTargetMonth')) $('batchTargetMonth').value = this.confirmedMonth;
+        this.updateConfirmedMonthPresetUI();
+        if (this.selectedPartner) this.loadData();
+    },
+
+    updateConfirmedMonthPresetUI: function() {
+        const btnPrev = $('btnMonthPresetPrev');
+        const btnCurrent = $('btnMonthPresetCurrent');
+        const btnAll = $('btnMonthPresetAll');
+        if (!btnPrev || !btnCurrent || !btnAll) return;
+
+        const now = new Date();
+        let y = now.getFullYear();
+        let m = now.getMonth();
+        let prevY = y;
+        let prevM = m;
+        if (prevM === 0) { prevM = 12; prevY -= 1; }
+        const prevStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+        const curStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+
+        btnAll.className = !this.confirmedMonth ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+        btnPrev.className = (this.confirmedMonth === prevStr) ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+        btnCurrent.className = (this.confirmedMonth === curStr) ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+    },
+
     // 레거시 호환 메소드 유지
     setMonthAll: function() { this.setDatePreset('all'); },
     setMonthPreset: function(p) { this.setDatePreset(p); },
@@ -256,7 +345,9 @@ const app = {
     },
 
     onFilterChange: function() {
-        if (this.selectedPartner) this.loadData();
+        this.renderTable();
+        this.updateKpiSummary();
+        this.updateSubSearchCountBadge();
     },
 
     onBizAggChange: function() {
@@ -551,24 +642,27 @@ const app = {
         tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
 
         try {
-            const accVal = $('accountFilter')?.value || '';
             const pName = this.selectedPartner.name || this.selectedPartner.company_name;
 
             // 1. type=all 요청으로 매출(outbound)과 매입(inbound)을 단일 쿼리로 모두 수집
-            const sortField = (this.dateType === 'transaction') ? 'date' : 'tax_invoice_date';
+            const sortField = (this.dateType === 'transaction') ? 'date' : ((this.dateType === 'confirmed_month') ? 'settlement_month' : 'tax_invoice_date');
             let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=2000&sortCol=${sortField}&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
             
-            if (this.startDate) {
-                url += `&startDate=${encodeURIComponent(this.startDate)}`;
-            }
-            if (this.endDate) {
-                url += `&endDate=${encodeURIComponent(this.endDate)}`;
-            }
-            if (this.dateType) {
-                url += `&dateType=${encodeURIComponent(this.dateType)}`;
-            }
-            if (accVal) {
-                url += `&settlement_account=${encodeURIComponent(accVal)}`;
+            if (this.dateType === 'confirmed_month') {
+                url += `&dateType=confirmed_month`;
+                if (this.confirmedMonth) {
+                    url += `&settlement_month=${encodeURIComponent(this.confirmedMonth)}`;
+                }
+            } else {
+                if (this.startDate) {
+                    url += `&startDate=${encodeURIComponent(this.startDate)}`;
+                }
+                if (this.endDate) {
+                    url += `&endDate=${encodeURIComponent(this.endDate)}`;
+                }
+                if (this.dateType) {
+                    url += `&dateType=${encodeURIComponent(this.dateType)}`;
+                }
             }
 
             // 동일 사업자번호 통합 조회 처리
@@ -597,12 +691,15 @@ const app = {
                 return targetPartnerNames.some(tn => (party || '').includes(tn));
             });
 
-            // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬 (선택한 일자 기준 우선 정렬)
+            // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬 (선택한 일자/확정월 기준 우선 정렬)
             items.sort((a, b) => {
                 let dateA, dateB;
                 if (this.dateType === 'transaction') {
                     dateA = a.date || a.tax_invoice_date || '';
                     dateB = b.date || b.tax_invoice_date || '';
+                } else if (this.dateType === 'confirmed_month') {
+                    dateA = (a.settlement_month || '9999-99') + (a.tax_invoice_date || a.date || '');
+                    dateB = (b.settlement_month || '9999-99') + (b.tax_invoice_date || b.date || '');
                 } else {
                     dateA = a.tax_invoice_date || a.date || '';
                     dateB = b.tax_invoice_date || b.date || '';
@@ -808,6 +905,18 @@ const app = {
             });
         }
 
+        // 5. 자재계정 필터
+        const acc = $('accountFilter')?.value || '';
+        if (acc) {
+            if (acc === '안전자재_전체' || acc === '안전자재') {
+                list = list.filter(r => (r.settlement_account || '').startsWith('안전자재'));
+            } else if (acc === '미분류') {
+                list = list.filter(r => !r.settlement_account);
+            } else {
+                list = list.filter(r => r.settlement_account === acc);
+            }
+        }
+
         return list;
     },
 
@@ -816,9 +925,9 @@ const app = {
         const tfoot = $('mainStatusTableFoot');
         if (!tbody) return;
 
-        // 일자 헤더 텍스트 갱신 (정산일자 vs 입출고일자)
+        // 일자 헤더 텍스트 갱신 (정산일자 vs 입출고일자 vs 확정월)
         if ($('colDateHeader')) {
-            $('colDateHeader').innerText = (this.dateType === 'transaction') ? '입출고일자' : '정산일자';
+            $('colDateHeader').innerText = (this.dateType === 'confirmed_month') ? '확정월' : ((this.dateType === 'transaction') ? '입출고일자' : '정산일자');
         }
 
         // 헤더 체크박스 초기화
@@ -834,9 +943,9 @@ const app = {
             else if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
             else if (this.confirmFilter === 'confirmed') msg = '확정 완료된 정산 내역이 없습니다.';
             else {
-                const dateTypeTitle = (this.dateType === 'transaction') ? '입출고일' : '정산일';
+                const dateTypeTitle = (this.dateType === 'confirmed_month') ? '확정월' : ((this.dateType === 'transaction') ? '입출고일' : '정산일');
                 const periodText = this.getPeriodLabel();
-                msg = (periodText !== '전체기간') ? `[${dateTypeTitle} ${periodText}] 기간에 등록된 정산 내역이 없습니다.` : '등록된 정산 내역이 없습니다.';
+                msg = (periodText !== '전체기간' && periodText !== '전체 확정월') ? `[${dateTypeTitle} ${periodText}] 기간에 등록된 정산 내역이 없습니다.` : '등록된 정산 내역이 없습니다.';
             }
 
             const targetName = this.selectedPartner ? `[${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 ` : '';
@@ -877,10 +986,18 @@ const app = {
                 }
             }
 
-            const rowDate = (this.dateType === 'transaction')
-                ? (r.date ? r.date.split('T')[0] : (r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'))
-                : (r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : (r.date ? r.date.split('T')[0] : '-'));
-            const dateTooltip = `정산일: ${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'} | 입출고일: ${r.date ? r.date.split('T')[0] : '-'}`;
+            let rowDate = '-';
+            let dateTooltip = '';
+            if (this.dateType === 'confirmed_month') {
+                rowDate = r.settlement_month ? `${r.settlement_month}` : '미확정';
+                dateTooltip = `확정월: ${r.settlement_month || '미확정'} | 정산일: ${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'} | 입출고일: ${r.date ? r.date.split('T')[0] : '-'}`;
+            } else if (this.dateType === 'transaction') {
+                rowDate = r.date ? r.date.split('T')[0] : (r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-');
+                dateTooltip = `입출고일: ${r.date ? r.date.split('T')[0] : '-'} | 정산일: ${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}`;
+            } else {
+                rowDate = r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : (r.date ? r.date.split('T')[0] : '-');
+                dateTooltip = `정산일: ${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'} | 입출고일: ${r.date ? r.date.split('T')[0] : '-'}`;
+            }
 
             return `
                 <tr>
@@ -889,7 +1006,9 @@ const app = {
                     </td>
                     <td class="text-center text-muted small">${idx + 1}</td>
                     <td class="text-center text-nowrap">${typeBadge}</td>
-                    <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold" title="${dateTooltip}">${rowDate}</td>
+                    <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold" title="${dateTooltip}">
+                        ${this.dateType === 'confirmed_month' ? `<span class="badge ${r.settlement_month ? 'bg-light text-primary border' : 'bg-warning bg-opacity-10 text-warning-emphasis border border-warning'}">${rowDate}</span>` : rowDate}
+                    </td>
                     <td class="text-start fw-bold text-dark text-truncate" style="max-width: 130px;" title="${escapeAttr(partyName)}">${escapeHtml(partyName)}</td>
                     <td class="text-start text-truncate" style="max-width: 130px;">${directPartnerHtml}</td>
                     <td class="text-center small text-nowrap"><span class="badge bg-light text-dark border">${escapeHtml(r.settlement_account || '-')}</span></td>
@@ -1035,6 +1154,159 @@ const app = {
                 purchaseCol.classList.add('col-md-6');
             }
         }
+
+        // 4. 계정과목별 집계 요약 스트립 갱신
+        this.renderAccountSummary();
+    },
+
+    // ── 계정과목별 집계 계산 및 인터랙티브 칩 렌더링 ──
+    renderAccountSummary: function() {
+        const container = $('accountSummaryChips');
+        const totalContainer = $('accountSummaryTotal');
+        if (!container) return;
+
+        // 기준 데이터: 거래구분(매출/매입) 및 확정상태(전체/미확정/확정완료) 필터가 적용된 행들
+        let baseRows = this.currentRows || [];
+        if (this.tradeTypeFilter === 'outbound') baseRows = baseRows.filter(r => r.type === 'outbound');
+        else if (this.tradeTypeFilter === 'inbound') baseRows = baseRows.filter(r => r.type === 'inbound');
+
+        if (this.confirmFilter === 'unconfirmed') baseRows = baseRows.filter(r => !r.settlement_month);
+        else if (this.confirmFilter === 'confirmed') baseRows = baseRows.filter(r => !!r.settlement_month);
+
+        if (this.directPartnerFilter) {
+            const target = this.directPartnerFilter;
+            if (target === '__GENERAL__') {
+                baseRows = baseRows.filter(r => !r.is_direct);
+            } else {
+                baseRows = baseRows.filter(r => {
+                    if (!r.is_direct) return false;
+                    const counterpart = (r.type === 'inbound')
+                        ? (r.destination || r.actual_destination || '')
+                        : (r.supplier || '');
+                    return counterpart === target || counterpart.includes(target);
+                });
+            }
+        }
+
+        if (this.subSearchKeyword && this.subSearchKeyword.trim()) {
+            const tokens = this.subSearchKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            baseRows = baseRows.filter(r => {
+                const isSales = (r.type === 'outbound');
+                const party = isSales ? (r.destination || r.actual_destination || '') : (r.supplier || '');
+                const directParty = isSales ? (r.supplier || '') : (r.destination || r.actual_destination || '');
+                const text = [
+                    party,
+                    directParty,
+                    r.item || '',
+                    r.spec || '',
+                    r.unit || '',
+                    r.settlement_account || '',
+                    r.settlement_memo || '',
+                    r.tax_invoice_date || '',
+                    r.date || '',
+                    r.is_direct ? '직출 직출고' : ''
+                ].join(' ').toLowerCase();
+                return tokens.every(t => text.includes(t));
+            });
+        }
+
+        if (baseRows.length === 0) {
+            container.innerHTML = `
+                <span class="text-secondary fw-bold me-1" style="font-size: 0.84rem;"><i class='bx bx-category-alt'></i> 계정별 집계:</span>
+                <span class="text-muted small">해당 조건의 집계 데이터가 없습니다.</span>
+            `;
+            if (totalContainer) totalContainer.innerHTML = '';
+            return;
+        }
+
+        // 각 계정별 행 분류
+        const rowsSafeGen = baseRows.filter(r => r.settlement_account === '안전자재-일반');
+        const rowsSafeEnv = baseRows.filter(r => r.settlement_account === '안전자재-환경');
+        const rowsSafeTotal = baseRows.filter(r => (r.settlement_account || '').startsWith('안전자재'));
+        const rowsMisc = baseRows.filter(r => r.settlement_account === '잡자재');
+        const rowsEtc = baseRows.filter(r => r.settlement_account === '기타자재');
+        const rowsMall = baseRows.filter(r => r.settlement_account === '쇼핑몰');
+        const rowsUnclass = baseRows.filter(r => !r.settlement_account);
+
+        const calcSafeGen = this.computeAmounts(rowsSafeGen);
+        const calcSafeEnv = this.computeAmounts(rowsSafeEnv);
+        const calcSafeTotal = this.computeAmounts(rowsSafeTotal);
+        const calcMisc = this.computeAmounts(rowsMisc);
+        const calcEtc = this.computeAmounts(rowsEtc);
+        const calcMall = this.computeAmounts(rowsMall);
+        const calcUnclass = this.computeAmounts(rowsUnclass);
+        const calcBaseTotal = this.computeAmounts(baseRows);
+
+        const currentAcc = $('accountFilter')?.value || '';
+
+        const getChip = (accKey, label, calc, badgeStyle) => {
+            const isActive = (currentAcc === accKey || (accKey === '안전자재_전체' && currentAcc === '안전자재'));
+            const count = calc.items.length;
+            const grand = calc.totalGrand;
+            const supply = calc.totalSupply;
+            const vat = calc.totalVat;
+            
+            const activeClass = isActive ? ' active-account-chip' : '';
+            const checkIcon = isActive ? `<i class='bx bx-check fw-bold'></i> ` : '';
+            const title = `공급가: ${supply.toLocaleString()}원 | 부가세: ${vat.toLocaleString()}원 | 합계: ${grand.toLocaleString()}원\n(클릭 시 필터 적용/해제)`;
+
+            const opacityClass = (count === 0 && !isActive) ? ' opacity-50' : '';
+            const cls = isActive ? 'bg-primary text-white' : badgeStyle;
+
+            return `
+                <span class="badge ${cls} account-stat-chip${activeClass}${opacityClass} d-inline-flex align-items-center gap-1 shadow-sm"
+                      onclick="app.filterByAccount('${accKey}')" title="${escapeAttr(title)}">
+                    ${checkIcon}${label} <strong>${count}건</strong> · ${grand.toLocaleString()}원
+                </span>
+            `;
+        };
+
+        const periodPrefix = (this.dateType === 'confirmed_month')
+            ? `<span class="badge bg-dark bg-opacity-10 text-dark border me-1">${this.confirmedMonth ? this.confirmedMonth + ' 확정' : '전체 확정'}</span>`
+            : '';
+
+        const filterResetBtn = currentAcc
+            ? `<button class="btn btn-link btn-sm text-danger p-0 ms-1 text-decoration-none" onclick="app.filterByAccount('')" style="font-size:0.78rem;" title="계정 필터 해제"><i class='bx bx-x-circle'></i> 전체보기</button>`
+            : '';
+
+        container.innerHTML = `
+            <span class="text-secondary fw-bold me-1 text-nowrap" style="font-size: 0.84rem;">
+                <i class='bx bx-category-alt text-primary'></i> ${periodPrefix}계정별 집계:
+            </span>
+            ${getChip('안전자재_전체', '안전자재 통합', calcSafeTotal, 'bg-primary text-white')}
+            ${getChip('안전자재-일반', '안전(일반)', calcSafeGen, 'bg-primary bg-opacity-10 text-primary border border-primary')}
+            ${getChip('안전자재-환경', '안전(환경)', calcSafeEnv, 'bg-success bg-opacity-10 text-success border border-success')}
+            <span class="text-muted mx-1 opacity-50">|</span>
+            ${getChip('잡자재', '잡자재', calcMisc, 'bg-warning bg-opacity-10 text-dark border border-warning')}
+            ${getChip('기타자재', '기타자재', calcEtc, 'bg-secondary bg-opacity-10 text-secondary border border-secondary')}
+            ${getChip('쇼핑몰', '쇼핑몰', calcMall, 'bg-info bg-opacity-10 text-info border border-info')}
+            ${getChip('미분류', '미분류', calcUnclass, (calcUnclass.items.length > 0 ? 'bg-danger bg-opacity-10 text-danger border border-danger' : 'bg-light text-muted border'))}
+            ${filterResetBtn}
+        `;
+
+        if (totalContainer) {
+            totalContainer.innerHTML = `
+                <span>계정 총 합계: <strong class="text-dark fw-bold">${calcBaseTotal.totalGrand.toLocaleString()}원</strong> (${calcBaseTotal.items.length}건)</span>
+            `;
+        }
+    },
+
+    filterByAccount: function(accountKey) {
+        const selectEl = $('accountFilter');
+        const currentVal = selectEl ? selectEl.value : '';
+
+        let targetVal = accountKey;
+        if (accountKey === '안전자재' || accountKey === '안전자재_전체') {
+            targetVal = '안전자재_전체';
+        }
+
+        // 이미 선택된 항목을 다시 누르면 전체보기로 해제
+        if (currentVal === targetVal || (currentVal === '안전자재' && targetVal === '안전자재_전체')) {
+            targetVal = '';
+        }
+
+        if (selectEl) selectEl.value = targetVal;
+        this.onFilterChange();
     },
 
     // ── 3. 체크박스 및 선택 관리 ──
@@ -1257,7 +1529,7 @@ const app = {
 
         // 기간 및 타이틀 설정
         let periodStr = this.getPeriodLabel();
-        const dateTypeTitle = (this.dateType === 'transaction') ? '입출고일' : '정산일';
+        const dateTypeTitle = (this.dateType === 'confirmed_month') ? '확정월' : ((this.dateType === 'transaction') ? '입출고일' : '정산일');
         const titleText = isSales ? `${periodStr} 청구서` : `${periodStr} 매입정산내역`;
 
         $('printTitle').innerText = this.aggregateByBizNum ? `(사업자 통합) ${titleText}` : titleText;
@@ -1388,7 +1660,7 @@ const app = {
 
         const tradeLabel = (this.tradeTypeFilter === 'outbound') ? '_매출' : ((this.tradeTypeFilter === 'inbound') ? '_매입' : '_통합');
         const filterSuffix = this.directPartnerFilter ? `_${this.directPartnerFilter}` : (this.subSearchKeyword ? `_검색(${this.subSearchKeyword.trim()})` : '');
-        const dateTypeLabel = (this.dateType === 'transaction') ? '입출고일' : '정산일';
+        const dateTypeLabel = (this.dateType === 'confirmed_month') ? '확정월' : ((this.dateType === 'transaction') ? '입출고일' : '정산일');
         const periodLabel = this.getPeriodLabel().replace(/\s+/g, '');
         const fileName = `${dateTypeLabel}_${periodLabel}_${partnerName}${tradeLabel}${filterSuffix}_정산현황.xlsx`;
         XLSX.writeFile(wb, fileName);
