@@ -947,34 +947,44 @@ const app = {
         const salesCalc = this.computeAmounts(salesRows);
         const purchaseCalc = this.computeAmounts(purchaseRows);
 
-        const salesGrand = salesCalc.totalGrand;
-        const purchaseGrand = purchaseCalc.totalGrand;
+        // 1. 매출(청구) 카드 업데이트
+        if ($('kpiSalesCount')) $('kpiSalesCount').innerText = `(${salesRows.length.toLocaleString()}건)`;
+        if ($('kpiSalesGrand')) $('kpiSalesGrand').innerText = `${salesCalc.totalGrand.toLocaleString()}원`;
+        if ($('kpiSalesSupply')) $('kpiSalesSupply').innerText = `${salesCalc.totalSupply.toLocaleString()}원`;
+        if ($('kpiSalesVat')) $('kpiSalesVat').innerText = `${salesCalc.totalVat.toLocaleString()}원`;
 
-        const salesBox = $('kpiSalesBox');
-        const purchaseBox = $('kpiPurchaseBox');
-        const salesAmt = $('kpiSalesAmt');
-        const purchaseAmt = $('kpiPurchaseAmt');
-        const totalLabel = $('kpiTotalLabel');
-        const totalAmt = $('kpiTotalAmt');
+        // 2. 매입 카드 업데이트
+        if ($('kpiPurchaseCount')) $('kpiPurchaseCount').innerText = `(${purchaseRows.length.toLocaleString()}건)`;
+        if ($('kpiPurchaseGrand')) $('kpiPurchaseGrand').innerText = `${purchaseCalc.totalGrand.toLocaleString()}원`;
+        if ($('kpiPurchaseSupply')) $('kpiPurchaseSupply').innerText = `${purchaseCalc.totalSupply.toLocaleString()}원`;
+        if ($('kpiPurchaseVat')) $('kpiPurchaseVat').innerText = `${purchaseCalc.totalVat.toLocaleString()}원`;
+
+        // 3. 거래구분 필터(전체 / 매출건만 / 매입건만)에 따른 카드 가시성 및 그리드 폭 조정
+        const salesCol = $('kpiSalesCardCol');
+        const purchaseCol = $('kpiPurchaseCardCol');
 
         if (this.tradeTypeFilter === 'outbound') {
-            if (salesBox) salesBox.classList.remove('d-none');
-            if (purchaseBox) purchaseBox.classList.add('d-none');
-            if (salesAmt) salesAmt.innerText = `${salesGrand.toLocaleString()}원`;
-            if (totalLabel) totalLabel.innerHTML = `청구합계: <span class="text-primary">${salesGrand.toLocaleString()}원</span>`;
+            if (salesCol) {
+                salesCol.classList.remove('d-none', 'col-md-6');
+                salesCol.classList.add('col-12');
+            }
+            if (purchaseCol) purchaseCol.classList.add('d-none');
         } else if (this.tradeTypeFilter === 'inbound') {
-            if (salesBox) salesBox.classList.add('d-none');
-            if (purchaseBox) purchaseBox.classList.remove('d-none');
-            if (purchaseAmt) purchaseAmt.innerText = `${purchaseGrand.toLocaleString()}원`;
-            if (totalLabel) totalLabel.innerHTML = `매입합계: <span class="text-success">${purchaseGrand.toLocaleString()}원</span>`;
+            if (salesCol) salesCol.classList.add('d-none');
+            if (purchaseCol) {
+                purchaseCol.classList.remove('d-none', 'col-md-6');
+                purchaseCol.classList.add('col-12');
+            }
         } else {
-            // 전체보기
-            if (salesBox) salesBox.classList.remove('d-none');
-            if (purchaseBox) purchaseBox.classList.remove('d-none');
-            if (salesAmt) salesAmt.innerText = `${salesGrand.toLocaleString()}원`;
-            if (purchaseAmt) purchaseAmt.innerText = `${purchaseGrand.toLocaleString()}원`;
-            const netDiff = salesGrand - purchaseGrand;
-            if (totalLabel) totalLabel.innerHTML = `순청구(차액): <span class="${netDiff >= 0 ? 'text-primary' : 'text-danger'} fw-bold">${netDiff.toLocaleString()}원</span>`;
+            // 전체보기 ('all')
+            if (salesCol) {
+                salesCol.classList.remove('d-none', 'col-12');
+                salesCol.classList.add('col-md-6');
+            }
+            if (purchaseCol) {
+                purchaseCol.classList.remove('d-none', 'col-12');
+                purchaseCol.classList.add('col-md-6');
+            }
         }
     },
 
