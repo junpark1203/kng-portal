@@ -1212,7 +1212,9 @@ const app = {
 
         if (baseRows.length === 0) {
             container.innerHTML = `
-                <span class="text-secondary fw-bold me-1" style="font-size: 0.84rem;"><i class='bx bx-category-alt'></i> 계정별 집계:</span>
+                <span class="text-secondary fw-bold me-1 text-nowrap d-inline-flex align-items-center gap-1" style="font-size: 0.84rem;">
+                    <i class='bx bx-category-alt text-primary'></i> 계정별 집계 <span class="badge bg-secondary-subtle text-secondary border fw-normal ms-1" style="font-size:0.72rem;">공급가 기준 (VAT 별도)</span>:
+                </span>
                 <span class="text-muted small">해당 조건의 집계 데이터가 없습니다.</span>
             `;
             if (totalContainer) totalContainer.innerHTML = '';
@@ -1248,7 +1250,7 @@ const app = {
             
             const activeClass = isActive ? ' active-account-chip' : '';
             const checkIcon = isActive ? `<i class='bx bx-check fw-bold'></i> ` : '';
-            const title = `공급가: ${supply.toLocaleString()}원 | 부가세: ${vat.toLocaleString()}원 | 합계: ${grand.toLocaleString()}원\n(클릭 시 필터 적용/해제)`;
+            const title = `[${label} 공급가 기준 집계]\n· 공급가액: ${supply.toLocaleString()}원 (VAT 별도)\n· 부가세액: ${vat.toLocaleString()}원\n· 총 합계금: ${grand.toLocaleString()}원\n(클릭 시 필터 적용/해제)`;
 
             const opacityClass = (count === 0 && !isActive) ? ' opacity-50' : '';
             const cls = isActive ? 'bg-primary text-white' : badgeStyle;
@@ -1256,7 +1258,7 @@ const app = {
             return `
                 <span class="badge ${cls} account-stat-chip${activeClass}${opacityClass} d-inline-flex align-items-center gap-1 shadow-sm"
                       onclick="app.filterByAccount('${accKey}')" title="${escapeAttr(title)}">
-                    ${checkIcon}${label} <strong>${count}건</strong> · ${grand.toLocaleString()}원
+                    ${checkIcon}${label} <strong>${count}건</strong> · ${supply.toLocaleString()}원
                 </span>
             `;
         };
@@ -1270,8 +1272,8 @@ const app = {
             : '';
 
         container.innerHTML = `
-            <span class="text-secondary fw-bold me-1 text-nowrap" style="font-size: 0.84rem;">
-                <i class='bx bx-category-alt text-primary'></i> ${periodPrefix}계정별 집계:
+            <span class="text-secondary fw-bold me-1 text-nowrap d-inline-flex align-items-center gap-1" style="font-size: 0.84rem;">
+                <i class='bx bx-category-alt text-primary'></i> ${periodPrefix}계정별 집계 <span class="badge bg-secondary-subtle text-secondary border fw-normal py-1 px-1 ms-1" style="font-size:0.72rem;" title="모든 계정 금액은 부가가치세(VAT)가 제외된 공급가액 기준입니다.">공급가 기준 (VAT 별도)</span>:
             </span>
             ${getChip('안전자재_전체', '안전자재 통합', calcSafeTotal, 'bg-primary text-white')}
             ${getChip('안전자재-일반', '안전(일반)', calcSafeGen, 'bg-primary bg-opacity-10 text-primary border border-primary')}
@@ -1286,7 +1288,7 @@ const app = {
 
         if (totalContainer) {
             totalContainer.innerHTML = `
-                <span>계정 총 합계: <strong class="text-dark fw-bold">${calcBaseTotal.totalGrand.toLocaleString()}원</strong> (${calcBaseTotal.items.length}건)</span>
+                <span>계정 총 공급가: <strong class="text-dark fw-bold">${calcBaseTotal.totalSupply.toLocaleString()}원</strong> <span class="text-muted" style="font-size:0.78rem;">(VAT 별도, ${calcBaseTotal.items.length}건)</span></span>
             `;
         }
     },
