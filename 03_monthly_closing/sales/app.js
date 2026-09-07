@@ -13,6 +13,7 @@ const app = {
     currentSortCol: 'date',
     currentSortDir: 'asc',
     subSearchKeyword: '',
+    partners: [],
 
     init: function() {
         // 체크박스 헤더
@@ -23,6 +24,9 @@ const app = {
 
         // 초기 날짜 세팅 (전월 기본)
         this.setDatePreset('prevMonth');
+
+        // 등록 거래처 목록 비동기 로드
+        this.loadPartners();
     },
 
     setDatePreset: function(preset) {
@@ -162,6 +166,93 @@ const app = {
         } else if (key === 'account') {
             if ($('accountFilter')) $('accountFilter').value = '';
             this.resetPageAndLoadData();
+        } else if (key === 'partner') {
+            if ($('partnerInput')) $('partnerInput').value = '';
+            this.resetPageAndLoadData();
+        }
+    },
+
+    loadPartners: async function() {
+        try {
+            const res = await window.authFetch('https://kng.junparks.com/api/partners');
+            if (res.ok) {
+                this.partners = await res.json();
+            }
+        } catch (error) {
+            console.error('Failed to load partners', error);
+        }
+    },
+
+    openPartnerSearchModal: function(targetInputId) {
+        if (!this.partners || this.partners.length === 0) {
+            this.loadPartners().then(() => this.showPartnerSearchModal(targetInputId));
+        } else {
+            this.showPartnerSearchModal(targetInputId);
+        }
+    },
+
+    showPartnerSearchModal: function(targetInputId) {
+        const inputEl = document.getElementById(targetInputId);
+        if (!inputEl) return;
+        
+        document.getElementById('partnerSearchTargetInput').value = targetInputId;
+        const searchVal = inputEl.value.trim();
+        document.getElementById('partnerSearchInput').value = searchVal;
+        
+        this.filterPartnerSearch();
+
+        const modalEl = document.getElementById('partnerSearchModal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        // 포커스 이동
+        setTimeout(() => document.getElementById('partnerSearchInput').focus(), 400);
+    },
+
+    filterPartnerSearch: function() {
+        const val = document.getElementById('partnerSearchInput').value.trim().toLowerCase();
+        const listContainer = document.getElementById('partnerSearchList');
+        
+        let matches = this.partners || [];
+        if (val) {
+            matches = matches.filter(p => 
+                (p.name && p.name.toLowerCase().includes(val)) || 
+                (p.company_name && p.company_name.toLowerCase().includes(val))
+            );
+        }
+        
+        if (matches.length === 0) {
+            listContainer.innerHTML = `<div class="list-group-item text-center text-muted py-4">검색된 거래처가 없습니다.</div>`;
+            return;
+        }
+        
+        listContainer.innerHTML = matches.map(m => {
+            return `
+                <button type="button" class="list-group-item list-group-item-action py-2" onclick="app.selectPartner('${m.name}')">
+                    <div class="fw-bold">${m.name}</div>
+                    ${m.company_name ? `<div style="font-size: 0.8rem;" class="text-muted">${m.company_name}</div>` : ''}
+                </button>
+            `;
+        }).join('');
+    },
+
+    selectPartner: function(name) {
+        const targetId = document.getElementById('partnerSearchTargetInput').value;
+        if (targetId && document.getElementById(targetId)) {
+            document.getElementById(targetId).value = name;
+        }
+        const modal = bootstrap.Modal.getInstance(document.getElementById('partnerSearchModal'));
+        if (modal) modal.hide();
+        
+        // 선택 후 자동 조회
+        this.resetPageAndLoadData();
+    },
+
+    selectFirstPartnerMatch: function() {
+        const firstBtn = document.querySelector('#partnerSearchList button');
+        if (firstBtn) {
+            firstBtn.click();
         }
     },
 
@@ -178,13 +269,14 @@ const app = {
     },
 
     // 자재계정이 선택된 상태에서 기간/검색조건이 변경되었을 때, 전체 계정 모수 집계를 1회 조회하여 캐싱
-    fetchBaseSummary: async function(baseKey, startDate, endDate, statusVal, searchTarget, searchKeyword) {
+    fetchBaseSummary: async function(baseKey, startDate, endDate, statusVal, partnerVal, searchTarget, searchKeyword) {
         try {
             const url = new URL(`${API_BASE}/history`);
             url.searchParams.append('type', 'outbound');
             url.searchParams.append('include_direct', 'true');
             url.searchParams.append('limit', '1');
             if (statusVal && statusVal !== '전체보기') url.searchParams.append('settlement_status', statusVal);
+            if (partnerVal) url.searchParams.append('partner', partnerVal);
             if (startDate) url.searchParams.append('startDate', startDate);
             if (endDate) url.searchParams.append('endDate', endDate);
             if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
@@ -213,6 +305,7 @@ const app = {
         if ($('startDate')) $('startDate').value = '';
         if ($('endDate')) $('endDate').value = '';
         if ($('accountFilter')) $('accountFilter').value = '';
+        if ($('partnerInput')) $('partnerInput').value = '';
         if ($('searchTarget')) $('searchTarget').value = '';
         if ($('searchInput')) $('searchInput').value = '';
         const clearBtn = $('clearSearchBtn');
@@ -238,6 +331,7 @@ const app = {
         try {
             const startDate = $('startDate')?.value || '';
             const endDate = $('endDate')?.value || '';
+            const partnerVal = $('partnerInput')?.value.trim() || '';
             const searchKeyword = $('searchInput') ? $('searchInput').value.trim() : '';
             const searchTarget = $('searchTarget')?.value || '';
             const statusVal = $('statusFilter')?.value || '미정산';
@@ -263,6 +357,9 @@ const app = {
             if (accountVal) {
                 url.searchParams.append('settlement_account', accountVal);
             }
+            if (partnerVal) {
+                url.searchParams.append('partner', partnerVal);
+            }
             if (startDate) url.searchParams.append('startDate', startDate);
             if (endDate) url.searchParams.append('endDate', endDate);
             if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
@@ -285,14 +382,14 @@ const app = {
             this.currentSummary = result.summary || null;
 
             // 전체 계정 모수(베이스 서머리) 동기화
-            const currentBaseKey = `${startDate}|${endDate}|${statusVal}|${searchTarget}|${searchKeyword}|${this.subSearchKeyword || ''}`;
+            const currentBaseKey = `${startDate}|${endDate}|${statusVal}|${partnerVal}|${searchTarget}|${searchKeyword}|${this.subSearchKeyword || ''}`;
             if (!accountVal) {
                 // 자재계정 필터가 없는 전체 조회의 경우 이번 결과가 바로 베이스 모수
                 this.baseSummary = result.summary;
                 this.baseSummaryKey = currentBaseKey;
             } else if (!this.baseSummary || this.baseSummaryKey !== currentBaseKey) {
                 // 계정 필터가 적용된 상태에서 기간/검색조건이 바뀌었을 경우 전체 모수를 백그라운드 1회 조회
-                this.fetchBaseSummary(currentBaseKey, startDate, endDate, statusVal, searchTarget, searchKeyword);
+                this.fetchBaseSummary(currentBaseKey, startDate, endDate, statusVal, partnerVal, searchTarget, searchKeyword);
             }
             
             // 화면 렌더링
@@ -318,6 +415,7 @@ const app = {
 
         const statusVal = $('statusFilter')?.value || '미정산';
         const accountVal = $('accountFilter')?.value || '';
+        const partnerVal = $('partnerInput')?.value.trim() || '';
         const startDate = $('startDate')?.value || '';
         const endDate = $('endDate')?.value || '';
         const searchTarget = $('searchTarget')?.value || '';
@@ -325,7 +423,17 @@ const app = {
 
         let chips = [];
 
-        // 1. 상태 필터
+        // 1. 거래처(매출처) 필터
+        if (partnerVal) {
+            chips.push(`
+                <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">
+                    <span class="text-secondary fw-normal"><i class='bx bx-building'></i> 매출처:</span> <strong>${partnerVal}</strong>
+                    <i class='bx bx-x text-muted hover-dark ms-1' style="cursor:pointer; font-size:1rem;" onclick="app.clearFilter('partner')" title="해제"></i>
+                </span>
+            `);
+        }
+
+        // 2. 상태 필터
         if (statusVal && statusVal !== '전체보기') {
             chips.push(`
                 <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 py-1 px-2">

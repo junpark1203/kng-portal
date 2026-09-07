@@ -490,6 +490,7 @@ router.get('/history', (req, res) => {
         page = 1, limit = 50, type = 'all', search = '',
         sortCol = 'date', sortDir = 'desc',
         startDate = '', endDate = '',
+        partner = '',
         searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = '',
         settlement_status = '',
         settlement_account = '',
@@ -572,6 +573,21 @@ router.get('/history', (req, res) => {
             // all: 해당 월로 확정된 건 + 해당 월의 미확정 건
             whereClauses.push("(settlement_month = ? OR ((settlement_month IS NULL OR settlement_month = '') AND SUBSTR(COALESCE(tax_invoice_date, date), 1, 7) = ?))");
             params.push(sMonth, sMonth);
+        }
+    }
+
+    // 거래처 필터 지원 (매입의 경우 supplier, 매출의 경우 destination)
+    if (partner && partner.trim()) {
+        const pKw = `%${partner.trim()}%`;
+        if (type === 'inbound') {
+            whereClauses.push("supplier LIKE ?");
+            params.push(pKw);
+        } else if (type === 'outbound') {
+            whereClauses.push("(destination LIKE ? OR actual_destination LIKE ?)");
+            params.push(pKw, pKw);
+        } else {
+            whereClauses.push("(supplier LIKE ? OR destination LIKE ? OR actual_destination LIKE ?)");
+            params.push(pKw, pKw, pKw);
         }
     }
 

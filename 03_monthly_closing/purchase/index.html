@@ -253,6 +253,12 @@
                         <option value="미분류">미분류</option>
                     </select>
 
+                    <!-- 매입처 검색 (등록 거래처 모달 연동) -->
+                    <div class="input-group input-group-sm flex-shrink-0" style="width: 170px;">
+                        <input type="text" id="partnerInput" class="form-control" placeholder="매입처 검색 (Enter)" autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('partnerInput');}">
+                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('partnerInput')" title="등록 거래처 검색"><i class='bx bx-search'></i></button>
+                    </div>
+
                     <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;">
                         <option value="">전체 검색</option>
                         <option value="supplier">매입처</option>
@@ -391,6 +397,28 @@
 
 <!-- 인쇄용 컨테이너 (평소에는 숨김) -->
 <div id="printContainer" class="print-only"></div>
+
+<!-- 거래처 검색 모달 -->
+<div class="modal fade" id="partnerSearchModal" tabindex="-1" style="z-index: 1100;">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white py-2">
+                <h6 class="modal-title fw-bold mb-0"><i class='bx bx-search'></i> 거래처 검색</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <input type="hidden" id="partnerSearchTargetInput">
+                <div class="input-group mb-3 shadow-sm">
+                    <span class="input-group-text bg-white"><i class='bx bx-search'></i></span>
+                    <input type="text" id="partnerSearchInput" class="form-control" placeholder="거래처명 또는 키워드 입력..." onkeyup="app.filterPartnerSearch()" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.selectFirstPartnerMatch();}">
+                </div>
+                <div class="list-group shadow-sm" id="partnerSearchList">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script type="module">
