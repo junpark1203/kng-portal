@@ -549,10 +549,14 @@ router.get('/history', (req, res) => {
         params.push(category);
     }
 
-    // 정산 상태 필터링 (미정산 / 정산완료)
+    // 정산 상태 필터링 (미정산 / 정산완료 / 확정완료)
     if (settlement_status && settlement_status !== '전체' && settlement_status !== '전체보기') {
         if (settlement_status === '미정산') {
             whereClauses.push("(settlement_status = '미정산' OR settlement_status IS NULL OR settlement_status = '')");
+        } else if (settlement_status === '확정완료' || settlement_status === 'confirmed') {
+            whereClauses.push("(settlement_status = '정산완료' AND settlement_month IS NOT NULL AND settlement_month != '')");
+        } else if (settlement_status === '정산완료(미확정)' || settlement_status === 'unconfirmed') {
+            whereClauses.push("(settlement_status = '정산완료' AND (settlement_month IS NULL OR settlement_month = ''))");
         } else if (settlement_status === '정산완료') {
             whereClauses.push("settlement_status = '정산완료'");
         }
@@ -1571,39 +1575,50 @@ router.post('/settlement/:type', (req, res) => {
         let hasError = false;
 
         if (req.body.action === 'update_account' && ids && Array.isArray(ids)) {
-            // 자재계정 일괄 변경
+            // 자재계정 일괄 변경 - 이미 월간현황에서 확정된 건 보호
             const placeholders = ids.map(() => '?').join(',');
-            const accountVal = req.body.settlement_account || '';
-            const sql = `UPDATE ${table} SET settlement_account = ? WHERE id IN (${placeholders})`;
-            
-            // 상대 테이블(매입 <-> 매출) 자동 동기화 쿼리 (Lots 매핑 테이블 + 고유번호 IN/OUT 매칭 듀얼 연동)
-            const syncSql = (type === 'inbound')
-                ? `UPDATE logistics_outbound SET settlement_account = ? 
-                   WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id IN (${placeholders}))
-                      OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'IN-%')`
-                : `UPDATE logistics_inbound SET settlement_account = ? 
-                   WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders}))
-                      OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'OUT-%')`;
-
-            db.run(sql, [accountVal, ...ids], function(err) {
-                if (err) {
+            db.get(`SELECT COUNT(*) as count FROM ${table} WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, ids, (chkErr, chkRow) => {
+                if (chkErr) {
                     db.run("ROLLBACK");
-                    return res.status(500).json({ error: err.message });
+                    return res.status(500).json({ error: chkErr.message });
                 }
+                if (chkRow && chkRow.count > 0) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: `선택한 내역 중 월간현황에서 이미 확정된 내역(${chkRow.count}건)이 포함되어 있어 자재계정을 변경할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+                }
+
+                const accountVal = req.body.settlement_account || '';
+                const sql = `UPDATE ${table} SET settlement_account = ? WHERE id IN (${placeholders})`;
                 
-                db.run(syncSql, [accountVal, ...ids, ...ids], function(errSync) {
-                    if (errSync) {
-                        console.error('Account counterpart sync error:', errSync.message);
+                // 상대 테이블(매입 <-> 매출) 자동 동기화 쿼리 (Lots 매핑 테이블 + 고유번호 IN/OUT 매칭 듀얼 연동)
+                const syncSql = (type === 'inbound')
+                    ? `UPDATE logistics_outbound SET settlement_account = ? 
+                       WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id IN (${placeholders}))
+                          OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'IN-%')`
+                    : `UPDATE logistics_inbound SET settlement_account = ? 
+                       WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders}))
+                          OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id IN (${placeholders}) AND transaction_group_id LIKE 'OUT-%')`;
+
+                db.run(sql, [accountVal, ...ids], function(err) {
+                    if (err) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: err.message });
                     }
-                    db.run("COMMIT");
-                    return res.json({ message: '자재계정이 성공적으로 변경 및 상대 건과 동기화되었습니다.' });
+                    
+                    db.run(syncSql, [accountVal, ...ids, ...ids], function(errSync) {
+                        if (errSync) {
+                            console.error('Account counterpart sync error:', errSync.message);
+                        }
+                        db.run("COMMIT");
+                        return res.json({ message: '자재계정이 성공적으로 변경 및 상대 건과 동기화되었습니다.' });
+                    });
                 });
             });
             return;
         }
 
         if (req.body.action === 'update_month' && ids && Array.isArray(ids)) {
-            // 정산월(확정 및 확정취소) 일괄 변경
+            // 정산월(확정 및 확정취소) 일괄 변경 - 공식 월간현황 확정 처리
             const placeholders = ids.map(() => '?').join(',');
             const targetMonth = (req.body.settlement_month && String(req.body.settlement_month).trim()) ? String(req.body.settlement_month).trim() : null;
             const sql = `UPDATE ${table} SET settlement_month = ? WHERE id IN (${placeholders})`;
@@ -1622,7 +1637,7 @@ router.post('/settlement/:type', (req, res) => {
 
         if (items && Array.isArray(items)) {
             // 개별 정산 (수량, 단가, 비고, 자재계정, 정산월 포함)
-            // 필수 검증: settlement_account 지정 여부 확인
+            // 필수 검증 1: settlement_account 지정 여부 확인
             for (let i of items) {
                 if (!i.settlement_account || !String(i.settlement_account).trim()) {
                     db.run("ROLLBACK");
@@ -1630,38 +1645,87 @@ router.post('/settlement/:type', (req, res) => {
                 }
             }
 
-            const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ?, settlement_month = ? WHERE id = ?`);
-            
-            // 상대 테이블(매입 <-> 매출) 자재계정 자동 동기화 stmt (Lots 매핑 + 고유번호 매칭)
-            const syncStmt = (type === 'inbound')
-                ? db.prepare(`UPDATE logistics_outbound SET settlement_account = ? 
-                              WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id = ?)
-                                 OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id = ? AND transaction_group_id LIKE 'IN-%')`)
-                : db.prepare(`UPDATE logistics_inbound SET settlement_account = ? 
-                              WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)
-                                 OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id = ? AND transaction_group_id LIKE 'OUT-%')`);
-
-            for (let i of items) {
-                const sMonth = (i.settlement_month !== undefined && i.settlement_month !== null) ? String(i.settlement_month).trim() : '';
-                const sAccount = String(i.settlement_account).trim();
-                stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
-                
-                if (syncStmt) {
-                    syncStmt.run(sAccount, i.id, i.id, function(eSync) {
-                        if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
-                    });
+            // 필수 검증 2: 이미 월간현황에서 확정된 내역에 대한 정산 덮어쓰기 방어
+            const itemIds = items.map(i => i.id);
+            const placeholders = itemIds.map(() => '?').join(',');
+            db.get(`SELECT COUNT(*) as count FROM ${table} WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, itemIds, (chkErr, chkRow) => {
+                if (chkErr) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: chkErr.message });
                 }
-            }
-            stmt.finalize();
-            if (syncStmt) syncStmt.finalize();
+                if (chkRow && chkRow.count > 0) {
+                    db.run("ROLLBACK");
+                    return res.status(400).json({ error: `선택한 내역 중 월간현황에서 이미 확정된 내역(${chkRow.count}건)이 포함되어 있어 정산 정보를 수정할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+                }
+
+                const stmt = db.prepare(`UPDATE ${table} SET settlement_status = '정산완료', tax_invoice_date = ?, is_zero_tax = ?, settlement_qty = ?, settlement_price = ?, settlement_memo = ?, settlement_account = ?, settlement_month = ? WHERE id = ?`);
+                
+                // 상대 테이블(매입 <-> 매출) 자재계정 자동 동기화 stmt (Lots 매핑 + 고유번호 매칭)
+                const syncStmt = (type === 'inbound')
+                    ? db.prepare(`UPDATE logistics_outbound SET settlement_account = ? 
+                                  WHERE id IN (SELECT outbound_id FROM logistics_outbound_lots WHERE inbound_id = ?)
+                                     OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'IN-', 'OUT-') FROM logistics_inbound WHERE id = ? AND transaction_group_id LIKE 'IN-%')`)
+                    : db.prepare(`UPDATE logistics_inbound SET settlement_account = ? 
+                                  WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)
+                                     OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id = ? AND transaction_group_id LIKE 'OUT-%')`);
+
+                for (let i of items) {
+                    const sMonth = (i.settlement_month !== undefined && i.settlement_month !== null) ? String(i.settlement_month).trim() : '';
+                    const sAccount = String(i.settlement_account).trim();
+                    stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
+                    
+                    if (syncStmt) {
+                        syncStmt.run(sAccount, i.id, i.id, function(eSync) {
+                            if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
+                        });
+                    }
+                }
+                stmt.finalize();
+                if (syncStmt) syncStmt.finalize();
+
+                db.run("SELECT 1", function() {
+                    if (hasError) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: 'Settlement update failed' });
+                    } else {
+                        db.run("COMMIT");
+                        res.json({ message: 'Settlement updated' });
+                    }
+                });
+            });
+            return;
         } else if (ids && Array.isArray(ids)) {
             // 단순 상태 변경 (정산 취소 등)
             const status = tax_invoice_date ? '정산완료' : '미정산';
             const placeholders = ids.map(() => '?').join(',');
-            const sql = (status === '미정산') 
-                ? `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ?, settlement_month = '' WHERE id IN (${placeholders})`
-                : `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
-            db.run(sql, (status === '미정산') ? [status, null, 0, ...ids] : [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
+
+            // 정산 취소(미정산) 시 월간현황 확정건 보호
+            if (status === '미정산') {
+                db.get(`SELECT COUNT(*) as count FROM ${table} WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, ids, (chkErr, chkRow) => {
+                    if (chkErr) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: chkErr.message });
+                    }
+                    if (chkRow && chkRow.count > 0) {
+                        db.run("ROLLBACK");
+                        return res.status(400).json({ error: `선택한 내역 중 월간현황에서 이미 확정된 내역(${chkRow.count}건)이 포함되어 있어 정산을 취소할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+                    }
+
+                    const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ?, settlement_month = '' WHERE id IN (${placeholders})`;
+                    db.run(sql, [status, null, 0, ...ids], function(err) {
+                        if (err) {
+                            db.run("ROLLBACK");
+                            return res.status(500).json({ error: err.message });
+                        }
+                        db.run("COMMIT");
+                        return res.json({ message: '정산이 성공적으로 취소되었습니다.' });
+                    });
+                });
+                return;
+            }
+
+            const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
+            db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
                 if(err) hasError = true;
             });
         } else {
@@ -1744,7 +1808,7 @@ router.put('/inbound/:id', (req, res) => {
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
         
-        db.get(`SELECT qty_initial, qty_remaining FROM logistics_inbound WHERE id = ?`, [id], (err, row) => {
+        db.get(`SELECT qty_initial, qty_remaining, settlement_month FROM logistics_inbound WHERE id = ?`, [id], (err, row) => {
             if (err) {
                 db.run("ROLLBACK");
                 return res.status(500).json({ error: err.message });
@@ -1752,6 +1816,11 @@ router.put('/inbound/:id', (req, res) => {
             if (!row) {
                 db.run("ROLLBACK");
                 return res.status(404).json({ error: 'Record not found' });
+            }
+
+            if (row.settlement_month) {
+                db.run("ROLLBACK");
+                return res.status(400).json({ error: `월간현황에서 이미 [${row.settlement_month}]로 확정된 내역은 입고 정보를 수정할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
             }
             
             const consumed = row.qty_initial - row.qty_remaining;
@@ -1800,13 +1869,23 @@ router.put('/outbound/:id', (req, res) => {
 
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
-        
-        // 1. 기존 출고로 차감되었던 재고 복구
-        db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
-            if (err) {
+
+        db.get(`SELECT settlement_month FROM logistics_outbound WHERE id = ?`, [id], (errOut, outRow) => {
+            if (errOut) {
                 db.run("ROLLBACK");
-                return res.status(500).json({ error: err.message });
+                return res.status(500).json({ error: errOut.message });
             }
+            if (outRow && outRow.settlement_month) {
+                db.run("ROLLBACK");
+                return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 출고 정보를 수정할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+            }
+            
+            // 1. 기존 출고로 차감되었던 재고 복구
+            db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
             
             const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
             let hasError = false;
@@ -1873,6 +1952,7 @@ router.put('/outbound/:id', (req, res) => {
                     });
                 });
             });
+            });
         });
     });
 });
@@ -1884,7 +1964,7 @@ router.delete('/inbound/:id', (req, res) => {
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
         
-        db.get(`SELECT qty_initial, qty_remaining FROM logistics_inbound WHERE id = ?`, [id], (err, row) => {
+        db.get(`SELECT qty_initial, qty_remaining, settlement_month FROM logistics_inbound WHERE id = ?`, [id], (err, row) => {
             if (err) {
                 db.run("ROLLBACK");
                 return res.status(500).json({ error: err.message });
@@ -1892,6 +1972,11 @@ router.delete('/inbound/:id', (req, res) => {
             if (!row) {
                 db.run("ROLLBACK");
                 return res.status(404).json({ error: 'Record not found' });
+            }
+
+            if (row.settlement_month) {
+                db.run("ROLLBACK");
+                return res.status(400).json({ error: `월간현황에서 이미 [${row.settlement_month}]로 확정된 내역은 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
             }
             
             if (row.qty_initial !== row.qty_remaining) {
@@ -1919,12 +2004,22 @@ router.delete('/outbound/:id', (req, res) => {
     
     db.serialize(() => {
         db.run("BEGIN TRANSACTION");
-        
-        db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
-            if (err) {
+
+        db.get(`SELECT settlement_month FROM logistics_outbound WHERE id = ?`, [id], (errOut, outRow) => {
+            if (errOut) {
                 db.run("ROLLBACK");
-                return res.status(500).json({ error: err.message });
+                return res.status(500).json({ error: errOut.message });
             }
+            if (outRow && outRow.settlement_month) {
+                db.run("ROLLBACK");
+                return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+            }
+            
+            db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
             
             const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
             let hasError = false;
@@ -1966,6 +2061,7 @@ router.delete('/outbound/:id', (req, res) => {
                         });
                     });
                 });
+            });
             });
         });
     });

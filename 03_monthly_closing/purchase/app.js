@@ -25,6 +25,10 @@ const app = {
         // 초기 날짜 세팅 (전월 기본)
         this.setDatePreset('prevMonth');
 
+        // 날짜 자동 보정 리스너 등록
+        this.attachDateAutoCorrection($('startDate'));
+        this.attachDateAutoCorrection($('endDate'));
+
         // 등록 거래처 목록 비동기 로드
         this.loadPartners();
     },
@@ -121,7 +125,83 @@ const app = {
         return '';
     },
 
+    attachDateAutoCorrection: function(inputEl) {
+        if (!inputEl) return;
+        inputEl._typedDigits = '';
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                inputEl._typedDigits = (inputEl._typedDigits || '') + e.key;
+                clearTimeout(inputEl._typedTimer);
+                inputEl._typedTimer = setTimeout(() => { inputEl._typedDigits = ''; }, 3000);
+            } else if (e.key === 'Backspace') {
+                inputEl._typedDigits = (inputEl._typedDigits || '').slice(0, -1);
+            }
+        });
+
+        inputEl.addEventListener('paste', (e) => {
+            const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+            const match = text.match(/(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})/);
+            if (match) {
+                e.preventDefault();
+                const y = parseInt(match[1], 10);
+                const m = parseInt(match[2], 10);
+                const d = parseInt(match[3], 10);
+                const maxDay = new Date(y, m, 0).getDate();
+                const clamped = Math.min(d, maxDay);
+                const pad = n => String(n).padStart(2, '0');
+                const val = `${y}-${pad(m)}-${pad(clamped)}`;
+                inputEl.value = val;
+                inputEl._typedDigits = '';
+                if (d > maxDay) {
+                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                }
+                this.onDateInputChange();
+            }
+        });
+
+        inputEl.addEventListener('blur', () => {
+            this.checkAndCorrectDate(inputEl);
+        });
+    },
+
+    checkAndCorrectDate: function(inputEl) {
+        if (!inputEl) return '';
+        if (inputEl.validity && inputEl.validity.badInput) {
+            const raw = (inputEl._typedDigits || '').replace(/\D/g, '');
+            let y, m, d;
+            if (raw.length >= 8) {
+                const maybeY = parseInt(raw.slice(0, 4), 10);
+                if (maybeY >= 1900 && maybeY <= 2100) {
+                    y = maybeY;
+                    m = parseInt(raw.slice(4, 6), 10);
+                    d = parseInt(raw.slice(6, 8), 10);
+                }
+            } else if (raw.length >= 4) {
+                const now = new Date();
+                y = now.getFullYear();
+                m = parseInt(raw.slice(0, 2), 10);
+                d = parseInt(raw.slice(2, 4), 10);
+            }
+            if (y && m && m >= 1 && m <= 12) {
+                const maxDay = new Date(y, m, 0).getDate();
+                const clamped = d ? Math.min(d, maxDay) : maxDay;
+                const pad = n => String(n).padStart(2, '0');
+                const val = `${y}-${pad(m)}-${pad(clamped)}`;
+                inputEl.value = val;
+                inputEl._typedDigits = '';
+                this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                return val;
+            }
+        } else if (inputEl.value) {
+            inputEl._typedDigits = '';
+        }
+        return inputEl.value;
+    },
+
     onDateInputChange: function() {
+        this.checkAndCorrectDate($('startDate'));
+        this.checkAndCorrectDate($('endDate'));
         const start = $('startDate') ? $('startDate').value : '';
         const end = $('endDate') ? $('endDate').value : '';
         const detected = this.detectDatePreset(start, end);
@@ -329,8 +409,18 @@ const app = {
 
     loadData: async function() {
         try {
-            const startDate = $('startDate')?.value || '';
-            const endDate = $('endDate')?.value || '';
+            this.checkAndCorrectDate($('startDate'));
+            this.checkAndCorrectDate($('endDate'));
+
+            const startEl = $('startDate');
+            const endEl = $('endDate');
+            if ((startEl && startEl.validity && startEl.validity.badInput) || (endEl && endEl.validity && endEl.validity.badInput)) {
+                alert('입력하신 일자에 달력상 존재하지 않거나 유효하지 않은 날짜가 포함되어 있습니다. 올바른 날짜를 확인해주세요.');
+                return;
+            }
+
+            const startDate = startEl?.value || '';
+            const endDate = endEl?.value || '';
             const partnerVal = $('partnerInput')?.value.trim() || '';
             const searchKeyword = $('searchInput') ? $('searchInput').value.trim() : '';
             const searchTarget = $('searchTarget')?.value || '';
@@ -778,7 +868,7 @@ const app = {
                 return `
                     <tr class="unsettled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" onchange="app.updateBatchButton()">
+                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" data-confirmed="false" data-settle-month="" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
@@ -840,6 +930,17 @@ const app = {
                     </tr>
                 `;
             } else {
+                const isConfirmed = !!(r.settlement_month && String(r.settlement_month).trim());
+                
+                let confirmBadge = isConfirmed
+                    ? `<span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1 shadow-sm d-inline-flex align-items-center gap-1" title="월간현황에서 [${r.settlement_month}]로 확정 완료된 건입니다. (확정 잠금)"><i class='bx bxs-lock-alt'></i>${r.settlement_month} 확정</span>`
+                    : `<span class="badge bg-primary-subtle text-primary border border-primary shadow-sm px-2 py-1">정산완료</span>`;
+
+                let accountDisplay = accountBadge;
+                if (isConfirmed) {
+                    accountDisplay += ` <span title="월간현황 확정건 (계정 잠금)"><i class='bx bxs-lock-alt text-success ms-1' style="font-size:0.75rem;"></i></span>`;
+                }
+
                 const supplyAmt = Math.round((r.settlement_qty || 0) * (r.settlement_price || 0)) + shipAmount;
                 let vat = 0;
                 
@@ -862,7 +963,7 @@ const app = {
                 return `
                     <tr class="settled-row bg-settled-row">
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" onchange="app.updateBatchButton()">
+                            <input class="form-check-input row-chk" type="checkbox" value="${r.id}" data-status="${statusVal}" data-account="${r.settlement_account || ''}" data-confirmed="${isConfirmed ? 'true' : 'false'}" data-settle-month="${r.settlement_month || ''}" onchange="app.updateBatchButton()">
                         </td>
                         <td rowspan="2" class="align-middle text-muted bg-original text-center" style="border-bottom-width: 1px; font-size: 0.73rem; color: #64748b; letter-spacing: -0.2px;">${r.transaction_group_id || ''}</td>
                         <td rowspan="2" class="align-middle bg-original" style="max-width: 110px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.supplier || '')}">${r.supplier || ''}</td>
@@ -873,7 +974,7 @@ const app = {
                         <td rowspan="2" class="align-middle small bg-original" style="max-width: 90px; word-break: break-all; overflow-wrap: anywhere; border-bottom-width: 1px;" title="${escapeAttr(r.spec || '-')}">${r.spec || '-'}</td>
                         <td rowspan="2" class="align-middle small text-center bg-original" style="max-width: 50px; border-bottom-width: 1px;">${r.unit || '-'}</td>
                         <td rowspan="2" class="align-middle text-center bg-original p-1" style="max-width: 125px; border-bottom-width: 1px;">
-                            ${accountBadge}
+                            ${accountDisplay}
                         </td>
                         
                         <td class="align-middle text-center bg-original text-muted fw-bold" style="font-size: 0.75rem;">입고</td>
@@ -886,7 +987,7 @@ const app = {
                         <td class="align-middle bg-original small text-muted"></td>
                         
                         <td rowspan="2" class="text-center align-middle bg-original" style="border-bottom-width: 1px;">
-                            <span class="badge bg-success shadow-sm px-2 py-1">정산완료</span>
+                            ${confirmBadge}
                         </td>
                     </tr>
                     <tr class="settled-row bg-settled-row settle-input-row" data-id="${r.id}" data-shipamt="${shipAmount}" data-shipfee="${r.shipping_fee || 0}" data-shipvatinc="${r.shipping_fee_vat_included || 0}">
@@ -1081,6 +1182,12 @@ const app = {
         const checkedBoxes = Array.from(document.querySelectorAll('.row-chk:checked'));
         if (checkedBoxes.length === 0) return alert('자재계정을 적용할 대상을 먼저 선택해주세요.');
 
+        const confirmedBoxes = checkedBoxes.filter(chk => chk.dataset.confirmed === 'true');
+        if (confirmedBoxes.length > 0) {
+            alert(`선택한 내역 중 월간현황에서 이미 확정된 내역(${confirmedBoxes.length}건)이 포함되어 있어 계정을 일괄 변경할 수 없습니다.\n\n계정을 변경하려면 먼저 [월간현황] 화면에서 해당 건의 확정을 해제해야 합니다.`);
+            return;
+        }
+
         const ids = [];
         checkedBoxes.forEach(chk => {
             const tr = chk.closest('tr');
@@ -1103,7 +1210,8 @@ const app = {
             if (res.ok) {
                 this.loadData();
             } else {
-                alert('자재계정 일괄 변경에 실패했습니다.');
+                const errJson = await res.json().catch(() => ({}));
+                alert(errJson.error || '자재계정 일괄 변경에 실패했습니다.');
             }
         } catch (err) {
             console.error(err);
@@ -1130,6 +1238,13 @@ const app = {
     },
 
     changeInlineAccount: async function(rowId, selectEl) {
+        const item = this.items.find(it => it.id == rowId);
+        if (item && item.settlement_month) {
+            alert(`월간현황에서 이미 [${item.settlement_month}]로 확정된 내역은 자재계정을 변경할 수 없습니다.\n먼저 [월간현황] 화면에서 해당 건의 확정을 해제해주세요.`);
+            selectEl.value = item.settlement_account || '';
+            return;
+        }
+
         const accountVal = selectEl.value;
         try {
             const res = await window.authFetch(`${API_BASE}/settlement/inbound`, {
@@ -1145,7 +1260,6 @@ const app = {
                 const chk = document.querySelector(`input.row-chk[value="${rowId}"]`);
                 if (chk) chk.dataset.account = accountVal;
                 
-                const item = this.items.find(it => it.id == rowId);
                 if (item) item.settlement_account = accountVal;
 
                 selectEl.classList.remove('border-secondary-subtle');
@@ -1252,6 +1366,12 @@ const app = {
     },
 
     submitInlineSettlement: async function(rowId) {
+        const item = this.items.find(it => it.id == rowId);
+        if (item && item.settlement_month) {
+            alert(`월간현황에서 이미 [${item.settlement_month}]로 확정된 내역은 정산 정보를 직접 수정할 수 없습니다.\n먼저 [월간현황] 화면에서 해당 건의 확정을 해제해주세요.`);
+            return;
+        }
+
         const tr = document.querySelector(`input.row-chk[value="${rowId}"]`)?.closest('tr');
         const container = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
         if(!container || !tr) return;
@@ -1367,13 +1487,25 @@ const app = {
     cancelSettlementBatch: async function() {
         const checked = document.querySelectorAll('.row-chk:checked');
         const ids = [];
+        const confirmedList = [];
+
         checked.forEach(el => {
             if(el.dataset.status === '정산완료') {
-                ids.push(parseInt(el.value));
+                if (el.dataset.confirmed === 'true') {
+                    confirmedList.push({ id: el.value, month: el.dataset.settleMonth });
+                } else {
+                    ids.push(parseInt(el.value));
+                }
             }
         });
+
+        if (confirmedList.length > 0) {
+            const months = [...new Set(confirmedList.map(c => c.month))].filter(Boolean).join(', ');
+            alert(`선택한 내역 중 월간현황에서 이미 확정된 내역(${confirmedList.length}건, [${months} 확정])이 포함되어 있어 정산을 취소할 수 없습니다.\n\n정산을 취소하려면 먼저 [월간현황] 화면에서 해당 건의 확정을 해제해야 합니다.`);
+            return;
+        }
         
-        if(ids.length === 0) return alert('취소할 정산완료 내역이 선택되지 않았습니다.');
+        if(ids.length === 0) return alert('취소할 정산완료(미확정) 내역이 선택되지 않았습니다.');
         if(!confirm(`선택한 ${ids.length}건을 정산 취소하시겠습니까?\n(다시 미정산 상태로 돌아가며 정산일자는 초기화됩니다.)`)) return;
         
         try {
@@ -1385,7 +1517,8 @@ const app = {
             if (res.ok) {
                 this.loadData();
             } else {
-                alert('취소 처리에 실패했습니다.');
+                const errJson = await res.json().catch(() => ({}));
+                alert(errJson.error || '취소 처리에 실패했습니다.');
             }
         } catch(err) {
             console.error(err);

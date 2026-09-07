@@ -96,6 +96,10 @@ const app = {
         if ($('endDate')) $('endDate').value = '';
         this.updateDatePresetUI();
 
+        // 날짜 자동보정 리스너 등록
+        this.attachDateAutoCorrection($('startDate'));
+        this.attachDateAutoCorrection($('endDate'));
+
         // 확정 대상월 및 확정월 기본값 (전월)
         const now = new Date();
         let y = now.getFullYear();
@@ -164,6 +168,91 @@ const app = {
         if (clearBtn) clearBtn.classList.add('d-none');
     },
 
+    showToast: function(msg) {
+        let toast = document.getElementById('monthlyToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'monthlyToast';
+            toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #f8fafc; padding: 8px 16px; border-radius: 6px; font-size: 0.82rem; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.18); z-index: 9999; transition: opacity 0.25s ease, transform 0.25s ease; opacity: 0; transform: translateY(10px); pointer-events: none;';
+            document.body.appendChild(toast);
+        }
+        toast.innerText = msg;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
+        }, 1800);
+    },
+
+    attachDateAutoCorrection: function(inputEl) {
+        if (!inputEl) return;
+        inputEl._typedDigits = '';
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                inputEl._typedDigits += e.key;
+            } else if (e.key === 'Backspace') {
+                inputEl._typedDigits = inputEl._typedDigits.slice(0, -1);
+            }
+        });
+        inputEl.addEventListener('paste', (e) => {
+            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+            const digits = pasteData.replace(/\D/g, '');
+            inputEl._typedDigits = digits;
+        });
+        const correctOnBlur = () => {
+            this.checkAndCorrectDate(inputEl);
+        };
+        inputEl.addEventListener('blur', correctOnBlur);
+        inputEl.addEventListener('change', correctOnBlur);
+    },
+
+    checkAndCorrectDate: function(inputEl) {
+        if (!inputEl) return false;
+        if (inputEl.validity && inputEl.validity.badInput) {
+            const rawDigits = inputEl._typedDigits || '';
+            let y, m, d;
+            if (rawDigits.length === 8) {
+                y = parseInt(rawDigits.substring(0, 4), 10);
+                m = parseInt(rawDigits.substring(4, 6), 10);
+                d = parseInt(rawDigits.substring(6, 8), 10);
+            }
+            if (y && m >= 1 && m <= 12) {
+                const maxDay = new Date(y, m, 0).getDate();
+                if (d > maxDay) {
+                    const correctedDay = String(maxDay).padStart(2, '0');
+                    const correctedMonth = String(m).padStart(2, '0');
+                    const correctedStr = `${y}-${correctedMonth}-${correctedDay}`;
+                    inputEl.value = correctedStr;
+                    inputEl._typedDigits = `${y}${correctedMonth}${correctedDay}`;
+                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${correctedStr}로 자동 보정되었습니다.`);
+                    return true;
+                }
+            }
+            this.showToast('유효하지 않은 날짜 형식입니다. 올바른 날짜를 입력해주세요.');
+            return false;
+        } else if (inputEl.value) {
+            const parts = inputEl.value.split('-');
+            if (parts.length === 3) {
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10);
+                const d = parseInt(parts[2], 10);
+                const maxDay = new Date(y, m, 0).getDate();
+                if (d > maxDay) {
+                    const correctedDay = String(maxDay).padStart(2, '0');
+                    const correctedMonth = String(m).padStart(2, '0');
+                    const correctedStr = `${y}-${correctedMonth}-${correctedDay}`;
+                    inputEl.value = correctedStr;
+                    inputEl._typedDigits = `${y}${correctedMonth}${correctedDay}`;
+                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${correctedStr}로 자동 보정되었습니다.`);
+                    return true;
+                }
+            }
+        }
+        return false;
+    },
+
     // ── 기간/일자 기준 관리 ──
     onDateTypeChange: function() {
         this.dateType = $('dateTypeSelect')?.value || 'settlement';
@@ -188,8 +277,13 @@ const app = {
     },
 
     onDateRangeChange: function() {
-        this.startDate = $('startDate')?.value || '';
-        this.endDate = $('endDate')?.value || '';
+        const startEl = $('startDate');
+        const endEl = $('endDate');
+        if (startEl) this.checkAndCorrectDate(startEl);
+        if (endEl) this.checkAndCorrectDate(endEl);
+
+        this.startDate = startEl?.value || '';
+        this.endDate = endEl?.value || '';
         this.updateDatePresetUI();
         if (this.selectedPartner) this.loadData();
     },
@@ -643,6 +737,21 @@ const app = {
 
         try {
             const pName = this.selectedPartner.name || this.selectedPartner.company_name;
+
+            const startEl = $('startDate');
+            const endEl = $('endDate');
+            if (this.dateType !== 'confirmed_month') {
+                if (startEl) this.checkAndCorrectDate(startEl);
+                if (endEl) this.checkAndCorrectDate(endEl);
+
+                if ((startEl && startEl.validity && startEl.validity.badInput) ||
+                    (endEl && endEl.validity && endEl.validity.badInput)) {
+                    alert('입력된 조회 기간 중 잘못된 날짜(존재하지 않는 일자 등)가 있습니다.\n올바른 날짜를 입력해주세요.');
+                    return;
+                }
+                this.startDate = startEl?.value || '';
+                this.endDate = endEl?.value || '';
+            }
 
             // 1. type=all 요청으로 매출(outbound)과 매입(inbound)을 단일 쿼리로 모두 수집
             const sortField = (this.dateType === 'transaction') ? 'date' : ((this.dateType === 'confirmed_month') ? 'settlement_month' : 'tax_invoice_date');

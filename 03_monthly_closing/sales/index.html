@@ -197,9 +197,11 @@
             <p class="text-muted mb-0 small">출고 내역에 대한 세금계산서 발행 및 대금 확정 관리</p>
         </div>
         <div>
-            <select id="statusFilter" class="form-select form-select-sm fw-bold border-primary text-primary" style="width: 140px;" onchange="app.resetPageAndLoadData()">
+            <select id="statusFilter" class="form-select form-select-sm fw-bold border-primary text-primary" style="width: 160px;" onchange="app.resetPageAndLoadData()">
                 <option value="미정산">미정산 보기</option>
-                <option value="정산완료">정산완료 보기</option>
+                <option value="정산완료">정산완료 (전체)</option>
+                <option value="정산완료(미확정)">정산완료 (미확정)</option>
+                <option value="확정완료">확정완료 (잠김)</option>
                 <option value="전체보기">전체보기</option>
             </select>
         </div>
