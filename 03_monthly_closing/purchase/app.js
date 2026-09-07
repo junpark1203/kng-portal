@@ -913,6 +913,12 @@ const app = {
     },
 
     updatePagination: function() {
+        const isAll = this.limit >= 999999;
+        if (isAll) {
+            $('pageInfo').innerText = `1 - ${this.totalItems} (총 ${this.totalItems}건 전체)`;
+            $('pagination').innerHTML = '';
+            return;
+        }
         // 간단한 페이징 처리
         const totalPages = Math.ceil(this.totalItems / this.limit) || 1;
         const pageInfo = `${(this.currentPage - 1) * this.limit + 1} - ${Math.min(this.currentPage * this.limit, this.totalItems)} (총 ${this.totalItems}건)`;

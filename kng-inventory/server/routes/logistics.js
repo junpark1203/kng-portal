@@ -498,7 +498,11 @@ router.get('/history', (req, res) => {
     } = req.query;
 
     page = parseInt(page, 10) || 1;
-    limit = parseInt(limit, 10) || 50;
+    if (limit === 'all' || parseInt(limit, 10) >= 999999) {
+        limit = 999999;
+    } else {
+        limit = parseInt(limit, 10) || 50;
+    }
     const offset = (page - 1) * limit;
 
     const validSortCols = ['type', 'date', 'supplier', 'destination', 'item', 'spec', 'unit', 'qty', 'inbound_price', 'outbound_price', 'inbound_total', 'outbound_total', 'category', 'settlement_account', 'transaction_group_id', 'tax_invoice_date', 'settlement_status', 'settlement_month'];
