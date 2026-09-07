@@ -148,6 +148,24 @@ function applyFilterAndRender() {
     // 정렬 적용
     if (sortField) {
         filteredProducts.sort(function(a, b) {
+            // 최종수정일(updatedAt) 정렬 특별 처리: 수정된 적 없는 상품(-)은 항상 최하단으로 배치
+            if (sortField === 'updatedAt') {
+                var hasA = isProductModified(a);
+                var hasB = isProductModified(b);
+                if (hasA && !hasB) return -1;
+                if (!hasA && hasB) return 1;
+                if (!hasA && !hasB) {
+                    var dateA = a.uploadDate || '';
+                    var dateB = b.uploadDate || '';
+                    return dateA < dateB ? 1 : (dateA > dateB ? -1 : 0);
+                }
+                var timeA = a.updatedAt || '';
+                var timeB = b.updatedAt || '';
+                if (timeA < timeB) return sortDirection === 'asc' ? -1 : 1;
+                if (timeA > timeB) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            }
+
             var valA = getSortValue(a, sortField);
             var valB = getSortValue(b, sortField);
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -162,6 +180,13 @@ function applyFilterAndRender() {
     }
 
     renderTable();
+}
+
+// 상품이 최초 등록 이후 실제 수정된 적이 있는지 판별
+function isProductModified(p) {
+    if (!p || !p.updatedAt) return false;
+    if (!p.createdAt) return false;
+    return p.updatedAt !== p.createdAt;
 }
 
 // 정렬용 값 가져오기 (계산 필드 포함)
@@ -191,7 +216,7 @@ function getSortValue(p, field) {
         case 'sellPrice': return p.sellPrice || 0;
         case 'sellShipping': return p.sellShipping || 0;
         case 'uploadDate': return p.uploadDate || '';
-        case 'updatedAt': return p.updatedAt || '';
+        case 'updatedAt': return isProductModified(p) ? (p.updatedAt || '') : '';
         default:
             return p[field] || '';
     }
@@ -352,17 +377,10 @@ function renderTable() {
 
             // 최종수정일 포맷 (수정된 경우에만 날짜 표시, 미수정 시 '-')
             var updatedDateHtml = '<span style="color:#bbb;">-</span>';
-            var isModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
-            if (isModified) {
+            if (isProductModified(p)) {
                 var shortUpdateDate = formatShortDate(p.updatedAt);
                 var fullUpdateDate = formatDateTime(p.updatedAt);
-                var updateTime = new Date(p.updatedAt).getTime();
-                var isRecent = !isNaN(updateTime) && (Date.now() - updateTime < 3 * 24 * 60 * 60 * 1000);
-                if (isRecent) {
-                    updatedDateHtml = '<span class="recent-update-chip" title="최종수정: ' + escapeHtml(fullUpdateDate) + '"><span class="pulse-dot"></span>' + shortUpdateDate + '</span>';
-                } else {
-                    updatedDateHtml = '<span title="최종수정: ' + escapeHtml(fullUpdateDate) + '">' + shortUpdateDate + '</span>';
-                }
+                updatedDateHtml = '<span title="최종수정: ' + escapeHtml(fullUpdateDate) + '">' + shortUpdateDate + '</span>';
             }
 
             // 매입운임 툴팁 (수량별이면 "N개당" 표시)
@@ -560,7 +578,7 @@ function openModal(id) {
             // 타임스탬프 정보 바
             var tsEl = document.getElementById('skTimestampDisplay');
             if (tsEl) {
-                var isItemModified = p.updatedAt && (p.updatedAt !== p.createdAt || !p.createdAt);
+                var isItemModified = isProductModified(p);
                 var createdStr = p.createdAt ? formatDateTime(p.createdAt) : (p.uploadDate || '-');
                 var updatedStr = isItemModified ? formatDateTime(p.updatedAt) : '수정 이력 없음';
                 tsEl.innerHTML = '<span><i class="bx bx-calendar-plus"></i> 최초등록: <strong>' + escapeHtml(createdStr) + '</strong></span>' +
@@ -1079,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 p.color || '', p.size || '', p.buyPrice || 0, p.buyShipping || 0,
                 p.shippingBasis || '', buyTotal, p.sellPrice || 0, p.sellShipping || 0,
                 sellTotal, commission, profit, profitRate.toFixed(1) + '%',
-                p.remarks || '', formatDateTime(p.updatedAt)
+                p.remarks || '', isProductModified(p) ? formatDateTime(p.updatedAt) : '-'
             ]);
         });
         var wb = XLSX.utils.book_new();

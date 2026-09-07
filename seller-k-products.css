@@ -532,26 +532,6 @@ td.profit-col {
     }
 }
 
-/* ── 최종수정일 배지 및 최근 수정 강조 ── */
-.recent-update-chip {
-    display: inline-flex;
-    align-items: center;
-    font-size: 10px;
-    font-weight: 600;
-    color: #1d4ed8;
-    background: #eff6ff;
-    padding: 2px 5px;
-    border-radius: 4px;
-    border: 1px solid #bfdbfe;
-    gap: 3px;
-}
-.recent-update-chip .pulse-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: #3b82f6;
-    display: inline-block;
-}
 
 /* ── 타임스탬프 정보 바 ── */
 .timestamp-bar {
