@@ -165,6 +165,18 @@ const app = {
         }
     },
 
+    filterByAccount: function(accountName) {
+        const select = $('accountFilter');
+        if (!select) return;
+        if (select.value === accountName) {
+            // 이미 선택된 계정이면 토글(전체 해제)
+            select.value = '';
+        } else {
+            select.value = accountName;
+        }
+        this.resetPageAndLoadData();
+    },
+
     resetSearch: function() {
         this.currentDatePreset = 'all';
         this.updatePresetButtons('all');
@@ -368,14 +380,29 @@ const app = {
         const safeTotalCount = (safeGen.count || 0) + (safeEnv.count || 0);
         const safeTotalSupply = (safeGen.supplyAmt || 0) + (safeEnv.supplyAmt || 0);
 
+        const currentAcc = $('accountFilter')?.value || '';
+        const getChipProps = (accKey, label) => {
+            const isActive = (currentAcc === accKey);
+            const activeClass = isActive ? ' active-account-chip' : '';
+            const icon = isActive ? `<i class='bx bx-check fw-bold'></i> ` : '';
+            const title = isActive ? `[${label}] 필터링 적용 중 (클릭 시 전체 보기로 해제)` : `클릭하여 [${label}] 내역만 조회`;
+            return { isActive, activeClass, icon, title };
+        };
+
+        const pSafeTotal = getChipProps('안전자재', '안전자재 통합');
+        const pSafeGen = getChipProps('안전자재-일반', '안전(일반)');
+        const pSafeEnv = getChipProps('안전자재-환경', '안전(환경)');
+        const pMisc = getChipProps('잡자재', '잡자재');
+        const pEtc = getChipProps('기타자재', '기타자재');
+        const pMall = getChipProps('쇼핑몰', '쇼핑몰');
+        const pUnclass = getChipProps('미분류', '미분류');
+
         strip.innerHTML = `
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pb-2 border-bottom">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <span class="text-secondary"><strong>검색 결과</strong></span>
                     <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
-                    <span class="text-muted ms-1 me-1">|</span>
-                    <span class="text-muted">총 수량:</span>
-                    <strong class="text-dark">${totalQty.toLocaleString()}</strong>
+                    <span class="text-muted small">총 수량: <strong>${totalQty.toLocaleString()}</strong></span>
                 </div>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
@@ -385,30 +412,37 @@ const app = {
                     </div>
                 </div>
             </div>
-            <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size: 0.79rem;">
-                <span class="text-secondary fw-bold me-1">계정별 집계:</span>
-                <span class="badge bg-primary text-white px-2 py-1 d-inline-flex align-items-center gap-1 shadow-sm">
-                    안전자재 통합: <strong>${safeTotalCount}건</strong> (${safeTotalSupply.toLocaleString()}원)
+            <div class="d-flex align-items-center gap-2 flex-wrap pt-2" style="font-size: 0.85rem;">
+                <span class="text-secondary fw-bold me-1"><i class='bx bx-category-alt'></i> 계정별 집계:</span>
+                <span class="badge ${pSafeTotal.isActive ? 'bg-primary text-white' : 'bg-primary text-white'} account-stat-chip${pSafeTotal.activeClass} d-inline-flex align-items-center gap-1 shadow-sm"
+                      onclick="app.filterByAccount('안전자재')" title="${pSafeTotal.title}">
+                    ${pSafeTotal.icon}안전자재 통합: <strong>${safeTotalCount}건</strong> (${safeTotalSupply.toLocaleString()}원)
                 </span>
-                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-inline-flex align-items-center gap-1">
-                    안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
+                <span class="badge ${pSafeGen.isActive ? 'bg-primary text-white' : 'bg-primary bg-opacity-10 text-primary border border-primary'} account-stat-chip${pSafeGen.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('안전자재-일반')" title="${pSafeGen.title}">
+                    ${pSafeGen.icon}안전(일반): <strong>${safeGen.count}건</strong> (${safeGen.supplyAmt.toLocaleString()}원)
                 </span>
-                <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1 d-inline-flex align-items-center gap-1">
-                    안전(환경): <strong>${safeEnv.count}건</strong> (${safeEnv.supplyAmt.toLocaleString()}원)
+                <span class="badge ${pSafeEnv.isActive ? 'bg-success text-white' : 'bg-success bg-opacity-10 text-success border border-success'} account-stat-chip${pSafeEnv.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('안전자재-환경')" title="${pSafeEnv.title}">
+                    ${pSafeEnv.icon}안전(환경): <strong>${safeEnv.count}건</strong> (${safeEnv.supplyAmt.toLocaleString()}원)
                 </span>
-                <span class="text-muted mx-1">|</span>
-                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2 py-1 d-inline-flex align-items-center gap-1">
-                    잡자재: <strong>${misc.count}건</strong> (${misc.supplyAmt.toLocaleString()}원)
+                <span class="text-muted mx-1 opacity-50">|</span>
+                <span class="badge ${pMisc.isActive ? 'bg-warning text-dark' : 'bg-warning bg-opacity-10 text-dark border border-warning'} account-stat-chip${pMisc.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('잡자재')" title="${pMisc.title}">
+                    ${pMisc.icon}잡자재: <strong>${misc.count}건</strong> (${misc.supplyAmt.toLocaleString()}원)
                 </span>
-                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1 d-inline-flex align-items-center gap-1">
-                    기타자재: <strong>${etc.count}건</strong> (${etc.supplyAmt.toLocaleString()}원)
+                <span class="badge ${pEtc.isActive ? 'bg-secondary text-white' : 'bg-secondary bg-opacity-10 text-secondary border border-secondary'} account-stat-chip${pEtc.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('기타자재')" title="${pEtc.title}">
+                    ${pEtc.icon}기타자재: <strong>${etc.count}건</strong> (${etc.supplyAmt.toLocaleString()}원)
                 </span>
-                <span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1 d-inline-flex align-items-center gap-1">
-                    쇼핑몰: <strong>${mall.count}건</strong> (${mall.supplyAmt.toLocaleString()}원)
+                <span class="badge ${pMall.isActive ? 'bg-info text-dark' : 'bg-info bg-opacity-10 text-info border border-info'} account-stat-chip${pMall.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('쇼핑몰')" title="${pMall.title}">
+                    ${pMall.icon}쇼핑몰: <strong>${mall.count}건</strong> (${mall.supplyAmt.toLocaleString()}원)
                 </span>
                 ${unclass.count > 0 ? `
-                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1 d-inline-flex align-items-center gap-1">
-                    미분류: <strong>${unclass.count}건</strong> (계정 지정 필요)
+                <span class="badge ${pUnclass.isActive ? 'bg-danger text-white' : 'bg-danger bg-opacity-10 text-danger border border-danger'} account-stat-chip${pUnclass.activeClass} d-inline-flex align-items-center gap-1"
+                      onclick="app.filterByAccount('미분류')" title="${pUnclass.title}">
+                    ${pUnclass.icon}미분류: <strong>${unclass.count}건</strong> (계정 지정 필요)
                 </span>
                 ` : ''}
             </div>

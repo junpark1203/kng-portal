@@ -167,6 +167,25 @@
         .resizer:hover, .resizing {
             border-right: 2px solid #3b82f6;
         }
+
+        /* 계정별 집계 클릭 가능한 배지 칩 스타일 */
+        .account-stat-chip {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s ease;
+            padding: 5px 10px !important;
+            font-size: 0.84rem !important; /* 기존 0.79rem에서 약 1px 확대 */
+            border-radius: 6px;
+        }
+        .account-stat-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.14);
+        }
+        .account-stat-chip.active-account-chip {
+            box-shadow: 0 0 0 2px #0f172a, 0 3px 10px rgba(15,23,42,0.22) !important;
+            font-weight: 700;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="bg-light">
