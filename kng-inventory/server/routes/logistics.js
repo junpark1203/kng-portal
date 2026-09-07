@@ -1594,7 +1594,7 @@ router.post('/settlement/:type', (req, res) => {
                                  OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id = ? AND transaction_group_id LIKE 'OUT-%')`);
 
             for (let i of items) {
-                const sMonth = (i.settlement_month && String(i.settlement_month).trim()) || (i.tax_invoice_date ? String(i.tax_invoice_date).substring(0, 7) : '');
+                const sMonth = (i.settlement_month !== undefined && i.settlement_month !== null) ? String(i.settlement_month).trim() : '';
                 const sAccount = String(i.settlement_account).trim();
                 stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
                 
