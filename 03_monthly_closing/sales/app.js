@@ -177,6 +177,36 @@ const app = {
         this.resetPageAndLoadData();
     },
 
+    // 자재계정이 선택된 상태에서 기간/검색조건이 변경되었을 때, 전체 계정 모수 집계를 1회 조회하여 캐싱
+    fetchBaseSummary: async function(baseKey, startDate, endDate, statusVal, searchTarget, searchKeyword) {
+        try {
+            const url = new URL(`${API_BASE}/history`);
+            url.searchParams.append('type', 'outbound');
+            url.searchParams.append('include_direct', 'true');
+            url.searchParams.append('limit', '1');
+            if (statusVal && statusVal !== '전체보기') url.searchParams.append('settlement_status', statusVal);
+            if (startDate) url.searchParams.append('startDate', startDate);
+            if (endDate) url.searchParams.append('endDate', endDate);
+            if (searchTarget) url.searchParams.append('searchTarget', searchTarget);
+            if (searchKeyword) url.searchParams.append('searchKeyword', searchKeyword);
+            if (this.subSearchKeyword) url.searchParams.append('subSearch', this.subSearchKeyword);
+
+            const res = await window.authFetch(url.toString());
+            if (res.ok) {
+                const resJson = await res.json();
+                if (resJson.summary) {
+                    this.baseSummary = resJson.summary;
+                    this.baseSummaryKey = baseKey;
+                    if (this.currentSummary) {
+                        this.renderSummaryStrip(this.currentSummary);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch base summary:', e);
+        }
+    },
+
     resetSearch: function() {
         this.currentDatePreset = 'all';
         this.updatePresetButtons('all');
@@ -194,6 +224,8 @@ const app = {
         if (clearSubBtn) clearSubBtn.classList.add('d-none');
         const countBadge = $('subSearchCountBadge');
         if (countBadge) countBadge.classList.add('d-none');
+        this.baseSummary = null;
+        this.baseSummaryKey = '';
         this.resetPageAndLoadData();
     },
 
@@ -251,6 +283,17 @@ const app = {
             this.items = result.data || [];
             this.totalItems = result.total || 0;
             this.currentSummary = result.summary || null;
+
+            // 전체 계정 모수(베이스 서머리) 동기화
+            const currentBaseKey = `${startDate}|${endDate}|${statusVal}|${searchTarget}|${searchKeyword}|${this.subSearchKeyword || ''}`;
+            if (!accountVal) {
+                // 자재계정 필터가 없는 전체 조회의 경우 이번 결과가 바로 베이스 모수
+                this.baseSummary = result.summary;
+                this.baseSummaryKey = currentBaseKey;
+            } else if (!this.baseSummary || this.baseSummaryKey !== currentBaseKey) {
+                // 계정 필터가 적용된 상태에서 기간/검색조건이 바뀌었을 경우 전체 모수를 백그라운드 1회 조회
+                this.fetchBaseSummary(currentBaseKey, startDate, endDate, statusVal, searchTarget, searchKeyword);
+            }
             
             // 화면 렌더링
             this.updateSortHeaderUI();
@@ -370,7 +413,12 @@ const app = {
         const totalCount = summary.totalCount || 0;
         const totalQty = summary.totalQty || 0;
         const outbound = summary.outbound || { supplyAmt: 0, vat: 0, totalAmt: 0 };
-        const b = summary.breakdown || {};
+
+        const currentAcc = $('accountFilter')?.value || '';
+
+        // 계정별 집계(모수)는 현재 조회조건(기간/상태/검색어)의 전체 베이스 서머리가 있으면 그것을 유지하여 표시
+        const breakdownSummary = (currentAcc && this.baseSummary) ? this.baseSummary : summary;
+        const b = breakdownSummary.breakdown || {};
         const safeGen = b.safetyGeneral || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
         const safeEnv = b.safetyEnv || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
         const misc = b.misc || { count: 0, qty: 0, supplyAmt: 0, totalAmt: 0 };
@@ -380,12 +428,14 @@ const app = {
         const safeTotalCount = (safeGen.count || 0) + (safeEnv.count || 0);
         const safeTotalSupply = (safeGen.supplyAmt || 0) + (safeEnv.supplyAmt || 0);
 
-        const currentAcc = $('accountFilter')?.value || '';
+        // 기준 전체 건수 (자재계정 필터가 걸려있을 때 전체 모수)
+        const baseTotalCount = (this.baseSummary && this.baseSummary.totalCount) ? this.baseSummary.totalCount : totalCount;
+
         const getChipProps = (accKey, label) => {
             const isActive = (currentAcc === accKey);
             const activeClass = isActive ? ' active-account-chip' : '';
             const icon = isActive ? `<i class='bx bx-check fw-bold'></i> ` : '';
-            const title = isActive ? `[${label}] 필터링 적용 중 (클릭 시 전체 보기로 해제)` : `클릭하여 [${label}] 내역만 조회`;
+            const title = isActive ? `현재 [${label}] 필터링 중 (클릭 시 전체 보기로 해제)` : `클릭하여 [${label}] 내역만 조회`;
             return { isActive, activeClass, icon, title };
         };
 
@@ -403,6 +453,15 @@ const app = {
                     <span class="text-secondary"><strong>검색 결과</strong></span>
                     <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
                     <span class="text-muted small">총 수량: <strong>${totalQty.toLocaleString()}</strong></span>
+                    ${currentAcc ? `
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1 d-inline-flex align-items-center gap-1" style="font-size:0.78rem;">
+                        <i class='bx bx-filter-alt'></i> [${currentAcc}] 필터링 중
+                    </span>
+                    <span class="text-muted small ms-1">(조건 전체 <strong>${baseTotalCount.toLocaleString()}건</strong> 중)</span>
+                    <button class="btn btn-link btn-sm text-danger p-0 ms-1 text-decoration-none" onclick="app.clearFilter('account')" style="font-size:0.78rem;" title="자재계정 필터 해제">
+                        <i class='bx bx-x-circle'></i> 전체보기
+                    </button>
+                    ` : ''}
                 </div>
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
