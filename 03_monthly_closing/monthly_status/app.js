@@ -189,68 +189,91 @@ const app = {
     attachDateAutoCorrection: function(inputEl) {
         if (!inputEl) return;
         inputEl._typedDigits = '';
+        inputEl._lastValidValue = inputEl.value || '';
+
+        inputEl.addEventListener('focus', () => {
+            inputEl._typedDigits = '';
+            if (inputEl.value) inputEl._lastValidValue = inputEl.value;
+        });
+
         inputEl.addEventListener('keydown', (e) => {
             if (e.key >= '0' && e.key <= '9') {
-                inputEl._typedDigits += e.key;
+                inputEl._typedDigits = (inputEl._typedDigits || '') + e.key;
+                clearTimeout(inputEl._typedTimer);
+                inputEl._typedTimer = setTimeout(() => { inputEl._typedDigits = ''; }, 4000);
             } else if (e.key === 'Backspace') {
-                inputEl._typedDigits = inputEl._typedDigits.slice(0, -1);
+                inputEl._typedDigits = (inputEl._typedDigits || '').slice(0, -1);
             }
         });
+
         inputEl.addEventListener('paste', (e) => {
-            const pasteData = (e.clipboardData || window.clipboardData).getData('text');
-            const digits = pasteData.replace(/\D/g, '');
-            inputEl._typedDigits = digits;
+            const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+            const match = text.match(/(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})/);
+            if (match) {
+                e.preventDefault();
+                const y = parseInt(match[1], 10);
+                const m = parseInt(match[2], 10);
+                const d = parseInt(match[3], 10);
+                if (m >= 1 && m <= 12) {
+                    const maxDay = new Date(y, m, 0).getDate();
+                    const clamped = Math.min(d, maxDay);
+                    const pad = n => String(n).padStart(2, '0');
+                    const val = `${y}-${pad(m)}-${pad(clamped)}`;
+                    inputEl.value = val;
+                    inputEl._lastValidValue = val;
+                    inputEl._typedDigits = '';
+                    if (d > maxDay) {
+                        this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                    }
+                    this.onDateRangeChange();
+                }
+            }
         });
-        const correctOnBlur = () => {
+
+        inputEl.addEventListener('blur', () => {
             this.checkAndCorrectDate(inputEl);
-        };
-        inputEl.addEventListener('blur', correctOnBlur);
-        inputEl.addEventListener('change', correctOnBlur);
+        });
     },
 
     checkAndCorrectDate: function(inputEl) {
-        if (!inputEl) return false;
+        if (!inputEl) return '';
+        if (inputEl.value) {
+            inputEl._lastValidValue = inputEl.value;
+            return inputEl.value;
+        }
         if (inputEl.validity && inputEl.validity.badInput) {
-            const rawDigits = inputEl._typedDigits || '';
+            const raw = (inputEl._typedDigits || '').replace(/\D/g, '');
             let y, m, d;
-            if (rawDigits.length === 8) {
-                y = parseInt(rawDigits.substring(0, 4), 10);
-                m = parseInt(rawDigits.substring(4, 6), 10);
-                d = parseInt(rawDigits.substring(6, 8), 10);
-            }
-            if (y && m >= 1 && m <= 12) {
-                const maxDay = new Date(y, m, 0).getDate();
-                if (d > maxDay) {
-                    const correctedDay = String(maxDay).padStart(2, '0');
-                    const correctedMonth = String(m).padStart(2, '0');
-                    const correctedStr = `${y}-${correctedMonth}-${correctedDay}`;
-                    inputEl.value = correctedStr;
-                    inputEl._typedDigits = `${y}${correctedMonth}${correctedDay}`;
-                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${correctedStr}로 자동 보정되었습니다.`);
-                    return true;
+            if (raw.length >= 8) {
+                const maybeY = parseInt(raw.slice(0, 4), 10);
+                if (maybeY >= 1900 && maybeY <= 2100) {
+                    y = maybeY;
+                    m = parseInt(raw.slice(4, 6), 10);
+                    d = parseInt(raw.slice(6, 8), 10);
+                }
+            } else if (inputEl._lastValidValue) {
+                const parts = inputEl._lastValidValue.split('-');
+                if (parts.length === 3) {
+                    y = parseInt(parts[0], 10);
+                    m = parseInt(parts[1], 10);
+                    d = raw.length >= 2 ? parseInt(raw.slice(-2), 10) : 31;
                 }
             }
-            this.showToast('유효하지 않은 날짜 형식입니다. 올바른 날짜를 입력해주세요.');
-            return false;
-        } else if (inputEl.value) {
-            const parts = inputEl.value.split('-');
-            if (parts.length === 3) {
-                const y = parseInt(parts[0], 10);
-                const m = parseInt(parts[1], 10);
-                const d = parseInt(parts[2], 10);
+            if (y && m && m >= 1 && m <= 12) {
                 const maxDay = new Date(y, m, 0).getDate();
-                if (d > maxDay) {
-                    const correctedDay = String(maxDay).padStart(2, '0');
-                    const correctedMonth = String(m).padStart(2, '0');
-                    const correctedStr = `${y}-${correctedMonth}-${correctedDay}`;
-                    inputEl.value = correctedStr;
-                    inputEl._typedDigits = `${y}${correctedMonth}${correctedDay}`;
-                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${correctedStr}로 자동 보정되었습니다.`);
-                    return true;
+                if (d && d > maxDay) {
+                    const pad = n => String(n).padStart(2, '0');
+                    const val = `${y}-${pad(m)}-${pad(maxDay)}`;
+                    inputEl.value = val;
+                    inputEl._lastValidValue = val;
+                    inputEl._typedDigits = '';
+                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                    this.onDateRangeChange();
+                    return val;
                 }
             }
         }
-        return false;
+        return inputEl.value || '';
     },
 
     // ── 기간/일자 기준 관리 ──
@@ -279,8 +302,12 @@ const app = {
     onDateRangeChange: function() {
         const startEl = $('startDate');
         const endEl = $('endDate');
-        if (startEl) this.checkAndCorrectDate(startEl);
-        if (endEl) this.checkAndCorrectDate(endEl);
+
+        // 입력 중이거나 불완전한 상태에서는 조회를 실행하지 않고 사용자 입력을 기다림
+        if ((startEl && startEl.validity && startEl.validity.badInput) ||
+            (endEl && endEl.validity && endEl.validity.badInput)) {
+            return;
+        }
 
         this.startDate = startEl?.value || '';
         this.endDate = endEl?.value || '';
@@ -741,14 +768,8 @@ const app = {
             const startEl = $('startDate');
             const endEl = $('endDate');
             if (this.dateType !== 'confirmed_month') {
-                if (startEl) this.checkAndCorrectDate(startEl);
-                if (endEl) this.checkAndCorrectDate(endEl);
-
-                if ((startEl && startEl.validity && startEl.validity.badInput) ||
-                    (endEl && endEl.validity && endEl.validity.badInput)) {
-                    alert('입력된 조회 기간 중 잘못된 날짜(존재하지 않는 일자 등)가 있습니다.\n올바른 날짜를 입력해주세요.');
-                    return;
-                }
+                if (startEl && startEl.validity && startEl.validity.badInput) this.checkAndCorrectDate(startEl);
+                if (endEl && endEl.validity && endEl.validity.badInput) this.checkAndCorrectDate(endEl);
                 this.startDate = startEl?.value || '';
                 this.endDate = endEl?.value || '';
             }

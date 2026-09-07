@@ -128,12 +128,18 @@ const app = {
     attachDateAutoCorrection: function(inputEl) {
         if (!inputEl) return;
         inputEl._typedDigits = '';
+        inputEl._lastValidValue = inputEl.value || '';
+
+        inputEl.addEventListener('focus', () => {
+            inputEl._typedDigits = '';
+            if (inputEl.value) inputEl._lastValidValue = inputEl.value;
+        });
 
         inputEl.addEventListener('keydown', (e) => {
             if (e.key >= '0' && e.key <= '9') {
                 inputEl._typedDigits = (inputEl._typedDigits || '') + e.key;
                 clearTimeout(inputEl._typedTimer);
-                inputEl._typedTimer = setTimeout(() => { inputEl._typedDigits = ''; }, 3000);
+                inputEl._typedTimer = setTimeout(() => { inputEl._typedDigits = ''; }, 4000);
             } else if (e.key === 'Backspace') {
                 inputEl._typedDigits = (inputEl._typedDigits || '').slice(0, -1);
             }
@@ -147,16 +153,19 @@ const app = {
                 const y = parseInt(match[1], 10);
                 const m = parseInt(match[2], 10);
                 const d = parseInt(match[3], 10);
-                const maxDay = new Date(y, m, 0).getDate();
-                const clamped = Math.min(d, maxDay);
-                const pad = n => String(n).padStart(2, '0');
-                const val = `${y}-${pad(m)}-${pad(clamped)}`;
-                inputEl.value = val;
-                inputEl._typedDigits = '';
-                if (d > maxDay) {
-                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                if (m >= 1 && m <= 12) {
+                    const maxDay = new Date(y, m, 0).getDate();
+                    const clamped = Math.min(d, maxDay);
+                    const pad = n => String(n).padStart(2, '0');
+                    const val = `${y}-${pad(m)}-${pad(clamped)}`;
+                    inputEl.value = val;
+                    inputEl._lastValidValue = val;
+                    inputEl._typedDigits = '';
+                    if (d > maxDay) {
+                        this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                    }
+                    this.onDateInputChange();
                 }
-                this.onDateInputChange();
             }
         });
 
@@ -167,6 +176,10 @@ const app = {
 
     checkAndCorrectDate: function(inputEl) {
         if (!inputEl) return '';
+        if (inputEl.value) {
+            inputEl._lastValidValue = inputEl.value;
+            return inputEl.value;
+        }
         if (inputEl.validity && inputEl.validity.badInput) {
             const raw = (inputEl._typedDigits || '').replace(/\D/g, '');
             let y, m, d;
@@ -177,33 +190,43 @@ const app = {
                     m = parseInt(raw.slice(4, 6), 10);
                     d = parseInt(raw.slice(6, 8), 10);
                 }
-            } else if (raw.length >= 4) {
-                const now = new Date();
-                y = now.getFullYear();
-                m = parseInt(raw.slice(0, 2), 10);
-                d = parseInt(raw.slice(2, 4), 10);
+            } else if (inputEl._lastValidValue) {
+                const parts = inputEl._lastValidValue.split('-');
+                if (parts.length === 3) {
+                    y = parseInt(parts[0], 10);
+                    m = parseInt(parts[1], 10);
+                    d = raw.length >= 2 ? parseInt(raw.slice(-2), 10) : 31;
+                }
             }
             if (y && m && m >= 1 && m <= 12) {
                 const maxDay = new Date(y, m, 0).getDate();
-                const clamped = d ? Math.min(d, maxDay) : maxDay;
-                const pad = n => String(n).padStart(2, '0');
-                const val = `${y}-${pad(m)}-${pad(clamped)}`;
-                inputEl.value = val;
-                inputEl._typedDigits = '';
-                this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
-                return val;
+                if (d && d > maxDay) {
+                    const pad = n => String(n).padStart(2, '0');
+                    const val = `${y}-${pad(m)}-${pad(maxDay)}`;
+                    inputEl.value = val;
+                    inputEl._lastValidValue = val;
+                    inputEl._typedDigits = '';
+                    this.showToast(`${y}년 ${m}월은 ${maxDay}일까지 있으므로 ${val}로 자동 보정되었습니다.`);
+                    this.onDateInputChange();
+                    return val;
+                }
             }
-        } else if (inputEl.value) {
-            inputEl._typedDigits = '';
         }
-        return inputEl.value;
+        return inputEl.value || '';
     },
 
     onDateInputChange: function() {
-        this.checkAndCorrectDate($('startDate'));
-        this.checkAndCorrectDate($('endDate'));
-        const start = $('startDate') ? $('startDate').value : '';
-        const end = $('endDate') ? $('endDate').value : '';
+        const startEl = $('startDate');
+        const endEl = $('endDate');
+
+        // 입력 중이거나 불완전한 상태에서는 조회를 실행하지 않고 사용자 입력을 기다림
+        if ((startEl && startEl.validity && startEl.validity.badInput) ||
+            (endEl && endEl.validity && endEl.validity.badInput)) {
+            return;
+        }
+
+        const start = startEl ? startEl.value : '';
+        const end = endEl ? endEl.value : '';
         const detected = this.detectDatePreset(start, end);
         this.currentDatePreset = detected;
         this.updatePresetButtons(detected);
@@ -409,15 +432,10 @@ const app = {
 
     loadData: async function() {
         try {
-            this.checkAndCorrectDate($('startDate'));
-            this.checkAndCorrectDate($('endDate'));
-
             const startEl = $('startDate');
             const endEl = $('endDate');
-            if ((startEl && startEl.validity && startEl.validity.badInput) || (endEl && endEl.validity && endEl.validity.badInput)) {
-                alert('입력하신 일자에 달력상 존재하지 않거나 유효하지 않은 날짜가 포함되어 있습니다. 올바른 날짜를 확인해주세요.');
-                return;
-            }
+            if (startEl && startEl.validity && startEl.validity.badInput) this.checkAndCorrectDate(startEl);
+            if (endEl && endEl.validity && endEl.validity.badInput) this.checkAndCorrectDate(endEl);
 
             const startDate = startEl?.value || '';
             const endDate = endEl?.value || '';
