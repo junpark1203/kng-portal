@@ -489,7 +489,7 @@ router.get('/history', (req, res) => {
     let { 
         page = 1, limit = 50, type = 'all', search = '',
         sortCol = 'date', sortDir = 'desc',
-        startDate = '', endDate = '',
+        startDate = '', endDate = '', dateType = '',
         partner = '',
         searchParty = '', searchItem = '', searchSpec = '', searchTarget = '', searchKeyword = '', category = '',
         settlement_status = '',
@@ -524,14 +524,20 @@ router.get('/history', (req, res) => {
         }
     }
 
-    // Detailed search filters
-    if (startDate) {
-        whereClauses.push("date >= ?");
-        params.push(startDate);
-    }
-    if (endDate) {
-        whereClauses.push("date <= ?");
-        params.push(endDate);
+    // Detailed search filters (일자 검색 - dateType에 따라 정산일자 또는 입출고일자)
+    if (startDate || endDate) {
+        let dateField = "SUBSTR(date, 1, 10)";
+        if (dateType === 'settlement' || dateType === 'tax_invoice_date') {
+            dateField = "SUBSTR(COALESCE(NULLIF(tax_invoice_date, ''), date), 1, 10)";
+        }
+        if (startDate) {
+            whereClauses.push(`${dateField} >= ?`);
+            params.push(startDate);
+        }
+        if (endDate) {
+            whereClauses.push(`${dateField} <= ?`);
+            params.push(endDate);
+        }
     }
     
     if (type === 'direct') {
@@ -564,7 +570,7 @@ router.get('/history', (req, res) => {
         }
     }
 
-    if (req.query.settlement_month) {
+    if (req.query.settlement_month && !startDate && !endDate) {
         const sMonth = req.query.settlement_month;
         const confirmStatus = req.query.confirm_status || 'all';
         if (confirmStatus === 'confirmed') {

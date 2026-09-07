@@ -47,7 +47,10 @@ function escapeAttr(str) {
 const $ = id => document.getElementById(id);
 
 const app = {
-    currentMonth: '', // '' = 전체기간, 'YYYY-MM' = 특정 기준월
+    dateType: 'settlement', // 'settlement' (정산일자) | 'transaction' (입출고일자)
+    startDate: '', // 'YYYY-MM-DD'
+    endDate: '', // 'YYYY-MM-DD'
+    currentMonth: '', // 레거시 호환
     tradeTypeFilter: 'all', // 'all' (전체) | 'outbound' (매출) | 'inbound' (매입)
     confirmFilter: 'all', // 'all' | 'unconfirmed' | 'confirmed'
     directPartnerFilter: '', // 직출 연계처 필터 ('' = 전체, '__GENERAL__' = 일반/본사창고, 또는 특정 연계처명)
@@ -62,19 +65,40 @@ const app = {
     partnerModalInstance: null,
     activeAutocompleteIndex: -1,
 
+    formatDate: function(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+
+    getPeriodLabel: function() {
+        if (this.startDate && this.endDate) {
+            if (this.startDate === this.endDate) return this.startDate;
+            return `${this.startDate} ~ ${this.endDate}`;
+        }
+        if (this.startDate) return `${this.startDate} ~`;
+        if (this.endDate) return `~ ${this.endDate}`;
+        return '전체기간';
+    },
+
     init: async function() {
-        // 1. 기본 확정 대상월 설정 (전월 기준)
+        // 1. 기본 일자 설정 (정산일자 기본, 전체기간)
+        this.dateType = 'settlement';
+        this.startDate = '';
+        this.endDate = '';
+        if ($('dateTypeSelect')) $('dateTypeSelect').value = 'settlement';
+        if ($('startDate')) $('startDate').value = '';
+        if ($('endDate')) $('endDate').value = '';
+        this.updateDatePresetUI();
+
+        // 확정 대상월 기본값 (전월)
         const now = new Date();
         let y = now.getFullYear();
         let m = now.getMonth(); // 전월 1-12
         if (m === 0) { m = 12; y -= 1; }
         const prevMonthStr = `${y}-${String(m).padStart(2, '0')}`;
-        
-        // 기준월 기본값: 전체기간 (빈 문자열)
-        this.currentMonth = '';
         if ($('batchTargetMonth')) $('batchTargetMonth').value = prevMonthStr;
-        if ($('targetMonth')) $('targetMonth').value = '';
-        this.updateMonthPresetButtons();
 
         // 2. 거래처 및 최근 거래처 로드
         this.loadRecentPartners();
@@ -133,74 +157,73 @@ const app = {
         if (clearBtn) clearBtn.classList.add('d-none');
     },
 
-    // ── 기간/월 프리셋 관리 ──
-    setMonthAll: function() {
-        this.currentMonth = '';
-        if ($('targetMonth')) $('targetMonth').value = '';
-        this.updateMonthPresetButtons();
+    // ── 기간/일자 기준 관리 ──
+    onDateTypeChange: function() {
+        this.dateType = $('dateTypeSelect')?.value || 'settlement';
         if (this.selectedPartner) this.loadData();
     },
 
-    setMonthPreset: function(preset) {
-        const now = new Date();
-        let y = now.getFullYear();
-        let m = now.getMonth() + 1; // 1-12
+    onDateRangeChange: function() {
+        this.startDate = $('startDate')?.value || '';
+        this.endDate = $('endDate')?.value || '';
+        this.updateDatePresetUI();
+        if (this.selectedPartner) this.loadData();
+    },
 
+    setDatePreset: function(preset) {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth(); // 0-11
         if (preset === 'prev') {
-            m -= 1;
-            if (m === 0) {
-                m = 12;
-                y -= 1;
-            }
+            const firstDay = new Date(y, m - 1, 1);
+            const lastDay = new Date(y, m, 0);
+            this.startDate = this.formatDate(firstDay);
+            this.endDate = this.formatDate(lastDay);
+            if ($('batchTargetMonth')) $('batchTargetMonth').value = this.startDate.substring(0, 7);
+        } else if (preset === 'current') {
+            const firstDay = new Date(y, m, 1);
+            const lastDay = new Date(y, m + 1, 0);
+            this.startDate = this.formatDate(firstDay);
+            this.endDate = this.formatDate(lastDay);
+            if ($('batchTargetMonth')) $('batchTargetMonth').value = this.startDate.substring(0, 7);
+        } else {
+            // 'all'
+            this.startDate = '';
+            this.endDate = '';
         }
-        this.currentMonth = `${y}-${String(m).padStart(2, '0')}`;
-        if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
-        this.updateMonthPresetButtons();
+        if ($('startDate')) $('startDate').value = this.startDate;
+        if ($('endDate')) $('endDate').value = this.endDate;
+        this.updateDatePresetUI();
         if (this.selectedPartner) this.loadData();
     },
 
-    onMonthChange: function() {
-        const val = $('targetMonth')?.value;
-        this.currentMonth = val || '';
-        if (val && $('batchTargetMonth')) $('batchTargetMonth').value = val;
-        this.updateMonthPresetButtons();
-        if (this.selectedPartner) this.loadData();
-    },
-
-    changeMonth: function(delta) {
-        let baseDate = new Date();
-        if (this.currentMonth) {
-            const [y, m] = this.currentMonth.split('-').map(Number);
-            baseDate = new Date(y, m - 1 + delta, 1);
-        }
-        let nextY = baseDate.getFullYear();
-        let nextM = String(baseDate.getMonth() + 1).padStart(2, '0');
-        this.currentMonth = `${nextY}-${nextM}`;
-        if ($('targetMonth')) $('targetMonth').value = this.currentMonth;
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.currentMonth;
-        this.updateMonthPresetButtons();
-        if (this.selectedPartner) this.loadData();
-    },
-
-    updateMonthPresetButtons: function() {
-        const btnAll = $('btnMonthAll');
-        const btnPrev = $('btnMonthPrev');
-        const btnCurrent = $('btnMonthCurrent');
-        if (!btnAll) return;
-
-        btnAll.className = !this.currentMonth ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
+    updateDatePresetUI: function() {
+        const btnPrev = $('btnPresetPrev');
+        const btnCurrent = $('btnPresetCurrent');
+        const btnAll = $('btnPresetAll');
+        if (!btnPrev || !btnCurrent || !btnAll) return;
 
         const now = new Date();
-        const curM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-        let prevY = now.getFullYear();
-        let prevM = now.getMonth();
-        if (prevM === 0) { prevM = 12; prevY -= 1; }
-        const prevMStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const prevStart = this.formatDate(new Date(y, m - 1, 1));
+        const prevEnd = this.formatDate(new Date(y, m, 0));
+        const curStart = this.formatDate(new Date(y, m, 1));
+        const curEnd = this.formatDate(new Date(y, m + 1, 0));
 
-        if (btnPrev) btnPrev.className = (this.currentMonth === prevMStr) ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
-        if (btnCurrent) btnCurrent.className = (this.currentMonth === curM) ? 'btn btn-primary py-0 text-white fw-bold' : 'btn btn-outline-secondary py-0';
+        const isAll = !this.startDate && !this.endDate;
+        const isPrev = (this.startDate === prevStart && this.endDate === prevEnd);
+        const isCur = (this.startDate === curStart && this.endDate === curEnd);
+
+        btnAll.className = isAll ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+        btnPrev.className = isPrev ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+        btnCurrent.className = isCur ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
     },
+
+    // 레거시 호환 메소드 유지
+    setMonthAll: function() { this.setDatePreset('all'); },
+    setMonthPreset: function(p) { this.setDatePreset(p); },
+    updateMonthPresetButtons: function() { this.updateDatePresetUI(); },
 
     // ── 거래구분 (전체 / 매출건만 / 매입건만) 필터 ──
     setTradeTypeFilter: function(type) {
@@ -532,11 +555,17 @@ const app = {
             const pName = this.selectedPartner.name || this.selectedPartner.company_name;
 
             // 1. type=all 요청으로 매출(outbound)과 매입(inbound)을 단일 쿼리로 모두 수집
-            let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=2000&sortCol=date&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
+            const sortField = (this.dateType === 'transaction') ? 'date' : 'tax_invoice_date';
+            let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=2000&sortCol=${sortField}&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
             
-            // 기준월이 지정되어 있는 경우에만 settlement_month 필터 적용 (전체기간이면 파라미터 제외)
-            if (this.currentMonth) {
-                url += `&settlement_month=${encodeURIComponent(this.currentMonth)}`;
+            if (this.startDate) {
+                url += `&startDate=${encodeURIComponent(this.startDate)}`;
+            }
+            if (this.endDate) {
+                url += `&endDate=${encodeURIComponent(this.endDate)}`;
+            }
+            if (this.dateType) {
+                url += `&dateType=${encodeURIComponent(this.dateType)}`;
             }
             if (accVal) {
                 url += `&settlement_account=${encodeURIComponent(accVal)}`;
@@ -568,10 +597,16 @@ const app = {
                 return targetPartnerNames.some(tn => (party || '').includes(tn));
             });
 
-            // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬
+            // 가장 오래된 일자가 가장 위에 오도록(오름차순 / ASC) 정렬 (선택한 일자 기준 우선 정렬)
             items.sort((a, b) => {
-                const dateA = a.date || a.tax_invoice_date || '';
-                const dateB = b.date || b.tax_invoice_date || '';
+                let dateA, dateB;
+                if (this.dateType === 'transaction') {
+                    dateA = a.date || a.tax_invoice_date || '';
+                    dateB = b.date || b.tax_invoice_date || '';
+                } else {
+                    dateA = a.tax_invoice_date || a.date || '';
+                    dateB = b.tax_invoice_date || b.date || '';
+                }
                 if (dateA === dateB) return (a.id || 0) - (b.id || 0);
                 return dateA.localeCompare(dateB);
             });
@@ -781,6 +816,11 @@ const app = {
         const tfoot = $('mainStatusTableFoot');
         if (!tbody) return;
 
+        // 일자 헤더 텍스트 갱신 (정산일자 vs 입출고일자)
+        if ($('colDateHeader')) {
+            $('colDateHeader').innerText = (this.dateType === 'transaction') ? '입출고일자' : '정산일자';
+        }
+
         // 헤더 체크박스 초기화
         if ($('checkAllTable')) $('checkAllTable').checked = false;
         if ($('tableHeaderCheck')) $('tableHeaderCheck').checked = false;
@@ -793,7 +833,11 @@ const app = {
             if (this.directPartnerFilter || this.subSearchKeyword) msg = '검색/필터 조건과 일치하는 정산 내역이 없습니다.';
             else if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
             else if (this.confirmFilter === 'confirmed') msg = '확정 완료된 정산 내역이 없습니다.';
-            else msg = `${this.currentMonth ? '[' + this.currentMonth + ']에 ' : ''}등록된 정산 내역이 없습니다.`;
+            else {
+                const dateTypeTitle = (this.dateType === 'transaction') ? '입출고일' : '정산일';
+                const periodText = this.getPeriodLabel();
+                msg = (periodText !== '전체기간') ? `[${dateTypeTitle} ${periodText}] 기간에 등록된 정산 내역이 없습니다.` : '등록된 정산 내역이 없습니다.';
+            }
 
             const targetName = this.selectedPartner ? `[${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 ` : '';
             tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
@@ -833,6 +877,11 @@ const app = {
                 }
             }
 
+            const rowDate = (this.dateType === 'transaction')
+                ? (r.date ? r.date.split('T')[0] : (r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'))
+                : (r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : (r.date ? r.date.split('T')[0] : '-'));
+            const dateTooltip = `정산일: ${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'} | 입출고일: ${r.date ? r.date.split('T')[0] : '-'}`;
+
             return `
                 <tr>
                     <td class="text-center">
@@ -840,7 +889,7 @@ const app = {
                     </td>
                     <td class="text-center text-muted small">${idx + 1}</td>
                     <td class="text-center text-nowrap">${typeBadge}</td>
-                    <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
+                    <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold" title="${dateTooltip}">${rowDate}</td>
                     <td class="text-start fw-bold text-dark text-truncate" style="max-width: 130px;" title="${escapeAttr(partyName)}">${escapeHtml(partyName)}</td>
                     <td class="text-start text-truncate" style="max-width: 130px;">${directPartnerHtml}</td>
                     <td class="text-center small text-nowrap"><span class="badge bg-light text-dark border">${escapeHtml(r.settlement_account || '-')}</span></td>
@@ -1207,11 +1256,12 @@ const app = {
         const partnerObj = this.selectedPartner || { name: partnerName };
 
         // 기간 및 타이틀 설정
-        let periodStr = this.currentMonth ? `${this.currentMonth.split('-')[0]}년 ${parseInt(this.currentMonth.split('-')[1], 10)}월` : '전체';
+        let periodStr = this.getPeriodLabel();
+        const dateTypeTitle = (this.dateType === 'transaction') ? '입출고일' : '정산일';
         const titleText = isSales ? `${periodStr} 청구서` : `${periodStr} 매입정산내역`;
 
         $('printTitle').innerText = this.aggregateByBizNum ? `(사업자 통합) ${titleText}` : titleText;
-        $('printBillingMonth').innerText = isSales ? `청구월: ${periodStr}` : `정산월: ${periodStr}`;
+        $('printBillingMonth').innerText = isSales ? `청구기간(${dateTypeTitle}): ${periodStr}` : `정산기간(${dateTypeTitle}): ${periodStr}`;
 
         // 회사 및 거래처 정보 세팅
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
@@ -1338,8 +1388,9 @@ const app = {
 
         const tradeLabel = (this.tradeTypeFilter === 'outbound') ? '_매출' : ((this.tradeTypeFilter === 'inbound') ? '_매입' : '_통합');
         const filterSuffix = this.directPartnerFilter ? `_${this.directPartnerFilter}` : (this.subSearchKeyword ? `_검색(${this.subSearchKeyword.trim()})` : '');
-        const monthLabel = this.currentMonth || '전체기간';
-        const fileName = `${monthLabel}_${partnerName}${tradeLabel}${filterSuffix}_정산현황.xlsx`;
+        const dateTypeLabel = (this.dateType === 'transaction') ? '입출고일' : '정산일';
+        const periodLabel = this.getPeriodLabel().replace(/\s+/g, '');
+        const fileName = `${dateTypeLabel}_${periodLabel}_${partnerName}${tradeLabel}${filterSuffix}_정산현황.xlsx`;
         XLSX.writeFile(wb, fileName);
     }
 };

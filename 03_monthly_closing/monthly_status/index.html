@@ -399,16 +399,19 @@
 
                         <div class="vr d-none d-md-block my-1"></div>
 
-                        <!-- 조회기간/월 필터 -->
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="text-secondary small fw-bold">조회월:</span>
-                            <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(-1)" title="이전달"><i class='bx bx-chevron-left'></i></button>
-                            <input type="month" id="targetMonth" class="form-control form-control-sm text-center fw-bold text-primary" style="width: 125px;" onchange="app.onMonthChange()">
-                            <button class="btn btn-sm btn-outline-secondary px-2" type="button" onclick="app.changeMonth(1)" title="다음달"><i class='bx bx-chevron-right'></i></button>
-                            <div class="btn-group btn-group-sm ms-1">
-                                <button class="btn btn-outline-primary py-0" id="btnMonthAll" type="button" onclick="app.setMonthAll()">전체기간</button>
-                                <button class="btn btn-outline-secondary py-0" id="btnMonthPrev" type="button" onclick="app.setMonthPreset('prev')">전월</button>
-                                <button class="btn btn-outline-secondary py-0" id="btnMonthCurrent" type="button" onclick="app.setMonthPreset('current')">당월</button>
+                        <!-- 조회기준(정산일자/입출고일자) & 기간 필터 -->
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <select id="dateTypeSelect" class="form-select form-select-sm fw-bold border-primary text-primary" style="width: 110px;" onchange="app.onDateTypeChange()" title="조회 기준 일자 선택">
+                                <option value="settlement" selected>정산일자</option>
+                                <option value="transaction">입출고일자</option>
+                            </select>
+                            <input type="date" id="startDate" class="form-control form-control-sm text-center" style="width: 130px;" onchange="app.onDateRangeChange()" title="시작일자">
+                            <span class="text-muted small">~</span>
+                            <input type="date" id="endDate" class="form-control form-control-sm text-center" style="width: 130px;" onchange="app.onDateRangeChange()" title="종료일자">
+                            <div class="btn-group btn-group-sm ms-1" role="group">
+                                <button class="btn btn-outline-secondary py-0 px-2" id="btnPresetPrev" type="button" onclick="app.setDatePreset('prev')" title="전월 1일 ~ 말일">전월</button>
+                                <button class="btn btn-outline-secondary py-0 px-2" id="btnPresetCurrent" type="button" onclick="app.setDatePreset('current')" title="당월 1일 ~ 말일">당월</button>
+                                <button class="btn btn-outline-primary py-0 px-2" id="btnPresetAll" type="button" onclick="app.setDatePreset('all')" title="전체 기간">전체</button>
                             </div>
                         </div>
 
@@ -558,7 +561,7 @@
                             <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
                             <th style="width: 45px;">No.</th>
                             <th style="width: 70px;">구분</th>
-                            <th style="width: 105px;">정산일자</th>
+                            <th style="width: 105px;" id="colDateHeader">정산일자</th>
                             <th style="width: 135px;" class="text-start" id="colPartnerHeader">상대처/납품처</th>
                             <th style="width: 135px;" class="text-start" id="colDirectPartnerHeader">직출 연계처</th>
                             <th style="width: 95px;">자재계정</th>
