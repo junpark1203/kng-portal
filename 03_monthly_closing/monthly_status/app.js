@@ -24,12 +24,35 @@ function numberToKorean(number) {
     return (number < 0 ? '마이너스 ' : '') + result;
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeAttr(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 const $ = id => document.getElementById(id);
 
 const app = {
     currentMonth: '', // '' = 전체기간, 'YYYY-MM' = 특정 기준월
     tradeTypeFilter: 'all', // 'all' (전체) | 'outbound' (매출) | 'inbound' (매입)
     confirmFilter: 'all', // 'all' | 'unconfirmed' | 'confirmed'
+    directPartnerFilter: '', // 직출 연계처 필터 ('' = 전체, '__GENERAL__' = 일반/본사창고, 또는 특정 연계처명)
+    subSearchKeyword: '', // 결과 내 검색어 (연계처, 품목명, 규격, 비고 등)
+    subSearchTimer: null,
     allPartners: [],
     recentPartners: [],
     selectedPartner: null, // { name, company_name, business_number, ceo_name, address, ... }
@@ -411,12 +434,27 @@ const app = {
             this.partnerModalInstance.hide();
         }
 
+        // 직출 연계처 필터 및 결과 내 검색어 초기화
+        this.directPartnerFilter = '';
+        this.subSearchKeyword = '';
+        if ($('directPartnerFilter')) $('directPartnerFilter').value = '';
+        if ($('subSearchInput')) $('subSearchInput').value = '';
+        if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
+        if ($('subSearchCountBadge')) $('subSearchCountBadge').classList.add('d-none');
+
         this.loadData();
     },
 
     clearSelectedPartner: function() {
         this.selectedPartner = null;
         this.currentRows = [];
+
+        this.directPartnerFilter = '';
+        this.subSearchKeyword = '';
+        if ($('directPartnerFilter')) $('directPartnerFilter').innerHTML = '<option value="">전체 연계처</option>';
+        if ($('subSearchInput')) $('subSearchInput').value = '';
+        if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
+        if ($('subSearchCountBadge')) $('subSearchCountBadge').classList.add('d-none');
 
         const searchInput = $('partnerSearchInput');
         if (searchInput) searchInput.value = '';
@@ -487,7 +525,7 @@ const app = {
 
         const tbody = $('mainStatusTableBody');
         if (!tbody) return;
-        tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> [${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 정산 내역을 불러오는 중입니다...</td></tr>`;
 
         try {
             const accVal = $('accountFilter')?.value || '';
@@ -539,13 +577,115 @@ const app = {
             });
 
             this.currentRows = items;
+            this.updateDirectPartnerFilterOptions();
             this.updateFilterCounts();
             this.renderTable();
             this.updateKpiSummary();
+            this.updateSubSearchCountBadge();
 
         } catch (err) {
             console.error(err);
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-5">오류가 발생했습니다: ${err.message}</td></tr>`;
+        }
+    },
+
+    // ── 직출 연계처(매출처/매입처) 드롭다운 옵션 자동 구성 ──
+    updateDirectPartnerFilterOptions: function() {
+        const selectEl = $('directPartnerFilter');
+        if (!selectEl) return;
+
+        const rows = this.currentRows || [];
+        const partnerCounts = {};
+        let directCount = 0;
+        let generalCount = 0;
+
+        rows.forEach(r => {
+            if (r.is_direct) {
+                directCount++;
+                const counterpart = (r.type === 'inbound')
+                    ? (r.destination || r.actual_destination || '')
+                    : (r.supplier || '');
+                const name = counterpart ? counterpart.trim() : '(미지정)';
+                partnerCounts[name] = (partnerCounts[name] || 0) + 1;
+            } else {
+                generalCount++;
+            }
+        });
+
+        const currentVal = this.directPartnerFilter || '';
+        let html = `<option value="">전체 연계처 (총 ${rows.length}건)</option>`;
+
+        const sortedPartners = Object.keys(partnerCounts).sort((a, b) => partnerCounts[b] - partnerCounts[a]);
+        if (sortedPartners.length > 0) {
+            html += `<optgroup label="직출 연계처 (${directCount}건)">`;
+            sortedPartners.forEach(p => {
+                html += `<option value="${escapeAttr(p)}" ${currentVal === p ? 'selected' : ''}>${escapeHtml(p)} (${partnerCounts[p]}건)</option>`;
+            });
+            html += `</optgroup>`;
+        }
+        if (generalCount > 0) {
+            html += `<optgroup label="기타">`;
+            html += `<option value="__GENERAL__" ${currentVal === '__GENERAL__' ? 'selected' : ''}>일반/본사창고 (${generalCount}건)</option>`;
+            html += `</optgroup>`;
+        }
+
+        selectEl.innerHTML = html;
+        selectEl.value = currentVal;
+    },
+
+    onDirectPartnerFilterChange: function(val) {
+        this.directPartnerFilter = val || '';
+        this.renderTable();
+        this.updateKpiSummary();
+        this.updateSubSearchCountBadge();
+    },
+
+    filterByDirectPartner: function(name) {
+        if (!name || name === '-') return;
+        this.directPartnerFilter = name;
+        const selectEl = $('directPartnerFilter');
+        if (selectEl) selectEl.value = name;
+        this.renderTable();
+        this.updateKpiSummary();
+        this.updateSubSearchCountBadge();
+    },
+
+    // ── 결과 내 실시간 다중 검색 (스마트 교집합) 핸들러 ──
+    onSubSearchInput: function(val) {
+        this.subSearchKeyword = val || '';
+        const clearBtn = $('clearSubSearchBtn');
+        if (clearBtn) {
+            if (this.subSearchKeyword.trim()) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        if (this.subSearchTimer) clearTimeout(this.subSearchTimer);
+        this.subSearchTimer = setTimeout(() => {
+            this.renderTable();
+            this.updateKpiSummary();
+            this.updateSubSearchCountBadge();
+        }, 150);
+    },
+
+    clearSubSearch: function() {
+        this.subSearchKeyword = '';
+        if ($('subSearchInput')) $('subSearchInput').value = '';
+        if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
+        this.renderTable();
+        this.updateKpiSummary();
+        this.updateSubSearchCountBadge();
+    },
+
+    updateSubSearchCountBadge: function() {
+        const badge = $('subSearchCountBadge');
+        if (!badge) return;
+        const kw = (this.subSearchKeyword || '').trim();
+        const dp = (this.directPartnerFilter || '').trim();
+        if (kw || dp) {
+            const count = this.getFilteredRows().length;
+            badge.innerText = `필터 결과: ${count}건`;
+            badge.classList.remove('d-none');
+        } else {
+            badge.classList.add('d-none');
         }
     },
 
@@ -593,6 +733,46 @@ const app = {
             list = list.filter(r => !!r.settlement_month);
         }
 
+        // 3. 직출 연계처(매출처/매입처) 드롭다운 필터
+        if (this.directPartnerFilter) {
+            const target = this.directPartnerFilter;
+            if (target === '__GENERAL__') {
+                list = list.filter(r => !r.is_direct);
+            } else {
+                list = list.filter(r => {
+                    if (!r.is_direct) return false;
+                    const counterpart = (r.type === 'inbound')
+                        ? (r.destination || r.actual_destination || '')
+                        : (r.supplier || '');
+                    return counterpart === target || counterpart.includes(target);
+                });
+            }
+        }
+
+        // 4. 결과 내 실시간 스마트 다중 검색 (교집합 AND)
+        if (this.subSearchKeyword && this.subSearchKeyword.trim()) {
+            const tokens = this.subSearchKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            list = list.filter(r => {
+                const isSales = (r.type === 'outbound');
+                const party = isSales ? (r.destination || r.actual_destination || '') : (r.supplier || '');
+                const directParty = isSales ? (r.supplier || '') : (r.destination || r.actual_destination || '');
+                const text = [
+                    party,
+                    directParty,
+                    r.item || '',
+                    r.spec || '',
+                    r.unit || '',
+                    r.settlement_account || '',
+                    r.settlement_memo || '',
+                    r.tax_invoice_date || '',
+                    r.date || '',
+                    r.is_direct ? '직출 직출고' : ''
+                ].join(' ').toLowerCase();
+
+                return tokens.every(t => text.includes(t));
+            });
+        }
+
         return list;
     },
 
@@ -610,12 +790,13 @@ const app = {
 
         if (rows.length === 0) {
             let msg = '';
-            if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
+            if (this.directPartnerFilter || this.subSearchKeyword) msg = '검색/필터 조건과 일치하는 정산 내역이 없습니다.';
+            else if (this.confirmFilter === 'unconfirmed') msg = '미확정된 정산 내역이 없습니다.';
             else if (this.confirmFilter === 'confirmed') msg = '확정 완료된 정산 내역이 없습니다.';
             else msg = `${this.currentMonth ? '[' + this.currentMonth + ']에 ' : ''}등록된 정산 내역이 없습니다.`;
 
             const targetName = this.selectedPartner ? `[${this.selectedPartner.company_name || this.selectedPartner.name}] 거래처의 ` : '';
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center py-5 text-muted">${targetName}${msg}</td></tr>`;
             if (tfoot) tfoot.innerHTML = '';
             return;
         }
@@ -640,6 +821,18 @@ const app = {
             // 상대처 명 (매출: 납품처/현장, 매입: 매입처)
             const partyName = isSales ? (r.destination || r.actual_destination || '-') : (r.supplier || '-');
 
+            // 직출 연계처 명 (매입: 납품/매출처, 매출: 원공급/매입처)
+            let directPartnerHtml = '<span class="text-muted small">-</span>';
+            if (r.is_direct) {
+                if (isSales) {
+                    const supp = r.supplier || '-';
+                    directPartnerHtml = `<span class="text-success fw-semibold text-truncate d-inline-block" style="max-width:130px; font-size:0.8rem; cursor:pointer;" title="직출 원공급(매입)처: ${escapeAttr(supp)} (클릭하여 필터)" onclick="app.filterByDirectPartner('${escapeAttr(supp)}')"><i class='bx bx-left-arrow-alt'></i> ${escapeHtml(supp)}</span>`;
+                } else {
+                    const dest = r.destination || r.actual_destination || '-';
+                    directPartnerHtml = `<span class="text-primary fw-semibold text-truncate d-inline-block" style="max-width:130px; font-size:0.8rem; cursor:pointer;" title="직출 납품(매출)처: ${escapeAttr(dest)} (클릭하여 필터)" onclick="app.filterByDirectPartner('${escapeAttr(dest)}')"><i class='bx bx-right-arrow-alt'></i> ${escapeHtml(dest)}</span>`;
+                }
+            }
+
             return `
                 <tr>
                     <td class="text-center">
@@ -648,21 +841,22 @@ const app = {
                     <td class="text-center text-muted small">${idx + 1}</td>
                     <td class="text-center text-nowrap">${typeBadge}</td>
                     <td class="text-center small text-nowrap ${isSales ? 'text-primary' : 'text-success'} fw-semibold">${r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '-'}</td>
-                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 135px;" title="${partyName}">${partyName}</td>
-                    <td class="text-center small text-nowrap"><span class="badge bg-light text-dark border">${r.settlement_account || '-'}</span></td>
+                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 130px;" title="${escapeAttr(partyName)}">${escapeHtml(partyName)}</td>
+                    <td class="text-start text-truncate" style="max-width: 130px;">${directPartnerHtml}</td>
+                    <td class="text-center small text-nowrap"><span class="badge bg-light text-dark border">${escapeHtml(r.settlement_account || '-')}</span></td>
                     <td class="text-start">
-                        <strong>${r.item}</strong>
+                        <strong>${escapeHtml(r.item)}</strong>
                         ${r.is_direct ? `<span class="badge bg-secondary bg-opacity-10 text-secondary border ms-1" style="font-size:0.68rem;">직출</span>` : ''}
                     </td>
-                    <td class="text-center text-muted small">${r.spec || '-'}</td>
-                    <td class="text-center text-muted small text-nowrap">${r.unit || '-'}</td>
+                    <td class="text-center text-muted small">${escapeHtml(r.spec || '-')}</td>
+                    <td class="text-center text-muted small text-nowrap">${escapeHtml(r.unit || '-')}</td>
                     <td class="text-end small text-nowrap">${qty.toLocaleString()}</td>
                     <td class="text-end small text-nowrap">${price.toLocaleString()}원</td>
                     <td class="text-end small text-nowrap">${supply.toLocaleString()}원</td>
                     <td class="text-end text-muted small text-nowrap">${vat.toLocaleString()}원</td>
                     <td class="text-end fw-bold text-nowrap ${isSales ? 'text-primary' : 'text-success'} small">${grand.toLocaleString()}원</td>
                     <td class="text-center text-nowrap">${statusBadge}</td>
-                    <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${r.settlement_memo || ''}">${r.settlement_memo || '-'}</td>
+                    <td class="text-start small text-muted text-truncate" style="max-width: 120px;" title="${escapeAttr(r.settlement_memo || '')}">${escapeHtml(r.settlement_memo || '-')}</td>
                 </tr>
             `;
         }).join('');
@@ -670,7 +864,7 @@ const app = {
         if (tfoot) {
             tfoot.innerHTML = `
                 <tr>
-                    <td colspan="9" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
+                    <td colspan="10" class="text-center">합 계 (총 ${rows.length.toLocaleString()}건)</td>
                     <td class="text-end text-nowrap">${totalQty.toLocaleString()}</td>
                     <td></td>
                     <td class="text-end text-nowrap">${totalSupply.toLocaleString()}원</td>
@@ -1101,14 +1295,21 @@ const app = {
         const excelData = items.map((item, idx) => {
             const { r, isSales, qty, price, supply, vat, grand } = item;
 
+            // 직출 연계처 (매입: 매출처, 매출: 매입처)
+            let directParty = '-';
+            if (r.is_direct) {
+                directParty = isSales ? (r.supplier || '-') : (r.destination || r.actual_destination || '-');
+            }
+
             return {
                 'No': idx + 1,
                 '구분': isSales ? '매출' : '매입',
                 '발생일자': r.date ? r.date.split('T')[0] : '',
                 '정산일자': r.tax_invoice_date ? r.tax_invoice_date.split('T')[0] : '',
                 '상대처/납품처': isSales ? (r.destination || r.actual_destination || '') : (r.supplier || ''),
+                '직출 연계처': directParty,
                 '자재계정': r.settlement_account || '',
-                '품목명': r.item || '',
+                '품목명': r.item + (r.is_direct ? ' (직출)' : ''),
                 '규격': r.spec || '',
                 '단위': r.unit || '',
                 '수량': qty,
@@ -1126,8 +1327,9 @@ const app = {
         XLSX.utils.book_append_sheet(wb, ws, '월간현황정산내역');
 
         const tradeLabel = (this.tradeTypeFilter === 'outbound') ? '_매출' : ((this.tradeTypeFilter === 'inbound') ? '_매입' : '_통합');
+        const filterSuffix = this.directPartnerFilter ? `_${this.directPartnerFilter}` : (this.subSearchKeyword ? `_검색(${this.subSearchKeyword.trim()})` : '');
         const monthLabel = this.currentMonth || '전체기간';
-        const fileName = `${monthLabel}_${partnerName}${tradeLabel}_정산현황.xlsx`;
+        const fileName = `${monthLabel}_${partnerName}${tradeLabel}${filterSuffix}_정산현황.xlsx`;
         XLSX.writeFile(wb, fileName);
     }
 };
