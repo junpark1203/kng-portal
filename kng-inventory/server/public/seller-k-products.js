@@ -292,6 +292,20 @@ function calcProfitRate(profit, sellTotalVATInclusive) {
     return (profit / netSale) * 100;
 }
 
+function calcBreakEvenPrice(buyTotalVATExclusive, sellShipping, shippingBasis) {
+    if (!buyTotalVATExclusive || buyTotalVATExclusive <= 0) return 0;
+    var effectiveShipping = sellShipping || 0;
+    if (shippingBasis === '무료') {
+        effectiveShipping = 0;
+    }
+    // 순매출 - 총매입 - 수수료 = 0 손익분기 역산 공식 (스마트스토어 수수료율 및 VAT 반영)
+    // S: 최소 손익분기 판매가(소비자가, VAT포함)
+    var S = (buyTotalVATExclusive * 1.1 - effectiveShipping * 0.9637) / 0.9337;
+    if (S < 0) S = 0;
+    // 10원 단위 올림
+    return Math.ceil(S / 10) * 10;
+}
+
 // ==========================================
 // 테이블 렌더링
 // ==========================================
@@ -680,6 +694,19 @@ function updateCalcPreview() {
 
     var rateEl = document.getElementById('skPreviewRate');
     if (rateEl) rateEl.value = profitRate.toFixed(1) + '%';
+
+    var breakEven = calcBreakEvenPrice(buyTotal, ss, base);
+    var breakEvenEl = document.getElementById('skPreviewBreakEven');
+    if (breakEvenEl) {
+        breakEvenEl.value = formatCurrency(breakEven);
+        if (sp > 0 && sp < breakEven) {
+            breakEvenEl.className = 'calc-preview text-danger';
+            breakEvenEl.title = '주의: 현재 판매가가 손익분기가격보다 낮습니다 (역마진 발생)';
+        } else {
+            breakEvenEl.className = 'calc-preview';
+            breakEvenEl.title = '손익분기 최소판매가 (10원 단위 올림)';
+        }
+    }
 }
 
 // ==========================================
