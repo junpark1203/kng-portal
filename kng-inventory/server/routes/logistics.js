@@ -2844,13 +2844,16 @@ router.post('/orphans/direct-inbound/cleanup', async (req, res) => {
             });
         }
 
-        // 월간 확정 건 보호 (확정된 건은 제외)
-        const safeToDelete = candidates.filter(c => !c.settlement_month);
-        const lockedCount = candidates.length - safeToDelete.length;
+        // 월간 확정 건 검사 및 force 옵션 처리
+        const isForce = req.body?.force === true;
+        const safeToDelete = isForce ? candidates : candidates.filter(c => !c.settlement_month);
+        const lockedCount = candidates.length - candidates.filter(c => !c.settlement_month).length;
 
         if (safeToDelete.length === 0) {
             return res.status(400).json({ 
-                error: `선택된 내역(${lockedCount}건)이 모두 월간현황에서 이미 확정 완료된 건이라 삭제할 수 없습니다.` 
+                error: `선택된 내역(${lockedCount}건)이 모두 월간현황에서 이미 확정 완료된 건이라 삭제할 수 없습니다. 확정 건도 삭제하려면 강제 삭제 확인을 진행해주세요.`,
+                hasLocked: true,
+                lockedCount: lockedCount
             });
         }
 
@@ -2869,7 +2872,7 @@ router.post('/orphans/direct-inbound/cleanup', async (req, res) => {
 
         res.json({
             success: true,
-            message: `연결 끊긴 직출고 입고 데이터 ${delRes.changes || deleteIds.length}건이 성공적으로 정리(삭제)되었습니다.${lockedCount > 0 ? ` (확정 보호 ${lockedCount}건 제외)` : ''}`,
+            message: `연결 끊긴 직출고 입고 데이터 ${delRes.changes || deleteIds.length}건이 성공적으로 정리(삭제)되었습니다.${lockedCount > 0 && !isForce ? ` (확정 보호 ${lockedCount}건 제외)` : ''}`,
             deletedCount: delRes.changes || deleteIds.length,
             deletedIds: deleteIds
         });

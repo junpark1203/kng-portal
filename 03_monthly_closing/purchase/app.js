@@ -1826,20 +1826,29 @@ const app = {
         tbody.innerHTML = items.map(r => {
             const price = Number(r.unit_price || 0);
             const total = Number(r.total_price || (price * r.qty) || 0);
+            const isConfirmed = !!r.settlement_month;
             return `
                 <tr>
                     <td>
-                        <input type="checkbox" class="form-check-input orphan-row-chk" value="${r.id}" data-supply="${total}" onchange="app.updateOrphanSelectionSummary()">
+                        <input type="checkbox" class="form-check-input orphan-row-chk" value="${r.id}" data-supply="${total}" data-confirmed="${isConfirmed ? '1' : '0'}" data-month="${escapeAttr(r.settlement_month || '')}" onchange="app.updateOrphanSelectionSummary()">
                     </td>
                     <td class="text-muted small">${escapeHtml(r.date)}</td>
                     <td class="small text-muted font-monospace">${escapeHtml(r.transaction_group_id)}</td>
                     <td class="fw-semibold text-dark text-truncate" style="max-width: 120px;" title="${escapeAttr(r.supplier)}">${escapeHtml(r.supplier)}</td>
-                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 220px;" title="${escapeAttr(r.item)}">${escapeHtml(r.item)}</td>
+                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 200px;" title="${escapeAttr(r.item)}">${escapeHtml(r.item)}</td>
                     <td class="text-muted small text-truncate" style="max-width: 80px;" title="${escapeAttr(r.spec || '-')}">${escapeHtml(r.spec || '-')}</td>
                     <td>${Number(r.qty).toLocaleString()}</td>
                     <td class="text-end">${price.toLocaleString()}</td>
                     <td class="text-end fw-semibold">${total.toLocaleString()}</td>
-                    <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">유령데이터</span></td>
+                    <td>
+                        ${isConfirmed ? `<span class="badge bg-success-subtle text-success border border-success me-1" title="${escapeAttr(r.settlement_month)} 확정 상태"><i class='bx bxs-lock-alt'></i> ${escapeHtml(r.settlement_month)} 확정</span>` : ''}
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">유령데이터</span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1" onclick="app.deleteSingleOrphan(${r.id}, ${isConfirmed ? `'${escapeAttr(r.settlement_month)}'` : 'null'})" title="이 유령 데이터 즉시 삭제">
+                            <i class='bx bx-trash'></i>
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -1870,11 +1879,13 @@ const app = {
         const checkedBoxes = Array.from(document.querySelectorAll('.orphan-row-chk:checked'));
         const count = checkedBoxes.length;
         let sum = 0;
+        let confirmedCount = 0;
         checkedBoxes.forEach(cb => {
             sum += parseFloat(cb.dataset.supply) || 0;
+            if (cb.dataset.confirmed === '1') confirmedCount++;
         });
 
-        $('orphanSelectedCount').innerText = count;
+        $('orphanSelectedCount').innerText = confirmedCount > 0 ? `${count} (확정 ${confirmedCount}건)` : count;
         $('orphanSelectedSum').innerText = `${Math.round(sum).toLocaleString()}원`;
 
         const delBtn = $('btnDeleteSelectedOrphans');
@@ -1889,12 +1900,62 @@ const app = {
         }
     },
 
+    deleteSingleOrphan: async function(id, confirmedMonth) {
+        let msg = '이 고아(유령) 직출고 입고 데이터를 영구 삭제하시겠습니까?\n(정상 출고 데이터 및 재고에는 영향이 없습니다)';
+        let force = false;
+        if (confirmedMonth) {
+            msg = `⚠️ [월간 확정 건 주의]\n\n해당 데이터는 [${confirmedMonth} 확정] 상태로 잠겨 있는 유령 데이터입니다.\n\n확정 상태의 유령 데이터를 강제로 영구 삭제하시겠습니까?\n(삭제 시 해당 월의 매입정산 및 월간현황 집계에서도 깔끔히 제거됩니다)`;
+            force = true;
+        }
+        if (!confirm(msg)) return;
+
+        try {
+            const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [id], force })
+            });
+
+            if (!cleanRes.ok) {
+                const errData = await cleanRes.json().catch(() => ({}));
+                throw new Error(errData.error || '삭제 처리 실패');
+            }
+
+            const cleanResult = await cleanRes.json();
+            alert(`🎉 ${cleanResult.message || '데이터가 성공적으로 삭제되었습니다.'}`);
+
+            this.orphanItems = this.orphanItems.filter(r => r.id !== id);
+            const searchKw = $('orphanSearchInput')?.value || '';
+            this.filterOrphanList(searchKw);
+
+            this.resetPageAndLoadData();
+
+            if (this.orphanItems.length === 0 && this.orphanModalInstance) {
+                this.orphanModalInstance.hide();
+            }
+        } catch (err) {
+            console.error('고아 데이터 개별 삭제 실패:', err);
+            alert('삭제 실패: ' + err.message);
+        }
+    },
+
     deleteSelectedOrphans: async function() {
         const checkedBoxes = Array.from(document.querySelectorAll('.orphan-row-chk:checked'));
         if (checkedBoxes.length === 0) return alert('삭제할 항목을 선택해주세요.');
 
         const ids = checkedBoxes.map(cb => parseInt(cb.value, 10)).filter(Boolean);
-        if (!confirm(`선택한 ${ids.length}건의 고아(유령) 입고 데이터를 DB에서 영구 삭제하시겠습니까?\n(정상 데이터 및 재고에는 영향이 없습니다)`)) return;
+        const confirmedBoxes = checkedBoxes.filter(cb => cb.dataset.confirmed === '1');
+        
+        let confirmMsg = `선택한 ${ids.length}건의 고아(유령) 입고 데이터를 DB에서 영구 삭제하시겠습니까?\n(정상 데이터 및 재고에는 영향이 없습니다)`;
+        let force = false;
+
+        if (confirmedBoxes.length > 0) {
+            const months = Array.from(new Set(confirmedBoxes.map(cb => cb.dataset.month).filter(Boolean))).join(', ');
+            confirmMsg = `⚠️ [주의: 월간 확정 건 포함]\n\n선택한 항목 중 이미 월간현황에서 확정(${months} 확정)된 유령 데이터가 ${confirmedBoxes.length}건 포함되어 있습니다.\n\n월간 확정된 유령 데이터도 강제로 영구 삭제하시겠습니까?\n(삭제 시 해당 월의 매입정산 및 월간현황 집계에서도 깔끔히 제거됩니다)`;
+            force = true;
+        }
+
+        if (!confirm(confirmMsg)) return;
 
         const btn = $('btnDeleteSelectedOrphans');
         const origHtml = btn ? btn.innerHTML : '';
@@ -1907,7 +1968,7 @@ const app = {
             const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids })
+                body: JSON.stringify({ ids, force })
             });
 
             if (!cleanRes.ok) {
@@ -1948,13 +2009,22 @@ const app = {
         }
 
         const count = this.orphanItems.length;
-        if (!confirm(`⚠️ 현재 발견된 ${count}건의 연결 끊긴 고아(유령) 입고 데이터를 전부 일괄 삭제하시겠습니까?\n\n이 작업은 취소할 수 없으며, 출고 내역이 없는 유령 직출고 입고 건만 깔끔하게 제거됩니다.`)) return;
+        const confirmedCount = this.orphanItems.filter(r => !!r.settlement_month).length;
+        let confirmMsg = `⚠️ 현재 발견된 ${count}건의 연결 끊긴 고아(유령) 입고 데이터를 전부 일괄 삭제하시겠습니까?\n\n이 작업은 취소할 수 없으며, 출고 내역이 없는 유령 직출고 입고 건만 깔끔하게 제거됩니다.`;
+        let force = false;
+
+        if (confirmedCount > 0) {
+            confirmMsg = `⚠️ [주의: 월간 확정 건 포함]\n\n전체 ${count}건 중 이미 월간 확정된 유령 데이터가 ${confirmedCount}건 포함되어 있습니다.\n\n월간 확정된 유령 데이터까지 모두 강제로 영구 삭제하시겠습니까?`;
+            force = true;
+        }
+
+        if (!confirm(confirmMsg)) return;
 
         try {
             const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({ force })
             });
 
             if (!cleanRes.ok) {

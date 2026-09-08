@@ -152,12 +152,18 @@ async function runCleanup() {
         // 실제 삭제 진행
         console.log('\n🚨 실제 삭제 처리를 시작합니다...');
 
-        // 월간 확정건 보호
-        const safeInbounds = orphanInbounds.filter(r => !r.settlement_month);
+        // 월간 확정건 처리 (force 옵션 지원)
+        const isForceMode = process.argv.includes('--force');
+        const targetInbounds = isForceMode ? orphanInbounds : orphanInbounds.filter(r => !r.settlement_month);
         const lockedInbounds = orphanInbounds.filter(r => !!r.settlement_month);
 
         if (lockedInbounds.length > 0) {
-            console.warn(`⚠️ 경고: ${lockedInbounds.length}건은 월간현황에 이미 확정되어 있어 안전을 위해 삭제 대상에서 제외되었습니다.`);
+            if (!isForceMode) {
+                console.warn(`⚠️ 경고: ${lockedInbounds.length}건은 월간현황에 이미 확정되어 있어 안전을 위해 삭제 대상에서 제외되었습니다.`);
+                console.warn(`👉 확정 건까지 강제로 삭제하려면 --force 옵션을 함께 사용하세요: node cleanup_orphans.js --delete --force\n`);
+            } else {
+                console.warn(`🚨 알림: --force 옵션이 지정되어 월간 확정된 ${lockedInbounds.length}건을 포함하여 강제 삭제를 진행합니다.\n`);
+            }
         }
 
         await dbRun("BEGIN TRANSACTION");
@@ -166,8 +172,8 @@ async function runCleanup() {
         let deletedLotCount = 0;
 
         // 1) 대상 Inbound와 연결된 Lot 정리
-        if (safeInbounds.length > 0) {
-            const inIds = safeInbounds.map(r => r.id);
+        if (targetInbounds.length > 0) {
+            const inIds = targetInbounds.map(r => r.id);
             const inPlaceholders = inIds.map(() => '?').join(',');
 
             await dbRun(`DELETE FROM logistics_outbound_lots WHERE inbound_id IN (${inPlaceholders})`, inIds);
