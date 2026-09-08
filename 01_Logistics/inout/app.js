@@ -2310,7 +2310,7 @@ const app = {
         const unitInput = row.querySelector('.out-unit');
         const lotBtn = row.querySelector('.btn-lot');
 
-        if (!sel.value) {
+        if (!selectEl.value || !selectedOpt) {
             qtyInput.disabled = true;
             qtyInput.value = '';
             unitInput.value = '';
@@ -2320,9 +2320,13 @@ const app = {
             return;
         }
         
-        const option = sel.options[sel.selectedIndex];
-        const unit = option.getAttribute('data-unit');
-        const lots = JSON.parse(option.getAttribute('data-lots'));
+        const unit = selectedOpt.getAttribute('data-unit') || '';
+        let lots = [];
+        try {
+            lots = JSON.parse(selectedOpt.getAttribute('data-lots') || '[]');
+        } catch (e) {
+            console.error('Failed to parse lots:', e);
+        }
         
         unitInput.value = unit;
         qtyInput.disabled = false;
