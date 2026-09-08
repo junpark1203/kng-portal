@@ -1133,7 +1133,9 @@ const app = {
         const checkedBoxes = document.querySelectorAll('.row-chk:checked');
         let hasUnsettled = false;
         let hasSettled = false;
+        let selectedQty = 0;
         let selectedSum = 0;
+        let selectedVat = 0;
         
         checkedBoxes.forEach(el => {
             if (el.dataset.status === '미정산') hasUnsettled = true;
@@ -1141,8 +1143,23 @@ const app = {
 
             const rowId = el.value;
             const inputRow = document.querySelector(`tr.settle-input-row[data-id="${rowId}"]`);
+            let rowQty = null;
             let rowSupply = null;
+            let rowVat = null;
+
             if (inputRow) {
+                // 수량
+                const qtyInput = inputRow.querySelector('.inline-qty');
+                if (qtyInput && qtyInput.value !== undefined && qtyInput.value !== '') {
+                    rowQty = parseFloat(qtyInput.value.replace(/,/g, '')) || 0;
+                } else {
+                    const qtyCell = inputRow.querySelector('td:nth-child(3)');
+                    if (qtyCell) {
+                        rowQty = parseFloat(qtyCell.innerText.replace(/,/g, '')) || 0;
+                    }
+                }
+
+                // 공급가
                 const supplyInput = inputRow.querySelector('.inline-supply-amt');
                 if (supplyInput && supplyInput.value !== undefined && supplyInput.value !== '') {
                     rowSupply = parseFloat(supplyInput.value.replace(/,/g, '')) || 0;
@@ -1152,9 +1169,24 @@ const app = {
                         rowSupply = parseFloat(supplyCell.innerText.replace(/,/g, '')) || 0;
                     }
                 }
+
+                // 부가세
+                const vatInput = inputRow.querySelector('.inline-vat');
+                if (vatInput && vatInput.value !== undefined && vatInput.value !== '') {
+                    rowVat = parseFloat(vatInput.value.replace(/,/g, '')) || 0;
+                } else {
+                    const vatCell = inputRow.querySelector('td:nth-child(6)');
+                    if (vatCell) {
+                        rowVat = parseFloat(vatCell.innerText.replace(/,/g, '')) || 0;
+                    }
+                }
+            }
+
+            const r = (this.items || []).find(item => item.id == rowId);
+            if (rowQty === null) {
+                rowQty = Number(r ? (r.settlement_qty ?? r.qty ?? 0) : 0);
             }
             if (rowSupply === null) {
-                const r = (this.items || []).find(item => item.id == rowId);
                 if (r) {
                     const shipAmount = r.shipping_fee > 0 ? (r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee) : 0;
                     const q = Number(r.settlement_qty ?? r.qty ?? 0);
@@ -1164,7 +1196,29 @@ const app = {
                     rowSupply = 0;
                 }
             }
+            if (rowVat === null) {
+                if (r) {
+                    if (r.settlement_vat !== undefined && r.settlement_vat !== null) {
+                        rowVat = Math.round(Number(r.settlement_vat));
+                    } else if (r.is_zero_tax || (r.trade_type && r.trade_type !== '내수')) {
+                        rowVat = 0;
+                    } else {
+                        const shipAmount = r.shipping_fee > 0 ? (r.shipping_fee_vat_included === 1 ? Math.round(r.shipping_fee / 1.1) : r.shipping_fee) : 0;
+                        const itemVat = Math.floor(Math.round((r.settlement_qty || r.qty || 0) * (r.settlement_price || r.inbound_price || 0)) * 0.1);
+                        let shipVat = 0;
+                        if (r.shipping_fee > 0) {
+                            shipVat = r.shipping_fee_vat_included === 1 ? (r.shipping_fee - shipAmount) : Math.floor(shipAmount * 0.1);
+                        }
+                        rowVat = itemVat + shipVat;
+                    }
+                } else {
+                    rowVat = 0;
+                }
+            }
+
+            selectedQty += rowQty;
             selectedSum += rowSupply;
+            selectedVat += rowVat;
         });
         
         $('batchSettleBtn').style.display = hasUnsettled ? 'inline-block' : 'none';
@@ -1187,6 +1241,37 @@ const app = {
                 sumBadge.classList.remove('d-none');
             } else {
                 sumBadge.classList.add('d-none');
+            }
+        }
+
+        // 플로팅 선택 요약 바 갱신
+        const floatBar = $('floatingPurchaseBar');
+        if (floatBar) {
+            if (checkedBoxes.length > 0) {
+                const countEl = $('floatPurchaseCount');
+                if (countEl) countEl.innerText = checkedBoxes.length;
+
+                const qtyEl = $('floatPurchaseQty');
+                if (qtyEl) qtyEl.innerText = Math.round(selectedQty).toLocaleString();
+
+                const supplyEl = $('floatPurchaseSupply');
+                if (supplyEl) supplyEl.innerText = `${Math.round(selectedSum).toLocaleString()}원`;
+
+                const vatEl = $('floatPurchaseVat');
+                if (vatEl) vatEl.innerText = `${Math.round(selectedVat).toLocaleString()}원`;
+
+                const grandEl = $('floatPurchaseGrand');
+                if (grandEl) grandEl.innerText = `${Math.round(selectedSum + selectedVat).toLocaleString()}원`;
+
+                const floatBatchBtn = $('floatPurchaseBatchBtn');
+                if (floatBatchBtn) floatBatchBtn.style.display = hasUnsettled ? 'inline-flex' : 'none';
+
+                const floatCancelBtn = $('floatPurchaseCancelBtn');
+                if (floatCancelBtn) floatCancelBtn.style.display = hasSettled ? 'inline-flex' : 'none';
+
+                floatBar.classList.add('show');
+            } else {
+                floatBar.classList.remove('show');
             }
         }
     },

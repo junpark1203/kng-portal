@@ -797,6 +797,7 @@ const app = {
             this.renderPagination(res.total, res.page, res.limit);
             this.renderSummaryStrip(res.summary, typeFilter);
             this.renderActiveFilterChips();
+            this.updateSelectionSummary();
         } catch (err) {
             console.error('History load error:', err);
             $('historyTbody').innerHTML = `<tr><td colspan="16" class="text-center text-danger">내역을 불러오지 못했습니다.</td></tr>`;
@@ -842,6 +843,7 @@ const app = {
         }
 
         this.renderHistoryTable(this.currentHistoryData);
+        this.updateSelectionSummary();
     },
 
     renderPagination: function(total, currentPage, limit) {
@@ -932,7 +934,7 @@ const app = {
 
             return `
             <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
-                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}"></td>
+                <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.updateSelectionSummary()"></td>
                 <td class="d-print-none user-select-none text-nowrap" style="font-size: 0.73rem; letter-spacing: -0.2px; color: #64748b;">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
                     <span>${txIdDisplay}</span>
@@ -1294,6 +1296,75 @@ const app = {
         document.querySelectorAll('.history-checkbox').forEach(cb => {
             cb.checked = isChecked;
         });
+        this.updateSelectionSummary();
+    },
+
+    clearHistorySelection() {
+        const selectAll = $('selectAllHistory');
+        if (selectAll) selectAll.checked = false;
+        document.querySelectorAll('.history-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+        this.updateSelectionSummary();
+    },
+
+    updateSelectionSummary() {
+        const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
+        const allBoxes = document.querySelectorAll('.history-checkbox');
+        const selectAll = $('selectAllHistory');
+        if (selectAll) {
+            selectAll.checked = allBoxes.length > 0 && checked.length === allBoxes.length;
+        }
+
+        const bar = $('floatingSelectionBar');
+        if (!bar) return;
+
+        if (checked.length === 0) {
+            bar.classList.remove('show');
+            return;
+        }
+
+        let totalQty = 0;
+        let totalInbound = 0;
+        let totalOutbound = 0;
+
+        checked.forEach(cb => {
+            const id = parseInt(cb.value, 10);
+            const type = cb.dataset.type;
+            const r = (this.currentHistoryData || []).find(item => item.id === id && item.type === type);
+            if (r) {
+                totalQty += Number(r.qty || 0);
+                totalInbound += Number(r.inbound_total || 0);
+                totalOutbound += Number(r.outbound_total || 0);
+            }
+        });
+
+        const countEl = $('floatSelectedCount');
+        const qtyEl = $('floatSelectedQty');
+        const inTotalEl = $('floatInboundTotal');
+        const outTotalEl = $('floatOutboundTotal');
+        const inBox = $('floatInboundBox');
+        const outBox = $('floatOutboundBox');
+
+        if (countEl) countEl.innerText = checked.length.toLocaleString();
+        if (qtyEl) qtyEl.innerText = totalQty.toLocaleString();
+        if (inTotalEl) inTotalEl.innerText = Math.round(totalInbound).toLocaleString() + '원';
+        if (outTotalEl) outTotalEl.innerText = Math.round(totalOutbound).toLocaleString() + '원';
+
+        if (inBox && outBox) {
+            if (totalInbound > 0 && totalOutbound === 0) {
+                inBox.style.display = 'flex';
+                outBox.style.display = 'none';
+            } else if (totalOutbound > 0 && totalInbound === 0) {
+                inBox.style.display = 'none';
+                outBox.style.display = 'flex';
+            } else {
+                inBox.style.display = 'flex';
+                outBox.style.display = 'flex';
+            }
+        }
+
+        bar.classList.add('show');
     },
 
     openBulkUpdateModal() {

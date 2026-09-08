@@ -83,6 +83,54 @@
                 padding-bottom: 10px;
             }
         }
+
+        /* ── 하단 플로팅 선택 요약 바 (Floating Summary Bar) ── */
+        .floating-selection-bar {
+            position: fixed;
+            bottom: 26px;
+            left: 50%;
+            transform: translateX(-50%) translateY(40px);
+            z-index: 1055;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 95vw;
+        }
+        .floating-selection-bar.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .floating-selection-container {
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            color: #f8fafc;
+            padding: 10px 22px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            min-width: 320px;
+        }
+        .text-emerald { color: #34d399 !important; }
+        .text-rose { color: #f87171 !important; }
+        .hover-white:hover { color: #ffffff !important; }
+        @media (max-width: 767.98px) {
+            .floating-selection-bar {
+                bottom: 16px;
+                width: 96vw;
+            }
+            .floating-selection-container {
+                border-radius: 18px;
+                padding: 12px 16px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -1216,6 +1264,48 @@
                     <!-- JS Render -->
                 </div>
             </div>
+        </div>
+    </div>
+<!-- 하단 플로팅 선택 요약 바 (Floating Selection Summary Bar) -->
+<div id="floatingSelectionBar" class="floating-selection-bar">
+    <div class="floating-selection-container shadow">
+        <!-- 좌측: 선택 배지 및 지표 -->
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="badge bg-primary px-3 py-2 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" style="font-size: 0.85rem;" id="floatSelectedCountBadge">
+                <i class='bx bx-check-square'></i> 선택 <strong id="floatSelectedCount">0</strong>건
+            </span>
+            <div class="d-flex align-items-center gap-1 small">
+                <span class="text-secondary opacity-75">총 수량:</span>
+                <strong class="text-white fs-6" id="floatSelectedQty">0</strong>
+            </div>
+            <div class="vr bg-secondary opacity-50 d-none d-sm-block my-1"></div>
+            <!-- 금액 정보 -->
+            <div class="d-flex align-items-center gap-3 flex-wrap" id="floatAmountGroup">
+                <div class="d-flex align-items-center gap-1" id="floatInboundBox">
+                    <span class="text-emerald fw-semibold small">매입합계:</span>
+                    <strong class="text-white fs-6" id="floatInboundTotal">0원</strong>
+                </div>
+                <div class="d-flex align-items-center gap-1" id="floatOutboundBox">
+                    <span class="text-rose fw-semibold small">매출합계:</span>
+                    <strong class="text-white fs-6" id="floatOutboundTotal">0원</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: 원클릭 액션 버튼군 -->
+        <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+            <button class="btn btn-sm btn-outline-danger text-nowrap fw-bold" onclick="app.deleteSelectedHistory()" title="선택된 항목들을 일괄 삭제합니다">
+                <i class='bx bx-trash'></i> 선택삭제
+            </button>
+            <button class="btn btn-sm btn-outline-light text-nowrap" onclick="app.openBulkUpdateModal()" title="선택된 항목들의 거래처/분류를 일괄 수정합니다">
+                <i class='bx bx-edit'></i> 일괄 수정
+            </button>
+            <button class="btn btn-sm btn-primary text-nowrap fw-bold shadow-sm" onclick="app.printSelectedHistory()" title="선택된 항목들로 거래명세서를 출력합니다">
+                <i class='bx bx-printer'></i> 거래명세서 출력
+            </button>
+            <button class="btn btn-sm btn-link text-white-50 text-decoration-none p-1 ms-1 hover-white" onclick="app.clearHistorySelection()" title="선택 모두 해제">
+                <i class='bx bx-x fs-5'></i>
+            </button>
         </div>
     </div>
 </div>
