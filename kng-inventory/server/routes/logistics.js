@@ -2687,8 +2687,9 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
                     return res.status(400).json({ error: errorMsg || 'Update failed' });
                 }
                 
-                db.run("COMMIT", (commitErr) => {
+                db.run("COMMIT", async (commitErr) => {
                     if (commitErr) return res.status(500).json({ error: commitErr.message });
+                    await reconcileInventory();
                     res.json({ success: true, message: 'Outbound transaction updated' });
                 });
             });

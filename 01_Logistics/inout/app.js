@@ -2399,25 +2399,29 @@ const app = {
         
         // Render table
         const tbody = $('lotModalTbody');
-        tbody.innerHTML = rData.availableLots.map(lot => {
-            const consumed = rData.consumedLots.find(c => c.inbound_id === lot.id);
-            const val = consumed ? consumed.consumed_qty : 0;
-            return `
-            <tr>
-                <td>${lot.date}</td>
-                <td>${lot.location_name || '-'}</td>
-                <td>${lot.supplier}</td>
-                <td>${lot.unit_price.toLocaleString()}</td>
-                <td><strong>${lot.qty_remaining}</strong></td>
-                <td>
-                    <input type="number" class="form-control form-control-sm lot-qty-modal-input mx-auto" 
-                           data-id="${lot.id}"
-                           min="0" max="${lot.qty_remaining}" step="0.01" value="${val}"
-                           onchange="app.validateLotModalSum()" onkeyup="app.validateLotModalSum()">
-                </td>
-            </tr>
-            `;
-        }).join('');
+        if (!rData.availableLots || rData.availableLots.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted"><i class='bx bx-info-circle me-1'></i>현재 가용한 입고 Lot가 없습니다.</td></tr>`;
+        } else {
+            tbody.innerHTML = rData.availableLots.map(lot => {
+                const consumed = rData.consumedLots.find(c => c.inbound_id === lot.id);
+                const val = consumed ? consumed.consumed_qty : 0;
+                return `
+                <tr>
+                    <td>${lot.date || '-'}</td>
+                    <td>${lot.location_name || '-'}</td>
+                    <td>${lot.supplier || '-'}</td>
+                    <td>${(lot.unit_price || 0).toLocaleString()}원</td>
+                    <td><strong>${lot.qty_remaining}</strong></td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm lot-qty-modal-input mx-auto" 
+                               data-id="${lot.id}"
+                               min="0" max="${lot.qty_remaining}" step="0.01" value="${val}"
+                               onchange="app.validateLotModalSum()" onkeyup="app.validateLotModalSum()">
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
         
         this.validateLotModalSum();
         const modalEl = $('lotModal');
@@ -3104,12 +3108,47 @@ const app = {
                 newRow.dataset.dbId = item.id;
                 newRow.querySelector('.out-item').value = item.item;
                 
+                // 해당 품목의 백엔드 재고 Lot 정보 조회
+                let lots = [];
+                try {
+                    lots = await authFetch(`${API_BASE}/inventory/item/${encodeURIComponent(item.item)}`);
+                } catch(e) {
+                    console.error('Failed to fetch inventory for item:', item.item, e);
+                }
+
+                // 기존 할당된 consumed_lots
+                const consumedLots = (item.consumed_lots || []).map(l => ({
+                    inbound_id: parseInt(l.inbound_id, 10),
+                    consumed_qty: parseFloat(l.consumed_qty) || 0
+                }));
+
+                // 자기 자신이 이미 차감했던 양을 복원하여 가용 수량 계산
+                const specMap = {};
+                (lots || []).forEach(l => {
+                    const cloneLot = { ...l };
+                    const consumed = consumedLots.find(c => c.inbound_id === cloneLot.id);
+                    if (consumed) {
+                        cloneLot.qty_remaining += consumed.consumed_qty;
+                    }
+                    if (!specMap[cloneLot.spec]) {
+                        specMap[cloneLot.spec] = { unit: cloneLot.unit, total: 0, lots: [] };
+                    }
+                    specMap[cloneLot.spec].total += cloneLot.qty_remaining;
+                    specMap[cloneLot.spec].lots.push(cloneLot);
+                });
+
                 const specSel = newRow.querySelector('.out-spec');
-                specSel.innerHTML = `<option value="${item.spec || ''}" selected>${item.spec || '규격 없음'}</option>`;
+                specSel.innerHTML = '<option value="">규격을 선택하세요</option>';
+                for (const [spec, data] of Object.entries(specMap)) {
+                    const isSel = spec === item.spec ? 'selected' : '';
+                    specSel.innerHTML += `<option value="${spec}" data-lots='${JSON.stringify(data.lots)}' data-unit="${data.unit}" ${isSel}>[잔여 ${data.total}${data.unit}] ${spec}</option>`;
+                }
+                if (!specMap[item.spec]) {
+                    specSel.innerHTML += `<option value="${item.spec || ''}" selected>${item.spec || '규격 없음'}</option>`;
+                }
                 specSel.disabled = false;
-                
+
                 newRow.querySelector('.out-unit').value = item.unit || '';
-                
                 const qtyInput = newRow.querySelector('.out-qty');
                 qtyInput.value = item.qty;
                 qtyInput.disabled = false;
@@ -3117,16 +3156,48 @@ const app = {
                 newRow.querySelector('.out-price').value = item.selling_price || 0;
                 if (newRow.querySelector('.out-category')) newRow.querySelector('.out-category').value = item.category || '';
 
+                // 해당 규격에 매칭되는 Lot 목록 확보
+                let specLots = [];
+                if (specMap[item.spec]) {
+                    specLots = specMap[item.spec].lots;
+                } else if (lots && lots.length > 0) {
+                    specLots = lots.filter(l => l.spec === item.spec);
+                }
+
+                // 기존 로트 매핑이 비어있던 레거시 출고 건(또는 미할당 건)의 경우 선입선출 자동 배정
+                let finalConsumed = consumedLots.filter(c => c.consumed_qty > 0);
+                if (finalConsumed.length === 0 && specLots.length > 0) {
+                    let remQty = parseFloat(item.qty) || 0;
+                    finalConsumed = [];
+                    specLots.forEach(lot => {
+                        if (remQty <= 0) return;
+                        const take = Math.min(remQty, lot.qty_remaining);
+                        if (take > 0) {
+                            finalConsumed.push({ inbound_id: lot.id, consumed_qty: take });
+                            remQty -= take;
+                        }
+                    });
+                }
+
                 this.outboundRows[rowId] = {
-                    consumedLots: item.consumed_lots || [],
-                    availableLots: []
+                    consumedLots: finalConsumed,
+                    availableLots: specLots
                 };
+
                 const lotBtn = newRow.querySelector('.btn-lot');
                 if (lotBtn) {
                     lotBtn.disabled = false;
-                    lotBtn.classList.remove('btn-outline-primary');
-                    lotBtn.classList.add('btn-success');
-                    lotBtn.innerHTML = 'Lot 확인/수정';
+                    const sumConsumed = finalConsumed.reduce((acc, c) => acc + c.consumed_qty, 0);
+                    const isMatch = Math.abs(sumConsumed - parseFloat(item.qty)) < 0.0001 && parseFloat(item.qty) > 0;
+                    if (isMatch) {
+                        lotBtn.classList.remove('btn-outline-danger', 'btn-outline-primary');
+                        lotBtn.classList.add('btn-success');
+                        lotBtn.innerHTML = 'Lot 확인됨 <i class="bx bx-check"></i>';
+                    } else {
+                        lotBtn.classList.remove('btn-success', 'btn-outline-primary');
+                        lotBtn.classList.add('btn-outline-danger');
+                        lotBtn.innerHTML = 'Lot 미설정 <i class="bx bx-error"></i>';
+                    }
                 }
             }
             this.openDrawer('outbound_create');
