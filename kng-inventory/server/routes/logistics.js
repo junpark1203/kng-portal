@@ -11,6 +11,10 @@ let db = null;
 
 function setDb(database) {
     db = database;
+    if (db) {
+        db.run("PRAGMA journal_mode = WAL;", () => {});
+        db.run("PRAGMA busy_timeout = 10000;", () => {});
+    }
 }
 
 const dbRun = (sql, params = []) => new Promise((resolve, reject) => {
@@ -343,6 +347,97 @@ router.put('/bulk-update', (req, res) => {
             }
         });
     });
+});
+
+// --- Bulk Delete (입출고 내역 일괄 삭제) ---
+router.post('/bulk-delete', async (req, res) => {
+    const inboundIds = (req.body.inboundIds || []).map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+    const outboundIds = (req.body.outboundIds || []).map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+
+    if (inboundIds.length === 0 && outboundIds.length === 0) {
+        return res.status(400).json({ error: '삭제할 항목이 선택되지 않았습니다.' });
+    }
+
+    try {
+        // 1. 월간 확정 건 보호 검사
+        if (outboundIds.length > 0) {
+            const placeholders = outboundIds.map(() => '?').join(',');
+            const chk = await dbGet(`SELECT COUNT(*) as count FROM logistics_outbound WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, outboundIds);
+            if (chk && chk.count > 0) {
+                return res.status(400).json({ error: `선택한 출고 내역 중 월간현황에서 이미 확정된 내역(${chk.count}건)이 포함되어 있어 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+            }
+        }
+        if (inboundIds.length > 0) {
+            const placeholders = inboundIds.map(() => '?').join(',');
+            const chk = await dbGet(`SELECT COUNT(*) as count FROM logistics_inbound WHERE id IN (${placeholders}) AND settlement_month IS NOT NULL AND settlement_month != ''`, inboundIds);
+            if (chk && chk.count > 0) {
+                return res.status(400).json({ error: `선택한 입고 내역 중 월간현황에서 이미 확정된 내역(${chk.count}건)이 포함되어 있어 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+            }
+        }
+
+        await dbRun("BEGIN TRANSACTION");
+
+        let deletedOutCount = 0;
+        let deletedInCount = 0;
+
+        // 2. 출고(Outbound) 내역 처리 및 재고 복구
+        if (outboundIds.length > 0) {
+            const outPlaceholders = outboundIds.map(() => '?').join(',');
+            
+            // 연결된 Lot 정보 조회
+            const lots = await dbAll(`SELECT outbound_id, inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${outPlaceholders})`, outboundIds);
+            
+            // 일반 입고건의 차감 수량 원복
+            if (lots.length > 0) {
+                const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
+                for (const lot of lots) {
+                    stmtRestore.run(lot.consumed_qty, lot.inbound_id);
+                }
+                stmtRestore.finalize();
+            }
+
+            // Lot 매핑 삭제
+            await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${outPlaceholders})`, outboundIds);
+
+            // 출고 내역 삭제
+            const outDelRes = await dbRun(`DELETE FROM logistics_outbound WHERE id IN (${outPlaceholders})`, outboundIds);
+            deletedOutCount = outDelRes.changes || outboundIds.length;
+
+            // 직출고의 경우 연계된 직출 입고 데이터(is_direct=1) 동시 정리
+            const directInboundIds = lots.map(l => l.inbound_id);
+            if (directInboundIds.length > 0) {
+                const inPlaceholders = directInboundIds.map(() => '?').join(',');
+                await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders}) AND is_direct = 1 AND qty_remaining >= qty_initial`, directInboundIds);
+            }
+        }
+
+        // 3. 입고(Inbound) 내역 처리
+        if (inboundIds.length > 0) {
+            const inPlaceholders = inboundIds.map(() => '?').join(',');
+
+            // 이미 출고 차감된 내역 검사
+            const consumedRows = await dbAll(`SELECT id FROM logistics_inbound WHERE id IN (${inPlaceholders}) AND qty_initial != qty_remaining`, inboundIds);
+            if (consumedRows.length > 0) {
+                await dbRun("ROLLBACK");
+                return res.status(400).json({ error: `선택한 입고 내역 중 이미 출고로 차감된 내역(${consumedRows.length}건)이 존재하여 삭제할 수 없습니다. 연결된 출고 내역을 먼저 삭제해주세요.` });
+            }
+
+            const inDelRes = await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders})`, inboundIds);
+            deletedInCount = inDelRes.changes || inboundIds.length;
+        }
+
+        await dbRun("COMMIT");
+
+        res.json({
+            success: true,
+            message: `선택 삭제가 완료되었습니다. (출고/직출고: ${deletedOutCount}건, 입고: ${deletedInCount}건)`,
+            deletedCount: deletedOutCount + deletedInCount
+        });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Bulk delete error:', err);
+        res.status(500).json({ error: '일괄 삭제 처리 중 오류가 발생했습니다: ' + err.message });
+    }
 });
 
 

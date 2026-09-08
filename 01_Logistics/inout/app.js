@@ -1351,27 +1351,39 @@ const app = {
     deleteSelectedHistory: async function() {
         const checked = Array.from(document.querySelectorAll('.history-checkbox:checked'));
         if (checked.length === 0) return alert('삭제할 항목을 선택하세요.');
-        if (!confirm(`선택한 ${checked.length}개의 내역을 삭제하시겠습니까? (출고 내역 삭제 시 입고 잔여수량이 복구되며, 직출고의 경우 입출고 모두 삭제됩니다.)`)) return;
+        if (!confirm(`선택한 ${checked.length}개의 내역을 일괄 삭제하시겠습니까?\n(출고 내역 삭제 시 입고 잔여수량이 복구되며, 직출고의 경우 입출고 모두 함께 삭제됩니다.)`)) return;
         
-        let successCount = 0;
-        let failCount = 0;
-        for (const cb of checked) {
-            const id = cb.value;
-            const type = cb.dataset.type;
-            try {
-                const res = await authFetch(`${API_BASE}/${type}/${id}`, { method: 'DELETE' });
-                if (res && res.error) throw new Error(res.error);
-                successCount++;
-            } catch (err) {
-                failCount++;
-                console.error(`Failed to delete ${type} ${id}:`, err);
+        const inboundIds = [];
+        const outboundIds = [];
+        checked.forEach(cb => {
+            const id = parseInt(cb.value, 10);
+            if (cb.dataset.type === 'inbound') inboundIds.push(id);
+            else if (cb.dataset.type === 'outbound') outboundIds.push(id);
+        });
+
+        const btn = document.querySelector('button[onclick="app.deleteSelectedHistory()"]');
+        const origBtnHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 삭제 중...`;
+        }
+
+        try {
+            const res = await authFetch(`${API_BASE}/bulk-delete`, {
+                method: 'POST',
+                body: JSON.stringify({ inboundIds, outboundIds })
+            });
+            alert(res.message || `선택한 ${checked.length}건의 내역이 성공적으로 삭제되었습니다.`);
+            $('selectAllHistory').checked = false;
+            this.resetPageAndLoadHistory();
+        } catch (err) {
+            alert('일괄 삭제 실패: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origBtnHtml;
             }
         }
-        
-        const msg = `선택 삭제가 완료되었습니다.\\n(성공: ${successCount}건, 실패: ${failCount}건)`;
-        alert(msg);
-        $('selectAllHistory').checked = false;
-        this.resetPageAndLoadHistory();
     },
 
     printSelectedHistory: function() {

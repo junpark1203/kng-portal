@@ -260,6 +260,8 @@ const db = new sqlite3.Database(dbFile, (err) => {
         console.error('DB 연결 오류:', err.message);
     } else {
         console.log('SQLite 데이터베이스 연결 완료:', dbFile);
+        db.run("PRAGMA journal_mode = WAL;");
+        db.run("PRAGMA busy_timeout = 10000;");
         initDb();
         // Mass Upload 테이블 초기화 + 라우트에 DB 주입
         initMassUploadTables(db).then(() => {
