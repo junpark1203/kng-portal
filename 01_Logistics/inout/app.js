@@ -66,6 +66,8 @@ let locations = [];
 let availableLots = []; // 출고 시 선택된 품목+규격의 잔여 Lot 목록
 
 const app = {
+    keyboardFocusedIndex: -1,
+
     init: async function() {
         this.bindEvents();
         await this.loadLocations();
@@ -75,6 +77,78 @@ const app = {
         this.setupPartnerAutocomplete();
         this.loadCategories();
         this.loadHistory();
+        this.initKeyboardNav();
+    },
+
+    initKeyboardNav: function() {
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            const tag = activeEl ? activeEl.tagName.toLowerCase() : '';
+            const isEditable = activeEl && (
+                activeEl.isContentEditable ||
+                tag === 'textarea' ||
+                tag === 'select' ||
+                (tag === 'input' && activeEl.type !== 'checkbox' && activeEl.type !== 'radio')
+            );
+            if (isEditable) return;
+            if (document.querySelector('.modal.show')) return;
+
+            const mainRows = Array.from(document.querySelectorAll('#historyTbody tr.history-main-row'));
+            if (mainRows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                let nextIdx = this.keyboardFocusedIndex + 1;
+                if (this.keyboardFocusedIndex === -1 || nextIdx >= mainRows.length) {
+                    nextIdx = (this.keyboardFocusedIndex === -1) ? 0 : mainRows.length - 1;
+                }
+                this.setKeyboardFocus(nextIdx, mainRows);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prevIdx = this.keyboardFocusedIndex - 1;
+                if (prevIdx < 0) prevIdx = 0;
+                this.setKeyboardFocus(prevIdx, mainRows);
+            } else if (e.key === ' ' || e.code === 'Space') {
+                if (this.keyboardFocusedIndex >= 0 && this.keyboardFocusedIndex < mainRows.length) {
+                    e.preventDefault();
+                    const targetRow = mainRows[this.keyboardFocusedIndex];
+                    const chk = targetRow.querySelector('.history-checkbox');
+                    if (chk && !chk.disabled) {
+                        chk.checked = !chk.checked;
+                        chk.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        });
+
+        // 마우스 클릭 시 해당 메인 행으로 포커스 인덱스 동기화
+        const tbody = document.getElementById('historyTbody');
+        if (tbody) {
+            tbody.addEventListener('click', (e) => {
+                const tr = e.target.closest('tr.history-main-row');
+                if (!tr) return;
+                const mainRows = Array.from(document.querySelectorAll('#historyTbody tr.history-main-row'));
+                const clickedIdx = mainRows.indexOf(tr);
+                if (clickedIdx !== -1) {
+                    this.setKeyboardFocus(clickedIdx, mainRows, false);
+                }
+            });
+        }
+    },
+
+    setKeyboardFocus: function(idx, rows, autoScroll = true) {
+        if (!rows || rows.length === 0) return;
+        this.keyboardFocusedIndex = Math.max(0, Math.min(idx, rows.length - 1));
+
+        document.querySelectorAll('#historyTbody tr.keyboard-focused-row').forEach(el => el.classList.remove('keyboard-focused-row'));
+
+        const targetRow = rows[this.keyboardFocusedIndex];
+        if (targetRow) {
+            targetRow.classList.add('keyboard-focused-row');
+            if (autoScroll) {
+                targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
     },
 
     
@@ -891,6 +965,7 @@ const app = {
     },
 
     renderHistoryTable: function(data) {
+        this.keyboardFocusedIndex = -1;
         const tbody = $('historyTbody');
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;

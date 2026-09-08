@@ -65,12 +65,23 @@ const app = {
     modalPartnerList: [],
     partnerModalInstance: null,
     activeAutocompleteIndex: -1,
+    keyboardFocusedIndex: -1,
 
     formatDate: function(d) {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    },
+
+    getDisplayDatePeriod: function() {
+        if (this.dateType === 'confirmed_month') {
+            return this.confirmedMonth ? `[${this.confirmedMonth} 확정]` : '전체 확정월';
+        }
+        if (this.startDate && this.endDate) return `${this.startDate} ~ ${this.endDate}`;
+        if (this.startDate) return `${this.startDate} ~`;
+        if (this.endDate) return `~ ${this.endDate}`;
+        return '전체기간';
     },
 
     getPeriodLabel: function() {
@@ -118,6 +129,80 @@ const app = {
 
         // 3. 초기 상태는 거래처 미선택 (Empty State 표시)
         this.renderEmptyState();
+
+        // 4. 키보드 방향키 이동 및 스페이스바 선택 리스너 등록
+        this.initKeyboardNav();
+    },
+
+    initKeyboardNav: function() {
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            const tag = activeEl ? activeEl.tagName.toLowerCase() : '';
+            const isEditable = activeEl && (
+                activeEl.isContentEditable ||
+                tag === 'textarea' ||
+                tag === 'select' ||
+                (tag === 'input' && activeEl.type !== 'checkbox' && activeEl.type !== 'radio')
+            );
+            if (isEditable) return;
+            if (document.querySelector('.modal.show')) return;
+
+            const rows = Array.from(document.querySelectorAll('#mainStatusTableBody tr'));
+            if (rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                let nextIdx = this.keyboardFocusedIndex + 1;
+                if (this.keyboardFocusedIndex === -1 || nextIdx >= rows.length) {
+                    nextIdx = (this.keyboardFocusedIndex === -1) ? 0 : rows.length - 1;
+                }
+                this.setKeyboardFocus(nextIdx, rows);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prevIdx = this.keyboardFocusedIndex - 1;
+                if (prevIdx < 0) prevIdx = 0;
+                this.setKeyboardFocus(prevIdx, rows);
+            } else if (e.key === ' ' || e.code === 'Space') {
+                if (this.keyboardFocusedIndex >= 0 && this.keyboardFocusedIndex < rows.length) {
+                    e.preventDefault();
+                    const targetRow = rows[this.keyboardFocusedIndex];
+                    const chk = targetRow.querySelector('.item-chk');
+                    if (chk && !chk.disabled) {
+                        chk.checked = !chk.checked;
+                        chk.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        });
+
+        // 마우스 클릭 시 해당 행으로 포커스 인덱스 동기화
+        const tbody = document.getElementById('mainStatusTableBody');
+        if (tbody) {
+            tbody.addEventListener('click', (e) => {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                const rows = Array.from(document.querySelectorAll('#mainStatusTableBody tr'));
+                const clickedIdx = rows.indexOf(tr);
+                if (clickedIdx !== -1) {
+                    this.setKeyboardFocus(clickedIdx, rows, false);
+                }
+            });
+        }
+    },
+
+    setKeyboardFocus: function(idx, rows, autoScroll = true) {
+        if (!rows || rows.length === 0) return;
+        this.keyboardFocusedIndex = Math.max(0, Math.min(idx, rows.length - 1));
+
+        document.querySelectorAll('#mainStatusTableBody tr.keyboard-focused-row').forEach(el => el.classList.remove('keyboard-focused-row'));
+
+        const targetRow = rows[this.keyboardFocusedIndex];
+        if (targetRow) {
+            targetRow.classList.add('keyboard-focused-row');
+            if (autoScroll) {
+                targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
     },
 
     loadRecentPartners: function() {
@@ -1055,6 +1140,7 @@ const app = {
     },
 
     renderTable: function() {
+        this.keyboardFocusedIndex = -1;
         const tbody = $('mainStatusTableBody');
         const tfoot = $('mainStatusTableFoot');
         if (!tbody) return;

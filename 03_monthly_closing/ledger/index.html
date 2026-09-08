@@ -272,6 +272,19 @@
             opacity: 1;
             color: #2563eb !important;
         }
+
+        /* 키보드 탐색 포커스 행 스타일 */
+        .keyboard-focused-row {
+            outline: 2px solid #2563eb !important;
+            outline-offset: -2px;
+            background-color: #eff6ff !important;
+        }
+        @media print {
+            .keyboard-focused-row {
+                outline: none !important;
+                background-color: transparent !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -279,7 +292,8 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4 no-print">
         <h4 class="mb-0 fw-bold"><i class='bx bx-book-bookmark text-primary'></i> 정산장부</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+            <span id="ledgerSelectedCount" class="badge bg-primary bg-opacity-10 text-primary border border-primary d-none py-2 px-3 fw-bold">선택 0건</span>
             <button class="btn btn-outline-secondary shadow-sm fw-bold bg-white" onclick="app.printLedger()">
                 <i class='bx bx-printer'></i> 인쇄
             </button>
@@ -423,6 +437,9 @@
                     <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.85rem;">
                         <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
                             <tr>
+                                <th class="text-center d-print-none" style="width: 38px;">
+                                    <input type="checkbox" id="checkAllLedger" class="form-check-input" onchange="app.toggleCheckAll(this.checked)" title="전체 선택/해제">
+                                </th>
                                 <th class="text-center sortable" data-col="settlement_date" onclick="app.handleSort('settlement_date')" style="width: 7%;" title="클릭하여 일자 정렬">일자 <i class='bx bx-sort sort-icon'></i></th>
                                 <th class="text-center sortable" data-col="settlement_account" onclick="app.handleSort('settlement_account')" style="width: 8%;" title="클릭하여 자재계정 정렬">자재계정 <i class='bx bx-sort sort-icon'></i></th>
                                 <th class="text-center sortable" data-col="item" onclick="app.handleSort('item')" style="width: 20%;" title="클릭하여 품목명 정렬">품목명 <i class='bx bx-sort sort-icon'></i></th>
@@ -436,7 +453,7 @@
                             </tr>
                         </thead>
                         <tbody id="ledgerTableBody">
-                            <tr><td colspan="10" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
+                            <tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>
                         </tbody>
                         <!-- tfoot은 이제 더이상 쓰지 않고 tbody 마지막에 tr로 주입할 예정이지만, 화면 표시나 안전성을 위해 숨겨둠 -->
                         <tfoot id="ledgerTableFoot" style="display: none;">

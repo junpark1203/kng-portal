@@ -28,6 +28,8 @@ const app = {
     partners: [],
     currentDatePreset: 'prevMonth',
     rawRows: [],
+    lastRenderedRows: [],
+    keyboardFocusedIndex: -1,
     currentSortCol: 'settlement_date',
     currentSortDir: 'asc',
     
@@ -40,6 +42,9 @@ const app = {
 
         // 초기 날짜 세팅 (전월 기본)
         this.setDatePreset('prevMonth');
+
+        // 키보드 내비게이션 초기화
+        this.initKeyboardNav();
     },
 
     setDatePreset: function(preset) {
@@ -249,7 +254,7 @@ const app = {
         const searchContainer = document.getElementById('ledgerInlineSearchContainer');
 
         if (!partner) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">조회할 거래처를 선택해주세요.</td></tr>`;
             tfoot.style.display = 'none';
             if (summaryStrip) summaryStrip.classList.add('d-none');
             if (searchContainer) searchContainer.classList.add('d-none');
@@ -259,7 +264,7 @@ const app = {
         }
 
         try {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...</td></tr>`;
             
             let url = `${API_BASE}/ledger?partner=${encodeURIComponent(partner)}&startDate=${startDate}&endDate=${endDate}&aggregateByBizNum=${aggregateByBizNum}`;
             if (accountFilter) {
@@ -292,7 +297,7 @@ const app = {
 
         } catch (err) {
             console.error('Ledger error:', err);
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-danger">데이터 로드에 실패했습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-danger">데이터 로드에 실패했습니다.</td></tr>`;
             if (summaryStrip) summaryStrip.classList.add('d-none');
             if (searchContainer) searchContainer.classList.add('d-none');
         }
@@ -461,7 +466,7 @@ const app = {
         return { items, totalQty, totalSupply, totalVat, totalGrand };
     },
 
-    renderLedgerTable: function(res) {
+    renderLedgerTable: function(res, isPrintingSelected = false) {
         const tbody = document.getElementById('ledgerTableBody');
         const tfoot = document.getElementById('ledgerTableFoot');
         const summaryStrip = document.getElementById('ledgerSummaryStrip');
@@ -470,8 +475,20 @@ const app = {
         const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
         const accountFilter = document.getElementById('accountFilter')?.value || '';
 
+        if (!isPrintingSelected) {
+            this.lastRenderedRows = res || [];
+            this.keyboardFocusedIndex = -1;
+            const checkAll = document.getElementById('checkAllLedger');
+            if (checkAll) {
+                checkAll.checked = false;
+                checkAll.indeterminate = false;
+            }
+            const badge = document.getElementById('ledgerSelectedCount');
+            if (badge) badge.classList.add('d-none');
+        }
+
         if (res.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-5 text-muted">해당 조건에 부합하는 정산 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted">해당 조건에 부합하는 정산 내역이 없습니다.</td></tr>`;
             tfoot.style.display = 'none';
             if (summaryStrip) summaryStrip.classList.add('d-none');
             return;
@@ -494,7 +511,7 @@ const app = {
             '미분류': { count: 0, supplyAmt: 0 }
         };
 
-        let html = items.map(item => {
+        let html = items.map((item, idx) => {
             const { r: row, supply: amount, vat, grand } = item;
 
             const accKey = row.settlement_account || '미분류';
@@ -530,7 +547,10 @@ const app = {
             else if (row.settlement_account === '안전자재-환경') accountDisplay = '안전(환경)';
 
             return `
-                <tr class="${row.is_direct ? 'direct-row' : ''}">
+                <tr class="${row.is_direct ? 'direct-row' : ''}" data-idx="${idx}">
+                    <td class="text-center d-print-none">
+                        <input type="checkbox" class="form-check-input ledger-row-chk" value="${idx}" onchange="app.onRowCheckChange()">
+                    </td>
                     <td class="text-center">${dateStr}</td>
                     <td class="text-center fw-bold" style="font-size: 0.78rem;">${accountDisplay}</td>
                     <td class="text-start wrap-cell">${row.item} ${relativeBadge}${isDirect}${siteBadge}${shipBadge}</td>
@@ -545,7 +565,7 @@ const app = {
             `;
         }).join('');
 
-        // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시)
+        // [ 이하 여백 ] 추가 (화면에서는 숨김, 인쇄 시에만 표시 - 인쇄 시 컬럼 수 10개)
         html += `<tr class="empty-marker d-none d-print-table-row"><td colspan="10">[ 이 하 여 백 ]</td></tr>`;
 
         // 동적 빈 줄 채우기:
@@ -563,9 +583,10 @@ const app = {
             html += `<tr class="d-none d-print-table-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>`;
         }
 
-        // 합계 행 추가 (앞 7칸이 일자~단가)
+        // 합계 행 추가 (앞 1칸 체크박스 d-print-none, 일자~단가 7칸, 공급가액, 부가세, 비고)
         html += `
             <tr class="total-row">
+                <td class="d-print-none"></td>
                 <td colspan="7" class="text-center fw-bold">[ 합 계 ]</td>
                 <td class="text-end fw-bold">${sumTotal.toLocaleString()}</td>
                 <td class="text-end fw-bold">${sumVat.toLocaleString()}</td>
@@ -575,6 +596,14 @@ const app = {
         
         tbody.innerHTML = html;
         tfoot.style.display = 'none';
+
+        // 행 클릭 시 키보드 포커스 연동
+        tbody.querySelectorAll('tr:not(.empty-marker):not(.total-row)').forEach((tr, idx) => {
+            tr.addEventListener('click', (e) => {
+                if (e.target.closest('input, button, a')) return;
+                this.setKeyboardFocus(idx);
+            });
+        });
 
         // 실거래 요약 스트립 렌더링 (2단 구조: 상단 총괄, 하단 계정별 브레이크다운)
         if (summaryStrip) {
@@ -651,9 +680,14 @@ const app = {
         document.getElementById('printTitle').innerText = aggregateByBizNum 
             ? `(사업자 통합) ${displayTitle}${accountSuffix}`
             : `${displayTitle}${accountSuffix}`;
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
+
+        if (isPrintingSelected) {
+            document.getElementById('printPeriod').innerText = '';
+        } else {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
+        }
         
         // 공급자 및 수신처(귀중) 세팅
         this.setupPrintSupplierInfo(ledgerType, partner);
@@ -700,6 +734,94 @@ const app = {
         }
     },
 
+    toggleCheckAll: function(checked) {
+        document.querySelectorAll('.ledger-row-chk').forEach(chk => {
+            chk.checked = checked;
+        });
+        this.onRowCheckChange();
+    },
+
+    onRowCheckChange: function() {
+        const all = document.querySelectorAll('.ledger-row-chk');
+        const checked = document.querySelectorAll('.ledger-row-chk:checked');
+        const checkAll = document.getElementById('checkAllLedger');
+        if (checkAll) {
+            checkAll.checked = all.length > 0 && checked.length === all.length;
+            checkAll.indeterminate = checked.length > 0 && checked.length < all.length;
+        }
+        const badge = document.getElementById('ledgerSelectedCount');
+        if (badge) {
+            if (checked.length > 0) {
+                badge.innerText = `선택 ${checked.length}건`;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        }
+    },
+
+    initKeyboardNav: function() {
+        window.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            if (active && (
+                active.tagName === 'INPUT' ||
+                active.tagName === 'TEXTAREA' ||
+                active.tagName === 'SELECT' ||
+                active.isContentEditable
+            )) {
+                return;
+            }
+            if (document.querySelector('.modal.show')) {
+                return;
+            }
+
+            const rows = Array.from(document.querySelectorAll('#ledgerTableBody tr:not(.empty-marker):not(.total-row)'));
+            if (rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                let next = this.keyboardFocusedIndex + 1;
+                if (next >= rows.length) next = rows.length - 1;
+                this.setKeyboardFocus(next);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prev = this.keyboardFocusedIndex - 1;
+                if (prev < 0) prev = 0;
+                this.setKeyboardFocus(prev);
+            } else if (e.key === ' ' || e.code === 'Space') {
+                if (this.keyboardFocusedIndex >= 0 && this.keyboardFocusedIndex < rows.length) {
+                    e.preventDefault();
+                    const targetRow = rows[this.keyboardFocusedIndex];
+                    const chk = targetRow.querySelector('.ledger-row-chk');
+                    if (chk) {
+                        chk.checked = !chk.checked;
+                        this.onRowCheckChange();
+                    }
+                }
+            }
+        });
+    },
+
+    setKeyboardFocus: function(index) {
+        const rows = Array.from(document.querySelectorAll('#ledgerTableBody tr:not(.empty-marker):not(.total-row)'));
+        if (!rows || rows.length === 0) {
+            this.keyboardFocusedIndex = -1;
+            return;
+        }
+        if (index < 0) index = 0;
+        if (index >= rows.length) index = rows.length - 1;
+
+        rows.forEach((r, idx) => {
+            if (idx === index) {
+                r.classList.add('keyboard-focused-row');
+                r.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                r.classList.remove('keyboard-focused-row');
+            }
+        });
+        this.keyboardFocusedIndex = index;
+    },
+
     async printLedger() {
         const ledgerType = document.querySelector('input[name="ledgerType"]:checked').value;
         if (ledgerType === '전체') {
@@ -708,6 +830,11 @@ const app = {
         }
 
         const partner = document.getElementById('partnerInput').value.trim();
+        if (!partner) {
+            alert('거래처를 먼저 선택해주세요.');
+            return;
+        }
+
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const aggregateByBizNum = document.getElementById('aggregateByBizNum').checked;
@@ -727,11 +854,41 @@ const app = {
             ? `(사업자 통합) ${displayTitle}${accountSuffix}`
             : `${displayTitle}${accountSuffix}`;
 
-        document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
-        
         await this.setupPrintSupplierInfo(ledgerType, partner);
-        
-        window.print();
+
+        // 선택 인쇄 확인
+        const checkedBoxes = Array.from(document.querySelectorAll('.ledger-row-chk:checked'));
+        const isSelective = checkedBoxes.length > 0;
+
+        if (isSelective) {
+            const checkedIndices = checkedBoxes.map(cb => parseInt(cb.value));
+            const originalRows = [...(this.lastRenderedRows || [])];
+            const selectedRows = checkedIndices.map(idx => originalRows[idx]).filter(Boolean);
+
+            // 선택된 항목만 렌더링 (금액 및 부가세 자동 재계산)
+            this.renderLedgerTable(selectedRows, true);
+            document.getElementById('printPeriod').innerText = ''; // 기간 숨김
+
+            let restored = false;
+            const restoreAfterPrint = () => {
+                if (restored) return;
+                restored = true;
+                this.renderLedgerTable(originalRows, false);
+                // 체크박스 선택 상태 복원
+                const newBoxes = document.querySelectorAll('.ledger-row-chk');
+                checkedIndices.forEach(idx => {
+                    if (newBoxes[idx]) newBoxes[idx].checked = true;
+                });
+                this.onRowCheckChange();
+            };
+
+            window.addEventListener('afterprint', restoreAfterPrint, { once: true });
+            window.print();
+            setTimeout(restoreAfterPrint, 1500);
+        } else {
+            document.getElementById('printPeriod').innerText = `거래기간: ${startDate} ~ ${endDate}`;
+            window.print();
+        }
     }
 };
 

@@ -187,6 +187,15 @@
             font-weight: 700 !important;
         }
 
+        /* 키보드 방향키 네비게이션 포커스 스타일 */
+        .keyboard-focused-row {
+            outline: 2px solid #2563eb !important;
+            outline-offset: -2px;
+            background-color: rgba(37, 99, 235, 0.08) !important;
+            position: relative;
+            z-index: 2;
+        }
+
         /* ── 인쇄 전용 스타일 (정산장부 A4 최적화 양식 계승) ── */
         @media print {
             @page {

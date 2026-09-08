@@ -14,6 +14,7 @@ const app = {
     currentSortDir: 'asc',
     subSearchKeyword: '',
     partners: [],
+    keyboardFocusedIndex: -1,
 
     init: function() {
         // 체크박스 헤더
@@ -31,6 +32,86 @@ const app = {
 
         // 등록 거래처 목록 비동기 로드
         this.loadPartners();
+
+        // 키보드 방향키 이동 및 스페이스바 선택 리스너 등록
+        this.initKeyboardNav();
+    },
+
+    initKeyboardNav: function() {
+        document.addEventListener('keydown', (e) => {
+            const activeEl = document.activeElement;
+            const tag = activeEl ? activeEl.tagName.toLowerCase() : '';
+            const isEditable = activeEl && (
+                activeEl.isContentEditable ||
+                tag === 'textarea' ||
+                tag === 'select' ||
+                (tag === 'input' && activeEl.type !== 'checkbox' && activeEl.type !== 'radio')
+            );
+            if (isEditable) return;
+            if (document.querySelector('.modal.show')) return;
+
+            const mainRows = Array.from(document.querySelectorAll('#dataTableBody tr:not(.settle-input-row)'));
+            if (mainRows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                let nextIdx = this.keyboardFocusedIndex + 1;
+                if (this.keyboardFocusedIndex === -1 || nextIdx >= mainRows.length) {
+                    nextIdx = (this.keyboardFocusedIndex === -1) ? 0 : mainRows.length - 1;
+                }
+                this.setKeyboardFocus(nextIdx, mainRows);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prevIdx = this.keyboardFocusedIndex - 1;
+                if (prevIdx < 0) prevIdx = 0;
+                this.setKeyboardFocus(prevIdx, mainRows);
+            } else if (e.key === ' ' || e.code === 'Space') {
+                if (this.keyboardFocusedIndex >= 0 && this.keyboardFocusedIndex < mainRows.length) {
+                    e.preventDefault();
+                    const targetRow = mainRows[this.keyboardFocusedIndex];
+                    const chk = targetRow.querySelector('.row-chk');
+                    if (chk && !chk.disabled) {
+                        chk.checked = !chk.checked;
+                        chk.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        });
+
+        // 마우스 클릭 시 해당 행으로 포커스 인덱스 동기화
+        const tbody = document.getElementById('dataTableBody');
+        if (tbody) {
+            tbody.addEventListener('click', (e) => {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                const mainTr = tr.classList.contains('settle-input-row') ? tr.previousElementSibling : tr;
+                const mainRows = Array.from(document.querySelectorAll('#dataTableBody tr:not(.settle-input-row)'));
+                const clickedIdx = mainRows.indexOf(mainTr);
+                if (clickedIdx !== -1) {
+                    this.setKeyboardFocus(clickedIdx, mainRows, false);
+                }
+            });
+        }
+    },
+
+    setKeyboardFocus: function(idx, rows, autoScroll = true) {
+        if (!rows || rows.length === 0) return;
+        this.keyboardFocusedIndex = Math.max(0, Math.min(idx, rows.length - 1));
+
+        document.querySelectorAll('#dataTableBody tr.keyboard-focused-row').forEach(el => el.classList.remove('keyboard-focused-row'));
+        document.querySelectorAll('#dataTableBody tr.keyboard-focused-subrow').forEach(el => el.classList.remove('keyboard-focused-subrow'));
+
+        const targetRow = rows[this.keyboardFocusedIndex];
+        if (targetRow) {
+            targetRow.classList.add('keyboard-focused-row');
+            const subRow = targetRow.nextElementSibling;
+            if (subRow && subRow.classList.contains('settle-input-row')) {
+                subRow.classList.add('keyboard-focused-subrow');
+            }
+            if (autoScroll) {
+                targetRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
     },
 
     attachDateAutoCorrection: function(inputEl) {
@@ -822,6 +903,7 @@ const app = {
     },
 
     renderTable: function(data) {
+        this.keyboardFocusedIndex = -1;
         const itemsToRender = data || this.items;
         const tbody = $('dataTableBody');
         if (itemsToRender.length === 0) {

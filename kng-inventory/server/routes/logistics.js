@@ -1901,29 +1901,42 @@ router.post('/settlement/:type', (req, res) => {
                                   WHERE id IN (SELECT inbound_id FROM logistics_outbound_lots WHERE outbound_id = ?)
                                      OR transaction_group_id IN (SELECT REPLACE(transaction_group_id, 'OUT-', 'IN-') FROM logistics_outbound WHERE id = ? AND transaction_group_id LIKE 'OUT-%')`);
 
-                for (let i of items) {
-                    const sMonth = (i.settlement_month !== undefined && i.settlement_month !== null) ? String(i.settlement_month).trim() : '';
-                    const sAccount = String(i.settlement_account).trim();
-                    stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) { if(e) hasError = true; });
-                    
-                    if (syncStmt) {
-                        syncStmt.run(sAccount, i.id, i.id, function(eSync) {
-                            if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
+                const promises = items.map(i => {
+                    return new Promise((resolve, reject) => {
+                        const sMonth = (i.settlement_month !== undefined && i.settlement_month !== null) ? String(i.settlement_month).trim() : '';
+                        const sAccount = String(i.settlement_account).trim();
+                        stmt.run(i.tax_invoice_date, i.is_zero_tax ? 1 : 0, i.settlement_qty, i.settlement_price, i.settlement_memo || '', sAccount, sMonth, i.id, function(e) {
+                            if (e) return reject(e);
+                            if (syncStmt) {
+                                syncStmt.run(sAccount, i.id, i.id, function(eSync) {
+                                    if (eSync) console.error('Account counterpart sync error on item:', eSync.message);
+                                    resolve();
+                                });
+                            } else {
+                                resolve();
+                            }
                         });
-                    }
-                }
-                stmt.finalize();
-                if (syncStmt) syncStmt.finalize();
-
-                db.run("SELECT 1", function() {
-                    if (hasError) {
-                        db.run("ROLLBACK");
-                        return res.status(500).json({ error: 'Settlement update failed' });
-                    } else {
-                        db.run("COMMIT");
-                        res.json({ message: 'Settlement updated' });
-                    }
+                    });
                 });
+
+                Promise.all(promises)
+                    .then(() => {
+                        stmt.finalize();
+                        if (syncStmt) syncStmt.finalize();
+                        db.run("COMMIT", (commitErr) => {
+                            if (commitErr) {
+                                db.run("ROLLBACK");
+                                return res.status(500).json({ error: commitErr.message });
+                            }
+                            res.json({ message: 'Settlement updated' });
+                        });
+                    })
+                    .catch((err) => {
+                        stmt.finalize();
+                        if (syncStmt) syncStmt.finalize();
+                        db.run("ROLLBACK");
+                        res.status(500).json({ error: 'Settlement update failed: ' + (err ? err.message : '') });
+                    });
             });
             return;
         } else if (ids && Array.isArray(ids)) {
@@ -1958,22 +1971,23 @@ router.post('/settlement/:type', (req, res) => {
 
             const sql = `UPDATE ${table} SET settlement_status = ?, tax_invoice_date = ?, is_zero_tax = ? WHERE id IN (${placeholders})`;
             db.run(sql, [status, tax_invoice_date || null, is_zero_tax ? 1 : 0, ...ids], function(err) {
-                if(err) hasError = true;
+                if (err) {
+                    db.run("ROLLBACK");
+                    return res.status(500).json({ error: err.message });
+                }
+                db.run("COMMIT", (commitErr) => {
+                    if (commitErr) {
+                        db.run("ROLLBACK");
+                        return res.status(500).json({ error: commitErr.message });
+                    }
+                    res.json({ message: 'Settlement updated' });
+                });
             });
+            return;
         } else {
              db.run("ROLLBACK");
              return res.status(400).json({ error: 'Invalid payload' });
         }
-
-        db.run("SELECT 1", function() {
-            if (hasError) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: 'Settlement update failed' });
-            } else {
-                db.run("COMMIT");
-                res.json({ message: 'Settlement updated' });
-            }
-        });
     });
 });
 
