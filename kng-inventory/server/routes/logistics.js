@@ -2589,7 +2589,7 @@ router.put('/inbound/tx/:tx_id', (req, res) => {
     });
 });
 
-router.put('/outbound/tx/:tx_id', (req, res) => {
+router.put('/outbound/tx/:tx_id', async (req, res) => {
     const txId = req.params.tx_id;
     const { date, destination, actual_destination, items } = req.body;
 
@@ -2597,104 +2597,88 @@ router.put('/outbound/tx/:tx_id', (req, res) => {
         return res.status(400).json({ error: 'Items are required' });
     }
 
-    db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
-        let hasError = false;
-        let errorMsg = null;
+    try {
+        await dbRun("BEGIN TRANSACTION");
 
-        db.all("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txId], (err, existingRows) => {
-            if (err) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: err.message });
+        // 1. 기존 트랜잭션에 속한 기존 출고 행 목록 조회
+        const existingRows = await dbAll("SELECT id FROM logistics_outbound WHERE transaction_group_id = ?", [txId]);
+        const existingIds = existingRows.map(r => r.id);
+        const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id, 10));
+        const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
+
+        // 2. 삭제 대상 행의 Lot 재고 복구 및 행 삭제
+        if (idsToDelete.length > 0) {
+            const placeholders = idsToDelete.map(() => '?').join(',');
+            const delLots = await dbAll(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+            for (const lot of delLots) {
+                await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
+            }
+            await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
+            await dbRun(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
+        }
+
+        const commonDate = date;
+        const commonDest = destination;
+        const commonActualDest = actual_destination || '';
+
+        const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
+        const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+        // 3. 각 품목 처리
+        for (let i of items) {
+            const cat = i.category || '';
+            let oId = i.id ? parseInt(i.id, 10) : null;
+
+            if (oId) {
+                // 기존 출고 수정
+                await dbRun(updateSql, [
+                    commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit,
+                    parseFloat(i.qty), parseFloat(i.selling_price) || 0,
+                    parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
+                    i.note || '', i.trade_type || '내수', cat, oId
+                ]);
+
+                // 기존 차감된 Lot 복원 후 삭제
+                const oldLots = await dbAll(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId]);
+                for (const l of oldLots) {
+                    await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [l.consumed_qty, l.inbound_id]);
+                }
+                await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId]);
+            } else {
+                // 신규 추가된 출고 품목
+                const insRes = await dbRun(insertSql, [
+                    commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit,
+                    parseFloat(i.qty), parseFloat(i.selling_price) || 0,
+                    parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
+                    i.note || '', cat, txId, i.trade_type || '내수'
+                ]);
+                oId = insRes.lastID;
             }
 
-            const existingIds = existingRows.map(r => r.id);
-            const payloadIds = items.filter(i => i.id).map(i => parseInt(i.id));
-            const idsToDelete = existingIds.filter(id => !payloadIds.includes(id));
-
-            if (idsToDelete.length > 0) {
-                const placeholders = idsToDelete.map(() => '?').join(',');
-                db.all(`SELECT outbound_id, inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete, (err2, oldLots) => {
-                    if(err2) { hasError = true; errorMsg = err2.message; return; }
-                    
-                    const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
-                    oldLots.forEach(lot => {
-                        stmtRestore.run(lot.consumed_qty, lot.inbound_id);
-                    });
-                    stmtRestore.finalize();
-
-                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id IN (${placeholders})`, idsToDelete);
-                    db.run(`DELETE FROM logistics_outbound WHERE id IN (${placeholders})`, idsToDelete);
-                });
-            }
-
-            const commonDate = date;
-            const commonDest = destination;
-            const commonActualDest = actual_destination || '';
-
-            const updateSql = `UPDATE logistics_outbound SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ? WHERE id = ?`;
-            const insertSql = `INSERT INTO logistics_outbound (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-            const stmtUpdate = db.prepare(updateSql);
-            const stmtInsert = db.prepare(insertSql);
-            
-            const stmtRestoreLots = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
-            const stmtDeleteLots = db.prepare(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`);
-            const stmtConsumeLots = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`);
-            const stmtInsertLots = db.prepare(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`);
-
-            for (let i of items) {
-                const cat = i.category || '';
-                if (i.id) {
-                    const oId = parseInt(i.id);
-                    stmtUpdate.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', i.trade_type || '내수', cat, oId, function(e) {
-                        if(e) { hasError = true; errorMsg = e.message; }
-                    });
-
-                    db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [oId], (errL, oldLots) => {
-                        if(oldLots) {
-                            oldLots.forEach(l => stmtRestoreLots.run(l.consumed_qty, l.inbound_id));
-                            stmtDeleteLots.run(oId);
-                            if (i.consumed_lots) {
-                                i.consumed_lots.forEach(lot => {
-                                    stmtConsumeLots.run(lot.consumed_qty, lot.inbound_id);
-                                    stmtInsertLots.run(oId, lot.inbound_id, lot.consumed_qty);
-                                });
-                            }
-                        }
-                    });
-                } else {
-                    stmtInsert.run(commonDate, commonDest, commonActualDest, i.item, i.spec, i.unit, parseFloat(i.qty), parseFloat(i.selling_price) || 0, parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0, i.note || '', cat, txId, i.trade_type || '내수', function(e) {
-                        if(e) { hasError = true; errorMsg = e.message; return; }
-                        const newId = this.lastID;
-                        if (i.consumed_lots) {
-                            i.consumed_lots.forEach(lot => {
-                                stmtConsumeLots.run(lot.consumed_qty, lot.inbound_id);
-                                stmtInsertLots.run(newId, lot.inbound_id, lot.consumed_qty);
-                            });
-                        }
-                    });
+            // 새로운 Lot 차감 정보 저장 및 재고 차감
+            if (i.consumed_lots && Array.isArray(i.consumed_lots)) {
+                for (const lot of i.consumed_lots) {
+                    const consumedQty = parseFloat(lot.consumed_qty) || 0;
+                    const inboundId = parseInt(lot.inbound_id, 10);
+                    if (consumedQty > 0 && inboundId > 0) {
+                        await dbRun(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`, [oId, inboundId, consumedQty]);
+                        await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`, [consumedQty, inboundId]);
+                    }
                 }
             }
+        }
 
-            db.run("SELECT 1", function() {
-                stmtUpdate.finalize(); stmtInsert.finalize();
-                stmtRestoreLots.finalize(); stmtDeleteLots.finalize();
-                stmtConsumeLots.finalize(); stmtInsertLots.finalize();
+        await dbRun("COMMIT");
 
-                if (hasError) {
-                    db.run("ROLLBACK");
-                    return res.status(400).json({ error: errorMsg || 'Update failed' });
-                }
-                
-                db.run("COMMIT", async (commitErr) => {
-                    if (commitErr) return res.status(500).json({ error: commitErr.message });
-                    await reconcileInventory();
-                    res.json({ success: true, message: 'Outbound transaction updated' });
-                });
-            });
-        });
-    });
+        // 잔여 재고 완벽 동기화
+        await reconcileInventory();
+
+        res.json({ success: true, message: 'Outbound transaction updated successfully' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Error updating outbound tx:', err);
+        res.status(500).json({ error: err.message || '출고 전표 수정 중 오류가 발생했습니다.' });
+    }
 });
 
 router.put('/direct/tx/:tx_id', async (req, res) => {
