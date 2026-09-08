@@ -1754,6 +1754,48 @@ const app = {
         setTimeout(() => {
             window.print();
         }, 300);
+    },
+
+    // ── 연결 끊긴 고아(유령) 직출고 입고 데이터 점검 및 정리 ──
+    checkAndCleanOrphans: async function() {
+        try {
+            const checkRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound`);
+            if (!checkRes.ok) {
+                const errData = await checkRes.json().catch(() => ({}));
+                throw new Error(errData.error || `서버 응답 오류 (${checkRes.status})`);
+            }
+            const checkData = await checkRes.json();
+            
+            if (!checkData.count || checkData.count === 0) {
+                return alert('✅ 현재 연결이 끊긴 고아 직출고 입고 데이터가 없습니다. (데이터 정상)');
+            }
+
+            const sample = checkData.data.slice(0, 5).map(r => 
+                `• [${r.transaction_group_id}] ${r.supplier} | ${r.item} (${r.qty}개, ${Number(r.total_price).toLocaleString()}원)`
+            ).join('\n');
+            const extra = checkData.count > 5 ? `\n... 외 ${checkData.count - 5}건` : '';
+
+            const confirmMsg = `⚠️ 연결 끊긴 직출고 입고(매출처가 없는 유령 데이터)가 총 ${checkData.count}건 발견되었습니다:\n\n${sample}${extra}\n\n해당 데이터를 안전하게 DB에서 삭제 정리하시겠습니까?`;
+            if (!confirm(confirmMsg)) return;
+
+            const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            if (!cleanRes.ok) {
+                const errData = await cleanRes.json().catch(() => ({}));
+                throw new Error(errData.error || '삭제 처리 실패');
+            }
+
+            const cleanResult = await cleanRes.json();
+            alert(`🎉 ${cleanResult.message || '정리가 완료되었습니다.'}`);
+            this.resetPageAndLoadData();
+        } catch (err) {
+            console.error('고아 데이터 점검 오류:', err);
+            alert('고아 데이터 점검/정리 중 오류: ' + err.message);
+        }
     }
 };
 
