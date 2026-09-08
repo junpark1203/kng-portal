@@ -188,6 +188,18 @@
                 border-right: none !important;
             }
             
+            /* 인쇄 시 테이블 헤더 정렬 아이콘 숨김 및 텍스트 색상 검정 유지 */
+            #printableArea th .sort-icon,
+            #printableArea th i,
+            .sort-icon {
+                display: none !important;
+            }
+            #printableArea th.sortable,
+            #printableArea th.sortable.active-sort {
+                color: #000 !important;
+                cursor: default !important;
+            }
+            
             /* 데이터 정렬 및 규격 줄바꿈 지원 */
             #printableArea .table td { font-weight: normal !important; }
             #printableArea .table td.text-end { text-align: right !important; vertical-align: middle !important; letter-spacing: -0.5px !important; padding-right: 4px !important; }
