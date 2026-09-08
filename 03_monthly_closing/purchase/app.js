@@ -1756,8 +1756,19 @@ const app = {
         }, 300);
     },
 
-    // ── 연결 끊긴 고아(유령) 직출고 입고 데이터 점검 및 정리 ──
+    // ── 연결 끊긴 고아(유령) 직출고 입고 데이터 점검 및 선택 정리 ──
+    orphanItems: [],
+    orphanFilteredItems: [],
+    orphanModalInstance: null,
+
     checkAndCleanOrphans: async function() {
+        const btn = document.querySelector('button[onclick="app.checkAndCleanOrphans()"]');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> 점검 중...`;
+        }
+
         try {
             const checkRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound`);
             if (!checkRes.ok) {
@@ -1770,18 +1781,133 @@ const app = {
                 return alert('✅ 현재 연결이 끊긴 고아 직출고 입고 데이터가 없습니다. (데이터 정상)');
             }
 
-            const sample = checkData.data.slice(0, 5).map(r => 
-                `• [${r.transaction_group_id}] ${r.supplier} | ${r.item} (${r.qty}개, ${Number(r.total_price).toLocaleString()}원)`
-            ).join('\n');
-            const extra = checkData.count > 5 ? `\n... 외 ${checkData.count - 5}건` : '';
+            this.orphanItems = checkData.data || [];
+            this.orphanFilteredItems = [...this.orphanItems];
 
-            const confirmMsg = `⚠️ 연결 끊긴 직출고 입고(매출처가 없는 유령 데이터)가 총 ${checkData.count}건 발견되었습니다:\n\n${sample}${extra}\n\n해당 데이터를 안전하게 DB에서 삭제 정리하시겠습니까?`;
-            if (!confirm(confirmMsg)) return;
+            const searchInput = $('orphanSearchInput');
+            if (searchInput) searchInput.value = '';
 
+            this.renderOrphanTable(this.orphanFilteredItems);
+
+            const modalEl = document.getElementById('orphanManagementModal');
+            if (modalEl) {
+                if (!this.orphanModalInstance) {
+                    this.orphanModalInstance = new bootstrap.Modal(modalEl);
+                }
+                this.orphanModalInstance.show();
+            }
+        } catch (err) {
+            console.error('고아 데이터 점검 오류:', err);
+            alert('고아 데이터 점검 중 오류: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    },
+
+    renderOrphanTable: function(items) {
+        const tbody = $('orphanTableBody');
+        if (!tbody) return;
+
+        $('orphanTotalCount').innerText = (items || []).length;
+
+        if (!items || items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-muted">일치하는 고아 데이터가 없습니다.</td></tr>`;
+            $('checkAllOrphans').checked = false;
+            this.updateOrphanSelectionSummary();
+            return;
+        }
+
+        const escapeAttr = (str) => String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const escapeHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        tbody.innerHTML = items.map(r => {
+            const price = Number(r.unit_price || 0);
+            const total = Number(r.total_price || (price * r.qty) || 0);
+            return `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input orphan-row-chk" value="${r.id}" data-supply="${total}" onchange="app.updateOrphanSelectionSummary()">
+                    </td>
+                    <td class="text-muted small">${escapeHtml(r.date)}</td>
+                    <td class="small text-muted font-monospace">${escapeHtml(r.transaction_group_id)}</td>
+                    <td class="fw-semibold text-dark text-truncate" style="max-width: 120px;" title="${escapeAttr(r.supplier)}">${escapeHtml(r.supplier)}</td>
+                    <td class="text-start fw-bold text-dark text-truncate" style="max-width: 220px;" title="${escapeAttr(r.item)}">${escapeHtml(r.item)}</td>
+                    <td class="text-muted small text-truncate" style="max-width: 80px;" title="${escapeAttr(r.spec || '-')}">${escapeHtml(r.spec || '-')}</td>
+                    <td>${Number(r.qty).toLocaleString()}</td>
+                    <td class="text-end">${price.toLocaleString()}</td>
+                    <td class="text-end fw-semibold">${total.toLocaleString()}</td>
+                    <td><span class="badge bg-danger-subtle text-danger border border-danger-subtle">유령데이터</span></td>
+                </tr>
+            `;
+        }).join('');
+
+        $('checkAllOrphans').checked = false;
+        this.updateOrphanSelectionSummary();
+    },
+
+    filterOrphanList: function(kw) {
+        const keyword = (kw || '').trim().toLowerCase();
+        if (!keyword) {
+            this.orphanFilteredItems = [...this.orphanItems];
+        } else {
+            this.orphanFilteredItems = this.orphanItems.filter(r => {
+                const text = `${r.item || ''} ${r.supplier || ''} ${r.transaction_group_id || ''} ${r.date || ''} ${r.spec || ''}`.toLowerCase();
+                return text.includes(keyword);
+            });
+        }
+        this.renderOrphanTable(this.orphanFilteredItems);
+    },
+
+    toggleCheckAllOrphans: function(checked) {
+        document.querySelectorAll('.orphan-row-chk').forEach(cb => cb.checked = checked);
+        this.updateOrphanSelectionSummary();
+    },
+
+    updateOrphanSelectionSummary: function() {
+        const checkedBoxes = Array.from(document.querySelectorAll('.orphan-row-chk:checked'));
+        const count = checkedBoxes.length;
+        let sum = 0;
+        checkedBoxes.forEach(cb => {
+            sum += parseFloat(cb.dataset.supply) || 0;
+        });
+
+        $('orphanSelectedCount').innerText = count;
+        $('orphanSelectedSum').innerText = `${Math.round(sum).toLocaleString()}원`;
+
+        const delBtn = $('btnDeleteSelectedOrphans');
+        if (delBtn) {
+            delBtn.disabled = count === 0;
+            delBtn.innerHTML = `<i class='bx bx-trash'></i> 선택 삭제 (${count}건)`;
+        }
+
+        const allBoxes = document.querySelectorAll('.orphan-row-chk');
+        if ($('checkAllOrphans')) {
+            $('checkAllOrphans').checked = allBoxes.length > 0 && count === allBoxes.length;
+        }
+    },
+
+    deleteSelectedOrphans: async function() {
+        const checkedBoxes = Array.from(document.querySelectorAll('.orphan-row-chk:checked'));
+        if (checkedBoxes.length === 0) return alert('삭제할 항목을 선택해주세요.');
+
+        const ids = checkedBoxes.map(cb => parseInt(cb.value, 10)).filter(Boolean);
+        if (!confirm(`선택한 ${ids.length}건의 고아(유령) 입고 데이터를 DB에서 영구 삭제하시겠습니까?\n(정상 데이터 및 재고에는 영향이 없습니다)`)) return;
+
+        const btn = $('btnDeleteSelectedOrphans');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> 삭제 중...`;
+        }
+
+        try {
             const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({ ids })
             });
 
             if (!cleanRes.ok) {
@@ -1790,11 +1916,65 @@ const app = {
             }
 
             const cleanResult = await cleanRes.json();
-            alert(`🎉 ${cleanResult.message || '정리가 완료되었습니다.'}`);
+            alert(`🎉 ${cleanResult.message || '선택한 데이터가 성공적으로 삭제되었습니다.'}`);
+
+            // 로컬 목록에서 삭제된 항목 제거
+            const deletedSet = new Set(ids);
+            this.orphanItems = this.orphanItems.filter(r => !deletedSet.has(r.id));
+            const searchKw = $('orphanSearchInput')?.value || '';
+            this.filterOrphanList(searchKw);
+
+            // 본 화면 데이터 갱신
+            this.resetPageAndLoadData();
+
+            // 남은게 없으면 모달 닫기
+            if (this.orphanItems.length === 0 && this.orphanModalInstance) {
+                this.orphanModalInstance.hide();
+            }
+        } catch (err) {
+            console.error('고아 데이터 삭제 실패:', err);
+            alert('삭제 실패: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    },
+
+    deleteAllOrphans: async function() {
+        if (!this.orphanItems || this.orphanItems.length === 0) {
+            return alert('삭제할 고아 데이터가 없습니다.');
+        }
+
+        const count = this.orphanItems.length;
+        if (!confirm(`⚠️ 현재 발견된 ${count}건의 연결 끊긴 고아(유령) 입고 데이터를 전부 일괄 삭제하시겠습니까?\n\n이 작업은 취소할 수 없으며, 출고 내역이 없는 유령 직출고 입고 건만 깔끔하게 제거됩니다.`)) return;
+
+        try {
+            const cleanRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound/cleanup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+
+            if (!cleanRes.ok) {
+                const errData = await cleanRes.json().catch(() => ({}));
+                throw new Error(errData.error || '전체 삭제 처리 실패');
+            }
+
+            const cleanResult = await cleanRes.json();
+            alert(`🎉 ${cleanResult.message || '모든 고아 데이터가 성공적으로 삭제되었습니다.'}`);
+
+            if (this.orphanModalInstance) {
+                this.orphanModalInstance.hide();
+            }
+            this.orphanItems = [];
+            this.orphanFilteredItems = [];
+
             this.resetPageAndLoadData();
         } catch (err) {
-            console.error('고아 데이터 점검 오류:', err);
-            alert('고아 데이터 점검/정리 중 오류: ' + err.message);
+            console.error('고아 데이터 전체 삭제 실패:', err);
+            alert('전체 삭제 실패: ' + err.message);
         }
     }
 };

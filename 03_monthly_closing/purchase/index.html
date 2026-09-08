@@ -473,6 +473,85 @@
     </div>
 </div>
 
+<!-- 고아(연결 끊긴) 직출고 데이터 선택 관리 모달 -->
+<div class="modal fade" id="orphanManagementModal" tabindex="-1" style="z-index: 1105;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-dark text-white py-2">
+                <h6 class="modal-title fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i class='bx bx-wrench text-warning'></i> 연결 끊긴 고아(유령) 직출고 데이터 관리
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light p-3">
+                <!-- 설명 알림 -->
+                <div class="alert alert-warning py-2 px-3 small mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <i class='bx bx-info-circle me-1 fw-bold'></i>
+                        출고(매출) 내역이 삭제되었거나 매핑이 유실되어 입고 테이블에만 남아있는 데이터입니다.
+                        <strong>삭제할 항목을 체크박스로 선택하여 안전하게 삭제</strong>할 수 있습니다.
+                    </div>
+                </div>
+
+                <!-- 툴바: 검색 및 선택 액션 -->
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 p-2 bg-white rounded border shadow-sm">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="input-group input-group-sm" style="width: 240px;">
+                            <span class="input-group-text bg-light"><i class='bx bx-search'></i></span>
+                            <input type="text" id="orphanSearchInput" class="form-control" placeholder="품명, 거래처, 전표 검색..." oninput="app.filterOrphanList(this.value)">
+                        </div>
+                        <span class="badge bg-light text-dark border px-2 py-1">
+                            목록 <strong id="orphanTotalCount">0</strong>건
+                        </span>
+                        <span class="badge bg-primary px-2 py-1">
+                            선택 <strong id="orphanSelectedCount">0</strong>건
+                        </span>
+                        <span class="badge bg-light text-secondary border px-2 py-1">
+                            선택 공급가: <strong id="orphanSelectedSum">0원</strong>
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-danger fw-bold text-nowrap" id="btnDeleteSelectedOrphans" onclick="app.deleteSelectedOrphans()" disabled>
+                            <i class='bx bx-trash'></i> 선택 삭제
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.deleteAllOrphans()">
+                            <i class='bx bx-trash-alt'></i> 전체 일괄 삭제
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 고아 데이터 테이블 -->
+                <div class="table-responsive bg-white border rounded shadow-sm" style="max-height: 520px;">
+                    <table class="table table-hover table-sm align-middle mb-0 text-center" style="font-size: 0.8rem; min-width: 900px;">
+                        <thead class="table-light sticky-top" style="z-index: 2;">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" class="form-check-input" id="checkAllOrphans" onchange="app.toggleCheckAllOrphans(this.checked)">
+                                </th>
+                                <th style="width: 95px;">일자</th>
+                                <th style="width: 155px;">전표번호</th>
+                                <th style="width: 120px;">입고처</th>
+                                <th style="text-align: left;">품명</th>
+                                <th style="width: 80px;">규격</th>
+                                <th style="width: 60px;">수량</th>
+                                <th style="width: 85px;" class="text-end">단가</th>
+                                <th style="width: 95px;" class="text-end">공급가액</th>
+                                <th style="width: 75px;">상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orphanTableBody">
+                            <tr><td colspan="10" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 플로팅 선택 요약 바 -->
 <div id="floatingPurchaseBar" class="floating-selection-bar no-print">
     <div class="floating-selection-container shadow">
@@ -523,6 +602,6 @@
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
