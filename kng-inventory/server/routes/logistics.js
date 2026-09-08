@@ -36,6 +36,38 @@ const dbGet = (sql, params = []) => new Promise((resolve, reject) => {
     });
 });
 
+/**
+ * 재고 정합성 자동 복원 및 동기화 함수
+ * - 삭제된 출고로 인해 남겨진 고아 Lot 매핑 정리
+ * - 삭제된 입고로 인해 남겨진 고아 Lot 매핑 정리
+ * - 일반 입고(is_direct = 0 또는 NULL)의 잔여 재고(qty_remaining)를
+ *   "초기 입고수량(qty_initial) - 현재 존재하는 실제 출고 건들의 차감량 합계"로 완벽 동기화
+ */
+async function reconcileInventory() {
+    if (!db) return;
+    try {
+        // 1. 출고 테이블에 존재하지 않는 고아 Lot 매핑 정리
+        await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id NOT IN (SELECT id FROM logistics_outbound)`);
+
+        // 2. 입고 테이블에 존재하지 않는 고아 Lot 매핑 정리
+        await dbRun(`DELETE FROM logistics_outbound_lots WHERE inbound_id NOT IN (SELECT id FROM logistics_inbound)`);
+
+        // 3. 일반 입고(is_direct=0 또는 NULL)의 잔여수량(qty_remaining)을 물리적 진실에 맞게 일괄 동기화
+        await dbRun(`
+            UPDATE logistics_inbound
+            SET qty_remaining = MAX(0, qty_initial - COALESCE((
+                SELECT SUM(lol.consumed_qty)
+                FROM logistics_outbound_lots lol
+                JOIN logistics_outbound o ON lol.outbound_id = o.id
+                WHERE lol.inbound_id = logistics_inbound.id
+            ), 0))
+            WHERE is_direct = 0 OR is_direct IS NULL
+        `);
+    } catch (e) {
+        console.error('Inventory reconciliation error:', e);
+    }
+}
+
 /** DB 테이블 초기화 */
 function initLogisticsTables(database) {
     return new Promise((resolve, reject) => {
@@ -191,7 +223,9 @@ function initLogisticsTables(database) {
                             }
                         });
 
-                        resolve();
+                        reconcileInventory().finally(() => {
+                            resolve();
+                        });
                     }
                 });
             });
@@ -222,18 +256,21 @@ router.post('/locations', (req, res) => {
 
 // --- Inventory (실시간 재고) ---
 // 품목+규격+단위별 잔여 수량 합계 및 Lot 상세
-router.get('/inventory', (req, res) => {
-    const sql = `
-        SELECT 
-            i.item, i.spec, i.unit,
-            SUM(i.qty_remaining) as total_qty
-        FROM logistics_inbound i
-        WHERE i.qty_remaining > 0
-        GROUP BY i.item, i.spec, i.unit
-        ORDER BY i.item, i.spec
-    `;
-    db.all(sql, [], (err, summaryRows) => {
-        if (err) return res.status(500).json({ error: err.message });
+router.get('/inventory', async (req, res) => {
+    try {
+        // 실시간 재고 조회 시 항상 최신 상태로 정합성 자동 보정
+        await reconcileInventory();
+
+        const sql = `
+            SELECT 
+                i.item, i.spec, i.unit,
+                SUM(i.qty_remaining) as total_qty
+            FROM logistics_inbound i
+            WHERE i.qty_remaining > 0
+            GROUP BY i.item, i.spec, i.unit
+            ORDER BY i.item, i.spec
+        `;
+        const summaryRows = await dbAll(sql);
 
         // 상세 Lot 내역도 함께 가져옴
         const detailsSql = `
@@ -246,17 +283,28 @@ router.get('/inventory', (req, res) => {
             WHERE i.qty_remaining > 0
             ORDER BY i.item, i.spec, i.date ASC
         `;
-        db.all(detailsSql, [], (err2, detailRows) => {
-            if (err2) return res.status(500).json({ error: err2.message });
+        const detailRows = await dbAll(detailsSql);
 
-            // 품목별로 상세 내역 묶어주기
-            const inventory = summaryRows.map(row => {
-                row.lots = detailRows.filter(d => d.item === row.item && d.spec === row.spec && d.unit === row.unit);
-                return row;
-            });
-            res.json(inventory);
+        // 품목별로 상세 내역 묶어주기
+        const inventory = summaryRows.map(row => {
+            row.lots = detailRows.filter(d => d.item === row.item && d.spec === row.spec && d.unit === row.unit);
+            return row;
         });
-    });
+        res.json(inventory);
+    } catch (err) {
+        console.error('Inventory error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 수동 재고 정합성 동기화 API
+router.post('/inventory/reconcile', async (req, res) => {
+    try {
+        await reconcileInventory();
+        res.json({ success: true, message: '재고 정합성 자동 복원 및 동기화 완료' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // 출고 시 '특정 품목'의 가용 규격 및 해당 Lot 정보 불러오기 용도
@@ -384,16 +432,39 @@ router.post('/bulk-delete', async (req, res) => {
         if (outboundIds.length > 0) {
             const outPlaceholders = outboundIds.map(() => '?').join(',');
             
+            const outRows = await dbAll(`SELECT id, item, spec, unit, qty, is_direct FROM logistics_outbound WHERE id IN (${outPlaceholders})`, outboundIds);
+
             // 연결된 Lot 정보 조회
             const lots = await dbAll(`SELECT outbound_id, inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id IN (${outPlaceholders})`, outboundIds);
             
-            // 일반 입고건의 차감 수량 원복
+            // 일반 입고건의 차감 수량 원복 (비동기 완료 보장)
             if (lots.length > 0) {
-                const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
                 for (const lot of lots) {
-                    stmtRestore.run(lot.consumed_qty, lot.inbound_id);
+                    await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
                 }
-                stmtRestore.finalize();
+            }
+
+            // Fallback: 혹시 Lot 매핑이 누락되었던 일반 출고건이 있다면, 해당 품목/규격의 차감된 입고를 찾아 원복
+            const handledOutIds = new Set(lots.map(l => l.outbound_id));
+            for (const outRow of outRows) {
+                if (!handledOutIds.has(outRow.id) && !outRow.is_direct) {
+                    const inCandidates = await dbAll(
+                        `SELECT id, qty_initial, qty_remaining FROM logistics_inbound 
+                         WHERE item = ? AND spec = ? AND unit = ? AND (is_direct = 0 OR is_direct IS NULL) AND qty_remaining < qty_initial 
+                         ORDER BY date DESC, id DESC`,
+                        [outRow.item, outRow.spec, outRow.unit]
+                    );
+                    let needed = parseFloat(outRow.qty) || 0;
+                    for (const cand of inCandidates) {
+                        if (needed <= 0) break;
+                        const canRestore = cand.qty_initial - cand.qty_remaining;
+                        const restoreAmt = Math.min(canRestore, needed);
+                        if (restoreAmt > 0) {
+                            await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [restoreAmt, cand.id]);
+                            needed -= restoreAmt;
+                        }
+                    }
+                }
             }
 
             // Lot 매핑 삭제
@@ -515,7 +586,7 @@ router.post('/inbound', (req, res) => {
 });
 
 // --- Outbound (출고) ---
-router.post('/outbound', (req, res) => {
+router.post('/outbound', async (req, res) => {
     const { date, destination, actual_destination, items } = req.body;
     
     // 검증
@@ -523,60 +594,48 @@ router.post('/outbound', (req, res) => {
         return res.status(400).json({ error: 'Items are required' });
     }
 
-    db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
-        const dateStr = (date || '').substring(0, 10).replace(/-/g, '');
-        const txGroupId = `OUT-${dateStr}-${Date.now().toString().slice(-6)}`;
-        
-        let hasError = false;
-        
+    const dateStr = (date || '').substring(0, 10).replace(/-/g, '');
+    const txGroupId = `OUT-${dateStr}-${Date.now().toString().slice(-6)}`;
+
+    try {
+        await dbRun("BEGIN TRANSACTION");
+
         const outSql = `
             INSERT INTO logistics_outbound 
             (date, destination, actual_destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, category, transaction_group_id, trade_type)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
-        const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
-        
-        const stmtOut = db.prepare(outSql);
-        const stmtLots = db.prepare(lotsSql);
-        const stmtUpdate = db.prepare(updateInboundSql);
 
         for (let i of items) {
             if (!i.consumed_lots || i.consumed_lots.length === 0) {
-                hasError = true;
-                continue;
+                throw new Error(`[${i.item}] 품목의 Lot 차감 정보가 누락되었습니다.`);
             }
-            stmtOut.run(date, destination, actual_destination || '', i.item, i.spec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txGroupId, i.trade_type || '내수', function(err) {
-                if (err) {
-                    hasError = true;
-                    return;
+
+            const outRes = await dbRun(outSql, [
+                date, destination, actual_destination || '', i.item, i.spec, i.unit,
+                parseFloat(i.qty), parseFloat(i.selling_price) || 0,
+                parseFloat(i.shipping_fee) || 0, i.shipping_fee_vat_included ? 1 : 0,
+                i.note || '', i.category || '', txGroupId, i.trade_type || '내수'
+            ]);
+            const outboundId = outRes.lastID;
+
+            for (let lot of i.consumed_lots) {
+                const consumedQty = parseFloat(lot.consumed_qty) || 0;
+                const inboundId = parseInt(lot.inbound_id, 10);
+                if (consumedQty > 0 && inboundId > 0) {
+                    await dbRun(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`, [outboundId, inboundId, consumedQty]);
+                    await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`, [consumedQty, inboundId]);
                 }
-                const outboundId = this.lastID;
-                for (let lot of i.consumed_lots) {
-                    stmtLots.run(outboundId, lot.inbound_id, lot.consumed_qty, function(e) { if(e) hasError = true; });
-                    stmtUpdate.run(lot.consumed_qty, lot.inbound_id, function(e) { if(e) hasError = true; });
-                }
-            });
+            }
         }
-        
-        // Statements finalize barrier
-        db.run("SELECT 1", function() {
-            stmtOut.finalize();
-            stmtLots.finalize();
-            stmtUpdate.finalize();
-            
-            if (hasError) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: "Outbound transaction failed" });
-            } else {
-                db.run("COMMIT", (err2) => {
-                    if (err2) return res.status(500).json({ error: err2.message });
-                    res.status(201).json({ message: 'Outbound success' });
-                });
-            }
-        });
-    });
+
+        await dbRun("COMMIT");
+        res.status(201).json({ message: 'Outbound success' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Outbound error:', err);
+        res.status(500).json({ error: err.message || '출고 등록 처리 중 오류가 발생했습니다.' });
+    }
 });
 
 // --- History (입출고 전체 내역) ---
@@ -2105,7 +2164,7 @@ router.put('/inbound/:id', (req, res) => {
 });
 
 // --- Outbound Update (출고 내역 수정) ---
-router.put('/outbound/:id', (req, res) => {
+router.put('/outbound/:id', async (req, res) => {
     const id = req.params.id;
     const { date, destination, item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included, note, consumed_lots, trade_type, category } = req.body;
     
@@ -2113,94 +2172,57 @@ router.put('/outbound/:id', (req, res) => {
         return res.status(400).json({ error: 'consumed_lots are required' });
     }
 
-    db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
+    try {
+        const outRow = await dbGet(`SELECT settlement_month FROM logistics_outbound WHERE id = ?`, [id]);
+        if (outRow && outRow.settlement_month) {
+            return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 출고 정보를 수정할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+        }
 
-        db.get(`SELECT settlement_month FROM logistics_outbound WHERE id = ?`, [id], (errOut, outRow) => {
-            if (errOut) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: errOut.message });
+        await dbRun("BEGIN TRANSACTION");
+
+        // 1. 기존 출고로 차감되었던 재고 복구
+        const oldLots = await dbAll(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id]);
+        for (const lot of oldLots) {
+            await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
+        }
+
+        // 2. 기존 매핑(lots) 삭제
+        await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id]);
+
+        // 3. 출고 테이블 업데이트
+        const outUpdateSql = `
+            UPDATE logistics_outbound 
+            SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, 
+                qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?
+            WHERE id = ?
+        `;
+        await dbRun(outUpdateSql, [
+            date, destination, req.body.actual_destination || '', item, spec, unit,
+            parseFloat(qty), parseFloat(selling_price) || 0, parseFloat(shipping_fee) || 0,
+            shipping_fee_vat_included ? 1 : 0, note || '', trade_type || '내수', category || '', id
+        ]);
+
+        // 4. 새로운 매핑(lots) 삽입 및 재고 차감
+        for (const lot of consumed_lots) {
+            const consumedQty = parseFloat(lot.consumed_qty) || 0;
+            const inboundId = parseInt(lot.inbound_id, 10);
+            if (consumedQty > 0 && inboundId > 0) {
+                await dbRun(`INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`, [id, inboundId, consumedQty]);
+                await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`, [consumedQty, inboundId]);
             }
-            if (outRow && outRow.settlement_month) {
-                db.run("ROLLBACK");
-                return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 출고 정보를 수정할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
-            }
-            
-            // 1. 기존 출고로 차감되었던 재고 복구
-            db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: err.message });
-                }
-            
-            const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
-            let hasError = false;
-            
-            for (let lot of lots) {
-                stmtRestore.run(lot.consumed_qty, lot.inbound_id, function(err2) {
-                    if (err2) hasError = true;
-                });
-            }
-            
-            db.run("SELECT 1", function() {
-                stmtRestore.finalize();
-                if (hasError) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: 'Failed to restore old inbound inventory' });
-                }
-                
-                // 2. 기존 매핑(lots) 삭제
-                db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
-                    if (err3) {
-                        db.run("ROLLBACK");
-                        return res.status(500).json({ error: err3.message });
-                    }
-                    
-                    // 3. 출고 테이블 업데이트
-                    const outUpdateSql = `
-                        UPDATE logistics_outbound 
-                        SET date = ?, destination = ?, actual_destination = ?, item = ?, spec = ?, unit = ?, 
-                            qty = ?, selling_price = ?, shipping_fee = ?, shipping_fee_vat_included = ?, note = ?, trade_type = ?, category = ?
-                        WHERE id = ?
-                    `;
-                    db.run(outUpdateSql, [date, destination, req.body.actual_destination || '', item, spec, unit, qty, selling_price, shipping_fee, shipping_fee_vat_included || 0, note || '', trade_type || '내수', category || '', id], function(err4) {
-                        if (err4) {
-                            db.run("ROLLBACK");
-                            return res.status(500).json({ error: err4.message });
-                        }
-                        
-                        // 4. 새로운 매핑(lots) 삽입 및 재고 차감
-                        const lotsSql = `INSERT INTO logistics_outbound_lots (outbound_id, inbound_id, consumed_qty) VALUES (?, ?, ?)`;
-                        const updateInboundSql = `UPDATE logistics_inbound SET qty_remaining = qty_remaining - ? WHERE id = ?`;
-                        
-                        const stmtLots = db.prepare(lotsSql);
-                        const stmtUpdate = db.prepare(updateInboundSql);
-                        
-                        for (let lot of consumed_lots) {
-                            stmtLots.run(id, lot.inbound_id, lot.consumed_qty, function(e) { if(e) hasError = true; });
-                            stmtUpdate.run(lot.consumed_qty, lot.inbound_id, function(e) { if(e) hasError = true; });
-                        }
-                        
-                        db.run("SELECT 1", function() {
-                            stmtLots.finalize();
-                            stmtUpdate.finalize();
-                            
-                            if (hasError) {
-                                db.run("ROLLBACK");
-                                return res.status(500).json({ error: "Failed to apply new consumed lots" });
-                            } else {
-                                db.run("COMMIT", (err5) => {
-                                    if (err5) return res.status(500).json({ error: err5.message });
-                                    res.json({ message: 'Outbound updated successfully' });
-                                });
-                            }
-                        });
-                    });
-                });
-            });
-            });
-        });
-    });
+        }
+
+        await dbRun("COMMIT");
+
+        // 정합성 동기화
+        await reconcileInventory();
+
+        res.json({ message: 'Outbound updated successfully' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Outbound update error:', err);
+        res.status(500).json({ error: err.message || '출고 수정 처리 중 오류가 발생했습니다.' });
+    }
 });
 
 // --- Inbound Delete (입고 내역 삭제) ---
@@ -2245,81 +2267,71 @@ router.delete('/inbound/:id', (req, res) => {
 });
 
 // --- Outbound Delete (출고 내역 삭제 및 재고 복구) ---
-router.delete('/outbound/:id', (req, res) => {
+router.delete('/outbound/:id', async (req, res) => {
     const id = req.params.id;
-    
-    db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
 
-        db.get(`SELECT settlement_month FROM logistics_outbound WHERE id = ?`, [id], (errOut, outRow) => {
-            if (errOut) {
-                db.run("ROLLBACK");
-                return res.status(500).json({ error: errOut.message });
+    try {
+        const outRow = await dbGet(`SELECT id, item, spec, unit, qty, is_direct, settlement_month FROM logistics_outbound WHERE id = ?`, [id]);
+        if (!outRow) {
+            return res.status(404).json({ error: '출고 내역을 찾을 수 없습니다.' });
+        }
+        if (outRow.settlement_month) {
+            return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
+        }
+
+        await dbRun("BEGIN TRANSACTION");
+
+        // 1. 연결된 Lot 정보 조회
+        const lots = await dbAll(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id]);
+
+        if (lots.length > 0) {
+            for (const lot of lots) {
+                await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [lot.consumed_qty, lot.inbound_id]);
             }
-            if (outRow && outRow.settlement_month) {
-                db.run("ROLLBACK");
-                return res.status(400).json({ error: `월간현황에서 이미 [${outRow.settlement_month}]로 확정된 내역은 삭제할 수 없습니다. 먼저 [월간현황]에서 해당 건의 확정을 해제해주세요.` });
-            }
-            
-            db.all(`SELECT inbound_id, consumed_qty FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], (err, lots) => {
-                if (err) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: err.message });
+        } else if (!outRow.is_direct) {
+            // Fallback: Lot 정보가 누락되었던 경우, 동일 품목/규격/단위의 차감된 입고를 찾아 원복
+            const inCandidates = await dbAll(
+                `SELECT id, qty_initial, qty_remaining FROM logistics_inbound 
+                 WHERE item = ? AND spec = ? AND unit = ? AND (is_direct = 0 OR is_direct IS NULL) AND qty_remaining < qty_initial 
+                 ORDER BY date DESC, id DESC`,
+                [outRow.item, outRow.spec, outRow.unit]
+            );
+            let needed = parseFloat(outRow.qty) || 0;
+            for (const cand of inCandidates) {
+                if (needed <= 0) break;
+                const canRestore = cand.qty_initial - cand.qty_remaining;
+                const restoreAmt = Math.min(canRestore, needed);
+                if (restoreAmt > 0) {
+                    await dbRun(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`, [restoreAmt, cand.id]);
+                    needed -= restoreAmt;
                 }
-            
-            const stmtRestore = db.prepare(`UPDATE logistics_inbound SET qty_remaining = qty_remaining + ? WHERE id = ?`);
-            let hasError = false;
-            
-            for (let lot of lots) {
-                stmtRestore.run(lot.consumed_qty, lot.inbound_id, function(err2) {
-                    if (err2) hasError = true;
-                });
             }
-            
-            db.run("SELECT 1", function() {
-                stmtRestore.finalize();
-                
-                if (hasError) {
-                    db.run("ROLLBACK");
-                    return res.status(500).json({ error: 'Failed to restore inbound inventory' });
-                }
-                
-                const directInboundIds = (lots || []).map(l => l.inbound_id).filter(Boolean);
-                const cleanupDirectInbound = (cb) => {
-                    if (directInboundIds.length > 0) {
-                        const ph = directInboundIds.map(() => '?').join(',');
-                        db.run(`DELETE FROM logistics_inbound WHERE id IN (${ph}) AND is_direct = 1`, directInboundIds, cb);
-                    } else {
-                        cb();
-                    }
-                };
+        }
 
-                cleanupDirectInbound(function(errClean) {
-                    if (errClean) console.error("Error cleaning up direct inbound:", errClean);
+        // 2. 직출고인 경우 연계된 직출 입고 데이터(is_direct=1) 동시 정리
+        const directInboundIds = lots.map(l => l.inbound_id).filter(Boolean);
+        if (directInboundIds.length > 0) {
+            const ph = directInboundIds.map(() => '?').join(',');
+            await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${ph}) AND is_direct = 1`, directInboundIds);
+        }
 
-                    db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
-                        if (err3) {
-                            db.run("ROLLBACK");
-                            return res.status(500).json({ error: err3.message });
-                        }
-                        
-                        db.run(`DELETE FROM logistics_outbound WHERE id = ?`, [id], function(err4) {
-                            if (err4) {
-                                db.run("ROLLBACK");
-                                return res.status(500).json({ error: err4.message });
-                            }
-                            
-                            db.run("COMMIT", (err5) => {
-                                if (err5) return res.status(500).json({ error: err5.message });
-                                res.json({ message: 'Deleted and inventory restored successfully' });
-                            });
-                        });
-                    });
-                });
-            });
-            });
-        });
-    });
+        // 3. Lot 매핑 삭제
+        await dbRun(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id]);
+
+        // 4. 출고 내역 삭제
+        await dbRun(`DELETE FROM logistics_outbound WHERE id = ?`, [id]);
+
+        await dbRun("COMMIT");
+
+        // 재고 정합성 자동 보정 실행
+        await reconcileInventory();
+
+        res.json({ message: '출고 내역이 삭제되고 재고가 정상 복구되었습니다.' });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Outbound delete error:', err);
+        res.status(500).json({ error: err.message || '출고 삭제 중 오류가 발생했습니다.' });
+    }
 });
 
 router.get('/migrate-partners', async (req, res) => {
