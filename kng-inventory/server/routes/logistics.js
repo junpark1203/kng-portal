@@ -2766,6 +2766,116 @@ router.put('/direct/tx/:tx_id', async (req, res) => {
         return res.status(500).json({ error: err.message || '직출고 수정 중 오류가 발생했습니다.' });
     }
 });
+
+// --- 고아(연결 끊긴) 직출고 입고 데이터 조회 API ---
+router.get('/orphans/direct-inbound', async (req, res) => {
+    try {
+        const sql = `
+            SELECT 
+                i.id,
+                SUBSTR(i.date, 1, 10) as date,
+                COALESCE(i.transaction_group_id, '-') as transaction_group_id,
+                i.supplier,
+                i.item,
+                COALESCE(i.spec, '-') as spec,
+                i.unit,
+                i.qty_initial as qty,
+                i.unit_price,
+                (i.unit_price * i.qty_initial) as total_price,
+                COALESCE(i.settlement_status, '미정산') as settlement_status,
+                i.settlement_month,
+                i.created_at
+            FROM logistics_inbound i
+            WHERE i.is_direct = 1
+              AND NOT EXISTS (
+                  SELECT 1 
+                  FROM logistics_outbound_lots lol 
+                  JOIN logistics_outbound o ON lol.outbound_id = o.id 
+                  WHERE lol.inbound_id = i.id
+              )
+            ORDER BY i.date DESC, i.id DESC
+        `;
+        const rows = await dbAll(sql);
+        res.json({
+            success: true,
+            count: rows.length,
+            data: rows
+        });
+    } catch (err) {
+        console.error('Error fetching orphaned direct inbounds:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- 고아(연결 끊긴) 직출고 입고 데이터 일괄/선택 안전 삭제 API ---
+router.post('/orphans/direct-inbound/cleanup', async (req, res) => {
+    try {
+        const targetIds = Array.isArray(req.body?.ids) 
+            ? req.body.ids.map(Number).filter(id => !isNaN(id) && id > 0) 
+            : null;
+
+        let sql = `
+            SELECT i.id, i.item, i.settlement_month
+            FROM logistics_inbound i
+            WHERE i.is_direct = 1
+              AND NOT EXISTS (
+                  SELECT 1 
+                  FROM logistics_outbound_lots lol 
+                  JOIN logistics_outbound o ON lol.outbound_id = o.id 
+                  WHERE lol.inbound_id = i.id
+              )
+        `;
+        const params = [];
+        if (targetIds && targetIds.length > 0) {
+            sql += ` AND i.id IN (${targetIds.map(() => '?').join(',')})`;
+            params.push(...targetIds);
+        }
+
+        const candidates = await dbAll(sql, params);
+        if (candidates.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: '정리할 연결 끊긴 직출고 입고 데이터가 없습니다.', 
+                deletedCount: 0 
+            });
+        }
+
+        // 월간 확정 건 보호 (확정된 건은 제외)
+        const safeToDelete = candidates.filter(c => !c.settlement_month);
+        const lockedCount = candidates.length - safeToDelete.length;
+
+        if (safeToDelete.length === 0) {
+            return res.status(400).json({ 
+                error: `선택된 내역(${lockedCount}건)이 모두 월간현황에서 이미 확정 완료된 건이라 삭제할 수 없습니다.` 
+            });
+        }
+
+        const deleteIds = safeToDelete.map(c => c.id);
+        const inPlaceholders = deleteIds.map(() => '?').join(',');
+
+        await dbRun("BEGIN TRANSACTION");
+
+        // 1. 잔여 고아 Lot 매핑 정리
+        await dbRun(`DELETE FROM logistics_outbound_lots WHERE inbound_id IN (${inPlaceholders})`, deleteIds);
+
+        // 2. 고아 입고 데이터 삭제
+        const delRes = await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders})`, deleteIds);
+
+        await dbRun("COMMIT");
+
+        res.json({
+            success: true,
+            message: `연결 끊긴 직출고 입고 데이터 ${delRes.changes || deleteIds.length}건이 성공적으로 정리(삭제)되었습니다.${lockedCount > 0 ? ` (확정 보호 ${lockedCount}건 제외)` : ''}`,
+            deletedCount: delRes.changes || deleteIds.length,
+            deletedIds: deleteIds
+        });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        console.error('Error cleaning up orphaned direct inbounds:', err);
+        res.status(500).json({ error: err.message || '고아 데이터 정리 중 오류가 발생했습니다.' });
+    }
+});
+
 module.exports = {
     router,
     initLogisticsTables,
