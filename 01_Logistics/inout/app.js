@@ -417,6 +417,32 @@ const app = {
                 if(s) s.style.display = 'none';
             }
         });
+
+        // 모달 닫힘(취소/ESC/X클릭) 시 폼 데이터 자동 초기화 (미저장 잔여 데이터 잔존 방지)
+        const outModal = $('outboundModal');
+        if (outModal) {
+            outModal.addEventListener('hidden.bs.modal', () => {
+                if ($('outboundForm') && $('outboundForm').dataset.mode !== 'edit') {
+                    this.resetOutboundModalForm();
+                }
+            });
+        }
+        const inModal = $('inboundModal');
+        if (inModal) {
+            inModal.addEventListener('hidden.bs.modal', () => {
+                if ($('inboundForm') && $('inboundForm').dataset.mode !== 'edit') {
+                    this.resetInboundModalForm();
+                }
+            });
+        }
+        const dirModal = $('directModal');
+        if (dirModal) {
+            dirModal.addEventListener('hidden.bs.modal', () => {
+                if ($('directForm') && $('directForm').dataset.mode !== 'edit') {
+                    this.resetDirectModalForm();
+                }
+            });
+        }
     },
 
     // ----------------------------------------
@@ -1932,10 +1958,7 @@ const app = {
                     await authFetch(`${API_BASE}/inbound`, { method: 'POST', body: JSON.stringify(payload) });
                 }
                 alert('입고 완료되었습니다.');
-                $('inboundForm').reset();
-                $('inboundItemsContainer').innerHTML = '';
-                this.addInboundItemRow();
-                this.initTodayDates();
+                this.resetInboundModalForm();
                 
                 // Update history tables
                 this.loadHistory();
@@ -2159,10 +2182,7 @@ const app = {
                     alert('직출고 처리가 완료되었습니다.');
                 }
                 
-                $('directForm').reset();
-                $('directItemsContainer').innerHTML = '';
-                this.addDirectItemRow();
-                this.initTodayDates();
+                this.resetDirectModalForm();
                 this.loadHistory();
                 this.closeDrawer();
             } catch (err) {
@@ -2565,11 +2585,7 @@ const app = {
                     await authFetch(`${API_BASE}/outbound`, { method: 'POST', body: JSON.stringify(payload) });
                 }
                 alert('출고 완료되었습니다.');
-                $('outboundForm').reset();
-                $('outboundItemsContainer').innerHTML = '';
-                this.outboundRows = {};
-                this.addOutboundItemRow();
-                this.initTodayDates();
+                this.resetOutboundModalForm();
                 
                 // Update history tables
                 this.loadHistory();
@@ -2915,36 +2931,99 @@ const app = {
         }
     },
 
+    resetInboundModalForm: function() {
+        const form = $('inboundForm');
+        if (form) {
+            form.reset();
+            form.dataset.mode = '';
+            form.dataset.txId = '';
+        }
+        const container = $('inboundItemsContainer');
+        if (container) {
+            container.innerHTML = '';
+        }
+        this.addInboundItemRow();
+        this.initTodayDates();
+        const title = document.querySelector('#inboundModal .modal-title');
+        if (title) title.innerHTML = "<i class='bx bx-plus'></i> 입고 등록";
+        const submitBtn = document.querySelector('#inboundForm button[type=\"submit\"]');
+        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check'></i> 입고 처리";
+        if ($('in_trade_type')) $('in_trade_type').value = '내수';
+    },
+
+    resetOutboundModalForm: function() {
+        const form = $('outboundForm');
+        if (form) {
+            form.reset();
+            form.dataset.mode = '';
+            form.dataset.txId = '';
+        }
+        const container = $('outboundItemsContainer');
+        if (container) {
+            container.innerHTML = '';
+        }
+        this.outboundRows = {};
+        this.currentLotModalRowId = null;
+        this.addOutboundItemRow();
+        this.initTodayDates();
+        if ($('btnOutboundSubmit')) $('btnOutboundSubmit').disabled = true;
+        if ($('outErrorMsg')) $('outErrorMsg').style.display = 'none';
+        const title = document.querySelector('#outboundModal .modal-title');
+        if (title) title.innerHTML = "<i class='bx bx-minus'></i> 출고 등록";
+        const submitBtn = document.querySelector('#outboundForm button[type=\"submit\"]');
+        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 출고 처리";
+        if ($('out_shipping')) $('out_shipping').value = 0;
+        if ($('out_shipping_vat')) $('out_shipping_vat').checked = false;
+        if ($('out_trade_type')) $('out_trade_type').value = '내수';
+    },
+
+    resetDirectModalForm: function() {
+        const form = $('directForm');
+        if (form) {
+            form.reset();
+            form.dataset.mode = '';
+            form.dataset.txId = '';
+        }
+        const container = $('directItemsContainer');
+        if (container) {
+            container.innerHTML = '';
+        }
+        this.addDirectItemRow();
+        this.initTodayDates();
+        const title = document.querySelector('#directModal .modal-title');
+        if (title) title.innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
+        const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
+        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 동시 처리";
+        if ($('dir_in_shipping')) $('dir_in_shipping').value = 0;
+        if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = false;
+        if ($('dir_out_shipping')) $('dir_out_shipping').value = 0;
+        if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = false;
+        if ($('dir_trade_type')) $('dir_trade_type').value = '내수';
+    },
+
     openDrawer: function(mode, data = null) {
         if (mode === 'inbound_create') {
             const modalEl = document.getElementById('inboundModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
-            modal.show();
-            if ($('inboundItemsContainer').children.length === 0) {
-                this.addInboundItemRow();
+            if ($('inboundForm').dataset.mode !== 'edit') {
+                this.resetInboundModalForm();
             }
+            modal.show();
         } else if (mode === 'outbound_create') {
             const modalEl = document.getElementById('outboundModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
-            modal.show();
-            if ($('outboundItemsContainer').children.length === 0) {
-                this.addOutboundItemRow();
+            if ($('outboundForm').dataset.mode !== 'edit') {
+                this.resetOutboundModalForm();
             }
+            modal.show();
         } else if (mode === 'direct_create') {
             const modalEl = document.getElementById('directModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
             if (!modal) modal = new bootstrap.Modal(modalEl);
             if ($('directForm').dataset.mode !== 'edit') {
-                const title = document.querySelector('#directModal .modal-title');
-                if (title) title.innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
-                const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
-                if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 동시 처리";
-                if ($('dir_in_shipping')) $('dir_in_shipping').value = 0;
-                if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = false;
-                if ($('dir_out_shipping')) $('dir_out_shipping').value = 0;
-                if ($('dir_out_shipping_vat')) $('dir_out_shipping_vat').checked = false;
+                this.resetDirectModalForm();
             }
             modal.show();
             if ($('directItemsContainer').children.length === 0) {
