@@ -47,6 +47,11 @@ function escapeAttr(str) {
 const $ = id => document.getElementById(id);
 
 const app = {
+    currentYear: new Date().getFullYear(), // 현재 연도 (예: 2026)
+    defaultYears: [2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020], // 기본 제공 연도 목록 (실제 데이터 연도 자동 추가)
+    selectedMonth: 'all', // 'all' (전체) | 1 ~ 12
+    isCustomDateMode: false, // 상세 일자 직접입력 모드 활성화 여부
+    userExplicitlyClickedConfirmFilter: false, // 사용자가 직접 확정/미확정 필터를 클릭했는지 여부
     dateType: 'settlement', // 'settlement' (정산일자) | 'transaction' (입출고일자) | 'confirmed_month' (확정월)
     startDate: '', // 'YYYY-MM-DD'
     endDate: '', // 'YYYY-MM-DD'
@@ -75,52 +80,54 @@ const app = {
     },
 
     getDisplayDatePeriod: function() {
-        if (this.dateType === 'confirmed_month') {
-            return this.confirmedMonth ? `[${this.confirmedMonth} 확정]` : '전체 확정월';
+        if (this.isCustomDateMode) {
+            if (this.startDate && this.endDate) return `${this.startDate} ~ ${this.endDate}`;
+            if (this.startDate) return `${this.startDate} ~`;
+            if (this.endDate) return `~ ${this.endDate}`;
+            return '전체기간';
         }
-        if (this.startDate && this.endDate) return `${this.startDate} ~ ${this.endDate}`;
-        if (this.startDate) return `${this.startDate} ~`;
-        if (this.endDate) return `~ ${this.endDate}`;
-        return '전체기간';
+        if (this.selectedMonth === 'all') {
+            return `${this.currentYear}년 전체`;
+        }
+        return `${this.currentYear}년 ${this.selectedMonth}월`;
     },
 
     getPeriodLabel: function() {
-        if (this.dateType === 'confirmed_month') {
-            return this.confirmedMonth ? `${this.confirmedMonth} 확정월` : '전체 확정월';
+        if (this.isCustomDateMode) {
+            if (this.startDate && this.endDate) {
+                if (this.startDate === this.endDate) return this.startDate;
+                return `${this.startDate} ~ ${this.endDate}`;
+            }
+            if (this.startDate) return `${this.startDate} ~`;
+            if (this.endDate) return `~ ${this.endDate}`;
+            return '전체기간';
         }
-        if (this.startDate && this.endDate) {
-            if (this.startDate === this.endDate) return this.startDate;
-            return `${this.startDate} ~ ${this.endDate}`;
+        if (this.selectedMonth === 'all') {
+            return `${this.currentYear}년 전체`;
         }
-        if (this.startDate) return `${this.startDate} ~`;
-        if (this.endDate) return `~ ${this.endDate}`;
-        return '전체기간';
+        return `${this.currentYear}년 ${this.selectedMonth}월`;
     },
 
     init: async function() {
-        // 1. 기본 일자 설정 (정산일자 기본, 전체기간)
+        // 1. 연도 및 월별 네비게이터 초기화
+        this.currentYear = new Date().getFullYear();
+        this.selectedMonth = 'all';
+        this.isCustomDateMode = false;
         this.dateType = 'settlement';
         this.startDate = '';
         this.endDate = '';
+
         if ($('dateTypeSelect')) $('dateTypeSelect').value = 'settlement';
         if ($('startDate')) $('startDate').value = '';
         if ($('endDate')) $('endDate').value = '';
-        this.updateDatePresetUI();
+
+        this.updateYearDropdown();
+        this.renderMonthNavigator();
+        this.syncBatchTargetMonth();
 
         // 날짜 자동보정 리스너 등록
         this.attachDateAutoCorrection($('startDate'));
         this.attachDateAutoCorrection($('endDate'));
-
-        // 확정 대상월 및 확정월 기본값 (전월)
-        const now = new Date();
-        let y = now.getFullYear();
-        let m = now.getMonth(); // 전월 1-12
-        if (m === 0) { m = 12; y -= 1; }
-        const prevMonthStr = `${y}-${String(m).padStart(2, '0')}`;
-        this.confirmedMonth = prevMonthStr;
-        if ($('targetMonth')) $('targetMonth').value = prevMonthStr;
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = prevMonthStr;
-        this.updateConfirmedMonthPresetUI();
 
         // 2. 거래처 및 최근 거래처 로드
         this.loadRecentPartners();
@@ -361,34 +368,157 @@ const app = {
         return inputEl.value || '';
     },
 
-    // ── 기간/일자 기준 관리 ──
+    // ── 연도 및 월별 네비게이터 관리 ──
+    updateYearDropdown: function(dataRows = []) {
+        const yearSet = new Set(this.defaultYears);
+        yearSet.add(new Date().getFullYear());
+
+        if (Array.isArray(dataRows)) {
+            dataRows.forEach(r => {
+                const d1 = (r.tax_invoice_date || '').substring(0, 4);
+                const d2 = (r.date || '').substring(0, 4);
+                const d3 = (r.settlement_month || '').substring(0, 4);
+                [d1, d2, d3].forEach(yStr => {
+                    const yNum = parseInt(yStr, 10);
+                    if (yNum >= 2000 && yNum <= 2099) {
+                        yearSet.add(yNum);
+                    }
+                });
+            });
+        }
+
+        const sortedYears = Array.from(yearSet).sort((a, b) => b - a); // 2027, 2026, 2025...
+        const selectEl = $('yearSelect');
+        if (!selectEl) return;
+
+        const currentVal = parseInt(this.currentYear, 10) || new Date().getFullYear();
+        let html = '';
+        sortedYears.forEach(y => {
+            html += `<option value="${y}" ${y === currentVal ? 'selected' : ''}>${y}년</option>`;
+        });
+        selectEl.innerHTML = html;
+        selectEl.value = currentVal;
+    },
+
+    renderMonthNavigator: function() {
+        const container = $('monthNavigatorBar');
+        if (!container) return;
+
+        const currentCalYear = new Date().getFullYear();
+        const currentCalMonth = new Date().getMonth() + 1;
+
+        let html = '';
+
+        // [ 전체 ] 버튼
+        const isAllActive = !this.isCustomDateMode && this.selectedMonth === 'all';
+        html += `<button type="button" class="month-nav-btn ${isAllActive ? 'active' : ''}" onclick="app.onMonthSelect('all')" title="${this.currentYear}년 전체 거래 내역">전체</button>`;
+
+        // [ 1월 ] ~ [ 12월 ] 버튼
+        for (let m = 1; m <= 12; m++) {
+            const isActive = !this.isCustomDateMode && this.selectedMonth === m;
+            const isCurrent = (this.currentYear === currentCalYear && m === currentCalMonth);
+            const classes = ['month-nav-btn'];
+            if (isActive) classes.push('active');
+            if (isCurrent) classes.push('is-current-month');
+
+            const title = isCurrent ? `${this.currentYear}년 ${m}월 (현재 당월)` : `${this.currentYear}년 ${m}월`;
+            html += `<button type="button" class="${classes.join(' ')}" onclick="app.onMonthSelect(${m})" title="${title}">${m}월</button>`;
+        }
+
+        container.innerHTML = html;
+    },
+
+    onYearSelectChange: function(val) {
+        this.currentYear = parseInt(val, 10) || new Date().getFullYear();
+        this.isCustomDateMode = false;
+        this.closeCustomDateRow();
+        this.renderMonthNavigator();
+        this.syncBatchTargetMonth();
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
+        }
+    },
+
+    onMonthSelect: function(m) {
+        this.selectedMonth = (m === 'all') ? 'all' : parseInt(m, 10);
+        this.isCustomDateMode = false;
+        this.closeCustomDateRow();
+        this.renderMonthNavigator();
+        this.syncBatchTargetMonth();
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
+        }
+    },
+
+    syncBatchTargetMonth: function() {
+        const el = $('batchTargetMonth');
+        if (!el) return;
+        const y = this.currentYear || new Date().getFullYear();
+        let m = (this.selectedMonth && this.selectedMonth !== 'all') ? this.selectedMonth : (new Date().getMonth() + 1);
+        el.value = `${y}-${String(m).padStart(2, '0')}`;
+    },
+
     onDateTypeChange: function() {
         this.dateType = $('dateTypeSelect')?.value || 'settlement';
-        const isMonthMode = (this.dateType === 'confirmed_month');
-        
-        const rangeCtrl = $('dateRangeControl');
-        const monthCtrl = $('monthPickerControl');
-        if (rangeCtrl && monthCtrl) {
-            if (isMonthMode) {
-                rangeCtrl.classList.add('d-none');
-                rangeCtrl.classList.remove('d-flex');
-                monthCtrl.classList.remove('d-none');
-                monthCtrl.classList.add('d-flex');
-            } else {
-                monthCtrl.classList.add('d-none');
-                monthCtrl.classList.remove('d-flex');
-                rangeCtrl.classList.remove('d-none');
-                rangeCtrl.classList.add('d-flex');
-            }
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
         }
-        if (this.selectedPartner) this.loadData();
+    },
+
+    // ── 상세 일자 직접 입력 모드 토글 및 관리 ──
+    toggleCustomDateMode: function() {
+        const row = $('customDateRangeRow');
+        const btn = $('btnToggleCustomDate');
+        if (!row) return;
+
+        if (row.classList.contains('d-none')) {
+            row.classList.remove('d-none');
+            if (btn) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-secondary', 'text-white');
+            }
+            this.isCustomDateMode = true;
+            this.renderMonthNavigator();
+            if (this.startDate || this.endDate) {
+                if (this.selectedPartner) this.applyFiltersAndRender();
+            }
+        } else {
+            this.closeCustomDateMode();
+        }
+    },
+
+    closeCustomDateRow: function() {
+        const row = $('customDateRangeRow');
+        const btn = $('btnToggleCustomDate');
+        if (row) row.classList.add('d-none');
+        if (btn) {
+            btn.classList.remove('btn-secondary', 'text-white');
+            btn.classList.add('btn-outline-secondary');
+        }
+    },
+
+    closeCustomDateMode: function() {
+        this.closeCustomDateRow();
+        this.isCustomDateMode = false;
+        this.startDate = '';
+        this.endDate = '';
+        if ($('startDate')) $('startDate').value = '';
+        if ($('endDate')) $('endDate').value = '';
+        this.updateDatePresetUI();
+        this.renderMonthNavigator();
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
+        }
     },
 
     onDateRangeChange: function() {
         const startEl = $('startDate');
         const endEl = $('endDate');
 
-        // 입력 중이거나 불완전한 상태에서는 조회를 실행하지 않고 사용자 입력을 기다림
         if ((startEl && startEl.validity && startEl.validity.badInput) ||
             (endEl && endEl.validity && endEl.validity.badInput)) {
             return;
@@ -396,8 +526,13 @@ const app = {
 
         this.startDate = startEl?.value || '';
         this.endDate = endEl?.value || '';
+        this.isCustomDateMode = true;
         this.updateDatePresetUI();
-        if (this.selectedPartner) this.loadData();
+        this.renderMonthNavigator();
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
+        }
     },
 
     setDatePreset: function(preset) {
@@ -417,14 +552,18 @@ const app = {
             this.endDate = this.formatDate(lastDay);
             if ($('batchTargetMonth')) $('batchTargetMonth').value = this.startDate.substring(0, 7);
         } else {
-            // 'all'
             this.startDate = '';
             this.endDate = '';
         }
         if ($('startDate')) $('startDate').value = this.startDate;
         if ($('endDate')) $('endDate').value = this.endDate;
+        this.isCustomDateMode = true;
         this.updateDatePresetUI();
-        if (this.selectedPartner) this.loadData();
+        this.renderMonthNavigator();
+        if (this.selectedPartner) {
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
+        }
     },
 
     updateDatePresetUI: function() {
@@ -450,75 +589,109 @@ const app = {
         btnCurrent.className = isCur ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
     },
 
-    onConfirmedMonthChange: function() {
-        this.confirmedMonth = $('targetMonth')?.value || '';
-        if (this.confirmedMonth && $('batchTargetMonth')) {
-            $('batchTargetMonth').value = this.confirmedMonth;
-        }
-        this.updateConfirmedMonthPresetUI();
-        if (this.selectedPartner) this.loadData();
-    },
+    filterByDate: function(r) {
+        if (!r) return false;
 
-    changeConfirmedMonth: function(delta) {
-        let baseDate = new Date();
-        if (this.confirmedMonth) {
-            const [y, m] = this.confirmedMonth.split('-').map(Number);
-            baseDate = new Date(y, m - 1 + delta, 1);
+        // 직접 일자 지정 모드
+        if (this.isCustomDateMode) {
+            let d = '';
+            if (this.dateType === 'transaction') {
+                d = (r.date || '').substring(0, 10);
+            } else if (this.dateType === 'confirmed_month') {
+                d = (r.settlement_month || (r.tax_invoice_date || r.date || '')).substring(0, 10);
+            } else {
+                d = (r.tax_invoice_date || r.date || '').substring(0, 10);
+            }
+            if (this.startDate && d < this.startDate) return false;
+            if (this.endDate && d > this.endDate) return false;
+            return true;
         }
-        const nextY = baseDate.getFullYear();
-        const nextM = String(baseDate.getMonth() + 1).padStart(2, '0');
-        this.confirmedMonth = `${nextY}-${nextM}`;
-        if ($('targetMonth')) $('targetMonth').value = this.confirmedMonth;
-        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.confirmedMonth;
-        this.updateConfirmedMonthPresetUI();
-        if (this.selectedPartner) this.loadData();
-    },
 
-    setConfirmedMonthPreset: function(preset) {
-        const now = new Date();
-        let y = now.getFullYear();
-        let m = now.getMonth(); // 0-11
-        if (preset === 'prev') {
-            let prevY = y;
-            let prevM = m;
-            if (prevM === 0) { prevM = 12; prevY -= 1; }
-            this.confirmedMonth = `${prevY}-${String(prevM).padStart(2, '0')}`;
-        } else if (preset === 'current') {
-            this.confirmedMonth = `${y}-${String(m + 1).padStart(2, '0')}`;
+        // 연도 및 월별 네비게이터 모드
+        let rowYear = '';
+        let rowMonth = 0;
+
+        if (this.dateType === 'transaction') {
+            const d = (r.date || '').substring(0, 10);
+            if (d) {
+                rowYear = d.substring(0, 4);
+                rowMonth = parseInt(d.substring(5, 7), 10);
+            }
+        } else if (this.dateType === 'confirmed_month') {
+            const sm = r.settlement_month;
+            if (sm && sm.length >= 7) {
+                rowYear = sm.substring(0, 4);
+                rowMonth = parseInt(sm.substring(5, 7), 10);
+            } else {
+                const d = (r.tax_invoice_date || r.date || '').substring(0, 10);
+                if (d) {
+                    rowYear = d.substring(0, 4);
+                    rowMonth = parseInt(d.substring(5, 7), 10);
+                }
+            }
         } else {
-            // 'all'
-            this.confirmedMonth = '';
+            // settlement (정산일자)
+            const d = (r.tax_invoice_date || r.date || '').substring(0, 10);
+            if (d) {
+                rowYear = d.substring(0, 4);
+                rowMonth = parseInt(d.substring(5, 7), 10);
+            }
         }
-        if ($('targetMonth')) $('targetMonth').value = this.confirmedMonth;
-        if (this.confirmedMonth && $('batchTargetMonth')) $('batchTargetMonth').value = this.confirmedMonth;
-        this.updateConfirmedMonthPresetUI();
-        if (this.selectedPartner) this.loadData();
+
+        if (this.currentYear && String(rowYear) !== String(this.currentYear)) {
+            return false;
+        }
+
+        if (this.selectedMonth && this.selectedMonth !== 'all') {
+            if (rowMonth !== parseInt(this.selectedMonth, 10)) {
+                return false;
+            }
+        }
+
+        return true;
     },
 
-    updateConfirmedMonthPresetUI: function() {
-        const btnPrev = $('btnMonthPresetPrev');
-        const btnCurrent = $('btnMonthPresetCurrent');
-        const btnAll = $('btnMonthPresetAll');
-        if (!btnPrev || !btnCurrent || !btnAll) return;
+    autoAdjustConfirmFilterForCurrentView: function() {
+        if (this.userExplicitlyClickedConfirmFilter) return;
+        if (!this.currentRows || this.currentRows.length === 0) return;
 
-        const now = new Date();
-        let y = now.getFullYear();
-        let m = now.getMonth();
-        let prevY = y;
-        let prevM = m;
-        if (prevM === 0) { prevM = 12; prevY -= 1; }
-        const prevStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
-        const curStr = `${y}-${String(m + 1).padStart(2, '0')}`;
+        const dateFiltered = this.currentRows.filter(r => {
+            if (!this.filterByDate(r)) return false;
+            if (this.tradeTypeFilter === 'outbound' && r.type !== 'outbound') return false;
+            if (this.tradeTypeFilter === 'inbound' && r.type !== 'inbound') return false;
+            return true;
+        });
 
-        btnAll.className = !this.confirmedMonth ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
-        btnPrev.className = (this.confirmedMonth === prevStr) ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
-        btnCurrent.className = (this.confirmedMonth === curStr) ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+        if (dateFiltered.length === 0) return;
+
+        const unconfCount = dateFiltered.filter(r => !r.settlement_month).length;
+        const confCount = dateFiltered.filter(r => !!r.settlement_month).length;
+
+        if (unconfCount === 0 && confCount > 0) {
+            this.confirmFilter = 'confirmed';
+            this.updateConfirmFilterButtonsUI();
+        } else if (unconfCount > 0 && confCount === 0) {
+            this.confirmFilter = 'unconfirmed';
+            this.updateConfirmFilterButtonsUI();
+        }
     },
 
-    // 레거시 호환 메소드 유지
-    setMonthAll: function() { this.setDatePreset('all'); },
-    setMonthPreset: function(p) { this.setDatePreset(p); },
-    updateMonthPresetButtons: function() { this.updateDatePresetUI(); },
+    updateConfirmFilterButtonsUI: function() {
+        const allBtn = $('filterStatusAll');
+        const unconfBtn = $('filterStatusUnconfirmed');
+        const confBtn = $('filterStatusConfirmed');
+
+        if (allBtn) allBtn.className = (this.confirmFilter === 'all') ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
+        if (unconfBtn) unconfBtn.className = (this.confirmFilter === 'unconfirmed') ? 'btn btn-warning text-dark fw-bold' : 'btn btn-outline-warning text-dark fw-bold';
+        if (confBtn) confBtn.className = (this.confirmFilter === 'confirmed') ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
+    },
+
+    applyFiltersAndRender: function() {
+        this.updateFilterCounts();
+        this.renderTable();
+        this.updateKpiSummary();
+        this.updateSubSearchCountBadge();
+    },
 
     // ── 거래구분 (전체 / 매출건만 / 매입건만) 필터 ──
     setTradeTypeFilter: function(type) {
@@ -531,23 +704,15 @@ const app = {
         if (btnSales) btnSales.className = (type === 'outbound') ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-primary fw-bold';
         if (btnPurchase) btnPurchase.className = (type === 'inbound') ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
 
-        this.renderTable();
-        this.updateKpiSummary();
+        this.applyFiltersAndRender();
     },
 
     // ── 확정상태 (전체 / 미확정 / 확정완료) 필터 ──
     setConfirmFilter: function(filter) {
         this.confirmFilter = filter;
-        const allBtn = $('filterStatusAll');
-        const unconfBtn = $('filterStatusUnconfirmed');
-        const confBtn = $('filterStatusConfirmed');
-
-        if (allBtn) allBtn.className = filter === 'all' ? 'btn btn-primary text-white fw-bold' : 'btn btn-outline-secondary fw-bold';
-        if (unconfBtn) unconfBtn.className = filter === 'unconfirmed' ? 'btn btn-warning text-dark fw-bold' : 'btn btn-outline-warning text-dark fw-bold';
-        if (confBtn) confBtn.className = filter === 'confirmed' ? 'btn btn-success text-white fw-bold' : 'btn btn-outline-success fw-bold';
-
-        this.renderTable();
-        this.updateKpiSummary();
+        this.userExplicitlyClickedConfirmFilter = true;
+        this.updateConfirmFilterButtonsUI();
+        this.applyFiltersAndRender();
     },
 
     onFilterChange: function() {
@@ -721,6 +886,7 @@ const app = {
 
     selectPartner: function(partner) {
         this.selectedPartner = partner;
+        this.userExplicitlyClickedConfirmFilter = false;
         const pName = partner.company_name || partner.name || '';
         this.saveRecentPartner(pName);
 
@@ -850,35 +1016,8 @@ const app = {
         try {
             const pName = this.selectedPartner.name || this.selectedPartner.company_name;
 
-            const startEl = $('startDate');
-            const endEl = $('endDate');
-            if (this.dateType !== 'confirmed_month') {
-                if (startEl && startEl.validity && startEl.validity.badInput) this.checkAndCorrectDate(startEl);
-                if (endEl && endEl.validity && endEl.validity.badInput) this.checkAndCorrectDate(endEl);
-                this.startDate = startEl?.value || '';
-                this.endDate = endEl?.value || '';
-            }
-
-            // 1. type=all 요청으로 매출(outbound)과 매입(inbound)을 단일 쿼리로 모두 수집
             const sortField = (this.dateType === 'transaction') ? 'date' : ((this.dateType === 'confirmed_month') ? 'settlement_month' : 'tax_invoice_date');
-            let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=2000&sortCol=${sortField}&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
-            
-            if (this.dateType === 'confirmed_month') {
-                url += `&dateType=confirmed_month`;
-                if (this.confirmedMonth) {
-                    url += `&settlement_month=${encodeURIComponent(this.confirmedMonth)}`;
-                }
-            } else {
-                if (this.startDate) {
-                    url += `&startDate=${encodeURIComponent(this.startDate)}`;
-                }
-                if (this.endDate) {
-                    url += `&endDate=${encodeURIComponent(this.endDate)}`;
-                }
-                if (this.dateType) {
-                    url += `&dateType=${encodeURIComponent(this.dateType)}`;
-                }
-            }
+            let url = `${API_BASE}/logistics/history?type=all&settlement_status=${encodeURIComponent('정산완료')}&include_direct=true&limit=999999&sortCol=${sortField}&sortDir=asc&searchParty=${encodeURIComponent(pName)}`;
 
             // 동일 사업자번호 통합 조회 처리
             let targetPartnerNames = [pName];
@@ -924,11 +1063,10 @@ const app = {
             });
 
             this.currentRows = items;
+            this.updateYearDropdown(items);
             this.updateDirectPartnerFilterOptions();
-            this.updateFilterCounts();
-            this.renderTable();
-            this.updateKpiSummary();
-            this.updateSubSearchCountBadge();
+            this.autoAdjustConfirmFilterForCurrentView();
+            this.applyFiltersAndRender();
 
         } catch (err) {
             console.error(err);
@@ -1042,20 +1180,21 @@ const app = {
 
     updateFilterCounts: function() {
         const rows = this.currentRows || [];
+        const dateFiltered = rows.filter(r => this.filterByDate(r));
         
-        // 거래구분 건수
-        const allTradeCount = rows.length;
-        const salesCount = rows.filter(r => r.type === 'outbound').length;
-        const purchaseCount = rows.filter(r => r.type === 'inbound').length;
+        // 거래구분 건수 (현재 선택된 연도/월/일자 기준)
+        const allTradeCount = dateFiltered.length;
+        const salesCount = dateFiltered.filter(r => r.type === 'outbound').length;
+        const purchaseCount = dateFiltered.filter(r => r.type === 'inbound').length;
 
         if ($('badgeTradeAll')) $('badgeTradeAll').innerText = allTradeCount.toLocaleString();
         if ($('badgeTradeSales')) $('badgeTradeSales').innerText = salesCount.toLocaleString();
         if ($('badgeTradePurchase')) $('badgeTradePurchase').innerText = purchaseCount.toLocaleString();
 
         // 현재 tradeTypeFilter가 적용된 기준에서의 확정/미확정 건수
-        let tradeFiltered = rows;
-        if (this.tradeTypeFilter === 'outbound') tradeFiltered = rows.filter(r => r.type === 'outbound');
-        else if (this.tradeTypeFilter === 'inbound') tradeFiltered = rows.filter(r => r.type === 'inbound');
+        let tradeFiltered = dateFiltered;
+        if (this.tradeTypeFilter === 'outbound') tradeFiltered = dateFiltered.filter(r => r.type === 'outbound');
+        else if (this.tradeTypeFilter === 'inbound') tradeFiltered = dateFiltered.filter(r => r.type === 'inbound');
 
         const allCount = tradeFiltered.length;
         const unconfCount = tradeFiltered.filter(r => !r.settlement_month).length;
@@ -1068,7 +1207,7 @@ const app = {
 
     getFilteredRows: function() {
         if (!this.currentRows) return [];
-        let list = this.currentRows;
+        let list = this.currentRows.filter(r => this.filterByDate(r));
 
         // 1. 거래구분 필터
         if (this.tradeTypeFilter === 'outbound') {
@@ -1385,8 +1524,8 @@ const app = {
         const totalContainer = $('accountSummaryTotal');
         if (!container) return;
 
-        // 기준 데이터: 거래구분(매출/매입) 및 확정상태(전체/미확정/확정완료) 필터가 적용된 행들
-        let baseRows = this.currentRows || [];
+        // 기준 데이터: 일자/연도/월, 거래구분(매출/매입) 및 확정상태(전체/미확정/확정완료) 필터가 적용된 행들
+        let baseRows = (this.currentRows || []).filter(r => this.filterByDate(r));
         if (this.tradeTypeFilter === 'outbound') baseRows = baseRows.filter(r => r.type === 'outbound');
         else if (this.tradeTypeFilter === 'inbound') baseRows = baseRows.filter(r => r.type === 'inbound');
 
@@ -1483,9 +1622,9 @@ const app = {
             `;
         };
 
-        const periodPrefix = (this.dateType === 'confirmed_month')
-            ? `<span class="badge bg-dark bg-opacity-10 text-dark border me-1">${this.confirmedMonth ? this.confirmedMonth + ' 확정' : '전체 확정'}</span>`
-            : '';
+        const periodPrefix = this.isCustomDateMode
+            ? `<span class="badge bg-dark bg-opacity-10 text-dark border me-1">${this.startDate || ''} ~ ${this.endDate || ''}</span>`
+            : `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 me-1">${this.currentYear}년 ${this.selectedMonth === 'all' ? '전체' : this.selectedMonth + '월'}</span>`;
 
         const filterResetBtn = currentAcc
             ? `<button class="btn btn-link btn-sm text-danger p-0 ms-1 text-decoration-none" onclick="app.filterByAccount('')" style="font-size:0.78rem;" title="계정 필터 해제"><i class='bx bx-x-circle'></i> 전체보기</button>`
