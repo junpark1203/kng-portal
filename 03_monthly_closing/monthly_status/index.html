@@ -188,12 +188,16 @@
         }
 
         /* 키보드 방향키 네비게이션 포커스 스타일 */
-        .keyboard-focused-row {
-            outline: 2px solid #2563eb !important;
-            outline-offset: -2px;
-            background-color: rgba(37, 99, 235, 0.08) !important;
-            position: relative;
-            z-index: 2;
+        #mainStatusTable tr.keyboard-focused-row > td {
+            background-color: #dbeafe !important;
+            border-top: 2px solid #2563eb !important;
+            border-bottom: 2px solid #2563eb !important;
+        }
+        #mainStatusTable tr.keyboard-focused-row > td:first-child {
+            border-left: 3px solid #2563eb !important;
+        }
+        #mainStatusTable tr.keyboard-focused-row > td:last-child {
+            border-right: 3px solid #2563eb !important;
         }
 
         /* ── 인쇄 전용 스타일 (정산장부 A4 최적화 양식 계승) ── */

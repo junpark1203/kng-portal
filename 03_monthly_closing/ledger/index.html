@@ -274,15 +274,24 @@
         }
 
         /* 키보드 탐색 포커스 행 스타일 */
-        .keyboard-focused-row {
-            outline: 2px solid #2563eb !important;
-            outline-offset: -2px;
-            background-color: #eff6ff !important;
+        #printableArea tr.keyboard-focused-row > td {
+            background-color: #dbeafe !important;
+            border-top: 2px solid #2563eb !important;
+            border-bottom: 2px solid #2563eb !important;
+        }
+        #printableArea tr.keyboard-focused-row > td:first-child {
+            border-left: 3px solid #2563eb !important;
+        }
+        #printableArea tr.keyboard-focused-row > td:last-child {
+            border-right: 3px solid #2563eb !important;
         }
         @media print {
-            .keyboard-focused-row {
-                outline: none !important;
+            #printableArea tr.keyboard-focused-row > td {
                 background-color: transparent !important;
+                border-top: none !important;
+                border-bottom: 1px solid #aaa !important;
+                border-left: none !important;
+                border-right: 1px solid #ccc !important;
             }
         }
     </style>
