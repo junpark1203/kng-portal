@@ -1585,7 +1585,7 @@ const app = {
             const amount = isOut ? (item.outbound_total || 0) : (item.inbound_total || 0);
             totalAmount += amount;
             
-            const partner = item.supplier || item.destination || '';
+            const partner = isOut ? (item.destination || '') : (item.supplier || '');
             const typeText = isOut ? '출고' : '입고';
             
             tableRows += `

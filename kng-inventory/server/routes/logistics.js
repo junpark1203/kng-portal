@@ -859,10 +859,7 @@ router.get('/history', (req, res) => {
                 i.supplier as supplier, 
                 CASE 
                     WHEN i.is_direct = 1 THEN do.destination 
-                    ELSE (SELECT GROUP_CONCAT(DISTINCT o_sub.destination) 
-                          FROM logistics_outbound_lots lol 
-                          JOIN logistics_outbound o_sub ON lol.outbound_id = o_sub.id 
-                          WHERE lol.inbound_id = i.id) 
+                    ELSE NULL 
                 END as destination, 
                 CASE 
                     WHEN i.is_direct = 1 THEN do.actual_destination 
@@ -888,10 +885,7 @@ router.get('/history', (req, res) => {
                 'outbound' as type, o.id, o.date, 
                 CASE 
                     WHEN o.is_direct = 1 THEN di.supplier 
-                    ELSE (SELECT GROUP_CONCAT(DISTINCT i_sub.supplier) 
-                          FROM logistics_outbound_lots lol 
-                          JOIN logistics_inbound i_sub ON lol.inbound_id = i_sub.id 
-                          WHERE lol.outbound_id = o.id) 
+                    ELSE NULL 
                 END as supplier, 
                 o.destination as destination, 
                 o.actual_destination, o.item, o.spec, o.unit, o.category, 
