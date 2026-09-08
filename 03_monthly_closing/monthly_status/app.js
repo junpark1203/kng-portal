@@ -877,7 +877,11 @@ const app = {
         const currentVal = this.directPartnerFilter || '';
         let html = `<option value="">전체 연계처 (총 ${rows.length}건)</option>`;
 
-        const sortedPartners = Object.keys(partnerCounts).sort((a, b) => partnerCounts[b] - partnerCounts[a]);
+        const sortedPartners = Object.keys(partnerCounts).sort((a, b) => {
+            if (a === '(미지정)') return 1;
+            if (b === '(미지정)') return -1;
+            return a.localeCompare(b, 'ko');
+        });
         if (sortedPartners.length > 0) {
             html += `<optgroup label="직출 연계처 (${directCount}건)">`;
             sortedPartners.forEach(p => {
