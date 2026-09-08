@@ -1755,16 +1755,20 @@ router.post('/direct', (req, res) => {
 
         for (let i of items) {
             const itemSpec = i.spec || '';
+            const itemUnit = i.unit || '';
+            const inPrice = parseFloat(i.inbound_price !== undefined ? i.inbound_price : (i.unit_price !== undefined ? i.unit_price : 0)) || 0;
+            const outPrice = parseFloat(i.selling_price !== undefined ? i.selling_price : (i.outbound_price !== undefined ? i.outbound_price : 0)) || 0;
+            const qty = parseFloat(i.qty) || 0;
             // Because of db.serialize, these callbacks will execute in order.
-            stmtIn.run(date, supplier, i.item, itemSpec, i.unit, i.qty, i.unit_price, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
+            stmtIn.run(date, supplier, i.item, itemSpec, itemUnit, qty, inPrice, i.in_shipping_fee || 0, i.in_shipping_fee_vat_included || 0, i.note || '', i.category || '', txInGroupId, i.trade_type || '내수', function(errIn) {
                 if (errIn) { hasError = true; return; }
                 const inboundId = this.lastID;
                 
-                stmtOut.run(date, destination, actual_destination || '', i.item, itemSpec, i.unit, i.qty, i.selling_price, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
+                stmtOut.run(date, destination, actual_destination || '', i.item, itemSpec, itemUnit, qty, outPrice, i.shipping_fee || 0, i.shipping_fee_vat_included || 0, i.note || '', i.category || '', txOutGroupId, i.trade_type || '내수', function(errOut) {
                     if (errOut) { hasError = true; return; }
                     const outboundId = this.lastID;
                     
-                    stmtLots.run(outboundId, inboundId, i.qty, function(errLots) {
+                    stmtLots.run(outboundId, inboundId, qty, function(errLots) {
                         if (errLots) hasError = true;
                     });
                 });

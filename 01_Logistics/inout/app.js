@@ -1935,14 +1935,14 @@ const app = {
                     <div class="col-4">
                         <div class="d-flex gap-1">
                             <input type="number" class="form-control form-control-sm dir-qty" placeholder="수량" step="0.01" required>
-                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
+                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위">
                         </div>
                     </div>
                     <div class="col-3">
-                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1">
                     </div>
                     <div class="col-4">
-                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출단가" min="0" step="1" required>
+                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출단가" min="0" step="1">
                     </div>
                     <div class="col-1 text-end">
                         <button type="button" class="btn btn-sm btn-outline-danger w-100 px-1" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
@@ -2019,10 +2019,13 @@ const app = {
         rows.forEach((row, idx) => {
             const item = row.querySelector('.dir-item').value.trim();
             const spec = row.querySelector('.dir-spec').value.trim();
-            const unit = row.querySelector('.dir-unit').value.trim();
-            const qty = parseFloat(row.querySelector('.dir-qty').value);
-            const in_price = parseFloat(row.querySelector('.dir-in-price').value);
-            const out_price = parseFloat(row.querySelector('.dir-out-price').value);
+            const unit = row.querySelector('.dir-unit') ? row.querySelector('.dir-unit').value.trim() : '';
+            const qtyVal = row.querySelector('.dir-qty') ? row.querySelector('.dir-qty').value : '';
+            const qty = parseFloat(qtyVal);
+            const inPriceVal = row.querySelector('.dir-in-price') ? row.querySelector('.dir-in-price').value : '';
+            const in_price = inPriceVal !== '' ? (parseFloat(inPriceVal) || 0) : 0;
+            const outPriceVal = row.querySelector('.dir-out-price') ? row.querySelector('.dir-out-price').value : '';
+            const out_price = outPriceVal !== '' ? (parseFloat(outPriceVal) || 0) : 0;
             const category = row.querySelector('.dir-category') ? row.querySelector('.dir-category').value.trim() : '';
             const in_shipping_fee = idx === 0 ? docInShippingFee : 0;
             const in_shipping_fee_vat_included = idx === 0 ? docInShippingFeeVatIncluded : 0;
@@ -2031,11 +2034,11 @@ const app = {
             const note = docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
 
-            if (!item || !unit || isNaN(qty) || isNaN(in_price) || isNaN(out_price)) {
+            if (!item || isNaN(qty)) {
                 hasError = true;
             } else {
                 items.push({ 
-                    id: row.dataset.dbId, item, spec: spec || '', unit, qty, 
+                    id: row.dataset.dbId, item, spec: spec || '', unit: unit || '', qty, 
                     unit_price: in_price, inbound_price: in_price,
                     selling_price: out_price, outbound_price: out_price, 
                     in_shipping_fee, in_shipping_fee_vat_included,
@@ -2045,7 +2048,7 @@ const app = {
             }
         });
 
-        if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
+        if (hasError) return alert('공급 품목 내역의 품목명과 수량을 올바르게 입력해주세요.');
 
         const payload = {
             date: date,
