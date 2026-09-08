@@ -131,17 +131,12 @@
                 gap: 0.75rem;
             }
         }
-        /* 키보드 방향키 네비게이션 포커스 스타일 */
+        /* 키보드 방향키 네비게이션 포커스 스타일 (깔끔한 배경 하이라이트 및 좌측 4px 액센트 바) */
         #historyTbody tr.keyboard-focused-row > td {
             background-color: #dbeafe !important;
-            border-top: 2px solid #2563eb !important;
-            border-bottom: 2px solid #2563eb !important;
         }
         #historyTbody tr.keyboard-focused-row > td:first-child {
-            border-left: 3px solid #2563eb !important;
-        }
-        #historyTbody tr.keyboard-focused-row > td:last-child {
-            border-right: 3px solid #2563eb !important;
+            box-shadow: inset 4px 0 0 #2563eb !important;
         }
     </style>
 </head>

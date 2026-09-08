@@ -233,26 +233,13 @@
                 gap: 0.75rem;
             }
         }
-        /* 키보드 방향키 네비게이션 포커스 스타일 (테이블 레이아웃 붕괴 방지: tr에 position/outline 금지) */
+        /* 키보드 방향키 네비게이션 포커스 스타일 (깔끔한 배경 하이라이트 및 좌측 4px 액센트 바) */
         #mainTable tr.keyboard-focused-row > td,
         #mainTable tr.keyboard-focused-subrow > td {
             background-color: #dbeafe !important;
         }
-        #mainTable tr.keyboard-focused-row > td {
-            border-top: 2px solid #2563eb !important;
-        }
-        #mainTable tr.keyboard-focused-subrow > td {
-            border-bottom: 2px solid #2563eb !important;
-        }
-        #mainTable tr.keyboard-focused-row > td[rowspan] {
-            border-bottom: 2px solid #2563eb !important;
-        }
         #mainTable tr.keyboard-focused-row > td:first-child {
-            border-left: 3px solid #2563eb !important;
-        }
-        #mainTable tr.keyboard-focused-row > td:last-child,
-        #mainTable tr.keyboard-focused-subrow > td:last-child {
-            border-right: 3px solid #2563eb !important;
+            box-shadow: inset 4px 0 0 #2563eb !important;
         }
     </style>
 </head>

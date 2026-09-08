@@ -273,25 +273,17 @@
             color: #2563eb !important;
         }
 
-        /* 키보드 탐색 포커스 행 스타일 */
+        /* 키보드 탐색 포커스 행 스타일 (깔끔한 배경 하이라이트 및 좌측 4px 액센트 바) */
         #printableArea tr.keyboard-focused-row > td {
             background-color: #dbeafe !important;
-            border-top: 2px solid #2563eb !important;
-            border-bottom: 2px solid #2563eb !important;
         }
         #printableArea tr.keyboard-focused-row > td:first-child {
-            border-left: 3px solid #2563eb !important;
-        }
-        #printableArea tr.keyboard-focused-row > td:last-child {
-            border-right: 3px solid #2563eb !important;
+            box-shadow: inset 4px 0 0 #2563eb !important;
         }
         @media print {
             #printableArea tr.keyboard-focused-row > td {
                 background-color: transparent !important;
-                border-top: none !important;
-                border-bottom: 1px solid #aaa !important;
-                border-left: none !important;
-                border-right: 1px solid #ccc !important;
+                box-shadow: none !important;
             }
         }
     </style>
