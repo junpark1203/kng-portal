@@ -1076,6 +1076,95 @@ router.get('/direct/template', async (req, res) => {
     }
 });
 
+// --- 직출고 엑셀 일자 정규화 헬퍼 함수 ---
+function normalizeExcelDate(rawVal, targetYear) {
+    if (rawVal === null || rawVal === undefined || rawVal === '') {
+        return { isEmpty: true };
+    }
+
+    // Date 객체 (ExcelJS 파싱)
+    if (rawVal instanceof Date) {
+        const offset = rawVal.getTimezoneOffset() * 60000;
+        const localDate = new Date(rawVal.getTime() - offset);
+        const y = localDate.getFullYear();
+        const m = String(localDate.getMonth() + 1).padStart(2, '0');
+        const d = String(localDate.getDate()).padStart(2, '0');
+
+        // 엑셀 기본 epoch 연도 (1899, 1900, 1904) -> 연도 미입력으로 간주
+        if (y <= 1904) {
+            if (targetYear) {
+                return { success: true, date: `${targetYear}-${m}-${d}`, needsYear: false };
+            }
+            return { success: false, needsYear: true, sample: `${m}-${d}` };
+        }
+        return { success: true, date: `${y}-${m}-${d}`, detectedYear: y, needsYear: false };
+    }
+
+    const str = String(rawVal).trim();
+    if (!str) return { isEmpty: true };
+
+    // 1. YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY년 M월 D일
+    const ymdMatch = str.match(/^(\d{4})[-./년\s]+(\d{1,2})[-./월\s]+(\d{1,2})일?$/);
+    if (ymdMatch) {
+        const y = ymdMatch[1];
+        const m = String(parseInt(ymdMatch[2], 10)).padStart(2, '0');
+        const d = String(parseInt(ymdMatch[3], 10)).padStart(2, '0');
+        return { success: true, date: `${y}-${m}-${d}`, detectedYear: y, needsYear: false };
+    }
+
+    // 2. YYYYMMDD (8자리 숫자)
+    const ymd8Match = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (ymd8Match) {
+        const y = ymd8Match[1];
+        const m = ymd8Match[2];
+        const d = ymd8Match[3];
+        return { success: true, date: `${y}-${m}-${d}`, detectedYear: y, needsYear: false };
+    }
+
+    // 3. YY-MM-DD, YY.MM.DD, YY/MM/DD (2자리 연도)
+    const yyMatch = str.match(/^(\d{2})[-./](\d{1,2})[-./](\d{1,2})$/);
+    if (yyMatch) {
+        const y = '20' + yyMatch[1];
+        const m = String(parseInt(yyMatch[2], 10)).padStart(2, '0');
+        const d = String(parseInt(yyMatch[3], 10)).padStart(2, '0');
+        return { success: true, date: `${y}-${m}-${d}`, detectedYear: y, needsYear: false };
+    }
+
+    // 4. MM-DD, MM.DD, MM/DD, M-D, M.D, M/D, M월 D일 (연도 누락)
+    const mdMatch = str.match(/^(\d{1,2})[-./월\s]+(\d{1,2})일?$/);
+    if (mdMatch) {
+        const m = String(parseInt(mdMatch[1], 10)).padStart(2, '0');
+        const d = String(parseInt(mdMatch[2], 10)).padStart(2, '0');
+        if (targetYear) {
+            return { success: true, date: `${targetYear}-${m}-${d}`, needsYear: false };
+        }
+        return { success: false, needsYear: true, sample: `${m}-${d}` };
+    }
+
+    // 5. MMDD (4자리 숫자)
+    const md4Match = str.match(/^(\d{2})(\d{2})$/);
+    if (md4Match) {
+        const mNum = parseInt(md4Match[1], 10);
+        const dNum = parseInt(md4Match[2], 10);
+        if (mNum >= 1 && mNum <= 12 && dNum >= 1 && dNum <= 31) {
+            const m = String(mNum).padStart(2, '0');
+            const d = String(dNum).padStart(2, '0');
+            if (targetYear) {
+                return { success: true, date: `${targetYear}-${m}-${d}`, needsYear: false };
+            }
+            return { success: false, needsYear: true, sample: `${m}-${d}` };
+        }
+    }
+
+    // Fallback: standard replacement
+    const fallback = str.replace(/\./g, '-').replace(/\//g, '-').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fallback)) {
+        return { success: true, date: fallback, detectedYear: fallback.substring(0, 4), needsYear: false };
+    }
+
+    return { success: false, invalid: true, raw: str };
+}
+
 // --- 직출고 엑셀 업로드 ---
 router.post('/direct/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
@@ -1083,6 +1172,11 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
     }
 
     try {
+        let targetYear = (req.body && req.body.target_year) ? String(req.body.target_year).trim() : '';
+        if (targetYear && !/^\d{4}$/.test(targetYear)) {
+            targetYear = '';
+        }
+
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(req.file.buffer);
         const worksheet = workbook.worksheets[0];
@@ -1090,6 +1184,9 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         const rows = [];
         let headerMap = {};
         let is17Col = false;
+
+        const missingYearSamples = [];
+        let detectedYearFromFile = '';
 
         // Carry-forward / Fill-down state tracking (일자, 매입처, 매출처 3종만 상속)
         let lastDate = '';
@@ -1152,7 +1249,15 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 return v !== null && v !== undefined ? String(v).trim() : '';
             };
 
-            const rawDate = getVal(headerMap.date || 1);
+            const getRawDateVal = (col) => {
+                if (!col) return null;
+                let v = row.getCell(col).value;
+                if (v && typeof v === 'object' && v.result !== undefined) v = v.result;
+                if (v && typeof v === 'object' && v.text !== undefined) v = v.text;
+                return v;
+            };
+
+            const rawDateVal = getRawDateVal(headerMap.date || 1);
             const rawSupplier = getVal(headerMap.supplier || 2);
             const rawDestination = getVal(headerMap.destination || 3);
             const rawActualDest = getVal(headerMap.actual_destination || 4);
@@ -1172,10 +1277,17 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             }
 
             // Fill-down (상위 값 상속: 일자, 매입처, 매출처만 한정):
-            // 1. Date (YYYY-MM-DD 정규화)
-            if (rawDate) {
-                const formattedDate = rawDate.replace(/\./g, '-').replace(/\//g, '-').trim();
-                lastDate = formattedDate;
+            // 1. Date (YYYY-MM-DD 정규화 및 MM-DD, MM/DD 등 다양한 포맷 / 연도 자동 보정)
+            if (rawDateVal !== null && rawDateVal !== undefined && rawDateVal !== '') {
+                const dateRes = normalizeExcelDate(rawDateVal, targetYear);
+                if (dateRes.detectedYear && !detectedYearFromFile) {
+                    detectedYearFromFile = String(dateRes.detectedYear);
+                }
+                if (dateRes.needsYear) {
+                    missingYearSamples.push(dateRes.sample || String(rawDateVal).trim());
+                } else if (dateRes.success) {
+                    lastDate = dateRes.date;
+                }
             }
             const date = lastDate;
 
@@ -1243,6 +1355,17 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                 date, supplier, destination, actual_destination, category, item, spec, unit, qty, in_price, out_price, in_shipping_fee, in_shipping_vat, out_shipping_fee, out_shipping_vat, note, trade_type
             });
         });
+
+        // 연도가 누락된 날짜(MM-DD 등)가 발견되었고, 요청에 target_year가 없으면 연도 확인 요청 응답
+        if (missingYearSamples.length > 0 && !targetYear) {
+            const uniqueSamples = Array.from(new Set(missingYearSamples)).slice(0, 5);
+            return res.json({
+                needsYear: true,
+                sampleDates: uniqueSamples,
+                defaultYear: detectedYearFromFile || new Date().getFullYear() || 2026,
+                message: '엑셀 일자에 연도 정보가 누락되어 있습니다. 적용할 연도를 확인해주세요.'
+            });
+        }
 
         if (rows.length === 0) {
             return res.status(400).json({ error: '유효한 직출고 데이터가 엑셀에서 발견되지 않았습니다. 첫 번째 품목 행(2행)에는 일자, 매입처, 매출처가 반드시 입력되어야 합니다.' });

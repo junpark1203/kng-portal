@@ -1070,6 +1070,49 @@
     </div>
 </div>
 
+<!-- 직출고 엑셀 일자 연도 확인 모달 -->
+<div class="modal fade" id="directYearModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" style="z-index: 1085;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
+        <div class="modal-content shadow border-0">
+            <div class="modal-header bg-warning text-dark py-3">
+                <h6 class="modal-title fw-bold mb-0">
+                    <i class='bx bx-calendar-event'></i> 엑셀 일자 연도 확인
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning py-2 px-3 small mb-3">
+                    <i class='bx bx-info-circle me-1'></i> 엑셀 일자에 <strong>연도가 포함되지 않은 날짜</strong>가 감지되었습니다.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted mb-1">감지된 날짜 예시:</label>
+                    <div id="directYearSamples" class="fw-bold text-primary small p-2 bg-light rounded border text-break">
+                        -
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold small mb-1" for="directTargetYearInput">적용할 연도 (4자리 숫자)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control text-center fw-bold fs-5" id="directTargetYearInput" min="2000" max="2099" placeholder="2026">
+                        <span class="input-group-text fw-bold">년</span>
+                    </div>
+                    <div class="form-text text-muted mt-1" style="font-size:0.75rem;">
+                        선택하신 연도를 기준으로 <code>YYYY-MM-DD</code> 형식으로 일괄 변환하여 등록합니다.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2 bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                    <i class='bx bx-x'></i> 취소
+                </button>
+                <button type="button" class="btn btn-warning btn-sm fw-bold px-3 shadow-sm" onclick="app.proceedDirectWithYear()">
+                    <i class='bx bx-check'></i> 해당 연도로 등록 계속
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 직출고 엑셀 중복 의심 내역 확인 모달 (스마트 중복 처리) -->
 <div class="modal fade" id="directDuplicateModal" tabindex="-1" data-bs-backdrop="static" style="z-index: 1090;">
     <div class="modal-dialog modal-dialog-scrollable" style="max-width: 95vw; width: 1400px; margin: 1.5rem auto;">
@@ -1182,6 +1225,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=17"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>

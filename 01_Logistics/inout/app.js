@@ -2471,20 +2471,26 @@ const app = {
         const modalEl = document.getElementById('directExcelModal');
         let modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) modal = new bootstrap.Modal(modalEl);
-        $('directExcelFile').value = '';
+        if ($('directExcelFile')) $('directExcelFile').value = '';
+        app.selectedTargetYear = null;
+        app.cachedDirectExcelFile = null;
         modal.show();
     },
 
-    uploadDirectExcel: async function() {
+    uploadDirectExcel: async function(targetYearOverride) {
         const fileInput = $('directExcelFile');
-        if (!fileInput.files || fileInput.files.length === 0) {
+        const file = (fileInput && fileInput.files && fileInput.files[0]) || app.cachedDirectExcelFile;
+        if (!file) {
             alert('업로드할 엑셀 파일을 선택해주세요.');
             return;
         }
         
-        const file = fileInput.files[0];
+        const effectiveYear = targetYearOverride || app.selectedTargetYear || '';
         const formData = new FormData();
         formData.append('file', file);
+        if (effectiveYear) {
+            formData.append('target_year', effectiveYear);
+        }
         
         const btn = document.querySelector('#directExcelModal .btn-warning');
         try {
@@ -2516,7 +2522,37 @@ const app = {
             if (res.ok) {
                 const data = await res.json();
 
-                // 중복 의심 건 발견 시 -> 스마트 중복 처리 모달 띄우기
+                // 1. 연도 누락 확인 모달 띄우기
+                if (data.needsYear) {
+                    app.cachedDirectExcelFile = file;
+
+                    // 감지된 날짜 샘플 표시
+                    const samplesEl = $('directYearSamples');
+                    if (samplesEl) {
+                        const sampleList = data.sampleDates || [];
+                        samplesEl.innerText = sampleList.length > 0 ? sampleList.join(', ') : '월-일 형식 감지됨';
+                    }
+
+                    // 기본 연도 지정
+                    const yearInput = $('directTargetYearInput');
+                    if (yearInput) {
+                        yearInput.value = data.defaultYear || new Date().getFullYear();
+                    }
+
+                    // 직출고 업로드 모달 숨기기
+                    const excelModalEl = document.getElementById('directExcelModal');
+                    const excelModal = bootstrap.Modal.getInstance(excelModalEl);
+                    if (excelModal) excelModal.hide();
+
+                    // 연도 확인 모달 띄우기
+                    const yearModalEl = document.getElementById('directYearModal');
+                    let yearModal = bootstrap.Modal.getInstance(yearModalEl);
+                    if (!yearModal) yearModal = new bootstrap.Modal(yearModalEl);
+                    yearModal.show();
+                    return;
+                }
+
+                // 2. 중복 의심 건 발견 시 -> 스마트 중복 처리 모달 띄우기
                 if (data.hasDuplicates) {
                     app.cachedDirectExcelFile = file;
 
@@ -2582,6 +2618,10 @@ const app = {
                 const modalEl = document.getElementById('directExcelModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
+
+                app.selectedTargetYear = null;
+                app.cachedDirectExcelFile = null;
+                if ($('directExcelFile')) $('directExcelFile').value = '';
                 
                 app.resetPageAndLoadHistory();
             } else {
@@ -2603,6 +2643,31 @@ const app = {
         }
     },
 
+    proceedDirectWithYear: function() {
+        const yearInput = $('directTargetYearInput');
+        const yearVal = yearInput ? yearInput.value.trim() : '';
+        if (!yearVal || !/^\d{4}$/.test(yearVal)) {
+            alert('올바른 4자리 연도를 입력해주세요. (예: 2026)');
+            if (yearInput) yearInput.focus();
+            return;
+        }
+
+        app.selectedTargetYear = yearVal;
+
+        const yearModalEl = document.getElementById('directYearModal');
+        const yearModal = bootstrap.Modal.getInstance(yearModalEl);
+        if (yearModal) yearModal.hide();
+
+        const excelModalEl = document.getElementById('directExcelModal');
+        let excelModal = bootstrap.Modal.getInstance(excelModalEl);
+        if (!excelModal) excelModal = new bootstrap.Modal(excelModalEl);
+        excelModal.show();
+
+        setTimeout(() => {
+            app.uploadDirectExcel(yearVal);
+        }, 300);
+    },
+
     proceedDirectDuplicate: async function(action) {
         const file = app.cachedDirectExcelFile || ($('directExcelFile') && $('directExcelFile').files[0]);
         if (!file) {
@@ -2619,6 +2684,9 @@ const app = {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('duplicate_action', action);
+        if (app.selectedTargetYear) {
+            formData.append('target_year', app.selectedTargetYear);
+        }
 
         const dupModalEl = document.getElementById('directDuplicateModal');
         const footerBtns = dupModalEl ? dupModalEl.querySelectorAll('button') : [];
@@ -2664,6 +2732,7 @@ const app = {
 
                 if ($('directExcelFile')) $('directExcelFile').value = '';
                 app.cachedDirectExcelFile = null;
+                app.selectedTargetYear = null;
 
                 app.resetPageAndLoadHistory();
             } else {
@@ -2674,7 +2743,7 @@ const app = {
                 } catch(e) {}
                 alert(`등록 실패:\n${errText}`);
             }
-        } catch(err) {
+        } catch (err) {
             alert(`등록 처리 중 오류 발생: ${err.message}`);
         } finally {
             footerBtns.forEach(b => b.disabled = false);
