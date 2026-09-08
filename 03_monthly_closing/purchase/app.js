@@ -1770,7 +1770,7 @@ const app = {
         }
 
         try {
-            const checkRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound`);
+            const checkRes = await window.authFetch(`${API_BASE}/orphans/direct-inbound?_t=${Date.now()}`);
             if (!checkRes.ok) {
                 const errData = await checkRes.json().catch(() => ({}));
                 throw new Error(errData.error || `서버 응답 오류 (${checkRes.status})`);

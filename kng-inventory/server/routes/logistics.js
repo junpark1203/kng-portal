@@ -407,7 +407,7 @@ router.post('/bulk-delete', async (req, res) => {
             const directInboundIds = lots.map(l => l.inbound_id);
             if (directInboundIds.length > 0) {
                 const inPlaceholders = directInboundIds.map(() => '?').join(',');
-                await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders}) AND is_direct = 1 AND qty_remaining >= qty_initial`, directInboundIds);
+                await dbRun(`DELETE FROM logistics_inbound WHERE id IN (${inPlaceholders}) AND is_direct = 1`, directInboundIds);
             }
         }
 
@@ -2270,8 +2270,17 @@ router.delete('/outbound/:id', (req, res) => {
                     return res.status(500).json({ error: 'Failed to restore inbound inventory' });
                 }
                 
-                db.run(`DELETE FROM logistics_inbound WHERE is_direct = 1 AND qty_remaining = qty_initial`, function(errClean) {
-                    // Ignore errors for cleanup, or log them
+                const directInboundIds = (lots || []).map(l => l.inbound_id).filter(Boolean);
+                const cleanupDirectInbound = (cb) => {
+                    if (directInboundIds.length > 0) {
+                        const ph = directInboundIds.map(() => '?').join(',');
+                        db.run(`DELETE FROM logistics_inbound WHERE id IN (${ph}) AND is_direct = 1`, directInboundIds, cb);
+                    } else {
+                        cb();
+                    }
+                };
+
+                cleanupDirectInbound(function(errClean) {
                     if (errClean) console.error("Error cleaning up direct inbound:", errClean);
 
                     db.run(`DELETE FROM logistics_outbound_lots WHERE outbound_id = ?`, [id], function(err3) {
