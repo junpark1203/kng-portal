@@ -1188,10 +1188,11 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
         const missingYearSamples = [];
         let detectedYearFromFile = '';
 
-        // Carry-forward / Fill-down state tracking (일자, 매입처, 매출처 3종만 상속)
+        // Carry-forward / Fill-down state tracking (일자, 매입처, 매출처 및 분류 상속)
         let lastDate = '';
         let lastSupplier = '';
         let lastDestination = '';
+        let lastCategory = '';
 
         worksheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) {
@@ -1273,10 +1274,14 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
 
             // Completely blank or empty row -> skip
             if (!item && qty === 0) {
+                // 단, 분류만 적힌 구분/헤더 행인 경우 다음 행들을 위해 상위 분류 값 갱신
+                if (rawCategory) {
+                    lastCategory = rawCategory;
+                }
                 return;
             }
 
-            // Fill-down (상위 값 상속: 일자, 매입처, 매출처만 한정):
+            // Fill-down (상위 값 상속: 일자, 매입처, 매출처, 분류):
             // 1. Date (YYYY-MM-DD 정규화 및 MM-DD, MM/DD 등 다양한 포맷 / 연도 자동 보정)
             if (rawDateVal !== null && rawDateVal !== undefined && rawDateVal !== '') {
                 const dateRes = normalizeExcelDate(rawDateVal, targetYear);
@@ -1303,9 +1308,14 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             }
             const destination = lastDestination;
 
+            // 4. Category (분류: 전표가 바뀌더라도 상위 행의 분류 값을 계속 물려받음)
+            if (rawCategory) {
+                lastCategory = rawCategory;
+            }
+            const category = lastCategory || '';
+
             // 나머지 항목은 상속하지 않고 빈칸 그대로 저장 (규격 없는 제품에 상위 규격 오염 방지)
             const actual_destination = rawActualDest || destination;
-            const category = rawCategory || '';
             const trade_type = rawTradeType || '내수';
             const note = rawNote || '';
 
