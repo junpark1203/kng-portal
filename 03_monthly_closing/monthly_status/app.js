@@ -52,7 +52,7 @@ const app = {
     selectedMonth: 'all', // 'all' (전체) | 1 ~ 12
     isCustomDateMode: false, // 상세 일자 직접입력 모드 활성화 여부
     userExplicitlyClickedConfirmFilter: false, // 사용자가 직접 확정/미확정 필터를 클릭했는지 여부
-    dateType: 'settlement', // 'settlement' (정산일자) | 'transaction' (입출고일자) | 'confirmed_month' (확정월)
+    dateType: 'confirmed_month', // 'confirmed_month' (확정월) | 'settlement' (정산일자) | 'transaction' (입출고일자)
     startDate: '', // 'YYYY-MM-DD'
     endDate: '', // 'YYYY-MM-DD'
     confirmedMonth: '', // 'YYYY-MM'
@@ -113,16 +113,16 @@ const app = {
         this.currentYear = new Date().getFullYear();
         this.selectedMonth = 'all';
         this.isCustomDateMode = false;
-        this.dateType = 'settlement';
+        this.dateType = 'confirmed_month';
         this.startDate = '';
         this.endDate = '';
 
-        if ($('dateTypeSelect')) $('dateTypeSelect').value = 'settlement';
+        if ($('dateTypeSelect')) $('dateTypeSelect').value = 'confirmed_month';
         if ($('startDate')) $('startDate').value = '';
         if ($('endDate')) $('endDate').value = '';
 
         this.updateYearDropdown();
-        this.renderMonthNavigator();
+        this.updateDateControlsUI();
         this.syncBatchTargetMonth();
 
         // 날짜 자동보정 리스너 등록
@@ -430,9 +430,12 @@ const app = {
 
     onYearSelectChange: function(val) {
         this.currentYear = parseInt(val, 10) || new Date().getFullYear();
-        this.isCustomDateMode = false;
-        this.closeCustomDateRow();
-        this.renderMonthNavigator();
+        if (this.dateType === 'confirmed_month') {
+            this.isCustomDateMode = false;
+            this.renderMonthNavigator();
+        } else {
+            this.setDefaultDateRangeForCurrentYearMonth();
+        }
         this.syncBatchTargetMonth();
         if (this.selectedPartner) {
             this.autoAdjustConfirmFilterForCurrentView();
@@ -443,7 +446,6 @@ const app = {
     onMonthSelect: function(m) {
         this.selectedMonth = (m === 'all') ? 'all' : parseInt(m, 10);
         this.isCustomDateMode = false;
-        this.closeCustomDateRow();
         this.renderMonthNavigator();
         this.syncBatchTargetMonth();
         if (this.selectedPartner) {
@@ -461,58 +463,65 @@ const app = {
     },
 
     onDateTypeChange: function() {
-        this.dateType = $('dateTypeSelect')?.value || 'settlement';
+        this.dateType = $('dateTypeSelect')?.value || 'confirmed_month';
+        this.updateDateControlsUI();
         if (this.selectedPartner) {
             this.autoAdjustConfirmFilterForCurrentView();
             this.applyFiltersAndRender();
         }
     },
 
-    // ── 상세 일자 직접 입력 모드 토글 및 관리 ──
-    toggleCustomDateMode: function() {
-        const row = $('customDateRangeRow');
-        const btn = $('btnToggleCustomDate');
-        if (!row) return;
+    updateDateControlsUI: function() {
+        const monthNav = $('monthNavigatorBar');
+        const dateRange = $('customDateRangeContainer');
+        const isConfirmed = (this.dateType === 'confirmed_month');
 
-        if (row.classList.contains('d-none')) {
-            row.classList.remove('d-none');
-            if (btn) {
-                btn.classList.remove('btn-outline-secondary');
-                btn.classList.add('btn-secondary', 'text-white');
+        if (isConfirmed) {
+            this.isCustomDateMode = false;
+            if (monthNav) monthNav.classList.remove('d-none');
+            if (dateRange) {
+                dateRange.classList.add('d-none');
+                dateRange.classList.remove('d-flex');
             }
-            this.isCustomDateMode = true;
             this.renderMonthNavigator();
-            if (this.startDate || this.endDate) {
-                if (this.selectedPartner) this.applyFiltersAndRender();
-            }
         } else {
-            this.closeCustomDateMode();
+            // settlement or transaction
+            this.isCustomDateMode = true;
+            if (monthNav) monthNav.classList.add('d-none');
+            if (dateRange) {
+                dateRange.classList.remove('d-none');
+                dateRange.classList.add('d-flex');
+            }
+            // 날짜가 비어있다면 현재 연도/월 기준으로 기본값 자동 세팅
+            if (!this.startDate || !this.endDate) {
+                this.setDefaultDateRangeForCurrentYearMonth();
+            } else {
+                this.updateDatePresetUI();
+            }
+        }
+
+        // 테이블 컬럼 헤더명 업데이트 (확정월 / 정산일자 / 입출고일자)
+        if ($('colDateHeader')) {
+            $('colDateHeader').innerText = (this.dateType === 'confirmed_month') ? '확정월' : ((this.dateType === 'transaction') ? '입출고일자' : '정산일자');
         }
     },
 
-    closeCustomDateRow: function() {
-        const row = $('customDateRangeRow');
-        const btn = $('btnToggleCustomDate');
-        if (row) row.classList.add('d-none');
-        if (btn) {
-            btn.classList.remove('btn-secondary', 'text-white');
-            btn.classList.add('btn-outline-secondary');
+    setDefaultDateRangeForCurrentYearMonth: function() {
+        const y = parseInt(this.currentYear, 10) || new Date().getFullYear();
+        if (this.selectedMonth && this.selectedMonth !== 'all') {
+            const m = parseInt(this.selectedMonth, 10);
+            const firstDay = new Date(y, m - 1, 1);
+            const lastDay = new Date(y, m, 0);
+            this.startDate = this.formatDate(firstDay);
+            this.endDate = this.formatDate(lastDay);
+        } else {
+            this.startDate = `${y}-01-01`;
+            this.endDate = `${y}-12-31`;
         }
-    },
-
-    closeCustomDateMode: function() {
-        this.closeCustomDateRow();
-        this.isCustomDateMode = false;
-        this.startDate = '';
-        this.endDate = '';
-        if ($('startDate')) $('startDate').value = '';
-        if ($('endDate')) $('endDate').value = '';
+        if ($('startDate')) $('startDate').value = this.startDate;
+        if ($('endDate')) $('endDate').value = this.endDate;
+        if ($('batchTargetMonth')) $('batchTargetMonth').value = this.startDate.substring(0, 7);
         this.updateDatePresetUI();
-        this.renderMonthNavigator();
-        if (this.selectedPartner) {
-            this.autoAdjustConfirmFilterForCurrentView();
-            this.applyFiltersAndRender();
-        }
     },
 
     onDateRangeChange: function() {
@@ -528,7 +537,6 @@ const app = {
         this.endDate = endEl?.value || '';
         this.isCustomDateMode = true;
         this.updateDatePresetUI();
-        this.renderMonthNavigator();
         if (this.selectedPartner) {
             this.autoAdjustConfirmFilterForCurrentView();
             this.applyFiltersAndRender();
@@ -537,7 +545,7 @@ const app = {
 
     setDatePreset: function(preset) {
         const now = new Date();
-        const y = now.getFullYear();
+        const y = parseInt(this.currentYear, 10) || now.getFullYear();
         const m = now.getMonth(); // 0-11
         if (preset === 'prev') {
             const firstDay = new Date(y, m - 1, 1);
@@ -552,14 +560,14 @@ const app = {
             this.endDate = this.formatDate(lastDay);
             if ($('batchTargetMonth')) $('batchTargetMonth').value = this.startDate.substring(0, 7);
         } else {
-            this.startDate = '';
-            this.endDate = '';
+            // all (해당 연도 전체 1.1 ~ 12.31)
+            this.startDate = `${y}-01-01`;
+            this.endDate = `${y}-12-31`;
         }
         if ($('startDate')) $('startDate').value = this.startDate;
         if ($('endDate')) $('endDate').value = this.endDate;
         this.isCustomDateMode = true;
         this.updateDatePresetUI();
-        this.renderMonthNavigator();
         if (this.selectedPartner) {
             this.autoAdjustConfirmFilterForCurrentView();
             this.applyFiltersAndRender();
@@ -573,20 +581,40 @@ const app = {
         if (!btnPrev || !btnCurrent || !btnAll) return;
 
         const now = new Date();
-        const y = now.getFullYear();
+        const y = parseInt(this.currentYear, 10) || now.getFullYear();
         const m = now.getMonth();
         const prevStart = this.formatDate(new Date(y, m - 1, 1));
         const prevEnd = this.formatDate(new Date(y, m, 0));
         const curStart = this.formatDate(new Date(y, m, 1));
         const curEnd = this.formatDate(new Date(y, m + 1, 0));
+        const allStart = `${y}-01-01`;
+        const allEnd = `${y}-12-31`;
 
-        const isAll = !this.startDate && !this.endDate;
+        const isAll = (!this.startDate && !this.endDate) || (this.startDate === allStart && this.endDate === allEnd);
         const isPrev = (this.startDate === prevStart && this.endDate === prevEnd);
         const isCur = (this.startDate === curStart && this.endDate === curEnd);
 
         btnAll.className = isAll ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
         btnPrev.className = isPrev ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
         btnCurrent.className = isCur ? 'btn btn-primary py-0 px-2 text-white fw-bold' : 'btn btn-outline-secondary py-0 px-2';
+    },
+
+    // 레거시/외부 호출 안전 호환 메서드
+    toggleCustomDateMode: function() {
+        if (this.dateType === 'confirmed_month') {
+            this.dateType = 'settlement';
+            if ($('dateTypeSelect')) $('dateTypeSelect').value = 'settlement';
+        } else {
+            this.dateType = 'confirmed_month';
+            if ($('dateTypeSelect')) $('dateTypeSelect').value = 'confirmed_month';
+        }
+        this.onDateTypeChange();
+    },
+    closeCustomDateRow: function() {},
+    closeCustomDateMode: function() {
+        this.dateType = 'confirmed_month';
+        if ($('dateTypeSelect')) $('dateTypeSelect').value = 'confirmed_month';
+        this.onDateTypeChange();
     },
 
     filterByDate: function(r) {

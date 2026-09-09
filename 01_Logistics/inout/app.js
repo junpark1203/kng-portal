@@ -422,25 +422,19 @@ const app = {
         const outModal = $('outboundModal');
         if (outModal) {
             outModal.addEventListener('hidden.bs.modal', () => {
-                if ($('outboundForm') && $('outboundForm').dataset.mode !== 'edit') {
-                    this.resetOutboundModalForm();
-                }
+                this.resetOutboundModalForm();
             });
         }
         const inModal = $('inboundModal');
         if (inModal) {
             inModal.addEventListener('hidden.bs.modal', () => {
-                if ($('inboundForm') && $('inboundForm').dataset.mode !== 'edit') {
-                    this.resetInboundModalForm();
-                }
+                this.resetInboundModalForm();
             });
         }
         const dirModal = $('directModal');
         if (dirModal) {
             dirModal.addEventListener('hidden.bs.modal', () => {
-                if ($('directForm') && $('directForm').dataset.mode !== 'edit') {
-                    this.resetDirectModalForm();
-                }
+                this.resetDirectModalForm();
             });
         }
     },
@@ -2506,11 +2500,11 @@ const app = {
                 
                 const btn = row.querySelector('.btn-lot');
                 if (isMatch) {
-                    btn.classList.remove('btn-outline-danger');
+                    btn.classList.remove('btn-outline-danger', 'btn-danger');
                     btn.classList.add('btn-outline-primary');
                     btn.innerHTML = 'Lot 확인됨 <i class="bx bx-check"></i>';
                 } else {
-                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.remove('btn-outline-primary', 'btn-success');
                     btn.classList.add('btn-outline-danger');
                     btn.innerHTML = 'Lot 재설정 필요 <i class="bx bx-error"></i>';
                     allValid = false;
@@ -2527,11 +2521,13 @@ const app = {
         
         if (allValid && hasItems) {
             btnSubmit.disabled = false;
-            errMsg.style.display = 'none';
+            if (errMsg) errMsg.style.display = 'none';
         } else {
             btnSubmit.disabled = true;
-            if (hasItems) errMsg.style.display = 'block';
-            else errMsg.style.display = 'none';
+            if (errMsg) {
+                if (hasItems) errMsg.style.display = 'block';
+                else errMsg.style.display = 'none';
+            }
         }
     },
 
@@ -2588,7 +2584,7 @@ const app = {
                 } else {
                     await authFetch(`${API_BASE}/outbound`, { method: 'POST', body: JSON.stringify(payload) });
                 }
-                alert('출고 완료되었습니다.');
+                alert(mode === 'edit' ? '출고 전표가 성공적으로 수정되었습니다.' : '출고 완료되었습니다.');
                 this.resetOutboundModalForm();
                 
                 // Update history tables
@@ -3062,6 +3058,11 @@ const app = {
             if ($('in_trade_type')) $('in_trade_type').value = first.trade_type || '내수';
             if ($('in_category')) $('in_category').value = first.category || '';
 
+            const title = document.querySelector('#inboundModal .modal-title');
+            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 입고 전표 수정";
+            const submitBtn = document.querySelector('#inboundForm button[type=\"submit\"]');
+            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 입고 수정 완료";
+
             items.forEach(item => {
                 const rowId = this.addInboundItemRow();
                 const newRow = $(rowId);
@@ -3101,6 +3102,11 @@ const app = {
             if ($('out_trade_type')) $('out_trade_type').value = first.trade_type || '내수';
             if ($('out_shipping')) $('out_shipping').value = first.shipping_fee || 0;
             if ($('out_shipping_vat')) $('out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
+
+            const title = document.querySelector('#outboundModal .modal-title');
+            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 출고 전표 수정";
+            const submitBtn = document.querySelector('#outboundForm button[type=\"submit\"]');
+            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 출고 수정 완료";
 
             for (let item of items) {
                 const rowId = this.addOutboundItemRow();
@@ -3187,19 +3193,9 @@ const app = {
                 const lotBtn = newRow.querySelector('.btn-lot');
                 if (lotBtn) {
                     lotBtn.disabled = false;
-                    const sumConsumed = finalConsumed.reduce((acc, c) => acc + c.consumed_qty, 0);
-                    const isMatch = Math.abs(sumConsumed - parseFloat(item.qty)) < 0.0001 && parseFloat(item.qty) > 0;
-                    if (isMatch) {
-                        lotBtn.classList.remove('btn-outline-danger', 'btn-outline-primary');
-                        lotBtn.classList.add('btn-success');
-                        lotBtn.innerHTML = 'Lot 확인됨 <i class="bx bx-check"></i>';
-                    } else {
-                        lotBtn.classList.remove('btn-success', 'btn-outline-primary');
-                        lotBtn.classList.add('btn-outline-danger');
-                        lotBtn.innerHTML = 'Lot 미설정 <i class="bx bx-error"></i>';
-                    }
                 }
             }
+            this.validateAllOutboundLots();
             this.openDrawer('outbound_create');
         } catch(err) { alert(err.message); }
     },
