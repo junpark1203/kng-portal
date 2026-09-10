@@ -292,6 +292,11 @@ h4 {
 .modal-backdrop {
     z-index: 1050 !important;
 }
+.modal-dialog .modal-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
 
 /* Drawer Detail Optimizations */
 .drawer-meta-bar {

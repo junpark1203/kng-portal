@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이카운트 ERP 스타일 입출고 그리드 프로토타입 (고밀도 셀 구조)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --erp-border: #cbd5e1;
+            --erp-border-dark: #94a3b8;
+            --erp-th-bg: #f1f5f9;
+            --erp-focus-border: #2563eb;
+            --erp-focus-bg: #eff6ff;
+            --erp-font-size: 12px;
+            --erp-row-height: 26px;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 8px; /* 극최소 여백 */
+            font-size: var(--erp-font-size);
+            user-select: none;
+        }
+
+        /* ── 최상단 콤팩트 컨트롤 툴바 (Ribbon Toolbar) ── */
+        .erp-top-toolbar {
+            background: #ffffff;
+            border: 1px solid var(--erp-border);
+            border-radius: 4px;
+            padding: 4px 10px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+        .erp-title-tag {
+            font-weight: 800;
+            font-size: 13px;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 8px;
+            white-space: nowrap;
+        }
+
+        /* 콤팩트 버튼 & 인풋 */
+        .btn-erp {
+            height: 26px;
+            padding: 0 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            border-radius: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            border: 1px solid var(--erp-border);
+            background: #ffffff;
+            color: #334155;
+            transition: all 0.1s ease;
+            white-space: nowrap;
+        }
+        .btn-erp:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+        .btn-erp-primary {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #1d4ed8;
+        }
+        .btn-erp-primary:hover {
+            background: #1d4ed8;
+            color: #ffffff;
+        }
+        .btn-erp-success {
+            background: #10b981;
+            color: #ffffff;
+            border-color: #059669;
+        }
+        .btn-erp-success:hover {
+            background: #059669;
+            color: #ffffff;
+        }
+
+        /* 모드 전환 탭 */
+        .erp-tab-group {
+            display: inline-flex;
+            background: #e2e8f0;
+            padding: 2px;
+            border-radius: 4px;
+            gap: 2px;
+        }
+        .erp-tab-btn {
+            border: none;
+            background: transparent;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 3px;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .erp-tab-btn.active {
+            background: #ffffff;
+            color: #2563eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* ── 전표 헤더 테이블 (Header Key-Value Table) ── */
+        .erp-voucher-card {
+            background: #ffffff;
+            border: 1px solid var(--erp-border);
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .erp-header-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .erp-header-table th {
+            background: var(--erp-th-bg);
+            border: 1px solid var(--erp-border);
+            color: #334155;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 2px 6px;
+            text-align: center;
+            vertical-align: middle;
+            height: var(--erp-row-height);
+            white-space: nowrap;
+        }
+        .erp-header-table td {
+            border: 1px solid var(--erp-border);
+            padding: 0;
+            vertical-align: middle;
+            height: var(--erp-row-height);
+            background: #ffffff;
+        }
+        .erp-header-table input,
+        .erp-header-table select {
+            width: 100%;
+            height: 100%;
+            border: none !important;
+            outline: none !important;
+            padding: 2px 6px;
+            font-size: 12px;
+            background: transparent;
+            color: #0f172a;
+        }
+        .erp-header-table td:focus-within {
+            box-shadow: inset 0 0 0 2px var(--erp-focus-border);
+            background-color: var(--erp-focus-bg);
+        }
+        .input-group-cell {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        .input-group-cell input {
+            flex: 1;
+        }
+        .input-group-cell .cell-btn {
+            width: 24px;
+            height: 100%;
+            border: none;
+            border-left: 1px solid var(--erp-border);
+            background: #f8fafc;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            font-size: 12px;
+        }
+        .input-group-cell .cell-btn:hover {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        /* ── ECOUNT ERP 스타일 스프레드시트 셀 그리드 (Grid Matrix) ── */
+        .erp-grid-container {
+            background: #ffffff;
+            border: 1px solid var(--erp-border);
+            border-radius: 4px;
+            overflow: auto;
+            max-height: calc(100vh - 195px);
+            min-height: 280px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            position: relative;
+        }
+        .erp-sheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            table-layout: fixed;
+            min-width: 1050px;
+        }
+        .erp-sheet-table thead th {
+            position: sticky;
+            top: 0;
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            font-size: 11.5px;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid var(--erp-border);
+            padding: 3px 4px;
+            height: 26px;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        .erp-sheet-table tbody td {
+            border: 1px solid var(--erp-border);
+            padding: 0; /* 셀 패딩 0 = 인풋이 꽉 참 */
+            height: var(--erp-row-height);
+            vertical-align: middle;
+            background: #ffffff;
+            position: relative;
+        }
+        .erp-sheet-table tbody tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        /* ── 셀(Cell) 내부 일체형 인풋 ── */
+        .erp-cell-input {
+            width: 100%;
+            height: 100%;
+            border: none !important;
+            outline: none !important;
+            padding: 1px 6px;
+            font-size: 12px;
+            background: transparent;
+            color: #1e293b;
+            text-align: left;
+        }
+        .erp-cell-input.text-end { text-align: right !important; }
+        .erp-cell-input.text-center { text-align: center !important; }
+        .erp-cell-input[readonly] {
+            background-color: #f8fafc !important;
+            color: #475569 !important;
+            cursor: default;
+        }
+
+        /* 활성 셀(Focused Cell) 엑셀 스타일 하이라이트 */
+        .erp-sheet-table tbody td.cell-active,
+        .erp-sheet-table tbody td:focus-within {
+            box-shadow: inset 0 0 0 2px var(--erp-focus-border) !important;
+            background-color: var(--erp-focus-bg) !important;
+            z-index: 5;
+        }
+        .erp-sheet-table tbody tr.row-selected td {
+            background-color: #f1f5f9;
+        }
+
+        /* 행 삭제 버튼 */
+        .btn-row-del {
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+        .btn-row-del:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        /* 자동완성 드롭다운 */
+        .cell-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            min-width: 220px;
+            background: #ffffff;
+            border: 1px solid #94a3b8;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            z-index: 100;
+            max-height: 180px;
+            overflow-y: auto;
+            display: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .suggestion-item {
+            padding: 4px 8px;
+            font-size: 11.5px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+        }
+        .suggestion-item:hover, .suggestion-item.selected {
+            background-color: #eff6ff;
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        /* ── 하단 고정 요약 및 단축키 안내 바 (Bottom Status Bar) ── */
+        .erp-bottom-panel {
+            background: #ffffff;
+            border: 1px solid var(--erp-border);
+            border-radius: 4px;
+            padding: 4px 10px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .erp-shortcut-chips {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #64748b;
+        }
+        .shortcut-badge {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-weight: 700;
+            color: #334155;
+            font-family: monospace;
+        }
+        .erp-totals {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 600;
+        }
+        .total-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .total-label { color: #64748b; font-size: 11.5px; }
+        .total-val { color: #0f172a; font-weight: 700; }
+        .grand-val { color: #2563eb; font-size: 13.5px; font-weight: 800; }
+
+        /* 비교 배너 */
+        .prototype-banner {
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11.5px;
+        }
+        .prototype-badge {
+            background: #3b82f6;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 700;
+            font-size: 10.5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 프로토타입 안내 배너 -->
+    <div class="prototype-banner">
+        <div class="d-flex align-items-center gap-2">
+            <span class="prototype-badge">ECOUNT ERP STYLE MOCKUP</span>
+            <strong>입출고 전표 고밀도 셀(Cell) 그리드 프로토타입</strong>
+            <span class="text-secondary d-none d-md-inline">| 여백 최소화(100% 화면 활용) + 키보드 연속 입력(Tab / Enter / 복사붙여넣기)</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-warning"><i class='bx bx-keyboard'></i> <strong>[Enter]</strong>나 <strong>[Tab]</strong>으로 셀을 이동해보세요!</span>
+            <button class="btn-erp btn-erp-primary" onclick="demoPasteExcel()"><i class='bx bx-paste'></i> 엑셀 붙여넣기 시뮬레이션</button>
+        </div>
+    </div>
+
+    <!-- 1. 최상단 콤팩트 툴바 (Ribbon Toolbar) -->
+    <div class="erp-top-toolbar">
+        <div class="toolbar-left">
+            <span class="erp-title-tag"><i class='bx bx-transfer text-primary'></i> 입고 전표 입력</span>
+            
+            <div class="erp-tab-group">
+                <button class="erp-tab-btn active" onclick="switchMode('inbound')">입고 입력</button>
+                <button class="erp-tab-btn" onclick="switchMode('outbound')">출고 입력</button>
+                <button class="erp-tab-btn" onclick="switchMode('direct')">직출고 입력</button>
+                <button class="erp-tab-btn" onclick="switchMode('history')">전표 조회</button>
+            </div>
+            
+            <div class="vr mx-1" style="height: 18px;"></div>
+            
+            <button class="btn-erp" onclick="addNewRow(true)"><i class='bx bx-plus-circle text-primary'></i> 행추가 (F3)</button>
+            <button class="btn-erp text-danger" onclick="deleteCheckedRows()"><i class='bx bx-trash'></i> 선택삭제</button>
+            <button class="btn-erp" onclick="clearAllRows()"><i class='bx bx-reset'></i> 전체 초기화</button>
+        </div>
+
+        <div class="toolbar-right">
+            <button class="btn-erp"><i class='bx bx-table'></i> 엑셀 업로드</button>
+            <button class="btn-erp"><i class='bx bx-printer'></i> 인쇄 미리보기</button>
+            <button class="btn-erp btn-erp-success" onclick="saveVoucher()"><i class='bx bx-check'></i> <strong>전표 저장 (F8)</strong></button>
+        </div>
+    </div>
+
+    <!-- 2. 전표 마스터 헤더 (Fixed Key-Value 2줄 테이블) -->
+    <div class="erp-voucher-card">
+        <table class="erp-header-table">
+            <colgroup>
+                <col style="width: 80px;">
+                <col style="width: 140px;">
+                <col style="width: 80px;">
+                <col style="width: 220px;">
+                <col style="width: 75px;">
+                <col style="width: 100px;">
+                <col style="width: 90px;">
+                <col style="width: 150px;">
+                <col style="width: 70px;">
+                <col>
+            </colgroup>
+            <tbody>
+                <tr>
+                    <th>입고일자 <span class="text-danger">*</span></th>
+                    <td>
+                        <input type="date" id="voucherDate" value="2026-09-10">
+                    </td>
+                    <th>매입처 <span class="text-danger">*</span></th>
+                    <td>
+                        <div class="input-group-cell">
+                            <input type="text" id="partnerName" placeholder="거래처명 입력 (F2 검색)" value="동서울화학(주)">
+                            <button class="cell-btn" title="거래처 검색"><i class='bx bx-search'></i></button>
+                        </div>
+                    </td>
+                    <th>구분</th>
+                    <td>
+                        <select id="tradeType">
+                            <option value="내수" selected>내수</option>
+                            <option value="수입">수입</option>
+                        </select>
+                    </td>
+                    <th>입고창고</th>
+                    <td>
+                        <select id="warehouse">
+                            <option value="1" selected>본사 제1물류창고</option>
+                            <option value="2">김포 제2물류센터</option>
+                            <option value="3">임가공 외주창고</option>
+                        </select>
+                    </td>
+                    <th>담당자</th>
+                    <td>
+                        <input type="text" placeholder="담당자" value="관리자">
+                    </td>
+                </tr>
+                <tr>
+                    <th>전표비고</th>
+                    <td colspan="7">
+                        <input type="text" id="voucherMemo" placeholder="전표 비고 및 입고 메모 (Enter로 품목 그리드 이동)">
+                    </td>
+                    <th>전표번호</th>
+                    <td>
+                        <input type="text" value="IN-20260910-001" readonly class="text-muted">
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3. 품목 명세서 (Spreadsheet Cell Matrix Grid) -->
+    <div class="erp-grid-container" id="gridWrapper">
+        <table class="erp-sheet-table" id="erpSheetTable">
+            <colgroup>
+                <col style="width: 32px;"> <!-- 체크 -->
+                <col style="width: 36px;"> <!-- No -->
+                <col style="width: 220px;"> <!-- 품목명 -->
+                <col style="width: 130px;"> <!-- 규격 -->
+                <col style="width: 90px;"> <!-- 분류 -->
+                <col style="width: 75px;"> <!-- 수량 -->
+                <col style="width: 50px;"> <!-- 단위 -->
+                <col style="width: 95px;"> <!-- 단가 -->
+                <col style="width: 110px;"> <!-- 공급가액 -->
+                <col style="width: 95px;"> <!-- 부가세 -->
+                <col style="width: 140px;"> <!-- 비고 -->
+                <col style="width: 34px;"> <!-- 삭제 -->
+            </colgroup>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="chkAll" onchange="toggleCheckAll(this)"></th>
+                    <th>No</th>
+                    <th>품목명 (품목코드) <span class="text-danger">*</span></th>
+                    <th>규격</th>
+                    <th>분류</th>
+                    <th>수량 <span class="text-danger">*</span></th>
+                    <th>단위</th>
+                    <th>단가 <span class="text-danger">*</span></th>
+                    <th>공급가액</th>
+                    <th>부가세(10%)</th>
+                    <th>적요 / 비고</th>
+                    <th>DEL</th>
+                </tr>
+            </thead>
+            <tbody id="sheetBody">
+                <!-- Javascript로 동적 렌더링 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 4. 하단 요약 및 단축키 안내 바 (Bottom Status Bar) -->
+    <div class="erp-bottom-panel">
+        <div class="erp-shortcut-chips">
+            <span><span class="shortcut-badge">Tab</span> / <span class="shortcut-badge">Shift+Tab</span> 셀 이동</span>
+            <span><span class="shortcut-badge">Enter</span> 다음 셀 / 새 행 추가</span>
+            <span><span class="shortcut-badge">↑ / ↓</span> 상하 이동</span>
+            <span><span class="shortcut-badge">Ctrl+V</span> 엑셀 붙여넣기</span>
+            <span><span class="shortcut-badge">F8</span> 저장</span>
+        </div>
+
+        <div class="erp-totals">
+            <div class="total-item">
+                <span class="total-label">품목수:</span>
+                <span class="total-val" id="totalRowCount">0건</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label">총수량:</span>
+                <span class="total-val" id="totalQtySum">0</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label">공급가액:</span>
+                <span class="total-val" id="totalSupplySum">0원</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label">부가세:</span>
+                <span class="total-val text-muted" id="totalVatSum">0원</span>
+            </div>
+            <div class="total-item">
+                <span class="total-label" style="font-size:12px; font-weight:700; color:#1e293b;">합계금액:</span>
+                <span class="grand-val" id="grandTotalSum">0원</span>
+            </div>
+            <button class="btn-erp btn-erp-success px-3" onclick="saveVoucher()"><i class='bx bx-check-double'></i> 저장</button>
+        </div>
+    </div>
+
+    <script>
+        // 기초 품목 마스터 샘플
+        const ITEM_MASTER = [
+            { item: "고무배합유 TMT-100", spec: "200KG/DRUM", category: "화공원료", unit: "DRUM", price: 340000 },
+            { item: "특기에틸 아세테이트(EA)", spec: "180KG/DRUM", category: "용제류", unit: "DRUM", price: 285000 },
+            { item: "가소제 DOP-500", spec: "200KG/DRUM", category: "가소제", unit: "DRUM", price: 410000 },
+            { item: "아크릴 모노머 MMA", spec: "190KG/DRUM", category: "모노머", unit: "DRUM", price: 520000 },
+            { item: "공업용 톨루엔 (Toluene)", spec: "170KG/DRUM", category: "용제류", unit: "DRUM", price: 215000 },
+            { item: "천연고무 라텍스 60%", spec: "1,000KG/IBC", category: "원료", unit: "IBC", price: 1850000 },
+            { item: "산화아연 (Zinc Oxide) 99.5%", spec: "25KG/BAG", category: "무기안료", unit: "BAG", price: 48000 }
+        ];
+
+        let rowCounter = 0;
+
+        // 초기 데이터 4개 행 생성
+        window.addEventListener('DOMContentLoaded', () => {
+            addNewRow(false, ITEM_MASTER[0], 5, ITEM_MASTER[0].price, "9월 1차 정기고");
+            addNewRow(false, ITEM_MASTER[1], 10, ITEM_MASTER[1].price, "긴급 발주분");
+            addNewRow(false, ITEM_MASTER[2], 2, ITEM_MASTER[2].price, "");
+            addNewRow(false, null, '', '', ""); // 빈 행
+            
+            recalculateTotals();
+
+            // 첫 번째 품목 입력창에 포커스
+            const firstInput = document.querySelector('#sheetBody tr:first-child .col-item');
+            if (firstInput) firstInput.focus();
+            
+            // 엑셀 붙여넣기 이벤트 감지
+            document.addEventListener('paste', handleGlobalPaste);
+        });
+
+        // ── 행 추가 함수 ──
+        function addNewRow(focus = false, defaultData = null, qty = '', price = '', memo = '') {
+            rowCounter++;
+            const tbody = document.getElementById('sheetBody');
+            const tr = document.createElement('tr');
+            tr.id = `row_${rowCounter}`;
+
+            const itemVal = defaultData ? defaultData.item : '';
+            const specVal = defaultData ? defaultData.spec : '';
+            const catVal = defaultData ? defaultData.category : '';
+            const unitVal = defaultData ? defaultData.unit : 'EA';
+            const priceVal = price !== '' ? price : (defaultData ? defaultData.price : '');
+            const qtyVal = qty !== '' ? qty : '';
+
+            tr.innerHTML = `
+                <td class="text-center"><input type="checkbox" class="row-chk"></td>
+                <td class="text-center text-muted fw-bold row-no"></td>
+                <td class="position-relative">
+                    <input type="text" class="erp-cell-input col-item" value="${itemVal}" placeholder="품목명/코드 입력" autocomplete="off">
+                    <div class="cell-suggestions"></div>
+                </td>
+                <td><input type="text" class="erp-cell-input col-spec" value="${specVal}" placeholder="규격"></td>
+                <td><input type="text" class="erp-cell-input col-cat" value="${catVal}" placeholder="분류"></td>
+                <td><input type="number" class="erp-cell-input text-end col-qty" value="${qtyVal}" placeholder="0" step="any"></td>
+                <td><input type="text" class="erp-cell-input text-center col-unit" value="${unitVal}" placeholder="단위"></td>
+                <td><input type="number" class="erp-cell-input text-end col-price" value="${priceVal}" placeholder="0"></td>
+                <td><input type="text" class="erp-cell-input text-end col-supply" readonly tabindex="-1" placeholder="0"></td>
+                <td><input type="text" class="erp-cell-input text-end col-vat text-muted" readonly tabindex="-1" placeholder="0"></td>
+                <td><input type="text" class="erp-cell-input col-memo" value="${memo}" placeholder="비고"></td>
+                <td class="text-center"><button type="button" class="btn-row-del" onclick="deleteRow('${tr.id}')" title="삭제"><i class='bx bx-x'></i></button></td>
+            `;
+
+            tbody.appendChild(tr);
+            bindRowEvents(tr);
+            updateRowNumbers();
+            calcRow(tr);
+
+            if (focus) {
+                const itemInput = tr.querySelector('.col-item');
+                if (itemInput) {
+                    itemInput.focus();
+                    itemInput.select();
+                }
+                tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            return tr;
+        }
+
+        // ── 이벤트 연결 (키보드 네비게이션 & 계산) ──
+        function bindRowEvents(tr) {
+            const inputs = tr.querySelectorAll('.erp-cell-input:not([readonly])');
+            const qtyInp = tr.querySelector('.col-qty');
+            const priceInp = tr.querySelector('.col-price');
+            const itemInp = tr.querySelector('.col-item');
+            const sugBox = tr.querySelector('.cell-suggestions');
+
+            // 수량/단가 실시간 계산
+            const handleCalc = () => {
+                calcRow(tr);
+                recalculateTotals();
+            };
+            qtyInp.addEventListener('input', handleCalc);
+            priceInp.addEventListener('input', handleCalc);
+
+            // 품목 자동완성
+            itemInp.addEventListener('input', (e) => {
+                const val = e.target.value.trim().toLowerCase();
+                if (!val) { sugBox.style.display = 'none'; return; }
+                const matches = ITEM_MASTER.filter(m => m.item.toLowerCase().includes(val) || m.category.toLowerCase().includes(val));
+                if (matches.length > 0) {
+                    sugBox.innerHTML = matches.map((m, i) => `
+                        <div class="suggestion-item ${i===0?'selected':''}" data-idx="${i}">
+                            <strong>${m.item}</strong> <span class="text-muted">(${m.spec} / ${m.category})</span>
+                        </div>
+                    `).join('');
+                    sugBox.style.display = 'block';
+
+                    sugBox.querySelectorAll('.suggestion-item').forEach((div, idx) => {
+                        div.addEventListener('click', () => {
+                            selectItemMatch(tr, matches[idx]);
+                            sugBox.style.display = 'none';
+                            tr.querySelector('.col-qty').focus();
+                        });
+                    });
+                } else {
+                    sugBox.style.display = 'none';
+                }
+            });
+
+            // 키보드 네비게이션 (Tab, Enter, Arrow Up/Down)
+            inputs.forEach((inp) => {
+                inp.addEventListener('keydown', (e) => {
+                    handleKeyNavigation(e, tr, inp);
+                });
+            });
+
+            // 문서 클릭 시 자동완성 닫기
+            document.addEventListener('click', (e) => {
+                if (!tr.contains(e.target)) sugBox.style.display = 'none';
+            });
+        }
+
+        // ── 품목 자동완성 선택 반영 ──
+        function selectItemMatch(tr, m) {
+            tr.querySelector('.col-item').value = m.item;
+            tr.querySelector('.col-spec').value = m.spec;
+            tr.querySelector('.col-cat').value = m.category;
+            tr.querySelector('.col-unit').value = m.unit;
+            if (!tr.querySelector('.col-price').value || tr.querySelector('.col-price').value == '0') {
+                tr.querySelector('.col-price').value = m.price;
+            }
+            calcRow(tr);
+            recalculateTotals();
+        }
+
+        // ── 개별 행 계산 ──
+        function calcRow(tr) {
+            const q = parseFloat(tr.querySelector('.col-qty').value) || 0;
+            const p = parseFloat(tr.querySelector('.col-price').value) || 0;
+            const s = Math.round(q * p);
+            const v = Math.round(s * 0.1);
+
+            tr.querySelector('.col-supply').value = s ? s.toLocaleString() : '';
+            tr.querySelector('.col-vat').value = v ? v.toLocaleString() : '';
+        }
+
+        // ── 전체 합계 재계산 ──
+        function recalculateTotals() {
+            const rows = document.querySelectorAll('#sheetBody tr');
+            let totalQty = 0;
+            let totalSupply = 0;
+            let totalVat = 0;
+            let count = 0;
+
+            rows.forEach(r => {
+                const item = r.querySelector('.col-item').value.trim();
+                const q = parseFloat(r.querySelector('.col-qty').value) || 0;
+                const p = parseFloat(r.querySelector('.col-price').value) || 0;
+                if (item || q > 0) count++;
+                const s = Math.round(q * p);
+                const v = Math.round(s * 0.1);
+
+                totalQty += q;
+                totalSupply += s;
+                totalVat += v;
+            });
+
+            document.getElementById('totalRowCount').innerText = count + '건';
+            document.getElementById('totalQtySum').innerText = totalQty.toLocaleString();
+            document.getElementById('totalSupplySum').innerText = totalSupply.toLocaleString() + '원';
+            document.getElementById('totalVatSum').innerText = totalVat.toLocaleString() + '원';
+            document.getElementById('grandTotalSum').innerText = (totalSupply + totalVat).toLocaleString() + '원';
+        }
+
+        // ── 스프레드시트 키보드 제어 엔진 ──
+        function handleKeyNavigation(e, tr, currentInp) {
+            const currentCell = currentInp.closest('td');
+            const currentRow = tr;
+            const sugBox = tr.querySelector('.cell-suggestions');
+
+            // 자동완성이 열려있을 때의 Enter
+            if (sugBox && sugBox.style.display === 'block') {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const selected = sugBox.querySelector('.suggestion-item.selected') || sugBox.querySelector('.suggestion-item');
+                    if (selected) {
+                        selected.click();
+                        return;
+                    }
+                } else if (e.key === 'Escape') {
+                    sugBox.style.display = 'none';
+                    return;
+                }
+            }
+
+            // 1. Enter 키 처리 (다음 셀 이동, 마지막 셀에서 새 행 생성)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const editableCells = Array.from(currentRow.querySelectorAll('.erp-cell-input:not([readonly])'));
+                const currentIndex = editableCells.indexOf(currentInp);
+
+                if (currentIndex < editableCells.length - 1) {
+                    // 같은 행의 다음 인풋으로 이동
+                    editableCells[currentIndex + 1].focus();
+                    editableCells[currentIndex + 1].select();
+                } else {
+                    // 행의 마지막 셀(비고)에서 Enter -> 다음 행으로 이동 또는 새 행 생성!
+                    const nextRow = currentRow.nextElementSibling;
+                    if (nextRow) {
+                        const firstInp = nextRow.querySelector('.col-item');
+                        if (firstInp) { firstInp.focus(); firstInp.select(); }
+                    } else {
+                        // 새 행 자동 생성 후 첫 셀로 포커스
+                        addNewRow(true);
+                    }
+                }
+            }
+
+            // 2. 방향키 위/아래 이동 (스프레드시트 내비게이션)
+            if (e.key === 'ArrowDown') {
+                const nextRow = currentRow.nextElementSibling;
+                if (nextRow) {
+                    const colClass = currentInp.className.match(/col-[a-z]+/)?.[0];
+                    if (colClass) {
+                        const target = nextRow.querySelector('.' + colClass);
+                        if (target) { target.focus(); target.select(); e.preventDefault(); }
+                    }
+                }
+            } else if (e.key === 'ArrowUp') {
+                const prevRow = currentRow.previousElementSibling;
+                if (prevRow) {
+                    const colClass = currentInp.className.match(/col-[a-z]+/)?.[0];
+                    if (colClass) {
+                        const target = prevRow.querySelector('.' + colClass);
+                        if (target) { target.focus(); target.select(); e.preventDefault(); }
+                    }
+                }
+            }
+        }
+
+        // ── 엑셀 클립보드 붙여넣기(Ctrl+V) 처리 ──
+        function handleGlobalPaste(e) {
+            const activeEl = document.activeElement;
+            if (!activeEl || !activeEl.classList.contains('erp-cell-input')) return;
+
+            const clipboardData = e.clipboardData || window.clipboardData;
+            const pastedText = clipboardData.getData('text');
+            if (!pastedText || !pastedText.includes('\t')) return; // 탭 문자가 있는 엑셀 데이터인 경우만
+
+            e.preventDefault();
+            parseAndInsertExcelData(pastedText, activeEl);
+        }
+
+        function parseAndInsertExcelData(text, startInput) {
+            const rows = text.trim().split(/\r\n|\n|\r/);
+            let startRow = startInput.closest('tr');
+
+            rows.forEach((rowStr, rIdx) => {
+                const cols = rowStr.split('\t');
+                let targetRow = (rIdx === 0) ? startRow : startRow.nextElementSibling;
+                
+                if (!targetRow) {
+                    targetRow = addNewRow(false);
+                    startRow = targetRow;
+                }
+
+                // 품목명, 규격, 분류, 수량, 단위, 단가 순서 매핑
+                if (cols[0] !== undefined) targetRow.querySelector('.col-item').value = cols[0].trim();
+                if (cols[1] !== undefined) targetRow.querySelector('.col-spec').value = cols[1].trim();
+                if (cols[2] !== undefined) targetRow.querySelector('.col-cat').value = cols[2].trim();
+                if (cols[3] !== undefined) targetRow.querySelector('.col-qty').value = cols[3].trim().replace(/,/g, '');
+                if (cols[4] !== undefined) targetRow.querySelector('.col-unit').value = cols[4].trim();
+                if (cols[5] !== undefined) targetRow.querySelector('.col-price').value = cols[5].trim().replace(/,/g, '');
+                if (cols[6] !== undefined) targetRow.querySelector('.col-memo').value = cols[6].trim();
+
+                calcRow(targetRow);
+                startRow = targetRow;
+            });
+
+            recalculateTotals();
+            alert(`${rows.length}개 행이 엑셀에서 성공적으로 입력되었습니다!`);
+        }
+
+        // 시뮬레이션 버튼용 가상 엑셀 붙여넣기
+        function demoPasteExcel() {
+            const dummyExcel = `산업용 신나 No.100\t18L/CAN\t용제류\t25\tCAN\t42000\t정기 납품\n메탄올 (Methanol 99%)\t200KG/DRUM\t화공\t8\tDRUM\t195000\t위험물 보관\n가성소다 액상 50%\t1,000KG/IBC\t알칼리\t3\tIBC\t450000\t탱크 보관`;
+            const firstInput = document.querySelector('#sheetBody tr:last-child .col-item') || addNewRow(true).querySelector('.col-item');
+            parseAndInsertExcelData(dummyExcel, firstInput);
+        }
+
+        function updateRowNumbers() {
+            document.querySelectorAll('#sheetBody tr').forEach((tr, i) => {
+                tr.querySelector('.row-no').innerText = i + 1;
+            });
+        }
+
+        function deleteRow(rowId) {
+            const tr = document.getElementById(rowId);
+            if (tr) tr.remove();
+            updateRowNumbers();
+            recalculateTotals();
+        }
+
+        function deleteCheckedRows() {
+            const chks = document.querySelectorAll('.row-chk:checked');
+            if (chks.length === 0) return alert('삭제할 행을 체크박스로 선택하세요.');
+            chks.forEach(c => c.closest('tr').remove());
+            updateRowNumbers();
+            recalculateTotals();
+        }
+
+        function clearAllRows() {
+            if (!confirm('모든 입력 행을 초기화하시겠습니까?')) return;
+            document.getElementById('sheetBody').innerHTML = '';
+            addNewRow(true);
+            recalculateTotals();
+        }
+
+        function toggleCheckAll(chkAll) {
+            document.querySelectorAll('.row-chk').forEach(c => c.checked = chkAll.checked);
+        }
+
+        function saveVoucher() {
+            recalculateTotals();
+            const total = document.getElementById('grandTotalSum').innerText;
+            const count = document.getElementById('totalRowCount').innerText;
+            alert(`[전표 저장 완료]\n\n• 입고일자: ${document.getElementById('voucherDate').value}\n• 매입처: ${document.getElementById('partnerName').value}\n• 품목수: ${count}\n• 총 합계금액: ${total}\n\n성공적으로 저장되었습니다.`);
+        }
+
+        function switchMode(mode) {
+            document.querySelectorAll('.erp-tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            alert(`[${mode}] 모드로 전환 시뮬레이션`);
+        }
+    </script>
+</body>
+</html>

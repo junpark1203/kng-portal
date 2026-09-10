@@ -78,6 +78,357 @@ const app = {
         this.loadCategories();
         this.loadHistory();
         this.initKeyboardNav();
+        this.bindGlobalModalShortcuts();
+        this.initGridColumnResizing();
+    },
+
+    bindGlobalModalShortcuts: function() {
+        document.addEventListener('keydown', (e) => {
+            const inModal = document.getElementById('inboundModal');
+            const outModal = document.getElementById('outboundModal');
+            const dirModal = document.getElementById('directModal');
+
+            const isInOpen = inModal && inModal.classList.contains('show');
+            const isOutOpen = outModal && outModal.classList.contains('show');
+            const isDirOpen = dirModal && dirModal.classList.contains('show');
+
+            if (!isInOpen && !isOutOpen && !isDirOpen) return;
+
+            if (e.key === 'F3') {
+                e.preventDefault();
+                if (isInOpen) app.addInboundItemRow(true);
+                else if (isOutOpen) app.addOutboundItemRow(true);
+                else if (isDirOpen) app.addDirectItemRow(true);
+            } else if (e.key === 'F8') {
+                e.preventDefault();
+                if (isInOpen) {
+                    const submitBtn = document.querySelector('#inboundForm button[type="submit"]');
+                    if (submitBtn) submitBtn.click();
+                } else if (isOutOpen) {
+                    const submitBtn = document.getElementById('btnOutboundSubmit');
+                    if (submitBtn) submitBtn.click();
+                } else if (isDirOpen) {
+                    const submitBtn = document.querySelector('#directForm button[type="submit"]');
+                    if (submitBtn) submitBtn.click();
+                }
+            }
+        });
+    },
+
+    initGridColumnResizing: function() {
+        const modalTableMap = {
+            'inboundModal': 'inboundSheetTable',
+            'outboundModal': 'outboundSheetTable',
+            'directModal': 'directSheetTable'
+        };
+
+        Object.entries(modalTableMap).forEach(([modalId, tableId]) => {
+            const modalEl = document.getElementById(modalId);
+            if (modalEl) {
+                modalEl.addEventListener('shown.bs.modal', () => {
+                    setTimeout(() => this.setupTableColumnResizing(tableId), 50);
+                });
+            }
+        });
+
+        ['inboundSheetTable', 'outboundSheetTable', 'directSheetTable'].forEach(id => {
+            this.setupTableColumnResizing(id);
+        });
+    },
+
+    setupTableColumnResizing: function(tableId) {
+        const table = typeof tableId === 'string' ? document.getElementById(tableId) : tableId;
+        if (!table) return;
+
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+        const headerRow = thead.querySelector('tr');
+        if (!headerRow) return;
+        const ths = Array.from(headerRow.querySelectorAll('th'));
+        if (ths.length === 0) return;
+
+        let colgroup = table.querySelector('colgroup');
+        if (!colgroup) {
+            colgroup = document.createElement('colgroup');
+            ths.forEach(() => {
+                const col = document.createElement('col');
+                colgroup.appendChild(col);
+            });
+            table.insertBefore(colgroup, thead);
+        }
+        const cols = Array.from(colgroup.querySelectorAll('col'));
+
+        const wrapper = table.closest('.erp-grid-wrapper');
+        if (wrapper) {
+            wrapper.style.overflowX = 'auto';
+        }
+
+        const syncColWidths = () => {
+            if (table.offsetWidth <= 0) return;
+            let totalW = 0;
+            ths.forEach((th, idx) => {
+                if (cols[idx]) {
+                    const w = Math.round(th.getBoundingClientRect().width);
+                    if (w > 0) {
+                        cols[idx].style.width = w + 'px';
+                        totalW += w;
+                    }
+                }
+            });
+            if (totalW > 0) {
+                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, totalW) + 'px';
+            }
+        };
+
+        if (table.offsetWidth > 0) {
+            syncColWidths();
+        }
+
+        let measureCanvas = null;
+        const measureTextWidth = (text, font) => {
+            if (!measureCanvas) measureCanvas = document.createElement('canvas');
+            const ctx = measureCanvas.getContext('2d');
+            ctx.font = font || '12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            return ctx.measureText(text).width;
+        };
+
+        ths.forEach((th, colIdx) => {
+            if (colIdx >= ths.length - 1 && th.textContent.trim() === 'DEL') return;
+
+            th.style.position = 'sticky';
+            th.style.top = '0';
+            th.style.overflow = 'visible';
+
+            let resizer = th.querySelector('.col-resizer');
+            if (!resizer) {
+                resizer = document.createElement('div');
+                resizer.className = 'col-resizer';
+                resizer.setAttribute('title', '드래그: 열 너비 조절 / 더블클릭: 내용 맞춤 자동 너비');
+                th.appendChild(resizer);
+            }
+
+            let startX = 0;
+            let startWidth = 0;
+            let isDragging = false;
+
+            const onMouseMove = (e) => {
+                if (!isDragging) return;
+                const diff = e.pageX - startX;
+                const minW = colIdx === 0 ? 32 : 40;
+                const newW = Math.max(minW, Math.round(startWidth + diff));
+                if (cols[colIdx]) {
+                    cols[colIdx].style.width = newW + 'px';
+                }
+                let total = 0;
+                cols.forEach(c => {
+                    total += parseFloat(c.style.width) || 50;
+                });
+                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, total) + 'px';
+            };
+
+            const onMouseUp = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                resizer.classList.remove('is-resizing');
+                document.body.style.cursor = '';
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            resizer.onmousedown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                syncColWidths();
+                startX = e.pageX;
+                startWidth = th.getBoundingClientRect().width;
+                isDragging = true;
+                resizer.classList.add('is-resizing');
+                document.body.style.cursor = 'col-resize';
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
+
+            // 더블클릭 시 글자 길이에 맞춰 자동 너비 맞춤 (Auto-Fit)
+            resizer.ondblclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                syncColWidths();
+
+                // 1. 헤더 텍스트 너비 측정
+                const clone = th.cloneNode(true);
+                const r = clone.querySelector('.col-resizer');
+                if (r) r.remove();
+                const headerText = clone.textContent.replace(/\s+/g, ' ').trim();
+                const headerFont = 'bold 12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                let maxW = measureTextWidth(headerText, headerFont) + 16;
+
+                // 2. 본문 셀들의 텍스트 너비 측정
+                const cellFont = '12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                const tbody = table.querySelector('tbody');
+                if (tbody) {
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const cell = row.cells[colIdx];
+                        if (!cell) return;
+                        let text = '';
+                        const input = cell.querySelector('input');
+                        const select = cell.querySelector('select');
+                        const btn = cell.querySelector('button');
+
+                        if (input) {
+                            text = input.value || input.placeholder || '';
+                        } else if (select) {
+                            const opt = select.options[select.selectedIndex];
+                            text = opt ? opt.text : (select.placeholder || '');
+                        } else if (btn) {
+                            text = btn.textContent.trim();
+                        } else {
+                            text = cell.textContent.trim();
+                        }
+
+                        if (text) {
+                            const w = measureTextWidth(text, cellFont);
+                            if (w > maxW) maxW = w;
+                        }
+                    });
+                }
+
+                // 3. 패딩 + 여유 공간 포함 타겟 너비 계산
+                const minW = colIdx === 0 ? 36 : 48;
+                const targetW = Math.max(minW, Math.round(maxW + 22));
+
+                if (cols[colIdx]) {
+                    cols[colIdx].style.width = targetW + 'px';
+                }
+
+                let total = 0;
+                cols.forEach(c => {
+                    total += parseFloat(c.style.width) || 50;
+                });
+                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, total) + 'px';
+            };
+        });
+    },
+
+    bindGridKeyboardAndPaste: function(tr, type) {
+        const inputs = Array.from(tr.querySelectorAll('.erp-cell-input:not([readonly]), .btn-lot'));
+        const sugBox = tr.querySelector('.autocomplete-suggestions');
+
+        inputs.forEach((inp) => {
+            inp.addEventListener('keydown', (e) => {
+                if (sugBox && sugBox.style.display === 'block') {
+                    if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') return;
+                }
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const curIdx = inputs.indexOf(inp);
+                    if (curIdx < inputs.length - 1) {
+                        const next = inputs[curIdx + 1];
+                        if (next && !next.disabled) {
+                            next.focus();
+                            if (next.select) next.select();
+                        } else if (curIdx + 2 < inputs.length) {
+                            const nextNext = inputs[curIdx + 2];
+                            if (nextNext && !nextNext.disabled) {
+                                nextNext.focus();
+                                if (nextNext.select) nextNext.select();
+                            }
+                        }
+                    } else {
+                        const nextRow = tr.nextElementSibling;
+                        if (nextRow) {
+                            const firstInp = nextRow.querySelector('.erp-cell-input');
+                            if (firstInp) { firstInp.focus(); if (firstInp.select) firstInp.select(); }
+                        } else {
+                            if (type === 'inbound') app.addInboundItemRow(true);
+                            else if (type === 'outbound') app.addOutboundItemRow(true);
+                            else if (type === 'direct') app.addDirectItemRow(true);
+                        }
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    if (sugBox && sugBox.style.display === 'block') return;
+                    const nextRow = tr.nextElementSibling;
+                    if (nextRow) {
+                        const colClass = Array.from(inp.classList).find(c => c.startsWith('in-') || c.startsWith('out-') || c.startsWith('dir-') || c === 'btn-lot');
+                        if (colClass) {
+                            const target = nextRow.querySelector('.' + colClass);
+                            if (target && !target.disabled) { target.focus(); if (target.select) target.select(); e.preventDefault(); }
+                        }
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    if (sugBox && sugBox.style.display === 'block') return;
+                    const prevRow = tr.previousElementSibling;
+                    if (prevRow) {
+                        const colClass = Array.from(inp.classList).find(c => c.startsWith('in-') || c.startsWith('out-') || c.startsWith('dir-') || c === 'btn-lot');
+                        if (colClass) {
+                            const target = prevRow.querySelector('.' + colClass);
+                            if (target && !target.disabled) { target.focus(); if (target.select) target.select(); e.preventDefault(); }
+                        }
+                    }
+                }
+            });
+
+            inp.addEventListener('paste', (e) => {
+                app.handleGridPaste(e, tr, type);
+            });
+        });
+    },
+
+    handleGridPaste: function(e, startRow, type) {
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData) return;
+        const text = clipboardData.getData('text');
+        if (!text || !text.includes('\t')) return;
+
+        e.preventDefault();
+        const lines = text.trim().split(/\r\n|\n|\r/);
+        if (lines.length === 0) return;
+
+        let currentRow = startRow;
+        lines.forEach((line, idx) => {
+            const cols = line.split('\t');
+            if (idx > 0) {
+                let nextRow = currentRow.nextElementSibling;
+                if (!nextRow) {
+                    if (type === 'inbound') app.addInboundItemRow();
+                    else if (type === 'outbound') app.addOutboundItemRow();
+                    else if (type === 'direct') app.addDirectItemRow();
+                    nextRow = currentRow.nextElementSibling;
+                }
+                currentRow = nextRow;
+            }
+            if (!currentRow) return;
+
+            if (type === 'inbound') {
+                if (cols[0] !== undefined && currentRow.querySelector('.in-item')) currentRow.querySelector('.in-item').value = cols[0].trim();
+                if (cols[1] !== undefined && currentRow.querySelector('.in-spec')) currentRow.querySelector('.in-spec').value = cols[1].trim();
+                if (cols[2] !== undefined && currentRow.querySelector('.in-category')) currentRow.querySelector('.in-category').value = cols[2].trim();
+                if (cols[3] !== undefined && currentRow.querySelector('.in-qty')) currentRow.querySelector('.in-qty').value = cols[3].trim().replace(/,/g, '');
+                if (cols[4] !== undefined && currentRow.querySelector('.in-unit')) currentRow.querySelector('.in-unit').value = cols[4].trim();
+                if (cols[5] !== undefined && currentRow.querySelector('.in-price')) currentRow.querySelector('.in-price').value = cols[5].trim().replace(/,/g, '');
+                if (cols[6] !== undefined && currentRow.querySelector('.in-note')) currentRow.querySelector('.in-note').value = cols[6].trim();
+            } else if (type === 'direct') {
+                if (cols[0] !== undefined && currentRow.querySelector('.dir-item')) currentRow.querySelector('.dir-item').value = cols[0].trim();
+                if (cols[1] !== undefined && currentRow.querySelector('.dir-spec')) currentRow.querySelector('.dir-spec').value = cols[1].trim();
+                if (cols[2] !== undefined && currentRow.querySelector('.dir-category')) currentRow.querySelector('.dir-category').value = cols[2].trim();
+                if (cols[3] !== undefined && currentRow.querySelector('.dir-qty')) currentRow.querySelector('.dir-qty').value = cols[3].trim().replace(/,/g, '');
+                if (cols[4] !== undefined && currentRow.querySelector('.dir-unit')) currentRow.querySelector('.dir-unit').value = cols[4].trim();
+                if (cols[5] !== undefined && currentRow.querySelector('.dir-in-price')) currentRow.querySelector('.dir-in-price').value = cols[5].trim().replace(/,/g, '');
+                if (cols[6] !== undefined && currentRow.querySelector('.dir-out-price')) currentRow.querySelector('.dir-out-price').value = cols[6].trim().replace(/,/g, '');
+                if (cols[7] !== undefined && currentRow.querySelector('.dir-note')) currentRow.querySelector('.dir-note').value = cols[7].trim();
+            } else if (type === 'outbound') {
+                if (cols[0] !== undefined && currentRow.querySelector('.out-item')) currentRow.querySelector('.out-item').value = cols[0].trim();
+                if (cols[1] !== undefined && currentRow.querySelector('.out-category')) currentRow.querySelector('.out-category').value = cols[1].trim();
+                if (cols[2] !== undefined && currentRow.querySelector('.out-qty')) currentRow.querySelector('.out-qty').value = cols[2].trim().replace(/,/g, '');
+                if (cols[3] !== undefined && currentRow.querySelector('.out-price')) currentRow.querySelector('.out-price').value = cols[3].trim().replace(/,/g, '');
+                if (cols[4] !== undefined && currentRow.querySelector('.out-note')) currentRow.querySelector('.out-note').value = cols[4].trim();
+            }
+        });
+
+        if (type === 'inbound') app.updateInboundGridTotals();
+        else if (type === 'outbound') app.updateOutboundGridTotals();
+        else if (type === 'direct') app.updateDirectGridTotals();
     },
 
     initKeyboardNav: function() {
@@ -116,6 +467,17 @@ const app = {
                     if (chk && !chk.disabled) {
                         chk.checked = !chk.checked;
                         chk.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            } else if (e.key === 'Enter') {
+                if (this.keyboardFocusedIndex >= 0 && this.keyboardFocusedIndex < mainRows.length) {
+                    e.preventDefault();
+                    const targetRow = mainRows[this.keyboardFocusedIndex];
+                    const rowId = targetRow.id ? targetRow.id.replace('row_', '') : null;
+                    const chk = targetRow.querySelector('.history-checkbox');
+                    const rowType = chk ? chk.getAttribute('data-type') : 'inbound';
+                    if (rowId) {
+                        this.toggleAccordion(rowId, rowType);
                     }
                 }
             }
@@ -785,68 +1147,59 @@ const app = {
 
         if (typeFilter === 'inbound') {
             amountHtml = `
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div><span class="text-muted">매입 공급가:</span> <strong class="text-dark">${inbound.supplyAmt.toLocaleString()}원</strong></div>
-                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${inbound.vat.toLocaleString()}원</strong></div>
-                    <div class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1" style="font-size:0.85rem;">
-                        매입 합계: <strong class="fs-6">${inbound.totalAmt.toLocaleString()}</strong>원
-                    </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span>매입공급가: <strong class="text-dark tabular-nums">${inbound.supplyAmt.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span>부가세: <strong class="text-secondary tabular-nums">${inbound.vat.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span class="erp-badge erp-badge-in" style="font-size: 11px;">매입합계: <strong>${inbound.totalAmt.toLocaleString()}</strong>원</span>
                 </div>
             `;
         } else if (typeFilter === 'outbound') {
             amountHtml = `
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div><span class="text-muted">매출 공급가:</span> <strong class="text-dark">${outbound.supplyAmt.toLocaleString()}원</strong></div>
-                    <div><span class="text-muted">부가세:</span> <strong class="text-secondary">${outbound.vat.toLocaleString()}원</strong></div>
-                    <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size:0.85rem;">
-                        매출 합계: <strong class="fs-6">${outbound.totalAmt.toLocaleString()}</strong>원
-                    </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span>매출공급가: <strong class="text-dark tabular-nums">${outbound.supplyAmt.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span>부가세: <strong class="text-secondary tabular-nums">${outbound.vat.toLocaleString()}원</strong></span>
+                    <span class="text-muted">|</span>
+                    <span class="erp-badge erp-badge-out" style="font-size: 11px;">매출합계: <strong>${outbound.totalAmt.toLocaleString()}</strong>원</span>
                 </div>
             `;
         } else if (typeFilter === 'direct') {
             const margin = outbound.totalAmt - inbound.totalAmt;
             amountHtml = `
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <div><span class="text-muted">매입합계:</span> <strong class="text-primary">${inbound.totalAmt.toLocaleString()}원</strong></div>
+                    <span>매입합계: <strong class="text-primary tabular-nums">${inbound.totalAmt.toLocaleString()}원</strong></span>
                     <span class="text-muted">|</span>
-                    <div><span class="text-muted">매출합계:</span> <strong class="text-danger">${outbound.totalAmt.toLocaleString()}원</strong></div>
+                    <span>매출합계: <strong class="text-danger tabular-nums">${outbound.totalAmt.toLocaleString()}원</strong></span>
                     <span class="text-muted">|</span>
-                    <div class="badge ${margin >= 0 ? 'bg-success' : 'bg-secondary'} px-2 py-1" style="font-size:0.85rem;">
+                    <span class="erp-badge ${margin >= 0 ? 'erp-badge-in' : 'erp-badge-out'}" style="font-size: 11px;">
                         수익(마진): <strong>${margin.toLocaleString()}</strong>원
-                    </div>
+                    </span>
                 </div>
             `;
         } else {
             // 전체 보기
             amountHtml = `
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <div>
-                        <span class="text-muted">매입(공급+세):</span> 
-                        <strong class="text-primary">${inbound.totalAmt.toLocaleString()}원</strong>
-                        <span class="text-muted small">(${inbound.supplyAmt.toLocaleString()} + ${inbound.vat.toLocaleString()})</span>
-                    </div>
-                    <span class="text-muted d-none d-md-inline">|</span>
-                    <div>
-                        <span class="text-muted">매출(공급+세):</span> 
-                        <strong class="text-danger">${outbound.totalAmt.toLocaleString()}원</strong>
-                        <span class="text-muted small">(${outbound.supplyAmt.toLocaleString()} + ${outbound.vat.toLocaleString()})</span>
-                    </div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span>매입: <strong class="text-primary tabular-nums">${inbound.totalAmt.toLocaleString()}원</strong> <span class="text-muted small">(${inbound.supplyAmt.toLocaleString()} + 세 ${inbound.vat.toLocaleString()})</span></span>
+                    <span class="text-muted">|</span>
+                    <span>매출: <strong class="text-danger tabular-nums">${outbound.totalAmt.toLocaleString()}원</strong> <span class="text-muted small">(${outbound.supplyAmt.toLocaleString()} + 세 ${outbound.vat.toLocaleString()})</span></span>
                 </div>
             `;
         }
 
         strip.innerHTML = `
             <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="text-secondary"><strong>검색 결과</strong></span>
-                <span class="badge bg-dark px-2 py-1">${totalCount.toLocaleString()}건</span>
+                <span><strong>검색 결과</strong> <span class="badge bg-dark" style="font-size: 11px; padding: 2px 6px;">${totalCount.toLocaleString()}건</span></span>
                 ${typeFilter === 'all' ? `
-                    <span class="badge bg-light text-secondary border">입고 ${summary.inboundCount || 0}</span>
-                    <span class="badge bg-light text-secondary border">출고 ${summary.outboundCount || 0}</span>
-                    <span class="badge bg-light text-secondary border">직출고 ${summary.directCount || 0}</span>
+                    <span class="erp-badge erp-badge-cat">입고 ${summary.inboundCount || 0}</span>
+                    <span class="erp-badge erp-badge-cat">출고 ${summary.outboundCount || 0}</span>
+                    <span class="erp-badge erp-badge-cat">직출고 ${summary.directCount || 0}</span>
                 ` : ''}
                 <span class="text-muted ms-1 me-1">|</span>
                 <span class="text-muted">총 수량:</span>
-                <strong class="text-dark">${totalQty.toLocaleString()}</strong>
+                <strong class="text-dark tabular-nums">${totalQty.toLocaleString()}</strong>
             </div>
             ${amountHtml}
         `;
@@ -988,23 +1341,23 @@ const app = {
         this.keyboardFocusedIndex = -1;
         const tbody = $('historyTbody');
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted">해당하는 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted" style="height: 60px;">해당하는 내역이 없습니다.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = data.map(r => {
             const isOut = r.type === 'outbound';
-            let badge = isOut ? `<span class="badge bg-danger">출고</span>` : `<span class="badge bg-success">입고</span>`;
+            let badge = isOut ? `<span class="erp-badge erp-badge-out">출고</span>` : `<span class="erp-badge erp-badge-in">입고</span>`;
             if (isOut && r.is_direct === 1) {
-                badge = `<span class="badge bg-warning text-dark">직출고</span>`;
+                badge = `<span class="erp-badge erp-badge-direct">직출고</span>`;
             }
             if (r.trade_type && r.trade_type !== '내수') {
-                badge += ` <span class="badge bg-info text-dark">${r.trade_type}</span>`;
+                badge += ` <span class="erp-badge erp-badge-info">${r.trade_type}</span>`;
             }
             const delFn = isOut ? `app.deleteOutbound(${r.id})` : `app.deleteInbound(${r.id})`;
             const editFn = (r.type === '직출고' || r.is_direct === 1)
-                ? `app.openEditDirectOutboundTx('${r.transaction_group_id || ''}')`
-                : (isOut ? `app.openEditOutboundTx('${r.transaction_group_id || ''}')` : `app.openEditInboundTx('${r.transaction_group_id || ''}')`);
+                ? `app.openEditDirectOutboundTx('${r.transaction_group_id || ''}', ${r.id})`
+                : (isOut ? `app.openEditOutboundTx('${r.transaction_group_id || ''}', ${r.id})` : `app.openEditInboundTx('${r.transaction_group_id || ''}', ${r.id})`);
             
             const renderCell = (val, isNumber = false) => {
                 if (val === null || val === undefined || val === '') return `<span class="text-muted">-</span>`;
@@ -1014,51 +1367,46 @@ const app = {
             let destHtml = '<span class="text-muted">-</span>';
             if (r.destination) {
                 const hasActual = r.actual_destination && r.actual_destination.trim() && r.actual_destination.trim() !== r.destination.trim();
-                destHtml = `
-                    <div class="text-dark">${r.destination}</div>
-                    ${hasActual ? `
-                        <div class="text-secondary small d-flex align-items-center gap-1" style="font-size: 0.78rem; margin-top: 1px;">
-                            <i class='bx bx-subdirectory-right text-muted'></i>
-                            <span>(${r.actual_destination.trim()})</span>
-                        </div>
-                    ` : ''}
-                `;
+                destHtml = hasActual 
+                    ? `<span>${r.destination}</span> <span class="text-secondary small" title="실출고처: ${r.actual_destination.trim()}">(실: ${r.actual_destination.trim()})</span>`
+                    : `<span>${r.destination}</span>`;
             }
 
             const txIdDisplay = r.transaction_group_id || (r.is_direct === 1 ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : (isOut ? `OUT-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}` : `IN-${(r.date || '').split('T')[0].replace(/-/g,'')}-${String(r.id).padStart(4, '0')}`));
+            const dateStr = (r.date || '').split('T')[0];
 
             return `
-            <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 내역 확인">
+            <tr id="row_${r.id}" class="history-main-row" style="cursor:pointer;" onclick="app.toggleAccordion(${r.id}, '${r.type}')" title="클릭하여 상세 전표 확인 (또는 Enter)">
                 <td class="text-center d-print-none" onclick="event.stopPropagation()"><input type="checkbox" class="history-checkbox" value="${r.id}" data-type="${r.type}" onchange="app.updateSelectionSummary()"></td>
-                <td class="d-print-none user-select-none text-nowrap" style="font-size: 0.73rem; letter-spacing: -0.2px; color: #64748b;">
+                <td class="d-print-none user-select-none text-nowrap" style="font-size: 11px; font-family: monospace; letter-spacing: -0.3px; color: #475569;">
                     <i class='bx bx-chevron-right me-1 accordion-icon text-muted' id="acc_icon_${r.id}" style="font-size: 0.85rem; vertical-align: middle;"></i>
                     <span>${txIdDisplay}</span>
                 </td>
                 <td class="text-center">${badge}</td>
-                <td class="text-center"><span class="badge bg-light text-dark border">${r.category || '-'}</span></td>
-                <td class="text-center">${r.date.split('T')[0]}</td>
-                <td>${renderCell(r.supplier)}</td>
-                <td>${destHtml}</td>
-                <td><strong class="text-primary">${r.item}</strong></td>
-                <td>${r.spec}</td>
-                <td>${r.unit}</td>
-                <td class="text-end ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
-                <td class="text-end">${renderCell(r.inbound_price, true)}</td>
-                <td class="text-end">${renderCell(r.inbound_total, true)}</td>
-                <td class="text-end">${renderCell(r.outbound_price, true)}</td>
-                <td class="text-end">${renderCell(r.outbound_total, true)}</td>
+                <td class="text-center"><span class="erp-badge erp-badge-cat">${r.category || '-'}</span></td>
+                <td class="text-center tabular-nums">${dateStr}</td>
+                <td title="${r.supplier || ''}">${renderCell(r.supplier)}</td>
+                <td title="${r.destination || ''}">${destHtml}</td>
+                <td title="${r.item || ''}"><strong class="text-dark">${r.item}</strong></td>
+                <td class="text-center" title="${r.spec || ''}">${r.spec || '-'}</td>
+                <td class="text-center">${r.unit || '-'}</td>
+                <td class="text-end tabular-nums ${isOut ? 'text-danger fw-bold' : 'text-success fw-bold'}">${r.qty.toLocaleString()}</td>
+                <td class="text-end tabular-nums text-secondary">${renderCell(r.inbound_price, true)}</td>
+                <td class="text-end tabular-nums text-secondary">${renderCell(r.inbound_total, true)}</td>
+                <td class="text-end tabular-nums text-dark">${renderCell(r.outbound_price, true)}</td>
+                <td class="text-end tabular-nums fw-bold text-dark">${renderCell(r.outbound_total, true)}</td>
                 <td class="text-center text-nowrap" onclick="event.stopPropagation()">
                     ${r.settlement_status === '정산완료' 
-                        ? `<span class="badge bg-secondary">정산완료</span>` 
-                        : `<button class="btn btn-sm btn-outline-secondary py-0 px-2 me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
-                           <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>`
+                        ? `<span class="badge bg-secondary" style="font-size: 10px; padding: 2px 4px;">정산완료</span>` 
+                        : `<button class="btn-grid-action me-1" onclick="event.stopPropagation(); ${editFn}" title="수정"><i class='bx bx-edit'></i></button>
+                           <button class="btn-grid-action btn-grid-action-danger" onclick="event.stopPropagation(); ${delFn}" title="삭제"><i class='bx bx-trash'></i></button>`
                     }
                 </td>
             </tr>
             <tr id="accordion_row_${r.id}" class="accordion-sub-row d-none">
                 <td colspan="16" class="p-0 border-0">
                     <div id="accordion_content_${r.id}" class="accordion-content-box">
-                        <div class="text-center py-3 text-muted"><i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...</div>
+                        <div class="text-center py-2 text-muted" style="font-size: 11.5px;"><i class='bx bx-loader-alt bx-spin me-1'></i> 상세 전표 내역을 불러오는 중입니다...</div>
                     </div>
                 </td>
             </tr>
@@ -1108,14 +1456,14 @@ const app = {
             const isDirect = type === 'outbound' && data.is_direct === 1;
 
             let badgeHtml = type === 'inbound' 
-                ? '<span class="badge bg-success px-2 py-1">입고</span>' 
-                : '<span class="badge bg-danger px-2 py-1">출고</span>';
+                ? '<span class="erp-badge erp-badge-in">입고</span>' 
+                : '<span class="erp-badge erp-badge-out">출고</span>';
             if (isDirect) {
-                badgeHtml = '<span class="badge bg-warning text-dark px-2 py-1">직출고</span>';
+                badgeHtml = '<span class="erp-badge erp-badge-direct">직출고</span>';
             }
 
             const borderColor = isDirect ? 'border-warning' : (type === 'inbound' ? 'border-success' : 'border-danger');
-            contentBox.className = `accordion-content-box p-3 bg-white border-start border-4 ${borderColor} shadow-sm my-2 rounded-3 mx-2`;
+            contentBox.className = `accordion-content-box p-2 bg-white border-start border-3 ${borderColor} shadow-sm my-1 mx-2`;
 
             // Partner Summary
             let partnerSummary = '';
@@ -1178,8 +1526,8 @@ const app = {
             }
 
             const editTxFn = isDirect 
-                ? `app.openEditDirectOutboundTx('${data.transaction_group_id || ''}')` 
-                : (type === 'outbound' ? `app.openEditOutboundTx('${data.transaction_group_id || ''}')` : `app.openEditInboundTx('${data.transaction_group_id || ''}')`);
+                ? `app.openEditDirectOutboundTx('${data.transaction_group_id || ''}', ${data.id})` 
+                : (type === 'outbound' ? `app.openEditOutboundTx('${data.transaction_group_id || ''}', ${data.id})` : `app.openEditInboundTx('${data.transaction_group_id || ''}', ${data.id})`);
 
             let editBtn = `
                 <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="event.stopPropagation(); ${editTxFn}" title="전표 수정">
@@ -1368,8 +1716,8 @@ const app = {
 
                 ${data.note ? `<div class="mb-2 px-3 py-2 bg-light rounded text-muted" style="font-size:0.83rem;"><i class='bx bx-message-square-detail text-primary me-1'></i><strong>비고:</strong> ${data.note}</div>` : ''}
 
-                <div class="table-responsive bg-white rounded border shadow-sm mt-2">
-                    <table class="table table-sm table-bordered table-hover align-middle mb-0" style="font-size:0.85rem;">
+                <div class="erp-grid-wrapper mt-2">
+                    <table class="erp-sheet-table mb-0" style="font-size: 11.5px;">
                         <thead>
                             ${tableHeaderHtml}
                         </thead>
@@ -1820,39 +2168,51 @@ const app = {
     // ----------------------------------------
     // Inbound (입고)
     // ----------------------------------------
-    addInboundItemRow: function() {
+    addInboundItemRow: function(autoFocus = false) {
         const container = $('inboundItemsContainer');
         const rowId = 'in_row_' + Date.now() + Math.floor(Math.random() * 1000);
         const rowHtml = `
-            <div class="p-2 mb-2 border rounded bg-light inbound-item-row" id="${rowId}">
-                <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-5 position-relative">
-                        <input type="text" class="form-control form-control-sm in-item" placeholder="품목명" autocomplete="off" required>
+            <tr class="inbound-item-row" id="${rowId}">
+                <td class="text-center text-muted row-index fw-semibold" style="user-select: none; text-align: center !important; vertical-align: middle !important; padding: 0 !important; line-height: 26px !important;"></td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input in-item" placeholder="품목명 입력/선택" autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                    <div class="col-4">
-                        <input type="text" class="form-control form-control-sm in-spec" placeholder="규격" required>
-                    </div>
-                    <div class="col-3 position-relative">
-                        <input type="text" class="form-control form-control-sm in-category category-input" placeholder="분류 선택/직접입력" autocomplete="off">
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input in-spec" placeholder="규격" required>
+                </td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input in-category category-input" placeholder="분류" autocomplete="off">
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                </div>
-                <div class="row g-2 align-items-center">
-                    <div class="col-5">
-                        <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm in-qty" placeholder="수량" step="0.01" required>
-                            <input type="text" class="form-control form-control-sm in-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" required>
-                        </div>
-                    </div>
-                    <div class="col-5">
-                        <input type="number" class="form-control form-control-sm in-price" placeholder="입고단가" min="0" step="1" required>
-                    </div>
-                    <div class="col-2 d-flex justify-content-end">
-                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="app.removeInboundItemRow('${rowId}')"><i class='bx bx-trash'></i> 삭제</button>
-                    </div>
-                </div>
-            </div>
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input in-qty text-end" placeholder="0" step="0.01" required>
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input in-unit text-center" placeholder="단위" required>
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input in-price text-end" placeholder="0" min="0" step="1" required>
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input in-supply text-end bg-readonly" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input in-vat text-end bg-readonly text-muted" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input in-note" placeholder="적요/비고">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn-row-del" onclick="app.removeInboundItemRow('${rowId}')" title="항목 삭제">
+                        <i class='bx bx-x'></i>
+                    </button>
+                </td>
+            </tr>
         `;
         container.insertAdjacentHTML('beforeend', rowHtml);
         
@@ -1890,12 +2250,79 @@ const app = {
 
         this.attachAutocompleteKeyboard(input, sug);
         this.setupCategoryAutocomplete();
+
+        const qtyInp = newRow.querySelector('.in-qty');
+        const priceInp = newRow.querySelector('.in-price');
+        const updateCalc = () => this.updateInboundGridTotals();
+        qtyInp.addEventListener('input', updateCalc);
+        priceInp.addEventListener('input', updateCalc);
+
+        // ERP 그리드 키보드 이동 및 엑셀 붙여넣기 바인딩
+        this.bindGridKeyboardAndPaste(newRow, 'inbound');
+
+        this.updateInboundGridTotals();
+
+        if (autoFocus && input) {
+            setTimeout(() => {
+                input.focus();
+                if (input.select) input.select();
+            }, 10);
+        }
+
         return rowId;
     },
 
     removeInboundItemRow: function(rowId) {
         const row = $(rowId);
         if (row) row.remove();
+        this.updateInboundGridTotals();
+    },
+
+    removeLastInboundRow: function() {
+        const container = $('inboundItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.inbound-item-row');
+        if (rows.length > 1) {
+            rows[rows.length - 1].remove();
+            this.updateInboundGridTotals();
+        }
+    },
+
+    updateInboundGridTotals: function() {
+        const container = $('inboundItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.inbound-item-row');
+        let totalQty = 0;
+        let totalSupply = 0;
+        let totalVat = 0;
+
+        rows.forEach((r, idx) => {
+            const indexEl = r.querySelector('.row-index');
+            if (indexEl) indexEl.innerText = idx + 1;
+
+            const q = parseFloat(r.querySelector('.in-qty')?.value) || 0;
+            const p = parseFloat(r.querySelector('.in-price')?.value) || 0;
+            const s = Math.round(q * p);
+            const v = Math.round(s * 0.1);
+
+            const supplyEl = r.querySelector('.in-supply');
+            const vatEl = r.querySelector('.in-vat');
+            if (supplyEl) supplyEl.value = s ? s.toLocaleString() + '원' : '';
+            if (vatEl) vatEl.value = v ? v.toLocaleString() + '원' : '';
+
+            totalQty += q;
+            totalSupply += s;
+            totalVat += v;
+        });
+
+        const grandTotal = totalSupply + totalVat;
+        if ($('in_total_qty')) $('in_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
+        if ($('in_total_supply')) $('in_total_supply').innerText = totalSupply.toLocaleString() + '원';
+        if ($('in_total_vat')) $('in_total_vat').innerText = totalVat.toLocaleString() + '원';
+        if ($('in_summary_supply')) $('in_summary_supply').innerText = totalSupply.toLocaleString() + '원';
+        if ($('in_summary_vat')) $('in_summary_vat').innerText = totalVat.toLocaleString() + '원';
+        if ($('in_grand_total')) $('in_grand_total').innerText = grandTotal.toLocaleString();
+        if ($('in_row_count')) $('in_row_count').innerText = rows.length + '건';
     },
 
     setupInboundAutocomplete: function() {
@@ -1917,11 +2344,19 @@ const app = {
             const item = row.querySelector('.in-item').value.trim();
             const spec = row.querySelector('.in-spec').value.trim();
             const unit = row.querySelector('.in-unit').value.trim();
-            const qty = parseFloat(row.querySelector('.in-qty').value);
-            const unit_price = parseFloat(row.querySelector('.in-price').value);
+            const qtyStr = row.querySelector('.in-qty').value.trim();
+            const priceStr = row.querySelector('.in-price').value.trim();
+            const qty = parseFloat(qtyStr);
+            const unit_price = parseFloat(priceStr);
             const category = row.querySelector('.in-category') ? row.querySelector('.in-category').value.trim() : '';
-            const note = docNote;
+            const rowNote = row.querySelector('.in-note') ? row.querySelector('.in-note').value.trim() : '';
+            const note = rowNote || docNote;
             const trade_type = $('in_trade_type') ? $('in_trade_type').value : '내수';
+
+            // 완전히 빈 행은 무시
+            if (!item && !spec && !unit && !qtyStr && !priceStr && !rowNote) {
+                return;
+            }
 
             if (!item || !spec || !unit || isNaN(qty) || isNaN(unit_price)) {
                 hasError = true;
@@ -1931,6 +2366,7 @@ const app = {
         });
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
+        if (items.length === 0) return alert('입력된 품목이 없습니다. 최소 1개 이상의 품목을 입력해주세요.');
 
         const payload = {
             date: $('in_date').value,
@@ -2004,43 +2440,55 @@ const app = {
     // ----------------------------------------
     // Direct Shipment (직출고)
     // ----------------------------------------
-    addDirectItemRow: function() {
+    addDirectItemRow: function(autoFocus = false) {
         const container = $('directItemsContainer');
         const rowId = 'dir_row_' + Date.now() + Math.floor(Math.random() * 1000);
 
         const rowHtml = `
-            <div class="p-2 mb-2 border rounded bg-light direct-item-row" id="${rowId}">
-                <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-5 position-relative">
-                        <input type="text" class="form-control form-control-sm dir-item" placeholder="품목명" autocomplete="off" required>
+            <tr class="direct-item-row" id="${rowId}">
+                <td class="text-center text-muted row-index fw-semibold" style="user-select: none; text-align: center !important; vertical-align: middle !important; padding: 0 !important; line-height: 26px !important;"></td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input dir-item" placeholder="품목명 입력/선택" autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                    <div class="col-4">
-                        <input type="text" class="form-control form-control-sm dir-spec" placeholder="규격">
-                    </div>
-                    <div class="col-3 position-relative">
-                        <input type="text" class="form-control form-control-sm dir-category category-input" placeholder="분류 선택/직접입력" autocomplete="off">
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input dir-spec" placeholder="규격">
+                </td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input dir-category category-input" placeholder="분류" autocomplete="off">
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                </div>
-                <div class="row g-2 align-items-center">
-                    <div class="col-4">
-                        <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm dir-qty" placeholder="수량" step="0.01" required>
-                            <input type="text" class="form-control form-control-sm dir-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위">
-                        </div>
-                    </div>
-                    <div class="col-3">
-                        <input type="number" class="form-control form-control-sm dir-in-price" placeholder="매입단가" min="0" step="1">
-                    </div>
-                    <div class="col-4">
-                        <input type="number" class="form-control form-control-sm dir-out-price" placeholder="매출단가" min="0" step="1">
-                    </div>
-                    <div class="col-1 text-end">
-                        <button type="button" class="btn btn-sm btn-outline-danger w-100 px-1" onclick="app.removeDirectItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
-                    </div>
-                </div>
-            </div>
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input dir-qty text-end" placeholder="0" step="0.01" required>
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input dir-unit text-center" placeholder="단위">
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input dir-in-price text-end" placeholder="0" min="0" step="1">
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input dir-in-supply text-end bg-readonly text-primary fw-bold" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input dir-out-price text-end" placeholder="0" min="0" step="1">
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input dir-out-supply text-end bg-readonly text-danger fw-bold" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input dir-note" placeholder="적요/비고">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn-row-del" onclick="app.removeDirectItemRow('${rowId}')" title="행 삭제 (Delete)">
+                        <i class='bx bx-x'></i>
+                    </button>
+                </td>
+            </tr>
         `;
         container.insertAdjacentHTML('beforeend', rowHtml);
         
@@ -2076,12 +2524,88 @@ const app = {
 
         this.attachAutocompleteKeyboard(input, sug);
         this.setupCategoryAutocomplete();
+
+        const qtyInp = newRow.querySelector('.dir-qty');
+        const inPriceInp = newRow.querySelector('.dir-in-price');
+        const outPriceInp = newRow.querySelector('.dir-out-price');
+        const updateCalc = () => this.updateDirectGridTotals();
+        qtyInp.addEventListener('input', updateCalc);
+        inPriceInp.addEventListener('input', updateCalc);
+        outPriceInp.addEventListener('input', updateCalc);
+
+        // ERP 그리드 키보드 이동 및 엑셀 붙여넣기 바인딩
+        this.bindGridKeyboardAndPaste(newRow, 'direct');
+
+        this.updateDirectGridTotals();
+
+        if (autoFocus && input) {
+            setTimeout(() => {
+                input.focus();
+                if (input.select) input.select();
+            }, 10);
+        }
+
         return rowId;
     },
 
     removeDirectItemRow: function(rowId) {
         const row = $(rowId);
         if (row) row.remove();
+        this.updateDirectGridTotals();
+    },
+
+    removeLastDirectRow: function() {
+        const container = $('directItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.direct-item-row');
+        if (rows.length > 1) {
+            rows[rows.length - 1].remove();
+            this.updateDirectGridTotals();
+        }
+    },
+
+    updateDirectGridTotals: function() {
+        const container = $('directItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.direct-item-row');
+        let totalQty = 0;
+        let totalInSupply = 0;
+        let totalOutSupply = 0;
+
+        rows.forEach((r, idx) => {
+            const indexEl = r.querySelector('.row-index');
+            if (indexEl) indexEl.innerText = idx + 1;
+
+            const q = parseFloat(r.querySelector('.dir-qty')?.value) || 0;
+            const inP = parseFloat(r.querySelector('.dir-in-price')?.value) || 0;
+            const outP = parseFloat(r.querySelector('.dir-out-price')?.value) || 0;
+            const inS = Math.round(q * inP);
+            const outS = Math.round(q * outP);
+
+            const inSupplyEl = r.querySelector('.dir-in-supply');
+            const outSupplyEl = r.querySelector('.dir-out-supply');
+            if (inSupplyEl) inSupplyEl.value = inS ? inS.toLocaleString() + '원' : '';
+            if (outSupplyEl) outSupplyEl.value = outS ? outS.toLocaleString() + '원' : '';
+
+            totalQty += q;
+            totalInSupply += inS;
+            totalOutSupply += outS;
+        });
+
+        const inShipping = parseFloat($('dir_in_shipping')?.value) || 0;
+        const outShipping = parseFloat($('dir_out_shipping')?.value) || 0;
+        const inShippingVat = $('dir_in_shipping_vat')?.checked ? 0 : Math.round(inShipping * 0.1);
+        const outShippingVat = $('dir_out_shipping_vat')?.checked ? 0 : Math.round(outShipping * 0.1);
+
+        const grandInTotal = totalInSupply + Math.round(totalInSupply * 0.1) + inShipping + inShippingVat;
+        const grandOutTotal = totalOutSupply + Math.round(totalOutSupply * 0.1) + outShipping + outShippingVat;
+
+        if ($('dir_total_qty')) $('dir_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
+        if ($('dir_total_in_supply')) $('dir_total_in_supply').innerText = totalInSupply.toLocaleString() + '원';
+        if ($('dir_total_out_supply')) $('dir_total_out_supply').innerText = totalOutSupply.toLocaleString() + '원';
+        if ($('dir_grand_in_total')) $('dir_grand_in_total').innerText = grandInTotal.toLocaleString();
+        if ($('dir_grand_out_total')) $('dir_grand_out_total').innerText = grandOutTotal.toLocaleString();
+        if ($('dir_row_count')) $('dir_row_count').innerText = rows.length + '건';
     },
 
     handleDirectSubmit: async function(e) {
@@ -2112,19 +2636,25 @@ const app = {
             const item = row.querySelector('.dir-item').value.trim();
             const spec = row.querySelector('.dir-spec').value.trim();
             const unit = row.querySelector('.dir-unit') ? row.querySelector('.dir-unit').value.trim() : '';
-            const qtyVal = row.querySelector('.dir-qty') ? row.querySelector('.dir-qty').value : '';
+            const qtyVal = row.querySelector('.dir-qty') ? row.querySelector('.dir-qty').value.trim() : '';
             const qty = parseFloat(qtyVal);
-            const inPriceVal = row.querySelector('.dir-in-price') ? row.querySelector('.dir-in-price').value : '';
+            const inPriceVal = row.querySelector('.dir-in-price') ? row.querySelector('.dir-in-price').value.trim() : '';
             const in_price = inPriceVal !== '' ? (parseFloat(inPriceVal) || 0) : 0;
-            const outPriceVal = row.querySelector('.dir-out-price') ? row.querySelector('.dir-out-price').value : '';
+            const outPriceVal = row.querySelector('.dir-out-price') ? row.querySelector('.dir-out-price').value.trim() : '';
             const out_price = outPriceVal !== '' ? (parseFloat(outPriceVal) || 0) : 0;
             const category = row.querySelector('.dir-category') ? row.querySelector('.dir-category').value.trim() : '';
             const in_shipping_fee = idx === 0 ? docInShippingFee : 0;
             const in_shipping_fee_vat_included = idx === 0 ? docInShippingFeeVatIncluded : 0;
             const shipping_fee = idx === 0 ? docOutShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? docOutShippingFeeVatIncluded : 0;
-            const note = docNote;
+            const rowNote = row.querySelector('.dir-note') ? row.querySelector('.dir-note').value.trim() : '';
+            const note = rowNote || docNote;
             const trade_type = $('dir_trade_type') ? $('dir_trade_type').value : '내수';
+
+            // 완전히 빈 행은 무시
+            if (!item && !spec && !unit && !qtyVal && !inPriceVal && !outPriceVal && !rowNote) {
+                return;
+            }
 
             if (!item || isNaN(qty)) {
                 hasError = true;
@@ -2141,6 +2671,7 @@ const app = {
         });
 
         if (hasError) return alert('공급 품목 내역의 품목명과 수량을 올바르게 입력해주세요.');
+        if (items.length === 0) return alert('입력된 품목이 없습니다. 최소 1개 이상의 품목을 입력해주세요.');
 
         const payload = {
             date: date,
@@ -2196,44 +2727,60 @@ const app = {
         this.addOutboundItemRow();
     },
 
-    addOutboundItemRow: function() {
+    addOutboundItemRow: function(autoFocus = false) {
         const container = $('outboundItemsContainer');
         const rowId = 'out_row_' + Date.now() + Math.floor(Math.random() * 1000);
         this.outboundRows[rowId] = { availableLots: [], consumedLots: [] };
 
         const rowHtml = `
-            <div class="p-2 mb-2 border rounded bg-light outbound-item-row" id="${rowId}">
-                <div class="row g-2 mb-2 align-items-center">
-                    <div class="col-5 position-relative">
-                        <input type="text" class="form-control form-control-sm out-item" placeholder="품목명" autocomplete="off" required>
-                        <div class="autocomplete-suggestions"></div>
-                    </div>
-                    <div class="col-4">
-                        <select class="form-select form-select-sm out-spec" disabled required onchange="app.handleOutboundSpecChange('${rowId}', this)">
-                            <option value="">품목 먼저 선택</option>
-                        </select>
-                    </div>
-                    <div class="col-3 position-relative">
-                        <input type="text" class="form-control form-control-sm out-category category-input" placeholder="분류 선택/입력" autocomplete="off">
+            <tr class="outbound-item-row" id="${rowId}">
+                <td class="text-center text-muted row-index fw-semibold" style="user-select: none; text-align: center !important; vertical-align: middle !important; padding: 0 !important; line-height: 26px !important;"></td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input out-item" placeholder="품목명 입력/선택" autocomplete="off" required>
                         <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                </div>
-                <div class="row g-2 align-items-center">
-                    <div class="col-5">
-                        <div class="d-flex gap-1">
-                            <input type="number" class="form-control form-control-sm out-qty" placeholder="출고 수량" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
-                            <input type="text" class="form-control form-control-sm out-unit bg-white text-center" style="max-width: 60px; padding: 0.25rem;" placeholder="단위" readonly>
-                        </div>
+                </td>
+                <td>
+                    <select class="erp-cell-input out-spec" disabled required onchange="app.handleOutboundSpecChange('${rowId}', this)">
+                        <option value="">품목 먼저 선택</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input out-category category-input" placeholder="분류" autocomplete="off">
+                        <div class="autocomplete-suggestions" style="display:none;"></div>
                     </div>
-                    <div class="col-4">
-                        <input type="number" class="form-control form-control-sm out-price" placeholder="단가" min="0" step="1" required>
-                    </div>
-                    <div class="col-3 d-flex gap-1 justify-content-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary btn-lot flex-grow-1" onclick="app.openLotModal('${rowId}')" disabled>Lot 설정</button>
-                        <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="app.removeOutboundItemRow('${rowId}')"><i class='bx bx-trash'></i></button>
-                    </div>
-                </div>
-            </div>
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input out-qty text-end" placeholder="0" step="0.01" disabled required onchange="app.handleOutboundQtyChange('${rowId}')" onkeyup="app.handleOutboundQtyChange('${rowId}')">
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input out-unit text-center bg-readonly" placeholder="단위" readonly tabindex="-1">
+                </td>
+                <td class="text-center p-0">
+                    <button type="button" class="btn btn-outline-primary cell-btn-lot btn-lot w-100" onclick="app.openLotModal('${rowId}')" disabled>
+                        <i class='bx bx-check-shield'></i> Lot설정
+                    </button>
+                </td>
+                <td>
+                    <input type="number" class="erp-cell-input out-price text-end" placeholder="0" min="0" step="1" required>
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input out-supply text-end bg-readonly" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td class="td-readonly">
+                    <input type="text" class="erp-cell-input out-vat text-end bg-readonly text-muted" placeholder="0원" readonly tabindex="-1">
+                </td>
+                <td>
+                    <input type="text" class="erp-cell-input out-note" placeholder="적요/비고">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn-row-del" onclick="app.removeOutboundItemRow('${rowId}')" title="행 삭제 (Delete)">
+                        <i class='bx bx-x'></i>
+                    </button>
+                </td>
+            </tr>
         `;
         container.insertAdjacentHTML('beforeend', rowHtml);
 
@@ -2283,6 +2830,22 @@ const app = {
 
         this.attachAutocompleteKeyboard(input, sug);
         this.setupCategoryAutocomplete();
+
+        const priceInp = newRow.querySelector('.out-price');
+        priceInp.addEventListener('input', () => this.updateOutboundGridTotals());
+
+        // ERP 그리드 키보드 이동 및 엑셀 붙여넣기 바인딩
+        this.bindGridKeyboardAndPaste(newRow, 'outbound');
+
+        this.updateOutboundGridTotals();
+
+        if (autoFocus && input) {
+            setTimeout(() => {
+                input.focus();
+                if (input.select) input.select();
+            }, 10);
+        }
+
         return rowId;
     },
 
@@ -2291,6 +2854,57 @@ const app = {
         if (row) row.remove();
         delete this.outboundRows[rowId];
         this.validateAllOutboundLots();
+        this.updateOutboundGridTotals();
+    },
+
+    removeLastOutboundRow: function() {
+        const container = $('outboundItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.outbound-item-row');
+        if (rows.length > 1) {
+            const lastRow = rows[rows.length - 1];
+            this.removeOutboundItemRow(lastRow.id);
+        }
+    },
+
+    updateOutboundGridTotals: function() {
+        const container = $('outboundItemsContainer');
+        if (!container) return;
+        const rows = container.querySelectorAll('.outbound-item-row');
+        let totalQty = 0;
+        let totalSupply = 0;
+        let totalVat = 0;
+
+        rows.forEach((r, idx) => {
+            const indexEl = r.querySelector('.row-index');
+            if (indexEl) indexEl.innerText = idx + 1;
+
+            const q = parseFloat(r.querySelector('.out-qty')?.value) || 0;
+            const p = parseFloat(r.querySelector('.out-price')?.value) || 0;
+            const s = Math.round(q * p);
+            const v = Math.round(s * 0.1);
+
+            const supplyEl = r.querySelector('.out-supply');
+            const vatEl = r.querySelector('.out-vat');
+            if (supplyEl) supplyEl.value = s ? s.toLocaleString() + '원' : '';
+            if (vatEl) vatEl.value = v ? v.toLocaleString() + '원' : '';
+
+            totalQty += q;
+            totalSupply += s;
+            totalVat += v;
+        });
+
+        const shipping = parseFloat($('out_shipping')?.value) || 0;
+        const shippingVat = $('out_shipping_vat')?.checked ? 0 : Math.round(shipping * 0.1);
+        const grandTotal = totalSupply + totalVat + shipping + shippingVat;
+
+        if ($('out_total_qty')) $('out_total_qty').innerText = totalQty ? totalQty.toLocaleString() : '0';
+        if ($('out_total_supply')) $('out_total_supply').innerText = totalSupply.toLocaleString() + '원';
+        if ($('out_total_vat')) $('out_total_vat').innerText = totalVat.toLocaleString() + '원';
+        if ($('out_summary_supply')) $('out_summary_supply').innerText = totalSupply.toLocaleString() + '원';
+        if ($('out_summary_vat')) $('out_summary_vat').innerText = totalVat.toLocaleString() + '원';
+        if ($('out_grand_total')) $('out_grand_total').innerText = grandTotal.toLocaleString();
+        if ($('out_row_count')) $('out_row_count').innerText = rows.length + '건';
     },
 
     loadOutboundSpecsForRow: async function(rowId, itemName) {
@@ -2377,6 +2991,7 @@ const app = {
         });
         
         this.validateAllOutboundLots();
+        this.updateOutboundGridTotals();
     },
 
     openLotModal: function(rowId) {
@@ -2489,8 +3104,14 @@ const app = {
         
         rows.forEach(row => {
             const rowId = row.id;
-            const qty = parseFloat(row.querySelector('.out-qty').value) || 0;
+            const item = row.querySelector('.out-item')?.value.trim();
+            const qty = parseFloat(row.querySelector('.out-qty')?.value) || 0;
             const rData = this.outboundRows[rowId];
+            
+            // 빈 행(품목과 수량 모두 미입력)은 유효성 검사 건너뜀
+            if (!item && qty === 0) {
+                return;
+            }
             
             if (qty > 0 && rData) {
                 hasItems = true;
@@ -2547,14 +3168,22 @@ const app = {
             const item = row.querySelector('.out-item').value.trim();
             const spec = row.querySelector('.out-spec').value.trim();
             const unit = row.querySelector('.out-unit').value.trim();
-            const qty = parseFloat(row.querySelector('.out-qty').value);
-            const selling_price = parseFloat(row.querySelector('.out-price').value);
+            const qtyStr = row.querySelector('.out-qty').value.trim();
+            const priceStr = row.querySelector('.out-price').value.trim();
+            const qty = parseFloat(qtyStr);
+            const selling_price = parseFloat(priceStr);
             const category = row.querySelector('.out-category') ? row.querySelector('.out-category').value.trim() : '';
             const shipping_fee = idx === 0 ? docShippingFee : 0;
             const shipping_fee_vat_included = idx === 0 ? ($('out_shipping_vat').checked ? 1 : 0) : 0;
-            const note = docNote;
+            const rowNote = row.querySelector('.out-note') ? row.querySelector('.out-note').value.trim() : '';
+            const note = rowNote || docNote;
             const trade_type = $('out_trade_type') ? $('out_trade_type').value : '내수';
-            const consumed_lots = this.outboundRows[rowId].consumedLots;
+            const consumed_lots = this.outboundRows[rowId] ? this.outboundRows[rowId].consumedLots : [];
+
+            // 완전히 빈 행은 무시
+            if (!item && !spec && !qtyStr && !priceStr && !rowNote) {
+                return;
+            }
 
             if (!item || !spec || isNaN(qty) || isNaN(selling_price)) {
                 hasError = true;
@@ -2564,6 +3193,7 @@ const app = {
         });
 
         if (hasError) return alert('품목 내역에 빈 값이 있거나 올바르지 않습니다.');
+        if (items.length === 0) return alert('입력된 품목이 없습니다. 최소 1개 이상의 품목을 입력해주세요.');
 
         const payload = {
             date: $('out_date').value,
@@ -2942,12 +3572,19 @@ const app = {
         if (container) {
             container.innerHTML = '';
         }
-        this.addInboundItemRow();
+        for (let i = 0; i < 5; i++) {
+            this.addInboundItemRow(i === 0);
+        }
         this.initTodayDates();
-        const title = document.querySelector('#inboundModal .modal-title');
-        if (title) title.innerHTML = "<i class='bx bx-plus'></i> 입고 등록";
+        const title = document.querySelector('#inboundModal .erp-window-title, #inboundModal .modal-title');
+        if (title) title.innerHTML = "입고 전표 등록";
+        const badge = document.querySelector('#inboundModalBadge, #inboundModal .modal-header .badge');
+        if (badge) {
+            badge.className = 'badge bg-secondary-subtle text-light border border-secondary ms-1';
+            badge.textContent = '신규전표';
+        }
         const submitBtn = document.querySelector('#inboundForm button[type=\"submit\"]');
-        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check'></i> 입고 처리";
+        if (submitBtn) submitBtn.textContent = "입고 처리";
         if ($('in_trade_type')) $('in_trade_type').value = '내수';
     },
 
@@ -2964,14 +3601,21 @@ const app = {
         }
         this.outboundRows = {};
         this.currentLotModalRowId = null;
-        this.addOutboundItemRow();
+        for (let i = 0; i < 5; i++) {
+            this.addOutboundItemRow(i === 0);
+        }
         this.initTodayDates();
         if ($('btnOutboundSubmit')) $('btnOutboundSubmit').disabled = true;
         if ($('outErrorMsg')) $('outErrorMsg').style.display = 'none';
-        const title = document.querySelector('#outboundModal .modal-title');
-        if (title) title.innerHTML = "<i class='bx bx-minus'></i> 출고 등록";
+        const title = document.querySelector('#outboundModal .erp-window-title, #outboundModal .modal-title');
+        if (title) title.innerHTML = "출고 전표 등록";
+        const badge = document.querySelector('#outboundModalBadge, #outboundModal .modal-header .badge');
+        if (badge) {
+            badge.className = 'badge bg-secondary-subtle text-light border border-secondary ms-1';
+            badge.textContent = '신규전표';
+        }
         const submitBtn = document.querySelector('#outboundForm button[type=\"submit\"]');
-        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 출고 처리";
+        if (submitBtn) submitBtn.textContent = "출고 처리";
         if ($('out_shipping')) $('out_shipping').value = 0;
         if ($('out_shipping_vat')) $('out_shipping_vat').checked = false;
         if ($('out_trade_type')) $('out_trade_type').value = '내수';
@@ -2988,12 +3632,19 @@ const app = {
         if (container) {
             container.innerHTML = '';
         }
-        this.addDirectItemRow();
+        for (let i = 0; i < 5; i++) {
+            this.addDirectItemRow(i === 0);
+        }
         this.initTodayDates();
-        const title = document.querySelector('#directModal .modal-title');
-        if (title) title.innerHTML = "<i class='bx bx-shuffle'></i> 직출고 등록";
+        const title = document.querySelector('#directModal .erp-window-title, #directModal .modal-title');
+        if (title) title.innerHTML = "직출고 전표 등록";
+        const badge = document.querySelector('#directModalBadge, #directModal .modal-header .badge');
+        if (badge) {
+            badge.className = 'badge bg-secondary-subtle text-light border border-secondary ms-1';
+            badge.textContent = '입출고 동시';
+        }
         const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
-        if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 동시 처리";
+        if (submitBtn) submitBtn.textContent = "직출고 동시 처리";
         if ($('dir_in_shipping')) $('dir_in_shipping').value = 0;
         if ($('dir_in_shipping_vat')) $('dir_in_shipping_vat').checked = false;
         if ($('dir_out_shipping')) $('dir_out_shipping').value = 0;
@@ -3008,6 +3659,16 @@ const app = {
             if (!modal) modal = new bootstrap.Modal(modalEl);
             if ($('inboundForm').dataset.mode !== 'edit') {
                 this.resetInboundModalForm();
+            } else {
+                const title = document.querySelector('#inboundModal .erp-window-title, #inboundModal .modal-title');
+                if (title) title.textContent = "입고 전표 수정";
+                const submitBtn = document.querySelector('#inboundForm button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = "입고 수정";
+                const badge = document.querySelector('#inboundModalBadge, #inboundModal .modal-header .badge');
+                if (badge) {
+                    badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                    badge.textContent = '전표 수정';
+                }
             }
             modal.show();
         } else if (mode === 'outbound_create') {
@@ -3016,6 +3677,16 @@ const app = {
             if (!modal) modal = new bootstrap.Modal(modalEl);
             if ($('outboundForm').dataset.mode !== 'edit') {
                 this.resetOutboundModalForm();
+            } else {
+                const title = document.querySelector('#outboundModal .erp-window-title, #outboundModal .modal-title');
+                if (title) title.textContent = "출고 전표 수정";
+                const submitBtn = document.querySelector('#outboundForm button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = "출고 수정";
+                const badge = document.querySelector('#outboundModalBadge, #outboundModal .modal-header .badge');
+                if (badge) {
+                    badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                    badge.textContent = '전표 수정';
+                }
             }
             modal.show();
         } else if (mode === 'direct_create') {
@@ -3024,10 +3695,22 @@ const app = {
             if (!modal) modal = new bootstrap.Modal(modalEl);
             if ($('directForm').dataset.mode !== 'edit') {
                 this.resetDirectModalForm();
+            } else {
+                const title = document.querySelector('#directModal .erp-window-title, #directModal .modal-title');
+                if (title) title.textContent = "직출고 전표 수정";
+                const submitBtn = document.querySelector('#directForm button[type="submit"]');
+                if (submitBtn) submitBtn.textContent = "직출고 수정";
+                const badge = document.querySelector('#directModalBadge, #directModal .modal-header .badge');
+                if (badge) {
+                    badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                    badge.textContent = '전표 수정';
+                }
             }
             modal.show();
             if ($('directItemsContainer').children.length === 0) {
-                this.addDirectItemRow();
+                for (let i = 0; i < 5; i++) {
+                    this.addDirectItemRow(i === 0);
+                }
             }
         } else if (mode === 'detail') {
             const typeStr = data.type === 'inbound' ? '입고' : '출고';
@@ -3041,27 +3724,41 @@ const app = {
     },
     
     
-    openEditInboundTx: async function(txId) {
+    openEditInboundTx: async function(txId, singleId = null) {
         try {
-            const items = await authFetch(`${API_BASE}/history/inbound/tx/${encodeURIComponent(txId)}`);
+            let items = null;
+            if (txId && txId !== 'null' && txId !== 'undefined') {
+                try {
+                    items = await authFetch(`${API_BASE}/history/inbound/tx/${encodeURIComponent(txId)}`);
+                } catch(e) { console.warn('TX fetch error, trying single fallback', e); }
+            }
+            if ((!items || items.length === 0) && singleId) {
+                const single = await authFetch(`${API_BASE}/history/inbound/${singleId}`);
+                if (single) items = single.items || [single];
+            }
             if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
             
             $('inboundForm').dataset.mode = 'edit';
-            $('inboundForm').dataset.txId = txId;
+            $('inboundForm').dataset.txId = txId || (items[0] && items[0].transaction_group_id) || '';
             $('inboundItemsContainer').innerHTML = '';
             
             const first = items[0];
-            $('in_date').value = first.date;
+            $('in_date').value = first.date ? first.date.split('T')[0] : '';
             $('in_supplier').value = first.supplier || '';
             $('in_location').value = first.location_id || '';
             $('in_note').value = first.note || '';
             if ($('in_trade_type')) $('in_trade_type').value = first.trade_type || '내수';
             if ($('in_category')) $('in_category').value = first.category || '';
 
-            const title = document.querySelector('#inboundModal .modal-title');
-            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 입고 전표 수정";
-            const submitBtn = document.querySelector('#inboundForm button[type=\"submit\"]');
-            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 입고 수정 완료";
+            const title = document.querySelector('#inboundModal .erp-window-title, #inboundModal .modal-title');
+            if (title) title.innerHTML = "입고 전표 수정";
+            const badge = document.querySelector('#inboundModalBadge, #inboundModal .modal-header .badge');
+            if (badge) {
+                badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                badge.textContent = '전표 수정';
+            }
+            const submitBtn = document.querySelector('#inboundForm button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = "입고 수정";
 
             items.forEach(item => {
                 const rowId = this.addInboundItemRow();
@@ -3081,21 +3778,31 @@ const app = {
                     if(delBtn) delBtn.disabled = true;
                 }
             });
+            this.updateInboundGridTotals();
             this.openDrawer('inbound_create');
         } catch(err) { alert(err.message); }
     },
 
-    openEditOutboundTx: async function(txId) {
+    openEditOutboundTx: async function(txId, singleId = null) {
         try {
-            const items = await authFetch(`${API_BASE}/history/outbound/tx/${encodeURIComponent(txId)}`);
+            let items = null;
+            if (txId && txId !== 'null' && txId !== 'undefined') {
+                try {
+                    items = await authFetch(`${API_BASE}/history/outbound/tx/${encodeURIComponent(txId)}`);
+                } catch(e) { console.warn('TX fetch error, trying single fallback', e); }
+            }
+            if ((!items || items.length === 0) && singleId) {
+                const single = await authFetch(`${API_BASE}/history/outbound/${singleId}`);
+                if (single) items = single.items || [single];
+            }
             if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
             
             $('outboundForm').dataset.mode = 'edit';
-            $('outboundForm').dataset.txId = txId;
+            $('outboundForm').dataset.txId = txId || (items[0] && items[0].transaction_group_id) || '';
             $('outboundItemsContainer').innerHTML = '';
             
             const first = items[0];
-            $('out_date').value = first.date;
+            $('out_date').value = first.date ? first.date.split('T')[0] : '';
             $('out_destination').value = first.destination || '';
             $('out_actual_destination').value = first.actual_destination || '';
             $('out_note').value = first.note || '';
@@ -3103,10 +3810,15 @@ const app = {
             if ($('out_shipping')) $('out_shipping').value = first.shipping_fee || 0;
             if ($('out_shipping_vat')) $('out_shipping_vat').checked = first.shipping_fee_vat_included === 1;
 
-            const title = document.querySelector('#outboundModal .modal-title');
-            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 출고 전표 수정";
-            const submitBtn = document.querySelector('#outboundForm button[type=\"submit\"]');
-            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 출고 수정 완료";
+            const title = document.querySelector('#outboundModal .erp-window-title, #outboundModal .modal-title');
+            if (title) title.innerHTML = "출고 전표 수정";
+            const badge = document.querySelector('#outboundModalBadge, #outboundModal .modal-header .badge');
+            if (badge) {
+                badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                badge.textContent = '전표 수정';
+            }
+            const submitBtn = document.querySelector('#outboundForm button[type="submit"]');
+            if (submitBtn) submitBtn.textContent = "출고 수정";
 
             for (let item of items) {
                 const rowId = this.addOutboundItemRow();
@@ -3196,16 +3908,26 @@ const app = {
                 }
             }
             this.validateAllOutboundLots();
+            this.updateOutboundGridTotals();
             this.openDrawer('outbound_create');
         } catch(err) { alert(err.message); }
     },
 
-    openEditDirectOutboundTx: async function(txId) {
+    openEditDirectOutboundTx: async function(txId, singleId = null) {
         try {
-            const items = await authFetch(`${API_BASE}/history/direct/tx/${encodeURIComponent(txId)}`);
+            let items = null;
+            if (txId && txId !== 'null' && txId !== 'undefined') {
+                try {
+                    items = await authFetch(`${API_BASE}/history/direct/tx/${encodeURIComponent(txId)}`);
+                } catch(e) { console.warn('TX fetch error, trying single fallback', e); }
+            }
+            if ((!items || items.length === 0) && singleId) {
+                const single = await authFetch(`${API_BASE}/history/outbound/${singleId}`);
+                if (single) items = single.items || [single];
+            }
             if (!items || items.length === 0) return alert('데이터를 불러올 수 없습니다.');
             
-            const normTxId = txId && txId.startsWith('IN-') ? txId.replace('IN-', 'OUT-') : txId;
+            const normTxId = txId && txId.startsWith('IN-') ? txId.replace('IN-', 'OUT-') : (txId || (items[0] && items[0].transaction_group_id) || '');
             $('directForm').dataset.mode = 'edit';
             $('directForm').dataset.txId = normTxId || txId;
             $('directItemsContainer').innerHTML = '';
@@ -3234,11 +3956,17 @@ const app = {
                 newRow.querySelector('.dir-out-price').value = item.selling_price !== undefined ? item.selling_price : (item.outbound_price || 0);
                 if (newRow.querySelector('.dir-category')) newRow.querySelector('.dir-category').value = item.category || '';
             });
+            this.updateDirectGridTotals();
 
-            const title = document.querySelector('#directModal .modal-title');
-            if (title) title.innerHTML = "<i class='bx bx-edit'></i> 직출고 내역 수정";
+            const title = document.querySelector('#directModal .erp-window-title, #directModal .modal-title');
+            if (title) title.innerHTML = "직출고 전표 수정";
+            const badge = document.querySelector('#directModalBadge, #directModal .modal-header .badge');
+            if (badge) {
+                badge.className = 'badge bg-warning text-dark border border-warning ms-1';
+                badge.textContent = '전표 수정';
+            }
             const submitBtn = document.querySelector('#directForm button[type=\"submit\"]');
-            if (submitBtn) submitBtn.innerHTML = "<i class='bx bx-check-double'></i> 직출고 수정 저장";
+            if (submitBtn) submitBtn.textContent = "직출고 수정";
 
             this.openDrawer('direct_create');
         } catch(err) { alert(err.message); }

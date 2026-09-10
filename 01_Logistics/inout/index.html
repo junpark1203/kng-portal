@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css?v=3">
-    <link rel="stylesheet" href="../logistics-theme.css?v=3">
+    <link rel="stylesheet" href="../logistics-theme.css?v=4">
     <style>
         .lot-qty-input { width: 80px; text-align: right; }
         
@@ -51,20 +51,444 @@
         #locationsModal .modal-body ul { list-style: none; padding: 0; }
         #locationsModal .modal-body li { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
         
-        .inbound-item-row, .outbound-item-row { background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; transition: border-color 0.2s; }
-        .inbound-item-row:hover, .outbound-item-row:hover { border-color: #cbd5e1; }
-        
-        .modal-header.bg-inbound { background: #f0fdf4 !important; border-bottom: 3px solid #10b981; }
-        .modal-header.bg-outbound { background: #fef2f2 !important; border-bottom: 3px solid #ef4444; }
-        .modal-header.bg-direct { background: #fefce8 !important; border-bottom: 3px solid #f59e0b; }
-        .modal-header.bg-detail { background: #f8fafc !important; border-bottom: 3px solid #3b82f6; flex-wrap: wrap; gap: 0.5rem; }
-        #detailModalTitle { flex-shrink: 0; white-space: nowrap; }
+        /* ── ECOUNT ERP 스타일 전표 폼 테이블 & 데이터 그리드 디자인 ── */
+        .erp-form-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            margin-bottom: 6px;
+        }
+        .erp-form-table th {
+            background-color: #f8fafc;
+            color: #334155;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border: 1px solid #cbd5e1;
+            white-space: nowrap;
+            vertical-align: middle;
+            text-align: center;
+            height: 26px;
+        }
+        .erp-form-table td {
+            padding: 0;
+            border: 1px solid #cbd5e1;
+            vertical-align: middle;
+            background-color: #ffffff;
+            height: 26px;
+        }
+        .erp-form-table .form-control,
+        .erp-form-table .form-select {
+            width: 100%;
+            height: 26px !important;
+            font-size: 12px !important;
+            padding: 2px 6px !important;
+            border-radius: 0 !important;
+            border: none !important;
+            color: #1e293b;
+            background: transparent;
+            box-shadow: none !important;
+        }
+        .erp-form-table input[type=number]::-webkit-inner-spin-button,
+        .erp-form-table input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .erp-form-table input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .erp-form-table td:focus-within {
+            box-shadow: inset 0 0 0 2px #2563eb !important;
+            background-color: #eff6ff !important;
+        }
+        .erp-form-table .input-group {
+            flex-wrap: nowrap;
+            width: 100%;
+            height: 26px;
+        }
+        .erp-form-table .input-group .form-control {
+            border-radius: 0 !important;
+        }
+        .erp-form-table .input-group .btn {
+            height: 26px !important;
+            padding: 0 6px !important;
+            font-size: 11.5px !important;
+            border-radius: 0 !important;
+            border-color: #e2e8f0 !important;
+            border-left: 1px solid #e2e8f0 !important;
+            border-top: none !important;
+            border-bottom: none !important;
+            border-right: none !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: #f8fafc;
+        }
+        .erp-form-table .input-group .btn:hover {
+            background: #e2e8f0;
+        }
+        .erp-form-table .input-group-text {
+            height: 26px !important;
+            padding: 0 6px !important;
+            font-size: 11px !important;
+            background-color: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+            border-radius: 0 !important;
+            border-left: 1px solid #e2e8f0 !important;
+            border-top: none !important;
+            border-bottom: none !important;
+            border-right: none !important;
+            flex-shrink: 0;
+        }
+        .erp-form-table .form-check-label {
+            user-select: none;
+        }
 
-        /* Bootstrap modal-xl / modal-lg fix for iframe (viewport < 768px) */
-        @media (min-width: 0px) {
-            .modal-lg, .modal-xl {
-                max-width: 95% !important;
-                margin: 1.75rem auto;
+        /* ── ECOUNT ERP 스타일 스프레드시트 플랫 셀 그리드 ── */
+        .erp-grid-wrapper {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 0 !important;
+            overflow-x: auto !important;
+            overflow-y: auto;
+            min-height: 160px;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .erp-sheet-table {
+            width: 100% !important;
+            max-width: none;
+            border-collapse: collapse !important;
+            font-size: 12px;
+            table-layout: fixed !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            border: 1px solid #cbd5e1 !important;
+            background-color: #cbd5e1 !important;
+        }
+        .erp-sheet-table thead th {
+            background-color: #f8fafc !important;
+            background-clip: padding-box !important;
+            color: #1e293b !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+            padding: 2px 4px !important;
+            font-size: 11.5px !important;
+            border: 1px solid #cbd5e1 !important;
+            white-space: nowrap !important;
+            position: sticky !important;
+            top: 0;
+            z-index: 5;
+            height: 26px !important;
+            line-height: 1.2 !important;
+            box-sizing: border-box !important;
+            user-select: none;
+            overflow: visible !important;
+        }
+        /* No 헤더 및 본문 행번호 완전 중앙 정렬 */
+        .erp-sheet-table thead th:first-child,
+        .erp-sheet-table thead th.th-no {
+            text-align: center !important;
+            vertical-align: middle !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            max-width: 36px !important;
+            height: 26px !important;
+            line-height: 26px !important;
+        }
+        .erp-sheet-table tbody td {
+            padding: 0 !important;
+            border: 1px solid #cbd5e1 !important;
+            vertical-align: middle !important;
+            background-color: #ffffff;
+            background-clip: padding-box !important;
+            height: 26px !important;
+            box-sizing: border-box !important;
+        }
+        /* 읽기 전용 셀: TD 전체에 배경을 적용하여 테두리 주변 흰색 틈새(fringe) 원천 제거 */
+        .erp-sheet-table tbody td.td-readonly,
+        .erp-sheet-table tbody td:has(.bg-readonly),
+        .erp-sheet-table tbody td:has([readonly]) {
+            background-color: #f8fafc !important;
+            background-clip: padding-box !important;
+        }
+        .erp-sheet-table tbody td.row-index {
+            text-align: center !important;
+            vertical-align: middle !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 36px !important;
+            min-width: 36px !important;
+            max-width: 36px !important;
+            height: 26px !important;
+            line-height: 26px !important;
+            color: #64748b !important;
+            font-size: 11.5px !important;
+            font-weight: 600 !important;
+            background-clip: padding-box !important;
+        }
+        .erp-sheet-table tbody tr:hover td {
+            background-color: #f1f5f9;
+        }
+        .erp-sheet-table tbody tr:hover td.td-readonly,
+        .erp-sheet-table tbody tr:hover td:has(.bg-readonly) {
+            background-color: #edf2f7 !important;
+        }
+        .erp-sheet-table tfoot td {
+            padding: 3px 6px !important;
+            background-color: #f8fafc !important;
+            background-clip: padding-box !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 12px;
+            font-weight: 700;
+            vertical-align: middle !important;
+            height: 26px !important;
+        }
+
+        /* 셀 내부 일체형 인풋 */
+        .erp-cell-input {
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 25px;
+            border: none !important;
+            outline: none !important;
+            padding: 1px 6px !important;
+            font-size: 12px !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #1e293b;
+            text-align: left;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            box-sizing: border-box !important;
+        }
+        .erp-cell-input:focus {
+            box-shadow: none !important;
+            outline: none !important;
+        }
+        .erp-cell-input.text-end { text-align: right !important; }
+        .erp-cell-input.text-center { text-align: center !important; }
+        .erp-cell-input[readonly], .erp-cell-input.bg-readonly {
+            background: transparent !important;
+            background-color: transparent !important;
+            color: #475569 !important;
+            cursor: default !important;
+        }
+
+        /* 활성 셀(Focus) 엑셀 테두리 하이라이트 */
+        .erp-sheet-table tbody td:focus-within {
+            box-shadow: inset 0 0 0 2px #2563eb !important;
+            background-color: #eff6ff !important;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* 엑셀 스타일 열 너비 드래그 조절 핸들러 (Column Resizer) */
+        .col-resizer {
+            position: absolute;
+            top: 0;
+            right: -3px;
+            width: 7px;
+            height: 100%;
+            cursor: col-resize !important;
+            user-select: none;
+            z-index: 15;
+        }
+        .col-resizer:hover,
+        .col-resizer.is-resizing {
+            background-color: #2563eb !important;
+            width: 3px;
+            right: -1px;
+            opacity: 0.9;
+        }
+
+        /* 셀 내 행 삭제 버튼 (글로벌 .btn 스타일 완벽 무력화) */
+        .erp-sheet-table .btn-row-del,
+        button.btn-row-del {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            height: 24px !important;
+            min-height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            color: #94a3b8 !important;
+            font-size: 16px !important;
+            line-height: 1 !important;
+            cursor: pointer !important;
+            transition: all 0.1s ease;
+            box-sizing: border-box !important;
+        }
+        .erp-sheet-table .btn-row-del:hover,
+        button.btn-row-del:hover {
+            color: #ef4444 !important;
+            background-color: #fee2e2 !important;
+        }
+        .erp-sheet-table thead th:last-child {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            text-align: center !important;
+        }
+
+        /* 셀 내 Lot 관리 버튼 */
+        .cell-btn-lot {
+            height: 22px !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            padding: 0 4px !important;
+            border-radius: 2px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            white-space: nowrap;
+        }
+
+        /* ── ECOUNT ERP 스타일 그리드 툴바 ── */
+        .erp-grid-toolbar {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-bottom: none;
+            padding: 3px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11.5px;
+        }
+        .erp-tool-btn {
+            height: 22px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 0 8px;
+            border-radius: 2px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        .erp-tool-btn:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+
+        /* ── ECOUNT ERP 스타일 하단 서머리 바 ── */
+        .erp-summary-panel {
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0 !important;
+            padding: 5px 12px !important;
+            margin-top: 4px !important;
+        }
+        .erp-summary-panel .btn-submit-erp {
+            height: 28px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            padding: 0 16px !important;
+            border-radius: 2px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        /* ── ECOUNT ERP 윈도우 타이틀바 스타일 ── */
+        .erp-window-header {
+            background: #1e293b !important;
+            color: #f8fafc !important;
+            padding: 6px 12px !important;
+            border-bottom: 2px solid #0f172a !important;
+            border-radius: 0 !important;
+        }
+        .erp-window-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+        }
+
+        /* ── Bootstrap Modal vs styles.css 완벽 충돌 해소 ── */
+        .modal {
+            z-index: 1055 !important;
+        }
+        .modal-dialog .modal-content,
+        .modal-dialog.erp-modal-xl .modal-content,
+        .modal-dialog.modal-xl .modal-content,
+        #inboundModal .modal-content,
+        #outboundModal .modal-content,
+        #directModal .modal-content {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 2px !important;
+            border: 1px solid #475569 !important;
+            background: #ffffff !important;
+            outline: none !important;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35) !important;
+        }
+        .modal-dialog .modal-header,
+        #inboundModal .modal-header,
+        #outboundModal .modal-header,
+        #directModal .modal-header {
+            margin-bottom: 0 !important;
+            padding: 6px 12px !important;
+            border-radius: 0 !important;
+        }
+        .modal-dialog .modal-body,
+        #inboundModal .modal-body,
+        #outboundModal .modal-body,
+        #directModal .modal-body {
+            padding: 6px 10px !important;
+        }
+        .modal-dialog .modal-footer,
+        #inboundModal .modal-footer,
+        #outboundModal .modal-footer,
+        #directModal .modal-footer {
+            margin-top: 0 !important;
+            padding: 8px 14px !important;
+            border-bottom-left-radius: 7px;
+            border-bottom-right-radius: 7px;
+        }
+
+        /* ── ERP 컴팩트 와이드 모달 (화면 너비 88vw, 최대 1400px, 최소 920px) ── */
+        .modal-dialog.erp-modal-xl,
+        #inboundModal .modal-dialog,
+        #outboundModal .modal-dialog,
+        #directModal .modal-dialog {
+            width: 88vw !important;
+            max-width: 1400px !important;
+            min-width: 920px !important;
+            --bs-modal-width: 88vw !important;
+            margin: 0.75rem auto !important;
+        }
+
+        @media (max-width: 950px) {
+            .modal-dialog.erp-modal-xl,
+            #inboundModal .modal-dialog,
+            #outboundModal .modal-dialog,
+            #directModal .modal-dialog {
+                width: 97vw !important;
+                max-width: 97vw !important;
+                min-width: 0 !important;
+                --bs-modal-width: 97vw !important;
             }
         }
         
@@ -138,154 +562,444 @@
         #historyTbody tr.keyboard-focused-row > td:first-child {
             box-shadow: inset 4px 0 0 #2563eb !important;
         }
+
+        /* ── ECOUNT ERP 스타일 메인 리본 툴바 & 데이터 그리드 CSS ── */
+        .erp-top-toolbar {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            padding: 3px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-height: 34px;
+        }
+        .erp-title-tag {
+            font-weight: 800;
+            font-size: 13px;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        /* 세그먼트 탭 */
+        .erp-tab-group {
+            display: inline-flex;
+            background: #f1f5f9;
+            padding: 2px;
+            border-radius: 3px;
+            gap: 2px;
+            border: 1px solid #e2e8f0;
+        }
+        .erp-tab-group .btn-check + .erp-tab-btn {
+            border: none;
+            background: transparent;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: 2px;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            user-select: none;
+            line-height: 20px;
+            display: inline-block;
+        }
+        .erp-tab-group .btn-check:checked + .erp-tab-btn {
+            background: #ffffff;
+            color: #2563eb;
+            font-weight: 700;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+        }
+        /* 콤팩트 버튼 & 인풋 */
+        .btn-erp {
+            height: 26px;
+            padding: 0 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            border-radius: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            transition: all 0.1s ease;
+            white-space: nowrap;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-erp:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+        .btn-erp-primary {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #1d4ed8;
+        }
+        .btn-erp-primary:hover {
+            background: #1d4ed8;
+            color: #ffffff;
+        }
+        .btn-erp-warning {
+            background: #f59e0b;
+            color: #ffffff;
+            border-color: #d97706;
+        }
+        .btn-erp-warning:hover {
+            background: #d97706;
+            color: #ffffff;
+        }
+        .btn-erp-success {
+            background: #10b981;
+            color: #ffffff;
+            border-color: #059669;
+        }
+        .btn-erp-success:hover {
+            background: #059669;
+            color: #ffffff;
+        }
+        .btn-erp-danger {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+        .btn-erp-danger:hover {
+            background: #dc2626;
+            color: #ffffff;
+        }
+        .btn-erp-outline-primary {
+            color: #2563eb;
+            border-color: #93c5fd;
+            background: #eff6ff;
+        }
+        .btn-erp-outline-primary:hover {
+            background: #2563eb;
+            color: #ffffff;
+        }
+
+        /* 필터 리본 */
+        .erp-filter-ribbon {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            padding: 3px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            min-height: 32px;
+        }
+        .erp-preset-group .btn {
+            height: 26px;
+            font-size: 11px;
+            padding: 0 7px;
+            border-radius: 0;
+            line-height: 24px;
+        }
+        .erp-preset-group .btn:first-child { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+        .erp-preset-group .btn:last-child { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+
+        .erp-input-date {
+            width: 120px !important;
+            height: 26px !important;
+            font-size: 11.5px !important;
+            padding: 2px 4px !important;
+            border-radius: 2px !important;
+        }
+        .erp-select-target {
+            width: 105px !important;
+            height: 26px !important;
+            font-size: 11.5px !important;
+            padding: 2px 4px !important;
+            border-radius: 2px !important;
+        }
+        .erp-search-box {
+            width: 160px;
+            min-width: 130px;
+        }
+        .erp-search-box .form-control {
+            height: 26px !important;
+            font-size: 11.5px !important;
+            border-radius: 2px !important;
+            padding: 2px 6px !important;
+        }
+        .erp-subsearch-group {
+            width: 180px;
+        }
+        .erp-limit-select {
+            width: 80px !important;
+            height: 26px !important;
+            font-size: 11.5px !important;
+            padding: 2px 4px !important;
+            border-radius: 2px !important;
+        }
+
+        /* 요약 통계 리본 스트립 */
+        .erp-summary-ribbon {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+            padding: 3px 10px;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+            color: #334155;
+            min-height: 26px;
+        }
+
+        /* 메인 그리드 래퍼 및 테이블 */
+        .erp-main-grid-wrapper {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 165px);
+            width: 100%;
+        }
+        .erp-main-table {
+            margin-bottom: 0 !important;
+            font-family: inherit;
+        }
+        .erp-main-table thead th {
+            position: sticky !important;
+            top: 0;
+            z-index: 10;
+            height: 28px !important;
+            line-height: 28px !important;
+            padding: 0 4px !important;
+        }
+        .erp-main-table tbody td {
+            height: 28px !important;
+            line-height: 26px !important;
+            padding: 1px 6px !important;
+            font-size: 11.5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .erp-main-table tbody tr:hover td {
+            background-color: #eff6ff !important;
+        }
+        /* 플랫 배지 */
+        .erp-badge {
+            display: inline-block;
+            padding: 1px 5px;
+            font-size: 10.5px;
+            font-weight: 700;
+            border-radius: 2px;
+            line-height: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .erp-badge-in {
+            background-color: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+        }
+        .erp-badge-out {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .erp-badge-direct {
+            background-color: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+        .erp-badge-info {
+            background-color: #f0f9ff;
+            color: #0284c7;
+            border: 1px solid #bae6fd;
+        }
+        .erp-badge-cat {
+            background-color: #f8fafc;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        /* 관리 버튼 */
+        .btn-grid-action {
+            height: 22px;
+            padding: 0 5px;
+            font-size: 11px;
+            border-radius: 2px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 20px;
+            cursor: pointer;
+        }
+        .btn-grid-action:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .btn-grid-action-danger:hover {
+            background: #fee2e2;
+            color: #ef4444;
+            border-color: #fca5a5;
+        }
+        /* Tabular figures for aligned numbers */
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+        }
     </style>
 </head>
 <body class="bg-light">
 
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="mb-0 fw-bold"><i class='bx bx-transfer text-primary'></i> 입출고내역</h4>
-        <div class="d-flex gap-2">
-                        <button class="btn btn-outline-secondary shadow-sm fw-bold text-dark bg-white" onclick="app.openExcelMenuModal()">
-                <i class='bx bx-table'></i> 엑셀등록
-            </button>
-            <button class="btn btn-warning shadow-sm" onclick="app.openDrawer('direct_create')">
-                <i class='bx bx-shuffle'></i> 직출고 등록
-            </button>
-            <button class="btn btn-success" onclick="app.openDrawer('inbound_create')">
-                <i class='bx bx-plus'></i> 입고 등록
-            </button>
-            <button class="btn btn-danger" onclick="app.openDrawer('outbound_create')">
-                <i class='bx bx-minus'></i> 출고 등록
-            </button>
-            <button class="btn btn-outline-secondary" onclick="app.openLocationsModal()">
-                <i class='bx bx-cog'></i> 위치 설정
-            </button>
+<div class="container-fluid py-1 px-2">
+    <!-- 1. 최상단 리본 툴바: 타이틀 + 뷰 필터 탭 + 전표 등록/도구 액션 (Row 1) -->
+    <div class="erp-top-toolbar mb-1">
+        <div class="toolbar-left d-flex align-items-center gap-2">
+            <span class="erp-title-tag"><i class='bx bx-transfer text-primary'></i> 입출고내역</span>
+            
+            <div class="erp-tab-group">
+                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
+                <label class="erp-tab-btn" for="btnFilterAll">전체 보기</label>
+                
+                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.resetPageAndLoadHistory()">
+                <label class="erp-tab-btn" for="btnFilterIn">입고만 보기</label>
+                
+                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
+                <label class="erp-tab-btn" for="btnFilterOut">출고만 보기</label>
+                
+                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterDirect" value="direct" onchange="app.resetPageAndLoadHistory()">
+                <label class="erp-tab-btn" for="btnFilterDirect">직출고만 보기</label>
+            </div>
+        </div>
+
+        <div class="toolbar-right d-flex align-items-center gap-1">
+            <button class="btn-erp" onclick="app.openExcelMenuModal()"><i class='bx bx-table'></i> 엑셀등록</button>
+            <button class="btn-erp btn-erp-warning" onclick="app.openDrawer('direct_create')">직출고 등록</button>
+            <button class="btn-erp btn-erp-success" onclick="app.openDrawer('inbound_create')">입고 등록</button>
+            <button class="btn-erp btn-erp-danger" onclick="app.openDrawer('outbound_create')">출고 등록</button>
+            <button class="btn-erp text-muted" onclick="app.openLocationsModal()" title="위치 설정"><i class='bx bx-cog'></i> 위치 설정</button>
         </div>
     </div>
 
-    <!-- 리스트 뷰 -->
-    <div>
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <div class="segmented-control">
-                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterAll" value="all" checked onchange="app.resetPageAndLoadHistory()">
-                                <label class="text-nowrap" for="btnFilterAll">전체 보기</label>
-                                
-                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterIn" value="inbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="text-nowrap" for="btnFilterIn">입고만 보기</label>
-                                
-                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterOut" value="outbound" onchange="app.resetPageAndLoadHistory()">
-                                <label class="text-nowrap" for="btnFilterOut">출고만 보기</label>
-                                
-                                <input type="radio" class="btn-check" name="historyFilter" id="btnFilterDirect" value="direct" onchange="app.resetPageAndLoadHistory()">
-                                <label class="text-nowrap" for="btnFilterDirect">직출고만 보기</label>
-                            </div>
-                            <select class="form-select form-select-sm w-auto" style="min-width: 120px;" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
-                                <option value="50">50개씩 보기</option>
-                                <option value="100">100개씩 보기</option>
-                                <option value="150">150개씩 보기</option>
-                                <option value="200">200개씩 보기</option>
-                                <option value="999999">전체 보기</option>
-                            </select>
-                            <div class="vr d-none d-md-block"></div>
-                            <button class="btn btn-sm btn-outline-danger text-nowrap" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
-                            <button class="btn btn-sm btn-outline-primary text-nowrap ms-1" onclick="app.openBulkUpdateModal()"><i class='bx bx-edit'></i> 일괄 수정</button>
-                            <button class="btn btn-sm btn-outline-secondary text-nowrap ms-1" onclick="app.printSelectedHistory()"><i class='bx bx-printer'></i> 거래명세서 출력</button>
-                            <div class="vr d-none d-md-block ms-1"></div>
-                            <!-- 결과 내 재검색 인풋 -->
-                            <div class="input-group input-group-sm shadow-sm" style="width: 210px;">
-                                <span class="input-group-text bg-white border-end-0 py-0 text-muted"><i class='bx bx-filter'></i></span>
-                                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)" onkeydown="if(event.key==='Enter'){if(app.subSearchTimer)clearTimeout(app.subSearchTimer);app.resetPageAndLoadHistory();}" style="font-size: 0.8rem;">
-                                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()"><i class='bx bx-x'></i></button>
-                            </div>
-                            <span id="subSearchCountBadge" class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1 d-none" style="font-size: 0.78rem;"></span>
-                        </div>
-                        
-                        <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <!-- 날짜 퀵 프리셋 버튼 그룹 -->
-                            <div class="btn-group btn-group-sm" role="group" id="datePresetGroup">
-                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevMonth" onclick="app.setDatePreset('prevMonth')">전월</button>
-                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisMonth" onclick="app.setDatePreset('thisMonth')">당월</button>
-                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevYear" onclick="app.setDatePreset('prevYear')">전년도</button>
-                                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisYear" onclick="app.setDatePreset('thisYear')">금년도</button>
-                                <button type="button" class="btn btn-primary text-white fw-bold text-nowrap" id="btnPreset_all" onclick="app.setDatePreset('all')">전체</button>
-                            </div>
-                            
-                            <input type="date" class="form-control form-control-sm" id="searchStartDate" title="시작일" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
-                            <span class="text-muted">~</span>
-                            <input type="date" class="form-control form-control-sm" id="searchEndDate" title="종료일" style="width: 130px; min-width: 120px; flex-shrink: 0;" onchange="app.onDateInputChange()">
-                            <select class="form-select form-select-sm" id="searchTarget" style="width: 120px; min-width: 120px; flex-shrink: 0;" onchange="app.onSearchTargetChange()">
-                                <option value="">전체 검색</option>
-                                <option value="supplier">매입처</option>
-                                <option value="destination">매출처</option>
-                                <option value="category">분류</option>
-                                <option value="item">품목명</option>
-                                <option value="spec">규격</option>
-                                <option value="note">비고</option>
-                                <option value="tx_id">고유번호</option>
-                            </select>
-                            <div class="position-relative" style="width: 180px; min-width: 140px;">
-                                <input type="text" class="form-control form-control-sm pe-4" id="historySearch" placeholder="스마트 다중 검색..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합 검색이 가능합니다">
-                                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-2 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="검색어 지우기" style="font-size: 0.85rem;">
-                                    <i class='bx bx-x-circle'></i>
-                                </button>
-                            </div>
-                            <button class="btn btn-sm btn-primary text-nowrap flex-shrink-0" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
-                            <button class="btn btn-sm btn-outline-secondary text-nowrap flex-shrink-0" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-2 d-flex gap-2 flex-wrap" id="categoryPillsContainer">
-                        <!-- 카테고리 필터 버튼 렌더링 -->
-                    </div>
-
-                    <!-- 활성 필터 태그 칩 바 -->
-                    <div id="activeFilterChipsContainer" class="d-none mb-2 d-flex align-items-center gap-1 flex-wrap" style="font-size: 0.8rem;">
-                        <!-- 활성 필터 칩 렌더링 -->
-                    </div>
-
-                    <!-- 실시간 검색 결과 요약 통계 바 (공급가, 부가세, 합계, 총수량 등) -->
-                    <div id="historySummaryStrip" class="mb-3 p-2 px-3 bg-white rounded border shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 0.83rem;">
-                        <span class="text-muted"><i class='bx bx-loader-alt bx-spin'></i> 통계 데이터를 집계 중입니다...</span>
-                    </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm align-middle" style="font-size: 0.85rem;">
-                            <thead class="table-light sticky-top text-nowrap" style="z-index: 10;">
-                                <tr>
-                                    <th style="width: 30px;" class="text-center d-print-none"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
-                                    <th class="d-print-none user-select-none" style="width: 135px; min-width: 125px;">고유번호</th>
-                                    <th id="th-type" style="cursor:pointer" onclick="app.toggleSort('type')" class="user-select-none">구분<span class="sort-icon"></span></th>
-                                    <th id="th-category" style="cursor:pointer" onclick="app.toggleSort('category')" class="user-select-none">분류<span class="sort-icon"></span></th>
-                                    <th id="th-date" style="cursor:pointer" onclick="app.toggleSort('date')" class="user-select-none">일자<span class="sort-icon"> 🔽</span></th>
-                                    <th id="th-supplier" style="cursor:pointer" onclick="app.toggleSort('supplier')" class="user-select-none">입고처<span class="sort-icon"></span></th>
-                                    <th id="th-destination" style="cursor:pointer" onclick="app.toggleSort('destination')" class="user-select-none text-nowrap">출고처 <span class="text-muted fw-normal" style="font-size:0.75rem;">(실출고처)</span><span class="sort-icon"></span></th>
-                                    <th id="th-item" style="cursor:pointer" onclick="app.toggleSort('item')" class="user-select-none">품목명<span class="sort-icon"></span></th>
-                                    <th id="th-spec" style="cursor:pointer" onclick="app.toggleSort('spec')" class="user-select-none">규격<span class="sort-icon"></span></th>
-                                    <th id="th-unit" style="cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none">단위<span class="sort-icon"></span></th>
-                                    <th id="th-qty" style="cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none text-end">수량<span class="sort-icon"></span></th>
-                                    <th id="th-inbound_price" style="cursor:pointer" onclick="app.toggleSort('inbound_price')" class="user-select-none text-end">매입단가<span class="sort-icon"></span></th>
-                                    <th id="th-inbound_total" style="cursor:pointer" onclick="app.toggleSort('inbound_total')" class="user-select-none text-end">매입합계<span class="sort-icon"></span></th>
-                                    <th id="th-outbound_price" style="cursor:pointer" onclick="app.toggleSort('outbound_price')" class="user-select-none text-end">매출단가<span class="sort-icon"></span></th>
-                                    <th id="th-outbound_total" style="cursor:pointer" onclick="app.toggleSort('outbound_total')" class="user-select-none text-end">매출합계<span class="sort-icon"></span></th>
-                                    <th class="text-center user-select-none d-print-none">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historyTbody">
-                                <tr><td colspan="16" class="text-center text-muted">데이터를 불러오는 중입니다...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- 페이지네이션 -->
-                    <div class="d-flex justify-content-center mt-3">
-                        <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
-                    </div>
-                </div>
+    <!-- 2. 검색 & 일괄 액션 리본 (Row 2) -->
+    <div class="erp-filter-ribbon mb-1">
+        <div class="filter-left d-flex align-items-center gap-1 flex-wrap">
+            <!-- 날짜 프리셋 -->
+            <div class="btn-group btn-group-sm erp-preset-group" role="group" id="datePresetGroup">
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevMonth" onclick="app.setDatePreset('prevMonth')">전월</button>
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisMonth" onclick="app.setDatePreset('thisMonth')">당월</button>
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevYear" onclick="app.setDatePreset('prevYear')">전년도</button>
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisYear" onclick="app.setDatePreset('thisYear')">금년도</button>
+                <button type="button" class="btn btn-primary text-white fw-bold text-nowrap" id="btnPreset_all" onclick="app.setDatePreset('all')">전체</button>
             </div>
+
+            <!-- 날짜 피커 -->
+            <div class="d-flex align-items-center gap-1">
+                <input type="date" class="form-control form-control-sm erp-input-date" id="searchStartDate" title="시작일" onchange="app.onDateInputChange()">
+                <span class="text-muted" style="font-size: 11px;">~</span>
+                <input type="date" class="form-control form-control-sm erp-input-date" id="searchEndDate" title="종료일" onchange="app.onDateInputChange()">
+            </div>
+
+            <!-- 검색 대상 & 검색창 -->
+            <select class="form-select form-select-sm erp-select-target" id="searchTarget" onchange="app.onSearchTargetChange()">
+                <option value="">전체 검색</option>
+                <option value="supplier">매입처</option>
+                <option value="destination">매출처</option>
+                <option value="category">분류</option>
+                <option value="item">품목명</option>
+                <option value="spec">규격</option>
+                <option value="note">비고</option>
+                <option value="tx_id">고유번호</option>
+            </select>
+            
+            <div class="position-relative erp-search-box">
+                <input type="text" class="form-control form-control-sm pe-4" id="historySearch" placeholder="스마트 다중 검색..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합 검색이 가능합니다">
+                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="검색어 지우기" style="font-size: 0.8rem;">
+                    <i class='bx bx-x-circle'></i>
+                </button>
+            </div>
+            
+            <button class="btn-erp btn-erp-primary" onclick="app.resetPageAndLoadHistory()"><i class='bx bx-search'></i> 검색</button>
+            <button class="btn-erp" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
+        </div>
+
+        <div class="filter-right d-flex align-items-center gap-1 flex-wrap">
+            <!-- 결과 내 재검색 인풋 -->
+            <div class="input-group input-group-sm erp-subsearch-group">
+                <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
+                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)" onkeydown="if(event.key==='Enter'){if(app.subSearchTimer)clearTimeout(app.subSearchTimer);app.resetPageAndLoadHistory();}" style="font-size: 11.5px; height: 26px;">
+                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()" style="height: 26px; padding: 0 4px;"><i class='bx bx-x'></i></button>
+            </div>
+            <span id="subSearchCountBadge" class="badge bg-danger bg-opacity-10 text-danger border border-danger px-1 py-0 d-none" style="font-size: 0.72rem; height: 22px; line-height: 20px;"></span>
+
+            <div class="vr mx-1" style="height: 18px;"></div>
+
+            <!-- 관리 버튼군 -->
+            <button class="btn-erp text-danger" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
+            <button class="btn-erp btn-erp-outline-primary" onclick="app.openBulkUpdateModal()"><i class='bx bx-edit'></i> 일괄수정</button>
+            <button class="btn-erp" onclick="app.printSelectedHistory()"><i class='bx bx-printer'></i> 거래명세서</button>
+
+            <!-- 표시 개수 -->
+            <select class="form-select form-select-sm erp-limit-select ms-1" id="historyLimit" onchange="app.resetPageAndLoadHistory()">
+                <option value="50">50개</option>
+                <option value="100">100개</option>
+                <option value="150">150개</option>
+                <option value="200">200개</option>
+                <option value="999999">전체</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 카테고리 필터 (선택 시만 표시되거나 초슬림 인라인) -->
+    <div class="mb-1 d-flex gap-1 flex-wrap" id="categoryPillsContainer" style="font-size: 11.5px;"></div>
+
+    <!-- 활성 필터 태그 칩 바 -->
+    <div id="activeFilterChipsContainer" class="d-none mb-1 d-flex align-items-center gap-1 flex-wrap" style="font-size: 11px;"></div>
+
+    <!-- 3. 실시간 검색 결과 요약 통계 바 (슬림 26px 스트립) -->
+    <div id="historySummaryStrip" class="erp-summary-ribbon mb-1">
+        <span class="text-muted"><i class='bx bx-loader-alt bx-spin'></i> 통계 데이터를 집계 중입니다...</span>
+    </div>
+
+    <!-- 4. 메인 데이터 그리드 (High-Density ERP Grid) -->
+    <div class="erp-main-grid-wrapper">
+        <table class="erp-sheet-table erp-main-table" id="historyTable">
+            <thead>
+                <tr>
+                    <th style="width: 32px;" class="text-center d-print-none th-no"><input type="checkbox" id="selectAllHistory" onchange="app.toggleSelectAllHistory()"></th>
+                    <th style="width: 138px;" class="text-center d-print-none user-select-none">고유번호</th>
+                    <th id="th-type" style="width: 80px; cursor:pointer" onclick="app.toggleSort('type')" class="text-center user-select-none">구분<span class="sort-icon"></span></th>
+                    <th id="th-category" style="width: 72px; cursor:pointer" onclick="app.toggleSort('category')" class="text-center user-select-none">분류<span class="sort-icon"></span></th>
+                    <th id="th-date" style="width: 82px; cursor:pointer" onclick="app.toggleSort('date')" class="text-center user-select-none">일자<span class="sort-icon"> 🔽</span></th>
+                    <th id="th-supplier" style="width: 130px; cursor:pointer" onclick="app.toggleSort('supplier')" class="user-select-none">입고처<span class="sort-icon"></span></th>
+                    <th id="th-destination" style="width: 150px; cursor:pointer" onclick="app.toggleSort('destination')" class="user-select-none">출고처 (실출고처)<span class="sort-icon"></span></th>
+                    <th id="th-item" style="cursor:pointer; min-width: 130px;" onclick="app.toggleSort('item')" class="user-select-none">품목명<span class="sort-icon"></span></th>
+                    <th id="th-spec" style="width: 85px; cursor:pointer" onclick="app.toggleSort('spec')" class="user-select-none text-center">규격<span class="sort-icon"></span></th>
+                    <th id="th-unit" style="width: 42px; cursor:pointer" onclick="app.toggleSort('unit')" class="user-select-none text-center">단위<span class="sort-icon"></span></th>
+                    <th id="th-qty" style="width: 65px; cursor:pointer" onclick="app.toggleSort('qty')" class="user-select-none text-end">수량<span class="sort-icon"></span></th>
+                    <th id="th-inbound_price" style="width: 80px; cursor:pointer" onclick="app.toggleSort('inbound_price')" class="user-select-none text-end">매입단가<span class="sort-icon"></span></th>
+                    <th id="th-inbound_total" style="width: 88px; cursor:pointer" onclick="app.toggleSort('inbound_total')" class="user-select-none text-end">매입합계<span class="sort-icon"></span></th>
+                    <th id="th-outbound_price" style="width: 80px; cursor:pointer" onclick="app.toggleSort('outbound_price')" class="user-select-none text-end">매출단가<span class="sort-icon"></span></th>
+                    <th id="th-outbound_total" style="width: 88px; cursor:pointer" onclick="app.toggleSort('outbound_total')" class="user-select-none text-end">매출합계<span class="sort-icon"></span></th>
+                    <th style="width: 68px;" class="text-center user-select-none d-print-none">관리</th>
+                </tr>
+            </thead>
+            <tbody id="historyTbody">
+                <tr><td colspan="16" class="text-center text-muted" style="height: 60px;">데이터를 불러오는 중입니다...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 5. 페이지네이션 -->
+    <div class="d-flex justify-content-center mt-2">
+        <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
     </div>
 </div>
 
@@ -341,59 +1055,145 @@
 
 <!-- 입고 등록 모달 -->
 <div class="modal fade" id="inboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-inbound">
-                <h5 class="modal-title fw-bold"><i class='bx bx-plus'></i> 입고 등록</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
+            <div class="modal-header erp-window-header">
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="erp-window-title">입고 전표 등록</span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary ms-1" style="font-size: 11px; font-weight: 500;" id="inboundModalBadge">신규전표</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-white-50 small" style="font-size: 11px;">[F3] 행추가 &nbsp;|&nbsp; [F8] 저장</span>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
             </div>
             <div class="modal-body bg-light">
                 <form id="inboundForm">
-                    <div class="row g-2">
-                        <div class="col-3">
-                            <label class="form-label mb-1">입고일자</label>
-                            <input type="date" class="form-control form-control-sm" id="in_date" required>
+                    <!-- 마스터 전표 헤더 (ECOUNT ERP Style) -->
+                    <table class="erp-form-table mb-1">
+                        <colgroup>
+                            <col style="width: 85px;">
+                            <col style="width: 140px;">
+                            <col style="width: 85px;">
+                            <col style="width: 260px;">
+                            <col style="width: 65px;">
+                            <col style="width: 90px;">
+                            <col style="width: 95px;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>입고일자 <span class="text-danger">*</span></th>
+                                <td>
+                                    <input type="date" class="form-control" id="in_date" required>
+                                </td>
+                                <th>매입처 <span class="text-danger">*</span></th>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
+                                    </div>
+                                </td>
+                                <th>구분 <span class="text-danger">*</span></th>
+                                <td>
+                                    <select class="form-select" id="in_trade_type" required>
+                                        <option value="내수" selected>내수</option>
+                                        <option value="수입">수입</option>
+                                    </select>
+                                </td>
+                                <th>재고 입고 창고 <span class="text-danger">*</span></th>
+                                <td>
+                                    <select class="form-select" id="in_location" required>
+                                        <option value="">로딩 중...</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>전표 비고</th>
+                                <td colspan="7">
+                                    <input type="text" class="form-control" id="in_note" placeholder="입고 건에 대한 메모 입력 (선택사항)">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- ERP 스프레드시트 툴바 -->
+                    <div class="erp-grid-toolbar">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark">품목 상세 내역</span>
+                            <span class="badge bg-white text-secondary border fw-normal" id="in_row_count">5건</span>
                         </div>
-                        <div class="col-6">
-                            <label class="form-label mb-1">매입처</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="in_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('in_supplier');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('in_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <label class="form-label mb-1">구분</label>
-                            <select class="form-select form-select-sm" id="in_trade_type" required>
-                                <option value="내수" selected>내수</option>
-                                <option value="수입">수입</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label mb-1">재고 위치</label>
-                            <select class="form-select form-select-sm" id="in_location" required>
-                                <option value="">로딩 중...</option>
-                            </select>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="erp-tool-btn" onclick="app.addInboundItemRow(true)">
+                                <i class='bx bx-plus text-primary'></i> 행추가 (F3)
+                            </button>
+                            <button type="button" class="erp-tool-btn" onclick="app.removeLastInboundRow()">
+                                <i class='bx bx-minus text-danger'></i> 행삭제
+                            </button>
                         </div>
                     </div>
 
-                    <hr class="my-3 text-muted">
-
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">입고 품목 내역</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addInboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
+                    <!-- ERP 스프레드시트 데이터 그리드 테이블 -->
+                    <div class="erp-grid-wrapper mb-1" style="max-height: calc(85vh - 220px); overflow-y: auto;">
+                        <table class="erp-sheet-table align-middle text-nowrap" id="inboundSheetTable">
+                            <colgroup>
+                                <col style="width: 36px;"> <!-- No -->
+                                <col style="width: 20%;"> <!-- 품목명 -->
+                                <col style="width: 13%;"> <!-- 규격 -->
+                                <col style="width: 8%;"> <!-- 분류 -->
+                                <col style="width: 7%;"> <!-- 수량 -->
+                                <col style="width: 5%;"> <!-- 단위 -->
+                                <col style="width: 9%;"> <!-- 단가 -->
+                                <col style="width: 9%;"> <!-- 공급가액 -->
+                                <col style="width: 8%;"> <!-- 부가세 -->
+                                <col> <!-- 적요 / 비고 -->
+                                <col style="width: 40px;"> <!-- DEL -->
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="th-no text-center">No</th>
+                                    <th>품목명 <span class="text-danger">*</span></th>
+                                    <th>규격 <span class="text-danger">*</span></th>
+                                    <th>분류</th>
+                                    <th>수량 <span class="text-danger">*</span></th>
+                                    <th>단위 <span class="text-danger">*</span></th>
+                                    <th>단가 <span class="text-danger">*</span></th>
+                                    <th>공급가액</th>
+                                    <th>부가세</th>
+                                    <th>적요 / 비고</th>
+                                    <th>DEL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inboundItemsContainer">
+                                <!-- JS Render -->
+                            </tbody>
+                            <tfoot id="inboundItemsFoot">
+                                <tr class="fw-bold">
+                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td class="text-end text-primary" id="in_total_qty">0</td>
+                                    <td colspan="2"></td>
+                                    <td class="text-end" id="in_total_supply">0원</td>
+                                    <td class="text-end text-muted" id="in_total_vat">0원</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
                     </div>
 
-                    <div id="inboundItemsContainer">
-                        <!-- app.js에서 렌더링 -->
-                    </div>
-
-                    <div class="mt-3 bg-white p-3 rounded border shadow-sm">
-                        <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
-                        <input type="text" class="form-control form-control-sm" id="in_note" placeholder="입고 건에 대한 통합 메모">
-                    </div>
-
-                    <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-success px-4 py-2"><i class='bx bx-check'></i> 입고 처리</button>
+                    <!-- 하단 전표 요약 & 저장 패널 -->
+                    <div class="erp-summary-panel">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span class="text-secondary small fw-bold">전표 집계:</span>
+                            <span class="small text-muted">공급가액: <strong class="text-dark" id="in_summary_supply">0원</strong></span>
+                            <span class="small text-muted">부가세: <strong class="text-dark" id="in_summary_vat">0원</strong></span>
+                            <span class="small fw-bold text-success fs-6">총 합계금액: <span id="in_grand_total">0</span>원</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="submit" class="btn btn-primary btn-submit-erp shadow-sm" id="btnInboundSubmit">입고 처리</button>
+                            <button type="button" class="btn btn-outline-secondary btn-submit-erp" data-bs-dismiss="modal">닫기</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -403,74 +1203,157 @@
 
 <!-- 출고 등록 모달 -->
 <div class="modal fade" id="outboundModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-outbound">
-                <h5 class="modal-title fw-bold"><i class='bx bx-minus'></i> 출고 등록</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
+            <div class="modal-header erp-window-header">
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="erp-window-title">출고 전표 등록</span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary ms-1" style="font-size: 11px; font-weight: 500;" id="outboundModalBadge">신규전표</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-white-50 small" style="font-size: 11px;">[F3] 행추가 &nbsp;|&nbsp; [F8] 저장</span>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
             </div>
             <div class="modal-body bg-light">
                 <form id="outboundForm">
-                    <div class="row g-2">
-                        <div class="col-3">
-                            <label class="form-label mb-1">출고일자</label>
-                            <input type="date" class="form-control form-control-sm" id="out_date" required>
-                        </div>
-                        <div class="col-4">
-                            <label class="form-label mb-1">매출처 (계산서 발행)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <label class="form-label mb-1">실출고처 (배송지)</label>
-                            <input type="text" class="form-control form-control-sm" id="out_actual_destination" placeholder="배송지 입력" autocomplete="off">
-                        </div>
-                        <div class="col-2">
-                            <label class="form-label mb-1">구분</label>
-                            <select class="form-select form-select-sm" id="out_trade_type" required>
-                                <option value="내수" selected>내수</option>
-                                <option value="수출">수출</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <hr class="my-3 text-muted">
-
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">출고 품목 내역</h6>
-                        <button type="button" class="btn btn-outline-primary btn-sm px-3" onclick="app.addOutboundItemRow()"><i class='bx bx-plus'></i> 추가</button>
-                    </div>
-
-                    <div id="outboundItemsContainer">
-                        <!-- JS Render -->
-                    </div>
-
-                    <div class="mt-3 bg-white p-3 rounded border shadow-sm">
-                        <div class="row g-2">
-                            <div class="col-4">
-                                <label class="form-label fw-bold mb-1 d-flex align-items-center gap-2" style="font-size:0.85rem;">
-                                     <span class="mb-0">총 배송비</span>
-                                    <div class="d-flex align-items-center gap-1">
-                                        <input class="form-check-input m-0" type="checkbox" id="out_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
-                                        <label class="text-nowrap text-muted fw-normal m-0" style="font-size: 0.7rem; cursor: pointer; padding-top: 1px;" for="out_shipping_vat">
-                                            (부가세 포함)
-                                        </label>
+                    <!-- 마스터 전표 헤더 (ECOUNT ERP Style) -->
+                    <table class="erp-form-table mb-1">
+                        <colgroup>
+                            <col style="width: 85px;">
+                            <col style="width: 230px;">
+                            <col style="width: 95px;">
+                            <col style="width: 230px;">
+                            <col style="width: 105px;">
+                            <col style="width: 180px;">
+                            <col style="width: 65px;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>출고일자 <span class="text-danger">*</span></th>
+                                <td>
+                                    <input type="date" class="form-control" id="out_date" required>
+                                </td>
+                                <th>매출처(계산서) <span class="text-danger">*</span></th>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="out_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('out_destination');}">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('out_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
-                                </label>
-                                <input type="number" class="form-control form-control-sm" id="out_shipping" min="0" step="1" value="0">
-                            </div>
-                            <div class="col-8">
-                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
-                                <input type="text" class="form-control form-control-sm" id="out_note" placeholder="출고 건에 대한 통합 메모">
-                            </div>
+                                </td>
+                                <th>실출고처(배송지)</th>
+                                <td>
+                                    <input type="text" class="form-control" id="out_actual_destination" placeholder="실제 배송지/현장명 입력" autocomplete="off">
+                                </td>
+                                <th>구분 <span class="text-danger">*</span></th>
+                                <td>
+                                    <select class="form-select" id="out_trade_type" required>
+                                        <option value="내수" selected>내수</option>
+                                        <option value="수출">수출</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>총 배송비</th>
+                                <td>
+                                    <div class="d-flex align-items-center h-100 px-1 gap-1">
+                                        <input type="number" class="form-control text-end" id="out_shipping" min="0" step="1" value="0" placeholder="0" oninput="app.updateOutboundGridTotals()" style="min-width: 80px;">
+                                        <span class="text-muted" style="font-size: 11px; flex-shrink: 0;">원</span>
+                                        <div class="form-check m-0 d-flex align-items-center gap-1 text-nowrap ms-1" style="flex-shrink: 0;">
+                                            <input class="form-check-input m-0" type="checkbox" id="out_shipping_vat" value="1" style="width: 12px; height: 12px; cursor: pointer;" onchange="app.updateOutboundGridTotals()">
+                                            <label class="form-check-label text-muted" style="font-size: 11px; cursor: pointer;" for="out_shipping_vat">VAT포함</label>
+                                        </div>
+                                    </div>
+                                </td>
+                                <th>전표 비고</th>
+                                <td colspan="5">
+                                    <input type="text" class="form-control" id="out_note" placeholder="출고 건에 대한 메모 입력 (선택사항)">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- ERP 스프레드시트 툴바 -->
+                    <div class="erp-grid-toolbar">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark">출고 품목 상세 내역</span>
+                            <span class="badge bg-white text-secondary border fw-normal" id="out_row_count">5건</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="erp-tool-btn" onclick="app.addOutboundItemRow(true)">
+                                <i class='bx bx-plus text-primary'></i> 행추가 (F3)
+                            </button>
+                            <button type="button" class="erp-tool-btn" onclick="app.removeLastOutboundRow()">
+                                <i class='bx bx-minus text-danger'></i> 행삭제
+                            </button>
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <small class="text-danger fw-bold mb-2" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 모든 품목의 Lot 설정을 완료해야 출고 처리가 가능합니다.</small>
-                        <button type="submit" class="btn btn-danger w-100 py-2 fs-6" id="btnOutboundSubmit"><i class='bx bx-check-double'></i> 출고 처리</button>
+                    <!-- ERP 스프레드시트 데이터 그리드 테이블 -->
+                    <div class="erp-grid-wrapper mb-1" style="max-height: calc(85vh - 220px); overflow-y: auto;">
+                        <table class="erp-sheet-table align-middle text-nowrap" id="outboundSheetTable">
+                            <colgroup>
+                                <col style="width: 36px;"> <!-- No -->
+                                <col style="width: 19%;"> <!-- 품목명 -->
+                                <col style="width: 14%;"> <!-- 규격 (보유재고) -->
+                                <col style="width: 8%;"> <!-- 분류 -->
+                                <col style="width: 6%;"> <!-- 수량 -->
+                                <col style="width: 4%;"> <!-- 단위 -->
+                                <col style="width: 76px;"> <!-- Lot 관리 -->
+                                <col style="width: 8%;"> <!-- 단가 -->
+                                <col style="width: 9%;"> <!-- 공급가액 -->
+                                <col style="width: 7%;"> <!-- 부가세 -->
+                                <col> <!-- 적요 / 비고 -->
+                                <col style="width: 40px;"> <!-- DEL -->
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="th-no text-center">No</th>
+                                    <th>품목명 <span class="text-danger">*</span></th>
+                                    <th>규격 (보유재고) <span class="text-danger">*</span></th>
+                                    <th>분류</th>
+                                    <th>수량 <span class="text-danger">*</span></th>
+                                    <th>단위</th>
+                                    <th>Lot 관리 <span class="text-danger">*</span></th>
+                                    <th>단가 <span class="text-danger">*</span></th>
+                                    <th>공급가액</th>
+                                    <th>부가세</th>
+                                    <th>적요 / 비고</th>
+                                    <th>DEL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="outboundItemsContainer">
+                                <!-- JS Render -->
+                            </tbody>
+                            <tfoot id="outboundItemsFoot">
+                                <tr class="fw-bold">
+                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td class="text-end text-danger" id="out_total_qty">0</td>
+                                    <td colspan="3"></td>
+                                    <td class="text-end" id="out_total_supply">0원</td>
+                                    <td class="text-end text-muted" id="out_total_vat">0원</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- 하단 전표 요약 & 저장 패널 -->
+                    <div class="erp-summary-panel">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span class="text-secondary small fw-bold">전표 집계:</span>
+                            <span class="small text-muted">공급가액: <strong class="text-dark" id="out_summary_supply">0원</strong></span>
+                            <span class="small text-muted">부가세(10%): <strong class="text-dark" id="out_summary_vat">0원</strong></span>
+                            <span class="small fw-bold text-danger fs-6">총 청구합계(배송비/VAT포함): <span id="out_grand_total">0</span>원</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="text-danger fw-bold" id="outErrorMsg" style="display:none;"><i class='bx bx-error'></i> 미설정된 Lot이 존재합니다.</small>
+                            <button type="submit" class="btn btn-danger btn-submit-erp shadow-sm" id="btnOutboundSubmit">출고 처리</button>
+                            <button type="button" class="btn btn-outline-secondary btn-submit-erp" data-bs-dismiss="modal">닫기</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -480,107 +1363,175 @@
 
 <!-- 직출고 등록 모달 -->
 <div class="modal fade" id="directModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-direct">
-                <h5 class="modal-title fw-bold"><i class='bx bx-shuffle'></i> 직출고 등록</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog erp-modal-xl modal-dialog-scrollable" style="max-width: 1400px; width: 92vw; min-width: 960px; margin: 0.5rem auto;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;">
+            <div class="modal-header erp-window-header">
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="erp-window-title">직출고 전표 등록</span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary ms-1" style="font-size: 11px; font-weight: 500;" id="directModalBadge">입출고 동시</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-white-50 small" style="font-size: 11px;">[F3] 행추가 &nbsp;|&nbsp; [F8] 저장</span>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
             </div>
             <div class="modal-body bg-light">
                 <form id="directForm">
-                    <div class="row g-3 mb-2">
-                        <div class="col-md-3">
-                            <label class="form-label mb-1">거래일자</label>
-                            <input type="date" class="form-control form-control-sm" id="dir_date" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label mb-1">매입처 (공급처)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label mb-1">구분</label>
-                            <select class="form-select form-select-sm" id="dir_trade_type" required>
-                                <option value="내수" selected>내수</option>
-                                <option value="수입">수입</option>
-                                <option value="수출">수출</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label mb-1">매출처 (납품처/계산서)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
-                                <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label mb-1">실출고처 (배송지/현장)</label>
-                            <input type="text" class="form-control form-control-sm" id="dir_actual_destination" placeholder="실제 배송지 또는 하청업체명 자유 입력" autocomplete="off">
-                        </div>
-                    </div>
-
-                    <hr class="my-3 text-muted">
-
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold mb-0">공급 품목 내역 <span class="badge bg-warning text-dark ms-2">직출고 (재고 미반영)</span></h6>
-                        <button type="button" class="btn btn-outline-warning btn-sm px-3" onclick="app.addDirectItemRow()"><i class='bx bx-plus'></i> 추가</button>
-                    </div>
-
-                    <div id="directItemsContainer">
-                        <!-- JS Render -->
-                    </div>
-
-                    <div class="mt-3 bg-white p-3 rounded border shadow-sm">
-                        <div class="row g-3 mb-2">
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="form-label fw-bold mb-0 text-primary text-nowrap" style="font-size:0.85rem;">
-                                        매입 배송비
-                                    </label>
-                                    <div class="d-flex align-items-center gap-1" style="cursor: pointer;">
-                                        <input class="form-check-input m-0" type="checkbox" id="dir_in_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
-                                        <label class="text-muted fw-normal text-nowrap m-0" for="dir_in_shipping_vat" style="font-size: 0.75rem; cursor: pointer; user-select: none;">
-                                            부가세 포함
-                                        </label>
+                    <!-- 마스터 전표 헤더 (ECOUNT ERP Style) -->
+                    <table class="erp-form-table mb-1">
+                        <colgroup>
+                            <col style="width: 80px;">
+                            <col style="width: 140px;">
+                            <col style="width: 90px;">
+                            <col style="width: 210px;">
+                            <col style="width: 90px;">
+                            <col style="width: 210px;">
+                            <col style="width: 70px;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>거래일자 <span class="text-danger">*</span></th>
+                                <td>
+                                    <input type="date" class="form-control" id="dir_date" required>
+                                </td>
+                                <th>매입처(공급) <span class="text-danger">*</span></th>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="dir_supplier" placeholder="매입처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_supplier');}">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_supplier')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
-                                </div>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control" id="dir_in_shipping" min="0" step="1" value="0" placeholder="0">
-                                    <span class="input-group-text">원</span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <label class="form-label fw-bold mb-0 text-danger text-nowrap" style="font-size:0.85rem;">
-                                        매출 배송비
-                                    </label>
-                                    <div class="d-flex align-items-center gap-1" style="cursor: pointer;">
-                                        <input class="form-check-input m-0" type="checkbox" id="dir_out_shipping_vat" value="1" style="width: 0.9rem; height: 0.9rem; cursor: pointer;">
-                                        <label class="text-muted fw-normal text-nowrap m-0" for="dir_out_shipping_vat" style="font-size: 0.75rem; cursor: pointer; user-select: none;">
-                                            부가세 포함
-                                        </label>
+                                </td>
+                                <th>매출처(납품) <span class="text-danger">*</span></th>
+                                <td>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="dir_destination" placeholder="매출처 검색 (Enter)" required autocomplete="off" onkeypress="if(event.key==='Enter'){event.preventDefault(); app.openPartnerSearchModal('dir_destination');}">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="app.openPartnerSearchModal('dir_destination')" title="거래처 검색"><i class='bx bx-search'></i></button>
                                     </div>
-                                </div>
-                                <div class="input-group input-group-sm">
-                                    <input type="number" class="form-control" id="dir_out_shipping" min="0" step="1" value="0" placeholder="0">
-                                    <span class="input-group-text">원</span>
-                                </div>
-                            </div>
+                                </td>
+                                <th>구분 <span class="text-danger">*</span></th>
+                                <td>
+                                    <select class="form-select" id="dir_trade_type" required>
+                                        <option value="내수" selected>내수</option>
+                                        <option value="수입">수입</option>
+                                        <option value="수출">수출</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>배송지</th>
+                                <td>
+                                    <input type="text" class="form-control" id="dir_actual_destination" placeholder="실제 배송지 / 현장명" autocomplete="off">
+                                </td>
+                                <th>매입 배송비</th>
+                                <td>
+                                    <div class="d-flex align-items-center h-100 px-1 gap-1">
+                                        <input type="number" class="form-control text-end" id="dir_in_shipping" min="0" step="1" value="0" placeholder="0" oninput="app.updateDirectGridTotals()" style="min-width: 70px;">
+                                        <span class="text-muted" style="font-size: 11px; flex-shrink: 0;">원</span>
+                                        <div class="form-check m-0 d-flex align-items-center gap-1 text-nowrap ms-1" style="flex-shrink: 0;">
+                                            <input class="form-check-input m-0" type="checkbox" id="dir_in_shipping_vat" value="1" style="width: 12px; height: 12px; cursor: pointer;" onchange="app.updateDirectGridTotals()">
+                                            <label class="form-check-label text-muted" style="font-size: 11px; cursor: pointer;" for="dir_in_shipping_vat">VAT포함</label>
+                                        </div>
+                                    </div>
+                                </td>
+                                <th>매출 배송비</th>
+                                <td>
+                                    <div class="d-flex align-items-center h-100 px-1 gap-1">
+                                        <input type="number" class="form-control text-end" id="dir_out_shipping" min="0" step="1" value="0" placeholder="0" oninput="app.updateDirectGridTotals()" style="min-width: 70px;">
+                                        <span class="text-muted" style="font-size: 11px; flex-shrink: 0;">원</span>
+                                        <div class="form-check m-0 d-flex align-items-center gap-1 text-nowrap ms-1" style="flex-shrink: 0;">
+                                            <input class="form-check-input m-0" type="checkbox" id="dir_out_shipping_vat" value="1" style="width: 12px; height: 12px; cursor: pointer;" onchange="app.updateDirectGridTotals()">
+                                            <label class="form-check-label text-muted" style="font-size: 11px; cursor: pointer;" for="dir_out_shipping_vat">VAT포함</label>
+                                        </div>
+                                    </div>
+                                </td>
+                                <th>전표 비고</th>
+                                <td>
+                                    <input type="text" class="form-control" id="dir_note" placeholder="직출고 건에 대한 통합 메모">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- ERP 스프레드시트 툴바 -->
+                    <div class="erp-grid-toolbar">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark">직출고 품목 상세 내역</span>
+                            <span class="badge bg-white text-secondary border fw-normal" id="dir_row_count">5건</span>
                         </div>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label fw-bold mb-1" style="font-size:0.85rem;">비고 (선택사항)</label>
-                                <input type="text" class="form-control form-control-sm" id="dir_note" placeholder="직출고 건에 대한 통합 메모">
-                            </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="erp-tool-btn" onclick="app.addDirectItemRow(true)">
+                                <i class='bx bx-plus text-primary'></i> 행추가 (F3)
+                            </button>
+                            <button type="button" class="erp-tool-btn" onclick="app.removeLastDirectRow()">
+                                <i class='bx bx-minus text-danger'></i> 행삭제
+                            </button>
                         </div>
                     </div>
 
-                    <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-warning w-100 fw-bold py-2 fs-6"><i class='bx bx-check-double'></i> 직출고 동시 처리</button>
+                    <!-- ERP 스프레드시트 데이터 그리드 테이블 -->
+                    <div class="erp-grid-wrapper mb-1" style="max-height: calc(85vh - 220px); overflow-y: auto;">
+                        <table class="erp-sheet-table align-middle text-nowrap" id="directSheetTable">
+                            <colgroup>
+                                <col style="width: 36px;"> <!-- No -->
+                                <col style="width: 17%;"> <!-- 품목명 -->
+                                <col style="width: 12%;"> <!-- 규격 -->
+                                <col style="width: 7%;"> <!-- 분류 -->
+                                <col style="width: 6%;"> <!-- 수량 -->
+                                <col style="width: 4%;"> <!-- 단위 -->
+                                <col style="width: 8%;"> <!-- 매입단가 -->
+                                <col style="width: 9%;"> <!-- 매입공급가 -->
+                                <col style="width: 8%;"> <!-- 매출단가 -->
+                                <col style="width: 9%;"> <!-- 매출공급가 -->
+                                <col> <!-- 적요 / 비고 -->
+                                <col style="width: 40px;"> <!-- DEL -->
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="th-no text-center">No</th>
+                                    <th>품목명 <span class="text-danger">*</span></th>
+                                    <th>규격</th>
+                                    <th>분류</th>
+                                    <th>수량 <span class="text-danger">*</span></th>
+                                    <th>단위</th>
+                                    <th>매입단가</th>
+                                    <th>매입공급가</th>
+                                    <th>매출단가</th>
+                                    <th>매출공급가</th>
+                                    <th>적요 / 비고</th>
+                                    <th>DEL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directItemsContainer">
+                                <!-- JS Render -->
+                            </tbody>
+                            <tfoot id="directItemsFoot">
+                                <tr class="fw-bold">
+                                    <td colspan="4" class="text-center bg-secondary-subtle text-dark">합계</td>
+                                    <td class="text-end text-dark" id="dir_total_qty">0</td>
+                                    <td colspan="2"></td>
+                                    <td class="text-end text-primary" id="dir_total_in_supply">0원</td>
+                                    <td></td>
+                                    <td class="text-end text-danger" id="dir_total_out_supply">0원</td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <!-- 하단 직출고 요약 & 동시 처리 패널 -->
+                    <div class="erp-summary-panel">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span class="text-secondary small fw-bold">직출고 집계:</span>
+                            <span class="small text-muted">매입총액(VAT포함): <strong class="text-primary" id="dir_grand_in_total">0</strong>원</span>
+                            <span class="small text-muted">매출총액(VAT포함): <strong class="text-danger" id="dir_grand_out_total">0</strong>원</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="submit" class="btn btn-warning btn-submit-erp shadow-sm fw-bold" id="btnDirectSubmit">직출고 동시 처리</button>
+                            <button type="button" class="btn btn-outline-secondary btn-submit-erp" data-bs-dismiss="modal">닫기</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -847,7 +1798,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-success">수정 저장</button>
+                    <button type="submit" class="btn btn-success">입고 수정</button>
                 </div>
             </form>
         </div>
@@ -957,7 +1908,7 @@
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-white" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-warning">수정 저장</button>
+                    <button type="submit" class="btn btn-warning">직출고 수정</button>
                 </div>
             </form>
         </div>
@@ -1060,7 +2011,7 @@
                 <div class="modal-footer">
                     <small class="text-danger fw-bold me-auto" id="editOutboundErrorMsg" style="display:none;"><i class='bx bx-error'></i> Lot 설정을 다시 완료해주세요.</small>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-danger">수정 저장</button>
+                    <button type="submit" class="btn btn-danger">출고 수정</button>
                 </div>
             </form>
         </div>
@@ -1322,6 +2273,6 @@
 <script type="module">
     // (Firebase 설정은 다른 페이지와 동일하게 적용 필요 시 추가, 여기서는 백엔드 API만 사용)
 </script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>
