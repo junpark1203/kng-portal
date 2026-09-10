@@ -159,7 +159,7 @@
             box-sizing: border-box !important;
         }
         .erp-sheet-table {
-            width: 100% !important;
+            width: 100%;
             max-width: none;
             border-collapse: collapse !important;
             font-size: 12px;
@@ -298,14 +298,20 @@
             height: 100%;
             cursor: col-resize !important;
             user-select: none;
-            z-index: 15;
+            z-index: 25;
+            display: flex;
+            justify-content: center;
         }
-        .col-resizer:hover,
-        .col-resizer.is-resizing {
-            background-color: #2563eb !important;
-            width: 3px;
-            right: -1px;
-            opacity: 0.9;
+        .col-resizer::after {
+            content: '';
+            width: 2px;
+            height: 100%;
+            background-color: transparent;
+            transition: background-color 0.1s ease;
+        }
+        .col-resizer:hover::after,
+        .col-resizer.is-resizing::after {
+            background-color: #2563eb;
         }
 
         /* 셀 내 행 삭제 버튼 (글로벌 .btn 스타일 완벽 무력화) */
@@ -776,6 +782,7 @@
             height: 28px !important;
             line-height: 28px !important;
             padding: 0 4px !important;
+            overflow: visible !important;
         }
         .erp-main-table tbody td {
             height: 28px !important;
@@ -945,6 +952,7 @@
             <button class="btn-erp text-danger" onclick="app.deleteSelectedHistory()"><i class='bx bx-trash'></i> 선택삭제</button>
             <button class="btn-erp btn-erp-outline-primary" onclick="app.openBulkUpdateModal()"><i class='bx bx-edit'></i> 일괄수정</button>
             <button class="btn-erp" onclick="app.printSelectedHistory()"><i class='bx bx-printer'></i> 거래명세서</button>
+            <button class="btn-erp" onclick="app.autoFitAllHistoryColumns()" title="모든 열 너비를 조회된 내용에 맞게 자동 조정"><i class='bx bx-expand-horizontal'></i> 자동맞춤</button>
 
             <!-- 표시 개수 -->
             <select class="form-select form-select-sm erp-limit-select ms-1" id="historyLimit" onchange="app.resetPageAndLoadHistory()">

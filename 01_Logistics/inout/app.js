@@ -131,7 +131,7 @@ const app = {
             }
         });
 
-        ['inboundSheetTable', 'outboundSheetTable', 'directSheetTable'].forEach(id => {
+        ['inboundSheetTable', 'outboundSheetTable', 'directSheetTable', 'historyTable'].forEach(id => {
             this.setupTableColumnResizing(id);
         });
     },
@@ -147,6 +147,15 @@ const app = {
         const ths = Array.from(headerRow.querySelectorAll('th'));
         if (ths.length === 0) return;
 
+        const isMainHistory = (table.id === 'historyTable');
+
+        // 원본 너비 속성 보존
+        ths.forEach(th => {
+            if (!th.getAttribute('data-original-width')) {
+                th.setAttribute('data-original-width', th.style.width || '');
+            }
+        });
+
         let colgroup = table.querySelector('colgroup');
         if (!colgroup) {
             colgroup = document.createElement('colgroup');
@@ -158,10 +167,43 @@ const app = {
         }
         const cols = Array.from(colgroup.querySelectorAll('col'));
 
-        const wrapper = table.closest('.erp-grid-wrapper');
+        const wrapper = table.closest('.erp-grid-wrapper') || table.closest('.erp-main-grid-wrapper');
         if (wrapper) {
             wrapper.style.overflowX = 'auto';
         }
+
+        const saveTableWidths = () => {
+            if (!isMainHistory) return;
+            const widths = cols.map(c => parseFloat(c.style.width) || 0);
+            try {
+                localStorage.setItem('kng_history_col_widths', JSON.stringify(widths));
+            } catch (err) {}
+        };
+
+        const loadSavedWidths = () => {
+            if (!isMainHistory) return false;
+            try {
+                const raw = localStorage.getItem('kng_history_col_widths');
+                if (raw) {
+                    const widths = JSON.parse(raw);
+                    if (Array.isArray(widths) && widths.length === cols.length) {
+                        let totalW = 0;
+                        widths.forEach((w, idx) => {
+                            if (w > 0 && cols[idx]) {
+                                cols[idx].style.width = w + 'px';
+                                if (ths[idx]) ths[idx].style.width = w + 'px';
+                                totalW += w;
+                            }
+                        });
+                        if (totalW > 0) {
+                            table.style.setProperty('width', totalW + 'px', 'important');
+                            return true;
+                        }
+                    }
+                }
+            } catch (err) {}
+            return false;
+        };
 
         const syncColWidths = () => {
             if (table.offsetWidth <= 0) return;
@@ -171,29 +213,32 @@ const app = {
                     const w = Math.round(th.getBoundingClientRect().width);
                     if (w > 0) {
                         cols[idx].style.width = w + 'px';
+                        th.style.width = w + 'px';
                         totalW += w;
                     }
                 }
             });
             if (totalW > 0) {
-                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, totalW) + 'px';
+                table.style.setProperty('width', totalW + 'px', 'important');
             }
         };
 
-        if (table.offsetWidth > 0) {
-            syncColWidths();
+        if (!loadSavedWidths()) {
+            if (table.offsetWidth > 0) {
+                syncColWidths();
+            }
         }
 
         let measureCanvas = null;
         const measureTextWidth = (text, font) => {
             if (!measureCanvas) measureCanvas = document.createElement('canvas');
             const ctx = measureCanvas.getContext('2d');
-            ctx.font = font || '12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.font = font || '12px "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             return ctx.measureText(text).width;
         };
 
         ths.forEach((th, colIdx) => {
-            if (colIdx >= ths.length - 1 && th.textContent.trim() === 'DEL') return;
+            if (colIdx >= ths.length - 1 && (th.textContent.trim() === 'DEL' || th.textContent.trim() === '관리')) return;
 
             th.style.position = 'sticky';
             th.style.top = '0';
@@ -207,6 +252,12 @@ const app = {
                 th.appendChild(resizer);
             }
 
+            // 정렬 클릭 이벤트 전파 차단
+            resizer.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+
             let startX = 0;
             let startWidth = 0;
             let isDragging = false;
@@ -219,11 +270,14 @@ const app = {
                 if (cols[colIdx]) {
                     cols[colIdx].style.width = newW + 'px';
                 }
+                if (ths[colIdx]) {
+                    ths[colIdx].style.width = newW + 'px';
+                }
                 let total = 0;
                 cols.forEach(c => {
                     total += parseFloat(c.style.width) || 50;
                 });
-                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, total) + 'px';
+                table.style.setProperty('width', total + 'px', 'important');
             };
 
             const onMouseUp = () => {
@@ -231,8 +285,10 @@ const app = {
                 isDragging = false;
                 resizer.classList.remove('is-resizing');
                 document.body.style.cursor = '';
+                document.body.style.userSelect = '';
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('mouseup', onMouseUp);
+                saveTableWidths();
             };
 
             resizer.onmousedown = (e) => {
@@ -244,11 +300,12 @@ const app = {
                 isDragging = true;
                 resizer.classList.add('is-resizing');
                 document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
             };
 
-            // 더블클릭 시 글자 길이에 맞춰 자동 너비 맞춤 (Auto-Fit)
+            // 더블클릭 시 조회된 내용의 길이에 맞춰 자동 너비 맞춤 (Auto-Fit)
             resizer.ondblclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -259,23 +316,25 @@ const app = {
                 const r = clone.querySelector('.col-resizer');
                 if (r) r.remove();
                 const headerText = clone.textContent.replace(/\s+/g, ' ').trim();
-                const headerFont = 'bold 12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                const headerFont = 'bold 12px "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                 let maxW = measureTextWidth(headerText, headerFont) + 16;
 
                 // 2. 본문 셀들의 텍스트 너비 측정
-                const cellFont = '12px "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                const cellFont = '12px "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                 const tbody = table.querySelector('tbody');
                 if (tbody) {
                     const rows = tbody.querySelectorAll('tr');
                     rows.forEach(row => {
+                        // 아코디언 서브 로우 및 안내용 colspan 행 제외
+                        if (row.classList.contains('accordion-sub-row') || row.querySelector('td[colspan]')) return;
                         const cell = row.cells[colIdx];
-                        if (!cell) return;
+                        if (!cell || cell.colSpan > 1) return;
                         let text = '';
                         const input = cell.querySelector('input');
                         const select = cell.querySelector('select');
                         const btn = cell.querySelector('button');
 
-                        if (input) {
+                        if (input && input.type !== 'checkbox') {
                             text = input.value || input.placeholder || '';
                         } else if (select) {
                             const opt = select.options[select.selectedIndex];
@@ -283,31 +342,85 @@ const app = {
                         } else if (btn) {
                             text = btn.textContent.trim();
                         } else {
-                            text = cell.textContent.trim();
+                            text = cell.innerText ? cell.innerText.replace(/\n/g, ' ').trim() : cell.textContent.trim();
                         }
 
                         if (text) {
-                            const w = measureTextWidth(text, cellFont);
+                            let w = measureTextWidth(text, cellFont);
+                            // 고유번호 열: 아코디언 화살표 아이콘 너비 반영
+                            if (cell.querySelector('.accordion-icon')) {
+                                w += 20;
+                            }
+                            // 배지 패딩 반영
+                            if (cell.querySelector('.erp-badge')) {
+                                w += 14;
+                            }
+                            // 관리 열: 버튼 최소폭 보장
+                            if (cell.querySelectorAll('.btn-grid-action').length > 0) {
+                                w = Math.max(w, 64);
+                            }
                             if (w > maxW) maxW = w;
                         }
                     });
                 }
 
                 // 3. 패딩 + 여유 공간 포함 타겟 너비 계산
-                const minW = colIdx === 0 ? 36 : 48;
-                const targetW = Math.max(minW, Math.round(maxW + 22));
+                const minW = colIdx === 0 ? 32 : 44;
+                const targetW = Math.max(minW, Math.round(maxW + 20));
 
                 if (cols[colIdx]) {
                     cols[colIdx].style.width = targetW + 'px';
+                }
+                if (ths[colIdx]) {
+                    ths[colIdx].style.width = targetW + 'px';
                 }
 
                 let total = 0;
                 cols.forEach(c => {
                     total += parseFloat(c.style.width) || 50;
                 });
-                table.style.width = Math.max(wrapper ? wrapper.clientWidth - 2 : 0, total) + 'px';
+                table.style.setProperty('width', total + 'px', 'important');
+                saveTableWidths();
             };
         });
+    },
+
+    autoFitAllHistoryColumns: function() {
+        const table = document.getElementById('historyTable');
+        if (!table) return;
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+        const resizers = thead.querySelectorAll('.col-resizer');
+        resizers.forEach(r => {
+            if (r.ondblclick) {
+                r.ondblclick(new MouseEvent('dblclick', { bubbles: false, cancelable: true }));
+            }
+        });
+        if (typeof showToast === 'function') {
+            showToast('모든 열 너비가 데이터에 맞게 자동 조정되었습니다.', 'info');
+        }
+    },
+
+    resetHistoryTableColumnWidths: function() {
+        try {
+            localStorage.removeItem('kng_history_col_widths');
+        } catch (e) {}
+        const table = document.getElementById('historyTable');
+        if (!table) return;
+        const colgroup = table.querySelector('colgroup');
+        if (colgroup) colgroup.remove();
+        table.style.width = '';
+        const ths = table.querySelectorAll('thead th');
+        ths.forEach(th => {
+            const originalW = th.getAttribute('data-original-width');
+            if (originalW) {
+                th.style.width = originalW;
+            }
+        });
+        this.setupTableColumnResizing('historyTable');
+        if (typeof showToast === 'function') {
+            showToast('열 너비가 기본값으로 초기화되었습니다.', 'info');
+        }
     },
 
     bindGridKeyboardAndPaste: function(tr, type) {
