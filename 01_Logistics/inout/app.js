@@ -3685,7 +3685,7 @@ const app = {
         if (container) {
             container.innerHTML = '';
         }
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 1; i++) {
             this.addInboundItemRow(i === 0);
         }
         this.initTodayDates();
@@ -3714,7 +3714,7 @@ const app = {
         }
         this.outboundRows = {};
         this.currentLotModalRowId = null;
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 1; i++) {
             this.addOutboundItemRow(i === 0);
         }
         this.initTodayDates();
@@ -3745,7 +3745,7 @@ const app = {
         if (container) {
             container.innerHTML = '';
         }
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 1; i++) {
             this.addDirectItemRow(i === 0);
         }
         this.initTodayDates();
@@ -3821,7 +3821,7 @@ const app = {
             }
             modal.show();
             if ($('directItemsContainer').children.length === 0) {
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < 1; i++) {
                     this.addDirectItemRow(i === 0);
                 }
             }
