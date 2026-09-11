@@ -94,6 +94,10 @@ const { initMarginCalculatorTables } = marginCalculatorRoutes;
 const gongsaeroBiddingRoutes = require('./routes/gongsaero-bidding');
 const { initGongsaeroBiddingTables } = gongsaeroBiddingRoutes;
 
+// 현장별 매출내역서 (임시) 모듈
+const siteSalesStatementRoutes = require('./routes/site-sales-statement');
+const { initSiteSalesStatementTables } = siteSalesStatementRoutes;
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 // 보안 헤더 및 프록시 설정 (Cloudflare Tunnel 대응)
@@ -375,6 +379,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             gongsaeroBiddingRoutes.setDb(db);
             console.log('gongsaero_bidding API 준비 완료');
         }).catch(err => console.error('gongsaero_bidding 초기화 실패:', err));
+        // 현장별 매출내역서 테이블 초기화 + 라우트에 DB 주입
+        initSiteSalesStatementTables(db).then(() => {
+            siteSalesStatementRoutes.setDb(db);
+            console.log('site_sales_statements API 준비 완료');
+        }).catch(err => console.error('site_sales_statements 초기화 실패:', err));
         // 대시보드
         dashboardRoutes.setDb(db);
     }
@@ -1299,6 +1308,7 @@ app.use('/api/settlement', (req, res, next) => {
 app.use('/api/partners', partnersRoutes(db));
 app.use('/api/ledger', ledgerRoutes(db));
 app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
+app.use('/api/site-sales-statements', siteSalesStatementRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

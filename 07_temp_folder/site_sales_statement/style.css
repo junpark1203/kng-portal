@@ -1,0 +1,376 @@
+/* ── 현장별 매출내역서 스타일 (Slate & Clean Blue B2B ERP 테마) ── */
+:root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+}
+
+body {
+    background-color: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    color: var(--slate-800);
+    font-size: 12px;
+    margin: 0;
+    padding: 0;
+    user-select: auto;
+}
+
+/* Tabular figures for aligned numbers */
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ── 상단 고정 리본 툴바 ── */
+.erp-top-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--slate-300);
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--slate-900);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.erp-badge-temp {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
+    line-height: 15px;
+}
+
+/* ── 뷰 전환 탭 그룹 ── */
+.erp-tab-group {
+    display: inline-flex;
+    background-color: var(--slate-100);
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid var(--slate-300);
+}
+
+.erp-tab-btn {
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-600);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.erp-tab-btn.active {
+    background-color: #ffffff;
+    color: var(--primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ── 검색 필터 패널 ── */
+.erp-filter-card {
+    background: #ffffff;
+    border: 1px solid var(--slate-300);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+}
+
+.filter-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--slate-600);
+    white-space: nowrap;
+}
+
+.erp-input, .erp-select {
+    height: 26px;
+    padding: 2px 8px;
+    font-size: 11.5px;
+    border: 1px solid var(--slate-300);
+    border-radius: 3px;
+    background-color: #ffffff;
+    color: var(--slate-800);
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.erp-input:focus, .erp-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* 버튼 스타일 */
+.btn-erp-primary {
+    height: 26px;
+    padding: 0 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background-color: var(--primary);
+    color: #ffffff;
+    border: 1px solid var(--primary-hover);
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.15s ease;
+}
+
+.btn-erp-primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn-erp-secondary {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background-color: #ffffff;
+    color: var(--slate-700);
+    border: 1px solid var(--slate-300);
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-erp-secondary:hover {
+    background-color: var(--slate-100);
+    color: var(--slate-900);
+    border-color: var(--slate-400);
+}
+
+.btn-erp-danger {
+    height: 26px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background-color: #ffffff;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    border-radius: 3px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-erp-danger:hover {
+    background-color: #fee2e2;
+}
+
+/* 기간 프리셋 버튼 그룹 */
+.preset-btn-group {
+    display: inline-flex;
+    border: 1px solid var(--slate-300);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.preset-btn {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+    background: #ffffff;
+    border: none;
+    border-right: 1px solid var(--slate-300);
+    cursor: pointer;
+    color: var(--slate-600);
+    font-weight: 500;
+}
+
+.preset-btn:last-child {
+    border-right: none;
+}
+
+.preset-btn.active {
+    background-color: var(--primary);
+    color: #ffffff;
+    font-weight: 700;
+}
+
+/* ── 그리드 테이블 ── */
+.erp-grid-wrapper {
+    background: #ffffff;
+    border: 1px solid var(--slate-300);
+    border-radius: 4px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 175px);
+}
+
+.erp-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    table-layout: fixed;
+    margin: 0;
+    border: 1px solid var(--slate-300);
+}
+
+.erp-sheet-table thead th {
+    background-color: var(--slate-50);
+    color: var(--slate-900);
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px 6px;
+    border: 1px solid var(--slate-300);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: 28px;
+    box-sizing: border-box;
+}
+
+.erp-sheet-table tbody td {
+    padding: 3px 6px;
+    border: 1px solid var(--slate-300);
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 28px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.erp-sheet-table tbody tr:hover td {
+    background-color: #eff6ff !important;
+}
+
+.erp-sheet-table tfoot td {
+    padding: 4px 6px;
+    background-color: var(--slate-50);
+    border: 1px solid var(--slate-300);
+    font-size: 11.5px;
+    font-weight: 700;
+    vertical-align: middle;
+    height: 28px;
+}
+
+/* 배지 */
+.badge-site {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 2px;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-supplier {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 2px;
+    background-color: var(--slate-100);
+    color: var(--slate-700);
+    border: 1px solid var(--slate-300);
+}
+
+/* ── 드래그 & 드롭 업로드 존 ── */
+.dropzone-card {
+    background: #ffffff;
+    border: 2px dashed var(--slate-300);
+    border-radius: 6px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 12px;
+}
+
+.dropzone-card:hover, .dropzone-card.dragover {
+    border-color: var(--primary);
+    background-color: #eff6ff;
+}
+
+.dropzone-icon {
+    font-size: 42px;
+    color: var(--primary);
+    margin-bottom: 6px;
+}
+
+.dropzone-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--slate-800);
+    margin-bottom: 4px;
+}
+
+.dropzone-desc {
+    font-size: 11.5px;
+    color: var(--slate-500);
+}
+
+/* ── 프리뷰 편집 그리드 테이블 인풋 ── */
+.preview-cell-input {
+    width: 100%;
+    height: 24px;
+    padding: 0 4px;
+    font-size: 11px;
+    border: 1px solid transparent;
+    background: transparent;
+    outline: none;
+    border-radius: 2px;
+    color: var(--slate-900);
+}
+
+.preview-cell-input:focus {
+    background: #ffffff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.preview-cell-input[type=number]::-webkit-inner-spin-button,
+.preview-cell-input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}

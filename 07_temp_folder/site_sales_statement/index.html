@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>현장별 매출내역서 (임시)</title>
+    <!-- Bootstrap 5 & Boxicons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // PDF.js 워커 경로 설정
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body>
+
+<div class="container-fluid p-2">
+    <!-- 1. 최상단 리본 툴바 -->
+    <div class="erp-top-toolbar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="erp-title-tag">
+                <i class='bx bx-receipt text-primary'></i> 현장별 매출내역서
+            </span>
+            <span class="erp-badge-temp">임시</span>
+        </div>
+
+        <div class="erp-tab-group">
+            <button type="button" class="erp-tab-btn active" id="tabHistoryBtn" onclick="app.switchTab('history')">
+                <i class='bx bx-list-ul'></i> 내역 조회 (<span id="tabHistoryCount">0</span>)
+            </button>
+            <button type="button" class="erp-tab-btn" id="tabUploadBtn" onclick="app.switchTab('upload')">
+                <i class='bx bx-cloud-upload'></i> PDF 업로드 & 파싱
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ 탭 1: 내역 조회 화면 ═══ -->
+    <div id="tabHistoryView">
+        <!-- 검색 필터 패널 -->
+        <div class="erp-filter-card">
+            <div class="filter-row">
+                <!-- 기간 프리셋 -->
+                <div class="preset-btn-group" id="datePresetGroup">
+                    <button type="button" class="preset-btn" onclick="app.setDatePreset('all')">전체</button>
+                    <button type="button" class="preset-btn active" onclick="app.setDatePreset('thisMonth')">당월</button>
+                    <button type="button" class="preset-btn" onclick="app.setDatePreset('lastMonth')">전월</button>
+                    <button type="button" class="preset-btn" onclick="app.setDatePreset('thisYear')">금년</button>
+                </div>
+
+                <!-- 일자 선택 -->
+                <div class="filter-item">
+                    <span class="filter-label">기간</span>
+                    <input type="date" id="filterStartDate" class="erp-input" style="width: 125px;">
+                    <span class="text-muted">~</span>
+                    <input type="date" id="filterEndDate" class="erp-input" style="width: 125px;">
+                </div>
+
+                <!-- 현장 선택 드롭다운 -->
+                <div class="filter-item">
+                    <span class="filter-label">현장</span>
+                    <select id="filterSite" class="erp-select" style="min-width: 140px;" onchange="app.search()">
+                        <option value="">전체 현장</option>
+                    </select>
+                </div>
+
+                <!-- 키워드 검색 -->
+                <div class="filter-item">
+                    <span class="filter-label">검색어</span>
+                    <input type="text" id="filterKeyword" class="erp-input" placeholder="품명, 공급처, 파일명..." style="width: 180px;" onkeydown="if(event.key==='Enter') app.search()">
+                </div>
+
+                <!-- 검색/초기화 버튼 -->
+                <div class="d-flex gap-1 ms-auto">
+                    <button type="button" class="btn-erp-primary" onclick="app.search()">
+                        <i class='bx bx-search'></i> 검색
+                    </button>
+                    <button type="button" class="btn-erp-secondary" onclick="app.resetSearch()">
+                        <i class='bx bx-reset'></i> 초기화
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 액션 및 요약 바 -->
+        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button type="button" class="btn-erp-danger" id="btnBatchDelete" style="display:none;" onclick="app.deleteSelected()">
+                    <i class='bx bx-trash'></i> 선택 삭제 (<span id="selectedCount">0</span>)
+                </button>
+                <div class="text-muted" style="font-size: 11.5px;">
+                    총 <strong class="text-dark" id="kpiCount">0</strong>건 | 
+                    총 수량: <strong class="text-primary tabular-nums" id="kpiQty">0</strong> | 
+                    공급가액: <strong class="text-dark tabular-nums" id="kpiSupplyAmt">0원</strong> | 
+                    합계금액: <strong class="text-danger tabular-nums" id="kpiTotalAmt">0원</strong>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="btn-erp-secondary" onclick="app.exportExcel()">
+                    <i class='bx bx-download'></i> 엑셀 다운로드
+                </button>
+            </div>
+        </div>
+
+        <!-- 메인 데이터 그리드 테이블 -->
+        <div class="erp-grid-wrapper">
+            <table class="erp-sheet-table" id="historyTable">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;"><input type="checkbox" id="selectAllCheckbox" onchange="app.toggleSelectAll(this)"></th>
+                        <th style="width: 36px;">#</th>
+                        <th style="width: 85px;">거래일자</th>
+                        <th style="width: 140px;">현장명</th>
+                        <th style="width: 120px;">공급처</th>
+                        <th>품명</th>
+                        <th style="width: 110px;">규격</th>
+                        <th style="width: 55px;">단위</th>
+                        <th style="width: 75px;" class="text-end">수량</th>
+                        <th style="width: 95px;" class="text-end">단가</th>
+                        <th style="width: 105px;" class="text-end">공급가액</th>
+                        <th style="width: 95px;" class="text-end">부가세</th>
+                        <th style="width: 110px;" class="text-end">합계금액</th>
+                        <th style="width: 120px;">파일명</th>
+                        <th style="width: 45px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr>
+                        <td colspan="15" class="text-center py-4 text-muted">내역을 조회하는 중입니다...</td>
+                    </tr>
+                </tbody>
+                <tfoot id="historyTableFoot">
+                    <tr>
+                        <td colspan="8" class="text-center fw-bold">합 계</td>
+                        <td class="text-end fw-bold text-primary tabular-nums" id="footTotalQty">0</td>
+                        <td></td>
+                        <td class="text-end fw-bold text-dark tabular-nums" id="footTotalSupply">0원</td>
+                        <td class="text-end fw-bold text-muted tabular-nums" id="footTotalVat">0원</td>
+                        <td class="text-end fw-bold text-danger tabular-nums" id="footTotalAmount">0원</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- ═══ 탭 2: PDF 업로드 & 파싱 화면 ═══ -->
+    <div id="tabUploadView" style="display:none;">
+        <!-- 드래그 & 드롭 카드 -->
+        <div class="dropzone-card" id="pdfDropzone" onclick="document.getElementById('pdfFileInput').click()">
+            <input type="file" id="pdfFileInput" accept=".pdf" multiple style="display:none;" onchange="app.handleFilesSelected(this.files)">
+            <div class="dropzone-icon">
+                <i class='bx bxs-file-pdf'></i>
+            </div>
+            <div class="dropzone-title">거래명세서 PDF 파일을 여기에 드래그하거나 클릭하여 선택하세요</div>
+            <div class="dropzone-desc">여러 개의 PDF 파일을 한 번에 선택하여 일괄 파싱할 수 있습니다. (*.pdf)</div>
+        </div>
+
+        <!-- 파싱 진행 상태바 -->
+        <div id="parseProgressBox" class="p-3 bg-white border rounded mb-2 text-center" style="display:none;">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+            <span id="parseStatusText" class="fw-semibold text-primary">PDF 분석 중...</span>
+        </div>
+
+        <!-- 파싱 결과 검증 및 편집 그리드 -->
+        <div id="previewSection" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary" style="font-size: 11px;">추출 결과: <strong id="previewCount">0</strong>건</span>
+                    <span class="text-muted" style="font-size: 11.5px;">* 표의 각 항목을 클릭하여 수정할 수 있으며, 확인 후 우측의 [서버에 일괄 저장]을 클릭하세요.</span>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn-erp-secondary" onclick="app.addEmptyPreviewRow()">
+                        <i class='bx bx-plus'></i> 행 추가
+                    </button>
+                    <button type="button" class="btn-erp-secondary" onclick="app.clearPreview()">
+                        <i class='bx bx-trash'></i> 비우기
+                    </button>
+                    <button type="button" class="btn-erp-primary ms-2" id="btnSaveToServer" onclick="app.savePreviewToServer()">
+                        <i class='bx bx-save'></i> 서버에 일괄 저장 (<span id="previewSaveCount">0</span>건)
+                    </button>
+                </div>
+            </div>
+
+            <div class="erp-grid-wrapper" style="max-height: calc(100vh - 270px);">
+                <table class="erp-sheet-table" id="previewTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px;">#</th>
+                            <th style="width: 95px;">거래일자</th>
+                            <th style="width: 140px;">현장명</th>
+                            <th style="width: 120px;">공급처</th>
+                            <th>품명</th>
+                            <th style="width: 110px;">규격</th>
+                            <th style="width: 55px;">단위</th>
+                            <th style="width: 75px;" class="text-end">수량</th>
+                            <th style="width: 95px;" class="text-end">단가</th>
+                            <th style="width: 105px;" class="text-end">공급가액</th>
+                            <th style="width: 95px;" class="text-end">부가세</th>
+                            <th style="width: 110px;" class="text-end">합계금액</th>
+                            <th style="width: 130px;">파일명</th>
+                            <th style="width: 45px;">삭제</th>
+                        </tr>
+                    </thead>
+                    <tbody id="previewTableBody">
+                    </tbody>
+                    <tfoot id="previewTableFoot">
+                        <tr>
+                            <td colspan="7" class="text-center fw-bold">파싱 합계</td>
+                            <td class="text-end fw-bold text-primary tabular-nums" id="previewTotalQty">0</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-dark tabular-nums" id="previewTotalSupply">0원</td>
+                            <td class="text-end fw-bold text-muted tabular-nums" id="previewTotalVat">0원</td>
+                            <td class="text-end fw-bold text-danger tabular-nums" id="previewTotalAmount">0원</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

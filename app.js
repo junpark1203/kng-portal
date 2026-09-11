@@ -1600,6 +1600,65 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ==========================================
+// 전역 파일 드롭 시 브라우저 기본 동작(새 탭 열림) 원천 방지 및 라우팅
+// ==========================================
+['dragenter', 'dragover', 'dragleave'].forEach(function(eventName) {
+    window.addEventListener(eventName, function(e) {
+        e.preventDefault();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    }, false);
+    document.addEventListener(eventName, function(e) {
+        e.preventDefault();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    }, false);
+});
+
+document.addEventListener('drop', function(e) {
+    e.preventDefault();
+}, false);
+
+// 메인 창에 드롭 시 현장별 매출내역서 iframe으로 전달
+window.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var files = e.dataTransfer ? e.dataTransfer.files : null;
+    if (files && files.length > 0) {
+        var hasPdf = Array.from(files).some(function(f) { return f.name.toLowerCase().endsWith('.pdf'); });
+        var iframe = document.getElementById('appIframe');
+        
+        var tempFolderLink = document.querySelector('.menu a[href*="site_sales_statement"]');
+        if (hasPdf && tempFolderLink && (!iframe || !iframe.src || !iframe.src.includes('site_sales_statement'))) {
+            var parentGroup = tempFolderLink.closest('.menu-group');
+            if (parentGroup) parentGroup.classList.add('open');
+            tempFolderLink.click();
+            
+            if (iframe) {
+                var passFilesOnce = function() {
+                    iframe.removeEventListener('load', passFilesOnce);
+                    setTimeout(function() {
+                        if (iframe.contentWindow && iframe.contentWindow.app && typeof iframe.contentWindow.app.handleFilesSelected === 'function') {
+                            iframe.contentWindow.app.switchTab('upload');
+                            iframe.contentWindow.app.handleFilesSelected(files);
+                        }
+                    }, 300);
+                };
+                iframe.addEventListener('load', passFilesOnce);
+            }
+            return;
+        }
+
+        if (iframe && iframe.contentWindow && iframe.contentWindow.app && typeof iframe.contentWindow.app.handleFilesSelected === 'function') {
+            iframe.contentWindow.app.switchTab('upload');
+            iframe.contentWindow.app.handleFilesSelected(files);
+        }
+    }
+}, false);
+
+// ==========================================
 // 트랜잭션 수정 팝업 기능
 // ==========================================
 window.openTxEditModal = async function(txId) {
