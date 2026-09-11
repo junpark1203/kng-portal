@@ -1681,7 +1681,7 @@ const app = {
                 totalOutboundAmt += outAmt;
 
                 let lotInfoHtml = '';
-                if (type === 'outbound' && item.consumed_lots && item.consumed_lots.length > 0) {
+                if (type === 'outbound' && !isDirect && item.consumed_lots && item.consumed_lots.length > 0) {
                     const lotsBadges = item.consumed_lots.map(l => 
                         `<span class="acc-lot-chip me-1 tabular-nums">
                             ${l.inbound_date} 입고 (${l.supplier || '-'}) <strong class="text-danger">-${l.consumed_qty}</strong>
@@ -1703,7 +1703,6 @@ const app = {
                             <td>
                                 <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
-                                ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
