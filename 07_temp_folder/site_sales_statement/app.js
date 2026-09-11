@@ -101,6 +101,20 @@ const app = {
         this.bindDropzone();
         this.loadSites();
         this.search();
+        this.initResizers();
+    },
+
+    initResizers() {
+        if (window.ErpGridResizer) {
+            window.ErpGridResizer.init('historyTable', { 
+                storageKey: 'kng_site_sales_history_grid_widths',
+                ignoreLastCol: true
+            });
+            window.ErpGridResizer.init('previewTable', { 
+                storageKey: 'kng_site_sales_preview_grid_widths',
+                ignoreLastCol: true
+            });
+        }
     },
 
     // ── 탭 전환 ──
@@ -117,11 +131,27 @@ const app = {
             histView.style.display = 'block';
             uploadView.style.display = 'none';
             this.search();
+            if (window.ErpGridResizer) {
+                setTimeout(() => {
+                    window.ErpGridResizer.init('historyTable', { 
+                        storageKey: 'kng_site_sales_history_grid_widths',
+                        ignoreLastCol: true
+                    });
+                }, 50);
+            }
         } else {
             uploadBtn.classList.add('active');
             histBtn.classList.remove('active');
             uploadView.style.display = 'block';
             histView.style.display = 'none';
+            if (window.ErpGridResizer) {
+                setTimeout(() => {
+                    window.ErpGridResizer.init('previewTable', { 
+                        storageKey: 'kng_site_sales_preview_grid_widths',
+                        ignoreLastCol: true
+                    });
+                }, 50);
+            }
         }
     },
 
@@ -163,10 +193,17 @@ const app = {
         $('filterEndDate').value = end;
 
         // 버튼 활성화 토글
-        const btns = $('datePresetGroup').querySelectorAll('.preset-btn');
-        btns.forEach(b => b.classList.remove('active'));
-        if (event && event.target && event.target.classList.contains('preset-btn')) {
-            event.target.classList.add('active');
+        const dateGroup = $('datePresetGroup');
+        if (dateGroup) {
+            const btns = dateGroup.querySelectorAll('.preset-btn');
+            btns.forEach(b => {
+                const clickAttr = b.getAttribute('onclick') || '';
+                if (clickAttr.includes(`'${type}'`)) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
         }
 
         if (this.currentTab === 'history') {
@@ -279,6 +316,14 @@ const app = {
         if (this.historyItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="15" class="text-center py-5 text-muted"><i class='bx bx-info-circle me-1'></i>등록된 현장별 매출내역이 없습니다. [PDF 업로드 & 파싱] 탭에서 등록해 보세요.</td></tr>`;
             $('selectAllCheckbox').checked = false;
+            if (window.ErpGridResizer) {
+                requestAnimationFrame(() => {
+                    window.ErpGridResizer.init('historyTable', { 
+                        storageKey: 'kng_site_sales_history_grid_widths',
+                        ignoreLastCol: true
+                    });
+                });
+            }
             return;
         }
 
@@ -320,6 +365,15 @@ const app = {
                 </tr>
             `;
         }).join('');
+
+        if (window.ErpGridResizer) {
+            requestAnimationFrame(() => {
+                window.ErpGridResizer.init('historyTable', { 
+                    storageKey: 'kng_site_sales_history_grid_widths',
+                    ignoreLastCol: true
+                });
+            });
+        }
     },
 
     // ── 체크박스 및 선택 삭제 ──
@@ -772,6 +826,15 @@ const app = {
         }).join('');
 
         this.updatePreviewTotals();
+
+        if (window.ErpGridResizer) {
+            requestAnimationFrame(() => {
+                window.ErpGridResizer.init('previewTable', { 
+                    storageKey: 'kng_site_sales_preview_grid_widths',
+                    ignoreLastCol: true
+                });
+            });
+        }
     },
 
     updatePreviewField(idx, field, value) {
@@ -851,6 +914,8 @@ const app = {
             total_amount: 0
         });
         this.renderPreviewTable();
+        const previewSec = $('previewSection');
+        if (previewSec) previewSec.style.display = 'block';
     },
 
     clearPreview() {

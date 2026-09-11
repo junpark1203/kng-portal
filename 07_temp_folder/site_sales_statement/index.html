@@ -99,7 +99,13 @@
             </div>
 
             <div class="d-flex align-items-center gap-1">
-                <button type="button" class="btn-erp-secondary" onclick="app.exportExcel()">
+                <button type="button" class="btn-erp-secondary" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('historyTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                    <i class='bx bx-expand-alt'></i> 열 맞춤
+                </button>
+                <button type="button" class="btn-erp-secondary" onclick="window.ErpGridResizer && window.ErpGridResizer.resetWidths('historyTable')" title="열 너비를 기본값으로 초기화합니다">
+                    <i class='bx bx-reset'></i> 너비 초기화
+                </button>
+                <button type="button" class="btn-erp-secondary ms-1" onclick="app.exportExcel()">
                     <i class='bx bx-download'></i> 엑셀 다운로드
                 </button>
             </div>
@@ -113,17 +119,17 @@
                         <th style="width: 36px;"><input type="checkbox" id="selectAllCheckbox" onchange="app.toggleSelectAll(this)"></th>
                         <th style="width: 36px;">#</th>
                         <th style="width: 85px;">거래일자</th>
-                        <th style="width: 140px;">현장명</th>
-                        <th style="width: 120px;">공급처</th>
-                        <th>품명</th>
-                        <th style="width: 110px;">규격</th>
+                        <th style="width: 150px;">현장명</th>
+                        <th style="width: 130px;">공급처</th>
+                        <th style="width: 220px;">품명</th>
+                        <th style="width: 220px;">규격</th>
                         <th style="width: 55px;">단위</th>
                         <th style="width: 75px;" class="text-end">수량</th>
                         <th style="width: 95px;" class="text-end">단가</th>
                         <th style="width: 105px;" class="text-end">공급가액</th>
                         <th style="width: 95px;" class="text-end">부가세</th>
                         <th style="width: 110px;" class="text-end">합계금액</th>
-                        <th style="width: 120px;">파일명</th>
+                        <th style="width: 140px;">파일명</th>
                         <th style="width: 45px;">관리</th>
                     </tr>
                 </thead>
@@ -173,7 +179,13 @@
                     <span class="text-muted" style="font-size: 11.5px;">* 표의 각 항목을 클릭하여 수정할 수 있으며, 확인 후 우측의 [서버에 일괄 저장]을 클릭하세요.</span>
                 </div>
                 <div class="d-flex align-items-center gap-1">
-                    <button type="button" class="btn-erp-secondary" onclick="app.addEmptyPreviewRow()">
+                    <button type="button" class="btn-erp-secondary" onclick="window.ErpGridResizer && window.ErpGridResizer.autoFitAll('previewTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                        <i class='bx bx-expand-alt'></i> 열 맞춤
+                    </button>
+                    <button type="button" class="btn-erp-secondary" onclick="window.ErpGridResizer && window.ErpGridResizer.resetWidths('previewTable')" title="열 너비를 기본값으로 초기화합니다">
+                        <i class='bx bx-reset'></i> 너비 초기화
+                    </button>
+                    <button type="button" class="btn-erp-secondary ms-1" onclick="app.addEmptyPreviewRow()">
                         <i class='bx bx-plus'></i> 행 추가
                     </button>
                     <button type="button" class="btn-erp-secondary" onclick="app.clearPreview()">
@@ -191,17 +203,17 @@
                         <tr>
                             <th style="width: 36px;">#</th>
                             <th style="width: 95px;">거래일자</th>
-                            <th style="width: 140px;">현장명</th>
-                            <th style="width: 120px;">공급처</th>
-                            <th>품명</th>
-                            <th style="width: 110px;">규격</th>
+                            <th style="width: 150px;">현장명</th>
+                            <th style="width: 130px;">공급처</th>
+                            <th style="width: 220px;">품명</th>
+                            <th style="width: 220px;">규격</th>
                             <th style="width: 55px;">단위</th>
                             <th style="width: 75px;" class="text-end">수량</th>
                             <th style="width: 95px;" class="text-end">단가</th>
                             <th style="width: 105px;" class="text-end">공급가액</th>
                             <th style="width: 95px;" class="text-end">부가세</th>
                             <th style="width: 110px;" class="text-end">합계금액</th>
-                            <th style="width: 130px;">파일명</th>
+                            <th style="width: 140px;">파일명</th>
                             <th style="width: 45px;">삭제</th>
                         </tr>
                     </thead>
@@ -224,6 +236,7 @@
     </div>
 </div>
 
+<script src="../../Common/js/erp-grid-resizer.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

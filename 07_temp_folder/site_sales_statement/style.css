@@ -264,6 +264,33 @@ body {
     z-index: 10;
     height: 28px;
     box-sizing: border-box;
+    overflow: visible !important;
+    user-select: none;
+}
+
+/* ── 엑셀식 마우스 열 너비 조절 핸들러 (Column Resizer) ── */
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize !important;
+    user-select: none;
+    z-index: 25;
+    display: flex;
+    justify-content: center;
+}
+.col-resizer::after {
+    content: '';
+    width: 2px;
+    height: 100%;
+    background-color: transparent;
+    transition: background-color 0.1s ease;
+}
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after {
+    background-color: var(--primary);
 }
 
 .erp-sheet-table tbody td {
