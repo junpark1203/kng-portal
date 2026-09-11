@@ -109,26 +109,28 @@ const app = {
         const startInput = $('filterStartDate');
         const endInput = $('filterEndDate');
 
-        const onDateInputOrChange = () => {
+        const onDateInput = () => {
             const dateGroup = $('datePresetGroup');
             if (dateGroup) {
                 dateGroup.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
             }
         };
 
+        const onDateChange = () => {
+            onDateInput();
+            // 타이핑 도중(예: '0' 입력 중)에는 badInput이더라도 경고창을 띄우지 않고 조용히 대기
+            if (startInput && startInput.validity && startInput.validity.badInput) return;
+            if (endInput && endInput.validity && endInput.validity.badInput) return;
+            this.search(false);
+        };
+
         if (startInput) {
-            startInput.addEventListener('input', onDateInputOrChange);
-            startInput.addEventListener('change', () => {
-                onDateInputOrChange();
-                this.search();
-            });
+            startInput.addEventListener('input', onDateInput);
+            startInput.addEventListener('change', onDateChange);
         }
         if (endInput) {
-            endInput.addEventListener('input', onDateInputOrChange);
-            endInput.addEventListener('change', () => {
-                onDateInputOrChange();
-                this.search();
-            });
+            endInput.addEventListener('input', onDateInput);
+            endInput.addEventListener('change', onDateChange);
         }
     },
 
@@ -259,20 +261,22 @@ const app = {
     },
 
     // ── 내역 검색 ──
-    async search() {
+    async search(isManualClick = false) {
         const startInput = $('filterStartDate');
         const endInput = $('filterEndDate');
 
-        // 브라우저 내장 날짜 유효성 검사 (예: 11월 31일 등 달력에 없는 날짜 입력 시)
-        if (endInput && endInput.validity && endInput.validity.badInput) {
-            alert('종료일 입력이 올바른 날짜 형식이 아닙니다.\n(예: 11월은 30일까지 존재하므로 11-31은 유효하지 않습니다)\n날짜를 확인해 주세요.');
-            endInput.focus();
-            return;
-        }
-        if (startInput && startInput.validity && startInput.validity.badInput) {
-            alert('시작일 입력이 올바른 날짜 형식이 아닙니다.\n날짜를 확인해 주세요.');
-            startInput.focus();
-            return;
+        // 사용자가 명시적으로 [검색] 버튼을 눌렀을 때만 유효성 경고 알림 표시
+        if (isManualClick) {
+            if (endInput && endInput.validity && endInput.validity.badInput) {
+                alert('종료일 날짜를 확인해 주세요.\n(예: 11월은 30일까지 존재하므로 11-31은 유효하지 않습니다)');
+                endInput.focus();
+                return;
+            }
+            if (startInput && startInput.validity && startInput.validity.badInput) {
+                alert('시작일 날짜를 확인해 주세요.');
+                startInput.focus();
+                return;
+            }
         }
 
         const startDate = startInput ? startInput.value : '';

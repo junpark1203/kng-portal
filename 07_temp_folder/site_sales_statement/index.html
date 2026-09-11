@@ -69,12 +69,12 @@
                 <!-- 키워드 검색 -->
                 <div class="filter-item">
                     <span class="filter-label">검색어</span>
-                    <input type="text" id="filterKeyword" class="erp-input" placeholder="품명, 공급처, 파일명..." style="width: 180px;" onkeydown="if(event.key==='Enter') app.search()">
+                    <input type="text" id="filterKeyword" class="erp-input" placeholder="품명, 공급처, 파일명..." style="width: 180px;" onkeydown="if(event.key==='Enter') app.search(true)">
                 </div>
 
                 <!-- 검색/초기화 버튼 -->
                 <div class="d-flex gap-1 ms-auto">
-                    <button type="button" class="btn-erp-primary" onclick="app.search()">
+                    <button type="button" class="btn-erp-primary" onclick="app.search(true)">
                         <i class='bx bx-search'></i> 검색
                     </button>
                     <button type="button" class="btn-erp-secondary" onclick="app.resetSearch()">
