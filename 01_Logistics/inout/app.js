@@ -429,6 +429,9 @@ const app = {
 
         inputs.forEach((inp) => {
             inp.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab' || e.key === 'Escape') {
+                    if (sugBox) sugBox.style.display = 'none';
+                }
                 if (sugBox && sugBox.style.display === 'block') {
                     if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') return;
                 }
@@ -881,7 +884,7 @@ const app = {
         const beol = $('btnEditOutboundLot');
         if (beol) beol.addEventListener('click', this.openEditOutboundLotModal.bind(this));
         
-        // Hide autocomplete when clicking outside
+        // Hide autocomplete when clicking outside or when focus shifts to another element
         document.addEventListener('click', (e) => {
             if (e.target.id !== 'in_item') {
                 const s = $('in_item_suggestions');
@@ -891,6 +894,16 @@ const app = {
                 const s = $('out_item_suggestions');
                 if(s) s.style.display = 'none';
             }
+        });
+
+        // 포커스 이동(Tab, 마우스 클릭 등) 시 이전 셀의 모든 자동완성 창 닫기
+        document.addEventListener('focusin', (e) => {
+            document.querySelectorAll('.autocomplete-suggestions').forEach(s => {
+                const parent = s.parentElement;
+                if (parent && !parent.contains(e.target)) {
+                    s.style.display = 'none';
+                }
+            });
         });
 
         // 모달 닫힘(취소/ESC/X클릭) 시 폼 데이터 자동 초기화 (미저장 잔여 데이터 잔존 방지)
@@ -2345,9 +2358,16 @@ const app = {
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText;
+                        div.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            input.value = div.innerText.trim();
                             sug.style.display = 'none';
+                            input.dispatchEvent(new Event('change'));
+                        });
+                        div.addEventListener('click', () => {
+                            input.value = div.innerText.trim();
+                            sug.style.display = 'none';
+                            input.dispatchEvent(new Event('change'));
                         });
                     });
                 } else {
@@ -2356,9 +2376,13 @@ const app = {
             } catch (err) { console.error(err); }
         });
 
+        input.addEventListener('blur', () => {
+            setTimeout(() => { sug.style.display = 'none'; }, 150);
+        });
+
         // 외부 클릭 시 자동완성 닫기 처리
         document.addEventListener('click', (e) => {
-            if (e.target !== input) sug.style.display = 'none';
+            if (e.target !== input && !e.target.closest('.autocomplete-suggestions')) sug.style.display = 'none';
         });
 
         this.attachAutocompleteKeyboard(input, sug);
@@ -2537,6 +2561,10 @@ const app = {
                 if (currentFocus > -1) {
                     items[currentFocus].click();
                 }
+                sugBox.style.display = 'none';
+            } else if (e.key === 'Escape' || e.key === 'Tab') {
+                sugBox.style.display = 'none';
+                currentFocus = -1;
             }
         });
 
@@ -2620,9 +2648,16 @@ const app = {
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText;
+                        div.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            input.value = div.innerText.trim();
                             sug.style.display = 'none';
+                            input.dispatchEvent(new Event('change'));
+                        });
+                        div.addEventListener('click', () => {
+                            input.value = div.innerText.trim();
+                            sug.style.display = 'none';
+                            input.dispatchEvent(new Event('change'));
                         });
                     });
                 } else {
@@ -2631,8 +2666,12 @@ const app = {
             } catch (err) { console.error(err); }
         });
 
+        input.addEventListener('blur', () => {
+            setTimeout(() => { sug.style.display = 'none'; }, 150);
+        });
+
         document.addEventListener('click', (e) => {
-            if (e.target !== input) sug.style.display = 'none';
+            if (e.target !== input && !e.target.closest('.autocomplete-suggestions')) sug.style.display = 'none';
         });
 
         this.attachAutocompleteKeyboard(input, sug);
@@ -2925,10 +2964,16 @@ const app = {
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText;
+                        div.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            input.value = div.innerText.trim();
                             sug.style.display = 'none';
-                            this.loadOutboundSpecsForRow(rowId, div.innerText);
+                            this.loadOutboundSpecsForRow(rowId, div.innerText.trim());
+                        });
+                        div.addEventListener('click', () => {
+                            input.value = div.innerText.trim();
+                            sug.style.display = 'none';
+                            this.loadOutboundSpecsForRow(rowId, div.innerText.trim());
                         });
                     });
                 } else {
@@ -2937,8 +2982,12 @@ const app = {
             } catch (err) { console.error(err); }
         });
 
+        input.addEventListener('blur', () => {
+            setTimeout(() => { sug.style.display = 'none'; }, 150);
+        });
+
         document.addEventListener('click', (e) => {
-            if (e.target !== input) sug.style.display = 'none';
+            if (e.target !== input && !e.target.closest('.autocomplete-suggestions')) sug.style.display = 'none';
         });
 
         this.attachAutocompleteKeyboard(input, sug);
