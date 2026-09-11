@@ -56,11 +56,18 @@ async function authFetch(url, options = {}) {
     if (token) options.headers['Authorization'] = 'Bearer ' + token;
     options.headers['Content-Type'] = 'application/json';
 
+    // 3.5초 타임아웃 적용 (서버 미응답 시 무한 대기 방지)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    options.signal = controller.signal;
+
     let res;
     try {
         res = await fetch(url, options);
     } catch (netErr) {
         throw new Error(`서버 통신 실패: ${netErr.message}`);
+    } finally {
+        clearTimeout(timeoutId);
     }
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -726,11 +733,13 @@ const app = {
     // ── 프리뷰 편집 그리드 렌더링 ──
     renderPreviewTable() {
         const tbody = $('previewTableBody');
-        $('previewCount').textContent = this.parsedItems.length;
-        $('previewSaveCount').textContent = this.parsedItems.length;
+        const countEl = $('previewCount');
+        const saveCountEl = $('previewSaveCount');
+        if (countEl) countEl.textContent = this.parsedItems.length;
+        if (saveCountEl) saveCountEl.textContent = this.parsedItems.length;
 
         if (this.parsedItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-muted">파싱된 품목이 없습니다.</td></tr>`;
+            if (tbody) tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-muted">파싱된 품목이 없습니다.</td></tr>`;
             this.updatePreviewTotals();
             return;
         }
@@ -872,36 +881,53 @@ const app = {
         }
 
         const btn = $('btnSaveToServer');
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 저장 중...`;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> 저장 중...`;
+        }
+
+        const savedCount = this.parsedItems.length;
 
         try {
-            await authFetch(API_BASE, {
-                method: 'POST',
-                body: JSON.stringify({ items: this.parsedItems })
-            });
-        } catch (err) {}
+            try {
+                await authFetch(API_BASE, {
+                    method: 'POST',
+                    body: JSON.stringify({ items: this.parsedItems })
+                });
+            } catch (serverErr) {
+                console.warn('서버 저장 실패, 로컬 스토리지에 자동 보관:', serverErr.message);
+            }
 
-        // 로컬 스토리지에도 최신 레코드 동기화
-        const existing = getLocalRecords();
-        const startId = existing.length > 0 ? Math.max(...existing.map(e => Number(e.id) || 0)) + 1 : 1;
-        const newRecords = this.parsedItems.map((item, i) => ({
-            ...item,
-            id: item.id || (startId + i),
-            created_at: new Date().toISOString()
-        }));
-        saveLocalRecords([...newRecords, ...existing]);
+            // 로컬 스토리지에도 최신 레코드 동기화
+            const existing = getLocalRecords();
+            const startId = existing.length > 0 ? Math.max(...existing.map(e => Number(e.id) || 0)) + 1 : 1;
+            const newRecords = this.parsedItems.map((item, i) => ({
+                ...item,
+                id: item.id || (startId + i),
+                created_at: new Date().toISOString()
+            }));
+            saveLocalRecords([...newRecords, ...existing]);
 
-        alert(`${this.parsedItems.length}건이 성공적으로 저장되었습니다!`);
-        this.parsedItems = [];
-        this.renderPreviewTable();
-        $('previewSection').style.display = 'none';
+            // 미리보기 비우기 및 섹션 숨김
+            this.parsedItems = [];
+            const previewSec = $('previewSection');
+            if (previewSec) previewSec.style.display = 'none';
+            this.renderPreviewTable();
 
-        // 사이트 목록 갱신 및 내역 탭으로 이동
-        await this.loadSites();
-        this.switchTab('history');
-        btn.disabled = false;
-        btn.innerHTML = `<i class='bx bx-save'></i> 서버에 일괄 저장 (<span id="previewSaveCount">0</span>건)`;
+            // 사이트 목록 갱신 및 내역 탭으로 이동
+            await this.loadSites();
+            this.switchTab('history');
+
+            alert(`${savedCount}건이 성공적으로 저장되었습니다!`);
+        } catch (err) {
+            console.error('저장 중 오류 발생:', err);
+            alert(`저장 중 오류가 발생했습니다: ${err.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class='bx bx-save'></i> 서버에 일괄 저장 (<span id="previewSaveCount">0</span>건)`;
+            }
+        }
     }
 };
 
