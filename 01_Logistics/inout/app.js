@@ -1588,26 +1588,28 @@ const app = {
                 badgeHtml = '<span class="erp-badge erp-badge-direct">직출고</span>';
             }
 
-            const borderColor = isDirect ? 'border-warning' : (type === 'inbound' ? 'border-success' : 'border-danger');
-            contentBox.className = `accordion-content-box p-2 bg-white border-start border-3 ${borderColor} shadow-sm my-1 mx-2`;
+            const borderClass = isDirect ? 'border-direct' : (type === 'inbound' ? 'border-inbound' : 'border-outbound');
+            contentBox.className = `accordion-content-box ${borderClass}`;
 
-            // Partner Summary
+            // Partner Summary (Clean Key-Value, no decorative icons/emojis)
             let partnerSummary = '';
             if (isDirect) {
                 partnerSummary = `
-                    <span class="me-3"><i class='bx bx-buildings text-muted'></i> 매입처: <strong class="text-dark">${data.supplier || '-'}</strong></span>
-                    <span class="me-3"><i class='bx bx-store-alt text-muted'></i> 매출처: <strong class="text-primary">${data.destination || '-'}</strong></span>
-                    ${data.actual_destination ? `<span class="me-3"><i class='bx bx-map text-muted'></i> 실출고처: <strong class="text-secondary">${data.actual_destination}</strong></span>` : ''}
+                    <span class="acc-meta-item"><span class="acc-meta-label">매입처</span> <strong class="acc-meta-val">${data.supplier || '-'}</strong></span>
+                    <span class="acc-meta-divider">|</span>
+                    <span class="acc-meta-item"><span class="acc-meta-label">매출처</span> <strong class="acc-meta-val text-primary">${data.destination || '-'}</strong></span>
+                    ${data.actual_destination ? `<span class="acc-meta-divider">|</span><span class="acc-meta-item"><span class="acc-meta-label">실출고처</span> <strong class="acc-meta-val text-secondary">${data.actual_destination}</strong></span>` : ''}
                 `;
             } else if (type === 'inbound') {
                 partnerSummary = `
-                    <span class="me-3"><i class='bx bx-buildings text-muted'></i> 매입처: <strong class="text-dark">${data.supplier || '-'}</strong></span>
-                    <span class="me-3"><i class='bx bx-cube text-muted'></i> 창고: <strong class="text-secondary">${data.location_name || '-'}</strong></span>
+                    <span class="acc-meta-item"><span class="acc-meta-label">매입처</span> <strong class="acc-meta-val">${data.supplier || '-'}</strong></span>
+                    <span class="acc-meta-divider">|</span>
+                    <span class="acc-meta-item"><span class="acc-meta-label">창고</span> <strong class="acc-meta-val text-secondary">${data.location_name || '-'}</strong></span>
                 `;
             } else {
                 partnerSummary = `
-                    <span class="me-3"><i class='bx bx-store-alt text-muted'></i> 매출처: <strong class="text-primary">${data.destination || '-'}</strong></span>
-                    ${data.actual_destination ? `<span class="me-3"><i class='bx bx-map text-muted'></i> 실출고처: <strong class="text-secondary">${data.actual_destination}</strong></span>` : ''}
+                    <span class="acc-meta-item"><span class="acc-meta-label">매출처</span> <strong class="acc-meta-val text-primary">${data.destination || '-'}</strong></span>
+                    ${data.actual_destination ? `<span class="acc-meta-divider">|</span><span class="acc-meta-item"><span class="acc-meta-label">실출고처</span> <strong class="acc-meta-val text-secondary">${data.actual_destination}</strong></span>` : ''}
                 `;
             }
 
@@ -1615,37 +1617,37 @@ const app = {
             let extraInfo = '';
             if (data.shipping_fee && data.shipping_fee > 0) {
                 const shipVat = data.shipping_fee_vat_included === 1 ? '(부가세 포함)' : '(공급가)';
-                const shipLabel = type === 'inbound' ? '매입 배송비' : '배송비';
-                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-car text-secondary'></i> ${shipLabel}: ${data.shipping_fee.toLocaleString()}원 ${shipVat}</span> `;
+                const shipLabel = type === 'inbound' ? '매입배송비' : '배송비';
+                extraInfo += `<span class="acc-meta-divider">|</span><span class="acc-meta-item"><span class="acc-meta-label">${shipLabel}</span> <strong class="acc-meta-val tabular-nums">${data.shipping_fee.toLocaleString()}원</strong> <span class="text-secondary" style="font-size:10.5px;">${shipVat}</span></span> `;
             }
             if (data.category) {
-                extraInfo += `<span class="badge bg-light text-dark border me-1"><i class='bx bx-purchase-tag-alt text-primary'></i> ${data.category}</span>`;
+                extraInfo += `<span class="erp-badge erp-badge-cat">${data.category}</span> `;
             }
             if (data.trade_type && data.trade_type !== '내수') {
-                extraInfo += `<span class="badge bg-info text-dark me-1">${data.trade_type}</span>`;
+                extraInfo += `<span class="erp-badge erp-badge-info">${data.trade_type}</span> `;
             }
 
-            // Print & Action Buttons
+            // Print & Action Buttons (Standard ERP Toolbar Style)
             let printBtns = '';
             if (type === 'inbound') {
                 printBtns = `
-                    <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'inbound', 'inbound_receipt')">
-                        <i class='bx bx-printer'></i> 입고내역서
+                    <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'inbound', 'inbound_receipt')">
+                        입고내역서
                     </button>
                 `;
             } else {
                 printBtns = `
-                    <button type="button" class="btn btn-sm btn-primary py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'transaction_statement')">
-                        <i class='bx bx-file'></i> 거래명세서
+                    <button type="button" class="btn-acc-primary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'transaction_statement')">
+                        거래명세서
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'outbound_statement')">
-                        <i class='bx bx-printer'></i> 출고내역서
+                    <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'outbound_statement')">
+                        출고내역서
                     </button>
                 `;
                 if (isDirect) {
                     printBtns += `
-                        <button type="button" class="btn btn-sm btn-outline-success py-1 px-2" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'inbound_receipt')">
-                            <i class='bx bx-printer'></i> 입고내역서
+                        <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'inbound_receipt')">
+                            입고내역서
                         </button>
                     `;
                 }
@@ -1656,8 +1658,8 @@ const app = {
                 : (type === 'outbound' ? `app.openEditOutboundTx('${data.transaction_group_id || ''}', ${data.id})` : `app.openEditInboundTx('${data.transaction_group_id || ''}', ${data.id})`);
 
             let editBtn = `
-                <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2" onclick="event.stopPropagation(); ${editTxFn}" title="전표 수정">
-                    <i class='bx bx-edit'></i> 전표 수정
+                <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); ${editTxFn}" title="전표 수정">
+                    전표 수정
                 </button>
             `;
 
@@ -1681,67 +1683,67 @@ const app = {
                 let lotInfoHtml = '';
                 if (type === 'outbound' && item.consumed_lots && item.consumed_lots.length > 0) {
                     const lotsBadges = item.consumed_lots.map(l => 
-                        `<span class="badge bg-light text-dark border me-1 py-1" style="font-size:0.75rem; font-weight:normal;">
+                        `<span class="acc-lot-chip me-1 tabular-nums">
                             ${l.inbound_date} 입고 (${l.supplier || '-'}) <strong class="text-danger">-${l.consumed_qty}</strong>
                          </span>`
                     ).join('');
                     lotInfoHtml = `
-                        <div class="mt-1 ps-2 text-muted" style="font-size:0.75rem;">
-                            <i class='bx bx-layer text-secondary'></i> 차감 Lot: ${lotsBadges}
+                        <div class="mt-1 text-muted" style="font-size:11px;">
+                            <span class="acc-meta-label me-1">차감 Lot:</span>${lotsBadges}
                         </div>
                     `;
                 }
 
-                const catBadge = item.category ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.75rem; font-weight:normal;"><i class='bx bx-purchase-tag-alt text-primary'></i> ${item.category}</span>` : '';
+                const catBadge = item.category ? `<span class="erp-badge erp-badge-cat ms-1">${item.category}</span>` : '';
 
                 if (isDirect) {
                     return `
                         <tr>
-                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td class="text-center row-index">${idx + 1}</td>
                             <td>
-                                <strong class="text-primary">${item.item}</strong>
+                                <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
-                            <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
-                            <td class="text-end text-muted">${inPrice ? inPrice.toLocaleString() + '원' : '-'}</td>
-                            <td class="text-end text-muted">${inAmt ? inAmt.toLocaleString() + '원' : '-'}</td>
-                            <td class="text-end fw-bold text-dark">${outPrice ? outPrice.toLocaleString() + '원' : '-'}</td>
-                            <td class="text-end fw-bold text-danger">${outAmt ? outAmt.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-bold tabular-nums">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-muted tabular-nums">${inPrice ? inPrice.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end text-muted tabular-nums">${inAmt ? inAmt.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-bold text-dark tabular-nums">${outPrice ? outPrice.toLocaleString() + '원' : '-'}</td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${outAmt ? outAmt.toLocaleString() + '원' : '-'}</td>
                         </tr>
                     `;
                 } else if (type === 'inbound') {
                     return `
                         <tr>
-                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td class="text-center row-index">${idx + 1}</td>
                             <td>
-                                <strong class="text-primary">${item.item}</strong>
+                                <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
-                            <td class="text-end fw-bold text-success">${itemQty.toLocaleString()}</td>
-                            <td class="text-end text-dark">${inPrice.toLocaleString()}원</td>
-                            <td class="text-end fw-bold text-success">${inAmt.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-success tabular-nums">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-dark tabular-nums">${inPrice.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-success tabular-nums">${inAmt.toLocaleString()}원</td>
                             <td class="text-center">${item.location_name || '-'}</td>
                         </tr>
                     `;
                 } else {
                     return `
                         <tr>
-                            <td class="text-center text-muted">${idx + 1}</td>
+                            <td class="text-center row-index">${idx + 1}</td>
                             <td>
-                                <strong class="text-primary">${item.item}</strong>
+                                <span class="fw-semibold text-dark">${item.item}</span>
                                 ${catBadge}
                                 ${lotInfoHtml}
                             </td>
                             <td class="text-center">${item.spec || '-'}</td>
                             <td class="text-center">${item.unit || '-'}</td>
-                            <td class="text-end fw-bold text-danger">${itemQty.toLocaleString()}</td>
-                            <td class="text-end text-dark">${outPrice.toLocaleString()}원</td>
-                            <td class="text-end fw-bold text-danger">${outAmt.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${itemQty.toLocaleString()}</td>
+                            <td class="text-end text-dark tabular-nums">${outPrice.toLocaleString()}원</td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${outAmt.toLocaleString()}원</td>
                         </tr>
                     `;
                 }
@@ -1753,104 +1755,111 @@ const app = {
 
             if (isDirect) {
                 tableHeaderHtml = `
-                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
-                        <th style="width: 40px;">#</th>
+                    <tr>
+                        <th class="th-no" style="width: 36px;">#</th>
                         <th>품명</th>
                         <th style="width: 120px;">규격</th>
-                        <th style="width: 70px;">단위</th>
-                        <th style="width: 90px;" class="text-end">수량</th>
-                        <th style="width: 110px;" class="text-end">매입단가</th>
-                        <th style="width: 120px;" class="text-end">매입금액</th>
-                        <th style="width: 110px;" class="text-end">매출단가</th>
-                        <th style="width: 120px;" class="text-end">매출금액</th>
+                        <th style="width: 60px;">단위</th>
+                        <th style="width: 80px;" class="text-end">수량</th>
+                        <th style="width: 105px;" class="text-end">매입단가</th>
+                        <th style="width: 115px;" class="text-end">매입금액</th>
+                        <th style="width: 105px;" class="text-end">매출단가</th>
+                        <th style="width: 115px;" class="text-end">매출금액</th>
                     </tr>
                 `;
                 tableSummaryHtml = `
-                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
-                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
-                        <td class="text-end text-primary">${totalQty.toLocaleString()}</td>
-                        <td></td>
-                        <td class="text-end text-muted">${totalInboundAmt.toLocaleString()}원</td>
-                        <td></td>
-                        <td class="text-end text-danger">${totalOutboundAmt.toLocaleString()}원</td>
-                    </tr>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-center fw-bold">합계 (${items.length}개 품목)</td>
+                            <td class="text-end fw-bold text-primary tabular-nums">${totalQty.toLocaleString()}</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-muted tabular-nums">${totalInboundAmt.toLocaleString()}원</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${totalOutboundAmt.toLocaleString()}원</td>
+                        </tr>
+                    </tfoot>
                 `;
             } else if (type === 'inbound') {
                 tableHeaderHtml = `
-                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
-                        <th style="width: 40px;">#</th>
+                    <tr>
+                        <th class="th-no" style="width: 36px;">#</th>
                         <th>품명</th>
-                        <th style="width: 140px;">규격</th>
-                        <th style="width: 80px;">단위</th>
-                        <th style="width: 100px;" class="text-end">수량</th>
-                        <th style="width: 130px;" class="text-end">단가</th>
-                        <th style="width: 140px;" class="text-end">총액</th>
-                        <th style="width: 120px;">창고위치</th>
+                        <th style="width: 130px;">규격</th>
+                        <th style="width: 70px;">단위</th>
+                        <th style="width: 90px;" class="text-end">수량</th>
+                        <th style="width: 115px;" class="text-end">단가</th>
+                        <th style="width: 125px;" class="text-end">총액</th>
+                        <th style="width: 110px;">창고위치</th>
                     </tr>
                 `;
                 tableSummaryHtml = `
-                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
-                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
-                        <td class="text-end text-success">${totalQty.toLocaleString()}</td>
-                        <td></td>
-                        <td class="text-end text-success">${totalInboundAmt.toLocaleString()}원</td>
-                        <td></td>
-                    </tr>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-center fw-bold">합계 (${items.length}개 품목)</td>
+                            <td class="text-end fw-bold text-success tabular-nums">${totalQty.toLocaleString()}</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-success tabular-nums">${totalInboundAmt.toLocaleString()}원</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
                 `;
             } else {
                 tableHeaderHtml = `
-                    <tr class="text-center text-muted" style="font-size:0.8rem; background:#f8fafc;">
-                        <th style="width: 40px;">#</th>
+                    <tr>
+                        <th class="th-no" style="width: 36px;">#</th>
                         <th>품명</th>
-                        <th style="width: 140px;">규격</th>
-                        <th style="width: 80px;">단위</th>
-                        <th style="width: 100px;" class="text-end">수량</th>
-                        <th style="width: 130px;" class="text-end">단가</th>
-                        <th style="width: 140px;" class="text-end">총액</th>
+                        <th style="width: 130px;">규격</th>
+                        <th style="width: 70px;">단위</th>
+                        <th style="width: 90px;" class="text-end">수량</th>
+                        <th style="width: 115px;" class="text-end">단가</th>
+                        <th style="width: 125px;" class="text-end">총액</th>
                     </tr>
                 `;
                 tableSummaryHtml = `
-                    <tr class="table-light fw-bold" style="font-size:0.85rem;">
-                        <td colspan="4" class="text-center">합계 (${items.length}개 품목)</td>
-                        <td class="text-end text-danger">${totalQty.toLocaleString()}</td>
-                        <td></td>
-                        <td class="text-end text-danger">${totalOutboundAmt.toLocaleString()}원</td>
-                    </tr>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="text-center fw-bold">합계 (${items.length}개 품목)</td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${totalQty.toLocaleString()}</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-danger tabular-nums">${totalOutboundAmt.toLocaleString()}원</td>
+                        </tr>
+                    </tfoot>
                 `;
             }
 
             const txIdDisplay = data.transaction_group_id || (data.is_direct === 1 ? `OUT-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}` : (type === 'outbound' ? `OUT-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}` : `IN-${(data.date || '').split('T')[0].replace(/-/g,'')}-${String(data.id).padStart(4, '0')}`));
 
             contentBox.innerHTML = `
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
-                    <div class="d-flex align-items-center gap-2 flex-wrap" style="font-size:0.88rem;">
+                <div class="acc-header-strip">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         ${badgeHtml}
-                        <span class="badge bg-secondary">${txIdDisplay}</span>
-                        <span class="text-muted"><i class='bx bx-calendar'></i> <strong>${data.date.split('T')[0]}</strong></span>
-                        <span class="text-muted">|</span>
+                        <span class="erp-badge-code tabular-nums">${txIdDisplay}</span>
+                        <span class="acc-meta-divider">|</span>
+                        <span class="acc-meta-item"><span class="acc-meta-label">일자</span> <strong class="acc-meta-val tabular-nums">${data.date.split('T')[0]}</strong></span>
+                        <span class="acc-meta-divider">|</span>
                         ${partnerSummary}
                         ${extraInfo}
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         ${printBtns}
                         ${editBtn}
-                        <button type="button" class="btn btn-sm btn-light border py-1 px-2 ms-1" onclick="event.stopPropagation(); app.toggleAccordion(${id}, '${type}')" title="접기">
-                            <i class='bx bx-chevron-up'></i> 접기
+                        <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.toggleAccordion(${id}, '${type}')" title="접기">
+                            <i class='bx bx-chevron-up me-1'></i>접기
                         </button>
                     </div>
                 </div>
 
-                ${data.note ? `<div class="mb-2 px-3 py-2 bg-light rounded text-muted" style="font-size:0.83rem;"><i class='bx bx-message-square-detail text-primary me-1'></i><strong>비고:</strong> ${data.note}</div>` : ''}
+                ${data.note ? `<div class="acc-note-box"><strong class="acc-meta-label me-1">비고:</strong><span>${data.note}</span></div>` : ''}
 
-                <div class="erp-grid-wrapper mt-2">
+                <div class="erp-grid-wrapper mt-1">
                     <table class="erp-sheet-table mb-0" style="font-size: 11.5px;">
                         <thead>
                             ${tableHeaderHtml}
                         </thead>
                         <tbody>
                             ${rowsHtml}
-                            ${items.length > 1 ? tableSummaryHtml : ''}
                         </tbody>
+                        ${items.length > 1 ? tableSummaryHtml : ''}
                     </table>
                 </div>
             `;
