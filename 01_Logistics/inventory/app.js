@@ -1,5 +1,5 @@
 /**
- * 실시간 재고 현황 프론트엔드 로직
+ * 실시간 재고 현황 프론트엔드 로직 (ERP 고밀도 그리드 엔진 연동)
  */
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -66,7 +66,10 @@ const app = {
     },
 
     bindEvents: function() {
-        $('searchInput').addEventListener('input', this.handleSearch.bind(this));
+        const searchInput = $('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', this.handleSearch.bind(this));
+        }
     },
 
     loadInventory: async function() {
@@ -75,7 +78,7 @@ const app = {
             this.renderTable(inventoryData);
         } catch (e) {
             console.error(e);
-            $('inventoryTbody').innerHTML = `<tr><td colspan="5" class="text-center text-danger py-4">데이터를 불러오는 중 오류가 발생했습니다.<br>${e.message}</td></tr>`;
+            $('inventoryTbody').innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">데이터를 불러오는 중 오류가 발생했습니다.<br>${e.message}</td></tr>`;
         }
     },
 
@@ -87,77 +90,129 @@ const app = {
         }
 
         const filtered = inventoryData.filter(row => {
-            return row.item.toLowerCase().includes(query) || 
-                   row.spec.toLowerCase().includes(query);
+            return (row.item && row.item.toLowerCase().includes(query)) || 
+                   (row.spec && row.spec.toLowerCase().includes(query));
         });
         
         this.renderTable(filtered);
     },
 
+    toggleLotRow: function(index) {
+        const subRow = document.getElementById(`lotSubRow_${index}`);
+        const icon = document.getElementById(`accIcon_${index}`);
+        const mainRow = document.getElementById(`mainRow_${index}`);
+
+        if (!subRow) return;
+
+        const isHidden = subRow.classList.contains('d-none');
+        if (isHidden) {
+            subRow.classList.remove('d-none');
+            if (icon) icon.classList.add('rotate-90');
+            if (mainRow) mainRow.classList.add('row-expanded');
+        } else {
+            subRow.classList.add('d-none');
+            if (icon) icon.classList.remove('rotate-90');
+            if (mainRow) mainRow.classList.remove('row-expanded');
+        }
+    },
+
     renderTable: function(data) {
         const tbody = $('inventoryTbody');
+        if (!tbody) return;
         
-        if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">재고 내역이 없습니다.</td></tr>`;
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-5 text-muted">재고 내역이 없습니다.</td></tr>`;
+            if ($('skuCountBadge')) $('skuCountBadge').innerText = `관리 0 SKU`;
+            if ($('totalQtyBadge')) $('totalQtyBadge').innerText = `총 재고: 0개`;
+            if ($('inventoryTfoot')) $('inventoryTfoot').classList.add('d-none');
             return;
         }
 
+        // 통계 집계
+        const totalSku = data.length;
+        const totalQty = data.reduce((acc, cur) => acc + (Number(cur.total_qty) || 0), 0);
+
+        if ($('skuCountBadge')) $('skuCountBadge').innerText = `관리 ${totalSku.toLocaleString()} SKU`;
+        if ($('totalQtyBadge')) $('totalQtyBadge').innerText = `총 재고: ${totalQty.toLocaleString()}개`;
+
+        if ($('inventoryTfoot')) {
+            $('inventoryTfoot').classList.remove('d-none');
+            if ($('footSkuSummary')) $('footSkuSummary').innerText = `총 ${totalSku.toLocaleString()}개 품목`;
+            if ($('footQtySummary')) $('footQtySummary').innerText = totalQty.toLocaleString();
+        }
+
+        const escapeAttr = (str) => {
+            if (!str) return '';
+            return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+
         tbody.innerHTML = data.map((row, index) => {
-            const accordionId = `collapseLot_${index}`;
-            
-            // Lot 내역 테이블 생성
+            // Lot 상세 행 구성
             let lotRows = '';
             if (row.lots && row.lots.length > 0) {
                 lotRows = row.lots.map(lot => `
                     <tr>
-                        <td>${lot.date}</td>
-                        <td>${lot.location_name || '-'}</td>
-                        <td>${lot.supplier}</td>
-                        <td class="text-end">${lot.unit_price.toLocaleString()} ₩</td>
-                        <td class="fw-bold text-primary">${lot.qty_remaining}</td>
-                        <td class="text-start text-muted">${lot.note || ''}</td>
+                        <td class="text-center text-muted">${lot.date || '-'}</td>
+                        <td class="text-center">${lot.location_name || '-'}</td>
+                        <td class="ps-2">${lot.supplier || '-'}</td>
+                        <td class="text-end pe-2">${Number(lot.unit_price || 0).toLocaleString()} ₩</td>
+                        <td class="text-end pe-2 fw-bold text-primary">${Number(lot.qty_remaining || 0).toLocaleString()}</td>
+                        <td class="ps-2 text-muted">${escapeAttr(lot.note || '')}</td>
                     </tr>
                 `).join('');
             }
 
             return `
-                <!-- 메인 품목 행 -->
-                <tr data-bs-toggle="collapse" data-bs-target="#${accordionId}" style="cursor: pointer;">
-                    <td class="text-center text-muted"><i class='bx bx-chevron-down'></i></td>
-                    <td class="fw-bold">${row.item}</td>
-                    <td>${row.spec}</td>
-                    <td>${row.unit}</td>
-                    <td class="text-end pe-4"><span class="badge bg-primary badge-qty">${row.total_qty}</span></td>
+                <!-- 메인 품목 행 (26px ERP 플랫 셀) -->
+                <tr class="inventory-row" id="mainRow_${index}" onclick="app.toggleLotRow(${index})" title="클릭하여 Lot별 상세 입고 내역을 확인합니다">
+                    <td class="text-center"><i class='bx bx-chevron-right accordion-icon' id="accIcon_${index}"></i></td>
+                    <td class="row-index">${index + 1}</td>
+                    <td class="ps-2 fw-bold text-dark text-truncate" title="${escapeAttr(row.item)}">${row.item}</td>
+                    <td class="ps-2 text-secondary text-truncate" title="${escapeAttr(row.spec || '-')}">${row.spec || '-'}</td>
+                    <td class="text-center text-secondary">${row.unit || '-'}</td>
+                    <td class="text-end pe-3 fw-bold text-primary">${Number(row.total_qty || 0).toLocaleString()}</td>
                 </tr>
-                <!-- 상세 Lot 아코디언 -->
-                <tr class="collapse" id="${accordionId}">
-                    <td colspan="5" class="p-0 border-0">
-                        <div class="bg-light p-3 border-bottom shadow-inner">
-                            <h6 class="mb-2 text-muted fw-bold" style="font-size: 0.85rem;"><i class='bx bx-history'></i> 입고일자별 잔여 내역 (Lot)</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered bg-white lot-detail-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>입고일자</th>
-                                            <th>재고 위치</th>
-                                            <th>매입처</th>
-                                            <th>매입단가</th>
-                                            <th>잔여 수량</th>
-                                            <th>비고</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${lotRows}
-                                    </tbody>
-                                </table>
+                <!-- 상세 Lot 아코디언 행 -->
+                <tr class="accordion-sub-row d-none" id="lotSubRow_${index}">
+                    <td colspan="6" class="p-0 border-0">
+                        <div class="lot-container-box">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <div class="fw-bold text-secondary" style="font-size: 11.5px;">
+                                    <i class='bx bx-history text-primary'></i> 입고일자별 잔여 내역 (Lot)
+                                </div>
+                                <div class="small text-muted" style="font-size: 11px;">
+                                    ${row.lots ? row.lots.length : 0}개 Lot 보유
+                                </div>
                             </div>
+                            <table class="lot-sub-table shadow-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 90px;">입고일자</th>
+                                        <th style="width: 120px;">보관 위치</th>
+                                        <th style="width: 130px;">매입처</th>
+                                        <th style="width: 100px;" class="text-end">매입단가</th>
+                                        <th style="width: 90px;" class="text-end">잔여수량</th>
+                                        <th class="text-start ps-2">비고</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${lotRows || '<tr><td colspan="6" class="text-center py-2 text-muted">등록된 Lot 상세 정보가 없습니다.</td></tr>'}
+                                </tbody>
+                            </table>
                         </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        // ERP 그리드 리사이저 동기화
+        if (window.ErpGridResizer) {
+            window.ErpGridResizer.init('inventoryTable', { storageKey: 'kng_inventory_grid_widths' });
+        }
     }
 };
+
+window.app = app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();

@@ -10,6 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../../styles.css?v=4">
     <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css?v=4">
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <style>
         body {
             background-color: #f8fafc;
@@ -199,10 +200,18 @@
             margin-top: 4px !important;
         }
 
-        /* ── 메인 상세 품목 테이블 스타일 (한 줄 표시 및 정형 데이터 최적화) ── */
+        /* ── 메인 상세 품목 테이블 스타일 (ERP 고밀도 플랫 그리드 최적화) ── */
+        #mainStatusTable {
+            min-width: 1400px;
+        }
         #mainStatusTable th, #mainStatusTable td {
             white-space: nowrap !important;
             vertical-align: middle !important;
+        }
+        #mainStatusTable td {
+            padding: 1px 6px !important;
+            font-size: 12px !important;
+            height: 26px !important;
         }
         #mainStatusTable .text-truncate {
             white-space: nowrap !important;
@@ -660,43 +669,56 @@
             </div>
         </div>
 
-        <!-- 3-3. 상세 품목 테이블 -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="mainStatusTable">
-                    <thead>
-                        <tr>
-                            <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
-                            <th style="width: 45px;">No.</th>
-                            <th style="width: 70px;">구분</th>
-                            <th style="width: 105px;" id="colDateHeader">정산일자</th>
-                            <th style="width: 135px;" class="text-start" id="colPartnerHeader">상대처/납품처</th>
-                            <th style="width: 135px;" class="text-start" id="colDirectPartnerHeader">직출 연계처</th>
-                            <th style="width: 95px;">자재계정</th>
-                            <th style="min-width: 180px;" class="text-start">품목명</th>
-                            <th style="width: 90px;">규격</th>
-                            <th style="width: 50px;">단위</th>
-                            <th style="width: 65px;" class="text-end">수량</th>
-                            <th style="width: 100px;" class="text-end">단가</th>
-                            <th style="width: 110px;" class="text-end">공급가액</th>
-                            <th style="width: 95px;" class="text-end">세액</th>
-                            <th style="width: 115px;" class="text-end fw-bold">합계금액</th>
-                            <th style="width: 105px;">확정상태</th>
-                            <th style="min-width: 100px;" class="text-start">비고</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mainStatusTableBody">
-                        <tr>
-                            <td colspan="17" class="text-center py-5 text-muted">
-                                <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
-                            </td>
-                        </tr>
-                    </tbody>
-                    <tfoot class="table-light fw-bold small" id="mainStatusTableFoot">
-                        <!-- 합계 렌더링 -->
-                    </tfoot>
-                </table>
+        <!-- 3-3. 상세 품목 ERP 그리드 툴바 & 시트 테이블 -->
+        <div class="erp-grid-toolbar">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark"><i class='bx bx-spreadsheet text-primary'></i> 월간 확정 및 정산 상세 시트</span>
+                <span class="text-muted" style="font-size: 11px;">(헤더 경계선을 드래그하거나 더블클릭하여 열 너비를 자동 맞춤할 수 있습니다)</span>
             </div>
+            <div class="d-flex align-items-center gap-1">
+                <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.autoFitAll('mainStatusTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                    <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
+                </button>
+                <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.resetWidths('mainStatusTable')" title="열 너비를 기본값으로 초기화합니다">
+                    <i class='bx bx-reset text-secondary'></i> 기본값 초기화
+                </button>
+            </div>
+        </div>
+
+        <div class="erp-grid-wrapper mb-4 shadow-sm" id="statusGridWrapper">
+            <table class="erp-sheet-table" id="mainStatusTable">
+                <thead>
+                    <tr>
+                        <th style="width: 35px;"><input class="form-check-input" type="checkbox" id="tableHeaderCheck" onchange="app.onCheckAllChange(this.checked)"></th>
+                        <th style="width: 45px;" class="th-no">No.</th>
+                        <th style="width: 70px;">구분</th>
+                        <th style="width: 105px;" id="colDateHeader">정산일자</th>
+                        <th style="width: 135px;" class="text-start" id="colPartnerHeader">상대처/납품처</th>
+                        <th style="width: 135px;" class="text-start" id="colDirectPartnerHeader">직출 연계처</th>
+                        <th style="width: 95px;">자재계정</th>
+                        <th style="min-width: 180px;" class="text-start">품목명</th>
+                        <th style="width: 90px;">규격</th>
+                        <th style="width: 50px;">단위</th>
+                        <th style="width: 65px;" class="text-end">수량</th>
+                        <th style="width: 100px;" class="text-end">단가</th>
+                        <th style="width: 110px;" class="text-end">공급가액</th>
+                        <th style="width: 95px;" class="text-end">세액</th>
+                        <th style="width: 115px;" class="text-end fw-bold">합계금액</th>
+                        <th style="width: 105px;">확정상태</th>
+                        <th style="min-width: 100px;" class="text-start">비고</th>
+                    </tr>
+                </thead>
+                <tbody id="mainStatusTableBody">
+                    <tr>
+                        <td colspan="17" class="text-center py-5 text-muted">
+                            <i class='bx bx-loader-alt bx-spin'></i> 정산 데이터를 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot class="table-light fw-bold small" id="mainStatusTableFoot">
+                    <!-- 합계 렌더링 -->
+                </tfoot>
+            </table>
         </div>
     </div> <!-- /#partnerWorkArea -->
 </div> <!-- /.container-fluid -->
@@ -834,7 +856,8 @@
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=3"></script>
+<script src="../../Common/js/erp-grid-resizer.js"></script>
+<script src="app.js?v=4"></script>
 
 </body>
 </html>

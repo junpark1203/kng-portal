@@ -1108,8 +1108,10 @@ const app = {
             this.calcInline(r.id);
         });
         
-        // 데이터가 렌더링 된 후 리사이저 이벤트 등록 (최초 1회만 등록되도록 내부에서 방어)
-        this.makeTableResizable(document.getElementById('mainTable'));
+        // 데이터가 렌더링 된 후 ERP 시트 리사이저 이벤트 등록
+        if (window.ErpGridResizer) {
+            window.ErpGridResizer.init('mainTable', { storageKey: 'kng_sales_grid_widths' });
+        }
     },
 
     updatePagination: function() {

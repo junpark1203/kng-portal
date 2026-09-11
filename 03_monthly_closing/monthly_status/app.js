@@ -1429,6 +1429,11 @@ const app = {
                 </tr>
             `;
         }
+
+        // ERP 시트 리사이저 동기화
+        if (window.ErpGridResizer) {
+            window.ErpGridResizer.init('mainStatusTable', { storageKey: 'kng_monthly_status_grid_widths' });
+        }
     },
 
     // ── 금액 계산 공통 헬퍼: 품목 정수화 및 누적 차분 부가세 배분 (합계 일치 보장) ──

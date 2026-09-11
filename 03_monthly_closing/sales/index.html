@@ -13,7 +13,7 @@
     <!-- Boxicons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="../../css/iframe-common.css">
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <style>
         .page-header { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1rem; }
         .table-responsive { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -56,22 +56,9 @@
             .print-summary td { border: 2px solid #000; padding: 10px; text-align: center; }
         }
 
-        /* Excel-like Table Styles */
+        /* ERP High-Density Table Overrides */
         #mainTable {
-            border-collapse: collapse;
-            font-size: 0.85rem; /* Compact density */
             min-width: 1400px;
-        }
-        #mainTable th, #mainTable td {
-            border: 1px solid #cbd5e1;
-            padding: 0.4rem 0.6rem;
-            vertical-align: middle;
-        }
-        #mainTable thead th {
-            color: #334155;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
         }
 
         th.sortable {
@@ -96,40 +83,47 @@
             color: #dc2626 !important;
         }
         
-        .bg-original { background-color: #f8fafc; } /* 옅은 회색 (원본) */
-        .bg-settle-header { background-color: #eef2ff; } /* 옅은 파란색 (정산 헤더) */
-        .bg-settle-input { background-color: #fdfefe; }
+        .bg-original { background-color: #f8fafc !important; }
+        .bg-settle-header { background-color: #eef2ff !important; }
+        .bg-settle-input { background-color: #ffffff !important; }
         
-        /* Inline Edit UI Enhancements */
-        .unsettled-row:hover td {
-            background-color: #f1f5f9; 
-        }
+        /* Inline Edit ERP Flat Cell Integration */
         .edit-input {
-            border: 1px solid transparent;
-            color: inherit; /* 부모 폰트 색상 완벽 상속 */
+            border: none !important;
+            color: #1e293b !important;
             font-weight: normal;
-            transition: all 0.2s;
-            padding: 0; /* 우측 정렬 시 원본 데이터와 픽셀 일치 */
-            border-radius: 2px;
-            width: 100%;
-            background-color: transparent;
-            font-size: inherit; /* 부모 폰트 크기 완벽 상속 */
-            font-family: inherit;
-        }
-        .edit-input:hover {
-            border-color: #e2e8f0;
+            transition: background 0.1s ease;
+            padding: 1px 6px !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+            height: 25px !important;
+            min-height: 25px !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            font-size: 11.5px !important;
+            outline: none !important;
+            box-shadow: none !important;
+            box-sizing: border-box !important;
         }
         .edit-input:focus {
-            background-color: #ffffff;
-            border-color: #3b82f6;
-            outline: 2px solid #93c5fd;
-            box-shadow: none;
+            background: transparent !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
-        .edit-input:disabled {
-            background-color: #e2e8f0;
-            color: #64748b;
-            cursor: not-allowed;
-            border-color: transparent;
+        .edit-input:disabled, .edit-input[readonly] {
+            background: transparent !important;
+            color: #475569 !important;
+            cursor: default !important;
+        }
+        
+        /* 인라인 자재계정 셀렉트 */
+        .inline-account {
+            height: 24px !important;
+            font-size: 11.5px !important;
+            padding: 1px 4px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 2px !important;
+            background-color: #ffffff !important;
         }
         
         /* 달력 아이콘 숨기기 (텍스트처럼 보이게) */
@@ -140,32 +134,7 @@
         
         /* 정산 완료된 행 시각적 구분 */
         .bg-settled-row td {
-            background-color: #f4fcf7 !important; /* 매우 옅은 초록색 */
-        }
-        
-        /* 엑셀식 열 너비 조절 기능 */
-        #mainTable {
-            table-layout: fixed; /* 리사이징을 위해 고정 레이아웃 */
-            width: 100%;
-        }
-        #mainTable td {
-            overflow: hidden;
-        }
-        th {
-            position: relative;
-        }
-        .resizer {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 5px;
-            cursor: col-resize;
-            user-select: none;
-            height: 100%;
-            z-index: 1;
-        }
-        .resizer:hover, .resizing {
-            border-right: 2px solid #3b82f6;
+            background-color: #f4fcf7 !important;
         }
 
         /* 계정별 집계 클릭 가능한 배지 칩 스타일 */
@@ -392,9 +361,25 @@
         </div>
     </div>
 
+    <!-- ERP 그리드 툴바 (열 너비 맞춤 / 초기화) -->
+    <div class="erp-grid-toolbar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold text-dark"><i class='bx bx-spreadsheet text-danger'></i> 매출정산 시트</span>
+            <span class="text-muted" style="font-size: 11px;">(헤더 경계선을 드래그하거나 더블클릭하여 열 너비를 조절할 수 있습니다)</span>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.autoFitAll('mainTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                <i class='bx bx-expand-horizontal text-primary'></i> 열 너비 자동맞춤
+            </button>
+            <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.resetWidths('mainTable')" title="열 너비를 기본값으로 초기화합니다">
+                <i class='bx bx-reset text-secondary'></i> 기본값 초기화
+            </button>
+        </div>
+    </div>
+
     <!-- 테이블 -->
-    <div class="table-responsive bg-white rounded-3 shadow-sm border border-light">
-        <table id="mainTable">
+    <div class="erp-grid-wrapper" id="salesGridWrapper">
+        <table id="mainTable" class="erp-sheet-table">
             <thead>
                 <tr>
                     <th class="chk-col bg-original" style="width: 30px;"><input class="form-check-input" type="checkbox" id="checkAllHeader" onchange="app.onCheckAllHeaderChange()"></th>
@@ -530,6 +515,7 @@
     import { authFetch } from '../../js/auth.js';
     window.authFetch = authFetch;
 </script>
-<script src="app.js?v=5"></script>
+<script src="../../Common/js/erp-grid-resizer.js"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
