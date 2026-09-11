@@ -98,10 +98,38 @@ const app = {
 
     init() {
         this.initDatePresets();
+        this.bindDateInputs();
         this.bindDropzone();
         this.loadSites();
         this.search();
         this.initResizers();
+    },
+
+    bindDateInputs() {
+        const startInput = $('filterStartDate');
+        const endInput = $('filterEndDate');
+
+        const onDateInputOrChange = () => {
+            const dateGroup = $('datePresetGroup');
+            if (dateGroup) {
+                dateGroup.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            }
+        };
+
+        if (startInput) {
+            startInput.addEventListener('input', onDateInputOrChange);
+            startInput.addEventListener('change', () => {
+                onDateInputOrChange();
+                this.search();
+            });
+        }
+        if (endInput) {
+            endInput.addEventListener('input', onDateInputOrChange);
+            endInput.addEventListener('change', () => {
+                onDateInputOrChange();
+                this.search();
+            });
+        }
     },
 
     initResizers() {
@@ -232,8 +260,23 @@ const app = {
 
     // ── 내역 검색 ──
     async search() {
-        const startDate = $('filterStartDate').value;
-        const endDate = $('filterEndDate').value;
+        const startInput = $('filterStartDate');
+        const endInput = $('filterEndDate');
+
+        // 브라우저 내장 날짜 유효성 검사 (예: 11월 31일 등 달력에 없는 날짜 입력 시)
+        if (endInput && endInput.validity && endInput.validity.badInput) {
+            alert('종료일 입력이 올바른 날짜 형식이 아닙니다.\n(예: 11월은 30일까지 존재하므로 11-31은 유효하지 않습니다)\n날짜를 확인해 주세요.');
+            endInput.focus();
+            return;
+        }
+        if (startInput && startInput.validity && startInput.validity.badInput) {
+            alert('시작일 입력이 올바른 날짜 형식이 아닙니다.\n날짜를 확인해 주세요.');
+            startInput.focus();
+            return;
+        }
+
+        const startDate = startInput ? startInput.value : '';
+        const endDate = endInput ? endInput.value : '';
         const site = $('filterSite').value;
         const keyword = $('filterKeyword').value.trim();
 
@@ -556,15 +599,20 @@ const app = {
             for (const line of lines) {
                 const lineStr = line.map(i => i.str).join(' ').trim();
 
-                // 거래일자 탐색: e.g. "2026년 6월 30일" or "2026-06-30" or "2026.06.30"
+                // 거래일자 탐색 강화 (공백 허용, 2~4자리 연도, YYYY.MM.DD / YYYY-MM-DD / YY.MM.DD 지원)
                 if (!detectedDate) {
-                    const dateMatch = lineStr.match(/(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일/) 
-                        || lineStr.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
-                    if (dateMatch) {
-                        const y = dateMatch[1];
-                        const m = String(dateMatch[2]).padStart(2, '0');
-                        const d = String(dateMatch[3]).padStart(2, '0');
-                        detectedDate = `${y}-${m}-${d}`;
+                    let m = lineStr.match(/(\d{2,4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+                    if (!m) {
+                        m = lineStr.match(/(\d{2,4})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{1,2})/);
+                    }
+                    if (m) {
+                        let y = m[1];
+                        if (y.length === 2) y = '20' + y;
+                        const mm = String(m[2]).padStart(2, '0');
+                        const dd = String(m[3]).padStart(2, '0');
+                        if (Number(mm) >= 1 && Number(mm) <= 12 && Number(dd) >= 1 && Number(dd) <= 31) {
+                            detectedDate = `${y}-${mm}-${dd}`;
+                        }
                     }
                 }
 
@@ -598,6 +646,27 @@ const app = {
                 // 공급받는자
                 if (!detectedClient && lineStr.includes('케이엔글로벌')) {
                     detectedClient = '㈜케이엔글로벌';
+                }
+            }
+
+            // 본문 텍스트에서 일자를 못 찾았을 경우 파일명에서 일자 추정 보조
+            if (!detectedDate && file && file.name) {
+                const fnMatch4 = file.name.match(/(\d{4})[-_.](\d{1,2})[-_.](\d{1,2})/);
+                if (fnMatch4) {
+                    const y = fnMatch4[1];
+                    const mm = String(fnMatch4[2]).padStart(2, '0');
+                    const dd = String(fnMatch4[3]).padStart(2, '0');
+                    detectedDate = `${y}-${mm}-${dd}`;
+                } else {
+                    const fnMatch2 = file.name.match(/[-_\s](\d{2})\.(\d{2})/);
+                    if (fnMatch2) {
+                        const curYear = new Date().getFullYear();
+                        const mm = String(fnMatch2[1]).padStart(2, '0');
+                        const dd = String(fnMatch2[2]).padStart(2, '0');
+                        if (Number(mm) >= 1 && Number(mm) <= 12 && Number(dd) >= 1 && Number(dd) <= 31) {
+                            detectedDate = `${curYear}-${mm}-${dd}`;
+                        }
+                    }
                 }
             }
 
