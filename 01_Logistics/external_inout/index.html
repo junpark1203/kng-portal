@@ -11,18 +11,34 @@
     <!-- Pretendard Webfont -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
     <!-- ECOUNT ERP 고밀도 전용 테마 CSS -->
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
     <!-- Chart.js for Visual Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-    <!-- A4 인쇄 전용 공식 헤더 (@media print 시만 표시) -->
+    <!-- A4 인쇄 전용 공식 ERP 실적원장 헤더 (@media print 시만 표시) -->
     <div class="print-only-header d-none">
-        <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">입출내역(외부건)</h2>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 4px;">
-            <span id="printDateStr">출력일시: -</span>
-            <span id="printFilterStr">조회조건: 전체</span>
+        <div class="print-title-area">
+            <h1 class="print-main-title">입 출 내 역 (외 부 건)</h1>
+        </div>
+        <div class="print-meta-grid">
+            <div class="print-meta-row">
+                <span class="meta-label">출력일시:</span> <span id="printDateStr" class="meta-val">-</span>
+                <span class="meta-sep">|</span>
+                <span class="meta-label">조회기간:</span> <span id="printPeriodStr" class="meta-val">전체</span>
+                <span class="meta-sep">|</span>
+                <span class="meta-label">조회조건:</span> <span id="printFilterStr" class="meta-val">전체</span>
+            </div>
+            <div class="print-meta-row print-meta-stats">
+                <span class="meta-label">출력실적:</span> <strong id="printCountStr" class="meta-val">0건</strong>
+                <span class="meta-sep">|</span>
+                <span class="meta-label">공급가액:</span> <strong id="printSupplyStr" class="meta-val">0원</strong>
+                <span class="meta-sep">|</span>
+                <span class="meta-label">세액:</span> <span id="printVatStr" class="meta-val">0원</span>
+                <span class="meta-sep">|</span>
+                <span class="meta-label">합계금액:</span> <strong id="printTotalStr" class="meta-val">0원</strong>
+            </div>
         </div>
     </div>
 
@@ -67,7 +83,7 @@
             <button type="button" class="btn-erp btn-erp-danger d-none" id="btnBatchDelete" onclick="app.deleteSelectedRows()" title="선택된 항목 일괄 삭제">
                 <i class='bx bx-trash'></i> 선택삭제 (<span id="selectedCount">0</span>)
             </button>
-            <button type="button" class="btn-erp text-muted" onclick="window.print()" title="화면 인쇄">
+            <button type="button" class="btn-erp text-muted" onclick="app.printPage()" title="화면 인쇄">
                 <i class='bx bx-printer'></i> 인쇄
             </button>
         </div>
@@ -186,6 +202,16 @@
                         </td>
                     </tr>
                 </tbody>
+                <tfoot id="extTableFoot" class="print-only-tfoot">
+                    <tr class="tr-print-summary">
+                        <td class="td-print-sum-label" colspan="7">【 합 계 】</td>
+                        <td class="td-print-sum-qty text-end" id="printSumQty">0</td>
+                        <td class="td-print-sum-price text-center">-</td>
+                        <td class="td-print-sum-supply text-end" id="printSumSupply">0</td>
+                        <td class="td-print-sum-vat text-end" id="printSumVat">0</td>
+                        <td class="td-print-sum-total text-end" id="printSumTotal">0</td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 
@@ -544,9 +570,15 @@
         </div>
     </div>
 
+    <!-- A4 인쇄 전용 공식 바닥글 (@media print 시만 표시) -->
+    <div class="print-only-footer d-none">
+        <span>(주)케이앤지 | 물류사업부 | KNG ERP SYSTEM</span>
+        <span>본 출력물은 시스템에 기록된 거래 데이터에 의해 정상 발행되었습니다.</span>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Frontend Application Logic -->
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=8"></script>
 </body>
 </html>

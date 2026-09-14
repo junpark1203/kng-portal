@@ -171,27 +171,81 @@ const app = {
             }
         });
 
-        // 인쇄 헤더 자동 갱신
+        // 인쇄 헤더 및 하단 합계행(tfoot) 자동 갱신 리스너
         window.addEventListener('beforeprint', () => {
-            const now = new Date();
-            const dateStr = now.getFullYear() + '-' +
-                String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                String(now.getDate()).padStart(2, '0') + ' ' +
-                String(now.getHours()).padStart(2, '0') + ':' +
-                String(now.getMinutes()).padStart(2, '0');
-            const printDateEl = document.getElementById('printDateStr');
-            if (printDateEl) printDateEl.textContent = `출력일시: ${dateStr}`;
-
-            const printFilterEl = document.getElementById('printFilterStr');
-            if (printFilterEl) {
-                const start = document.getElementById('filterStartDate')?.value || '';
-                const end = document.getElementById('filterEndDate')?.value || '';
-                const cat = this.currentCategory || '전체';
-                let filterText = `분류: ${cat}`;
-                if (start || end) filterText += ` | 기간: ${start || '처음'} ~ ${end || '현재'}`;
-                printFilterEl.textContent = `조회조건: ${filterText}`;
-            }
+            this.preparePrint();
         });
+    },
+
+    // -------------------------------------------------------------------------
+    // 인쇄 전 데이터 메타정보 및 tfoot 합계행 사전 계산
+    // -------------------------------------------------------------------------
+    preparePrint: function() {
+        const now = new Date();
+        const dateStr = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0') + ' ' +
+            String(now.getHours()).padStart(2, '0') + ':' +
+            String(now.getMinutes()).padStart(2, '0');
+        const printDateEl = document.getElementById('printDateStr');
+        if (printDateEl) printDateEl.textContent = dateStr;
+
+        const start = document.getElementById('filterStartDate')?.value || '';
+        const end = document.getElementById('filterEndDate')?.value || '';
+        const printPeriodEl = document.getElementById('printPeriodStr');
+        if (printPeriodEl) {
+            printPeriodEl.textContent = (start || end) ? `${start || '처음'} ~ ${end || '현재'}` : '전체 기간';
+        }
+
+        const printFilterEl = document.getElementById('printFilterStr');
+        if (printFilterEl) {
+            const cat = this.currentCategory || '전체';
+            let filterArr = [`분류: ${cat}`];
+            if (this.activeFilters) {
+                Object.entries(this.activeFilters).forEach(([k, v]) => {
+                    if (v && String(v).trim()) {
+                        const labelMap = { supplier: '공급처', destination: '출고처', item: '품목', spec: '규격', voucher_id: '전표' };
+                        filterArr.push(`${labelMap[k] || k}: ${v}`);
+                    }
+                });
+            }
+            const subKw = document.getElementById('subSearchInput')?.value.trim();
+            if (subKw) filterArr.push(`결과내: ${subKw}`);
+            printFilterEl.textContent = filterArr.join(' | ');
+        }
+
+        // 출력 데이터 요약 및 tfoot 계산
+        const rows = this.renderedRows || this.currentData || [];
+        const count = rows.length;
+        const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+        const totalSupply = rows.reduce((s, r) => s + (Number(r.supply_amount) || 0), 0);
+        const totalVat = rows.reduce((s, r) => s + (Number(r.vat) || 0), 0);
+        const totalAmount = rows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+
+        // 상단 헤더 요약 갱신
+        const printCountEl = document.getElementById('printCountStr');
+        if (printCountEl) printCountEl.textContent = `${fmtNumber(count)}건`;
+        const printSupplyEl = document.getElementById('printSupplyStr');
+        if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(totalSupply)}원`;
+        const printVatEl = document.getElementById('printVatStr');
+        if (printVatEl) printVatEl.textContent = `${fmtNumber(totalVat)}원`;
+        const printTotalEl = document.getElementById('printTotalStr');
+        if (printTotalEl) printTotalEl.textContent = `${fmtNumber(totalAmount)}원`;
+
+        // 하단 tfoot 합계행 갱신
+        const sumQtyEl = document.getElementById('printSumQty');
+        if (sumQtyEl) sumQtyEl.textContent = fmtNumber(totalQty);
+        const sumSupplyEl = document.getElementById('printSumSupply');
+        if (sumSupplyEl) sumSupplyEl.textContent = fmtNumber(totalSupply);
+        const sumVatEl = document.getElementById('printSumVat');
+        if (sumVatEl) sumVatEl.textContent = fmtNumber(totalVat);
+        const sumTotalEl = document.getElementById('printSumTotal');
+        if (sumTotalEl) sumTotalEl.textContent = fmtNumber(totalAmount);
+    },
+
+    printPage: function() {
+        this.preparePrint();
+        window.print();
     },
 
     // -------------------------------------------------------------------------
@@ -530,6 +584,7 @@ const app = {
 
     // 테이블 행 렌더링 (더블클릭 인라인 수정 지원)
     renderTableRows: function(rows) {
+        this.renderedRows = rows || [];
         const tbody = document.getElementById('extTableBody');
         if (!tbody) return;
 
