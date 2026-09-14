@@ -1073,7 +1073,7 @@ tfoot.print-only-tfoot {
         font-size: 7pt !important;
         line-height: 1.2 !important;
         height: auto !important;
-        padding: 2.8px 2.5px !important;
+        padding: 2.8px 1.5px !important;
         min-width: 0 !important;
         box-shadow: none !important;
         color: #1e293b !important;
@@ -1085,19 +1085,19 @@ tfoot.print-only-tfoot {
         background-color: #f8fafc !important;
     }
 
-    /* [내역 목록] A4 세로 12개 열 너비 비율 최적화 (합계 정확히 100%) */
-    .th-date        { width: 9% !important; text-align: center !important; }
-    .th-category    { width: 6.5% !important; text-align: center !important; }
-    .th-supplier    { width: 10.5% !important; text-align: left !important; }
-    .th-destination { width: 11.5% !important; text-align: left !important; }
-    .th-item        { width: 14% !important; text-align: left !important; }
-    .th-spec        { width: 10.5% !important; text-align: left !important; }
-    .th-unit        { width: 3.5% !important; text-align: center !important; }
-    .th-qty         { width: 5% !important; text-align: right !important; }
+    /* [내역 목록] A4 세로 12개 열 너비 비율 최적화 (금액/부가세 잘림 방지, 합계 정확히 100%) */
+    .th-date        { width: 7.5% !important; text-align: center !important; }
+    .th-category    { width: 5.0% !important; text-align: center !important; }
+    .th-supplier    { width: 9.5% !important; text-align: left !important; }
+    .th-destination { width: 11.0% !important; text-align: left !important; }
+    .th-item        { width: 12.0% !important; text-align: left !important; }
+    .th-spec        { width: 9.5% !important; text-align: left !important; }
+    .th-unit        { width: 3.0% !important; text-align: center !important; }
+    .th-qty         { width: 5.5% !important; text-align: right !important; }
     .th-price       { width: 7.5% !important; text-align: right !important; }
-    .th-supply      { width: 8.5% !important; text-align: right !important; }
-    .th-vat         { width: 5.5% !important; text-align: right !important; }
-    .th-total       { width: 8% !important; text-align: right !important; }
+    .th-supply      { width: 10.0% !important; text-align: right !important; }
+    .th-vat         { width: 9.5% !important; text-align: right !important; }
+    .th-total       { width: 10.0% !important; text-align: right !important; }
     .th-memo, .td-memo { display: none !important; }
 
     /* [대시보드 순위표] A4 세로 열 너비 비율 최적화 (합계 100%) */
@@ -1112,7 +1112,7 @@ tfoot.print-only-tfoot {
     #dashboardSpecTable th:nth-child(9), #dashboardSpecTable td:nth-child(9) { width: 10% !important; text-align: right !important; }
     #dashboardSpecTable th:nth-child(10), #dashboardSpecTable td:nth-child(10) { width: 10% !important; text-align: right !important; }
 
-    /* 정렬 및 글자 쪼개짐(Word-Wrap) 원천 차단 */
+    /* 정렬 및 글자 쪼개짐(Word-Wrap) 원천 차단 & 금액 셀 가독성 최적화 */
     .td-date     { text-align: center !important; white-space: nowrap !important; }
     .td-category { text-align: center !important; white-space: nowrap !important; }
     .td-unit     { text-align: center !important; white-space: nowrap !important; }
@@ -1120,6 +1120,10 @@ tfoot.print-only-tfoot {
         text-align: right !important;
         font-variant-numeric: tabular-nums !important;
         white-space: nowrap !important;
+        letter-spacing: -0.25px !important;
+        text-overflow: clip !important;
+        padding-left: 1px !important;
+        padding-right: 1.5px !important;
     }
 
     .td-supplier, .td-destination, .td-item, .td-spec {
@@ -1142,7 +1146,8 @@ tfoot.print-only-tfoot {
         font-weight: 700 !important;
         color: #0f172a !important;
         font-size: 7pt !important;
-        padding: 3.5px 2.5px !important;
+        padding: 3.5px 1.5px !important;
+        letter-spacing: -0.25px !important;
         border-top: 1.5px solid #0f172a !important;
         border-bottom: 2.5px double #0f172a !important;
         border-left: 1px solid #cbd5e1 !important;

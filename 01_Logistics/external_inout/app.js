@@ -99,6 +99,8 @@ const app = {
     // 대시보드 순위 테이블 정렬 및 캐시 상태
     dashboardSort: { col: 'totalSupplyAmount', dir: 'desc' },
     dashboardDataCache: { specs: [], totalQty: 0, totalSupply: 0 },
+    dashboardSummary: null,
+    listSummary: null,
 
     // Chart instances
     topAmountChartInstance: null,
@@ -227,22 +229,36 @@ const app = {
         const printVatEl = document.getElementById('printVatStr');
         const printTotalEl = document.getElementById('printTotalStr');
 
-        if (this.currentTab === 'dashboard' && this.dashboardSummary) {
-            const s = this.dashboardSummary;
-            if (printCountEl) printCountEl.textContent = `${fmtNumber(s.total_count || 0)}건`;
-            if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(s.total_supply_amount || 0)}원`;
-            if (printVatEl) printVatEl.textContent = `${fmtNumber(s.total_vat || 0)}원`;
-            if (printTotalEl) printTotalEl.textContent = `${fmtNumber(s.total_amount || 0)}원`;
+        if (this.currentTab === 'dashboard') {
+            const s = this.dashboardSummary || {};
+            const totalCount = s.total_records ?? s.total_count ?? 0;
+            const totalQty = s.total_qty ?? 0;
+            const totalSupply = s.total_supply_amount ?? s.total_supply ?? 0;
+            const totalVat = s.total_vat ?? Math.round(totalSupply * 0.1);
+            const totalAmount = s.total_amount ?? (totalSupply + totalVat);
+
+            if (printCountEl) printCountEl.textContent = `${fmtNumber(totalCount)}건`;
+            if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(totalSupply)}원`;
+            if (printVatEl) printVatEl.textContent = `${fmtNumber(totalVat)}원`;
+            if (printTotalEl) printTotalEl.textContent = `${fmtNumber(totalAmount)}원`;
         } else {
             const rows = this.renderedRows || this.currentData || [];
-            const count = rows.length;
+            const pageCount = rows.length;
+            const totalCount = this.pagination.total || (this.listSummary && (this.listSummary.total_count || this.listSummary.totalCount)) || pageCount;
+
             const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
             const totalSupply = rows.reduce((s, r) => s + (Number(r.supply_amount) || 0), 0);
             const totalVat = rows.reduce((s, r) => s + (Number(r.vat) || 0), 0);
             const totalAmount = rows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
 
             // 상단 헤더 요약 갱신
-            if (printCountEl) printCountEl.textContent = `${fmtNumber(count)}건`;
+            if (printCountEl) {
+                if (totalCount > pageCount) {
+                    printCountEl.textContent = `총 ${fmtNumber(totalCount)}건 (출력: ${fmtNumber(pageCount)}건)`;
+                } else {
+                    printCountEl.textContent = `${fmtNumber(totalCount)}건`;
+                }
+            }
             if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(totalSupply)}원`;
             if (printVatEl) printVatEl.textContent = `${fmtNumber(totalVat)}원`;
             if (printTotalEl) printTotalEl.textContent = `${fmtNumber(totalAmount)}원`;
@@ -259,9 +275,31 @@ const app = {
         }
     },
 
-    printPage: function() {
+    printPage: async function() {
+        let originalLimit = null;
+        if (this.currentTab === 'list' && this.pagination.total > (this.currentData ? this.currentData.length : 0)) {
+            const printAll = confirm(
+                `현재 화면에 1페이지(${this.currentData.length}건)만 표시되어 있습니다.\n\n` +
+                `전체 검색 결과(${this.pagination.total}건)를 모두 인쇄하시겠습니까?\n\n` +
+                `• [확인] : 전체 ${this.pagination.total}건 모두 인쇄\n` +
+                `• [취소] : 현재 1페이지(${this.currentData.length}건)만 인쇄`
+            );
+            if (printAll) {
+                originalLimit = this.pagination.limit;
+                this.pagination.limit = 999999;
+                this.pagination.page = 1;
+                await this.loadList();
+            }
+        }
+
         this.preparePrint();
         window.print();
+
+        if (originalLimit !== null) {
+            this.pagination.limit = originalLimit;
+            this.pagination.page = 1;
+            await this.loadList();
+        }
     },
 
     // -------------------------------------------------------------------------
@@ -540,6 +578,7 @@ const app = {
             const result = await res.json();
             this.currentData = result.data || [];
             this.pagination = result.pagination || this.pagination;
+            this.listSummary = result.summary || {};
 
             // 결과 내 재검색 적용
             this.applySubSearch();
@@ -1682,6 +1721,7 @@ const app = {
 
             // KPI 카드 반영 (스네이크 케이스 & 카멜 케이스 안전 호환)
             const kpi = data.kpi || {};
+            this.dashboardSummary = kpi;
             const totalCount = kpi.total_records ?? kpi.total_count ?? 0;
             const totalQty = kpi.total_qty ?? 0;
             const totalSupply = kpi.total_supply_amount ?? kpi.total_supply ?? 0;
