@@ -16,6 +16,34 @@ const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '
 const API_BASE = `${SERVER_URL}/api/external-logistics`;
 const PARTNERS_API = `${SERVER_URL}/api/partners`;
 
+// ── Auth 헬퍼 (부모 창 Firebase 인증 토큰 동기화 대기) ──
+let _authReady = null;
+function waitForAuth(timeout = 8000) {
+    if (_authReady) return _authReady;
+    _authReady = new Promise((res) => {
+        const s = Date.now();
+        (function poll() {
+            try {
+                if (window.parent && window.parent.getAuthToken) {
+                    window.parent.getAuthToken().then(t => {
+                        if (t) { res(t); }
+                        else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                        else { _authReady = null; res(null); }
+                    }).catch(() => {
+                        if (Date.now() - s < timeout) setTimeout(poll, 400);
+                        else { _authReady = null; res(null); }
+                    });
+                } else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                else { _authReady = null; res(null); }
+            } catch (e) {
+                if (Date.now() - s < timeout) setTimeout(poll, 400);
+                else { _authReady = null; res(null); }
+            }
+        })();
+    });
+    return _authReady;
+}
+
 // JWT 토큰 기반 fetch 래퍼
 async function authFetch(url, options = {}) {
     let token = null;
@@ -25,6 +53,12 @@ async function authFetch(url, options = {}) {
         }
     } catch (e) {
         console.warn('Parent token fetch failed:', e);
+    }
+
+    if (!token) {
+        try {
+            token = await waitForAuth();
+        } catch (e) {}
     }
 
     if (!token) {
@@ -405,7 +439,10 @@ const app = {
             }
 
             const res = await authFetch(`${API_BASE}?${params.toString()}`);
-            if (!res.ok) throw new Error('목록 조회 실패: ' + res.statusText);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || (res.status === 401 ? '인증 토큰 동기화 중입니다. 잠시 후 다시 시도해 주세요.' : `서버 응답 오류 (HTTP ${res.status})`));
+            }
 
             const result = await res.json();
             this.currentData = result.data || [];
