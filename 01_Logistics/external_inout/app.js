@@ -1304,6 +1304,7 @@ const app = {
 
         const file = fileInp.files[0];
         const formData = new FormData();
+        formData.append('file', file);
         formData.append('excelFile', file);
 
         submitBtn.disabled = true;
@@ -1316,7 +1317,14 @@ const app = {
                 body: formData
             });
 
-            const result = await res.json();
+            const resText = await res.text();
+            let result = {};
+            try {
+                result = JSON.parse(resText);
+            } catch (parseErr) {
+                throw new Error(`서버 응답 오류 (HTTP ${res.status}): ${resText.substring(0, 100)}`);
+            }
+
             if (!res.ok) throw new Error(result.error || '엑셀 업로드 실패');
 
             statusText.innerHTML = `<span class="text-success"><i class='bx bx-check-circle'></i> ${result.message}</span>`;

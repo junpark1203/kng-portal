@@ -802,10 +802,22 @@ module.exports = (database) => {
     });
 
     // --- 10. 엑셀 일괄 업로드 (ExcelJS) ---
-    router.post('/upload', upload.single('file'), async (req, res) => {
+    const uploadMiddleware = (req, res, next) => {
+        upload.any()(req, res, (err) => {
+            if (err) {
+                return res.status(400).json({ error: '엑셀 파일 수신 오류: ' + err.message });
+            }
+            if (req.files && req.files.length > 0) {
+                req.file = req.files.find(f => f.fieldname === 'file' || f.fieldname === 'excelFile') || req.files[0];
+            }
+            next();
+        });
+    };
+
+    router.post('/upload', uploadMiddleware, async (req, res) => {
         try {
             if (!req.file || !req.file.buffer) {
-                return res.status(400).json({ error: '엑셀 파일이 업로드되지 않았습니다.' });
+                return res.status(400).json({ error: '엑셀 파일이 전달되지 않았습니다.' });
             }
 
             const workbook = new ExcelJS.Workbook();
@@ -813,7 +825,7 @@ module.exports = (database) => {
             const worksheet = workbook.worksheets[0];
 
             if (!worksheet) {
-                return res.status(400).json({ error: '유효한 시트를 찾을 수 없습니다.' });
+                return res.status(400).json({ error: '유효한 엑셀 시트를 찾을 수 없습니다.' });
             }
 
             let headerMap = {};
@@ -826,16 +838,16 @@ module.exports = (database) => {
                 if (rowNumber === 1) {
                     row.eachCell((cell, colNumber) => {
                         const text = String(cell.value || '').trim();
-                        if (text.includes('일자')) headerMap.date = colNumber;
-                        else if (text.includes('분류')) headerMap.category = colNumber;
-                        else if (text.includes('공급처') || text.includes('매입처')) headerMap.supplier = colNumber;
-                        else if (text.includes('출고처') || text.includes('현장명') || text.includes('매출처')) headerMap.destination = colNumber;
-                        else if (text.includes('품목명')) headerMap.item = colNumber;
-                        else if (text.includes('규격')) headerMap.spec = colNumber;
-                        else if (text.includes('단위')) headerMap.unit = colNumber;
-                        else if (text.includes('수량')) headerMap.qty = colNumber;
-                        else if (text.includes('단가')) headerMap.unit_price = colNumber;
-                        else if (text.includes('비고')) headerMap.memo = colNumber;
+                        if (text.includes('일자') || text.includes('날짜') || text.toLowerCase().includes('date')) headerMap.date = colNumber;
+                        else if (text.includes('분류') || text.toLowerCase().includes('category')) headerMap.category = colNumber;
+                        else if (text.includes('공급처') || text.includes('매입처') || text.includes('구매처') || text.toLowerCase().includes('supplier')) headerMap.supplier = colNumber;
+                        else if (text.includes('출고처') || text.includes('현장명') || text.includes('현장') || text.includes('매출처') || text.toLowerCase().includes('destination')) headerMap.destination = colNumber;
+                        else if (text.includes('품목명') || text.includes('품명') || text.toLowerCase().includes('item')) headerMap.item = colNumber;
+                        else if (text.includes('규격') || text.toLowerCase().includes('spec')) headerMap.spec = colNumber;
+                        else if (text.includes('단위') || text.toLowerCase().includes('unit')) headerMap.unit = colNumber;
+                        else if (text.includes('수량') || text.toLowerCase().includes('qty')) headerMap.qty = colNumber;
+                        else if (text.includes('단가') || text.toLowerCase().includes('price')) headerMap.unit_price = colNumber;
+                        else if (text.includes('비고') || text.toLowerCase().includes('memo')) headerMap.memo = colNumber;
                     });
                 } else {
                     const rawDate = headerMap.date ? row.getCell(headerMap.date).value : '';
@@ -849,7 +861,7 @@ module.exports = (database) => {
                     const rawPrice = headerMap.unit_price ? row.getCell(headerMap.unit_price).value : 0;
                     const rawMemo = headerMap.memo ? row.getCell(headerMap.memo).value : '';
 
-                    if (!rawDate || !rawSupp || !rawDest || !rawItem || !rawSpec) {
+                    if (!rawDate || !rawSupp || !rawDest || !rawItem) {
                         errorCount++;
                         return;
                     }
@@ -875,7 +887,7 @@ module.exports = (database) => {
                         supplier: String(rawSupp).trim(),
                         destination: String(rawDest).trim(),
                         item: String(rawItem).trim(),
-                        spec: String(rawSpec).trim(),
+                        spec: rawSpec ? String(rawSpec).trim() : '-',
                         unit: rawUnit ? String(rawUnit).trim() : 'EA',
                         qty: numQty,
                         unit_price: numPrice,
@@ -887,25 +899,53 @@ module.exports = (database) => {
                 }
             });
 
-            for (let item of rowsToInsert) {
-                const newId = await generateExtId(item.date);
-                const sql = `
-                    INSERT INTO external_logistics (
-                        id, category, date, supplier, destination, item, spec, unit,
-                        qty, unit_price, supply_amount, vat, total_amount, memo,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                `;
-                await dbRun(sql, [
-                    newId, item.category, item.date, item.supplier, item.destination,
-                    item.item, item.spec, item.unit, item.qty, item.unit_price,
-                    item.supply_amount, item.vat, item.total_amount, item.memo
-                ]);
-                successCount++;
+            if (rowsToInsert.length === 0) {
+                return res.status(400).json({ error: '엑셀 파일에서 등록 가능한 유효한 행을 찾을 수 없습니다.' });
+            }
+
+            // 전표 ID 생성 (일괄 묶음 식별용)
+            const firstDate = rowsToInsert[0].date || new Date().toISOString().substring(0, 10);
+            const voucherId = await generateVoucherId(firstDate);
+            const cleanDate = firstDate.replace(/-/g, '');
+            const prefix = `EXT-${cleanDate}-`;
+            const maxRow = await dbGet(`SELECT id FROM external_logistics WHERE id LIKE ? ORDER BY id DESC LIMIT 1`, [`${prefix}%`]);
+            let baseSeq = 1;
+            if (maxRow && maxRow.id) {
+                const parts = maxRow.id.split('-');
+                if (parts.length === 3) {
+                    const curSeq = parseInt(parts[2], 10);
+                    if (!isNaN(curSeq)) baseSeq = curSeq + 1;
+                }
+            }
+
+            await dbRun('BEGIN TRANSACTION');
+            try {
+                for (let i = 0; i < rowsToInsert.length; i++) {
+                    const item = rowsToInsert[i];
+                    const itemId = `${prefix}${String(baseSeq + i).padStart(4, '0')}`;
+                    const sql = `
+                        INSERT INTO external_logistics (
+                            id, voucher_id, category, date, supplier, destination, item, spec, unit,
+                            qty, unit_price, supply_amount, vat, total_amount, memo,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    `;
+                    await dbRun(sql, [
+                        itemId, voucherId, item.category, item.date, item.supplier, item.destination,
+                        item.item, item.spec, item.unit, item.qty, item.unit_price,
+                        item.supply_amount, item.vat, item.total_amount, item.memo
+                    ]);
+                    successCount++;
+                }
+                await dbRun('COMMIT');
+            } catch (txErr) {
+                await dbRun('ROLLBACK');
+                throw txErr;
             }
 
             res.json({
-                message: `엑셀 일괄 업로드 완료 (성공: ${successCount}건, 실패/제외: ${errorCount}건)`,
+                message: `엑셀 일괄 업로드 완료 (성공: ${successCount}건, 제외: ${errorCount}건, 전표번호: ${voucherId})`,
+                voucher_id: voucherId,
                 successCount,
                 errorCount
             });
