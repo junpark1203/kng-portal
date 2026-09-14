@@ -1,0 +1,718 @@
+/* ==========================================================================
+   외부입출내역 (External Logistics) ECOUNT ERP 고밀도 스타일시트
+   입출고내역 시스템 완벽 동기화 + 차세대 스프레드시트 고도화 테마
+   ========================================================================== */
+
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-success: #10b981;
+    --erp-warning: #f59e0b;
+    --erp-danger: #ef4444;
+    --erp-dark: #1e293b;
+    --erp-header-bg: #1e293b;
+    --erp-th-bg: #f8fafc;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-row-hover: #f1f5f9;
+    --erp-row-active: #e2e8f0;
+    --erp-row-height: 26px;
+    --erp-font-size: 11.5px;
+}
+
+/* 기본 레이아웃 (여백 최소화 & 고밀도 화면 활용) */
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc;
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: var(--erp-font-size);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar) ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+/* 탭 버튼 그룹 */
+.erp-tab-group {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.erp-tab-btn {
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+    user-select: none;
+}
+
+.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.erp-tab-btn.active,
+.btn-check:checked + .erp-tab-btn {
+    background: #ffffff !important;
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-border-light) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ERP 액션 버튼 규격 */
+.btn-erp {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+    background: #ffffff;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-erp-primary {
+    background: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+}
+.btn-erp-primary:hover {
+    background: var(--erp-primary-hover) !important;
+    border-color: var(--erp-primary-hover) !important;
+}
+
+.btn-erp-success {
+    background: #15803d !important;
+    border-color: #15803d !important;
+    color: #ffffff !important;
+}
+.btn-erp-success:hover {
+    background: #166534 !important;
+}
+
+.btn-erp-warning {
+    background: #d97706 !important;
+    border-color: #d97706 !important;
+    color: #ffffff !important;
+}
+.btn-erp-warning:hover {
+    background: #b45309 !important;
+}
+
+.btn-erp-danger {
+    background: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+.btn-erp-danger:hover {
+    background: #b91c1c !important;
+}
+
+/* ── 2. ECOUNT ERP 2행 필터 리본 (.erp-filter-ribbon) ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+/* 기간 프리셋 버튼 그룹 */
+.erp-preset-group .btn,
+.erp-preset-btn {
+    height: 24px !important;
+    padding: 0 7px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border-radius: 0 !important;
+    border-color: var(--erp-border) !important;
+    color: #475569 !important;
+    background: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s ease;
+}
+
+.erp-preset-group .btn:hover,
+.erp-preset-btn:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+.erp-preset-group .btn.active,
+.erp-preset-group .btn.btn-primary,
+.erp-preset-btn.active {
+    background-color: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25) !important;
+    z-index: 2;
+}
+
+.erp-input-date {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 0 6px !important;
+    width: 118px !important;
+    border-radius: 2px !important;
+    border: 1px solid var(--erp-border) !important;
+    color: #1e293b !important;
+}
+
+.erp-select-target {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 0 20px 0 6px !important;
+    width: 105px !important;
+    border-radius: 2px !important;
+    border: 1px solid var(--erp-border) !important;
+    color: #1e293b !important;
+    background-position: right 4px center !important;
+}
+
+.erp-search-box input {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 0 24px 0 8px !important;
+    width: 200px !important;
+    border-radius: 2px !important;
+    border: 1px solid var(--erp-border) !important;
+}
+
+.erp-subsearch-group input {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 0 6px !important;
+    width: 130px !important;
+}
+
+/* ── 3. 실시간 요약 집계 스트립 (.erp-summary-strip) ── */
+.erp-summary-strip {
+    background: #f8fafc;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 3px 10px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: #475569;
+}
+
+.erp-summary-items {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.erp-summary-item strong {
+    color: #0f172a;
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.erp-summary-item.highlight strong {
+    color: var(--erp-primary);
+    font-size: 12px;
+}
+
+/* ── 4. ECOUNT ERP 초고밀도 그리드 테이블 (.erp-grid-wrapper & .erp-sheet-table) ── */
+.erp-grid-wrapper {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 150px);
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-sheet-table {
+    width: 100%;
+    max-width: none;
+    border-collapse: collapse !important;
+    font-size: var(--erp-font-size);
+    table-layout: fixed !important;
+    margin: 0 !important;
+    border: 1px solid var(--erp-border) !important;
+    background-color: var(--erp-border) !important;
+}
+
+.erp-sheet-table thead th {
+    background-color: var(--erp-th-bg) !important;
+    background-clip: padding-box !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--erp-border) !important;
+    white-space: nowrap !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 10;
+    height: var(--erp-row-height) !important;
+    line-height: 1.2 !important;
+    user-select: none;
+    cursor: pointer;
+    overflow: visible !important;
+}
+
+.erp-sheet-table thead th:hover {
+    background-color: #edf2f7 !important;
+}
+
+.erp-sheet-table tbody td {
+    padding: 0 5px !important;
+    border: 1px solid var(--erp-border) !important;
+    vertical-align: middle !important;
+    background-color: #ffffff;
+    background-clip: padding-box !important;
+    height: var(--erp-row-height) !important;
+    line-height: var(--erp-row-height) !important;
+    box-sizing: border-box !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--erp-font-size);
+}
+
+.erp-sheet-table tbody tr:hover td {
+    background-color: var(--erp-row-hover) !important;
+}
+
+.erp-sheet-table tbody tr.is-selected td {
+    background-color: #eff6ff !important;
+}
+
+/* 읽기 전용 / 번호 / 체크박스 열 */
+.erp-sheet-table th.th-check,
+.erp-sheet-table td.td-check,
+.erp-sheet-table th.th-no,
+.erp-sheet-table td.td-no {
+    text-align: center !important;
+    padding: 0 !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+}
+
+.erp-sheet-table th.th-date, .erp-sheet-table td.td-date { width: 85px; min-width: 85px; text-align: center; }
+.erp-sheet-table th.th-voucher, .erp-sheet-table td.td-voucher { width: 125px; min-width: 125px; text-align: center; }
+.erp-sheet-table th.th-category, .erp-sheet-table td.td-category { width: 75px; min-width: 75px; text-align: center; }
+.erp-sheet-table th.th-supplier, .erp-sheet-table td.td-supplier { width: 140px; min-width: 120px; }
+.erp-sheet-table th.th-destination, .erp-sheet-table td.td-destination { width: 150px; min-width: 130px; }
+.erp-sheet-table th.th-item, .erp-sheet-table td.td-item { width: 160px; min-width: 140px; font-weight: 600; }
+.erp-sheet-table th.th-spec, .erp-sheet-table td.td-spec { width: 130px; min-width: 110px; }
+.erp-sheet-table th.th-unit, .erp-sheet-table td.td-unit { width: 45px; min-width: 45px; text-align: center; }
+.erp-sheet-table th.th-qty, .erp-sheet-table td.td-qty { width: 65px; min-width: 60px; text-align: right; }
+.erp-sheet-table th.th-price, .erp-sheet-table td.td-price { width: 80px; min-width: 75px; text-align: right; }
+.erp-sheet-table th.th-supply, .erp-sheet-table td.td-supply { width: 95px; min-width: 90px; text-align: right; font-weight: 600; }
+.erp-sheet-table th.th-vat, .erp-sheet-table td.td-vat { width: 80px; min-width: 75px; text-align: right; }
+.erp-sheet-table th.th-total, .erp-sheet-table td.td-total { width: 105px; min-width: 95px; text-align: right; font-weight: 700; color: #0369a1; }
+.erp-sheet-table th.th-memo, .erp-sheet-table td.td-memo { width: 150px; min-width: 120px; }
+.erp-sheet-table th.th-action, .erp-sheet-table td.td-action { width: 55px; min-width: 55px; text-align: center; }
+
+/* 열 리사이저 */
+.col-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize !important;
+    user-select: none;
+    z-index: 25;
+    display: flex;
+    justify-content: center;
+}
+.col-resizer::after {
+    content: '';
+    width: 2px;
+    height: 100%;
+    background-color: transparent;
+    transition: background-color 0.1s ease;
+}
+.col-resizer:hover::after,
+.col-resizer.is-resizing::after {
+    background-color: var(--erp-primary);
+}
+
+/* ── 5. 메인 그리드 인라인 퀵 수정 (.is-inline-editing) ── */
+.is-inline-editable {
+    cursor: cell;
+}
+.is-inline-editable:hover {
+    box-shadow: inset 0 0 0 1px #93c5fd !important;
+}
+
+td.is-inline-editing {
+    padding: 0 !important;
+    box-shadow: inset 0 0 0 2px var(--erp-primary) !important;
+    background-color: #ffffff !important;
+    z-index: 15 !important;
+}
+
+.erp-inline-input {
+    width: 100% !important;
+    height: var(--erp-row-height) !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0 5px !important;
+    font-size: var(--erp-font-size) !important;
+    color: #0f172a !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+.erp-inline-input.text-end { text-align: right !important; }
+.erp-inline-input.text-center { text-align: center !important; }
+
+/* ── 6. 스프레드시트 셀 인풋 (.erp-cell-input) ── */
+.erp-cell-input {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 24px;
+    border: none !important;
+    outline: none !important;
+    padding: 1px 5px !important;
+    font-size: var(--erp-font-size) !important;
+    background: transparent !important;
+    color: #1e293b;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+}
+.erp-cell-input:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+.erp-cell-input.text-end { text-align: right !important; }
+.erp-cell-input.text-center { text-align: center !important; }
+.erp-cell-input[readonly], .erp-cell-input.bg-readonly {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    cursor: default !important;
+}
+
+.erp-sheet-table tbody td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--erp-primary) !important;
+    background-color: #eff6ff !important;
+    position: relative;
+    z-index: 5;
+}
+
+/* 행 삭제 버튼 */
+.btn-row-del {
+    width: 100% !important;
+    height: 24px !important;
+    border: none !important;
+    background: transparent !important;
+    color: #94a3b8 !important;
+    font-size: 15px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.btn-row-del:hover {
+    color: var(--erp-danger) !important;
+    background-color: #fee2e2 !important;
+}
+
+/* ── 7. 전표형 고속 스프레드시트 모달 (.erp-window-header, .erp-form-table) ── */
+.erp-window-header {
+    background: var(--erp-header-bg) !important;
+    color: #f8fafc !important;
+    padding: 6px 12px !important;
+    border-bottom: 2px solid #0f172a !important;
+    border-radius: 0 !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.erp-window-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.erp-window-header .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+    opacity: 0.8;
+}
+.erp-window-header .btn-close:hover {
+    opacity: 1;
+}
+
+/* 전표 마스터 정보 폼 테이블 */
+.erp-form-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    margin-bottom: 6px;
+}
+.erp-form-table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border: 1px solid var(--erp-border);
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+    height: 26px;
+}
+.erp-form-table td {
+    padding: 0;
+    border: 1px solid var(--erp-border);
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 26px;
+}
+.erp-form-table .form-control,
+.erp-form-table .form-select {
+    width: 100%;
+    height: 26px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    color: #1e293b;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.erp-form-table td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--erp-primary) !important;
+    background-color: #eff6ff !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+/* 전표 스프레드시트 툴바 & 요약 */
+.erp-grid-toolbar {
+    background: #f8fafc;
+    border: 1px solid var(--erp-border);
+    border-bottom: none;
+    padding: 4px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+}
+.erp-summary-panel {
+    background: #f1f5f9 !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 0 !important;
+    padding: 6px 12px !important;
+    margin-top: 4px !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 엑셀 붙여넣기 팁 뱃지 */
+.excel-paste-badge {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+    padding: 2px 6px;
+    border-radius: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 스마트 메모리 자동제안 힌트 배지 */
+.smart-memory-badge {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+/* 자동완성 드롭다운 (ECOUNT 고밀도 레이아웃) */
+.autocomplete-suggestions {
+    border: 1px solid #94a3b8;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1090;
+    background: #ffffff;
+    width: 100%;
+    border-radius: 2px;
+    display: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+.autocomplete-suggestion {
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 11.5px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+}
+.autocomplete-suggestion:hover,
+.autocomplete-suggestion.active {
+    background-color: #eff6ff;
+    color: var(--erp-primary);
+    font-weight: 600;
+}
+
+/* ── 8. 통계 대시보드 뷰 고밀도 콤팩트 스타일 ── */
+#tabDashboardView {
+    padding-top: 4px;
+}
+.dashboard-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.kpi-card {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 8px 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.kpi-card .kpi-title {
+    font-size: 11px;
+    color: var(--erp-text-muted);
+    margin-bottom: 2px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.kpi-card .kpi-val {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+@media (max-width: 992px) {
+    .chart-grid { grid-template-columns: 1fr; }
+}
+.chart-box {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 10px;
+}
+.chart-box h3 {
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* ── 9. 모달 및 인쇄 서식 ── */
+.modal-backdrop.show {
+    opacity: 0.45;
+}
+.modal-content {
+    border-radius: 2px !important;
+    border: 1px solid #475569 !important;
+}
+
+@media print {
+    body { padding: 0; background: #ffffff; }
+    .no-print, .erp-top-toolbar, .erp-filter-ribbon, .col-resizer, .btn-erp, .modal { display: none !important; }
+    .print-only-header { display: block !important; margin-bottom: 15px; }
+    .erp-grid-wrapper { max-height: none !important; overflow: visible !important; border: none !important; }
+    .erp-sheet-table th, .erp-sheet-table td { border-color: #000000 !important; font-size: 10px !important; height: 22px !important; }
+}

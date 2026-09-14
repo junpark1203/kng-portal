@@ -70,6 +70,7 @@ const logisticsRoutes = require('./routes/logistics');
 const { initLogisticsTables } = logisticsRoutes;
 const partnersRoutes = require('./routes/partners');
 const ledgerRoutes = require('./routes/ledger');
+const externalLogisticsRoutes = require('./routes/external-logistics');
 
 // 대시보드 모듈
 const dashboardRoutes = require('./routes/dashboard');
@@ -1307,6 +1308,7 @@ app.use('/api/settlement', (req, res, next) => {
 });
 app.use('/api/partners', partnersRoutes(db));
 app.use('/api/ledger', ledgerRoutes(db));
+app.use('/api/external-logistics', externalLogisticsRoutes(db));
 app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
 app.use('/api/site-sales-statements', siteSalesStatementRoutes.router);
 

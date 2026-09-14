@@ -1,0 +1,1553 @@
+/**
+ * 외부입출내역 (External Logistics) ECOUNT ERP 고도화 프론트엔드 모듈
+ * - ECOUNT ERP 초고밀도 그리드 및 콤팩트 리본 툴바 동기화
+ * - 전표형 고속 스프레드시트 모달 (Zero-Mouse Keyboard First)
+ * - 엑셀 블록 복사/붙여넣기 딥 파서 (Ctrl+V)
+ * - 최근 거래 단가/규격 스마트 메모리 자동완성 엔진
+ * - 메인 그리드 더블클릭 인라인 퀵 편집 (Direct Inline Edit)
+ * - 열 너비 마우스 드래그 조절 & Auto-Fit
+ * - 듀얼 탭 (내역 목록 ⇄ 통계 대시보드) & 실시간 집계
+ */
+
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://kng.junparks.com';
+
+const API_BASE = `${SERVER_URL}/api/external-logistics`;
+const PARTNERS_API = `${SERVER_URL}/api/partners`;
+
+// JWT 토큰 기반 fetch 래퍼
+async function authFetch(url, options = {}) {
+    let token = null;
+    try {
+        if (window.parent && window.parent !== window && typeof window.parent.getAuthToken === 'function') {
+            token = await window.parent.getAuthToken();
+        }
+    } catch (e) {
+        console.warn('Parent token fetch failed:', e);
+    }
+
+    if (!token) {
+        try {
+            token = localStorage.getItem('kng_token') || sessionStorage.getItem('kng_token');
+        } catch (e) {}
+    }
+
+    if (!options.headers) options.headers = {};
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    return fetch(url, options);
+}
+
+// Format utilities
+const fmtNumber = (n) => (n !== undefined && n !== null && !isNaN(n)) ? Number(n).toLocaleString() : '0';
+const fmtWon = (n) => `${fmtNumber(Math.round(n || 0))}원`;
+
+const app = {
+    currentTab: 'list', // 'list' | 'dashboard'
+    currentSort: { col: 'date', dir: 'desc' },
+    pagination: { page: 1, limit: 100, total: 0, totalPages: 1 },
+    selectedIds: new Set(),
+    partnersList: [],
+    itemSuggestions: [],
+    sheetModal: null,
+    uploadModal: null,
+
+    // Chart instances
+    specChartInstance: null,
+    monthlyChartInstance: null,
+
+    // 초기화
+    init: async function() {
+        // Bootstrap 모달 객체 초기화
+        const sheetModalEl = document.getElementById('sheetVoucherModal');
+        if (sheetModalEl) this.sheetModal = new bootstrap.Modal(sheetModalEl);
+
+        const uploadModalEl = document.getElementById('uploadModal');
+        if (uploadModalEl) this.uploadModal = new bootstrap.Modal(uploadModalEl);
+
+        // 기본 날짜 설정 (전체)
+        this.setDatePreset('all');
+
+        // 거래처 및 품목 추천 데이터 사전 로드
+        this.loadPartners();
+        this.loadItemSuggestions();
+
+        // 자동완성 이벤트 바인딩
+        this.setupAutocompletes();
+
+        // 단축키 이벤트 (F2: 전표등록, F3: 행추가, F9/Ctrl+S: 저장)
+        this.setupGlobalShortcuts();
+
+        // 목록 조회
+        await this.loadList();
+
+        // 테이블 열 너비 조절 및 자동맞춤 초기화
+        this.initColResize();
+    },
+
+    // -------------------------------------------------------------------------
+    // 글로벌 단축키 바인딩
+    // -------------------------------------------------------------------------
+    setupGlobalShortcuts: function() {
+        document.addEventListener('keydown', (e) => {
+            // F2: 전표 등록 모달 열기
+            if (e.key === 'F2') {
+                e.preventDefault();
+                this.openSheetModal();
+                return;
+            }
+
+            // 전표 모달 내부 단축키
+            const sheetModalEl = document.getElementById('sheetVoucherModal');
+            const isModalOpen = sheetModalEl && sheetModalEl.classList.contains('show');
+
+            if (isModalOpen) {
+                // F3: 새 행 추가
+                if (e.key === 'F3') {
+                    e.preventDefault();
+                    this.addSheetRow();
+                    return;
+                }
+                // F9 또는 Ctrl+S: 전표 저장
+                if (e.key === 'F9' || ((e.ctrlKey || e.metaKey) && e.key === 's')) {
+                    e.preventDefault();
+                    this.submitSheetVoucher();
+                    return;
+                }
+            }
+        });
+    },
+
+    // -------------------------------------------------------------------------
+    // 탭 전환 (내역 목록 ⇄ 통계 대시보드)
+    // -------------------------------------------------------------------------
+    switchTab: function(tabName) {
+        this.currentTab = tabName;
+        const btnList = document.getElementById('btnTabList');
+        const btnDash = document.getElementById('btnTabDashboard');
+        const viewList = document.getElementById('tabListView');
+        const viewDash = document.getElementById('tabDashboardView');
+
+        if (tabName === 'list') {
+            btnList.classList.add('active');
+            btnDash.classList.remove('active');
+            viewList.style.display = 'block';
+            viewDash.style.display = 'none';
+        } else {
+            btnList.classList.remove('active');
+            btnDash.classList.add('active');
+            viewList.style.display = 'none';
+            viewDash.style.display = 'block';
+            this.loadDashboardData();
+        }
+    },
+
+    // 자재 분류 퀵 필터 탭
+    setCategoryFilter: function(cat) {
+        const btns = document.querySelectorAll('#categoryTabGroup .erp-tab-btn');
+        btns.forEach(b => {
+            if (b.getAttribute('data-category') === cat) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        this.currentCategory = cat;
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    // -------------------------------------------------------------------------
+    // 날짜 프리셋
+    // -------------------------------------------------------------------------
+    setDatePreset: function(preset) {
+        const now = new Date();
+        let start = '';
+        let end = '';
+
+        const y = now.getFullYear();
+        const m = now.getMonth(); // 0-11
+        const d = now.getDate();
+
+        const formatDate = (dateObj) => {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        if (preset === 'prevMonth') {
+            const firstDay = new Date(y, m - 1, 1);
+            const lastDay = new Date(y, m, 0);
+            start = formatDate(firstDay);
+            end = formatDate(lastDay);
+        } else if (preset === 'thisMonth') {
+            const firstDay = new Date(y, m, 1);
+            const lastDay = new Date(y, m + 1, 0);
+            start = formatDate(firstDay);
+            end = formatDate(lastDay);
+        } else if (preset === 'prevYear') {
+            start = `${y - 1}-01-01`;
+            end = `${y - 1}-12-31`;
+        } else if (preset === 'thisYear') {
+            start = `${y}-01-01`;
+            end = `${y}-12-31`;
+        } else if (preset === 'all') {
+            start = '';
+            end = '';
+        }
+
+        document.getElementById('filterStartDate').value = start;
+        document.getElementById('filterEndDate').value = end;
+
+        const presetBtns = document.querySelectorAll('.erp-preset-btn');
+        presetBtns.forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(`btnPreset_${preset}`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    onDateInputChange: function() {
+        const presetBtns = document.querySelectorAll('.erp-preset-btn');
+        presetBtns.forEach(btn => btn.classList.remove('active'));
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    // -------------------------------------------------------------------------
+    // 거래처 및 추천 품목 사전 로드
+    // -------------------------------------------------------------------------
+    loadPartners: async function() {
+        try {
+            const res = await authFetch(PARTNERS_API);
+            if (res.ok) {
+                const data = await res.json();
+                this.partnersList = Array.isArray(data) ? data : (data.partners || []);
+            }
+        } catch (err) {
+            console.warn('Partners load error:', err);
+        }
+    },
+
+    loadItemSuggestions: async function() {
+        try {
+            const res = await authFetch(`${API_BASE}/suggestions/items`);
+            if (res.ok) {
+                this.itemSuggestions = await res.json();
+            }
+        } catch (err) {
+            console.warn('Item suggestions load error:', err);
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 자동완성 설정 (공급처, 출고처)
+    // -------------------------------------------------------------------------
+    setupAutocompletes: function() {
+        const bindInput = (inputEl, dropdownEl, filterType) => {
+            if (!inputEl || !dropdownEl) return;
+
+            let debounceTimer = null;
+            inputEl.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    const val = inputEl.value.trim().toLowerCase();
+                    if (!val) {
+                        dropdownEl.style.display = 'none';
+                        return;
+                    }
+                    const matched = this.partnersList.filter(p => {
+                        const name = (p.name || '').toLowerCase();
+                        if (!name.includes(val)) return false;
+                        if (filterType === 'supplier') return p.type === 'supplier' || p.type === 'both';
+                        if (filterType === 'destination') return p.type === 'customer' || p.type === 'site' || p.type === 'both';
+                        return true;
+                    }).slice(0, 15);
+
+                    if (matched.length === 0) {
+                        dropdownEl.style.display = 'none';
+                        return;
+                    }
+
+                    dropdownEl.innerHTML = matched.map(m => `
+                        <div class="autocomplete-suggestion" data-name="${m.name}">
+                            <strong>${m.name}</strong> <span class="text-muted" style="font-size:10.5px;">(${m.type || '거래처'})</span>
+                        </div>
+                    `).join('');
+                    dropdownEl.style.display = 'block';
+                }, 150);
+            });
+
+            dropdownEl.addEventListener('click', (e) => {
+                const item = e.target.closest('.autocomplete-suggestion');
+                if (item) {
+                    inputEl.value = item.getAttribute('data-name');
+                    dropdownEl.style.display = 'none';
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
+                    dropdownEl.style.display = 'none';
+                }
+            });
+        };
+
+        bindInput(document.getElementById('sheetSupplier'), document.getElementById('sheetSupplierSuggestions'), 'supplier');
+        bindInput(document.getElementById('sheetDestination'), document.getElementById('sheetDestSuggestions'), 'destination');
+    },
+
+    // -------------------------------------------------------------------------
+    // 데이터 목록 조회 및 ECOUNT 고밀도 테이블 렌더링
+    // -------------------------------------------------------------------------
+    loadList: async function() {
+        const tbody = document.getElementById('extTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="17" class="text-center py-4 text-muted">
+                    <i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...
+                </td>
+            </tr>
+        `;
+
+        try {
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const category = this.currentCategory || '';
+            const searchTarget = document.getElementById('searchTarget').value;
+            const keyword = document.getElementById('historySearch').value.trim();
+
+            const params = new URLSearchParams({
+                page: this.pagination.page,
+                limit: this.pagination.limit,
+                sortCol: this.currentSort.col,
+                sortDir: this.currentSort.dir
+            });
+
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (category) params.append('category', category);
+
+            if (keyword) {
+                if (searchTarget) {
+                    params.append(searchTarget, keyword);
+                } else {
+                    params.append('keyword', keyword);
+                }
+            }
+
+            const res = await authFetch(`${API_BASE}?${params.toString()}`);
+            if (!res.ok) throw new Error('목록 조회 실패: ' + res.statusText);
+
+            const result = await res.json();
+            this.currentData = result.data || [];
+            this.pagination = result.pagination || this.pagination;
+
+            // 결과 내 재검색 적용
+            this.applySubSearch();
+
+            // 상단 집계 요약 스트립 갱신
+            this.updateSummaryStrip(result.summary || {});
+
+            // 페이징 컨트롤 갱신
+            this.renderPagination();
+
+        } catch (err) {
+            console.error('Load list error:', err);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="17" class="text-center py-4 text-danger">
+                        <i class='bx bx-error-circle'></i> 데이터를 불러오는 데 실패했습니다: ${err.message}
+                    </td>
+                </tr>
+            `;
+        }
+    },
+
+    // 결과 내 재검색 필터링
+    applySubSearch: function() {
+        const subInput = document.getElementById('subSearchInput');
+        const badge = document.getElementById('subSearchCountBadge');
+        const clearBtn = document.getElementById('clearSubSearchBtn');
+        const subQuery = subInput ? subInput.value.trim().toLowerCase() : '';
+
+        let filtered = this.currentData || [];
+        if (subQuery) {
+            filtered = filtered.filter(r => {
+                const fullStr = `${r.date} ${r.voucher_id || ''} ${r.category} ${r.supplier} ${r.destination} ${r.item} ${r.spec} ${r.memo || ''}`.toLowerCase();
+                return fullStr.includes(subQuery);
+            });
+            if (badge) {
+                badge.textContent = `${filtered.length}건`;
+                badge.classList.remove('d-none');
+            }
+            if (clearBtn) clearBtn.classList.remove('d-none');
+        } else {
+            if (badge) badge.classList.add('d-none');
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        this.renderTableRows(filtered);
+    },
+
+    onSubSearchInput: function(val) {
+        this.applySubSearch();
+    },
+
+    clearSubSearch: function() {
+        const subInput = document.getElementById('subSearchInput');
+        if (subInput) subInput.value = '';
+        this.applySubSearch();
+    },
+
+    // 테이블 행 렌더링 (더블클릭 인라인 수정 지원)
+    renderTableRows: function(rows) {
+        const tbody = document.getElementById('extTableBody');
+        if (!tbody) return;
+
+        if (!rows || rows.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="17" class="text-center py-4 text-muted">
+                        등록된 외부입출내역이 없습니다.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const startIndex = (this.pagination.page - 1) * this.pagination.limit;
+
+        tbody.innerHTML = rows.map((r, idx) => {
+            const isChecked = this.selectedIds.has(r.id);
+            const rowNo = startIndex + idx + 1;
+            const voucherBadge = r.voucher_id
+                ? `<span class="badge bg-light text-primary border border-primary-subtle" style="font-size:10px; font-weight:normal;">${r.voucher_id}</span>`
+                : `<span class="text-muted" style="font-size:10px;">${r.id}</span>`;
+
+            return `
+                <tr data-id="${r.id}" class="${isChecked ? 'is-selected' : ''}">
+                    <td class="td-check">
+                        <input type="checkbox" class="row-checkbox" value="${r.id}" ${isChecked ? 'checked' : ''} onchange="app.toggleSelectRow('${r.id}', this.checked)">
+                    </td>
+                    <td class="td-no text-muted">${rowNo}</td>
+                    <td class="td-date is-inline-editable" ondblclick="app.startInlineEdit(this, '${r.id}', 'date')">${r.date}</td>
+                    <td class="td-voucher">${voucherBadge}</td>
+                    <td class="td-category is-inline-editable" ondblclick="app.startInlineEdit(this, '${r.id}', 'category')">${r.category || '일반자재'}</td>
+                    <td class="td-supplier is-inline-editable fw-semibold" title="${r.supplier}" ondblclick="app.startInlineEdit(this, '${r.id}', 'supplier')">${r.supplier}</td>
+                    <td class="td-destination is-inline-editable" title="${r.destination}" ondblclick="app.startInlineEdit(this, '${r.id}', 'destination')">${r.destination}</td>
+                    <td class="td-item is-inline-editable text-primary fw-bold" title="${r.item}" ondblclick="app.startInlineEdit(this, '${r.id}', 'item')">${r.item}</td>
+                    <td class="td-spec is-inline-editable" title="${r.spec}" ondblclick="app.startInlineEdit(this, '${r.id}', 'spec')">${r.spec}</td>
+                    <td class="td-unit is-inline-editable text-center" ondblclick="app.startInlineEdit(this, '${r.id}', 'unit')">${r.unit || 'EA'}</td>
+                    <td class="td-qty is-inline-editable text-end fw-bold" ondblclick="app.startInlineEdit(this, '${r.id}', 'qty')">${fmtNumber(r.qty)}</td>
+                    <td class="td-price is-inline-editable text-end" ondblclick="app.startInlineEdit(this, '${r.id}', 'unit_price')">${fmtNumber(r.unit_price)}</td>
+                    <td class="td-supply text-end">${fmtNumber(r.supply_amount)}</td>
+                    <td class="td-vat text-end">${fmtNumber(r.vat)}</td>
+                    <td class="td-total text-end fw-bold text-primary">${fmtNumber(r.total_amount)}</td>
+                    <td class="td-memo is-inline-editable text-muted" title="${r.memo || ''}" ondblclick="app.startInlineEdit(this, '${r.id}', 'memo')">${r.memo || ''}</td>
+                    <td class="td-action text-center">
+                        <button type="button" class="btn-row-del" onclick="app.deleteSingleRow('${r.id}')" title="삭제">
+                            <i class='bx bx-trash'></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    // -------------------------------------------------------------------------
+    // [핵심 기능 4] 메인 그리드 셀 더블클릭 인라인 퀵 편집 (Direct Inline Edit)
+    // -------------------------------------------------------------------------
+    startInlineEdit: function(tdEl, id, field) {
+        if (tdEl.classList.contains('is-inline-editing')) return;
+
+        const originalText = tdEl.textContent.trim().replace(/,/g, '');
+        tdEl.classList.add('is-inline-editing');
+
+        const input = document.createElement('input');
+        input.type = (field === 'qty' || field === 'unit_price' || field === 'vat') ? 'number' : (field === 'date' ? 'date' : 'text');
+        input.className = 'erp-inline-input';
+        if (field === 'qty' || field === 'unit_price' || field === 'vat') {
+            input.classList.add('text-end');
+            input.value = parseFloat(originalText) || 0;
+        } else {
+            input.value = originalText;
+        }
+
+        tdEl.innerHTML = '';
+        tdEl.appendChild(input);
+        input.focus();
+        if (input.select) input.select();
+
+        let isSaved = false;
+
+        const saveChange = async () => {
+            if (isSaved) return;
+            isSaved = true;
+
+            const newVal = input.value.trim();
+            if (newVal === originalText) {
+                tdEl.classList.remove('is-inline-editing');
+                tdEl.textContent = (field === 'qty' || field === 'unit_price' || field === 'vat') ? fmtNumber(newVal) : newVal;
+                return;
+            }
+
+            try {
+                tdEl.innerHTML = `<i class='bx bx-loader-alt bx-spin text-muted'></i>`;
+                const res = await authFetch(`${API_BASE}/${id}/inline`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ field, value: newVal })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || '수정 실패');
+                }
+
+                const result = await res.json();
+                const updated = result.record;
+
+                // 해당 행의 데이터 갱신
+                const tr = tdEl.closest('tr');
+                if (tr && updated) {
+                    tr.querySelector('.td-date').textContent = updated.date;
+                    tr.querySelector('.td-category').textContent = updated.category;
+                    tr.querySelector('.td-supplier').textContent = updated.supplier;
+                    tr.querySelector('.td-destination').textContent = updated.destination;
+                    tr.querySelector('.td-item').textContent = updated.item;
+                    tr.querySelector('.td-spec').textContent = updated.spec;
+                    tr.querySelector('.td-unit').textContent = updated.unit;
+                    tr.querySelector('.td-qty').textContent = fmtNumber(updated.qty);
+                    tr.querySelector('.td-price').textContent = fmtNumber(updated.unit_price);
+                    tr.querySelector('.td-supply').textContent = fmtNumber(updated.supply_amount);
+                    tr.querySelector('.td-vat').textContent = fmtNumber(updated.vat);
+                    tr.querySelector('.td-total').textContent = fmtNumber(updated.total_amount);
+                    tr.querySelector('.td-memo').textContent = updated.memo || '';
+                }
+
+                tdEl.classList.remove('is-inline-editing');
+                this.flashCell(tdEl, '#dcfce7'); // 성공 연두색 깜빡임
+            } catch (err) {
+                alert('인라인 수정 오류: ' + err.message);
+                tdEl.classList.remove('is-inline-editing');
+                tdEl.textContent = originalText;
+            }
+        };
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                input.blur();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                isSaved = true;
+                tdEl.classList.remove('is-inline-editing');
+                tdEl.textContent = (field === 'qty' || field === 'unit_price' || field === 'vat') ? fmtNumber(originalText) : originalText;
+            }
+        });
+
+        input.addEventListener('blur', saveChange);
+    },
+
+    flashCell: function(el, color) {
+        const origBg = el.style.backgroundColor;
+        el.style.backgroundColor = color;
+        setTimeout(() => {
+            el.style.backgroundColor = origBg;
+        }, 600);
+    },
+
+    // -------------------------------------------------------------------------
+    // [핵심 기능 2 & 3] ECOUNT ERP 전표형 스프레드시트 모달 & 고속 키보드 입력
+    // -------------------------------------------------------------------------
+    openSheetModal: function() {
+        if (!this.sheetModal) return;
+
+        // 마스터 헤더 기본값 세팅
+        const today = new Date().toISOString().substring(0, 10);
+        document.getElementById('sheetVoucherDate').value = today;
+        document.getElementById('sheetCategory').value = '일반자재';
+        document.getElementById('sheetSupplier').value = '';
+        document.getElementById('sheetDestination').value = '';
+        document.getElementById('sheetVoucherMemo').value = '';
+
+        // 스프레드시트 초기 5행 렌더링
+        this.initSheetRows(5);
+
+        this.sheetModal.show();
+
+        // 첫 번째 행 품목명으로 자동 포커스
+        setTimeout(() => {
+            const firstItemInput = document.querySelector('#sheetTableBody tr:first-child .cell-item');
+            if (firstItemInput) firstItemInput.focus();
+        }, 300);
+    },
+
+    initSheetRows: function(count = 5) {
+        const tbody = document.getElementById('sheetTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        for (let i = 0; i < count; i++) {
+            this.addSheetRow();
+        }
+        this.updateSheetTotals();
+    },
+
+    addSheetRow: function(data = {}) {
+        const tbody = document.getElementById('sheetTableBody');
+        if (!tbody) return;
+
+        const rowIdx = tbody.children.length + 1;
+        const tr = document.createElement('tr');
+        tr.className = 'sheet-row';
+
+        tr.innerHTML = `
+            <td style="text-align: center;"><input type="checkbox" class="sheet-row-check"></td>
+            <td class="row-no" style="text-align: center; color: #64748b; font-size: 11px;">${rowIdx}</td>
+            <td>
+                <input type="text" class="erp-cell-input cell-item" value="${data.item || ''}" placeholder="품목명 입력...">
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input cell-spec" value="${data.spec || ''}" placeholder="규격 입력...">
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input text-center cell-unit" value="${data.unit || 'EA'}" style="width: 100%;">
+            </td>
+            <td>
+                <input type="number" class="erp-cell-input text-end cell-qty" value="${data.qty !== undefined ? data.qty : ''}" placeholder="0" min="0" step="any">
+            </td>
+            <td>
+                <input type="number" class="erp-cell-input text-end cell-price" value="${data.unit_price !== undefined ? data.unit_price : ''}" placeholder="0" min="0" step="any">
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input text-end cell-supply bg-readonly" value="${data.supply_amount ? fmtNumber(data.supply_amount) : '0'}" readonly>
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input text-end cell-vat bg-readonly" value="${data.vat ? fmtNumber(data.vat) : '0'}" readonly>
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input text-end cell-total bg-readonly fw-bold text-primary" value="${data.total_amount ? fmtNumber(data.total_amount) : '0'}" readonly>
+            </td>
+            <td>
+                <input type="text" class="erp-cell-input cell-memo" value="${data.memo || ''}" placeholder="특이사항...">
+            </td>
+            <td style="text-align: center;">
+                <button type="button" class="btn-row-del" onclick="app.removeSpecificSheetRow(this)" title="행 삭제">
+                    <i class='bx bx-x'></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+
+        // 이벤트 바인딩 (키보드 네비게이션, 엑셀 붙여넣기, 실시간 계산, 단가 메모리)
+        this.bindSheetRowEvents(tr);
+        this.updateSheetTotals();
+    },
+
+    removeSpecificSheetRow: function(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+            this.reindexSheetRows();
+            this.updateSheetTotals();
+        }
+    },
+
+    removeSelectedSheetRows: function() {
+        const tbody = document.getElementById('sheetTableBody');
+        if (!tbody) return;
+        const checks = tbody.querySelectorAll('.sheet-row-check:checked');
+        checks.forEach(c => c.closest('tr').remove());
+        this.reindexSheetRows();
+        this.updateSheetTotals();
+    },
+
+    clearAllSheetRows: function() {
+        if (confirm('스프레드시트의 모든 입력 행을 비우시겠습니까?')) {
+            this.initSheetRows(3);
+        }
+    },
+
+    reindexSheetRows: function() {
+        const rows = document.querySelectorAll('#sheetTableBody tr');
+        rows.forEach((tr, i) => {
+            const noCell = tr.querySelector('.row-no');
+            if (noCell) noCell.textContent = i + 1;
+        });
+    },
+
+    toggleSheetCheckAll: function(checked) {
+        const checks = document.querySelectorAll('#sheetTableBody .sheet-row-check');
+        checks.forEach(c => c.checked = checked);
+    },
+
+    // -------------------------------------------------------------------------
+    // 스프레드시트 셀 이벤트 바인딩 (Zero-Mouse 키보드 & 엑셀 Ctrl+V & 단가 메모리)
+    // -------------------------------------------------------------------------
+    bindSheetRowEvents: function(tr) {
+        const itemInput = tr.querySelector('.cell-item');
+        const specInput = tr.querySelector('.cell-spec');
+        const unitInput = tr.querySelector('.cell-unit');
+        const qtyInput = tr.querySelector('.cell-qty');
+        const priceInput = tr.querySelector('.cell-price');
+        const memoInput = tr.querySelector('.cell-memo');
+
+        const calcRow = () => {
+            const q = parseFloat(qtyInput.value) || 0;
+            const p = parseFloat(priceInput.value) || 0;
+            const supply = Math.round(q * p);
+            const vat = Math.round(supply * 0.1);
+            const total = supply + vat;
+
+            tr.querySelector('.cell-supply').value = fmtNumber(supply);
+            tr.querySelector('.cell-vat').value = fmtNumber(vat);
+            tr.querySelector('.cell-total').value = fmtNumber(total);
+
+            this.updateSheetTotals();
+        };
+
+        qtyInput.addEventListener('input', calcRow);
+        priceInput.addEventListener('input', calcRow);
+
+        // [핵심 기능 2] 최근 단가/규격 스마트 메모리 자동완성
+        itemInput.addEventListener('blur', async () => {
+            const itemVal = itemInput.value.trim();
+            if (!itemVal) return;
+
+            // 이미 단가나 규격이 차있다면 덮어쓰지 않음
+            if (specInput.value.trim() && priceInput.value.trim()) return;
+
+            const supplierVal = document.getElementById('sheetSupplier').value.trim();
+            const destVal = document.getElementById('sheetDestination').value.trim();
+
+            try {
+                const params = new URLSearchParams({ item: itemVal });
+                if (supplierVal) params.append('supplier', supplierVal);
+                if (destVal) params.append('destination', destVal);
+
+                const res = await authFetch(`${API_BASE}/recent-price?${params.toString()}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.found) {
+                        if (!specInput.value.trim() && data.spec) specInput.value = data.spec;
+                        if (!unitInput.value.trim() && data.unit) unitInput.value = data.unit;
+                        if (!priceInput.value.trim() && data.unit_price) {
+                            priceInput.value = data.unit_price;
+                            calcRow();
+                        }
+                        this.flashCell(itemInput.parentElement, '#eff6ff');
+                    }
+                }
+            } catch (err) {
+                console.warn('Recent price check error:', err);
+            }
+        });
+
+        // [핵심 기능 1] 엑셀 블록 복사-붙여넣기 딥 파서 (Deep Excel Paste)
+        const handlePaste = (e) => {
+            const clipboardData = e.clipboardData || window.clipboardData;
+            if (!clipboardData) return;
+
+            const text = clipboardData.getData('text');
+            if (!text || (!text.includes('\t') && !text.includes('\n'))) {
+                return; // 단순 단일 텍스트는 브라우저 기본 붙여넣기 사용
+            }
+
+            e.preventDefault();
+            this.parseExcelPaste(text, tr);
+        };
+
+        // 키보드 순차 이동 (Tab / Enter) & 마지막 셀 Enter 시 자동 행 추가
+        const inputs = [itemInput, specInput, unitInput, qtyInput, priceInput, memoInput];
+
+        inputs.forEach((inp, colIdx) => {
+            inp.addEventListener('paste', handlePaste);
+
+            inp.addEventListener('keydown', (e) => {
+                // Enter 또는 Tab
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (colIdx < inputs.length - 1) {
+                        inputs[colIdx + 1].focus();
+                        if (inputs[colIdx + 1].select) inputs[colIdx + 1].select();
+                    } else {
+                        // 마지막 비고 셀에서 Enter 시 다음 행으로 이동 또는 새 행 추가!
+                        const nextTr = tr.nextElementSibling;
+                        if (nextTr) {
+                            const nextItem = nextTr.querySelector('.cell-item');
+                            if (nextItem) {
+                                nextItem.focus();
+                                if (nextItem.select) nextItem.select();
+                            }
+                        } else {
+                            // 마지막 행이면 즉시 새 행 추가 후 품목명으로 포커스
+                            this.addSheetRow();
+                            const newTr = tr.nextElementSibling;
+                            if (newTr) {
+                                const newFirst = newTr.querySelector('.cell-item');
+                                if (newFirst) newFirst.focus();
+                            }
+                        }
+                    }
+                } else if (e.key === 'ArrowDown') {
+                    // 동일 열 아래 행 이동
+                    const nextTr = tr.nextElementSibling;
+                    if (nextTr) {
+                        const nextInps = [
+                            nextTr.querySelector('.cell-item'),
+                            nextTr.querySelector('.cell-spec'),
+                            nextTr.querySelector('.cell-unit'),
+                            nextTr.querySelector('.cell-qty'),
+                            nextTr.querySelector('.cell-price'),
+                            nextTr.querySelector('.cell-memo')
+                        ];
+                        if (nextInps[colIdx]) {
+                            e.preventDefault();
+                            nextInps[colIdx].focus();
+                        }
+                    }
+                } else if (e.key === 'ArrowUp') {
+                    // 동일 열 위 행 이동
+                    const prevTr = tr.previousElementSibling;
+                    if (prevTr) {
+                        const prevInps = [
+                            prevTr.querySelector('.cell-item'),
+                            prevTr.querySelector('.cell-spec'),
+                            prevTr.querySelector('.cell-unit'),
+                            prevTr.querySelector('.cell-qty'),
+                            prevTr.querySelector('.cell-price'),
+                            prevTr.querySelector('.cell-memo')
+                        ];
+                        if (prevInps[colIdx]) {
+                            e.preventDefault();
+                            prevInps[colIdx].focus();
+                        }
+                    }
+                }
+            });
+        });
+    },
+
+    // [핵심 기능 1] 엑셀 붙여넣기 파싱 알고리즘
+    parseExcelPaste: function(rawText, startTr) {
+        const rows = rawText.trim().split(/\r\n|\n|\r/).filter(Boolean);
+        if (rows.length === 0) return;
+
+        let currentTr = startTr;
+        const tbody = document.getElementById('sheetTableBody');
+
+        rows.forEach((rowStr, rIdx) => {
+            const cols = rowStr.split('\t').map(c => c.trim().replace(/^["']|["']$/g, ''));
+
+            if (!currentTr) {
+                this.addSheetRow();
+                currentTr = tbody.lastElementChild;
+            }
+
+            // 일반적인 엑셀 컬럼 구성 분석:
+            // 케이스 A: 품목명, 규격, 단위, 수량, 단가, (비고)
+            // 케이스 B: (일자/공급처/출고처 포함된 풀 엑셀 행) -> 품목, 규격, 수량, 단가 지능형 매핑
+            let item = '', spec = '', unit = 'EA', qty = 0, price = 0, memo = '';
+
+            if (cols.length === 1) {
+                item = cols[0];
+            } else if (cols.length === 2) {
+                item = cols[0];
+                spec = cols[1];
+            } else if (cols.length >= 3) {
+                item = cols[0];
+                spec = cols[1];
+                // 수량/단가 위치 파악
+                if (isNaN(parseFloat(cols[2])) && cols.length >= 4) {
+                    unit = cols[2] || 'EA';
+                    qty = parseFloat(cols[3].replace(/,/g, '')) || 0;
+                    price = parseFloat((cols[4] || '0').replace(/,/g, '')) || 0;
+                    memo = cols.slice(5).join(' ');
+                } else {
+                    qty = parseFloat(cols[2].replace(/,/g, '')) || 0;
+                    price = parseFloat((cols[3] || '0').replace(/,/g, '')) || 0;
+                    memo = cols.slice(4).join(' ');
+                }
+            }
+
+            if (currentTr) {
+                const itemInp = currentTr.querySelector('.cell-item');
+                const specInp = currentTr.querySelector('.cell-spec');
+                const unitInp = currentTr.querySelector('.cell-unit');
+                const qtyInp = currentTr.querySelector('.cell-qty');
+                const priceInp = currentTr.querySelector('.cell-price');
+                const memoInp = currentTr.querySelector('.cell-memo');
+
+                if (itemInp && item) itemInp.value = item;
+                if (specInp && spec) specInp.value = spec;
+                if (unitInp && unit) unitInp.value = unit;
+                if (qtyInp && qty) qtyInp.value = qty;
+                if (priceInp && price) priceInp.value = price;
+                if (memoInp && memo) memoInp.value = memo;
+
+                // 금액 자동 재계산
+                const supply = Math.round(qty * price);
+                const vat = Math.round(supply * 0.1);
+                const total = supply + vat;
+
+                currentTr.querySelector('.cell-supply').value = fmtNumber(supply);
+                currentTr.querySelector('.cell-vat').value = fmtNumber(vat);
+                currentTr.querySelector('.cell-total').value = fmtNumber(total);
+
+                this.flashCell(currentTr, '#ecfdf5');
+            }
+
+            currentTr = currentTr ? currentTr.nextElementSibling : null;
+        });
+
+        this.updateSheetTotals();
+    },
+
+    // 스프레드시트 하단 실시간 합계 갱신
+    updateSheetTotals: function() {
+        const rows = document.querySelectorAll('#sheetTableBody tr');
+        let totalCount = 0;
+        let totalQty = 0;
+        let totalSupply = 0;
+        let totalVat = 0;
+        let totalSum = 0;
+
+        rows.forEach(tr => {
+            const item = (tr.querySelector('.cell-item')?.value || '').trim();
+            const qty = parseFloat(tr.querySelector('.cell-qty')?.value) || 0;
+            const price = parseFloat(tr.querySelector('.cell-price')?.value) || 0;
+
+            if (item || qty > 0 || price > 0) {
+                totalCount++;
+                totalQty += qty;
+                const supply = Math.round(qty * price);
+                const vat = Math.round(supply * 0.1);
+                totalSupply += supply;
+                totalVat += vat;
+                totalSum += (supply + vat);
+            }
+        });
+
+        const cntEl = document.getElementById('modalSummaryCount');
+        const qtyEl = document.getElementById('modalSummaryQty');
+        const supEl = document.getElementById('modalSummarySupply');
+        const vatEl = document.getElementById('modalSummaryVat');
+        const totEl = document.getElementById('modalSummaryTotal');
+
+        if (cntEl) cntEl.textContent = totalCount;
+        if (qtyEl) qtyEl.textContent = fmtNumber(totalQty);
+        if (supEl) supEl.textContent = fmtWon(totalSupply);
+        if (vatEl) vatEl.textContent = fmtWon(totalVat);
+        if (totEl) totEl.textContent = fmtWon(totalSum);
+    },
+
+    // -------------------------------------------------------------------------
+    // 전표 일괄 저장 및 발행 (Batch Transaction)
+    // -------------------------------------------------------------------------
+    submitSheetVoucher: async function() {
+        const date = document.getElementById('sheetVoucherDate').value;
+        const category = document.getElementById('sheetCategory').value;
+        const supplier = document.getElementById('sheetSupplier').value.trim();
+        const destination = document.getElementById('sheetDestination').value.trim();
+        const voucherMemo = document.getElementById('sheetVoucherMemo').value.trim();
+
+        if (!date) {
+            alert('거래일자를 입력해 주세요.');
+            document.getElementById('sheetVoucherDate').focus();
+            return;
+        }
+        if (!supplier) {
+            alert('공급처(구매)를 입력해 주세요.');
+            document.getElementById('sheetSupplier').focus();
+            return;
+        }
+        if (!destination) {
+            alert('출고처(현장명)를 입력해 주세요.');
+            document.getElementById('sheetDestination').focus();
+            return;
+        }
+
+        const rows = document.querySelectorAll('#sheetTableBody tr');
+        const items = [];
+
+        rows.forEach((tr, idx) => {
+            const item = (tr.querySelector('.cell-item')?.value || '').trim();
+            const spec = (tr.querySelector('.cell-spec')?.value || '').trim();
+            const unit = (tr.querySelector('.cell-unit')?.value || 'EA').trim();
+            const qty = parseFloat(tr.querySelector('.cell-qty')?.value) || 0;
+            const unit_price = parseFloat(tr.querySelector('.cell-price')?.value) || 0;
+            const memo = (tr.querySelector('.cell-memo')?.value || '').trim();
+
+            if (item && (qty > 0 || unit_price > 0)) {
+                const supply_amount = Math.round(qty * unit_price);
+                const vat = Math.round(supply_amount * 0.1);
+                const total_amount = supply_amount + vat;
+
+                items.push({
+                    item,
+                    spec: spec || '-',
+                    unit,
+                    qty,
+                    unit_price,
+                    supply_amount,
+                    vat,
+                    total_amount,
+                    memo: memo || voucherMemo
+                });
+            }
+        });
+
+        if (items.length === 0) {
+            alert('등록할 품목 내역을 최소 1건 이상 입력해 주세요 (품목명 및 수량/단가 필요).');
+            return;
+        }
+
+        const btn = document.getElementById('btnSubmitSheet');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> 저장 중...`;
+        }
+
+        try {
+            const payload = {
+                date,
+                category,
+                supplier,
+                destination,
+                memo: voucherMemo,
+                items
+            };
+
+            const res = await authFetch(`${API_BASE}/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || '전표 저장 실패');
+            }
+
+            const result = await res.json();
+            alert(result.message || '전표가 정상 등록되었습니다.');
+
+            if (this.sheetModal) this.sheetModal.hide();
+
+            // 목록 새로고침
+            this.pagination.page = 1;
+            await this.loadList();
+
+        } catch (err) {
+            console.error('Submit voucher error:', err);
+            alert('전표 저장 오류: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i class='bx bx-check'></i> <strong>전표 저장 및 발행 (F9 / Ctrl+S)</strong>`;
+            }
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 단건 삭제 & 선택 일괄 삭제
+    // -------------------------------------------------------------------------
+    deleteSingleRow: async function(id) {
+        if (!confirm('해당 내역을 삭제하시겠습니까?')) return;
+        try {
+            const res = await authFetch(`${API_BASE}/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('삭제 실패');
+            this.selectedIds.delete(id);
+            await this.loadList();
+        } catch (err) {
+            alert('삭제 오류: ' + err.message);
+        }
+    },
+
+    toggleSelectAll: function(checked) {
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = checked;
+            const id = cb.value;
+            const tr = cb.closest('tr');
+            if (checked) {
+                this.selectedIds.add(id);
+                if (tr) tr.classList.add('is-selected');
+            } else {
+                this.selectedIds.delete(id);
+                if (tr) tr.classList.remove('is-selected');
+            }
+        });
+        this.updateSelectedCounter();
+    },
+
+    toggleSelectRow: function(id, checked) {
+        const tr = document.querySelector(`tr[data-id="${id}"]`);
+        if (checked) {
+            this.selectedIds.add(id);
+            if (tr) tr.classList.add('is-selected');
+        } else {
+            this.selectedIds.delete(id);
+            if (tr) tr.classList.remove('is-selected');
+        }
+        this.updateSelectedCounter();
+    },
+
+    updateSelectedCounter: function() {
+        const count = this.selectedIds.size;
+        const btnDelete = document.getElementById('btnBatchDelete');
+        const countSpan = document.getElementById('selectedCount');
+        const stripCount = document.getElementById('stripSelectedCount');
+
+        if (countSpan) countSpan.textContent = count;
+        if (stripCount) stripCount.textContent = count;
+
+        if (btnDelete) {
+            if (count > 0) btnDelete.classList.remove('d-none');
+            else btnDelete.classList.add('d-none');
+        }
+    },
+
+    deleteSelectedRows: async function() {
+        const ids = Array.from(this.selectedIds);
+        if (ids.length === 0) return;
+
+        if (!confirm(`선택하신 ${ids.length}건의 내역을 일괄 삭제하시겠습니까?`)) return;
+
+        try {
+            const res = await authFetch(`${API_BASE}/batch-delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids })
+            });
+
+            if (!res.ok) throw new Error('일괄 삭제 실패');
+            alert('선택된 내역이 일괄 삭제되었습니다.');
+            this.selectedIds.clear();
+            this.updateSelectedCounter();
+            await this.loadList();
+        } catch (err) {
+            alert('일괄 삭제 오류: ' + err.message);
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 상단 요약 집계 스트립 갱신
+    // -------------------------------------------------------------------------
+    updateSummaryStrip: function(summary) {
+        const total = summary.total_count || 0;
+        const qty = summary.sum_qty || 0;
+        const supply = summary.sum_supply_amount || 0;
+        const vat = summary.sum_vat || 0;
+        const amount = summary.sum_total_amount || 0;
+
+        document.getElementById('stripTotalCount').textContent = fmtNumber(total);
+        document.getElementById('stripTotalQty').textContent = fmtNumber(qty);
+        document.getElementById('stripSupplyAmount').textContent = fmtWon(supply);
+        document.getElementById('stripVatAmount').textContent = fmtWon(vat);
+        document.getElementById('stripTotalAmount').textContent = fmtWon(amount);
+
+        const pageInfo = document.getElementById('pageInfoStr');
+        if (pageInfo) {
+            pageInfo.textContent = `총 ${fmtNumber(total)}건 (${this.pagination.page}/${this.pagination.totalPages} 페이지)`;
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 페이징 컨트롤
+    // -------------------------------------------------------------------------
+    renderPagination: function() {
+        const container = document.getElementById('paginationControls');
+        if (!container) return;
+
+        const { page, totalPages } = this.pagination;
+        if (totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        html += `<button type="button" class="btn btn-outline-secondary ${page <= 1 ? 'disabled' : ''}" onclick="app.gotoPage(1)"><i class='bx bx-chevrons-left'></i></button>`;
+        html += `<button type="button" class="btn btn-outline-secondary ${page <= 1 ? 'disabled' : ''}" onclick="app.gotoPage(${page - 1})"><i class='bx bx-chevron-left'></i></button>`;
+
+        const startPage = Math.max(1, page - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
+
+        for (let p = startPage; p <= endPage; p++) {
+            html += `<button type="button" class="btn ${p === page ? 'btn-primary' : 'btn-outline-secondary'}" onclick="app.gotoPage(${p})">${p}</button>`;
+        }
+
+        html += `<button type="button" class="btn btn-outline-secondary ${page >= totalPages ? 'disabled' : ''}" onclick="app.gotoPage(${page + 1})"><i class='bx bx-chevron-right'></i></button>`;
+        html += `<button type="button" class="btn btn-outline-secondary ${page >= totalPages ? 'disabled' : ''}" onclick="app.gotoPage(${totalPages})"><i class='bx bx-chevrons-right'></i></button>`;
+
+        container.innerHTML = html;
+    },
+
+    gotoPage: function(p) {
+        if (p < 1 || p > this.pagination.totalPages || p === this.pagination.page) return;
+        this.pagination.page = p;
+        this.loadList();
+    },
+
+    changePageSize: function(sz) {
+        this.pagination.limit = parseInt(sz, 10) || 100;
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    // -------------------------------------------------------------------------
+    // 정렬 & 검색
+    // -------------------------------------------------------------------------
+    sortBy: function(col) {
+        if (this.currentSort.col === col) {
+            this.currentSort.dir = this.currentSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.currentSort.col = col;
+            this.currentSort.dir = 'desc';
+        }
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    search: function() {
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    resetSearch: function() {
+        document.getElementById('historySearch').value = '';
+        document.getElementById('searchTarget').value = '';
+        document.getElementById('clearSearchBtn').classList.add('d-none');
+        this.clearSubSearch();
+        this.setDatePreset('all');
+    },
+
+    onSearchInputKeyup: function(e) {
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) {
+            if (e.target.value.trim()) clearBtn.classList.remove('d-none');
+            else clearBtn.classList.add('d-none');
+        }
+        if (e.key === 'Enter') {
+            this.search();
+        }
+    },
+
+    clearSearchInput: function() {
+        const inp = document.getElementById('historySearch');
+        if (inp) inp.value = '';
+        document.getElementById('clearSearchBtn').classList.add('d-none');
+        this.search();
+    },
+
+    onSearchTargetChange: function() {
+        const target = document.getElementById('searchTarget').value;
+        const inp = document.getElementById('historySearch');
+        if (inp) {
+            if (target === 'supplier') inp.placeholder = '공급처(구매)명 입력 후 Enter...';
+            else if (target === 'destination') inp.placeholder = '출고처(현장)명 입력 후 Enter...';
+            else if (target === 'item') inp.placeholder = '품목명 입력 후 Enter...';
+            else if (target === 'spec') inp.placeholder = '규격 입력 후 Enter...';
+            else if (target === 'voucher_id') inp.placeholder = '전표번호 입력 후 Enter...';
+            else inp.placeholder = '스마트 다중 검색 (Enter)...';
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 엑셀 업로드 / 다운로드
+    // -------------------------------------------------------------------------
+    openUploadModal: function() {
+        if (this.uploadModal) {
+            document.getElementById('excelFileInput').value = '';
+            document.getElementById('uploadStatusText').innerHTML = '';
+            this.uploadModal.show();
+        }
+    },
+
+    downloadTemplate: function() {
+        window.location.href = `${API_BASE}/template`;
+    },
+
+    uploadExcel: async function() {
+        const fileInp = document.getElementById('excelFileInput');
+        const statusText = document.getElementById('uploadStatusText');
+        const submitBtn = document.getElementById('btnUploadSubmit');
+
+        if (!fileInp || !fileInp.files || fileInp.files.length === 0) {
+            alert('업로드할 엑셀 파일을 선택해 주세요.');
+            return;
+        }
+
+        const file = fileInp.files[0];
+        const formData = new FormData();
+        formData.append('excelFile', file);
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<i class='bx bx-loader-alt bx-spin'></i> 업로드 중...`;
+        statusText.innerHTML = `<span class="text-primary"><i class='bx bx-loader bx-spin'></i> 엑셀 데이터를 분석 및 등록하고 있습니다...</span>`;
+
+        try {
+            const res = await authFetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || '엑셀 업로드 실패');
+
+            statusText.innerHTML = `<span class="text-success"><i class='bx bx-check-circle'></i> ${result.message}</span>`;
+            alert(result.message);
+            if (this.uploadModal) this.uploadModal.hide();
+            await this.loadList();
+
+        } catch (err) {
+            statusText.innerHTML = `<span class="text-danger"><i class='bx bx-error-circle'></i> ${err.message}</span>`;
+            alert('업로드 오류: ' + err.message);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class='bx bx-upload'></i> 업로드 실행`;
+        }
+    },
+
+    exportExcel: function() {
+        const startDate = document.getElementById('filterStartDate').value;
+        const endDate = document.getElementById('filterEndDate').value;
+        const category = this.currentCategory || '';
+        const searchTarget = document.getElementById('searchTarget').value;
+        const keyword = document.getElementById('historySearch').value.trim();
+
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (category) params.append('category', category);
+
+        if (keyword) {
+            if (searchTarget) params.append(searchTarget, keyword);
+            else params.append('keyword', keyword);
+        }
+
+        window.location.href = `${API_BASE}/export?${params.toString()}`;
+    },
+
+    // -------------------------------------------------------------------------
+    // 통계 대시보드 로드 & 차트 시각화
+    // -------------------------------------------------------------------------
+    loadDashboardData: async function() {
+        try {
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+            const category = this.currentCategory || '';
+
+            const params = new URLSearchParams();
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (category) params.append('category', category);
+
+            const res = await authFetch(`${API_BASE}/statistics?${params.toString()}`);
+            if (!res.ok) throw new Error('통계 데이터 조회 실패');
+
+            const data = await res.json();
+
+            // KPI 카드 반영
+            const kpi = data.kpi || {};
+            document.getElementById('kpiTotalCount').textContent = `${fmtNumber(kpi.total_count || 0)}건`;
+            document.getElementById('kpiTotalQty').textContent = `${fmtNumber(kpi.total_qty || 0)} EA`;
+            document.getElementById('kpiTotalSupply').textContent = fmtWon(kpi.total_supply || 0);
+            document.getElementById('kpiAvgPrice').textContent = fmtWon(kpi.avg_unit_price || 0);
+            document.getElementById('kpiSpecCount').textContent = `${fmtNumber(kpi.total_specs || 0)}종`;
+            document.getElementById('kpiDestCount').textContent = `${fmtNumber(kpi.total_destinations || 0)}개소`;
+
+            // 규격 순위 테이블 렌더링
+            this.renderSpecRanking(data.specStatistics || [], kpi.total_qty || 1);
+
+            // 차트 렌더링
+            this.renderCharts(data.specStatistics || [], data.monthlyTrends || []);
+
+        } catch (err) {
+            console.error('Load dashboard error:', err);
+        }
+    },
+
+    renderSpecRanking: function(specs, totalQty) {
+        const tbody = document.getElementById('specRankingTableBody');
+        if (!tbody) return;
+
+        if (specs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-muted">집계 데이터가 없습니다.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = specs.map((s, idx) => {
+            const share = totalQty > 0 ? ((s.spec_qty / totalQty) * 100).toFixed(1) : 0;
+            return `
+                <tr>
+                    <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
+                    <td class="fw-bold text-primary">${s.item}</td>
+                    <td>${s.spec}</td>
+                    <td style="text-align: center;">${s.unit || 'EA'}</td>
+                    <td style="text-align: right;">${fmtNumber(s.count)}건</td>
+                    <td style="text-align: right; font-weight: 700;">${fmtNumber(s.spec_qty)}</td>
+                    <td style="text-align: right;">${fmtNumber(s.spec_supply_amount)}원</td>
+                    <td style="text-align: right;">${fmtNumber(s.avg_price)}원</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: ${Math.min(share, 100)}%;"></div>
+                            </div>
+                            <span style="font-size: 10.5px; width: 36px; text-align: right;">${share}%</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    renderCharts: function(specs, monthly) {
+        // 1) 점유율 도넛 차트
+        const pieCtx = document.getElementById('specPieChart');
+        if (pieCtx) {
+            if (this.specChartInstance) this.specChartInstance.destroy();
+            const topSpecs = specs.slice(0, 6);
+            this.specChartInstance = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: topSpecs.map(s => `${s.item} (${s.spec})`),
+                    datasets: [{
+                        data: topSpecs.map(s => s.spec_qty),
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#94a3b8']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10.5 } } }
+                    }
+                }
+            });
+        }
+
+        // 2) 월별 추이 바 차트
+        const barCtx = document.getElementById('monthlyBarChart');
+        if (barCtx) {
+            if (this.monthlyChartInstance) this.monthlyChartInstance.destroy();
+            this.monthlyChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthly.map(m => m.month_str),
+                    datasets: [{
+                        label: '공급 물량 (EA)',
+                        data: monthly.map(m => m.month_qty),
+                        backgroundColor: '#10b981',
+                        borderRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { font: { size: 10.5 } } },
+                        y: { ticks: { font: { size: 10.5 } } }
+                    }
+                }
+            });
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 테이블 열 너비 드래그 조절 & 더블클릭 Auto-Fit (localStorage 저장)
+    // -------------------------------------------------------------------------
+    initColResize: function() {
+        const table = document.getElementById('mainGridTable');
+        if (!table) return;
+
+        const ths = table.querySelectorAll('thead th');
+        const STORAGE_KEY = 'kng_external_inout_col_widths_v2';
+
+        // 저장된 너비 복원
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            ths.forEach((th, idx) => {
+                if (saved[idx]) {
+                    th.style.width = saved[idx] + 'px';
+                    th.style.minWidth = saved[idx] + 'px';
+                }
+            });
+        } catch (e) {}
+
+        const saveWidths = () => {
+            const widths = {};
+            ths.forEach((th, idx) => {
+                widths[idx] = th.offsetWidth;
+            });
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(widths));
+            } catch (e) {}
+        };
+
+        ths.forEach((th, idx) => {
+            // 마지막 컬럼 및 체크박스는 리사이저 제외
+            if (idx === 0 || idx === ths.length - 1) return;
+
+            th.style.position = 'relative';
+
+            const resizer = document.createElement('div');
+            resizer.className = 'col-resizer';
+            th.appendChild(resizer);
+
+            let startX = 0;
+            let startWidth = 0;
+
+            const onMouseMove = (e) => {
+                const diff = e.pageX - startX;
+                const newWidth = Math.max(35, startWidth + diff);
+                th.style.width = newWidth + 'px';
+                th.style.minWidth = newWidth + 'px';
+            };
+
+            const onMouseUp = () => {
+                resizer.classList.remove('is-resizing');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                saveWidths();
+            };
+
+            resizer.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                startX = e.pageX;
+                startWidth = th.offsetWidth;
+                resizer.classList.add('is-resizing');
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+
+            // 더블클릭 시 최적 맞춤 Auto-Fit
+            resizer.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const cells = table.querySelectorAll(`tbody td:nth-child(${idx + 1})`);
+                let maxLen = th.textContent.trim().length * 10 + 24;
+                cells.forEach(c => {
+                    const l = c.textContent.trim().length * 8 + 20;
+                    if (l > maxLen) maxLen = l;
+                });
+                const fitWidth = Math.min(Math.max(45, maxLen), 350);
+                th.style.width = fitWidth + 'px';
+                th.style.minWidth = fitWidth + 'px';
+                saveWidths();
+            });
+        });
+    }
+};
+
+// DOM 로드 완료 후 앱 기동
+document.addEventListener('DOMContentLoaded', () => {
+    app.init();
+});

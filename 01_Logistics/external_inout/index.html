@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>외부입출내역 - KNG 물류시스템</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Boxicons CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Pretendard Webfont -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
+    <!-- ECOUNT ERP 고밀도 전용 테마 CSS -->
+    <link rel="stylesheet" href="style.css?v=2">
+    <!-- Chart.js for Visual Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- A4 인쇄 전용 공식 헤더 (@media print 시만 표시) -->
+    <div class="print-only-header d-none">
+        <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">외부입출내역 및 공급 실적 보고서</h2>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 4px;">
+            <span id="printDateStr">출력일시: -</span>
+            <span id="printFilterStr">조회조건: 전체</span>
+            <span>(주)케이앤지 물류사업부</span>
+        </div>
+    </div>
+
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar) ── -->
+    <div class="erp-top-toolbar no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="erp-title-tag">
+                <i class='bx bx-export text-primary'></i> 외부입출내역
+            </span>
+
+            <!-- 듀얼 메인 탭 (내역 목록 vs 통계 대시보드) -->
+            <div class="erp-tab-group">
+                <button type="button" class="erp-tab-btn active" id="btnTabList" onclick="app.switchTab('list')">
+                    <i class='bx bx-table'></i> 내역 목록
+                </button>
+                <button type="button" class="erp-tab-btn" id="btnTabDashboard" onclick="app.switchTab('dashboard')">
+                    <i class='bx bx-bar-chart-alt-2'></i> 통계 대시보드
+                </button>
+            </div>
+
+            <!-- 자재 분류 퀵 필터 탭 -->
+            <div class="erp-tab-group ms-1" id="categoryTabGroup">
+                <button type="button" class="erp-tab-btn active" data-category="" onclick="app.setCategoryFilter('')">전체</button>
+                <button type="button" class="erp-tab-btn" data-category="안전자재" onclick="app.setCategoryFilter('안전자재')">안전자재</button>
+                <button type="button" class="erp-tab-btn" data-category="토목자재" onclick="app.setCategoryFilter('토목자재')">토목자재</button>
+                <button type="button" class="erp-tab-btn" data-category="보양재" onclick="app.setCategoryFilter('보양재')">보양재</button>
+                <button type="button" class="erp-tab-btn" data-category="소모품" onclick="app.setCategoryFilter('소모품')">소모품</button>
+                <button type="button" class="erp-tab-btn" data-category="일반자재" onclick="app.setCategoryFilter('일반자재')">일반자재</button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openSheetModal()" title="스프레드시트 전표 고속 등록 (F2)">
+                <i class='bx bx-plus-circle'></i> <strong>전표 등록 (F2)</strong>
+            </button>
+            <button type="button" class="btn-erp" onclick="app.openUploadModal()" title="엑셀 파일 일괄 등록">
+                <i class='bx bx-table'></i> 엑셀 일괄등록
+            </button>
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 조회 데이터 엑셀 내보내기">
+                <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
+            <button type="button" class="btn-erp btn-erp-danger d-none" id="btnBatchDelete" onclick="app.deleteSelectedRows()" title="선택된 항목 일괄 삭제">
+                <i class='bx bx-trash'></i> 선택삭제 (<span id="selectedCount">0</span>)
+            </button>
+            <button type="button" class="btn-erp text-muted" onclick="window.print()" title="화면 인쇄">
+                <i class='bx bx-printer'></i> 인쇄
+            </button>
+        </div>
+    </div>
+
+    <!-- ── 2. ECOUNT ERP 2행 필터 리본 (.erp-filter-ribbon) ── -->
+    <div class="erp-filter-ribbon no-print">
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 날짜 프리셋 -->
+            <div class="btn-group btn-group-sm erp-preset-group" role="group" id="datePresetGroup">
+                <button type="button" class="btn erp-preset-btn" id="btnPreset_prevMonth" onclick="app.setDatePreset('prevMonth')">전월</button>
+                <button type="button" class="btn erp-preset-btn" id="btnPreset_thisMonth" onclick="app.setDatePreset('thisMonth')">당월</button>
+                <button type="button" class="btn erp-preset-btn" id="btnPreset_prevYear" onclick="app.setDatePreset('prevYear')">전년도</button>
+                <button type="button" class="btn erp-preset-btn" id="btnPreset_thisYear" onclick="app.setDatePreset('thisYear')">금년도</button>
+                <button type="button" class="btn erp-preset-btn active" id="btnPreset_all" onclick="app.setDatePreset('all')">전체</button>
+            </div>
+
+            <!-- 날짜 피커 -->
+            <div class="d-flex align-items-center gap-1">
+                <input type="date" class="erp-input-date" id="filterStartDate" title="시작일" onchange="app.onDateInputChange()">
+                <span class="text-muted" style="font-size: 11px;">~</span>
+                <input type="date" class="erp-input-date" id="filterEndDate" title="종료일" onchange="app.onDateInputChange()">
+            </div>
+
+            <!-- 검색 대상 선택 -->
+            <select class="form-select erp-select-target" id="searchTarget" onchange="app.onSearchTargetChange()">
+                <option value="">전체 대상</option>
+                <option value="supplier">공급처(구매)</option>
+                <option value="destination">출고처(현장)</option>
+                <option value="item">품목명</option>
+                <option value="spec">규격</option>
+                <option value="voucher_id">전표번호</option>
+                <option value="memo">비고</option>
+            </select>
+
+            <!-- 스마트 다중 검색창 -->
+            <div class="position-relative erp-search-box">
+                <input type="text" class="form-control form-control-sm" id="historySearch" placeholder="스마트 다중 검색 (Enter)..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 스마트 교집합 검색이 지원됩니다">
+                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="지우기" style="font-size: 0.75rem;">
+                    <i class='bx bx-x-circle'></i>
+                </button>
+            </div>
+
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.search()"><i class='bx bx-search'></i> 검색</button>
+            <button type="button" class="btn-erp" onclick="app.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 결과 내 재검색 인풋 -->
+            <div class="input-group input-group-sm erp-subsearch-group">
+                <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
+                <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="app.onSubSearchInput(this.value)" onkeydown="if(event.key==='Enter'){app.search();}" style="font-size: 11.5px; height: 24px;">
+                <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="app.clearSubSearch()" style="height: 24px; padding: 0 4px;"><i class='bx bx-x'></i></button>
+            </div>
+            <span id="subSearchCountBadge" class="badge bg-danger bg-opacity-10 text-danger border border-danger px-1 py-0 d-none" style="font-size: 0.72rem; height: 20px; line-height: 18px;"></span>
+        </div>
+    </div>
+
+    <!-- ── 3. 실시간 요약 집계 스트립 (.erp-summary-strip) ── -->
+    <div class="erp-summary-strip no-print">
+        <div class="erp-summary-items">
+            <span class="erp-summary-item">선택: <strong id="stripSelectedCount">0</strong>건</span>
+            <span class="erp-summary-item">조회결과: <strong id="stripTotalCount">0</strong>건</span>
+            <span class="erp-summary-item">총 수량: <strong id="stripTotalQty">0</strong></span>
+            <span class="erp-summary-item">공급가액: <strong id="stripSupplyAmount">0원</strong></span>
+            <span class="erp-summary-item">세액: <strong id="stripVatAmount">0원</strong></span>
+            <span class="erp-summary-item highlight">합계금액: <strong id="stripTotalAmount">0원</strong></span>
+        </div>
+        <div class="text-muted" style="font-size: 11px;">
+            <i class='bx bx-bulb text-warning'></i> 셀 더블클릭 시 인라인 퀵 편집 가능
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         [TAB 1] 내역 목록 뷰 (List View)
+         ========================================================================= -->
+    <main id="tabListView">
+        <!-- 메인 고밀도 그리드 래퍼 -->
+        <div class="erp-grid-wrapper">
+            <table class="erp-sheet-table" id="mainGridTable">
+                <thead>
+                    <tr>
+                        <th class="th-check"><input type="checkbox" id="checkAll" onchange="app.toggleSelectAll(this.checked)"></th>
+                        <th class="th-no">No</th>
+                        <th class="th-date" onclick="app.sortBy('date')">일자 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-voucher" onclick="app.sortBy('voucher_id')">전표번호 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-category" onclick="app.sortBy('category')">분류 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-supplier" onclick="app.sortBy('supplier')">공급처(구매) <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-destination" onclick="app.sortBy('destination')">출고처(현장명) <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-item" onclick="app.sortBy('item')">품목명 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-spec" onclick="app.sortBy('spec')">규격 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-unit">단위</th>
+                        <th class="th-qty text-end" onclick="app.sortBy('qty')">수량 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-price text-end" onclick="app.sortBy('unit_price')">단가 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-supply text-end" onclick="app.sortBy('supply_amount')">공급가액 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-vat text-end">부가세</th>
+                        <th class="th-total text-end" onclick="app.sortBy('total_amount')">합계금액 <i class='bx bx-sort text-muted'></i></th>
+                        <th class="th-memo">비고</th>
+                        <th class="th-action">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="extTableBody">
+                    <tr>
+                        <td colspan="17" class="text-center py-4 text-muted">
+                            <i class='bx bx-loader-alt bx-spin'></i> 데이터를 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 페이징 및 페이지 크기 설정 바 -->
+        <div class="d-flex justify-content-between align-items-center mt-2 px-1 no-print">
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted" style="font-size: 11px;">페이지당</span>
+                <select class="form-select form-select-sm" id="pageSizeSelect" style="width: 75px; height: 24px; font-size: 11px; padding: 0 4px;" onchange="app.changePageSize(this.value)">
+                    <option value="50">50</option>
+                    <option value="100" selected>100</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                    <option value="999999">전체</option>
+                </select>
+                <span class="text-muted" style="font-size: 11px;" id="pageInfoStr">총 0건 (1/1 페이지)</span>
+            </div>
+
+            <div class="btn-group btn-group-sm" id="paginationControls">
+                <!-- 동적 렌더링 -->
+            </div>
+        </div>
+    </main>
+
+    <!-- =========================================================================
+         [TAB 2] 통계 대시보드 뷰 (Analytics View)
+         ========================================================================= -->
+    <main id="tabDashboardView" style="display: none;">
+        <!-- 6대 KPI 요약 카드 -->
+        <div class="dashboard-kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">총 공급 실적 건수 <i class='bx bx-file text-primary'></i></div>
+                <div class="kpi-val" id="kpiTotalCount">0건</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">총 공급 물량 <i class='bx bx-box text-success'></i></div>
+                <div class="kpi-val" id="kpiTotalQty">0 EA</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">총 공급가액 <i class='bx bx-won text-warning'></i></div>
+                <div class="kpi-val text-primary" id="kpiTotalSupply">0원</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">평균 공급단가 <i class='bx bx-trending-up text-info'></i></div>
+                <div class="kpi-val" id="kpiAvgPrice">0원</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">등록 규격 종수 <i class='bx bx-layer text-secondary'></i></div>
+                <div class="kpi-val" id="kpiSpecCount">0종</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">거래 출고처(현장) <i class='bx bx-building text-danger'></i></div>
+                <div class="kpi-val" id="kpiDestCount">0개소</div>
+            </div>
+        </div>
+
+        <!-- 시각화 차트 그리드 -->
+        <div class="chart-grid">
+            <div class="chart-box">
+                <h3><i class='bx bx-pie-chart-alt-2 text-primary'></i> 주요 품목/규격별 공급 점유율</h3>
+                <div style="height: 220px; position: relative;">
+                    <canvas id="specPieChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-box">
+                <h3><i class='bx bx-bar-chart-alt-2 text-success'></i> 월별 공급 실적 추이</h3>
+                <div style="height: 220px; position: relative;">
+                    <canvas id="monthlyBarChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 규격별 공급 실적 집계 테이블 -->
+        <div class="erp-grid-wrapper mt-2">
+            <table class="erp-sheet-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">순위</th>
+                        <th style="width: 160px;">품목명</th>
+                        <th style="width: 140px;">규격</th>
+                        <th style="width: 70px; text-align: center;">단위</th>
+                        <th style="width: 90px; text-align: right;">공급건수</th>
+                        <th style="width: 100px; text-align: right;">총 수량</th>
+                        <th style="width: 120px; text-align: right;">총 공급가액</th>
+                        <th style="width: 100px; text-align: right;">평균 납품단가</th>
+                        <th style="width: 160px;">물량 비중</th>
+                    </tr>
+                </thead>
+                <tbody id="specRankingTableBody">
+                    <tr>
+                        <td colspan="9" class="text-center py-3 text-muted">통계 집계 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- =========================================================================
+         [MODAL 1] ECOUNT ERP 전표형 스프레드시트 고속 등록 모달
+         ========================================================================= -->
+    <div class="modal fade" id="sheetVoucherModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" style="max-width: 96%; width: 1400px;">
+            <div class="modal-content">
+                <div class="erp-window-header">
+                    <div class="erp-window-title">
+                        <i class='bx bx-spreadsheet text-primary'></i> 외부입출 전표 고속 등록
+                        <span class="excel-paste-badge ms-2">
+                            <i class='bx bx-paste'></i> 엑셀 블록 복사(Ctrl+C) 후 그리드에서 Ctrl+V 지원
+                        </span>
+                        <span class="text-warning ms-2" style="font-size: 11px; font-weight: normal;">
+                            [F3: 행추가 | F9 or Ctrl+S: 저장]
+                        </span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-2" style="background-color: #f8fafc;">
+                    <!-- 1. 공통 마스터 정보 폼 (1회 입력) -->
+                    <table class="erp-form-table">
+                        <colgroup>
+                            <col style="width: 10%;">
+                            <col style="width: 15%;">
+                            <col style="width: 10%;">
+                            <col style="width: 15%;">
+                            <col style="width: 10%;">
+                            <col style="width: 20%;">
+                            <col style="width: 10%;">
+                            <col style="width: 20%;">
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>거래일자</th>
+                                <td>
+                                    <input type="date" class="form-control" id="sheetVoucherDate" required>
+                                </td>
+                                <th>자재분류</th>
+                                <td>
+                                    <select class="form-select" id="sheetCategory">
+                                        <option value="일반자재" selected>일반자재</option>
+                                        <option value="안전자재">안전자재</option>
+                                        <option value="토목자재">토목자재</option>
+                                        <option value="보양재">보양재</option>
+                                        <option value="소모품">소모품</option>
+                                        <option value="기타">기타</option>
+                                    </select>
+                                </td>
+                                <th>공급처(구매)</th>
+                                <td class="position-relative">
+                                    <input type="text" class="form-control" id="sheetSupplier" placeholder="공급 거래처 검색..." autocomplete="off" required>
+                                    <div class="autocomplete-suggestions" id="sheetSupplierSuggestions"></div>
+                                </td>
+                                <th>출고처(현장명)</th>
+                                <td class="position-relative">
+                                    <input type="text" class="form-control" id="sheetDestination" placeholder="납품 현장명 검색..." autocomplete="off" required>
+                                    <div class="autocomplete-suggestions" id="sheetDestSuggestions"></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>전표 비고</th>
+                                <td colspan="7">
+                                    <input type="text" class="form-control" id="sheetVoucherMemo" placeholder="전표 공통 특이사항 또는 거래 메모 입력...">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 2. 스프레드시트 툴바 -->
+                    <div class="erp-grid-toolbar">
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn-erp btn-erp-primary" onclick="app.addSheetRow()">
+                                <i class='bx bx-plus'></i> 행 추가 (F3)
+                            </button>
+                            <button type="button" class="btn-erp" onclick="app.removeSelectedSheetRows()">
+                                <i class='bx bx-minus'></i> 선택 행 삭제
+                            </button>
+                            <span class="text-muted ms-2" style="font-size: 11px;">
+                                <i class='bx bx-info-circle'></i> Tab/Enter로 셀 이동, 마지막 셀에서 Enter 시 다음 행 자동 추가
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn-erp text-danger" onclick="app.clearAllSheetRows()">
+                                <i class='bx bx-trash'></i> 시트 전체 비우기
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3. 스프레드시트 테이블 그리드 -->
+                    <div class="erp-grid-wrapper" style="max-height: 420px; border-top: none;">
+                        <table class="erp-sheet-table" id="sheetGridTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 32px; text-align: center;"><input type="checkbox" id="sheetCheckAll" onchange="app.toggleSheetCheckAll(this.checked)"></th>
+                                    <th style="width: 35px; text-align: center;">No</th>
+                                    <th style="width: 180px;">품목명 <span class="text-danger">*</span></th>
+                                    <th style="width: 150px;">규격 <span class="text-danger">*</span></th>
+                                    <th style="width: 55px; text-align: center;">단위</th>
+                                    <th style="width: 80px; text-align: right;">수량 <span class="text-danger">*</span></th>
+                                    <th style="width: 95px; text-align: right;">납품단가 <span class="text-danger">*</span></th>
+                                    <th style="width: 110px; text-align: right;">공급가액</th>
+                                    <th style="width: 90px; text-align: right;">부가세</th>
+                                    <th style="width: 120px; text-align: right;">합계금액</th>
+                                    <th style="width: 180px;">품목별 비고</th>
+                                    <th style="width: 40px; text-align: center;">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sheetTableBody">
+                                <!-- 동적 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 4. 하단 합계 요약 & 전표 발행 액션 패널 -->
+                    <div class="erp-summary-panel">
+                        <div class="d-flex align-items-center gap-3">
+                            <span>등록 품목: <strong id="modalSummaryCount" class="text-primary">0</strong>개</span>
+                            <span>총 수량: <strong id="modalSummaryQty">0</strong> EA</span>
+                            <span>공급가액: <strong id="modalSummarySupply">0원</strong></span>
+                            <span>부가세: <strong id="modalSummaryVat">0원</strong></span>
+                            <span class="text-primary fs-6">총 합계: <strong id="modalSummaryTotal" class="text-primary">0원</strong></span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn-erp" data-bs-dismiss="modal">취소</button>
+                            <button type="button" class="btn-erp btn-erp-primary px-3 py-1" onclick="app.submitSheetVoucher()" id="btnSubmitSheet">
+                                <i class='bx bx-check'></i> <strong>전표 저장 및 발행 (F9 / Ctrl+S)</strong>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         [MODAL 2] 엑셀 파일 일괄 등록 모달
+         ========================================================================= -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="erp-window-header">
+                    <div class="erp-window-title">
+                        <i class='bx bx-upload'></i> 외부입출내역 엑셀 일괄 등록
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 11.5px;">
+                        <i class='bx bx-info-circle'></i> 표준 양식 파일에 데이터를 입력하신 후 업로드해 주세요.
+                    </div>
+                    <div class="mb-3 text-center">
+                        <button type="button" class="btn-erp" onclick="app.downloadTemplate()">
+                            <i class='bx bx-download'></i> 엑셀 표준 템플릿 다운로드 (.xlsx)
+                        </button>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold" style="font-size: 11.5px;">엑셀 파일 선택</label>
+                        <input type="file" class="form-control form-control-sm" id="excelFileInput" accept=".xlsx, .xls">
+                    </div>
+                    <div id="uploadStatusText" class="text-muted" style="font-size: 11px;"></div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn-erp" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn-erp btn-erp-primary" onclick="app.uploadExcel()" id="btnUploadSubmit">
+                        <i class='bx bx-upload'></i> 업로드 실행
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Frontend Application Logic -->
+    <script src="app.js?v=3"></script>
+</body>
+</html>

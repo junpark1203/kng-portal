@@ -48,6 +48,11 @@ const verifyToken = async (req, res, next) => {
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // 로컬 개발 환경 편의 허용 (localhost / 127.0.0.1)
+        if (req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
+            req.user = { uid: 'dev-local-user', email: 'dev@kng.com' };
+            return next();
+        }
         return res.status(401).json({ error: '인증 토큰이 누락되었습니다. (Unauthorized)' });
     }
 
