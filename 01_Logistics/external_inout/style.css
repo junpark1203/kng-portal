@@ -1039,6 +1039,13 @@ tfoot.print-only-tfoot {
         border-bottom: 2px solid #0f172a !important;
         border-left: 1px solid #cbd5e1 !important;
         border-right: 1px solid #cbd5e1 !important;
+        background-color: transparent !important;
+        background: transparent !important;
+    }
+
+    .erp-sheet-table tbody {
+        background-color: transparent !important;
+        background: transparent !important;
     }
 
     .erp-sheet-table thead {
@@ -1085,19 +1092,20 @@ tfoot.print-only-tfoot {
         background-color: #f8fafc !important;
     }
 
-    /* [내역 목록] A4 세로 12개 열 너비 비율 최적화 (금액/부가세 잘림 방지, 합계 정확히 100%) */
-    .th-date        { width: 7.5% !important; text-align: center !important; }
-    .th-category    { width: 5.0% !important; text-align: center !important; }
-    .th-supplier    { width: 9.5% !important; text-align: left !important; }
-    .th-destination { width: 11.0% !important; text-align: left !important; }
-    .th-item        { width: 12.0% !important; text-align: left !important; }
-    .th-spec        { width: 9.5% !important; text-align: left !important; }
-    .th-unit        { width: 3.0% !important; text-align: center !important; }
-    .th-qty         { width: 5.5% !important; text-align: right !important; }
+    /* [내역 목록] A4 세로 10개 열 너비 비율 최적화 (부가세/합계금액 생략, 품목명/규격 1줄 확보, 합계 100%) */
+    .th-date        { width: 9.0% !important; text-align: center !important; }
+    .th-category    { width: 6.5% !important; text-align: center !important; }
+    .th-supplier    { width: 11.0% !important; text-align: left !important; }
+    .th-destination { width: 13.5% !important; text-align: left !important; }
+    .th-item        { width: 18.0% !important; text-align: left !important; }
+    .th-spec        { width: 15.0% !important; text-align: left !important; }
+    .th-unit        { width: 3.5% !important; text-align: center !important; }
+    .th-qty         { width: 6.0% !important; text-align: right !important; }
     .th-price       { width: 7.5% !important; text-align: right !important; }
     .th-supply      { width: 10.0% !important; text-align: right !important; }
-    .th-vat         { width: 9.5% !important; text-align: right !important; }
-    .th-total       { width: 10.0% !important; text-align: right !important; }
+    .th-vat, .td-vat,
+    .th-total, .td-total,
+    .td-print-sum-vat, .td-print-sum-total,
     .th-memo, .td-memo { display: none !important; }
 
     /* [대시보드 순위표] A4 세로 열 너비 비율 최적화 (합계 100%) */
@@ -1116,7 +1124,7 @@ tfoot.print-only-tfoot {
     .td-date     { text-align: center !important; white-space: nowrap !important; }
     .td-category { text-align: center !important; white-space: nowrap !important; }
     .td-unit     { text-align: center !important; white-space: nowrap !important; }
-    .td-qty, .td-price, .td-supply, .td-vat, .td-total {
+    .td-qty, .td-price, .td-supply {
         text-align: right !important;
         font-variant-numeric: tabular-nums !important;
         white-space: nowrap !important;
