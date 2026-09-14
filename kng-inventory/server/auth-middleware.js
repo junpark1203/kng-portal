@@ -40,14 +40,24 @@ try {
 const verifyToken = async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
 
-    // 이미지 프록시 등 인증 없이 접근해야 하는 경로 예외 처리
-    const publicPaths = ['/exhibition-report/proxy'];
+    // 이미지 프록시 및 표준 엑셀 양식 등 인증 없이 접근해야 하는 공개 경로 예외 처리
+    const publicPaths = [
+        '/exhibition-report/proxy',
+        '/external-logistics/template'
+    ];
     if (publicPaths.some(p => req.originalUrl && req.originalUrl.includes(p))) {
         return next();
     }
 
+    let token = null;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split('Bearer ')[1];
+    } else if (req.query && req.query.token) {
+        token = req.query.token;
+    }
+
+    if (!token) {
         // 로컬 개발 환경 편의 허용 (localhost / 127.0.0.1)
         if (req.hostname === 'localhost' || req.hostname === '127.0.0.1') {
             req.user = { uid: 'dev-local-user', email: 'dev@kng.com' };
@@ -55,8 +65,6 @@ const verifyToken = async (req, res, next) => {
         }
         return res.status(401).json({ error: '인증 토큰이 누락되었습니다. (Unauthorized)' });
     }
-
-    const token = authHeader.split('Bearer ')[1];
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
         req.user = decodedToken;

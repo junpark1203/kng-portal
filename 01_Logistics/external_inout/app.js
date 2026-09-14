@@ -1269,8 +1269,27 @@ const app = {
         }
     },
 
-    downloadTemplate: function() {
-        window.location.href = `${API_BASE}/template`;
+    downloadTemplate: async function() {
+        try {
+            const res = await authFetch(`${API_BASE}/template`);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || '템플릿 다운로드 실패');
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '외부입출_업로드양식.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download template error:', err);
+            // fallback
+            window.location.href = `${API_BASE}/template`;
+        }
     },
 
     uploadExcel: async function() {
@@ -1314,7 +1333,7 @@ const app = {
         }
     },
 
-    exportExcel: function() {
+    exportExcel: async function() {
         const startDate = document.getElementById('filterStartDate').value;
         const endDate = document.getElementById('filterEndDate').value;
         const category = this.currentCategory || '';
@@ -1331,7 +1350,26 @@ const app = {
             else params.append('keyword', keyword);
         }
 
-        window.location.href = `${API_BASE}/export?${params.toString()}`;
+        try {
+            const res = await authFetch(`${API_BASE}/export?${params.toString()}`);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || '엑셀 내보내기 실패');
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const today = new Date().toISOString().slice(0, 10);
+            a.download = `외부입출내역_${today}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('엑셀 다운로드 오류: ' + err.message);
+        }
     },
 
     // -------------------------------------------------------------------------
