@@ -652,6 +652,11 @@ td.is-inline-editing {
     gap: 8px;
     margin-bottom: 8px;
 }
+@media (max-width: 1350px) and (min-width: 768px) {
+    .dashboard-kpi-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
 .kpi-card {
     background: #ffffff;
     border: 1px solid var(--erp-border);
@@ -720,21 +725,24 @@ td.is-inline-editing {
     font-weight: 700 !important;
 }
 
-/* 대시보드 순위 뱃지 */
+/* 대시보드 순위 (동그라미 제거, 깔끔한 텍스트 표기) */
 .rank-badge {
     display: inline-block;
-    width: 20px;
-    height: 20px;
-    line-height: 20px;
-    text-align: center;
-    border-radius: 50%;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 700;
+    color: #475569;
+    border: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    line-height: normal !important;
+    width: auto !important;
+    height: auto !important;
 }
-.rank-badge-1 { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-.rank-badge-2 { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-.rank-badge-3 { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
-.rank-badge-normal { color: #64748b; }
+.rank-badge-1 { color: #0f172a !important; font-weight: 800 !important; }
+.rank-badge-2 { color: #1e293b !important; font-weight: 700 !important; }
+.rank-badge-3 { color: #334155 !important; font-weight: 700 !important; }
+.rank-badge-normal { color: #64748b !important; }
 
 /* 출고처(현장) 태그 & 더보기 뱃지 */
 /* 출고처(현장) 전체 표기 텍스트 */
@@ -1145,16 +1153,34 @@ tfoot.print-only-tfoot {
         letter-spacing: 2px !important;
     }
 
-    /* 9. 문서 바닥글 */
+    /* 9. 문서 바닥글 완전 숨김 */
     .print-only-footer {
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        margin-top: 8px !important;
-        padding-top: 4px !important;
-        border-top: 1px solid #cbd5e1 !important;
-        font-size: 7pt !important;
-        color: #64748b !important;
+        display: none !important;
+    }
+
+    /* 대시보드 KPI 카드 그리드: A4 세로 인쇄 시 1행 3개, 2행 3개 (3x2 균형 배치) */
+    .dashboard-kpi-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 6px !important;
+        margin-bottom: 8px !important;
+    }
+    .kpi-card {
+        padding: 5px 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        background: #ffffff !important;
+    }
+    .kpi-card .kpi-title {
+        font-size: 7.5pt !important;
+        color: #475569 !important;
+        margin-bottom: 2px !important;
+    }
+    .kpi-card .kpi-val {
+        font-size: 11pt !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        line-height: 1.2 !important;
     }
 
     /* 대시보드 차트 인쇄 시 수직 정렬 */

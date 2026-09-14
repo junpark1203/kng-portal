@@ -214,33 +214,49 @@ const app = {
             printFilterEl.textContent = filterArr.join(' | ');
         }
 
+        const titleEl = document.getElementById('printMainTitle');
+        if (titleEl) {
+            titleEl.textContent = this.currentTab === 'dashboard'
+                ? '입 출 통 계 대 시 보 드 (외 부 건)'
+                : '입 출 내 역 (외 부 건)';
+        }
+
         // 출력 데이터 요약 및 tfoot 계산
-        const rows = this.renderedRows || this.currentData || [];
-        const count = rows.length;
-        const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
-        const totalSupply = rows.reduce((s, r) => s + (Number(r.supply_amount) || 0), 0);
-        const totalVat = rows.reduce((s, r) => s + (Number(r.vat) || 0), 0);
-        const totalAmount = rows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
-
-        // 상단 헤더 요약 갱신
         const printCountEl = document.getElementById('printCountStr');
-        if (printCountEl) printCountEl.textContent = `${fmtNumber(count)}건`;
         const printSupplyEl = document.getElementById('printSupplyStr');
-        if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(totalSupply)}원`;
         const printVatEl = document.getElementById('printVatStr');
-        if (printVatEl) printVatEl.textContent = `${fmtNumber(totalVat)}원`;
         const printTotalEl = document.getElementById('printTotalStr');
-        if (printTotalEl) printTotalEl.textContent = `${fmtNumber(totalAmount)}원`;
 
-        // 하단 tfoot 합계행 갱신
-        const sumQtyEl = document.getElementById('printSumQty');
-        if (sumQtyEl) sumQtyEl.textContent = fmtNumber(totalQty);
-        const sumSupplyEl = document.getElementById('printSumSupply');
-        if (sumSupplyEl) sumSupplyEl.textContent = fmtNumber(totalSupply);
-        const sumVatEl = document.getElementById('printSumVat');
-        if (sumVatEl) sumVatEl.textContent = fmtNumber(totalVat);
-        const sumTotalEl = document.getElementById('printSumTotal');
-        if (sumTotalEl) sumTotalEl.textContent = fmtNumber(totalAmount);
+        if (this.currentTab === 'dashboard' && this.dashboardSummary) {
+            const s = this.dashboardSummary;
+            if (printCountEl) printCountEl.textContent = `${fmtNumber(s.total_count || 0)}건`;
+            if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(s.total_supply_amount || 0)}원`;
+            if (printVatEl) printVatEl.textContent = `${fmtNumber(s.total_vat || 0)}원`;
+            if (printTotalEl) printTotalEl.textContent = `${fmtNumber(s.total_amount || 0)}원`;
+        } else {
+            const rows = this.renderedRows || this.currentData || [];
+            const count = rows.length;
+            const totalQty = rows.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+            const totalSupply = rows.reduce((s, r) => s + (Number(r.supply_amount) || 0), 0);
+            const totalVat = rows.reduce((s, r) => s + (Number(r.vat) || 0), 0);
+            const totalAmount = rows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+
+            // 상단 헤더 요약 갱신
+            if (printCountEl) printCountEl.textContent = `${fmtNumber(count)}건`;
+            if (printSupplyEl) printSupplyEl.textContent = `${fmtNumber(totalSupply)}원`;
+            if (printVatEl) printVatEl.textContent = `${fmtNumber(totalVat)}원`;
+            if (printTotalEl) printTotalEl.textContent = `${fmtNumber(totalAmount)}원`;
+
+            // 하단 tfoot 합계행 갱신
+            const sumQtyEl = document.getElementById('printSumQty');
+            if (sumQtyEl) sumQtyEl.textContent = fmtNumber(totalQty);
+            const sumSupplyEl = document.getElementById('printSumSupply');
+            if (sumSupplyEl) sumSupplyEl.textContent = fmtNumber(totalSupply);
+            const sumVatEl = document.getElementById('printSumVat');
+            if (sumVatEl) sumVatEl.textContent = fmtNumber(totalVat);
+            const sumTotalEl = document.getElementById('printSumTotal');
+            if (sumTotalEl) sumTotalEl.textContent = fmtNumber(totalAmount);
+        }
     },
 
     printPage: function() {
@@ -1999,11 +2015,8 @@ const app = {
             const qtyShare = s.qtyShare !== undefined ? s.qtyShare : (totalQty > 0 ? parseFloat(((qty / totalQty) * 100).toFixed(1)) : 0);
             const activeShare = isQtySort ? qtyShare : valueShare;
 
-            // 순위 뱃지 (1~3위 포인트 디자인)
-            let rankBadge = `<span class="rank-badge rank-badge-normal">${idx + 1}</span>`;
-            if (idx === 0) rankBadge = `<span class="rank-badge rank-badge-1" title="1위">1</span>`;
-            else if (idx === 1) rankBadge = `<span class="rank-badge rank-badge-2" title="2위">2</span>`;
-            else if (idx === 2) rankBadge = `<span class="rank-badge rank-badge-3" title="3위">3</span>`;
+            // 순위 표기 (동그라미 제거, 깔끔한 숫자 텍스트)
+            const rankBadge = `<span class="rank-badge">${idx + 1}</span>`;
 
             // 출고처(현장) 전체 표기 및 툴팁 렌더링
             const destList = s.destinationsList || (s.destinations ? s.destinations.split(',').map(d => d.trim()).filter(Boolean) : []);
