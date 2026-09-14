@@ -414,31 +414,43 @@ module.exports = (database) => {
                 avg_price: kpi.avg_unit_price || 0
             } : {};
 
-            const specStatistics = specRows.map((row, idx) => ({
-                rank: idx + 1,
-                item: row.item,
-                spec: row.spec,
-                unit: row.unit || 'EA',
-                recordCount: row.record_count,
-                record_count: row.record_count,
-                count: row.record_count,
-                totalQty: row.sum_qty,
-                spec_qty: row.sum_qty,
-                sum_qty: row.sum_qty,
-                qtyShare: totalQty > 0 ? parseFloat(((row.sum_qty / totalQty) * 100).toFixed(1)) : 0,
-                totalSupplyAmount: row.sum_supply_amount,
-                spec_supply_amount: row.sum_supply_amount,
-                sum_supply_amount: row.sum_supply_amount,
-                totalVat: row.sum_vat,
-                totalAmount: row.sum_total_amount,
-                avgPrice: row.avg_price,
-                avg_price: row.avg_price,
-                minPrice: row.min_price,
-                maxPrice: row.max_price,
-                lastDate: row.last_date,
-                destinations: (row.destinations_concat || '').split(',').filter(Boolean).slice(0, 3).join(', '),
-                suppliers: (row.suppliers_concat || '').split(',').filter(Boolean).slice(0, 3).join(', ')
-            }));
+            const totalSupply = kpi ? (kpi.total_supply_amount || 0) : 0;
+            const specStatistics = specRows.map((row, idx) => {
+                const destList = (row.destinations_concat || '').split(',').map(d => d.trim()).filter(Boolean);
+                const suppList = (row.suppliers_concat || '').split(',').map(s => s.trim()).filter(Boolean);
+                const valueShare = totalSupply > 0 ? parseFloat(((row.sum_supply_amount / totalSupply) * 100).toFixed(1)) : 0;
+                const qtyShare = totalQty > 0 ? parseFloat(((row.sum_qty / totalQty) * 100).toFixed(1)) : 0;
+
+                return {
+                    rank: idx + 1,
+                    item: row.item,
+                    spec: row.spec,
+                    unit: row.unit || 'EA',
+                    recordCount: row.record_count,
+                    record_count: row.record_count,
+                    count: row.record_count,
+                    totalQty: row.sum_qty,
+                    spec_qty: row.sum_qty,
+                    sum_qty: row.sum_qty,
+                    qtyShare,
+                    totalSupplyAmount: row.sum_supply_amount,
+                    spec_supply_amount: row.sum_supply_amount,
+                    sum_supply_amount: row.sum_supply_amount,
+                    valueShare,
+                    totalVat: row.sum_vat,
+                    totalAmount: row.sum_total_amount,
+                    avgPrice: row.avg_price,
+                    avg_price: row.avg_price,
+                    minPrice: row.min_price,
+                    maxPrice: row.max_price,
+                    lastDate: row.last_date,
+                    destinations: destList.slice(0, 3).join(', '),
+                    destinationsList: destList,
+                    destinationsCount: destList.length,
+                    suppliers: suppList.slice(0, 3).join(', '),
+                    suppliersList: suppList
+                };
+            });
 
             // 3) 월별 공급 추이 (차트 시각화용)
             const monthlySql = `

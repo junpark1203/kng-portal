@@ -89,6 +89,10 @@ const app = {
     sheetModal: null,
     uploadModal: null,
 
+    // 대시보드 순위 테이블 정렬 및 캐시 상태
+    dashboardSort: { col: 'totalSupplyAmount', dir: 'desc' },
+    dashboardDataCache: { specs: [], totalQty: 0, totalSupply: 0 },
+
     // Chart instances
     specChartInstance: null,
     monthlyChartInstance: null,
@@ -1526,8 +1530,15 @@ const app = {
             document.getElementById('kpiSpecCount').textContent = `${fmtNumber(totalSpecs)}종`;
             document.getElementById('kpiDestCount').textContent = `${fmtNumber(totalSites)}개소`;
 
-            // 규격 순위 테이블 렌더링
-            this.renderSpecRanking(data.specStatistics || [], totalQty);
+            // 데이터 캐시 저장 (클릭 정렬용)
+            this.dashboardDataCache = {
+                specs: data.specStatistics || [],
+                totalQty,
+                totalSupply
+            };
+
+            // 규격 순위 테이블 렌더링 (금액 및 수량 모두 전달)
+            this.renderSpecRanking(data.specStatistics || [], totalQty, totalSupply);
 
             // 차트 렌더링
             this.renderCharts(data.specStatistics || [], data.monthlyTrends || []);
@@ -1537,46 +1548,170 @@ const app = {
         }
     },
 
-    renderSpecRanking: function(specs, totalQty) {
+    // -------------------------------------------------------------------------
+    // 대시보드 순위 테이블 다차원 헤더 정렬
+    // -------------------------------------------------------------------------
+    sortDashboardSpecs: function(col) {
+        if (this.dashboardSort.col === col) {
+            this.dashboardSort.dir = this.dashboardSort.dir === 'desc' ? 'asc' : 'desc';
+        } else {
+            this.dashboardSort.col = col;
+            this.dashboardSort.dir = (col === 'item' || col === 'spec') ? 'asc' : 'desc';
+        }
+
+        // 헤더 시각적 인디케이터 갱신
+        const ths = document.querySelectorAll('#dashboardSpecTable th.th-dash-sort');
+        ths.forEach(th => {
+            const c = th.getAttribute('data-dash-col');
+            const icon = th.querySelector('i');
+            if (c === col) {
+                th.classList.add('active-sort');
+                if (icon) {
+                    icon.className = this.dashboardSort.dir === 'desc' ? 'bx bx-sort-down text-primary' : 'bx bx-sort-up text-primary';
+                }
+            } else {
+                th.classList.remove('active-sort');
+                if (icon) {
+                    icon.className = 'bx bx-sort text-muted';
+                }
+            }
+        });
+
+        if (this.dashboardDataCache && this.dashboardDataCache.specs) {
+            this.renderSpecRanking(
+                this.dashboardDataCache.specs,
+                this.dashboardDataCache.totalQty,
+                this.dashboardDataCache.totalSupply
+            );
+        }
+    },
+
+    // -------------------------------------------------------------------------
+    // 원클릭 내역 추적 (대시보드 ➡️ 내역 목록 드릴다운)
+    // -------------------------------------------------------------------------
+    drillDownToDetail: function(item, spec) {
+        this.switchTab('list');
+        const targetSelect = document.getElementById('searchTarget');
+        const searchInput = document.getElementById('historySearch');
+        if (targetSelect) targetSelect.value = 'item';
+        if (searchInput) {
+            searchInput.value = item || '';
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) clearBtn.classList.remove('d-none');
+        }
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    renderSpecRanking: function(specs, totalQty, totalSupply) {
         const tbody = document.getElementById('specRankingTableBody');
         if (!tbody) return;
 
         if (!specs || specs.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-muted">집계 데이터가 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-3 text-muted">집계 데이터가 없습니다.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = specs.map((s, idx) => {
+        // 1. 현재 정렬 기준에 맞게 정렬된 복제본 생성
+        const sortCol = this.dashboardSort.col || 'totalSupplyAmount';
+        const sortDir = this.dashboardSort.dir || 'desc';
+
+        const sorted = [...specs].sort((a, b) => {
+            let valA, valB;
+            if (sortCol === 'totalSupplyAmount') {
+                valA = a.totalSupplyAmount ?? a.spec_supply_amount ?? 0;
+                valB = b.totalSupplyAmount ?? b.spec_supply_amount ?? 0;
+            } else if (sortCol === 'totalQty') {
+                valA = a.totalQty ?? a.spec_qty ?? 0;
+                valB = b.totalQty ?? b.spec_qty ?? 0;
+            } else if (sortCol === 'recordCount') {
+                valA = a.recordCount ?? a.count ?? 0;
+                valB = b.recordCount ?? b.count ?? 0;
+            } else if (sortCol === 'avgPrice') {
+                valA = a.avgPrice ?? a.avg_price ?? 0;
+                valB = b.avgPrice ?? b.avg_price ?? 0;
+            } else if (sortCol === 'item') {
+                return sortDir === 'asc' ? (a.item || '').localeCompare(b.item || '', 'ko') : (b.item || '').localeCompare(a.item || '', 'ko');
+            } else if (sortCol === 'spec') {
+                return sortDir === 'asc' ? (a.spec || '').localeCompare(b.spec || '', 'ko') : (b.spec || '').localeCompare(a.spec || '', 'ko');
+            } else if (sortCol === 'share') {
+                valA = a.valueShare ?? a.qtyShare ?? 0;
+                valB = b.valueShare ?? b.qtyShare ?? 0;
+            } else {
+                valA = a.totalSupplyAmount ?? 0;
+                valB = b.totalSupplyAmount ?? 0;
+            }
+
+            return sortDir === 'asc' ? valA - valB : valB - valA;
+        });
+
+        // 2. 비중 헤더 텍스트 스마트 업데이트 (수량순일 때 수량%, 그 외 금액%)
+        const shareHeader = document.getElementById('thDashShareHeader');
+        const isQtySort = (sortCol === 'totalQty');
+        if (shareHeader) {
+            const sortIcon = shareHeader.querySelector('i')?.outerHTML || "<i class='bx bx-sort text-muted'></i>";
+            shareHeader.innerHTML = `${isQtySort ? '물량 비중(수량%)' : '매출 비중(금액%)'} ${sortIcon}`;
+        }
+
+        // 3. 행 렌더링
+        tbody.innerHTML = sorted.map((s, idx) => {
             const qty = s.totalQty ?? s.spec_qty ?? s.sum_qty ?? 0;
             const count = s.recordCount ?? s.count ?? s.record_count ?? 0;
             const supply = s.totalSupplyAmount ?? s.spec_supply_amount ?? s.sum_supply_amount ?? 0;
             const avgPrice = s.avgPrice ?? s.avg_price ?? (qty > 0 ? Math.round(supply / qty) : 0);
 
-            // 물량 비중 계산 (NaN 방어)
-            let share = 0;
-            if (s.qtyShare !== undefined && !isNaN(s.qtyShare)) {
-                share = s.qtyShare;
-            } else if (totalQty > 0 && qty > 0) {
-                share = parseFloat(((qty / totalQty) * 100).toFixed(1));
+            // 금액 비중 및 물량 비중 계산
+            const valueShare = s.valueShare !== undefined ? s.valueShare : (totalSupply > 0 ? parseFloat(((supply / totalSupply) * 100).toFixed(1)) : 0);
+            const qtyShare = s.qtyShare !== undefined ? s.qtyShare : (totalQty > 0 ? parseFloat(((qty / totalQty) * 100).toFixed(1)) : 0);
+            const activeShare = isQtySort ? qtyShare : valueShare;
+
+            // 순위 뱃지 (1~3위 포인트 디자인)
+            let rankBadge = `<span class="rank-badge rank-badge-normal">${idx + 1}</span>`;
+            if (idx === 0) rankBadge = `<span class="rank-badge rank-badge-1" title="1위">1</span>`;
+            else if (idx === 1) rankBadge = `<span class="rank-badge rank-badge-2" title="2위">2</span>`;
+            else if (idx === 2) rankBadge = `<span class="rank-badge rank-badge-3" title="3위">3</span>`;
+
+            // 출고처 뱃지 및 툴팁 렌더링
+            const destList = s.destinationsList || (s.destinations ? s.destinations.split(',').map(d => d.trim()).filter(Boolean) : []);
+            let destHtml = `<span class="text-muted" style="font-size:11px;">-</span>`;
+            if (destList.length === 1) {
+                destHtml = `<span class="dest-tag" title="${destList[0]}">${destList[0]}</span>`;
+            } else if (destList.length > 1) {
+                const fullText = destList.join(', ');
+                destHtml = `
+                    <div class="dest-tag-box">
+                        <span class="dest-tag" title="${fullText}">${destList[0]}</span>
+                        <span class="dest-more-badge" title="전체 납품처 (${destList.length}곳): &#10;${destList.join('&#10;')}">+${destList.length - 1}곳</span>
+                    </div>
+                `;
             }
+
+            const safeItem = (s.item || '').replace(/'/g, "\\'");
+            const safeSpec = (s.spec || '').replace(/'/g, "\\'");
 
             return `
                 <tr>
-                    <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
+                    <td style="text-align: center;">${rankBadge}</td>
                     <td class="fw-bold text-primary">${s.item}</td>
                     <td>${s.spec}</td>
                     <td style="text-align: center;">${s.unit || 'EA'}</td>
+                    <td>${destHtml}</td>
                     <td style="text-align: right;">${fmtNumber(count)}건</td>
                     <td style="text-align: right; font-weight: 700;">${fmtNumber(qty)}</td>
-                    <td style="text-align: right;">${fmtNumber(supply)}원</td>
+                    <td style="text-align: right; font-weight: 700; color: #0f172a;">${fmtNumber(supply)}원</td>
                     <td style="text-align: right;">${fmtNumber(avgPrice)}원</td>
                     <td>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2" title="금액비중: ${valueShare}%, 수량비중: ${qtyShare}%">
                             <div class="progress flex-grow-1" style="height: 6px;">
-                                <div class="progress-bar bg-primary" style="width: ${Math.min(share, 100)}%;"></div>
+                                <div class="progress-bar ${isQtySort ? 'bg-success' : 'bg-primary'}" style="width: ${Math.min(activeShare, 100)}%;"></div>
                             </div>
-                            <span style="font-size: 10.5px; width: 36px; text-align: right;">${share}%</span>
+                            <span style="font-size: 10.5px; width: 42px; text-align: right; font-weight: 600;">${activeShare}%</span>
                         </div>
+                    </td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-drilldown" onclick="app.drillDownToDetail('${safeItem}', '${safeSpec}')" title="이 품목의 전체 입출고 전표 내역 바로보기">
+                            <i class='bx bx-search'></i> 조회
+                        </button>
                     </td>
                 </tr>
             `;

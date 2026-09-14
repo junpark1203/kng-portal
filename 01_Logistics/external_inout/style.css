@@ -700,6 +700,93 @@ td.is-inline-editing {
     gap: 5px;
 }
 
+/* 대시보드 순위 테이블 정렬 및 출고처 뱃지 스타일 */
+.th-dash-sort {
+    cursor: pointer !important;
+    user-select: none;
+    transition: background-color 0.15s;
+}
+.th-dash-sort:hover {
+    background-color: #e2e8f0 !important;
+    color: var(--erp-primary) !important;
+}
+.th-dash-sort i {
+    font-size: 11px;
+    vertical-align: middle;
+}
+.th-dash-sort.active-sort {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+    font-weight: 700 !important;
+}
+
+/* 대시보드 순위 뱃지 */
+.rank-badge {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+}
+.rank-badge-1 { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.rank-badge-2 { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.rank-badge-3 { background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+.rank-badge-normal { color: #64748b; }
+
+/* 출고처(현장) 태그 & 더보기 뱃지 */
+.dest-tag-box {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+}
+.dest-tag {
+    font-size: 11px;
+    color: #1e293b;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 2px;
+    padding: 1px 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+    display: inline-block;
+}
+.dest-more-badge {
+    font-size: 10px;
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    border-radius: 2px;
+    padding: 0 4px;
+    white-space: nowrap;
+    cursor: help;
+}
+
+/* 원클릭 내역 추적 버튼 */
+.btn-drilldown {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #3b82f6;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    transition: all 0.15s;
+    line-height: 16px;
+}
+.btn-drilldown:hover {
+    background-color: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
 /* ── 9. 모달 및 인쇄 서식 ── */
 .modal-backdrop.show {
     opacity: 0.45;
