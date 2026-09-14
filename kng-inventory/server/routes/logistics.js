@@ -1387,7 +1387,12 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
             // Get values safely
             const getVal = (col) => {
                 if (!col) return '';
-                let v = row.getCell(col).value;
+                const cell = row.getCell(col);
+                if (typeof cell.text === 'string' && cell.text.trim()) return cell.text.trim();
+                let v = cell.value;
+                if (v && typeof v === 'object' && Array.isArray(v.richText)) {
+                    v = v.richText.map(r => (r && r.text) || '').join('');
+                }
                 if (v && typeof v === 'object' && v.result !== undefined) v = v.result;
                 if (v && typeof v === 'object' && v.text !== undefined) v = v.text;
                 if (v instanceof Date) {
@@ -1395,12 +1400,16 @@ router.post('/direct/upload', upload.single('file'), async (req, res) => {
                     const localDate = new Date(v.getTime() - offset);
                     return localDate.toISOString().split('T')[0];
                 }
-                return v !== null && v !== undefined ? String(v).trim() : '';
+                const str = v !== null && v !== undefined ? String(v).trim() : '';
+                return str === '[object Object]' ? '' : str;
             };
 
             const getRawDateVal = (col) => {
                 if (!col) return null;
                 let v = row.getCell(col).value;
+                if (v && typeof v === 'object' && Array.isArray(v.richText)) {
+                    v = v.richText.map(r => (r && r.text) || '').join('');
+                }
                 if (v && typeof v === 'object' && v.result !== undefined) v = v.result;
                 if (v && typeof v === 'object' && v.text !== undefined) v = v.text;
                 return v;

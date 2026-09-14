@@ -893,6 +893,70 @@ module.exports = (database) => {
                 return res.status(400).json({ error: '유효한 엑셀 시트를 찾을 수 없습니다.' });
             }
 
+            // ExcelJS 셀 안전 텍스트 추출 헬퍼 (서식 RichText, 수식 Formula, 하이퍼링크 Hyperlink 방어)
+            const getSafeCellText = (cell) => {
+                if (!cell) return '';
+                if (typeof cell.text === 'string' && cell.text.trim()) {
+                    return cell.text.trim();
+                }
+                const val = cell.value;
+                if (val === null || val === undefined) return '';
+                if (typeof val === 'string') return val.trim();
+                if (typeof val === 'number') return String(val);
+                if (typeof val === 'object') {
+                    if (Array.isArray(val.richText)) {
+                        return val.richText.map(r => (r && r.text) || '').join('').trim();
+                    }
+                    if (val.result !== undefined && val.result !== null) {
+                        return String(val.result).trim();
+                    }
+                    if (val.text !== undefined && val.text !== null) {
+                        return String(val.text).trim();
+                    }
+                }
+                const str = String(val).trim();
+                return str === '[object Object]' ? '' : str;
+            };
+
+            // ExcelJS 셀 안전 숫자 추출 헬퍼 (수식 결과 및 콤마 처리)
+            const getSafeCellNumber = (cell) => {
+                if (!cell) return 0;
+                const val = cell.value;
+                if (typeof val === 'number' && !isNaN(val)) return val;
+                if (val && typeof val === 'object') {
+                    if (val.result !== undefined && val.result !== null) {
+                        const num = parseFloat(String(val.result).replace(/,/g, ''));
+                        return isNaN(num) ? 0 : num;
+                    }
+                }
+                const text = getSafeCellText(cell);
+                const num = parseFloat(text.replace(/,/g, ''));
+                return isNaN(num) ? 0 : num;
+            };
+
+            // ExcelJS 날짜 안전 변환 헬퍼 (Date 객체, 수식 결과, 점/대시 포맷 지원)
+            const getSafeCellDate = (cell) => {
+                if (!cell) return '';
+                const val = cell.value;
+                if (val instanceof Date) {
+                    const offset = val.getTimezoneOffset() * 60000;
+                    const localDate = new Date(val.getTime() - offset);
+                    return localDate.toISOString().substring(0, 10);
+                }
+                if (val && typeof val === 'object') {
+                    if (val.result instanceof Date) {
+                        const offset = val.result.getTimezoneOffset() * 60000;
+                        const localDate = new Date(val.result.getTime() - offset);
+                        return localDate.toISOString().substring(0, 10);
+                    }
+                    if (val.result !== undefined && val.result !== null) {
+                        return String(val.result).trim().replace(/\./g, '-').substring(0, 10);
+                    }
+                }
+                const text = getSafeCellText(cell);
+                return text ? text.replace(/\./g, '-').substring(0, 10) : '';
+            };
+
             let headerMap = {};
             let successCount = 0;
             let errorCount = 0;
@@ -902,7 +966,7 @@ module.exports = (database) => {
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber === 1) {
                     row.eachCell((cell, colNumber) => {
-                        const text = String(cell.value || '').trim();
+                        const text = getSafeCellText(cell);
                         if (text.includes('일자') || text.includes('날짜') || text.toLowerCase().includes('date')) headerMap.date = colNumber;
                         else if (text.includes('분류') || text.toLowerCase().includes('category')) headerMap.category = colNumber;
                         else if (text.includes('공급처') || text.includes('매입처') || text.includes('구매처') || text.toLowerCase().includes('supplier')) headerMap.supplier = colNumber;
@@ -915,51 +979,51 @@ module.exports = (database) => {
                         else if (text.includes('비고') || text.toLowerCase().includes('memo')) headerMap.memo = colNumber;
                     });
                 } else {
-                    const rawDate = headerMap.date ? row.getCell(headerMap.date).value : '';
-                    const rawCat = headerMap.category ? row.getCell(headerMap.category).value : '일반자재';
-                    const rawSupp = headerMap.supplier ? row.getCell(headerMap.supplier).value : '';
-                    const rawDest = headerMap.destination ? row.getCell(headerMap.destination).value : '';
-                    const rawItem = headerMap.item ? row.getCell(headerMap.item).value : '';
-                    const rawSpec = headerMap.spec ? row.getCell(headerMap.spec).value : '';
-                    const rawUnit = headerMap.unit ? row.getCell(headerMap.unit).value : 'EA';
-                    const rawQty = headerMap.qty ? row.getCell(headerMap.qty).value : 0;
-                    const rawPrice = headerMap.unit_price ? row.getCell(headerMap.unit_price).value : 0;
-                    const rawMemo = headerMap.memo ? row.getCell(headerMap.memo).value : '';
+                    const dateCell = headerMap.date ? row.getCell(headerMap.date) : null;
+                    const catCell = headerMap.category ? row.getCell(headerMap.category) : null;
+                    const suppCell = headerMap.supplier ? row.getCell(headerMap.supplier) : null;
+                    const destCell = headerMap.destination ? row.getCell(headerMap.destination) : null;
+                    const itemCell = headerMap.item ? row.getCell(headerMap.item) : null;
+                    const specCell = headerMap.spec ? row.getCell(headerMap.spec) : null;
+                    const unitCell = headerMap.unit ? row.getCell(headerMap.unit) : null;
+                    const qtyCell = headerMap.qty ? row.getCell(headerMap.qty) : null;
+                    const priceCell = headerMap.unit_price ? row.getCell(headerMap.unit_price) : null;
+                    const memoCell = headerMap.memo ? row.getCell(headerMap.memo) : null;
 
-                    if (!rawDate || !rawSupp || !rawDest || !rawItem) {
+                    const dateStr = getSafeCellDate(dateCell);
+                    const rawCat = getSafeCellText(catCell) || '일반자재';
+                    const rawSupp = getSafeCellText(suppCell);
+                    const rawDest = getSafeCellText(destCell);
+                    const rawItem = getSafeCellText(itemCell);
+                    const rawSpec = getSafeCellText(specCell) || '-';
+                    const rawUnit = getSafeCellText(unitCell) || 'EA';
+                    const numQty = getSafeCellNumber(qtyCell);
+                    const numPrice = getSafeCellNumber(priceCell);
+                    const rawMemo = getSafeCellText(memoCell);
+
+                    if (!dateStr || !rawSupp || !rawDest || !rawItem) {
                         errorCount++;
                         return;
                     }
 
-                    let dateStr = '';
-                    if (rawDate instanceof Date) {
-                        dateStr = rawDate.toISOString().substring(0, 10);
-                    } else if (typeof rawDate === 'object' && rawDate.text) {
-                        dateStr = String(rawDate.text).trim().replace(/\./g, '-').substring(0, 10);
-                    } else {
-                        dateStr = String(rawDate).trim().replace(/\./g, '-').substring(0, 10);
-                    }
-
-                    const numQty = parseFloat(rawQty) || 0;
-                    const numPrice = parseFloat(rawPrice) || 0;
                     const numSupply = Math.round(numQty * numPrice);
                     const numVat = Math.round(numSupply * 0.1);
                     const numTotal = numSupply + numVat;
 
                     rowsToInsert.push({
                         date: dateStr,
-                        category: rawCat ? String(rawCat).trim() : '일반자재',
-                        supplier: String(rawSupp).trim(),
-                        destination: String(rawDest).trim(),
-                        item: String(rawItem).trim(),
-                        spec: rawSpec ? String(rawSpec).trim() : '-',
-                        unit: rawUnit ? String(rawUnit).trim() : 'EA',
+                        category: rawCat,
+                        supplier: rawSupp,
+                        destination: rawDest,
+                        item: rawItem,
+                        spec: rawSpec,
+                        unit: rawUnit,
                         qty: numQty,
                         unit_price: numPrice,
                         supply_amount: numSupply,
                         vat: numVat,
                         total_amount: numTotal,
-                        memo: rawMemo ? String(rawMemo).trim() : ''
+                        memo: rawMemo
                     });
                 }
             });
