@@ -710,9 +710,148 @@ td.is-inline-editing {
 }
 
 @media print {
-    body { padding: 0; background: #ffffff; }
-    .no-print, .erp-top-toolbar, .erp-filter-ribbon, .col-resizer, .btn-erp, .modal { display: none !important; }
-    .print-only-header { display: block !important; margin-bottom: 15px; }
-    .erp-grid-wrapper { max-height: none !important; overflow: visible !important; border: none !important; }
-    .erp-sheet-table th, .erp-sheet-table td { border-color: #000000 !important; font-size: 10px !important; height: 22px !important; }
+    @page {
+        size: A4 landscape;
+        margin: 8mm 6mm;
+    }
+
+    body {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #ffffff !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Pretendard", sans-serif !important;
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 화면 전용 UI 완전 숨김 */
+    .no-print,
+    .erp-top-toolbar,
+    .erp-filter-ribbon,
+    .erp-summary-strip,
+    .col-resizer,
+    .btn-erp,
+    .modal,
+    .modal-backdrop,
+    #paginationControls,
+    .btn-row-del {
+        display: none !important;
+    }
+
+    /* 인쇄 전용 헤더 */
+    .print-only-header {
+        display: block !important;
+        margin-bottom: 10px !important;
+    }
+    .print-only-header h2 {
+        font-size: 16pt !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
+        text-align: center !important;
+        margin: 0 0 6px 0 !important;
+    }
+    .print-only-header div {
+        font-size: 8.5pt !important;
+        color: #222222 !important;
+        border-bottom: 1.5px solid #000000 !important;
+        padding-bottom: 4px !important;
+    }
+
+    /* 1. 오름/내림차순 정렬 아이콘 출력물에서 삭제 */
+    .erp-sheet-table th i,
+    .erp-sheet-table th .bx,
+    .erp-sheet-table th svg {
+        display: none !important;
+    }
+
+    /* 2. No, 전표번호, 체크박스, 관리 열 삭제(숨김) */
+    .th-check, .td-check,
+    .th-no, .td-no,
+    .th-voucher, .td-voucher,
+    .th-action, .td-action {
+        display: none !important;
+    }
+
+    /* 3. 인라인 편집 커서 제거 */
+    .is-inline-editable {
+        cursor: default !important;
+    }
+
+    /* 4. A4 100% 폭 맞춤 테이블 레이아웃 */
+    .erp-grid-wrapper {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        border: none !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .erp-sheet-table {
+        width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        border: 1.5px solid #000000 !important;
+    }
+
+    .erp-sheet-table thead {
+        display: table-header-group !important;
+    }
+
+    .erp-sheet-table tr {
+        page-break-inside: avoid !important;
+    }
+
+    .erp-sheet-table th,
+    .erp-sheet-table td {
+        border: 1px solid #333333 !important;
+        font-size: 7.5pt !important;
+        line-height: 1.25 !important;
+        height: auto !important;
+        padding: 3px 2px !important;
+        min-width: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .erp-sheet-table th {
+        background-color: #f1f5f9 !important;
+        color: #000000 !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+    }
+
+    /* 각 열 너비 비율 최적화 (합계 100%) */
+    .th-date { width: 7.5% !important; text-align: center !important; }
+    .th-category { width: 6% !important; text-align: center !important; }
+    .th-supplier { width: 10% !important; }
+    .th-destination { width: 11% !important; }
+    .th-item { width: 11% !important; }
+    .th-spec { width: 9% !important; }
+    .th-unit { width: 4% !important; text-align: center !important; }
+    .th-qty { width: 6% !important; }
+    .th-price { width: 7.5% !important; }
+    .th-supply { width: 8.5% !important; }
+    .th-vat { width: 7% !important; }
+    .th-total { width: 8.5% !important; }
+    .th-memo { width: 4% !important; }
+
+    .td-date { text-align: center !important; }
+    .td-category { text-align: center !important; }
+    .td-unit { text-align: center !important; }
+    .td-qty, .td-price, .td-supply, .td-vat, .td-total {
+        text-align: right !important;
+        font-variant-numeric: tabular-nums !important;
+        white-space: nowrap !important;
+    }
+
+    .erp-sheet-table td {
+        overflow: visible !important;
+        text-overflow: clip !important;
+        white-space: normal !important;
+        word-break: break-all !important;
+    }
 }

@@ -120,6 +120,28 @@ const app = {
                 }
             }
         });
+
+        // 인쇄 헤더 자동 갱신
+        window.addEventListener('beforeprint', () => {
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0');
+            const printDateEl = document.getElementById('printDateStr');
+            if (printDateEl) printDateEl.textContent = `출력일시: ${dateStr}`;
+
+            const printFilterEl = document.getElementById('printFilterStr');
+            if (printFilterEl) {
+                const start = document.getElementById('filterStartDate')?.value || '';
+                const end = document.getElementById('filterEndDate')?.value || '';
+                const cat = this.currentCategory || '전체';
+                let filterText = `분류: ${cat}`;
+                if (start || end) filterText += ` | 기간: ${start || '처음'} ~ ${end || '현재'}`;
+                printFilterEl.textContent = `조회조건: ${filterText}`;
+            }
+        });
     },
 
     // -------------------------------------------------------------------------
