@@ -737,6 +737,20 @@ td.is-inline-editing {
 .rank-badge-normal { color: #64748b; }
 
 /* 출고처(현장) 태그 & 더보기 뱃지 */
+/* 출고처(현장) 전체 표기 텍스트 */
+.dest-full-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    font-size: 11px;
+    color: #1e293b;
+    line-height: 1.35;
+    padding: 1px 2px;
+    display: block;
+    cursor: help;
+}
+
 .dest-tag-box {
     display: flex;
     align-items: center;
@@ -780,11 +794,81 @@ td.is-inline-editing {
     gap: 2px;
     transition: all 0.15s;
     line-height: 16px;
+    cursor: pointer;
 }
 .btn-drilldown:hover {
     background-color: #eff6ff;
     border-color: #3b82f6;
     color: #1d4ed8;
+}
+
+/* ── 스마트 활성 필터 칩 바 (.erp-active-filter-bar) ── */
+.erp-active-filter-bar {
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #cbd5e1;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    animation: fadeIn 0.15s ease-in-out;
+}
+.filter-chip-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #ffffff;
+    border: 1px solid #93c5fd;
+    color: #1e3a8a;
+    border-radius: 3px;
+    padding: 1px 7px;
+    font-size: 11px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.filter-chip strong {
+    color: #2563eb;
+    font-weight: 700;
+}
+.filter-chip-remove {
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+.filter-chip-remove:hover {
+    color: #ef4444;
+}
+.filter-clear-all {
+    font-size: 11px !important;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+}
+.filter-clear-all:hover {
+    color: #dc2626 !important;
+    text-decoration: underline !important;
+}
+
+/* ── 품목/규격 상세 내역 모달 (#specDetailModal) ── */
+#modalSpecDetailTable th, #modalSpecDetailTable td {
+    padding: 3px 6px;
+    font-size: 11px;
+}
+#modalSpecDetailTable tbody tr:hover {
+    background-color: #f1f5f9;
 }
 
 /* ── 9. 모달 및 인쇄 서식 ── */

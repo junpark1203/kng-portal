@@ -88,6 +88,13 @@ const app = {
     categories: ['안전자재', '토목자재', '보양재', '소모품', '일반자재'],
     sheetModal: null,
     uploadModal: null,
+    specDetailModal: null,
+    modalDetailData: [],
+    modalCurrentItem: '',
+    modalCurrentSpec: '',
+
+    // 스마트 다중 조건 검색 (AND 결합 필터)
+    activeFilters: {},
 
     // 대시보드 순위 테이블 정렬 및 캐시 상태
     dashboardSort: { col: 'totalSupplyAmount', dir: 'desc' },
@@ -105,6 +112,9 @@ const app = {
 
         const uploadModalEl = document.getElementById('uploadModal');
         if (uploadModalEl) this.uploadModal = new bootstrap.Modal(uploadModalEl);
+
+        const specDetailModalEl = document.getElementById('specDetailModal');
+        if (specDetailModalEl) this.specDetailModal = new bootstrap.Modal(specDetailModalEl);
 
         // 기본 날짜 설정 (전체)
         this.setDatePreset('all');
@@ -203,6 +213,9 @@ const app = {
             viewList.style.display = 'none';
             viewDash.style.display = 'block';
             this.loadDashboardData();
+            setTimeout(() => {
+                this.initTableColResize('dashboardSpecTable', 'kng_external_inout_dash_col_widths_v1');
+            }, 100);
         }
     },
 
@@ -420,8 +433,6 @@ const app = {
             const startDate = document.getElementById('filterStartDate').value;
             const endDate = document.getElementById('filterEndDate').value;
             const category = this.currentCategory || '';
-            const searchTarget = document.getElementById('searchTarget').value;
-            const keyword = document.getElementById('historySearch').value.trim();
 
             const params = new URLSearchParams({
                 page: this.pagination.page,
@@ -434,12 +445,18 @@ const app = {
             if (endDate) params.append('endDate', endDate);
             if (category) params.append('category', category);
 
-            if (keyword) {
-                if (searchTarget) {
-                    params.append(searchTarget, keyword);
-                } else {
-                    params.append('keyword', keyword);
-                }
+            // 누적된 활성 검색 필터 조건 (AND 결합)
+            if (this.activeFilters) {
+                Object.entries(this.activeFilters).forEach(([k, v]) => {
+                    if (v && String(v).trim()) params.append(k, String(v).trim());
+                });
+            }
+
+            // 검색창에 아직 엔터 치지 않은 미등록 검색어가 있는 경우 임시 반영
+            const curSearchTarget = document.getElementById('searchTarget')?.value || 'keyword';
+            const curKw = document.getElementById('historySearch')?.value.trim();
+            if (curKw && (!this.activeFilters || !this.activeFilters[curSearchTarget])) {
+                params.append(curSearchTarget, curKw);
             }
 
             const res = await authFetch(`${API_BASE}?${params.toString()}`);
@@ -1329,16 +1346,84 @@ const app = {
     },
 
     search: function() {
+        const target = document.getElementById('searchTarget')?.value || 'keyword';
+        const kw = document.getElementById('historySearch')?.value.trim();
+
+        if (kw) {
+            this.activeFilters[target] = kw;
+            const searchInput = document.getElementById('historySearch');
+            if (searchInput) searchInput.value = '';
+            const clearBtn = document.getElementById('clearSearchBtn');
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        this.renderFilterChips();
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    removeFilter: function(key) {
+        if (this.activeFilters) {
+            delete this.activeFilters[key];
+        }
+        this.renderFilterChips();
+        this.pagination.page = 1;
+        this.loadList();
+    },
+
+    resetAllFilters: function() {
+        this.activeFilters = {};
+        const inp = document.getElementById('historySearch');
+        if (inp) inp.value = '';
+        const target = document.getElementById('searchTarget');
+        if (target) target.value = '';
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+
+        this.renderFilterChips();
+        this.clearSubSearch();
         this.pagination.page = 1;
         this.loadList();
     },
 
     resetSearch: function() {
-        document.getElementById('historySearch').value = '';
-        document.getElementById('searchTarget').value = '';
-        document.getElementById('clearSearchBtn').classList.add('d-none');
-        this.clearSubSearch();
+        this.resetAllFilters();
         this.setDatePreset('all');
+    },
+
+    renderFilterChips: function() {
+        const bar = document.getElementById('activeFilterBar');
+        const container = document.getElementById('activeFilterChips');
+        if (!bar || !container) return;
+
+        const TARGET_LABELS = {
+            supplier: '공급처',
+            destination: '출고처',
+            item: '품목명',
+            spec: '규격',
+            voucher_id: '전표번호',
+            memo: '비고',
+            keyword: '통합검색'
+        };
+
+        const entries = Object.entries(this.activeFilters || {}).filter(([_, v]) => Boolean(v && v.trim()));
+
+        if (entries.length === 0) {
+            bar.classList.add('d-none');
+            container.innerHTML = '';
+            return;
+        }
+
+        bar.classList.remove('d-none');
+        container.innerHTML = `
+            <span class="filter-chip-label"><i class='bx bx-filter-alt'></i> 활성 검색 조건:</span>
+            ${entries.map(([k, v]) => `
+                <span class="filter-chip">
+                    <strong>${TARGET_LABELS[k] || k}:</strong> ${v}
+                    <i class='bx bx-x filter-chip-remove' onclick="app.removeFilter('${k}')" title="이 조건 해제"></i>
+                </span>
+            `).join('')}
+        `;
     },
 
     onSearchInputKeyup: function(e) {
@@ -1468,9 +1553,17 @@ const app = {
         if (endDate) params.append('endDate', endDate);
         if (category) params.append('category', category);
 
-        if (keyword) {
-            if (searchTarget) params.append(searchTarget, keyword);
-            else params.append('keyword', keyword);
+        // 활성 필터 조건들 전달
+        if (this.activeFilters) {
+            Object.entries(this.activeFilters).forEach(([k, v]) => {
+                if (v && String(v).trim()) params.append(k, String(v).trim());
+            });
+        }
+
+        const curSearchTarget = document.getElementById('searchTarget')?.value || 'keyword';
+        const curKw = document.getElementById('historySearch')?.value.trim();
+        if (curKw && (!this.activeFilters || !this.activeFilters[curSearchTarget])) {
+            params.append(curSearchTarget, curKw);
         }
 
         try {
@@ -1587,20 +1680,204 @@ const app = {
     },
 
     // -------------------------------------------------------------------------
-    // 원클릭 내역 추적 (대시보드 ➡️ 내역 목록 드릴다운)
+    // [신규] 품목/규격별 공급 상세 내역 모달 팝업 (Drill-down Modal)
     // -------------------------------------------------------------------------
-    drillDownToDetail: function(item, spec) {
-        this.switchTab('list');
-        const targetSelect = document.getElementById('searchTarget');
-        const searchInput = document.getElementById('historySearch');
-        if (targetSelect) targetSelect.value = 'item';
-        if (searchInput) {
-            searchInput.value = item || '';
-            const clearBtn = document.getElementById('clearSearchBtn');
-            if (clearBtn) clearBtn.classList.remove('d-none');
+    openSpecDetailModal: async function(item, spec) {
+        const modalEl = document.getElementById('specDetailModal');
+        if (!modalEl) return;
+        if (!this.specDetailModal) this.specDetailModal = new bootstrap.Modal(modalEl);
+
+        const titleEl = document.getElementById('modalSpecTitle');
+        const footerInfoEl = document.getElementById('modalFooterSpecInfo');
+        const tbody = document.getElementById('modalSpecDetailTbody');
+
+        const titleText = `${item}${spec ? ' (' + spec + ')' : ''} 실거래 공급 상세 내역`;
+        if (titleEl) titleEl.textContent = titleText;
+        if (footerInfoEl) footerInfoEl.textContent = `${item} ${spec}`;
+
+        // KPI 초기화
+        document.getElementById('modalKpiCount').textContent = '0건';
+        document.getElementById('modalKpiQty').textContent = '0';
+        document.getElementById('modalKpiSupply').textContent = '0원';
+        document.getElementById('modalKpiAvgPrice').textContent = '0원';
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="15" class="text-center py-4 text-muted">
+                    <i class='bx bx-loader-alt bx-spin'></i> 상세 전표 내역을 불러오는 중입니다...
+                </td>
+            </tr>
+        `;
+
+        this.specDetailModal.show();
+
+        try {
+            const startDate = document.getElementById('filterStartDate')?.value || '';
+            const endDate = document.getElementById('filterEndDate')?.value || '';
+            const category = this.currentCategory || '';
+
+            const params = new URLSearchParams({
+                item: item,
+                limit: 'all',
+                sortCol: 'date',
+                sortDir: 'desc'
+            });
+            if (spec) params.append('spec', spec);
+            if (startDate) params.append('startDate', startDate);
+            if (endDate) params.append('endDate', endDate);
+            if (category) params.append('category', category);
+
+            const res = await authFetch(`${API_BASE}?${params.toString()}`);
+            if (!res.ok) throw new Error('상세 전표 조회 실패');
+
+            const result = await res.json();
+            const rows = result.data || [];
+            this.modalDetailData = rows;
+            this.modalCurrentItem = item;
+            this.modalCurrentSpec = spec;
+
+            // KPI 갱신
+            const totalCount = rows.length;
+            const totalQty = rows.reduce((sum, r) => sum + (parseFloat(r.qty) || 0), 0);
+            const totalSupply = rows.reduce((sum, r) => sum + (parseFloat(r.supply_amount) || 0), 0);
+            const avgPrice = totalQty > 0 ? Math.round(totalSupply / totalQty) : 0;
+
+            document.getElementById('modalKpiCount').textContent = `${fmtNumber(totalCount)}건`;
+            document.getElementById('modalKpiQty').textContent = `${fmtNumber(totalQty)}`;
+            document.getElementById('modalKpiSupply').textContent = fmtWon(totalSupply);
+            document.getElementById('modalKpiAvgPrice').textContent = fmtWon(avgPrice);
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="15" class="text-center py-4 text-muted">
+                            해당 조건의 입출고 전표 내역이 없습니다.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = rows.map((r, idx) => `
+                <tr>
+                    <td style="text-align: center;" class="text-muted">${idx + 1}</td>
+                    <td style="text-align: center;">${r.date}</td>
+                    <td style="text-align: center;">
+                        ${r.voucher_id ? `<span class="badge bg-light text-primary border border-primary-subtle" style="font-size:10px; font-weight:normal;">${r.voucher_id}</span>` : `<span class="text-muted" style="font-size:10px;">${r.id}</span>`}
+                    </td>
+                    <td style="text-align: center;"><span class="badge bg-secondary-subtle text-secondary" style="font-size:10px;">${r.category || '일반자재'}</span></td>
+                    <td class="fw-semibold" title="${r.supplier}">${r.supplier}</td>
+                    <td title="${r.destination}">${r.destination}</td>
+                    <td class="text-primary fw-bold" title="${r.item}">${r.item}</td>
+                    <td title="${r.spec}">${r.spec}</td>
+                    <td style="text-align: center;">${r.unit || 'EA'}</td>
+                    <td style="text-align: right; font-weight: 700;">${fmtNumber(r.qty)}</td>
+                    <td style="text-align: right;">${fmtNumber(r.unit_price)}</td>
+                    <td style="text-align: right;">${fmtNumber(r.supply_amount)}</td>
+                    <td style="text-align: right;">${fmtNumber(r.vat)}</td>
+                    <td style="text-align: right; font-weight: 700; color: #0f172a;">${fmtNumber(r.total_amount)}</td>
+                    <td class="text-muted" title="${r.memo || ''}">${r.memo || ''}</td>
+                </tr>
+            `).join('');
+
+        } catch (err) {
+            console.error('Open spec detail modal error:', err);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="15" class="text-center py-4 text-danger">
+                        <i class='bx bx-error-circle'></i> 데이터를 불러오지 못했습니다: ${err.message}
+                    </td>
+                </tr>
+            `;
         }
-        this.pagination.page = 1;
-        this.loadList();
+    },
+
+    exportModalSpecExcel: async function() {
+        if (!this.modalDetailData || this.modalDetailData.length === 0) {
+            alert('다운로드할 데이터가 없습니다.');
+            return;
+        }
+
+        const item = this.modalCurrentItem || '품목';
+        const spec = this.modalCurrentSpec || '';
+        const startDate = document.getElementById('filterStartDate')?.value || '';
+        const endDate = document.getElementById('filterEndDate')?.value || '';
+        const category = this.currentCategory || '';
+
+        const params = new URLSearchParams({
+            item: item,
+            spec: spec
+        });
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+        if (category) params.append('category', category);
+
+        try {
+            const res = await authFetch(`${API_BASE}/export?${params.toString()}`);
+            if (!res.ok) throw new Error('엑셀 내보내기 실패');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const today = new Date().toISOString().slice(0, 10);
+            a.download = `${item}_${spec ? spec + '_' : ''}상세공급내역_${today}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Modal export error:', err);
+            alert('엑셀 다운로드 오류: ' + err.message);
+        }
+    },
+
+    printModalSpec: function() {
+        const printArea = document.getElementById('modalSpecPrintArea');
+        if (!printArea) return;
+        const title = document.getElementById('modalSpecTitle')?.textContent || '품목 공급 상세 내역';
+        const kpiCount = document.getElementById('modalKpiCount')?.textContent || '';
+        const kpiQty = document.getElementById('modalKpiQty')?.textContent || '';
+        const kpiSupply = document.getElementById('modalKpiSupply')?.textContent || '';
+        const kpiAvgPrice = document.getElementById('modalKpiAvgPrice')?.textContent || '';
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${title}</title>
+                <style>
+                    @page { size: A4 landscape; margin: 8mm 6mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; font-size: 8pt; margin: 0; padding: 10px; color: #000; }
+                    h2 { text-align: center; margin: 0 0 8px 0; font-size: 14pt; }
+                    .kpi { display: flex; justify-content: space-around; background: #f1f5f9; padding: 6px; border: 1px solid #cbd5e1; margin-bottom: 8px; font-size: 8.5pt; }
+                    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                    th, td { border: 1px solid #333; padding: 3px 2px; font-size: 7.5pt; line-height: 1.2; word-break: break-all; }
+                    th { background-color: #f1f5f9; font-weight: 700; text-align: center; }
+                    .text-end { text-align: right; }
+                    .text-center { text-align: center; }
+                </style>
+            </head>
+            <body>
+                <h2>${title}</h2>
+                <div class="kpi">
+                    <span><strong>총 공급건수:</strong> ${kpiCount}</span>
+                    <span><strong>총 공급수량:</strong> ${kpiQty}</span>
+                    <span><strong>총 공급가액:</strong> ${kpiSupply}</span>
+                    <span><strong>평균단가:</strong> ${kpiAvgPrice}</span>
+                </div>
+                ${printArea.innerHTML}
+                <script>
+                    window.onload = function() { window.print(); window.close(); };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    },
+
+    drillDownToDetail: function(item, spec) {
+        this.openSpecDetailModal(item, spec);
     },
 
     renderSpecRanking: function(specs, totalQty, totalSupply) {
@@ -1671,19 +1948,12 @@ const app = {
             else if (idx === 1) rankBadge = `<span class="rank-badge rank-badge-2" title="2위">2</span>`;
             else if (idx === 2) rankBadge = `<span class="rank-badge rank-badge-3" title="3위">3</span>`;
 
-            // 출고처 뱃지 및 툴팁 렌더링
+            // 출고처(현장) 전체 표기 및 툴팁 렌더링
             const destList = s.destinationsList || (s.destinations ? s.destinations.split(',').map(d => d.trim()).filter(Boolean) : []);
+            const fullText = destList.join(', ');
             let destHtml = `<span class="text-muted" style="font-size:11px;">-</span>`;
-            if (destList.length === 1) {
-                destHtml = `<span class="dest-tag" title="${destList[0]}">${destList[0]}</span>`;
-            } else if (destList.length > 1) {
-                const fullText = destList.join(', ');
-                destHtml = `
-                    <div class="dest-tag-box">
-                        <span class="dest-tag" title="${fullText}">${destList[0]}</span>
-                        <span class="dest-more-badge" title="전체 납품처 (${destList.length}곳): &#10;${destList.join('&#10;')}">+${destList.length - 1}곳</span>
-                    </div>
-                `;
+            if (destList.length > 0) {
+                destHtml = `<span class="dest-full-text" title="전체 출고처 (${destList.length}곳):&#10;${destList.join('&#10;')}">${fullText}</span>`;
             }
 
             const safeItem = (s.item || '').replace(/'/g, "\\'");
@@ -1709,7 +1979,7 @@ const app = {
                         </div>
                     </td>
                     <td style="text-align: center;">
-                        <button type="button" class="btn-drilldown" onclick="app.drillDownToDetail('${safeItem}', '${safeSpec}')" title="이 품목의 전체 입출고 전표 내역 바로보기">
+                        <button type="button" class="btn-drilldown" onclick="app.openSpecDetailModal('${safeItem}', '${safeSpec}')" title="이 규격의 전체 실거래 전표 모달 조회">
                             <i class='bx bx-search'></i> 조회
                         </button>
                     </td>
@@ -1774,18 +2044,17 @@ const app = {
     },
 
     // -------------------------------------------------------------------------
-    // 테이블 열 너비 드래그 조절 & 더블클릭 Auto-Fit (localStorage 저장)
+    // 범용 테이블 열 너비 드래그 조절 & 더블클릭 Auto-Fit (localStorage 저장)
     // -------------------------------------------------------------------------
-    initColResize: function() {
-        const table = document.getElementById('mainGridTable');
+    initTableColResize: function(tableId, storageKey, minWidth = 35) {
+        const table = document.getElementById(tableId);
         if (!table) return;
 
         const ths = table.querySelectorAll('thead th');
-        const STORAGE_KEY = 'kng_external_inout_col_widths_v2';
 
         // 저장된 너비 복원
         try {
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
             ths.forEach((th, idx) => {
                 if (saved[idx]) {
                     th.style.width = saved[idx] + 'px';
@@ -1800,15 +2069,19 @@ const app = {
                 widths[idx] = th.offsetWidth;
             });
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(widths));
+                localStorage.setItem(storageKey, JSON.stringify(widths));
             } catch (e) {}
         };
 
         ths.forEach((th, idx) => {
-            // 마지막 컬럼 및 체크박스는 리사이저 제외
-            if (idx === 0 || idx === ths.length - 1) return;
+            // 마지막 컬럼 및 첫 번째 체크박스 제외
+            if (idx === ths.length - 1) return;
+            if (tableId === 'mainGridTable' && idx === 0) return;
 
             th.style.position = 'relative';
+
+            // 중복 생성 방지
+            if (th.querySelector('.col-resizer')) return;
 
             const resizer = document.createElement('div');
             resizer.className = 'col-resizer';
@@ -1819,7 +2092,7 @@ const app = {
 
             const onMouseMove = (e) => {
                 const diff = e.pageX - startX;
-                const newWidth = Math.max(35, startWidth + diff);
+                const newWidth = Math.max(minWidth, startWidth + diff);
                 th.style.width = newWidth + 'px';
                 th.style.minWidth = newWidth + 'px';
             };
@@ -1832,7 +2105,7 @@ const app = {
             };
 
             resizer.addEventListener('mousedown', (e) => {
-                e.stopPropagation();
+                e.stopPropagation(); // 헤더 정렬 클릭 이벤트 방지
                 startX = e.pageX;
                 startWidth = th.offsetWidth;
                 resizer.classList.add('is-resizing');
@@ -1849,12 +2122,17 @@ const app = {
                     const l = c.textContent.trim().length * 8 + 20;
                     if (l > maxLen) maxLen = l;
                 });
-                const fitWidth = Math.min(Math.max(45, maxLen), 350);
+                const fitWidth = Math.min(Math.max(45, maxLen), 450);
                 th.style.width = fitWidth + 'px';
                 th.style.minWidth = fitWidth + 'px';
                 saveWidths();
             });
         });
+    },
+
+    initColResize: function() {
+        this.initTableColResize('mainGridTable', 'kng_external_inout_col_widths_v2');
+        this.initTableColResize('dashboardSpecTable', 'kng_external_inout_dash_col_widths_v1');
     }
 };
 
