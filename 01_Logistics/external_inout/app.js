@@ -51,6 +51,7 @@ const app = {
     selectedIds: new Set(),
     partnersList: [],
     itemSuggestions: [],
+    categories: ['안전자재', '토목자재', '보양재', '소모품', '일반자재'],
     sheetModal: null,
     uploadModal: null,
 
@@ -70,9 +71,10 @@ const app = {
         // 기본 날짜 설정 (전체)
         this.setDatePreset('all');
 
-        // 거래처 및 품목 추천 데이터 사전 로드
+        // 거래처, 품목 추천, 자재 분류 데이터 사전 로드
         this.loadPartners();
         this.loadItemSuggestions();
+        this.loadCategories();
 
         // 자동완성 이벤트 바인딩
         this.setupAutocompletes();
@@ -144,8 +146,49 @@ const app = {
         }
     },
 
+    // -------------------------------------------------------------------------
+    // 자재 분류(카테고리) 동적 로드 및 탭/선택창 렌더링
+    // -------------------------------------------------------------------------
+    loadCategories: async function() {
+        try {
+            const res = await authFetch(`${API_BASE}/categories`);
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    this.categories = data;
+                    this.renderCategoryTabs();
+                    this.renderCategoryDatalist();
+                }
+            }
+        } catch (err) {
+            console.warn('Load categories error:', err);
+        }
+    },
+
+    renderCategoryTabs: function() {
+        const group = document.getElementById('categoryTabGroup');
+        if (!group) return;
+
+        const current = this.currentCategory || '';
+        let html = `<button type="button" class="erp-tab-btn ${current === '' ? 'active' : ''}" data-category="" onclick="app.setCategoryFilter('')">전체</button>`;
+
+        (this.categories || []).forEach(cat => {
+            const isActive = current === cat;
+            html += `<button type="button" class="erp-tab-btn ${isActive ? 'active' : ''}" data-category="${cat}" onclick="app.setCategoryFilter('${cat}')">${cat}</button>`;
+        });
+
+        group.innerHTML = html;
+    },
+
+    renderCategoryDatalist: function() {
+        const dl = document.getElementById('categoryDataList');
+        if (!dl) return;
+        dl.innerHTML = (this.categories || []).map(cat => `<option value="${cat}"></option>`).join('');
+    },
+
     // 자재 분류 퀵 필터 탭
     setCategoryFilter: function(cat) {
+        this.currentCategory = cat;
         const btns = document.querySelectorAll('#categoryTabGroup .erp-tab-btn');
         btns.forEach(b => {
             if (b.getAttribute('data-category') === cat) b.classList.add('active');
@@ -470,6 +513,9 @@ const app = {
         const input = document.createElement('input');
         input.type = (field === 'qty' || field === 'unit_price' || field === 'vat') ? 'number' : (field === 'date' ? 'date' : 'text');
         input.className = 'erp-inline-input';
+        if (field === 'category') {
+            input.setAttribute('list', 'categoryDataList');
+        }
         if (field === 'qty' || field === 'unit_price' || field === 'vat') {
             input.classList.add('text-end');
             input.value = parseFloat(originalText) || 0;
@@ -531,6 +577,10 @@ const app = {
 
                 tdEl.classList.remove('is-inline-editing');
                 this.flashCell(tdEl, '#dcfce7'); // 성공 연두색 깜빡임
+
+                if (field === 'category') {
+                    this.loadCategories();
+                }
             } catch (err) {
                 alert('인라인 수정 오류: ' + err.message);
                 tdEl.classList.remove('is-inline-editing');
@@ -1039,7 +1089,8 @@ const app = {
 
             if (this.sheetModal) this.sheetModal.hide();
 
-            // 목록 새로고침
+            // 분류 목록 및 내역 목록 새로고침
+            await this.loadCategories();
             this.pagination.page = 1;
             await this.loadList();
 
@@ -1330,6 +1381,7 @@ const app = {
             statusText.innerHTML = `<span class="text-success"><i class='bx bx-check-circle'></i> ${result.message}</span>`;
             alert(result.message);
             if (this.uploadModal) this.uploadModal.hide();
+            await this.loadCategories();
             await this.loadList();
 
         } catch (err) {

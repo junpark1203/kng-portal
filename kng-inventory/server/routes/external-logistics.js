@@ -153,6 +153,37 @@ module.exports = (database) => {
         }
     });
 
+    // --- 2-1. 등록된 자재 분류(카테고리) 동적 조회 ---
+    router.get('/categories', async (req, res) => {
+        try {
+            const defaultCategories = ['안전자재', '토목자재', '보양재', '소모품', '일반자재'];
+            const rows = await dbAll(`
+                SELECT DISTINCT category 
+                FROM external_logistics 
+                WHERE category IS NOT NULL AND TRIM(category) != ''
+            `);
+            
+            const dbCategories = rows.map(r => r.category.trim()).filter(Boolean);
+            
+            // 기본 5대 분류를 선두에 유지하고, 신규/커스텀 분류들을 뒤에 추가
+            const categorySet = new Set(defaultCategories);
+            const customCategories = [];
+            
+            dbCategories.forEach(cat => {
+                if (!categorySet.has(cat)) {
+                    customCategories.push(cat);
+                }
+            });
+            customCategories.sort((a, b) => a.localeCompare(b, 'ko'));
+            
+            const resultCategories = [...defaultCategories, ...customCategories];
+            res.json(resultCategories);
+        } catch (err) {
+            console.error('Categories fetch error:', err);
+            res.status(500).json({ error: '분류 목록 조회 실패' });
+        }
+    });
+
     // --- 3. 목록 조회 (검색, 필터링, 정렬, 페이징, 합계 요약) ---
     router.get('/', async (req, res) => {
         try {

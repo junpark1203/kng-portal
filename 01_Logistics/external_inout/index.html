@@ -313,14 +313,16 @@
                                 </td>
                                 <th>자재분류</th>
                                 <td>
-                                    <select class="form-select" id="sheetCategory">
-                                        <option value="일반자재" selected>일반자재</option>
-                                        <option value="안전자재">안전자재</option>
-                                        <option value="토목자재">토목자재</option>
-                                        <option value="보양재">보양재</option>
-                                        <option value="소모품">소모품</option>
-                                        <option value="기타">기타</option>
-                                    </select>
+                                    <div class="position-relative">
+                                        <input type="text" class="form-control" id="sheetCategory" list="categoryDataList" placeholder="분류 선택 또는 직접입력" value="일반자재" autocomplete="off" required>
+                                        <datalist id="categoryDataList">
+                                            <option value="일반자재"></option>
+                                            <option value="안전자재"></option>
+                                            <option value="토목자재"></option>
+                                            <option value="보양재"></option>
+                                            <option value="소모품"></option>
+                                        </datalist>
+                                    </div>
                                 </td>
                                 <th>공급처(구매)</th>
                                 <td class="position-relative">

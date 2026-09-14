@@ -43,7 +43,8 @@ const verifyToken = async (req, res, next) => {
     // 이미지 프록시 및 표준 엑셀 양식 등 인증 없이 접근해야 하는 공개 경로 예외 처리
     const publicPaths = [
         '/exhibition-report/proxy',
-        '/external-logistics/template'
+        '/external-logistics/template',
+        '/external-logistics/categories'
     ];
     if (publicPaths.some(p => req.originalUrl && req.originalUrl.includes(p))) {
         return next();
