@@ -1473,17 +1473,24 @@ const app = {
 
             const data = await res.json();
 
-            // KPI 카드 반영
+            // KPI 카드 반영 (스네이크 케이스 & 카멜 케이스 안전 호환)
             const kpi = data.kpi || {};
-            document.getElementById('kpiTotalCount').textContent = `${fmtNumber(kpi.total_count || 0)}건`;
-            document.getElementById('kpiTotalQty').textContent = `${fmtNumber(kpi.total_qty || 0)} EA`;
-            document.getElementById('kpiTotalSupply').textContent = fmtWon(kpi.total_supply || 0);
-            document.getElementById('kpiAvgPrice').textContent = fmtWon(kpi.avg_unit_price || 0);
-            document.getElementById('kpiSpecCount').textContent = `${fmtNumber(kpi.total_specs || 0)}종`;
-            document.getElementById('kpiDestCount').textContent = `${fmtNumber(kpi.total_destinations || 0)}개소`;
+            const totalCount = kpi.total_records ?? kpi.total_count ?? 0;
+            const totalQty = kpi.total_qty ?? 0;
+            const totalSupply = kpi.total_supply_amount ?? kpi.total_supply ?? 0;
+            const avgPrice = kpi.avg_unit_price ?? kpi.avg_price ?? (totalQty > 0 ? Math.round(totalSupply / totalQty) : 0);
+            const totalSpecs = kpi.total_specs ?? 0;
+            const totalSites = kpi.total_sites ?? kpi.total_destinations ?? 0;
+
+            document.getElementById('kpiTotalCount').textContent = `${fmtNumber(totalCount)}건`;
+            document.getElementById('kpiTotalQty').textContent = `${fmtNumber(totalQty)} EA`;
+            document.getElementById('kpiTotalSupply').textContent = fmtWon(totalSupply);
+            document.getElementById('kpiAvgPrice').textContent = fmtWon(avgPrice);
+            document.getElementById('kpiSpecCount').textContent = `${fmtNumber(totalSpecs)}종`;
+            document.getElementById('kpiDestCount').textContent = `${fmtNumber(totalSites)}개소`;
 
             // 규격 순위 테이블 렌더링
-            this.renderSpecRanking(data.specStatistics || [], kpi.total_qty || 1);
+            this.renderSpecRanking(data.specStatistics || [], totalQty);
 
             // 차트 렌더링
             this.renderCharts(data.specStatistics || [], data.monthlyTrends || []);
@@ -1497,23 +1504,35 @@ const app = {
         const tbody = document.getElementById('specRankingTableBody');
         if (!tbody) return;
 
-        if (specs.length === 0) {
+        if (!specs || specs.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-muted">집계 데이터가 없습니다.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = specs.map((s, idx) => {
-            const share = totalQty > 0 ? ((s.spec_qty / totalQty) * 100).toFixed(1) : 0;
+            const qty = s.totalQty ?? s.spec_qty ?? s.sum_qty ?? 0;
+            const count = s.recordCount ?? s.count ?? s.record_count ?? 0;
+            const supply = s.totalSupplyAmount ?? s.spec_supply_amount ?? s.sum_supply_amount ?? 0;
+            const avgPrice = s.avgPrice ?? s.avg_price ?? (qty > 0 ? Math.round(supply / qty) : 0);
+
+            // 물량 비중 계산 (NaN 방어)
+            let share = 0;
+            if (s.qtyShare !== undefined && !isNaN(s.qtyShare)) {
+                share = s.qtyShare;
+            } else if (totalQty > 0 && qty > 0) {
+                share = parseFloat(((qty / totalQty) * 100).toFixed(1));
+            }
+
             return `
                 <tr>
                     <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
                     <td class="fw-bold text-primary">${s.item}</td>
                     <td>${s.spec}</td>
                     <td style="text-align: center;">${s.unit || 'EA'}</td>
-                    <td style="text-align: right;">${fmtNumber(s.count)}건</td>
-                    <td style="text-align: right; font-weight: 700;">${fmtNumber(s.spec_qty)}</td>
-                    <td style="text-align: right;">${fmtNumber(s.spec_supply_amount)}원</td>
-                    <td style="text-align: right;">${fmtNumber(s.avg_price)}원</td>
+                    <td style="text-align: right;">${fmtNumber(count)}건</td>
+                    <td style="text-align: right; font-weight: 700;">${fmtNumber(qty)}</td>
+                    <td style="text-align: right;">${fmtNumber(supply)}원</td>
+                    <td style="text-align: right;">${fmtNumber(avgPrice)}원</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <div class="progress flex-grow-1" style="height: 6px;">
@@ -1532,13 +1551,13 @@ const app = {
         const pieCtx = document.getElementById('specPieChart');
         if (pieCtx) {
             if (this.specChartInstance) this.specChartInstance.destroy();
-            const topSpecs = specs.slice(0, 6);
+            const topSpecs = (specs || []).slice(0, 6);
             this.specChartInstance = new Chart(pieCtx, {
                 type: 'doughnut',
                 data: {
                     labels: topSpecs.map(s => `${s.item} (${s.spec})`),
                     datasets: [{
-                        data: topSpecs.map(s => s.spec_qty),
+                        data: topSpecs.map(s => s.totalQty ?? s.spec_qty ?? s.sum_qty ?? 0),
                         backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#94a3b8']
                     }]
                 },
@@ -1559,10 +1578,10 @@ const app = {
             this.monthlyChartInstance = new Chart(barCtx, {
                 type: 'bar',
                 data: {
-                    labels: monthly.map(m => m.month_str),
+                    labels: (monthly || []).map(m => m.month_str),
                     datasets: [{
                         label: '공급 물량 (EA)',
-                        data: monthly.map(m => m.month_qty),
+                        data: (monthly || []).map(m => m.month_qty ?? m.total_qty ?? 0),
                         backgroundColor: '#10b981',
                         borderRadius: 2
                     }]

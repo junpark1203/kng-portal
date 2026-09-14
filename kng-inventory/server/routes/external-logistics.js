@@ -399,18 +399,40 @@ module.exports = (database) => {
             const specRows = await dbAll(specSql, params);
 
             const totalQty = kpi ? (kpi.total_qty || 0) : 0;
+            const formattedKpi = kpi ? {
+                ...kpi,
+                total_count: kpi.total_records || 0,
+                total_records: kpi.total_records || 0,
+                total_qty: kpi.total_qty || 0,
+                total_supply: kpi.total_supply_amount || 0,
+                total_supply_amount: kpi.total_supply_amount || 0,
+                total_destinations: kpi.total_sites || 0,
+                total_sites: kpi.total_sites || 0,
+                total_specs: kpi.total_specs || 0,
+                total_items: kpi.total_items || 0,
+                avg_unit_price: kpi.avg_unit_price || 0,
+                avg_price: kpi.avg_unit_price || 0
+            } : {};
+
             const specStatistics = specRows.map((row, idx) => ({
                 rank: idx + 1,
                 item: row.item,
                 spec: row.spec,
                 unit: row.unit || 'EA',
                 recordCount: row.record_count,
+                record_count: row.record_count,
+                count: row.record_count,
                 totalQty: row.sum_qty,
+                spec_qty: row.sum_qty,
+                sum_qty: row.sum_qty,
                 qtyShare: totalQty > 0 ? parseFloat(((row.sum_qty / totalQty) * 100).toFixed(1)) : 0,
                 totalSupplyAmount: row.sum_supply_amount,
+                spec_supply_amount: row.sum_supply_amount,
+                sum_supply_amount: row.sum_supply_amount,
                 totalVat: row.sum_vat,
                 totalAmount: row.sum_total_amount,
                 avgPrice: row.avg_price,
+                avg_price: row.avg_price,
                 minPrice: row.min_price,
                 maxPrice: row.max_price,
                 lastDate: row.last_date,
@@ -434,7 +456,7 @@ module.exports = (database) => {
             const monthlyRows = await dbAll(monthlySql, params);
 
             res.json({
-                kpi: kpi || {},
+                kpi: formattedKpi,
                 specStatistics,
                 monthlyTrends: monthlyRows
             });
