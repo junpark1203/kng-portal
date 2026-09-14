@@ -1119,9 +1119,15 @@ tfoot.print-only-tfoot {
         white-space: normal !important;
     }
 
-    /* 8. 표 하단 공식 회계 합계행 (Summary Footer) */
+    /* 8. 표 하단 공식 회계 합계행 (마지막 페이지 마지막 행에만 1회 출력) */
     tfoot.print-only-tfoot {
-        display: table-footer-group !important;
+        display: table-row-group !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    .tr-print-summary {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
     .tr-print-summary td {
         background-color: #f1f5f9 !important;
