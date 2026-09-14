@@ -882,7 +882,7 @@ td.is-inline-editing {
 
 @media print {
     @page {
-        size: A4 landscape;
+        size: A4 portrait;
         margin: 8mm 6mm;
     }
 
@@ -901,6 +901,7 @@ td.is-inline-editing {
     .erp-top-toolbar,
     .erp-filter-ribbon,
     .erp-summary-strip,
+    .erp-active-filter-bar,
     .col-resizer,
     .btn-erp,
     .modal,
@@ -916,14 +917,14 @@ td.is-inline-editing {
         margin-bottom: 10px !important;
     }
     .print-only-header h2 {
-        font-size: 16pt !important;
+        font-size: 15pt !important;
         font-weight: 700 !important;
         color: #000000 !important;
         text-align: center !important;
         margin: 0 0 6px 0 !important;
     }
     .print-only-header div {
-        font-size: 8.5pt !important;
+        font-size: 8pt !important;
         color: #222222 !important;
         border-bottom: 1.5px solid #000000 !important;
         padding-bottom: 4px !important;
@@ -936,11 +937,15 @@ td.is-inline-editing {
         display: none !important;
     }
 
-    /* 2. No, 전표번호, 체크박스, 관리 열 삭제(숨김) */
+    /* 2. No, 전표번호, 체크박스, 관리 열, 대시보드 내역추적 열 삭제(숨김) */
     .th-check, .td-check,
     .th-no, .td-no,
     .th-voucher, .td-voucher,
-    .th-action, .td-action {
+    .th-action, .td-action,
+    .th-dash-action, .td-dash-action,
+    .btn-drilldown,
+    #dashboardSpecTable th:last-child,
+    #dashboardSpecTable td:last-child {
         display: none !important;
     }
 
@@ -949,7 +954,7 @@ td.is-inline-editing {
         cursor: default !important;
     }
 
-    /* 4. A4 100% 폭 맞춤 테이블 레이아웃 */
+    /* 4. A4 세로 100% 폭 맞춤 테이블 레이아웃 */
     .erp-grid-wrapper {
         max-height: none !important;
         height: auto !important;
@@ -980,10 +985,10 @@ td.is-inline-editing {
     .erp-sheet-table th,
     .erp-sheet-table td {
         border: 1px solid #333333 !important;
-        font-size: 7.5pt !important;
-        line-height: 1.25 !important;
+        font-size: 7pt !important;
+        line-height: 1.2 !important;
         height: auto !important;
-        padding: 3px 2px !important;
+        padding: 2.5px 2px !important;
         min-width: 0 !important;
         box-shadow: none !important;
     }
@@ -995,20 +1000,31 @@ td.is-inline-editing {
         text-align: center !important;
     }
 
-    /* 각 열 너비 비율 최적화 (합계 100%) */
-    .th-date { width: 7.5% !important; text-align: center !important; }
-    .th-category { width: 6% !important; text-align: center !important; }
-    .th-supplier { width: 10% !important; }
-    .th-destination { width: 11% !important; }
-    .th-item { width: 11% !important; }
-    .th-spec { width: 9% !important; }
+    /* [내역 목록] A4 세로 열 너비 비율 최적화 (합계 100%) */
+    .th-date { width: 8.5% !important; text-align: center !important; }
+    .th-category { width: 7% !important; text-align: center !important; }
+    .th-supplier { width: 12.5% !important; }
+    .th-destination { width: 13.5% !important; }
+    .th-item { width: 14.5% !important; }
+    .th-spec { width: 11% !important; }
     .th-unit { width: 4% !important; text-align: center !important; }
-    .th-qty { width: 6% !important; }
-    .th-price { width: 7.5% !important; }
-    .th-supply { width: 8.5% !important; }
-    .th-vat { width: 7% !important; }
-    .th-total { width: 8.5% !important; }
-    .th-memo { width: 4% !important; }
+    .th-qty { width: 6.5% !important; }
+    .th-price { width: 7% !important; }
+    .th-supply { width: 8% !important; }
+    .th-vat { width: 7.5% !important; }
+    .th-memo, .td-memo { display: none !important; }
+
+    /* [대시보드 순위표] A4 세로 열 너비 비율 최적화 (합계 100%) */
+    #dashboardSpecTable th:nth-child(1), #dashboardSpecTable td:nth-child(1) { width: 5% !important; text-align: center !important; }
+    #dashboardSpecTable th:nth-child(2), #dashboardSpecTable td:nth-child(2) { width: 14% !important; }
+    #dashboardSpecTable th:nth-child(3), #dashboardSpecTable td:nth-child(3) { width: 12% !important; }
+    #dashboardSpecTable th:nth-child(4), #dashboardSpecTable td:nth-child(4) { width: 5% !important; text-align: center !important; }
+    #dashboardSpecTable th:nth-child(5), #dashboardSpecTable td:nth-child(5) { width: 17% !important; }
+    #dashboardSpecTable th:nth-child(6), #dashboardSpecTable td:nth-child(6) { width: 7% !important; text-align: right !important; }
+    #dashboardSpecTable th:nth-child(7), #dashboardSpecTable td:nth-child(7) { width: 8% !important; text-align: right !important; }
+    #dashboardSpecTable th:nth-child(8), #dashboardSpecTable td:nth-child(8) { width: 12% !important; text-align: right !important; }
+    #dashboardSpecTable th:nth-child(9), #dashboardSpecTable td:nth-child(9) { width: 10% !important; text-align: right !important; }
+    #dashboardSpecTable th:nth-child(10), #dashboardSpecTable td:nth-child(10) { width: 10% !important; text-align: right !important; }
 
     .td-date { text-align: center !important; }
     .td-category { text-align: center !important; }
@@ -1024,5 +1040,16 @@ td.is-inline-editing {
         text-overflow: clip !important;
         white-space: normal !important;
         word-break: break-all !important;
+    }
+
+    /* 대시보드 차트 인쇄 시 수직 정렬 */
+    .chart-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .chart-box {
+        width: 100% !important;
+        page-break-inside: avoid !important;
     }
 }

@@ -261,7 +261,7 @@ module.exports = (database) => {
                     COALESCE(SUM(supply_amount), 0) as sum_supply_amount,
                     COALESCE(SUM(vat), 0) as sum_vat,
                     COALESCE(SUM(total_amount), 0) as sum_total_amount,
-                    CASE WHEN SUM(qty) > 0 THEN ROUND(SUM(supply_amount) / SUM(qty), 1) ELSE 0 END as avg_unit_price
+                    CASE WHEN SUM(qty) > 0 THEN ROUND(SUM(supply_amount) / SUM(qty)) ELSE 0 END as avg_unit_price
                 FROM external_logistics
                 ${whereStr}
             `;
@@ -360,7 +360,7 @@ module.exports = (database) => {
                     COALESCE(SUM(supply_amount), 0) as total_supply_amount,
                     COALESCE(SUM(vat), 0) as total_vat,
                     COALESCE(SUM(total_amount), 0) as total_amount,
-                    CASE WHEN SUM(qty) > 0 THEN ROUND(SUM(supply_amount) / SUM(qty), 1) ELSE 0 END as avg_unit_price
+                    CASE WHEN SUM(qty) > 0 THEN ROUND(SUM(supply_amount) / SUM(qty)) ELSE 0 END as avg_unit_price
                 FROM external_logistics
                 ${whereStr}
             `;
@@ -377,7 +377,7 @@ module.exports = (database) => {
                     COALESCE(SUM(supply_amount), 0) as sum_supply_amount,
                     COALESCE(SUM(vat), 0) as sum_vat,
                     COALESCE(SUM(total_amount), 0) as sum_total_amount,
-                    ROUND(AVG(unit_price), 1) as avg_price,
+                    CASE WHEN SUM(qty) > 0 THEN ROUND(SUM(supply_amount) / SUM(qty)) ELSE ROUND(AVG(unit_price)) END as avg_price,
                     MIN(unit_price) as min_price,
                     MAX(unit_price) as max_price,
                     MAX(date) as last_date,
@@ -410,8 +410,8 @@ module.exports = (database) => {
                 total_sites: kpi.total_sites || 0,
                 total_specs: kpi.total_specs || 0,
                 total_items: kpi.total_items || 0,
-                avg_unit_price: kpi.avg_unit_price || 0,
-                avg_price: kpi.avg_unit_price || 0
+                avg_unit_price: Math.round(kpi.avg_unit_price || 0),
+                avg_price: Math.round(kpi.avg_unit_price || 0)
             } : {};
 
             const totalSupply = kpi ? (kpi.total_supply_amount || 0) : 0;
@@ -439,8 +439,8 @@ module.exports = (database) => {
                     valueShare,
                     totalVat: row.sum_vat,
                     totalAmount: row.sum_total_amount,
-                    avgPrice: row.avg_price,
-                    avg_price: row.avg_price,
+                    avgPrice: Math.round(row.avg_price || 0),
+                    avg_price: Math.round(row.avg_price || 0),
                     minPrice: row.min_price,
                     maxPrice: row.max_price,
                     lastDate: row.last_date,

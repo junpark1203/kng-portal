@@ -101,8 +101,10 @@ const app = {
     dashboardDataCache: { specs: [], totalQty: 0, totalSupply: 0 },
 
     // Chart instances
-    specChartInstance: null,
+    topAmountChartInstance: null,
+    topQtyChartInstance: null,
     monthlyChartInstance: null,
+    dashChart2Mode: 'qty',
 
     // 초기화
     init: async function() {
@@ -1935,7 +1937,7 @@ const app = {
             const qty = s.totalQty ?? s.spec_qty ?? s.sum_qty ?? 0;
             const count = s.recordCount ?? s.count ?? s.record_count ?? 0;
             const supply = s.totalSupplyAmount ?? s.spec_supply_amount ?? s.sum_supply_amount ?? 0;
-            const avgPrice = s.avgPrice ?? s.avg_price ?? (qty > 0 ? Math.round(supply / qty) : 0);
+            const avgPrice = Math.round(s.avgPrice ?? s.avg_price ?? (qty > 0 ? (supply / qty) : 0));
 
             // 금액 비중 및 물량 비중 계산
             const valueShare = s.valueShare !== undefined ? s.valueShare : (totalSupply > 0 ? parseFloat(((supply / totalSupply) * 100).toFixed(1)) : 0);
@@ -1978,7 +1980,7 @@ const app = {
                             <span style="font-size: 10.5px; width: 42px; text-align: right; font-weight: 600;">${activeShare}%</span>
                         </div>
                     </td>
-                    <td style="text-align: center;">
+                    <td class="td-dash-action" style="text-align: center;">
                         <button type="button" class="btn-drilldown" onclick="app.openSpecDetailModal('${safeItem}', '${safeSpec}')" title="이 규격의 전체 실거래 전표 모달 조회">
                             <i class='bx bx-search'></i> 조회
                         </button>
@@ -1988,32 +1990,135 @@ const app = {
         }).join('');
     },
 
+    // 대시보드 차트 2 모드 토글 (수량 Top 10 ⇄ 월별 추이)
+    setDashChart2Mode: function(mode) {
+        this.dashChart2Mode = mode;
+        const btnQty = document.getElementById('btnChartModeQty');
+        const btnMonthly = document.getElementById('btnChartModeMonthly');
+        const canvasQty = document.getElementById('topQtyBarChart');
+        const canvasMonthly = document.getElementById('monthlyBarChart');
+        const titleEl = document.getElementById('dashChart2Title');
+
+        if (mode === 'qty') {
+            if (btnQty) { btnQty.classList.add('active'); }
+            if (btnMonthly) { btnMonthly.classList.remove('active'); }
+            if (canvasQty) canvasQty.classList.remove('d-none');
+            if (canvasMonthly) canvasMonthly.classList.add('d-none');
+            if (titleEl) titleEl.innerHTML = `<i class='bx bx-package text-success'></i> 공급수량 상위 10대 품목 (Top 10)`;
+        } else {
+            if (btnQty) { btnQty.classList.remove('active'); }
+            if (btnMonthly) { btnMonthly.classList.add('active'); }
+            if (canvasQty) canvasQty.classList.add('d-none');
+            if (canvasMonthly) canvasMonthly.classList.remove('d-none');
+            if (titleEl) titleEl.innerHTML = `<i class='bx bx-bar-chart-alt-2 text-success'></i> 월별 공급 실적 추이`;
+        }
+    },
+
     renderCharts: function(specs, monthly) {
-        // 1) 점유율 도넛 차트
-        const pieCtx = document.getElementById('specPieChart');
-        if (pieCtx) {
-            if (this.specChartInstance) this.specChartInstance.destroy();
-            const topSpecs = (specs || []).slice(0, 6);
-            this.specChartInstance = new Chart(pieCtx, {
-                type: 'doughnut',
+        // 1) 공급가액 상위 10대 품목 (Top 10 by Amount) - 가로 바 차트
+        const topAmountCtx = document.getElementById('topAmountBarChart');
+        if (topAmountCtx) {
+            if (this.topAmountChartInstance) this.topAmountChartInstance.destroy();
+            const sortedByAmount = [...(specs || [])]
+                .sort((a, b) => (b.totalSupplyAmount ?? b.spec_supply_amount ?? 0) - (a.totalSupplyAmount ?? a.spec_supply_amount ?? 0))
+                .slice(0, 10);
+
+            this.topAmountChartInstance = new Chart(topAmountCtx, {
+                type: 'bar',
                 data: {
-                    labels: topSpecs.map(s => `${s.item} (${s.spec})`),
+                    labels: sortedByAmount.map((s, idx) => `${idx + 1}. ${s.item}${s.spec ? ' (' + s.spec + ')' : ''}`),
                     datasets: [{
-                        data: topSpecs.map(s => s.totalQty ?? s.spec_qty ?? s.sum_qty ?? 0),
-                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#94a3b8']
+                        label: '공급가액',
+                        data: sortedByAmount.map(s => s.totalSupplyAmount ?? s.spec_supply_amount ?? 0),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 3,
+                        barPercentage: 0.75
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10.5 } } }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` 공급가액: ${fmtWon(ctx.parsed.x)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                font: { size: 9.5 },
+                                callback: (v) => v >= 100000000 ? `${(v / 100000000).toFixed(1)}억` : (v >= 10000 ? `${(v / 10000).toFixed(0)}만` : v)
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: { size: 9.5 },
+                                autoSkip: false
+                            }
+                        }
                     }
                 }
             });
         }
 
-        // 2) 월별 추이 바 차트
+        // 2) 공급수량 상위 10대 품목 (Top 10 by Quantity) - 가로 바 차트
+        const topQtyCtx = document.getElementById('topQtyBarChart');
+        if (topQtyCtx) {
+            if (this.topQtyChartInstance) this.topQtyChartInstance.destroy();
+            const sortedByQty = [...(specs || [])]
+                .sort((a, b) => (b.totalQty ?? b.spec_qty ?? 0) - (a.totalQty ?? a.spec_qty ?? 0))
+                .slice(0, 10);
+
+            this.topQtyChartInstance = new Chart(topQtyCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedByQty.map((s, idx) => `${idx + 1}. ${s.item}${s.spec ? ' (' + s.spec + ')' : ''}`),
+                    datasets: [{
+                        label: '공급수량',
+                        data: sortedByQty.map(s => s.totalQty ?? s.spec_qty ?? 0),
+                        backgroundColor: '#10b981',
+                        borderRadius: 3,
+                        barPercentage: 0.75
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const itemObj = sortedByQty[ctx.dataIndex] || {};
+                                    return ` 공급수량: ${fmtNumber(ctx.parsed.x)} ${itemObj.unit || 'EA'}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                font: { size: 9.5 },
+                                callback: (v) => fmtNumber(v)
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: { size: 9.5 },
+                                autoSkip: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3) 월별 추이 바 차트
         const barCtx = document.getElementById('monthlyBarChart');
         if (barCtx) {
             if (this.monthlyChartInstance) this.monthlyChartInstance.destroy();
@@ -2024,7 +2129,7 @@ const app = {
                     datasets: [{
                         label: '공급 물량 (EA)',
                         data: (monthly || []).map(m => m.month_qty ?? m.total_qty ?? 0),
-                        backgroundColor: '#10b981',
+                        backgroundColor: '#0ea5e9',
                         borderRadius: 2
                     }]
                 },
@@ -2035,8 +2140,8 @@ const app = {
                         legend: { display: false }
                     },
                     scales: {
-                        x: { ticks: { font: { size: 10.5 } } },
-                        y: { ticks: { font: { size: 10.5 } } }
+                        x: { ticks: { font: { size: 10 } } },
+                        y: { ticks: { font: { size: 10 } } }
                     }
                 }
             });
