@@ -264,6 +264,8 @@ router.get('/inventory', async (req, res) => {
         const sql = `
             SELECT 
                 i.item, i.spec, i.unit,
+                MAX(i.category) as category,
+                MAX(i.date) as latest_date,
                 SUM(i.qty_remaining) as total_qty
             FROM logistics_inbound i
             WHERE i.qty_remaining > 0
@@ -277,7 +279,7 @@ router.get('/inventory', async (req, res) => {
             SELECT 
                 i.id, i.date, i.supplier, i.item, i.spec, i.unit, 
                 i.qty_initial, i.qty_remaining, i.unit_price, 
-                i.note, l.name as location_name
+                i.note, i.category, l.name as location_name
             FROM logistics_inbound i
             LEFT JOIN logistics_locations l ON i.location_id = l.id
             WHERE i.qty_remaining > 0

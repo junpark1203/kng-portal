@@ -1,0 +1,518 @@
+/* ==========================================================================
+   실시간 재고 관리 (Inventory) ECOUNT ERP 고밀도 스타일시트
+   사내 입출고 / 외주 입출내역 모듈 완벽 동기화 테마
+   ========================================================================== */
+
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-success: #10b981;
+    --erp-warning: #f59e0b;
+    --erp-danger: #ef4444;
+    --erp-dark: #1e293b;
+    --erp-header-bg: #1e293b;
+    --erp-th-bg: #f8fafc;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-row-hover: #f1f5f9;
+    --erp-row-active: #eff6ff;
+    --erp-row-height: 26px;
+    --erp-font-size: 11.5px;
+}
+
+/* 기본 레이아웃 */
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    background-color: #f8fafc;
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: var(--erp-font-size);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── 1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar) ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+/* 실시간 통계 뱃지 */
+.erp-badge-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-stat-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.3;
+}
+
+.erp-stat-badge.badge-dark {
+    background: #1e293b;
+    color: #ffffff;
+}
+
+.erp-stat-badge.badge-blue {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+/* 탭 버튼 그룹 (자재분류 퀵 필터) */
+.erp-tab-group {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.erp-tab-btn {
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+    user-select: none;
+}
+
+.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.erp-tab-btn.active {
+    background: #ffffff !important;
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-border) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ── 2. ECOUNT ERP 2행 필터 리본 (.erp-filter-ribbon) ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-select-target {
+    width: 105px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 20px 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer;
+}
+
+.erp-search-box {
+    width: 230px;
+    position: relative;
+}
+
+.erp-search-box .form-control {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding-left: 7px;
+    padding-right: 22px;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+}
+
+.erp-search-box .form-control:focus {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.2);
+}
+
+.erp-subsearch-group {
+    width: 180px;
+}
+
+.erp-subsearch-group .input-group-text {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 5px;
+    background: #f8fafc;
+    border-color: var(--erp-border);
+}
+
+.erp-subsearch-group .form-control {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px;
+    border-color: var(--erp-border);
+}
+
+/* ── 3. ECOUNT ERP 버튼 시스템 ── */
+.btn-erp {
+    height: 26px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 0 9px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+}
+
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-erp-primary {
+    background: var(--erp-primary);
+    border-color: var(--erp-primary);
+    color: #ffffff;
+}
+
+.btn-erp-primary:hover {
+    background: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
+    color: #ffffff;
+}
+
+.erp-tool-btn {
+    height: 24px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0 8px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border-light);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    white-space: nowrap;
+}
+
+.erp-tool-btn:hover {
+    background: #f1f5f9;
+    border-color: var(--erp-border);
+    color: #0f172a;
+}
+
+/* ── 4. ERP 고밀도 시트 그리드 (.erp-sheet-table) ── */
+.erp-grid-wrapper {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    overflow-x: auto;
+    overflow-y: auto;
+    min-height: 240px;
+    max-height: calc(100vh - 125px);
+    box-sizing: border-box;
+    position: relative;
+}
+
+.erp-sheet-table {
+    width: 100%;
+    max-width: none;
+    border-collapse: collapse !important;
+    font-size: 11.5px;
+    table-layout: fixed !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border: 1px solid var(--erp-border) !important;
+    background-color: #ffffff !important;
+}
+
+/* Sticky 헤더 */
+.erp-sheet-table thead th {
+    background-color: var(--erp-th-bg) !important;
+    background-clip: padding-box !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--erp-border) !important;
+    white-space: nowrap !important;
+    position: sticky !important;
+    top: 0;
+    z-index: 6;
+    height: 26px !important;
+    line-height: 1.2 !important;
+    box-sizing: border-box !important;
+    user-select: none;
+    overflow: visible !important;
+}
+
+/* 헤더 열 너비 및 정렬 규격 */
+.th-toggle      { width: 32px !important; }
+.th-no          { width: 40px !important; }
+.th-category    { width: 85px !important; }
+.th-item        { min-width: 220px !important; }
+.th-spec        { width: 140px !important; }
+.th-unit        { width: 55px !important; }
+.th-location    { width: 110px !important; }
+.th-lots        { width: 65px !important; }
+.th-latest-date { width: 85px !important; }
+.th-qty         { width: 100px !important; }
+
+/* 본문 행 및 셀 */
+.erp-sheet-table tbody td {
+    padding: 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    vertical-align: middle !important;
+    background-color: #ffffff;
+    background-clip: padding-box !important;
+    height: 26px !important;
+    box-sizing: border-box !important;
+    font-size: 11.5px;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 행 호버 및 아코디언 확장 상태 */
+.inventory-row {
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+.inventory-row:hover td {
+    background-color: var(--erp-row-hover) !important;
+}
+
+.inventory-row.row-expanded td {
+    background-color: var(--erp-row-active) !important;
+    font-weight: 500;
+}
+
+.row-index {
+    text-align: center !important;
+    color: var(--erp-text-muted) !important;
+    background-color: #f8fafc !important;
+    font-weight: 600 !important;
+}
+
+/* 아코디언 토글 아이콘 */
+.accordion-icon {
+    font-size: 1.15rem;
+    vertical-align: middle;
+    transition: transform 0.2s ease, color 0.2s ease;
+    display: inline-block;
+    color: #64748b;
+}
+
+.accordion-icon.rotate-90 {
+    transform: rotate(90deg);
+    color: var(--erp-primary);
+}
+
+/* 숫자 셀 (tabular-nums 고정폭 숫자) */
+.td-qty {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums !important;
+    font-weight: 700 !important;
+    color: var(--erp-primary) !important;
+}
+
+/* 자재분류 뱃지 */
+.category-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    border-radius: 3px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.category-pill.cat-safety   { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.category-pill.cat-civil    { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.category-pill.cat-protect  { background: #fefce8; color: #854d0e; border-color: #fef08a; }
+.category-pill.cat-consum   { background: #fdf2f8; color: #9d174d; border-color: #fbcfe8; }
+.category-pill.cat-general  { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+
+/* ── 5. Lot 상세 서브테이블 (.lot-container-box) ── */
+.lot-container-box {
+    padding: 6px 14px 8px 38px;
+    background-color: #f8fafc;
+    border-bottom: 1px solid var(--erp-border);
+}
+
+.lot-sub-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    table-layout: fixed;
+}
+
+.lot-sub-table th {
+    background-color: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border: 1px solid #cbd5e1;
+    text-align: center;
+    height: 24px;
+    white-space: nowrap;
+}
+
+.lot-sub-table td {
+    padding: 2px 6px;
+    border: 1px solid #e2e8f0;
+    height: 24px;
+    vertical-align: middle;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lot-sub-table tr:hover td {
+    background-color: #f8fafc;
+}
+
+/* ── 6. 하단 합계 요약 바 (tfoot) ── */
+.erp-sheet-table tfoot td {
+    padding: 3px 6px !important;
+    background-color: #f8fafc !important;
+    background-clip: padding-box !important;
+    border: 1px solid var(--erp-border) !important;
+    font-size: 11.5px;
+    font-weight: 700;
+    vertical-align: middle !important;
+    height: 26px !important;
+    color: #0f172a;
+}
+
+/* ── 7. 인쇄 미디어 쿼리 (@media print) ── */
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm 8mm;
+    }
+
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        font-size: 10px !important;
+    }
+
+    .no-print,
+    .erp-top-toolbar .btn-erp,
+    .erp-filter-ribbon,
+    .col-resizer {
+        display: none !important;
+    }
+
+    .erp-top-toolbar {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 0 6px 0 !important;
+        margin-bottom: 6px !important;
+        border-bottom: 2px solid #0f172a !important;
+    }
+
+    .erp-title-tag {
+        font-size: 15px !important;
+        border-right: none !important;
+    }
+
+    .erp-grid-wrapper {
+        border: none !important;
+        overflow: visible !important;
+        max-height: none !important;
+    }
+
+    .erp-sheet-table {
+        border: 1px solid #94a3b8 !important;
+    }
+
+    .erp-sheet-table th,
+    .erp-sheet-table td {
+        border: 1px solid #cbd5e1 !important;
+        height: 22px !important;
+        font-size: 9.5px !important;
+    }
+
+    .th-toggle, .td-toggle {
+        display: none !important;
+    }
+
+    .lot-container-box {
+        padding: 4px 8px !important;
+        background: transparent !important;
+    }
+
+    .lot-sub-table th,
+    .lot-sub-table td {
+        border: 1px solid #94a3b8 !important;
+        font-size: 9px !important;
+        height: 20px !important;
+    }
+}
