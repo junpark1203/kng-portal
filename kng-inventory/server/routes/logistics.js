@@ -346,6 +346,50 @@ router.get('/items/all', (req, res) => {
     });
 });
 
+// 전체 품목별 과거 등록된 규격 목록 및 기본 단위/분류 매핑 (직출고/입고 시 규격 추천용)
+router.get('/items/specs-map', (req, res) => {
+    const sql = `
+        SELECT DISTINCT item, spec, unit, category
+        FROM (
+            SELECT item, spec, unit, category FROM logistics_inbound WHERE item IS NOT NULL AND TRIM(item) != ''
+            UNION
+            SELECT item, spec, unit, category FROM logistics_outbound WHERE item IS NOT NULL AND TRIM(item) != ''
+        )
+        ORDER BY item ASC, spec ASC
+    `;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const map = {};
+        (rows || []).forEach(r => {
+            const item = (r.item || '').trim();
+            if (!item) return;
+            if (!map[item]) {
+                map[item] = {
+                    specs: [],
+                    specDetails: {},
+                    defaultUnit: r.unit || '',
+                    defaultCategory: r.category || ''
+                };
+            }
+            const spec = (r.spec || '').trim();
+            if (spec) {
+                if (!map[item].specs.includes(spec)) {
+                    map[item].specs.push(spec);
+                }
+                if (!map[item].specDetails[spec]) {
+                    map[item].specDetails[spec] = {
+                        unit: r.unit || '',
+                        category: r.category || ''
+                    };
+                }
+            }
+            if (!map[item].defaultUnit && r.unit) map[item].defaultUnit = r.unit;
+            if (!map[item].defaultCategory && r.category) map[item].defaultCategory = r.category;
+        });
+        res.json(map);
+    });
+});
+
 
 // --- Bulk Update (일괄 수정) ---
 router.put('/bulk-update', (req, res) => {

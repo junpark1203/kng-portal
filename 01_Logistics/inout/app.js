@@ -76,6 +76,7 @@ const app = {
         this.setupOutboundAutocomplete();
         this.setupPartnerAutocomplete();
         this.loadCategories();
+        this.loadItemSpecsMap();
         this.loadHistory();
         this.initKeyboardNav();
         this.bindGlobalModalShortcuts();
@@ -857,6 +858,152 @@ const app = {
                 }
             });
         }
+    },
+
+    // ----------------------------------------
+    // 품목-규격 연동 및 추천 자동완성
+    // ----------------------------------------
+    itemSpecsMap: null,
+
+    loadItemSpecsMap: async function(forceRefresh = false) {
+        if (this.itemSpecsMap && !forceRefresh) return this.itemSpecsMap;
+        try {
+            const data = await authFetch(`${API_BASE}/items/specs-map`);
+            this.itemSpecsMap = data || {};
+            return this.itemSpecsMap;
+        } catch (err) {
+            console.error('Failed to load item specs map:', err);
+            if (!this.itemSpecsMap) this.itemSpecsMap = {};
+            return this.itemSpecsMap;
+        }
+    },
+
+    handleItemSelectionAutoFill: function(row, type, itemName) {
+        if (!itemName) return;
+        const itemInfo = this.itemSpecsMap ? this.itemSpecsMap[itemName] : null;
+        if (!itemInfo) return;
+
+        const specInput = row.querySelector(type === 'direct' ? '.dir-spec' : '.in-spec');
+        const unitInput = row.querySelector(type === 'direct' ? '.dir-unit' : '.in-unit');
+        const categoryInput = row.querySelector(type === 'direct' ? '.dir-category' : '.in-category');
+
+        // 분류/단위가 비어있다면 기본값 채움
+        if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && itemInfo.defaultUnit) {
+            unitInput.value = itemInfo.defaultUnit;
+        }
+        if (categoryInput && (!categoryInput.value || categoryInput.value.trim() === '') && itemInfo.defaultCategory) {
+            categoryInput.value = itemInfo.defaultCategory;
+        }
+
+        // 해당 품목에 과거 등록된 규격이 딱 1개뿐이고, 현재 규격 입력창이 비어있다면 자동 입력
+        if (itemInfo.specs && itemInfo.specs.length === 1 && specInput && (!specInput.value || specInput.value.trim() === '')) {
+            const singleSpec = itemInfo.specs[0];
+            specInput.value = singleSpec;
+            const detail = itemInfo.specDetails ? itemInfo.specDetails[singleSpec] : null;
+            if (detail) {
+                if (unitInput && detail.unit) unitInput.value = detail.unit;
+                if (categoryInput && detail.category) categoryInput.value = detail.category;
+            }
+            specInput.dispatchEvent(new Event('change'));
+        }
+    },
+
+    bindSpecAutocomplete: function(row, type) {
+        const itemInput = row.querySelector(type === 'direct' ? '.dir-item' : '.in-item');
+        const specInput = row.querySelector(type === 'direct' ? '.dir-spec' : '.in-spec');
+        const unitInput = row.querySelector(type === 'direct' ? '.dir-unit' : '.in-unit');
+        const categoryInput = row.querySelector(type === 'direct' ? '.dir-category' : '.in-category');
+        if (!specInput) return;
+
+        const specContainer = specInput.parentElement;
+        let sug = specContainer.querySelector('.autocomplete-suggestions');
+        if (!sug) {
+            sug = document.createElement('div');
+            sug.className = 'autocomplete-suggestions spec-suggestions';
+            sug.style.display = 'none';
+            specContainer.appendChild(sug);
+        }
+
+        const renderSuggestions = async (query = '') => {
+            const currentItem = itemInput ? itemInput.value.trim() : '';
+            if (!currentItem) {
+                sug.style.display = 'none';
+                return;
+            }
+            const map = await this.loadItemSpecsMap();
+            const itemInfo = map ? map[currentItem] : null;
+            const specs = itemInfo && itemInfo.specs ? itemInfo.specs : [];
+            if (specs.length === 0) {
+                sug.style.display = 'none';
+                return;
+            }
+
+            const q = (query || '').trim().toLowerCase();
+            const filtered = q ? specs.filter(s => s.toLowerCase().includes(q)) : specs;
+            if (filtered.length === 0) {
+                sug.style.display = 'none';
+                return;
+            }
+
+            sug.innerHTML = filtered.map(spec => {
+                const detail = itemInfo.specDetails ? itemInfo.specDetails[spec] : null;
+                const unitBadge = detail && detail.unit 
+                    ? `<span class="badge bg-light text-secondary border ms-1" style="font-size: 10px; font-weight: normal;">${detail.unit}</span>` 
+                    : '';
+                return `
+                    <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" 
+                         style="padding: 7px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9;">
+                        <span><i class='bx bx-purchase-tag text-primary me-1' style='font-size: 0.85rem;'></i>${spec}</span>
+                        ${unitBadge}
+                    </div>
+                `;
+            }).join('');
+            sug.style.display = 'block';
+
+            sug.querySelectorAll('.autocomplete-suggestion').forEach((itemDiv, idx) => {
+                const specVal = filtered[idx];
+                const detail = itemInfo.specDetails ? itemInfo.specDetails[specVal] : null;
+                
+                const selectFn = (e) => {
+                    if (e) e.preventDefault();
+                    specInput.value = specVal;
+                    sug.style.display = 'none';
+                    if (detail) {
+                        if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && detail.unit) {
+                            unitInput.value = detail.unit;
+                        }
+                        if (categoryInput && (!categoryInput.value || categoryInput.value.trim() === '') && detail.category) {
+                            categoryInput.value = detail.category;
+                        }
+                    }
+                    specInput.dispatchEvent(new Event('change'));
+                };
+
+                itemDiv.addEventListener('mousedown', selectFn);
+                itemDiv.addEventListener('click', selectFn);
+            });
+        };
+
+        specInput.addEventListener('focus', () => {
+            renderSuggestions(specInput.value);
+        });
+        specInput.addEventListener('click', () => {
+            renderSuggestions(specInput.value);
+        });
+        specInput.addEventListener('input', (e) => {
+            renderSuggestions(e.target.value);
+        });
+        specInput.addEventListener('blur', () => {
+            setTimeout(() => { sug.style.display = 'none'; }, 180);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== specInput && !e.target.closest('.spec-suggestions')) {
+                sug.style.display = 'none';
+            }
+        });
+
+        this.attachAutocompleteKeyboard(specInput, sug);
     },
 
     filterByCategory(cat) {
@@ -2315,7 +2462,10 @@ const app = {
                     </div>
                 </td>
                 <td>
-                    <input type="text" class="erp-cell-input in-spec" placeholder="규격" required>
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input in-spec" placeholder="규격" autocomplete="off" required>
+                        <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
+                    </div>
                 </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
@@ -2359,29 +2509,38 @@ const app = {
             const val = e.target.value.trim();
             if (val.length < 1) { sug.style.display = 'none'; return; }
             try {
-                const items = await authFetch(`${API_BASE}/items/all`);
+                const map = await this.loadItemSpecsMap();
+                let items = Object.keys(map || {});
+                if (items.length === 0) {
+                    items = await authFetch(`${API_BASE}/items/all`);
+                }
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
                     sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
+                        const selectItem = (e) => {
+                            if (e) e.preventDefault();
                             input.value = div.innerText.trim();
                             sug.style.display = 'none';
                             input.dispatchEvent(new Event('change'));
-                        });
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText.trim();
-                            sug.style.display = 'none';
-                            input.dispatchEvent(new Event('change'));
-                        });
+                            this.handleItemSelectionAutoFill(newRow, 'inbound', input.value.trim());
+                        };
+                        div.addEventListener('mousedown', selectItem);
+                        div.addEventListener('click', selectItem);
                     });
                 } else {
                     sug.style.display = 'none';
                 }
             } catch (err) { console.error(err); }
+        });
+
+        input.addEventListener('change', () => {
+            const val = input.value.trim();
+            if (val) {
+                this.handleItemSelectionAutoFill(newRow, 'inbound', val);
+            }
         });
 
         input.addEventListener('blur', () => {
@@ -2394,6 +2553,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        this.bindSpecAutocomplete(newRow, 'inbound');
         this.setupCategoryAutocomplete();
 
         const qtyInp = newRow.querySelector('.in-qty');
@@ -2534,6 +2694,7 @@ const app = {
                 }
                 alert('입고 완료되었습니다.');
                 this.resetInboundModalForm();
+                this.loadItemSpecsMap(true);
                 
                 // Update history tables
                 this.loadHistory();
@@ -2603,7 +2764,10 @@ const app = {
                     </div>
                 </td>
                 <td>
-                    <input type="text" class="erp-cell-input dir-spec" placeholder="규격">
+                    <div class="position-relative w-100 h-100 d-flex align-items-center">
+                        <input type="text" class="erp-cell-input dir-spec" placeholder="규격" autocomplete="off">
+                        <div class="autocomplete-suggestions spec-suggestions" style="display:none;"></div>
+                    </div>
                 </td>
                 <td>
                     <div class="position-relative w-100 h-100 d-flex align-items-center">
@@ -2649,29 +2813,38 @@ const app = {
             const val = e.target.value.trim();
             if (val.length < 1) { sug.style.display = 'none'; return; }
             try {
-                const items = await authFetch(`${API_BASE}/items/all`);
+                const map = await this.loadItemSpecsMap();
+                let items = Object.keys(map || {});
+                if (items.length === 0) {
+                    items = await authFetch(`${API_BASE}/items/all`);
+                }
                 const matches = items.filter(i => i.toLowerCase().includes(val.toLowerCase()));
                 if (matches.length > 0) {
                     sug.innerHTML = matches.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
                     sug.style.display = 'block';
                     
                     sug.querySelectorAll('.autocomplete-suggestion').forEach(div => {
-                        div.addEventListener('mousedown', (e) => {
-                            e.preventDefault();
+                        const selectItem = (e) => {
+                            if (e) e.preventDefault();
                             input.value = div.innerText.trim();
                             sug.style.display = 'none';
                             input.dispatchEvent(new Event('change'));
-                        });
-                        div.addEventListener('click', () => {
-                            input.value = div.innerText.trim();
-                            sug.style.display = 'none';
-                            input.dispatchEvent(new Event('change'));
-                        });
+                            this.handleItemSelectionAutoFill(newRow, 'direct', input.value.trim());
+                        };
+                        div.addEventListener('mousedown', selectItem);
+                        div.addEventListener('click', selectItem);
                     });
                 } else {
                     sug.style.display = 'none';
                 }
             } catch (err) { console.error(err); }
+        });
+
+        input.addEventListener('change', () => {
+            const val = input.value.trim();
+            if (val) {
+                this.handleItemSelectionAutoFill(newRow, 'direct', val);
+            }
         });
 
         input.addEventListener('blur', () => {
@@ -2683,6 +2856,7 @@ const app = {
         });
 
         this.attachAutocompleteKeyboard(input, sug);
+        this.bindSpecAutocomplete(newRow, 'direct');
         this.setupCategoryAutocomplete();
 
         const qtyInp = newRow.querySelector('.dir-qty');
@@ -2868,6 +3042,7 @@ const app = {
                 }
                 
                 this.resetDirectModalForm();
+                this.loadItemSpecsMap(true);
                 this.loadHistory();
                 this.closeDrawer();
             } catch (err) {
@@ -3823,6 +3998,9 @@ const app = {
     },
 
     openDrawer: function(mode, data = null) {
+        if (mode === 'inbound_create' || mode === 'direct_create') {
+            this.loadItemSpecsMap();
+        }
         if (mode === 'inbound_create') {
             const modalEl = document.getElementById('inboundModal');
             let modal = bootstrap.Modal.getInstance(modalEl);
