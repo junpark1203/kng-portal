@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>물류 단가표 (물류 관리)</title>
+    <!-- Bootstrap 5 & Boxicons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- Common Design Systems -->
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="../logistics-theme.css">
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
+    <!-- 모듈 전용 스타일시트 -->
+    <link rel="stylesheet" href="style.css?v=20260916_1">
+</head>
+<body class="bg-light">
+
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 ── -->
+    <div class="erp-top-toolbar no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span class="erp-title-tag">
+                <i class='bx bx-won text-primary'></i> 물류 단가표
+            </span>
+
+            <div class="erp-badge-group">
+                <span class="erp-stat-badge badge-dark" id="itemCountBadge">관리 0 품목</span>
+                <span class="erp-stat-badge badge-blue" id="avgMarginBadge">평균 마진율: 0%</span>
+            </div>
+
+            <!-- 카테고리 퀵 필터 탭 -->
+            <div class="erp-tab-group ms-1" id="categoryTabGroup">
+                <button type="button" class="erp-tab-btn active" data-category="" onclick="app.setCategoryFilter('')">전체</button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openCreateModal()" title="새로운 품목 기준 단가(견적가) 등록">
+                <i class='bx bx-plus'></i> 신규 단가 등록
+            </button>
+            <button type="button" class="btn-erp btn-erp-success" onclick="app.populateFromHistory()" title="기존 입출고 및 직출고 장부에서 최근 단가를 자동으로 긁어와 채웁니다">
+                <i class='bx bx-sync'></i> 장부 단가 자동반영
+            </button>
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 단가표 엑셀 다운로드">
+                <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
+            <a href="../inout/index.html" class="btn-erp" title="사내 입출고내역 페이지로 이동">
+                <i class='bx bx-transfer'></i> 입출고내역
+            </a>
+            <a href="../inventory/index.html" class="btn-erp" title="실시간 재고 현황으로 이동">
+                <i class='bx bx-box'></i> 실시간재고
+            </a>
+        </div>
+    </div>
+
+    <!-- ── 2. ECOUNT ERP 2행 필터 리본 ── -->
+    <div class="erp-filter-ribbon no-print">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- 검색창 -->
+            <div class="position-relative" style="width: 260px;">
+                <input type="text" class="form-control form-control-sm ps-4" id="searchInput" 
+                       placeholder="품목명, 규격, 비고, 거래처 검색..." autocomplete="off">
+                <i class='bx bx-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted'></i>
+            </div>
+
+            <!-- 마진 상태 필터 -->
+            <select class="form-select form-select-sm" id="marginFilter" style="width: 130px;" onchange="app.render()">
+                <option value="all">전체 마진</option>
+                <option value="high">고마진 (20%↑)</option>
+                <option value="mid">일반 (10~20%)</option>
+                <option value="low">저마진 (0~10%)</option>
+                <option value="loss">역마진 (0%↓)</option>
+            </select>
+
+            <span class="text-muted small ms-1" id="filterResultCount">조회결과 0건</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted" style="font-size: 11px;">* 직출고/입출고 전표 작성 시 본 단가표의 기준가가 자동 추천됩니다.</span>
+        </div>
+    </div>
+
+    <!-- ── 3. 단가표 메인 데이터 그리드 테이블 ── -->
+    <div class="container-fluid px-2 py-1">
+        <div class="erp-grid-card shadow-sm">
+            <div class="erp-sheet-wrapper" style="max-height: calc(100vh - 125px); overflow: auto;">
+                <table class="erp-sheet-table text-nowrap align-middle" id="priceTable">
+                    <colgroup>
+                        <col style="width: 38px;"> <!-- No -->
+                        <col style="width: 7%;">  <!-- 분류 -->
+                        <col style="width: 17%;"> <!-- 품목명 -->
+                        <col style="width: 12%;"> <!-- 규격 -->
+                        <col style="width: 4%;">  <!-- 단위 -->
+                        <col style="width: 9%;">  <!-- 기준 매입단가 -->
+                        <col style="width: 9%;">  <!-- 기준 매출단가 -->
+                        <col style="width: 7%;">  <!-- 마진액 -->
+                        <col style="width: 6%;">  <!-- 마진율 -->
+                        <col style="width: 10%;"> <!-- 기본 매입처 -->
+                        <col style="width: 10%;"> <!-- 기본 매출처 -->
+                        <col style="width: 7%;">  <!-- 단가 이력 -->
+                        <col style="width: 8%;">  <!-- 최종 변경일 -->
+                        <col>                     <!-- 비고 -->
+                        <col style="width: 70px;"><!-- 관리 -->
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th class="th-no text-center">No</th>
+                            <th>분류</th>
+                            <th>품목명</th>
+                            <th>규격</th>
+                            <th class="text-center">단위</th>
+                            <th class="text-end">기준 매입단가</th>
+                            <th class="text-end">기준 매출단가</th>
+                            <th class="text-end">마진액</th>
+                            <th class="text-center">마진율</th>
+                            <th>주요 매입처</th>
+                            <th>주요 매출처</th>
+                            <th class="text-center">단가 이력</th>
+                            <th class="text-center">최종 변경일</th>
+                            <th>비고 (견적처 등)</th>
+                            <th class="text-center">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="priceTableBody">
+                        <tr>
+                            <td colspan="15" class="text-center py-5 text-muted">
+                                <i class='bx bx-loader-alt bx-spin fs-4 mb-2'></i><br>
+                                단가표 데이터를 불러오는 중입니다...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 4. 단가 등록 / 수정 모달 ── -->
+    <div class="modal fade" id="unitPriceModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header py-2 px-3 bg-dark text-white">
+                    <h6 class="modal-title fw-bold" id="modalTitle">
+                        <i class='bx bx-edit text-primary'></i> 신규 기준 단가 등록
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="priceForm" onsubmit="app.handleSavePrice(event)">
+                    <input type="hidden" id="editPriceId">
+                    <div class="modal-body p-3">
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-7">
+                                <label class="form-label small fw-bold mb-1">품목명 <span class="text-danger">*</span></label>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control form-control-sm" id="inpItem" 
+                                           placeholder="품목명 입력 또는 선택" autocomplete="off" required>
+                                    <div class="autocomplete-suggestions" id="itemSuggestions" style="display:none;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold mb-1">규격</label>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control form-control-sm" id="inpSpec" 
+                                           placeholder="규격 (예: 200L, 20L, EA 등)" autocomplete="off">
+                                    <div class="autocomplete-suggestions" id="specSuggestions" style="display:none;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold mb-1">분류(카테고리)</label>
+                                <input type="text" class="form-control form-control-sm" id="inpCategory" 
+                                       placeholder="분류 (예: 작동유, 그리스 등)" autocomplete="off">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold mb-1">단위</label>
+                                <input type="text" class="form-control form-control-sm" id="inpUnit" 
+                                       placeholder="단위 (EA, DRUM, CAN)" autocomplete="off">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold mb-1">적용 기준일</label>
+                                <input type="date" class="form-control form-control-sm" id="inpEffectiveDate" required>
+                            </div>
+                        </div>
+
+                        <!-- 단가 입력 및 실시간 마진 계산 박스 -->
+                        <div class="p-3 bg-light rounded-2 border mb-3">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold text-primary mb-1">
+                                        <i class='bx bx-down-arrow-circle'></i> 기준 매입단가 (원)
+                                    </label>
+                                    <input type="number" class="form-control form-control-sm fw-bold text-end" id="inpBuyPrice" 
+                                           placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-bold text-danger mb-1">
+                                        <i class='bx bx-up-arrow-circle'></i> 기준 매출단가 (원)
+                                    </label>
+                                    <input type="number" class="form-control form-control-sm fw-bold text-end" id="inpSellPrice" 
+                                           placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
+                                </div>
+                                <div class="col-md-2 text-center pt-2">
+                                    <span class="d-block small text-muted">예상 마진율</span>
+                                    <span class="badge bg-secondary fs-6 mt-1" id="modalMarginBadge">0.0%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold mb-1">기본 매입처 / 공급사</label>
+                                <input type="text" class="form-control form-control-sm" id="inpSupplier" 
+                                       placeholder="주요 공급업체명">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold mb-1">주요 납품처 / 매출처</label>
+                                <input type="text" class="form-control form-control-sm" id="inpDestination" 
+                                       placeholder="주요 납품처명">
+                            </div>
+                        </div>
+
+                        <div class="mb-1">
+                            <label class="form-label small fw-bold mb-1">비고 (견적 접수 메모 등)</label>
+                            <input type="text" class="form-control form-control-sm" id="inpNote" 
+                                   placeholder="예: 2026-02-01 OO상사 견적서 기준가 접수">
+                        </div>
+                    </div>
+                    <div class="modal-footer py-2 px-3 bg-light">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="submit" class="btn btn-sm btn-primary px-3 fw-bold" id="btnSavePrice">
+                            <i class='bx bx-check'></i> 저장하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 5. 시계열 단가 히스토리 타임라인 모달 ── -->
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header py-2 px-3 bg-dark text-white">
+                    <h6 class="modal-title fw-bold">
+                        <i class='bx bx-history text-warning'></i> 단가 변동 시계열 이력
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="p-2 bg-light rounded-2 border mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary me-1" id="histCategoryBadge">분류</span>
+                            <strong class="fs-6" id="histItemTitle">품목명</strong>
+                            <span class="text-muted ms-1" id="histSpecTitle">규격</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="small text-muted">현재 기준가:</span>
+                            <span class="text-primary fw-bold ms-1" id="histCurrentBuy">매입 0원</span> /
+                            <span class="text-danger fw-bold ms-1" id="histCurrentSell">매출 0원</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 12px;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 90px;">일자</th>
+                                    <th style="width: 80px;" class="text-center">구분</th>
+                                    <th class="text-end" style="width: 140px;">매입단가 (변동폭)</th>
+                                    <th class="text-end" style="width: 140px;">매출단가 (변동폭)</th>
+                                    <th>관련 거래처</th>
+                                    <th>변경 사유 / 비고</th>
+                                </tr>
+                            </thead>
+                            <tbody id="histTableBody">
+                                <!-- JS Render -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js?v=20260916_1"></script>
+</body>
+</html>

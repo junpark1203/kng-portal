@@ -223,6 +223,30 @@ function initLogisticsTables(database) {
                             }
                         });
 
+                        // 5. 물류 단가 마스터 테이블 (기준 매입/매출단가 및 시계열 변경 이력)
+                        database.run(`
+                            CREATE TABLE IF NOT EXISTS logistics_unit_prices (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                item TEXT NOT NULL,
+                                spec TEXT NOT NULL DEFAULT '',
+                                category TEXT DEFAULT '',
+                                unit TEXT DEFAULT '',
+                                currency TEXT DEFAULT 'KRW',
+                                buy_price REAL DEFAULT 0,
+                                sell_price REAL DEFAULT 0,
+                                default_supplier TEXT DEFAULT '',
+                                default_destination TEXT DEFAULT '',
+                                history TEXT DEFAULT '[]',
+                                note TEXT DEFAULT '',
+                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                            )
+                        `, (errUp) => {
+                            if (!errUp) {
+                                database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec ON logistics_unit_prices(item, spec)`);
+                            }
+                        });
+
                         reconcileInventory().finally(() => {
                             resolve();
                         });
@@ -388,6 +412,383 @@ router.get('/items/specs-map', (req, res) => {
         });
         res.json(map);
     });
+});
+
+// -------------------------------------------------------------
+// --- Logistics Unit Prices (물류 단가 마스터 및 자동 연동) ---
+// -------------------------------------------------------------
+
+/**
+ * 실거래(직출고/입고/출고) 발생 시 물류 단가 마스터(logistics_unit_prices) 자동 갱신 및 시계열 이력 누적 헬퍼
+ */
+async function syncUnitPricesFromTransaction(items, source, date) {
+    if (!db || !items || !Array.isArray(items) || items.length === 0) return;
+    const txDate = (date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
+
+    for (const row of items) {
+        const item = (row.item || '').trim();
+        const spec = (row.spec || '').trim();
+        if (!item) continue;
+
+        const category = (row.category || '').trim();
+        const unit = (row.unit || '').trim();
+        const supplier = (row.supplier || '').trim();
+        const destination = (row.destination || '').trim();
+
+        const buyPrice = parseFloat(row.inbound_price !== undefined ? row.inbound_price : (row.unit_price !== undefined ? row.unit_price : row.buy_price)) || 0;
+        const sellPrice = parseFloat(row.outbound_price !== undefined ? row.outbound_price : (row.selling_price !== undefined ? row.selling_price : row.sell_price)) || 0;
+
+        try {
+            const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [item, spec]);
+
+            if (!existing) {
+                // 신규 품목: 최초 등록 및 최초 이력 생성
+                const initialHistory = [{
+                    date: txDate,
+                    timestamp: new Date().toISOString(),
+                    buy_price: buyPrice,
+                    sell_price: sellPrice,
+                    prev_buy_price: 0,
+                    prev_sell_price: 0,
+                    source: source,
+                    partner: source === 'inbound' ? supplier : (source === 'outbound' ? destination : `${supplier} ➔ ${destination}`),
+                    note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표 자동 등록`
+                }];
+
+                await dbRun(`
+                    INSERT INTO logistics_unit_prices 
+                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `, [
+                    item, spec, category, unit, buyPrice, sellPrice, 
+                    supplier, destination, JSON.stringify(initialHistory), ''
+                ]);
+            } else {
+                // 기존 품목: 단가 변동 여부 확인
+                const currentBuy = existing.buy_price || 0;
+                const currentSell = existing.sell_price || 0;
+
+                let newBuy = currentBuy;
+                let newSell = currentSell;
+                let isChanged = false;
+
+                if (source === 'direct') {
+                    if (buyPrice > 0 && buyPrice !== currentBuy) { newBuy = buyPrice; isChanged = true; }
+                    if (sellPrice > 0 && sellPrice !== currentSell) { newSell = sellPrice; isChanged = true; }
+                } else if (source === 'inbound') {
+                    if (buyPrice > 0 && buyPrice !== currentBuy) { newBuy = buyPrice; isChanged = true; }
+                } else if (source === 'outbound') {
+                    if (sellPrice > 0 && sellPrice !== currentSell) { newSell = sellPrice; isChanged = true; }
+                }
+
+                if (isChanged) {
+                    let historyList = [];
+                    try { historyList = JSON.parse(existing.history || '[]'); } catch (e) { historyList = []; }
+
+                    historyList.unshift({
+                        date: txDate,
+                        timestamp: new Date().toISOString(),
+                        buy_price: newBuy,
+                        sell_price: newSell,
+                        prev_buy_price: currentBuy,
+                        prev_sell_price: currentSell,
+                        source: source,
+                        partner: source === 'inbound' ? (supplier || existing.default_supplier) : (source === 'outbound' ? (destination || existing.default_destination) : `${supplier || existing.default_supplier} ➔ ${destination || existing.default_destination}`),
+                        note: `${source === 'direct' ? '직출고' : (source === 'inbound' ? '입고' : '출고')} 전표에서 단가 변경 반영`
+                    });
+
+                    if (historyList.length > 50) historyList = historyList.slice(0, 50);
+
+                    await dbRun(`
+                        UPDATE logistics_unit_prices
+                        SET buy_price = ?, sell_price = ?,
+                            category = CASE WHEN category IS NULL OR category = '' THEN ? ELSE category END,
+                            unit = CASE WHEN unit IS NULL OR unit = '' THEN ? ELSE unit END,
+                            default_supplier = CASE WHEN ? != '' THEN ? ELSE default_supplier END,
+                            default_destination = CASE WHEN ? != '' THEN ? ELSE default_destination END,
+                            history = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [
+                        newBuy, newSell, category, unit, 
+                        supplier, supplier, destination, destination, 
+                        JSON.stringify(historyList), existing.id
+                    ]);
+                }
+            }
+        } catch (err) {
+            console.error('syncUnitPricesFromTransaction error:', err);
+        }
+    }
+}
+
+// 1. 단가 목록 조회
+router.get('/unit-prices', async (req, res) => {
+    try {
+        const { search, category, sort = 'item', order = 'ASC' } = req.query;
+        let sql = `SELECT * FROM logistics_unit_prices WHERE 1=1`;
+        const params = [];
+
+        if (search && search.trim()) {
+            sql += ` AND (item LIKE ? OR spec LIKE ? OR note LIKE ? OR default_supplier LIKE ? OR default_destination LIKE ?)`;
+            const term = `%${search.trim()}%`;
+            params.push(term, term, term, term, term);
+        }
+
+        if (category && category.trim() && category !== 'all') {
+            sql += ` AND category = ?`;
+            params.push(category.trim());
+        }
+
+        const allowedSorts = ['item', 'spec', 'category', 'buy_price', 'sell_price', 'updated_at', 'id'];
+        const sortCol = allowedSorts.includes(sort) ? sort : 'item';
+        const sortOrder = order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+        sql += ` ORDER BY ${sortCol} ${sortOrder}`;
+
+        const rows = await dbAll(sql, params);
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. 단가 맵 조회 (전표 자동완성 캐시용)
+router.get('/unit-prices/map', async (req, res) => {
+    try {
+        const rows = await dbAll(`SELECT * FROM logistics_unit_prices ORDER BY item ASC, spec ASC`);
+        const map = {};
+        (rows || []).forEach(r => {
+            const data = {
+                id: r.id,
+                item: r.item,
+                spec: r.spec || '',
+                category: r.category || '',
+                unit: r.unit || '',
+                currency: r.currency || 'KRW',
+                buy_price: r.buy_price || 0,
+                sell_price: r.sell_price || 0,
+                default_supplier: r.default_supplier || '',
+                default_destination: r.default_destination || '',
+                note: r.note || '',
+                updated_at: r.updated_at
+            };
+            const keyPipe = `${r.item}||${r.spec || ''}`;
+            const keyUnderscore = `${r.item}__${r.spec || ''}`;
+            map[keyPipe] = data;
+            map[keyUnderscore] = data;
+        });
+        res.json(map);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. 단가 신규 등록 (사전 견적 등)
+router.post('/unit-prices', async (req, res) => {
+    try {
+        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date } = req.body;
+
+        if (!item || !item.trim()) {
+            return res.status(400).json({ error: '품목명은 필수 입력 항목입니다.' });
+        }
+
+        const trimmedItem = item.trim();
+        const trimmedSpec = (spec || '').trim();
+        const dateStr = (effective_date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
+
+        const existing = await dbGet(`SELECT id FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [trimmedItem, trimmedSpec]);
+        if (existing) {
+            return res.status(400).json({ error: '이미 등록되어 있는 품목 및 규격입니다. 수정을 이용해주세요.' });
+        }
+
+        const initialHistory = [{
+            date: dateStr,
+            timestamp: new Date().toISOString(),
+            buy_price: parseFloat(buy_price) || 0,
+            sell_price: parseFloat(sell_price) || 0,
+            prev_buy_price: 0,
+            prev_sell_price: 0,
+            source: 'manual',
+            partner: default_supplier || default_destination || '',
+            note: note || '사전 등록 / 견적서 기준'
+        }];
+
+        const insertSql = `
+            INSERT INTO logistics_unit_prices
+            (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `;
+
+        const result = await dbRun(insertSql, [
+            trimmedItem, trimmedSpec, category || '', unit || '', currency || 'KRW',
+            parseFloat(buy_price) || 0, parseFloat(sell_price) || 0,
+            default_supplier || '', default_destination || '',
+            JSON.stringify(initialHistory), note || ''
+        ]);
+
+        res.status(201).json({ id: result.lastID, message: '단가 등록이 완료되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. 단가 수정 (수동 수정 시 시계열 이력 기록)
+router.put('/unit-prices/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date } = req.body;
+
+        const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE id = ?`, [id]);
+        if (!existing) {
+            return res.status(404).json({ error: '수정할 단가 데이터를 찾을 수 없습니다.' });
+        }
+
+        const newBuy = parseFloat(buy_price) || 0;
+        const newSell = parseFloat(sell_price) || 0;
+        const oldBuy = existing.buy_price || 0;
+        const oldSell = existing.sell_price || 0;
+        const dateStr = (effective_date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
+
+        let historyList = [];
+        try { historyList = JSON.parse(existing.history || '[]'); } catch (e) { historyList = []; }
+
+        if (newBuy !== oldBuy || newSell !== oldSell) {
+            historyList.unshift({
+                date: dateStr,
+                timestamp: new Date().toISOString(),
+                buy_price: newBuy,
+                sell_price: newSell,
+                prev_buy_price: oldBuy,
+                prev_sell_price: oldSell,
+                source: 'manual',
+                partner: default_supplier || default_destination || existing.default_supplier || existing.default_destination || '',
+                note: note || '단가표에서 수동 수정'
+            });
+            if (historyList.length > 50) historyList = historyList.slice(0, 50);
+        }
+
+        const updateSql = `
+            UPDATE logistics_unit_prices
+            SET item = ?, spec = ?, category = ?, unit = ?, currency = ?,
+                buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
+                history = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `;
+
+        await dbRun(updateSql, [
+            (item || existing.item).trim(),
+            (spec !== undefined ? spec : existing.spec).trim(),
+            category !== undefined ? category : existing.category,
+            unit !== undefined ? unit : existing.unit,
+            currency || existing.currency || 'KRW',
+            newBuy, newSell,
+            default_supplier !== undefined ? default_supplier : existing.default_supplier,
+            default_destination !== undefined ? default_destination : existing.default_destination,
+            JSON.stringify(historyList),
+            note !== undefined ? note : existing.note,
+            id
+        ]);
+
+        res.json({ message: '단가 수정이 완료되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. 단가 삭제
+router.delete('/unit-prices/:id', async (req, res) => {
+    try {
+        await dbRun(`DELETE FROM logistics_unit_prices WHERE id = ?`, [req.params.id]);
+        res.json({ message: '단가 삭제가 완료되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 6. 기존 입출고 장부에서 초기 단가표 자동 생성/추출
+router.post('/unit-prices/populate-from-history', async (req, res) => {
+    try {
+        const sql = `
+            SELECT item, spec, unit, category, supplier, destination, unit_price, selling_price, date, is_direct
+            FROM (
+                SELECT item, spec, unit, category, supplier, '' as destination, unit_price, 0 as selling_price, date, is_direct, id
+                FROM logistics_inbound
+                WHERE item IS NOT NULL AND TRIM(item) != ''
+                UNION ALL
+                SELECT item, spec, unit, category, '' as supplier, destination, 0 as unit_price, selling_price, date, is_direct, id
+                FROM logistics_outbound
+                WHERE item IS NOT NULL AND TRIM(item) != ''
+            )
+            ORDER BY date ASC, id ASC
+        `;
+        const rows = await dbAll(sql);
+        let count = 0;
+
+        for (const r of rows) {
+            const item = (r.item || '').trim();
+            const spec = (r.spec || '').trim();
+            if (!item) continue;
+
+            const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [item, spec]);
+            const buy = r.unit_price || 0;
+            const sell = r.selling_price || 0;
+
+            if (!existing) {
+                const hist = [{
+                    date: (r.date || '').substring(0, 10) || new Date().toISOString().split('T')[0],
+                    timestamp: new Date().toISOString(),
+                    buy_price: buy,
+                    sell_price: sell,
+                    prev_buy_price: 0,
+                    prev_sell_price: 0,
+                    source: r.is_direct ? 'direct' : (r.supplier ? 'inbound' : 'outbound'),
+                    partner: r.supplier || r.destination || '',
+                    note: '과거 거래 장부 자동 백필'
+                }];
+
+                await dbRun(`
+                    INSERT INTO logistics_unit_prices 
+                    (item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `, [item, spec, r.category || '', r.unit || '', buy, sell, r.supplier || '', r.destination || '', JSON.stringify(hist), '']);
+                count++;
+            } else {
+                let updatedBuy = existing.buy_price;
+                let updatedSell = existing.sell_price;
+                let changed = false;
+                if (buy > 0 && buy !== existing.buy_price) { updatedBuy = buy; changed = true; }
+                if (sell > 0 && sell !== existing.sell_price) { updatedSell = sell; changed = true; }
+
+                if (changed) {
+                    let hist = [];
+                    try { hist = JSON.parse(existing.history || '[]'); } catch (e) { hist = []; }
+                    hist.unshift({
+                        date: (r.date || '').substring(0, 10) || new Date().toISOString().split('T')[0],
+                        timestamp: new Date().toISOString(),
+                        buy_price: updatedBuy,
+                        sell_price: updatedSell,
+                        prev_buy_price: existing.buy_price,
+                        prev_sell_price: existing.sell_price,
+                        source: r.is_direct ? 'direct' : (r.supplier ? 'inbound' : 'outbound'),
+                        partner: r.supplier || r.destination || '',
+                        note: '과거 거래 장부 자동 갱신'
+                    });
+                    if (hist.length > 50) hist = hist.slice(0, 50);
+
+                    await dbRun(`
+                        UPDATE logistics_unit_prices
+                        SET buy_price = ?, sell_price = ?, history = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                    `, [updatedBuy, updatedSell, JSON.stringify(hist), existing.id]);
+                }
+            }
+        }
+
+        res.json({ message: `기존 장부로부터 ${count}건의 신규 단가가 생성되었습니다.` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 
@@ -625,6 +1026,7 @@ router.post('/inbound', (req, res) => {
         } else {
             db.run("COMMIT", (err) => {
                 if (err) return res.status(500).json({ error: err.message });
+                syncUnitPricesFromTransaction(items.map(i => ({ ...i, supplier })), 'inbound', date);
                 res.status(201).json({ message: 'Inbound success' });
             });
         }
@@ -676,6 +1078,7 @@ router.post('/outbound', async (req, res) => {
         }
 
         await dbRun("COMMIT");
+        syncUnitPricesFromTransaction(items.map(i => ({ ...i, destination })), 'outbound', date);
         res.status(201).json({ message: 'Outbound success' });
     } catch (err) {
         try { await dbRun("ROLLBACK"); } catch (e) {}
@@ -1895,6 +2298,7 @@ router.post('/direct', (req, res) => {
             } else {
                 db.run("COMMIT", (err) => {
                     if (err) return res.status(500).json({ error: err.message });
+                    syncUnitPricesFromTransaction(items.map(i => ({ ...i, supplier, destination })), 'direct', date);
                     res.status(201).json({ message: 'Direct shipment success' });
                 });
             }
@@ -2832,6 +3236,7 @@ router.put('/direct/tx/:tx_id', async (req, res) => {
         }
 
         await dbRun("COMMIT");
+        syncUnitPricesFromTransaction(items.map(i => ({ ...i, supplier, destination })), 'direct', date);
         res.json({ success: true, message: 'Direct transaction updated' });
     } catch (err) {
         try { await dbRun("ROLLBACK"); } catch(e) {}

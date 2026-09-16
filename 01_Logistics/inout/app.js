@@ -77,6 +77,7 @@ const app = {
         this.setupPartnerAutocomplete();
         this.loadCategories();
         this.loadItemSpecsMap();
+        this.loadUnitPricesMap();
         this.loadHistory();
         this.initKeyboardNav();
         this.bindGlobalModalShortcuts();
@@ -878,33 +879,99 @@ const app = {
         }
     },
 
+    // ----------------------------------------
+    // 물류 단가표 연동 및 단가 자동완성
+    // ----------------------------------------
+    unitPricesMap: null,
+
+    loadUnitPricesMap: async function(forceRefresh = false) {
+        if (this.unitPricesMap && !forceRefresh) return this.unitPricesMap;
+        try {
+            const data = await authFetch(`${API_BASE}/unit-prices/map`);
+            this.unitPricesMap = data || {};
+            return this.unitPricesMap;
+        } catch (err) {
+            console.error('Failed to load unit prices map:', err);
+            if (!this.unitPricesMap) this.unitPricesMap = {};
+            return this.unitPricesMap;
+        }
+    },
+
+    getUnitPriceInfo: function(item, spec) {
+        if (!item || !this.unitPricesMap) return null;
+        const key = `${(item || '').trim()}||${(spec || '').trim()}`;
+        return this.unitPricesMap[key] || null;
+    },
+
+    autoFillPricesForRow: function(row, type, item, spec) {
+        if (!item) return;
+        const priceInfo = this.getUnitPriceInfo(item, spec);
+        if (!priceInfo) return;
+
+        if (type === 'direct') {
+            const inPriceInp = row.querySelector('.dir-in-price');
+            const outPriceInp = row.querySelector('.dir-out-price');
+            let updated = false;
+            if (inPriceInp && (!inPriceInp.value || parseFloat(inPriceInp.value) === 0) && priceInfo.buy_price) {
+                inPriceInp.value = priceInfo.buy_price;
+                updated = true;
+            }
+            if (outPriceInp && (!outPriceInp.value || parseFloat(outPriceInp.value) === 0) && priceInfo.sell_price) {
+                outPriceInp.value = priceInfo.sell_price;
+                updated = true;
+            }
+            if (updated) {
+                this.updateDirectGridTotals();
+            }
+        } else if (type === 'inbound') {
+            const priceInp = row.querySelector('.in-price');
+            if (priceInp && (!priceInp.value || parseFloat(priceInp.value) === 0) && priceInfo.buy_price) {
+                priceInp.value = priceInfo.buy_price;
+                this.updateInboundGridTotals();
+            }
+        } else if (type === 'outbound') {
+            const priceInp = row.querySelector('.out-price');
+            if (priceInp && (!priceInp.value || parseFloat(priceInp.value) === 0) && priceInfo.sell_price) {
+                priceInp.value = priceInfo.sell_price;
+                this.updateOutboundGridTotals();
+            }
+        }
+    },
+
     handleItemSelectionAutoFill: function(row, type, itemName) {
         if (!itemName) return;
         const itemInfo = this.itemSpecsMap ? this.itemSpecsMap[itemName] : null;
-        if (!itemInfo) return;
-
         const specInput = row.querySelector(type === 'direct' ? '.dir-spec' : '.in-spec');
         const unitInput = row.querySelector(type === 'direct' ? '.dir-unit' : '.in-unit');
         const categoryInput = row.querySelector(type === 'direct' ? '.dir-category' : '.in-category');
 
-        // 분류/단위가 비어있다면 기본값 채움
-        if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && itemInfo.defaultUnit) {
-            unitInput.value = itemInfo.defaultUnit;
-        }
-        if (categoryInput && (!categoryInput.value || categoryInput.value.trim() === '') && itemInfo.defaultCategory) {
-            categoryInput.value = itemInfo.defaultCategory;
+        if (itemInfo) {
+            // 분류/단위가 비어있다면 기본값 채움
+            if (unitInput && (!unitInput.value || unitInput.value.trim() === '') && itemInfo.defaultUnit) {
+                unitInput.value = itemInfo.defaultUnit;
+            }
+            if (categoryInput && (!categoryInput.value || categoryInput.value.trim() === '') && itemInfo.defaultCategory) {
+                categoryInput.value = itemInfo.defaultCategory;
+            }
+
+            // 해당 품목에 과거 등록된 규격이 딱 1개뿐이고, 현재 규격 입력창이 비어있다면 자동 입력
+            if (itemInfo.specs && itemInfo.specs.length === 1 && specInput && (!specInput.value || specInput.value.trim() === '')) {
+                const singleSpec = itemInfo.specs[0];
+                specInput.value = singleSpec;
+                const detail = itemInfo.specDetails ? itemInfo.specDetails[singleSpec] : null;
+                if (detail) {
+                    if (unitInput && detail.unit) unitInput.value = detail.unit;
+                    if (categoryInput && detail.category) categoryInput.value = detail.category;
+                }
+                specInput.dispatchEvent(new Event('change'));
+                this.autoFillPricesForRow(row, type, itemName, singleSpec);
+                return;
+            }
         }
 
-        // 해당 품목에 과거 등록된 규격이 딱 1개뿐이고, 현재 규격 입력창이 비어있다면 자동 입력
-        if (itemInfo.specs && itemInfo.specs.length === 1 && specInput && (!specInput.value || specInput.value.trim() === '')) {
-            const singleSpec = itemInfo.specs[0];
-            specInput.value = singleSpec;
-            const detail = itemInfo.specDetails ? itemInfo.specDetails[singleSpec] : null;
-            if (detail) {
-                if (unitInput && detail.unit) unitInput.value = detail.unit;
-                if (categoryInput && detail.category) categoryInput.value = detail.category;
-            }
-            specInput.dispatchEvent(new Event('change'));
+        // 이미 규격이 입력되어 있는 상태에서 품목명이 정해졌거나 변경된 경우 단가 채움
+        if (specInput && specInput.value.trim()) {
+            this.autoFillPricesForRow(row, type, itemName, specInput.value.trim());
         }
     },
 
@@ -950,11 +1017,26 @@ const app = {
                 const unitBadge = detail && detail.unit 
                     ? `<span class="badge bg-light text-secondary border ms-1" style="font-size: 10px; font-weight: normal;">${detail.unit}</span>` 
                     : '';
+                
+                // 단가표 등록 기준단가 뱃지
+                const priceInfo = this.getUnitPriceInfo(currentItem, spec);
+                let priceBadge = '';
+                if (priceInfo) {
+                    if (type === 'direct') {
+                        const parts = [];
+                        if (priceInfo.buy_price) parts.push(`매입 ${Number(priceInfo.buy_price).toLocaleString()}원`);
+                        if (priceInfo.sell_price) parts.push(`매출 ${Number(priceInfo.sell_price).toLocaleString()}원`);
+                        if (parts.length) priceBadge = `<span class="badge bg-light text-primary border ms-1" style="font-size: 10px; font-weight: normal;"><i class='bx bx-won'></i> ${parts.join(' / ')}</span>`;
+                    } else if (type === 'inbound' && priceInfo.buy_price) {
+                        priceBadge = `<span class="badge bg-light text-primary border ms-1" style="font-size: 10px; font-weight: normal;"><i class='bx bx-won'></i> 매입 ${Number(priceInfo.buy_price).toLocaleString()}원</span>`;
+                    }
+                }
+
                 return `
                     <div class="autocomplete-suggestion d-flex justify-content-between align-items-center" 
                          style="padding: 7px 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9;">
                         <span><i class='bx bx-purchase-tag text-primary me-1' style='font-size: 0.85rem;'></i>${spec}</span>
-                        ${unitBadge}
+                        <span class="d-flex align-items-center gap-1">${unitBadge}${priceBadge}</span>
                     </div>
                 `;
             }).join('');
@@ -977,6 +1059,7 @@ const app = {
                         }
                     }
                     specInput.dispatchEvent(new Event('change'));
+                    this.autoFillPricesForRow(row, type, currentItem, specVal);
                 };
 
                 itemDiv.addEventListener('mousedown', selectFn);
@@ -993,8 +1076,22 @@ const app = {
         specInput.addEventListener('input', (e) => {
             renderSuggestions(e.target.value);
         });
+        specInput.addEventListener('change', () => {
+            const currentItem = itemInput ? itemInput.value.trim() : '';
+            const currentSpec = specInput.value.trim();
+            if (currentItem && currentSpec) {
+                this.autoFillPricesForRow(row, type, currentItem, currentSpec);
+            }
+        });
         specInput.addEventListener('blur', () => {
-            setTimeout(() => { sug.style.display = 'none'; }, 180);
+            setTimeout(() => { 
+                sug.style.display = 'none';
+                const currentItem = itemInput ? itemInput.value.trim() : '';
+                const currentSpec = specInput.value.trim();
+                if (currentItem && currentSpec) {
+                    this.autoFillPricesForRow(row, type, currentItem, currentSpec);
+                }
+            }, 180);
         });
 
         document.addEventListener('click', (e) => {
@@ -2695,6 +2792,7 @@ const app = {
                 alert('입고 완료되었습니다.');
                 this.resetInboundModalForm();
                 this.loadItemSpecsMap(true);
+                this.loadUnitPricesMap(true);
                 
                 // Update history tables
                 this.loadHistory();
@@ -3043,6 +3141,7 @@ const app = {
                 
                 this.resetDirectModalForm();
                 this.loadItemSpecsMap(true);
+                this.loadUnitPricesMap(true);
                 this.loadHistory();
                 this.closeDrawer();
             } catch (err) {
@@ -3309,6 +3408,12 @@ const app = {
         this.outboundRows[rowId].availableLots = lots;
         this.outboundRows[rowId].consumedLots = [];
         this.validateAllOutboundLots();
+
+        const itemInput = row.querySelector('.out-item');
+        const itemName = itemInput ? itemInput.value.trim() : '';
+        if (itemName && selectEl.value) {
+            this.autoFillPricesForRow(row, 'outbound', itemName, selectEl.value);
+        }
     },
 
     handleOutboundQtyChange: function(rowId) {
@@ -3561,6 +3666,7 @@ const app = {
                 }
                 alert(mode === 'edit' ? '출고 전표가 성공적으로 수정되었습니다.' : '출고 완료되었습니다.');
                 this.resetOutboundModalForm();
+                this.loadUnitPricesMap(true);
                 
                 // Update history tables
                 this.loadHistory();
