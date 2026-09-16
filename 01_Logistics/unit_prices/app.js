@@ -5,12 +5,52 @@
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api/logistics'
-    : '/api/logistics';
+    : 'https://kng.junparks.com/api/logistics';
+
+// ── Auth 헬퍼 ──
+let _authReady = null;
+function waitForAuth(timeout = 8000) {
+    if (_authReady) return _authReady;
+    _authReady = new Promise((res) => {
+        const s = Date.now();
+        (function poll() {
+            try {
+                if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+                    window.parent.getAuthToken().then(t => {
+                        if (t) { res(t); }
+                        else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                        else { _authReady = null; res(null); }
+                    }).catch(() => {
+                        if (Date.now() - s < timeout) setTimeout(poll, 400);
+                        else { _authReady = null; res(null); }
+                    });
+                } else if (Date.now() - s < timeout) { setTimeout(poll, 400); }
+                else { _authReady = null; res(null); }
+            } catch (e) {
+                if (Date.now() - s < timeout) setTimeout(poll, 400);
+                else { _authReady = null; res(null); }
+            }
+        })();
+    });
+    return _authReady;
+}
 
 const $ = id => document.getElementById(id);
 
 async function authFetch(url, options = {}) {
-    const token = localStorage.getItem('token');
+    let token = null;
+    try {
+        if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+        }
+    } catch (e) {}
+    if (!token) {
+        try { token = await waitForAuth(); } catch (e) {}
+    }
+    if (!token) {
+        try { token = localStorage.getItem('kng_token') || sessionStorage.getItem('kng_token') || localStorage.getItem('token'); } catch (e) {}
+    }
+
     const headers = {
         'Content-Type': 'application/json',
         ...(options.headers || {})
@@ -18,13 +58,19 @@ async function authFetch(url, options = {}) {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const res = await fetch(url, { ...options, headers });
+    const contentType = res.headers.get('content-type') || '';
     if (!res.ok) {
         let errMsg = `HTTP error ${res.status}`;
-        try {
-            const err = await res.json();
-            errMsg = err.error || err.message || errMsg;
-        } catch (e) {}
+        if (contentType.includes('application/json')) {
+            try {
+                const err = await res.json();
+                errMsg = err.error || err.message || errMsg;
+            } catch (e) {}
+        }
         throw new Error(errMsg);
+    }
+    if (!contentType.includes('application/json')) {
+        throw new Error(`응답 데이터 형식이 올바르지 않습니다 (${contentType || 'HTML'}). 서버 연결을 확인해주세요.`);
     }
     return res.json();
 }
