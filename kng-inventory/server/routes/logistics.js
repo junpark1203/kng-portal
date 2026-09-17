@@ -249,6 +249,39 @@ function initLogisticsTables(database) {
                                     database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec_supplier ON logistics_unit_prices(item, spec, default_supplier)`);
                                 });
                             }
+
+                            // 6. 견적 비교 테이블 (섹션 마스터 및 비교 품목 내역)
+                            database.run(`
+                                CREATE TABLE IF NOT EXISTS logistics_quote_sections (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    name TEXT NOT NULL,
+                                    memo TEXT DEFAULT '',
+                                    display_order INTEGER DEFAULT 0,
+                                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                                )
+                            `);
+                            database.run(`
+                                CREATE TABLE IF NOT EXISTS logistics_quote_items (
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    section_id INTEGER NOT NULL,
+                                    unit_price_id INTEGER,
+                                    item TEXT NOT NULL,
+                                    spec TEXT DEFAULT '',
+                                    category TEXT DEFAULT '',
+                                    unit TEXT DEFAULT '',
+                                    buy_price REAL DEFAULT 0,
+                                    sell_price REAL DEFAULT 0,
+                                    default_supplier TEXT DEFAULT '',
+                                    default_destination TEXT DEFAULT '',
+                                    is_freight_included INTEGER DEFAULT 0,
+                                    note TEXT DEFAULT '',
+                                    display_order INTEGER DEFAULT 0,
+                                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                    FOREIGN KEY(section_id) REFERENCES logistics_quote_sections(id) ON DELETE CASCADE
+                                )
+                            `);
+                            database.run(`CREATE INDEX IF NOT EXISTS idx_quote_items_sec ON logistics_quote_items(section_id)`);
                         });
 
                         reconcileInventory().finally(() => {
@@ -834,6 +867,164 @@ router.post('/unit-prices/populate-from-history', async (req, res) => {
         }
 
         res.json({ message: `기존 장부로부터 ${count}건의 신규 단가가 생성되었습니다.` });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// -------------------------------------------------------------
+// --- Logistics Quotation Comparison (견적 비교 테이블 및 섹션 관리) ---
+// -------------------------------------------------------------
+
+// 1. 전체 비교 섹션 및 섹션별 품목 목록 조회
+router.get('/quote-sections', async (req, res) => {
+    try {
+        const sections = await dbAll(`SELECT * FROM logistics_quote_sections ORDER BY display_order ASC, id ASC`);
+        const items = await dbAll(`SELECT * FROM logistics_quote_items ORDER BY display_order ASC, id ASC`);
+
+        const result = sections.map(sec => ({
+            ...sec,
+            section_name: sec.name || '',
+            section_note: sec.memo || '',
+            items: items.filter(it => it.section_id === sec.id)
+        }));
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. 단가표에서 선택한 품목들을 섹션에 추가 (신규 섹션 생성 또는 기존 섹션)
+router.post('/quote-sections/add-items', async (req, res) => {
+    try {
+        let { section_id, section_name, name, section_note, memo, items } = req.body;
+        const candidateItems = Array.isArray(items) ? items : [];
+
+        await dbRun("BEGIN TRANSACTION");
+
+        let targetSectionId = section_id ? parseInt(section_id, 10) : null;
+        let finalSectionName = (section_name || name || '').trim();
+        const finalSectionMemo = (section_note || memo || '').trim();
+
+        // section_id가 없거나 유효하지 않으면 새 섹션 생성 또는 이름으로 검색
+        if (!targetSectionId) {
+            if (!finalSectionName) {
+                finalSectionName = '기본 비교 항목';
+            }
+            const existingSec = await dbGet(`SELECT id, name FROM logistics_quote_sections WHERE name = ?`, [finalSectionName]);
+            if (existingSec) {
+                targetSectionId = existingSec.id;
+            } else {
+                const secRes = await dbRun(
+                    `INSERT INTO logistics_quote_sections (name, memo, display_order) VALUES (?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_sections))`,
+                    [finalSectionName, finalSectionMemo]
+                );
+                targetSectionId = secRes.lastID;
+            }
+        } else {
+            const secRow = await dbGet(`SELECT id, name FROM logistics_quote_sections WHERE id = ?`, [targetSectionId]);
+            if (secRow) {
+                finalSectionName = secRow.name;
+            }
+        }
+
+        let addedCount = 0;
+        // 아이템 삽입 (중복 여부 확인 또는 그대로 추가)
+        for (const it of candidateItems) {
+            const itemName = (it.item || '').trim();
+            const spec = (it.spec || '').trim();
+            const category = (it.category || '').trim();
+            const unit = (it.unit || '').trim();
+            const buyPrice = parseFloat(it.buy_price) || 0;
+            const sellPrice = parseFloat(it.sell_price) || 0;
+            const supplier = (it.default_supplier || '').trim();
+            const destination = (it.default_destination || '').trim();
+            const isFreight = (it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'))) ? 1 : 0;
+            const note = (it.note || '').trim();
+            const unitPriceId = it.unit_price_id ? parseInt(it.unit_price_id, 10) : (it.id ? parseInt(it.id, 10) : null);
+
+            // 동일 섹션 내 완전히 동일한 품목/규격/공급처 중복 방지
+            const dupCheck = await dbGet(
+                `SELECT id FROM logistics_quote_items WHERE section_id = ? AND item = ? AND spec = ? AND default_supplier = ?`,
+                [targetSectionId, itemName, spec, supplier]
+            );
+
+            if (!dupCheck) {
+                await dbRun(`
+                    INSERT INTO logistics_quote_items
+                    (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_items WHERE section_id = ?))
+                `, [
+                    targetSectionId, unitPriceId, itemName, spec, category, unit,
+                    buyPrice, sellPrice, supplier, destination, isFreight, note,
+                    targetSectionId
+                ]);
+                addedCount++;
+            }
+        }
+
+        await dbRun("COMMIT");
+
+        res.json({
+            success: true,
+            sectionId: targetSectionId,
+            sectionName: finalSectionName,
+            section_id: targetSectionId,
+            section_name: finalSectionName,
+            addedCount: addedCount,
+            message: `[${finalSectionName}] 섹션에 품목이 성공적으로 추가되었습니다.`
+        });
+    } catch (err) {
+        try { await dbRun("ROLLBACK"); } catch (e) {}
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. 섹션 수정 (이름 변경 또는 검토 의견/메모 업데이트)
+router.put('/quote-sections/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { name, memo, section_name, section_note } = req.body;
+
+        const sec = await dbGet(`SELECT * FROM logistics_quote_sections WHERE id = ?`, [id]);
+        if (!sec) {
+            return res.status(404).json({ error: '섹션을 찾을 수 없습니다.' });
+        }
+
+        const reqName = name !== undefined ? name : section_name;
+        const reqMemo = memo !== undefined ? memo : section_note;
+        const newName = reqName !== undefined ? (String(reqName).trim() || sec.name) : sec.name;
+        const newMemo = reqMemo !== undefined ? String(reqMemo).trim() : (sec.memo || '');
+
+        await dbRun(
+            `UPDATE logistics_quote_sections SET name = ?, memo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [newName, newMemo, id]
+        );
+
+        res.json({ success: true, message: '섹션 정보가 저장되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. 섹션 삭제 (소속 아이템 CASCADE 삭제)
+router.delete('/quote-sections/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        await dbRun(`DELETE FROM logistics_quote_items WHERE section_id = ?`, [id]);
+        await dbRun(`DELETE FROM logistics_quote_sections WHERE id = ?`, [id]);
+        res.json({ success: true, message: '섹션이 삭제되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. 섹션 내 개별 품목 삭제
+router.delete('/quote-items/:id', async (req, res) => {
+    try {
+        await dbRun(`DELETE FROM logistics_quote_items WHERE id = ?`, [req.params.id]);
+        res.json({ success: true, message: '품목이 삭제되었습니다.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

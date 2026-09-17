@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_7">
+    <link rel="stylesheet" href="style.css?v=20260917_8">
 </head>
 <body>
 
@@ -33,13 +33,13 @@
                 <button type="button" class="erp-tab-btn active" data-category="" onclick="app.setCategoryFilter('')">전체</button>
             </div>
 
-            <!-- 뷰 모드 전환 탭 (품목별 ↔ 규격별 매트릭스) -->
+            <!-- 뷰 모드 전환 탭 (품목별 단가표 ↔ 견적 비교 테이블) -->
             <div class="erp-view-toggle ms-2" id="viewToggleGroup">
                 <button type="button" class="btn-erp active" id="viewModeItemBtn" onclick="app.switchViewMode('item')" title="기본 품목별 목록 단가표 뷰">
                     <i class='bx bx-list-ul'></i> 품목별 단가표
                 </button>
-                <button type="button" class="btn-erp" id="viewModeSpecBtn" onclick="app.switchViewMode('spec')" title="품목 및 규격 기준 다자 견적 비교 매트릭스 뷰">
-                    <i class='bx bx-git-compare text-primary'></i> 다자 비교 매트릭스
+                <button type="button" class="btn-erp" id="viewModeQuoteBtn" onclick="app.switchViewMode('quote')" title="선택한 품목들을 섹션별로 묶어 가성비/환산단가를 비교하는 견적 비교 테이블 뷰">
+                    <i class='bx bx-git-compare text-primary'></i> 견적 비교 테이블 <span class="badge bg-primary text-white ms-1" id="quoteSectionCountBadge">0</span>
                 </button>
             </div>
         </div>
@@ -54,14 +54,11 @@
             <button type="button" class="btn-erp" id="btnExportExcel" onclick="app.exportExcel()" title="현재 단가표 엑셀(CSV) 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
             </button>
+            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopAddToCompare" onclick="app.openAddToQuoteModal()" title="체크된 단가 항목들을 견적 비교 테이블에 담습니다">
+                <i class='bx bx-plus-circle'></i> <span id="topAddToCompareText">비교 테이블에 담기 (0)</span>
+            </button>
             <button type="button" class="btn-erp btn-del d-none" id="btnTopBatchDelete" onclick="app.deleteSelectedItems()" title="체크된 단가 항목들을 일괄 삭제합니다">
                 <i class='bx bx-trash text-danger'></i> <span id="topBatchDeleteText">선택 삭제 (0)</span>
-            </button>
-            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopPrintSpecs" onclick="app.printSelectedSpecs()" title="체크된 품목/규격들의 비교 매트릭스를 A4 가로 비교표로 인쇄합니다">
-                <i class='bx bx-printer'></i> 선택 견적 인쇄
-            </button>
-            <button type="button" class="btn-erp btn-erp-success d-none" id="btnTopExportSpecs" onclick="app.exportSelectedSpecsExcel()" title="체크된 품목/규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
-                <i class='bx bx-file'></i> 선택 견적 엑셀
             </button>
             <a href="../inout/index.html" class="btn-erp" title="사내 입출고내역 페이지로 이동">
                 <i class='bx bx-transfer'></i> 입출고내역
@@ -113,6 +110,11 @@
         </div>
 
         <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 선택 항목 견적 비교 테이블에 담기 버튼 -->
+            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnAddToCompare" onclick="app.openAddToQuoteModal()" title="체크된 단가 항목들을 견적 비교 테이블에 담습니다">
+                <i class='bx bx-plus-circle'></i> <span id="addToCompareText">견적 비교 테이블에 담기 (0)</span>
+            </button>
+
             <!-- 선택 삭제 버튼 (선택 시 활성화) -->
             <button type="button" class="btn-erp btn-del d-none" id="btnBatchDelete" onclick="app.deleteSelectedItems()" title="체크된 단가 항목들을 일괄 삭제합니다">
                 <i class='bx bx-trash text-danger'></i> <span id="batchDeleteText">선택 삭제 (0)</span>
@@ -223,50 +225,32 @@
         <div class="d-flex align-items-center gap-1" id="paginationNav"></div>
     </div>
 
-    <!-- ── 3-2. 규격별 비교 매트릭스 대시보드 래퍼 (선택 뷰) ── -->
-    <div class="erp-grid-wrapper shadow-sm d-none" id="specMatrixWrapper">
-        <div class="spec-matrix-toolbar no-print p-2 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-                <div class="form-check m-0 d-flex align-items-center gap-1">
-                    <input type="checkbox" class="form-check-input mt-0 cursor-pointer" id="selectAllSpecs" onchange="app.toggleSelectAllSpecs(this.checked)" title="모든 품목/규격 선택 / 해제">
-                    <label for="selectAllSpecs" class="fw-bold small cursor-pointer text-dark user-select-none">전체 선택</label>
-                </div>
-                <span class="badge bg-primary ms-1" id="selectedSpecsBadge">0개 품목/규격 선택됨</span>
-                <span class="text-muted small ms-2" id="specMatrixTotalBadge">총 0개 비교 세트</span>
+    <!-- ── 3-2. 견적 비교 테이블 대시보드 래퍼 (Tab 2: 견적 비교 뷰) ── -->
+    <div class="erp-grid-wrapper shadow-sm d-none" id="quoteComparisonWrapper" style="padding: 8px; background: #f8fafc;">
+        <div class="quote-compare-toolbar no-print p-2 bg-white border rounded mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fw-bold text-dark d-inline-flex align-items-center gap-1" style="font-size: 13px;">
+                    <i class='bx bx-git-compare text-primary'></i> 자재 선정 & 복수 견적 비교 테이블
+                </span>
+                <span class="badge bg-secondary" id="quoteTotalSectionCountBadge">0개 섹션</span>
+                <span class="badge bg-primary" id="quoteTotalItemCountBadge">총 0개 품목 비교 중</span>
             </div>
             <div class="d-flex align-items-center gap-1 flex-wrap">
-                <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSelectedSpecs()" title="체크된 품목/규격들의 비교 매트릭스만 모아서 A4 가로 비교표로 인쇄/PDF 저장합니다">
-                    <i class='bx bx-printer'></i> 선택 견적 인쇄
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.printExecutiveReport()" title="체크된 섹션들의 비교 견적 검토 보고서를 A4 가로 결재용 공식 서식으로 인쇄/PDF 출력합니다">
+                    <i class='bx bx-printer'></i> 비교 견적서 보고서 출력 (A4)
                 </button>
-                <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSelectedSpecsExcel()" title="체크된 품목/규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
-                    <i class='bx bx-download'></i> 선택 견적 엑셀
+                <button type="button" class="btn-erp" onclick="app.openNewSectionModal()" title="새로운 비교 섹션을 생성합니다">
+                    <i class='bx bx-folder-plus text-primary'></i> 새 섹션 만들기
                 </button>
-                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(true)" title="모든 비교 매트릭스 카드 펼치기">
-                    <i class='bx bx-chevron-down'></i> 전체 펼치기
-                </button>
-                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(false)" title="모든 비교 매트릭스 카드 접기">
-                    <i class='bx bx-chevron-up'></i> 전체 접기
+                <button type="button" class="btn-erp" onclick="app.switchViewMode('item')" title="품목별 단가표로 돌아가서 추가 품목을 선택합니다">
+                    <i class='bx bx-plus text-success'></i> 품목 추가로 담기
                 </button>
             </div>
         </div>
 
-        <!-- 규격별 매트릭스 카드 렌더링 영역 -->
-        <div id="specMatrixContainer" class="p-2 d-flex flex-column gap-3">
-            <!-- JS 렌더링 -->
-        </div>
-
-        <!-- 매트릭스 페이징 컨트롤 바 -->
-        <div class="erp-pagination-bar no-print d-flex justify-content-between align-items-center flex-wrap px-2 py-1 bg-light border-top" id="matrixPaginationBar">
-            <div class="d-flex align-items-center gap-2">
-                <span class="text-muted small" id="matrixPagingInfoText">전체 0개 품목/규격</span>
-                <select class="form-select erp-page-size-select" id="matrixPageSizeSelect" onchange="app.changeMatrixPageSize(this.value)">
-                    <option value="10">10개씩 보기</option>
-                    <option value="20" selected>20개씩 보기</option>
-                    <option value="50">50개씩 보기</option>
-                    <option value="all">전체 보기</option>
-                </select>
-            </div>
-            <div class="d-flex align-items-center gap-1" id="matrixPaginationNav"></div>
+        <!-- 섹션별 비교 카드 렌더링 영역 -->
+        <div id="quoteSectionsContainer" class="d-flex flex-column gap-3">
+            <!-- JS Rendered Comparison Sections -->
         </div>
     </div>
 
@@ -458,45 +442,68 @@
         </div>
     </div>
 
-    <!-- ── 6. 단일 규격 다자 비교 매트릭스 팝업 모달 ── -->
-    <div class="modal fade" id="specCompareModal" tabindex="-1" aria-labelledby="specCompareModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
+    <!-- ── 6. 견적 비교 테이블 담기 모달 ── -->
+    <div class="modal fade" id="addToQuoteModal" tabindex="-1" aria-labelledby="addToQuoteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header py-2 px-3 bg-dark text-white">
+                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
                         <i class='bx bx-git-compare text-primary fs-5'></i>
-                        <h6 class="modal-title fw-bold mb-0" id="specCompareModalLabel">규격별 다자 견적 비교 매트릭스</h6>
-                        <span class="badge bg-primary text-white ms-2" id="modalSpecBadge">규격명</span>
+                        <h6 class="modal-title fw-bold mb-0" id="addToQuoteModalLabel">견적 비교 테이블에 담기</h6>
                     </div>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
-                    <!-- 요약 지표 스트립 -->
-                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-light border flex-wrap gap-2" id="modalSpecSummary">
-                        <!-- JS Render -->
+                    <p class="text-muted small mb-2">선택한 <strong class="text-primary" id="modalSelectedCount">0</strong>개 품목을 비교할 섹션(항목)을 지정해주세요.</p>
+                    
+                    <!-- 선택된 품목 요약 리스트 -->
+                    <div class="p-2 border rounded bg-light mb-3" style="max-height: 120px; overflow-y: auto;" id="modalSelectedItemsList">
                     </div>
-                    <!-- 가로 대조 테이블 -->
-                    <div class="table-responsive border rounded" style="max-height: 480px; overflow-x: auto; overflow-y: auto;">
-                        <table class="erp-matrix-table w-100 mb-0" id="modalMatrixTable">
-                            <!-- JS Render -->
-                        </table>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">비교 섹션(항목) 지정</label>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check" id="radioExistingSectionWrap">
+                                <input class="form-check-input" type="radio" name="sectionChoice" id="choiceExisting" value="existing" onchange="app.onSectionChoiceChange()">
+                                <label class="form-check-label small" for="choiceExisting">기존 비교 섹션에 추가</label>
+                                <select class="form-select form-select-sm mt-1" id="selectExistingSection">
+                                    <option value="">-- 기존 섹션을 선택하세요 --</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="sectionChoice" id="choiceNew" value="new" checked onchange="app.onSectionChoiceChange()">
+                                <label class="form-check-label small fw-bold text-primary" for="choiceNew">새로운 비교 섹션명 생성</label>
+                                <input type="text" class="form-control form-control-sm mt-1" id="inputNewSectionName" 
+                                       placeholder="예: 테일씰그리스, 2공구 급결제, 숏크리트 혼화제" maxlength="40">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.openCreateModalWithSpec(app.activeModalSpec)">
-                            <i class='bx bx-plus'></i> 이 규격에 새 품목 등록
-                        </button>
-                    </div>
-                    <div class="d-flex gap-1">
-                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSingleSpec(app.activeModalSpec)">
-                            <i class='bx bx-printer'></i> 인쇄
-                        </button>
-                        <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSingleSpecExcel(app.activeModalSpec)">
-                            <i class='bx bx-download'></i> 엑셀 다운로드
-                        </button>
-                        <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">닫기</button>
-                    </div>
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3" onclick="app.submitAddToQuote()">
+                        <i class='bx bx-check'></i> 비교 테이블에 담기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 6-1. 새 비교 섹션 만들기 모달 ── -->
+    <div class="modal fade" id="newSectionModal" tabindex="-1" aria-labelledby="newSectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-bold mb-0" id="newSectionModalLabel"><i class='bx bx-folder-plus text-primary'></i> 새 비교 섹션</h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <label class="form-label small fw-bold">섹션(항목)명</label>
+                    <input type="text" class="form-control form-control-sm" id="inpDirectSectionName" placeholder="예: 테일씰그리스">
+                </div>
+                <div class="modal-footer py-1 px-2 bg-light">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="app.createDirectSection()">생성</button>
                 </div>
             </div>
         </div>
@@ -509,6 +516,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_10"></script>
+    <script src="app.js?v=20260917_11"></script>
 </body>
 </html>

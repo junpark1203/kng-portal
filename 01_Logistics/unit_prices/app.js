@@ -94,15 +94,13 @@ const app = {
     subSearchQuery: '',
     marginFilter: 'all',
     itemsSpecsMap: {},
-    viewMode: 'item', // 'item' | 'spec'
-    checkedSpecs: new Set(),
+    viewMode: 'item', // 'item' | 'quote'
     checkedItemIds: new Set(),
-    activeModalSpec: '',
-    specCompareModalInstance: null,
+    quoteSections: [],
+    addToQuoteModalInstance: null,
+    newSectionModalInstance: null,
     currentPage: 1,
     pageSize: 50,
-    matrixCurrentPage: 1,
-    matrixPageSize: 20,
     sortColumn: '',
     sortOrder: 'asc', // 'asc' | 'desc'
     focusedRowIndex: -1,
@@ -111,12 +109,16 @@ const app = {
         this.bindEvents();
         await this.loadItemSpecs();
         await this.loadPrices();
+        await this.loadQuoteSections();
         this.setupAutocomplete();
         if (window.ErpGridResizer) {
             window.ErpGridResizer.init('priceTable');
         }
-        if ($('specCompareModal') && window.bootstrap) {
-            this.specCompareModalInstance = new bootstrap.Modal($('specCompareModal'));
+        if ($('addToQuoteModal') && window.bootstrap) {
+            this.addToQuoteModalInstance = new bootstrap.Modal($('addToQuoteModal'));
+        }
+        if ($('newSectionModal') && window.bootstrap) {
+            this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
         }
     },
 
@@ -394,13 +396,12 @@ const app = {
             this.applySort();
         }
         this.currentPage = 1;
-        this.matrixCurrentPage = 1;
         this.focusedRowIndex = -1;
         this.renderTable();
         this.updateSortIcons();
         this.renderStats();
-        if (this.viewMode === 'spec') {
-            this.renderSpecMatrix();
+        if (this.viewMode === 'quote') {
+            this.renderQuoteComparisonView();
         }
     },
 
@@ -520,11 +521,7 @@ const app = {
                     <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
                     <td class="text-start ps-2 fw-semibold text-truncate" title="${escapeHtml(r.item)}">${escapeHtml(r.item)}</td>
                     <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.spec || '')}">
-                        ${(r.spec && r.spec.trim()) ? `
-                            <button type="button" class="btn-spec-pill" data-group-key="${escapeHtml(((r.item || '').trim() + '___' + (r.spec || '').trim()).toLowerCase())}" onclick="event.stopPropagation(); app.openSpecCompare(this.getAttribute('data-group-key'))" title="'${escapeHtml(r.item)} [${escapeHtml(r.spec.trim())}]' 다자 견적 비교 매트릭스 보기">
-                                <i class='bx bx-git-compare text-primary'></i> ${escapeHtml(r.spec.trim())}
-                            </button>
-                        ` : '<span class="text-muted">-</span>'}
+                        ${(r.spec && r.spec.trim()) ? `<span class="spec-pill">${escapeHtml(r.spec.trim())}</span>` : '<span class="text-muted">-</span>'}
                     </td>
                     <td class="text-center text-muted">${escapeHtml(r.unit || '-')}</td>
                     <td class="td-buy pe-2">
@@ -1099,6 +1096,16 @@ const app = {
         if (btnTopBatch) btnTopBatch.classList.toggle('d-none', size === 0);
         if (textBatch) textBatch.innerText = `선택 삭제 (${size})`;
         if (textTopBatch) textTopBatch.innerText = `선택 삭제 (${size})`;
+
+        const btnAddToCompare = $('btnAddToCompare');
+        const btnTopAddToCompare = $('btnTopAddToCompare');
+        const textAddToCompare = $('addToCompareText');
+        const textTopAddToCompare = $('topAddToCompareText');
+
+        if (btnAddToCompare) btnAddToCompare.classList.toggle('d-none', size === 0);
+        if (btnTopAddToCompare) btnTopAddToCompare.classList.toggle('d-none', size === 0);
+        if (textAddToCompare) textAddToCompare.innerText = `견적 비교 테이블에 담기 (${size})`;
+        if (textTopAddToCompare) textTopAddToCompare.innerText = `비교 테이블에 담기 (${size})`;
     },
 
     deleteSelectedItems: async function() {
@@ -1337,175 +1344,566 @@ const app = {
     },
 
     // ─────────────────────────────────────────
-    // 규격별 다자 비교 매트릭스 시스템
+    // 사용자 정의 섹션 기반 견적 비교 테이블 시스템 (Tab 2)
     // ─────────────────────────────────────────
+    loadQuoteSections: async function() {
+        try {
+            const data = await authFetch(`${API_BASE}/quote-sections`);
+            this.quoteSections = Array.isArray(data) ? data : [];
+        } catch (e) {
+            console.warn('loadQuoteSections error:', e);
+            this.quoteSections = [];
+        }
+
+        const secCount = this.quoteSections.length;
+        let totalItems = 0;
+        this.quoteSections.forEach(s => {
+            if (s.items && Array.isArray(s.items)) totalItems += s.items.length;
+        });
+
+        const badge1 = $('quoteSectionCountBadge');
+        if (badge1) badge1.innerText = secCount;
+
+        const badge2 = $('quoteTotalSectionCountBadge');
+        if (badge2) badge2.innerText = `${secCount}개 섹션`;
+
+        const badge3 = $('quoteTotalItemCountBadge');
+        if (badge3) badge3.innerText = `총 ${totalItems}개 품목 비교 중`;
+
+        if (this.viewMode === 'quote') {
+            this.renderQuoteComparisonView();
+        }
+    },
+
     switchViewMode: function(mode) {
         this.viewMode = mode;
         const itemBtn = $('viewModeItemBtn');
-        const specBtn = $('viewModeSpecBtn');
+        const quoteBtn = $('viewModeQuoteBtn');
         if (itemBtn) itemBtn.classList.toggle('active', mode === 'item');
-        if (specBtn) specBtn.classList.toggle('active', mode === 'spec');
+        if (quoteBtn) quoteBtn.classList.toggle('active', mode === 'quote');
 
         const priceGrid = $('priceGridWrapper');
-        const specGrid = $('specMatrixWrapper');
+        const itemPagingBar = $('itemPaginationBar');
+        const quoteWrapper = $('quoteComparisonWrapper');
+
         if (priceGrid) priceGrid.classList.toggle('d-none', mode !== 'item');
-        if (specGrid) specGrid.classList.toggle('d-none', mode !== 'spec');
+        if (itemPagingBar) itemPagingBar.classList.toggle('d-none', mode !== 'item');
+        if (quoteWrapper) quoteWrapper.classList.toggle('d-none', mode !== 'quote');
 
         const exportExcelBtn = $('btnExportExcel');
-        const topPrintSpecsBtn = $('btnTopPrintSpecs');
-        const topExportSpecsBtn = $('btnTopExportSpecs');
         if (exportExcelBtn) exportExcelBtn.classList.toggle('d-none', mode !== 'item');
-        if (topPrintSpecsBtn) topPrintSpecsBtn.classList.toggle('d-none', mode !== 'spec');
-        if (topExportSpecsBtn) topExportSpecsBtn.classList.toggle('d-none', mode !== 'spec');
 
-        if (mode === 'spec') {
-            this.renderSpecMatrix();
+        if (mode === 'quote') {
+            this.renderQuoteComparisonView();
         }
     },
 
-    getGroupKey: function(item, spec) {
-        const it = (item || '').trim().toLowerCase();
-        const sp = (spec || '').trim().toLowerCase();
-        return `${it}___${sp}`;
-    },
-
-    getGroupedSpecs: function() {
-        const map = new Map();
-        this.filteredList.forEach(item => {
-            const rawItem = (item.item || '').trim();
-            const rawSpec = (item.spec || '').trim();
-            const displayItem = rawItem || '(품목명미지정)';
-            const displaySpec = rawSpec || '(규격미지정)';
-            const groupKey = this.getGroupKey(displayItem, displaySpec);
-
-            if (!map.has(groupKey)) {
-                map.set(groupKey, {
-                    groupKey: groupKey,
-                    item: displayItem,
-                    spec: displaySpec,
-                    isNoSpec: !rawSpec,
-                    category: item.category || '일반자재',
-                    unit: item.unit || 'EA',
-                    items: []
-                });
-            }
-            map.get(groupKey).items.push(item);
-        });
-
-        const groups = Array.from(map.values());
-        groups.forEach(g => {
-            let minBuy = Infinity;
-            let maxSell = 0;
-            let bestBuySupplier = null;
-            let sumMargin = 0;
-            let validMarginCount = 0;
-
-            g.items.forEach(it => {
-                const buy = it.buy_price || 0;
-                const sell = it.sell_price || 0;
-                if (buy > 0 && buy < minBuy) {
-                    minBuy = buy;
-                    bestBuySupplier = it.default_supplier || it.item;
-                }
-                if (sell > maxSell) maxSell = sell;
-                if (sell > 0 && buy > 0) {
-                    sumMargin += ((sell - buy) / sell) * 100;
-                    validMarginCount++;
-                }
-            });
-
-            g.minBuy = minBuy === Infinity ? 0 : minBuy;
-            g.maxSell = maxSell;
-            g.bestBuySupplier = bestBuySupplier;
-            g.avgMargin = validMarginCount > 0 ? Math.round((sumMargin / validMarginCount) * 10) / 10 : 0;
-        });
-
-        // 정렬: 견적 수 많은 순 -> 품목명 오름차순 -> 규격명 오름차순
-        groups.sort((a, b) => {
-            if (b.items.length !== a.items.length) return b.items.length - a.items.length;
-            const itemCmp = a.item.localeCompare(b.item, 'ko');
-            if (itemCmp !== 0) return itemCmp;
-            return a.spec.localeCompare(b.spec, 'ko');
-        });
-
-        return groups;
-    },
-
-    renderSpecMatrix: function() {
-        const container = $('specMatrixContainer');
-        if (!container) return;
-
-        const groups = this.getGroupedSpecs();
-        const totalCount = groups.length;
-        if (totalCount === 0) {
-            container.innerHTML = `
-                <div class="text-center py-5 text-muted bg-white rounded border">
-                    <i class='bx bx-info-circle fs-3 me-1'></i> 조건에 일치하는 품목/규격 매트릭스 데이터가 없습니다.
-                </div>
-            `;
-            if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = '총 0개 품목/규격';
-            this.renderMatrixPagination(0);
+    openAddToQuoteModal: function() {
+        if (this.checkedItemIds.size === 0) {
+            alert('비교할 단가 항목을 먼저 1개 이상 체크(선택)해주세요.');
             return;
         }
 
-        if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = `총 ${totalCount.toLocaleString()}개 품목/규격 (${this.filteredList.length.toLocaleString()}건 견적)`;
+        const selected = this.priceList.filter(p => this.checkedItemIds.has(p.id));
+        const countEl = $('modalSelectedCount');
+        if (countEl) countEl.innerText = selected.length;
 
-        let pagedGroups = groups;
-        let startIdx = 0;
-        if (this.matrixPageSize !== 'all') {
-            const size = parseInt(this.matrixPageSize, 10) || 20;
-            const totalPages = Math.ceil(totalCount / size) || 1;
-            if (this.matrixCurrentPage > totalPages) this.matrixCurrentPage = totalPages;
-            if (this.matrixCurrentPage < 1) this.matrixCurrentPage = 1;
+        const listEl = $('modalSelectedItemsList');
+        if (listEl) {
+            listEl.innerHTML = selected.map(it => {
+                const buyStr = it.buy_price ? `${it.buy_price.toLocaleString()}원` : '단가미등록';
+                const freightStr = (it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'))) ? '도착도' : '상차도';
+                return `
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom small">
+                        <div>
+                            <strong class="text-dark">${escapeHtml(it.item)}</strong>
+                            <span class="text-muted ms-1">[${escapeHtml(it.spec || '규격없음')}]</span>
+                            <span class="badge bg-light text-secondary border ms-1">${escapeHtml(it.default_supplier || '공급처미지정')}</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-primary fw-bold">${buyStr}</span>
+                            <span class="badge bg-light text-dark border ms-1" style="font-size: 10px;">${freightStr}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
-            startIdx = (this.matrixCurrentPage - 1) * size;
-            pagedGroups = groups.slice(startIdx, startIdx + size);
+        // 기존 섹션 드롭다운 채우기
+        const selectSec = $('selectExistingSection');
+        const choiceExisting = $('choiceExisting');
+        const choiceNew = $('choiceNew');
+
+        if (selectSec) {
+            selectSec.innerHTML = '<option value="">-- 기존 섹션을 선택하세요 --</option>' + 
+                this.quoteSections.map(s => `<option value="${s.id}">${escapeHtml(s.section_name)} (${(s.items || []).length}개 후보 등록됨)</option>`).join('');
+        }
+
+        if (this.quoteSections.length === 0) {
+            if (choiceExisting) choiceExisting.disabled = true;
+            if (choiceNew) choiceNew.checked = true;
+            if (selectSec) selectSec.disabled = true;
+        } else {
+            if (choiceExisting) choiceExisting.disabled = false;
+        }
+
+        const inputNew = $('inputNewSectionName');
+        if (inputNew) inputNew.value = '';
+
+        this.onSectionChoiceChange();
+
+        if (!this.addToQuoteModalInstance && window.bootstrap && $('addToQuoteModal')) {
+            this.addToQuoteModalInstance = new bootstrap.Modal($('addToQuoteModal'));
+        }
+        if (this.addToQuoteModalInstance) {
+            this.addToQuoteModalInstance.show();
+        }
+    },
+
+    onSectionChoiceChange: function() {
+        const choiceRadio = document.querySelector('input[name="sectionChoice"]:checked');
+        const choice = choiceRadio ? choiceRadio.value : 'new';
+        const selectSec = $('selectExistingSection');
+        const inputNew = $('inputNewSectionName');
+
+        if (choice === 'existing') {
+            if (selectSec) selectSec.disabled = false;
+            if (inputNew) inputNew.disabled = true;
+        } else {
+            if (selectSec) selectSec.disabled = true;
+            if (inputNew) {
+                inputNew.disabled = false;
+                setTimeout(() => inputNew.focus(), 150);
+            }
+        }
+    },
+
+    submitAddToQuote: async function() {
+        const choiceRadio = document.querySelector('input[name="sectionChoice"]:checked');
+        const choice = choiceRadio ? choiceRadio.value : 'new';
+        let sectionId = null;
+        let sectionName = '';
+
+        if (choice === 'existing') {
+            const selectSec = $('selectExistingSection');
+            sectionId = selectSec ? parseInt(selectSec.value, 10) : null;
+            if (!sectionId) {
+                alert('추가할 기존 비교 섹션을 선택해주세요.');
+                return;
+            }
+            const sec = this.quoteSections.find(s => s.id === sectionId);
+            if (sec) sectionName = sec.section_name;
+        } else {
+            const inputNew = $('inputNewSectionName');
+            sectionName = inputNew ? inputNew.value.trim() : '';
+            if (!sectionName) {
+                alert('생성할 비교 섹션(항목)명을 입력해주세요. (예: 테일씰그리스, 2공구 급결제)');
+                if (inputNew) inputNew.focus();
+                return;
+            }
+        }
+
+        const selected = this.priceList.filter(p => this.checkedItemIds.has(p.id));
+        if (selected.length === 0) {
+            alert('담을 단가 항목이 없습니다.');
+            return;
+        }
+
+        const itemsPayload = selected.map(p => ({
+            unit_price_id: p.id,
+            item: p.item,
+            spec: p.spec,
+            category: p.category,
+            unit: p.unit,
+            buy_price: p.buy_price || 0,
+            sell_price: p.sell_price || 0,
+            default_supplier: p.default_supplier,
+            default_destination: p.default_destination,
+            is_freight_included: (p.is_freight_included === 1 || p.is_freight_included === true || (p.note && p.note.includes('[운임포함]'))) ? 1 : 0,
+            note: p.note
+        }));
+
+        try {
+            const res = await authFetch(`${API_BASE}/quote-sections/add-items`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    section_id: sectionId,
+                    section_name: sectionName,
+                    items: itemsPayload
+                })
+            });
+
+            if (this.addToQuoteModalInstance) {
+                this.addToQuoteModalInstance.hide();
+            }
+
+            // 체크 해제 및 테이블 갱신
+            this.checkedItemIds.clear();
+            this.updateItemSelectionState();
+            this.renderTable();
+
+            // 섹션 데이터 새로고침
+            await this.loadQuoteSections();
+
+            // 견적 비교 탭으로 자동 이동
+            this.switchViewMode('quote');
+
+            alert(`선택한 ${res.addedCount || itemsPayload.length}개 품목이 [${res.section_name || sectionName}] 견적 비교 테이블에 성공적으로 담겼습니다.`);
+        } catch (err) {
+            alert('견적 비교 테이블 담기 실패: ' + err.message);
+        }
+    },
+
+    openNewSectionModal: function() {
+        const inp = $('inpDirectSectionName');
+        if (inp) inp.value = '';
+        if (!this.newSectionModalInstance && window.bootstrap && $('newSectionModal')) {
+            this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
+        }
+        if (this.newSectionModalInstance) {
+            this.newSectionModalInstance.show();
+            setTimeout(() => { if (inp) inp.focus(); }, 200);
+        }
+    },
+
+    createDirectSection: async function() {
+        const inp = $('inpDirectSectionName');
+        const name = inp ? inp.value.trim() : '';
+        if (!name) {
+            alert('섹션명을 입력해주세요.');
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/add-items`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    section_name: name,
+                    items: []
+                })
+            });
+            if (this.newSectionModalInstance) {
+                this.newSectionModalInstance.hide();
+            }
+            await this.loadQuoteSections();
+        } catch (err) {
+            alert('섹션 생성 실패: ' + err.message);
+        }
+    },
+
+    deleteQuoteSection: async function(sectionId) {
+        const sec = this.quoteSections.find(s => s.id === sectionId);
+        const name = sec ? sec.section_name : '섹션';
+        if (!confirm(`[${name}] 비교 섹션과 등록된 모든 비교 품목을 삭제하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/${sectionId}`, {
+                method: 'DELETE'
+            });
+            await this.loadQuoteSections();
+        } catch (err) {
+            alert('섹션 삭제 실패: ' + err.message);
+        }
+    },
+
+    deleteQuoteItem: async function(itemId) {
+        if (!confirm('이 비교 항목을 섹션에서 제외하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-items/${itemId}`, {
+                method: 'DELETE'
+            });
+            await this.loadQuoteSections();
+        } catch (err) {
+            alert('항목 제외 실패: ' + err.message);
+        }
+    },
+
+    updateSectionMemo: async function(sectionId, textareaEl) {
+        const note = textareaEl ? textareaEl.value : '';
+        try {
+            await authFetch(`${API_BASE}/quote-sections/${sectionId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ section_note: note })
+            });
+            const sec = this.quoteSections.find(s => s.id === sectionId);
+            if (sec) sec.section_note = note;
+        } catch (err) {
+            console.warn('updateSectionMemo error:', err);
+        }
+    },
+
+    parseUnitNormalize: function(spec, price) {
+        if (!price || price <= 0 || !spec) return null;
+        // e.g. 15kg, 15 kg, 250kg/drum, 18L, 18리터, 1000L, 0.5ton
+        const m = spec.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|l|리터|킬로|k|g|톤|ton)/i);
+        if (!m) return null;
+        let qty = parseFloat(m[1]);
+        if (!qty || qty <= 0) return null;
+        let unitStr = m[2].toLowerCase();
+        if (unitStr === 'k' || unitStr === '킬로' || unitStr === 'kg') {
+            unitStr = 'kg';
+        } else if (unitStr === '리터' || unitStr === 'l') {
+            unitStr = 'L';
+        } else if (unitStr === 'ton' || unitStr === '톤') {
+            qty = qty * 1000;
+            unitStr = 'kg';
+        } else if (unitStr === 'g') {
+            qty = qty / 1000;
+            unitStr = 'kg';
+        }
+
+        const normPrice = Math.round(price / qty);
+        return {
+            qty,
+            unit: unitStr,
+            normPrice
+        };
+    },
+
+    renderQuoteComparisonView: function() {
+        const container = $('quoteSectionsContainer');
+        if (!container) return;
+
+        if (this.quoteSections.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 bg-white rounded border shadow-sm p-4">
+                    <div class="mb-3">
+                        <i class='bx bx-git-compare text-primary' style="font-size: 48px;"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark">등록된 견적 비교 섹션이 없습니다</h5>
+                    <p class="text-muted small mb-3">
+                        [품목별 단가표]에서 비교를 원하는 품목들을 체크(Space 또는 클릭)한 후<br>
+                        <strong>[견적 비교 테이블에 담기]</strong> 버튼을 눌러 비교 섹션(예: 테일씰그리스, 급결제 등)을 구성해보세요.
+                    </p>
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.switchViewMode('item')">
+                            <i class='bx bx-list-ul'></i> 품목별 단가표로 이동하기
+                        </button>
+                        <button type="button" class="btn-erp" onclick="app.openNewSectionModal()">
+                            <i class='bx bx-folder-plus'></i> 새 섹션 직접 만들기
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
         }
 
         let html = '';
-        pagedGroups.forEach((g, idx) => {
-            const globalIdx = startIdx + idx;
-            const isChecked = this.checkedSpecs.has(g.groupKey);
-            const cardId = `spec_card_${globalIdx}`;
-            const bodyId = `spec_card_body_${globalIdx}`;
+        this.quoteSections.forEach((sec, sIdx) => {
+            const items = sec.items || [];
+            
+            // 환산 단가 및 최저가 후보 도출
+            const analyzedItems = items.map(it => {
+                const norm = this.parseUnitNormalize(it.spec, it.buy_price);
+                return {
+                    ...it,
+                    norm
+                };
+            });
 
-            const bestBuyText = g.minBuy > 0 ? `최저 매입: ₩${g.minBuy.toLocaleString()} (${escapeHtml(g.bestBuySupplier || '-')})` : '매입단가 미등록';
-            const maxSellText = g.maxSell > 0 ? `최고 매출: ₩${g.maxSell.toLocaleString()}` : '-';
+            // 모든 품목이 공통 단위(예: kg)로 환산 가능한지 확인
+            const normUnits = analyzedItems.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
+            const commonUnit = (normUnits.length > 0 && normUnits.length === analyzedItems.length && normUnits.every(u => u === normUnits[0]))
+                ? normUnits[0]
+                : null;
+
+            let bestItemId = null;
+            let minVal = Infinity;
+
+            if (commonUnit) {
+                // 환산단가 기준 최저가 도출 (포장규격이 달라도 kg/L당 최저가 우선)
+                analyzedItems.forEach(it => {
+                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                        minVal = it.norm.normPrice;
+                        bestItemId = it.id;
+                    }
+                });
+            } else {
+                // 단순 매입단가 기준 최저가 도출
+                analyzedItems.forEach(it => {
+                    const b = it.buy_price || 0;
+                    if (b > 0 && b < minVal) {
+                        minVal = b;
+                        bestItemId = it.id;
+                    }
+                });
+            }
+            if (minVal === Infinity) minVal = 0;
+
+            const bestItem = analyzedItems.find(it => it.id === bestItemId);
+            let bestSummaryHtml = '';
+            if (bestItem && analyzedItems.length > 1) {
+                if (commonUnit && bestItem.norm) {
+                    bestSummaryHtml = `
+                        <span class="badge-best-pick">
+                            <i class='bx bx-check-circle'></i> 최저단가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.norm.normPrice.toLocaleString()}/${commonUnit})
+                        </span>
+                    `;
+                } else if (bestItem.buy_price) {
+                    bestSummaryHtml = `
+                        <span class="badge-best-pick">
+                            <i class='bx bx-check-circle'></i> 최저가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.buy_price.toLocaleString()}원)
+                        </span>
+                    `;
+                }
+            }
+
+            // 테이블 렌더링
+            let rowsHtml = '';
+            if (analyzedItems.length === 0) {
+                rowsHtml = `
+                    <tr>
+                        <td colspan="11" class="text-center py-4 text-muted">
+                            이 섹션에 담긴 품목이 없습니다. [품목별 단가표]에서 항목을 체크하여 이 섹션으로 담아보세요.
+                        </td>
+                    </tr>
+                `;
+            } else {
+                analyzedItems.forEach((it, cIdx) => {
+                    const isBest = (it.id === bestItemId) && analyzedItems.length > 1;
+                    const buy = it.buy_price || 0;
+                    const sell = it.sell_price || 0;
+                    const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
+                    const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
+
+                    // 환산 단가 컬럼 렌더링
+                    let normHtml = '<span class="text-muted small">-</span>';
+                    if (it.norm) {
+                        const isUnitBest = isBest && commonUnit;
+                        let savingsBadge = '';
+                        if (commonUnit && !isBest && bestItem && bestItem.norm && it.norm.normPrice > bestItem.norm.normPrice) {
+                            const diff = it.norm.normPrice - bestItem.norm.normPrice;
+                            const diffPct = Math.round((diff / bestItem.norm.normPrice) * 1000) / 10;
+                            savingsBadge = `<span class="badge-savings ms-1" title="최저가 대비">+${diffPct}% 고가</span>`;
+                        } else if (isUnitBest) {
+                            savingsBadge = `<span class="badge bg-success text-white ms-1" style="font-size: 10px;">최저단가★</span>`;
+                        }
+
+                        normHtml = `
+                            <div class="d-flex align-items-center justify-content-end gap-1">
+                                <span class="badge-norm-price">₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}</span>
+                                ${savingsBadge}
+                            </div>
+                        `;
+                    }
+
+                    const freightIn = it.is_freight_included === 1 || it.is_freight_included === true;
+
+                    rowsHtml += `
+                        <tr class="${isBest ? 'row-best-price' : ''}">
+                            <td class="text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
+                                    ${isBest ? '<i class="bx bx-check-circle text-success fs-6" title="최저가 추천 품목"></i>' : ''}
+                                </div>
+                            </td>
+                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(it.item)}">
+                                ${escapeHtml(it.item)}
+                            </td>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.spec || '')}">
+                                <span class="spec-pill">${escapeHtml(it.spec || '-')}</span>
+                            </td>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_supplier || '')}">
+                                <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
+                            </td>
+                            <td class="text-end pe-2">
+                                <span class="${isBest ? 'text-success fw-bold' : 'fw-semibold text-dark'}">
+                                    ${buy ? `₩${buy.toLocaleString()}` : '-'}
+                                </span>
+                            </td>
+                            <td class="text-end pe-2">
+                                ${normHtml}
+                            </td>
+                            <td class="text-center">
+                                ${freightIn 
+                                    ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 도착도 (운임포함)</span>`
+                                    : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도 (운임별도)</span>`}
+                            </td>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_destination || '')}">
+                                <span>${escapeHtml(it.default_destination || '-')}</span>
+                                ${sell ? `<span class="text-primary small ms-1">(₩${sell.toLocaleString()})</span>` : ''}
+                            </td>
+                            <td class="text-end pe-2">
+                                ${(sell > 0 && buy > 0) ? `
+                                    <span class="${marginRate >= 20 ? 'text-success' : (marginRate < 0 ? 'text-danger' : 'text-dark')} fw-semibold">
+                                        ₩${marginAmt.toLocaleString()} (${marginRate}%)
+                                    </span>
+                                ` : '<span class="text-muted">-</span>'}
+                            </td>
+                            <td class="text-start ps-2 small text-muted text-truncate" title="${escapeHtml(it.note || '')}">
+                                ${escapeHtml(it.note || '-')}
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn-table-action btn-del" onclick="app.deleteQuoteItem(${it.id})" title="이 섹션에서 제외">
+                                    <i class='bx bx-x text-danger fs-5'></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
 
             html += `
-                <div class="spec-matrix-card ${isChecked ? 'selected' : ''}" id="${cardId}" data-group-key="${escapeHtml(g.groupKey)}">
-                    <div class="spec-card-header">
+                <div class="quote-section-card" id="quote_section_${sec.id}">
+                    <div class="quote-section-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="checkbox" class="form-check-input mt-0 spec-checkbox cursor-pointer" 
-                                   data-group-key="${escapeHtml(g.groupKey)}" ${isChecked ? 'checked' : ''} 
-                                   onchange="app.onSpecCheck(this.getAttribute('data-group-key'), this.checked)">
-                            <span class="spec-card-title">
-                                <i class='bx bx-purchase-tag-alt text-primary'></i>
-                                <strong class="text-dark">${escapeHtml(g.item)}</strong>
-                                <span class="spec-pill ms-1">${escapeHtml(g.spec)}</span>
+                            <span class="quote-section-title">
+                                <i class='bx bx-folder-open text-primary'></i>
+                                <span>${escapeHtml(sec.section_name)}</span>
                             </span>
-                            <span class="category-pill">${escapeHtml(g.category)}</span>
-                            <span class="badge bg-secondary">${g.items.length}개 견적 후보</span>
-                            <span class="badge-best-price"><i class='bx bx-check-circle'></i> ${bestBuyText}</span>
-                            <span class="badge-best-margin"><i class='bx bx-trending-up'></i> ${maxSellText} / 평균마진 ${g.avgMargin}%</span>
+                            <span class="badge bg-secondary">${analyzedItems.length}개 후보 비교</span>
+                            ${bestSummaryHtml}
                         </div>
-
                         <div class="d-flex align-items-center gap-1">
-                            <button type="button" class="btn-erp btn-sm" onclick="app.openSpecCompare('${escapeHtml(g.groupKey)}')" title="이 품목/규격의 상세 팝업 매트릭스 열기">
-                                <i class='bx bx-expand-alt text-primary'></i> 상세 대조
+                            <button type="button" class="btn-erp btn-sm" onclick="app.printSingleSection(${sec.id})" title="이 섹션만 A4 가로 보고서로 인쇄">
+                                <i class='bx bx-printer'></i> 인쇄
                             </button>
-                            <button type="button" class="btn-erp btn-sm" onclick="app.openCreateModalWithItemSpec('${escapeHtml(g.item)}', '${escapeHtml(g.spec)}')" title="이 품목/규격에 새로운 공급처 단가 견적 추가 등록">
-                                <i class='bx bx-plus'></i> 견적 추가
-                            </button>
-                            <button type="button" class="btn-erp btn-sm" onclick="app.toggleCardCollapse('${bodyId}', this)" title="매트릭스 표 접기/펼치기">
-                                <i class='bx bx-chevron-up'></i>
+                            <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteQuoteSection(${sec.id})" title="섹션 및 전체 후보 삭제">
+                                <i class='bx bx-trash text-danger'></i> 섹션 삭제
                             </button>
                         </div>
                     </div>
 
-                    <div class="spec-card-body p-2 border-top" id="${bodyId}">
+                    <div class="p-2 bg-white">
                         <div class="table-responsive">
-                            ${this.generateMatrixTableHtml(g.items, g)}
+                            <table class="quote-compare-table w-100">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 75px;">구분</th>
+                                        <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
+                                        <th style="width: 120px;" class="text-start ps-2">규격</th>
+                                        <th style="width: 130px;" class="text-start ps-2">공급업체(주 매입처)</th>
+                                        <th style="width: 105px;" class="text-end pe-2">기준 매입단가</th>
+                                        <th style="width: 140px;" class="text-end pe-2" title="포장단위별(kg, L) 동일 환산 기준단가">환산단가(가성비)</th>
+                                        <th style="width: 120px;">운임조건</th>
+                                        <th style="width: 130px;" class="text-start ps-2">주 매출처(기준매출)</th>
+                                        <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
+                                        <th class="text-start ps-2">비고</th>
+                                        <th style="width: 45px;">제외</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 담당자 종합 검토 의견 및 추천 사유 입력 영역 -->
+                        <div class="mt-2 p-2 bg-light border rounded">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="form-label small fw-bold text-dark mb-0 d-inline-flex align-items-center gap-1">
+                                    <i class='bx bx-edit text-primary'></i> ※ 담당자 종합 검토 의견 및 추천 사유
+                                </label>
+                                <span class="text-muted" style="font-size: 10.5px;">입력 시 실시간 자동저장</span>
+                            </div>
+                            <textarea class="form-control form-control-sm quote-section-memo" rows="2" 
+                                      placeholder="경영진 및 결재권자를 위한 검토 의견을 입력하세요 (예: A사 대비 B사가 포장단위당 16.7% 저렴하고 직배송 운임포함 조건으로 최종 선정 추천)..."
+                                      onchange="app.updateSectionMemo(${sec.id}, this)">${escapeHtml(sec.section_note || '')}</textarea>
                         </div>
                     </div>
                 </div>
@@ -1513,467 +1911,170 @@ const app = {
         });
 
         container.innerHTML = html;
-        this.updateCheckedBadge();
-        this.renderMatrixPagination(totalCount);
     },
 
-    renderMatrixPagination: function(totalCount) {
-        const bar = $('matrixPaginationBar');
-        if (!bar) return;
-
-        if (totalCount === 0) {
-            bar.classList.add('d-none');
-            return;
-        }
-        bar.classList.remove('d-none');
-
-        const size = this.matrixPageSize === 'all' ? totalCount : (parseInt(this.matrixPageSize, 10) || 20);
-        const totalPages = this.matrixPageSize === 'all' ? 1 : Math.ceil(totalCount / size);
-        const currentPage = this.matrixCurrentPage;
-
-        const start = totalCount > 0 ? ((currentPage - 1) * size + 1) : 0;
-        const end = Math.min(currentPage * size, totalCount);
-
-        const infoEl = $('matrixPagingInfoText');
-        if (infoEl) {
-            if (this.matrixPageSize === 'all') {
-                infoEl.innerText = `전체 ${totalCount.toLocaleString()}개 품목/규격`;
-            } else {
-                infoEl.innerText = `전체 ${totalCount.toLocaleString()}개 중 ${start} - ${end}개 (${currentPage} / ${totalPages} 페이지)`;
-            }
-        }
-
-        const nav = $('matrixPaginationNav');
-        if (!nav) return;
-
-        if (totalPages <= 1) {
-            nav.innerHTML = '';
+    printExecutiveReport: function() {
+        if (!this.quoteSections || this.quoteSections.length === 0) {
+            alert('인쇄할 견적 비교 섹션이 없습니다.');
             return;
         }
 
-        let navHtml = '';
-        const prevDisabled = currentPage === 1;
-        navHtml += `
-            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(1)" title="첫 페이지">
-                <i class='bx bx-chevrons-left'></i>
-            </button>
-            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${currentPage - 1})" title="이전 페이지">
-                <i class='bx bx-chevron-left'></i>
-            </button>
-        `;
+        const printArea = $('printArea');
+        if (!printArea) return;
 
-        const maxButtons = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        if (endPage - startPage + 1 < maxButtons) {
-            startPage = Math.max(1, endPage - maxButtons + 1);
-        }
+        const today = new Date().toISOString().split('T')[0];
+        const docNo = `KNG-EST-${today.replace(/-/g, '')}-01`;
 
-        for (let p = startPage; p <= endPage; p++) {
-            const isActive = p === currentPage;
-            navHtml += `
-                <button type="button" class="btn-erp btn-sm ${isActive ? 'btn-erp-primary active fw-bold' : ''}" 
-                        onclick="app.goToMatrixPage(${p})">
-                    ${p}
-                </button>
-            `;
-        }
+        let sectionsHtml = '';
+        this.quoteSections.forEach((sec, idx) => {
+            const items = sec.items || [];
+            if (items.length === 0) return;
 
-        const nextDisabled = currentPage === totalPages;
-        navHtml += `
-            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${currentPage + 1})" title="다음 페이지">
-                <i class='bx bx-chevron-right'></i>
-            </button>
-            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${totalPages})" title="마지막 페이지">
-                <i class='bx bx-chevrons-right'></i>
-            </button>
-        `;
+            const analyzed = items.map(it => ({
+                ...it,
+                norm: this.parseUnitNormalize(it.spec, it.buy_price)
+            }));
 
-        nav.innerHTML = navHtml;
-    },
+            const normUnits = analyzed.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
+            const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0]))
+                ? normUnits[0]
+                : null;
 
-    goToMatrixPage: function(page) {
-        this.matrixCurrentPage = page;
-        this.renderSpecMatrix();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    },
-
-    changeMatrixPageSize: function(val) {
-        this.matrixPageSize = val === 'all' ? 'all' : parseInt(val, 10);
-        this.matrixCurrentPage = 1;
-        this.renderSpecMatrix();
-    },
-
-    generateMatrixTableHtml: function(items, groupInfo) {
-        if (!items || items.length === 0) {
-            return '<div class="text-muted p-3 text-center">등록된 견적이 없습니다.</div>';
-        }
-
-        let minBuy = Infinity;
-        let maxSell = 0;
-        let maxMarginRate = -Infinity;
-        items.forEach(it => {
-            const b = it.buy_price || 0;
-            const s = it.sell_price || 0;
-            if (b > 0 && b < minBuy) minBuy = b;
-            if (s > maxSell) maxSell = s;
-            if (s > 0 && b > 0) {
-                const r = Math.round(((s - b) / s) * 1000) / 10;
-                if (r > maxMarginRate) maxMarginRate = r;
-            }
-        });
-        if (minBuy === Infinity) minBuy = 0;
-
-        let theadHtml = `
-            <thead>
-                <tr>
-                    <th class="matrix-label-col">항목 \\ 견적 후보</th>
-                    ${items.map((it, idx) => {
-                        const isBestBuy = it.buy_price > 0 && it.buy_price === minBuy && items.length > 1;
-                        return `
-                            <th class="matrix-item-col matrix-item-header">
-                                <div class="d-flex justify-content-between align-items-center gap-1">
-                                    <span>후보 ${idx + 1}: ${escapeHtml(it.default_supplier || '공급처미지정')}</span>
-                                    ${isBestBuy ? '<span class="badge bg-success" style="font-size: 10px;">최저가★</span>' : ''}
-                                </div>
-                            </th>
-                        `;
-                    }).join('')}
-                </tr>
-            </thead>
-        `;
-
-        const rowsDef = [
-            {
-                label: '공급업체(주 매입처)',
-                render: it => `<strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>`
-            },
-            {
-                label: '품목명',
-                render: it => `${escapeHtml(it.item)}`
-            },
-            {
-                label: '규격',
-                render: it => `<span class="spec-pill">${escapeHtml(it.spec || '-')}</span>`
-            },
-            {
-                label: '자재분류',
-                render: it => `<span class="category-pill">${escapeHtml(it.category || '-')}</span>`
-            },
-            {
-                label: '단위',
-                render: it => `${escapeHtml(it.unit || '-')}`
-            },
-            {
-                label: '기준 매입단가',
-                render: it => {
-                    const buy = it.buy_price || 0;
-                    const isLowest = buy > 0 && buy === minBuy && items.length > 1;
-                    return buy ? `
-                        <span class="${isLowest ? 'cell-best-price px-2 py-1 rounded d-inline-block' : 'fw-bold text-dark'}">
-                            ₩${buy.toLocaleString()}
-                            ${isLowest ? '<i class="bx bx-check" title="최저 매입단가"></i>' : ''}
-                        </span>
-                    ` : '<span class="text-muted">-</span>';
-                }
-            },
-            {
-                label: '운임 조건',
-                render: it => {
-                    const isFreight = it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'));
-                    return isFreight
-                        ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 운임포함 (도착도)</span>`
-                        : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 운임별도 (상차도)</span>`;
-                }
-            },
-            {
-                label: '기준 매출단가',
-                render: it => {
-                    const sell = it.sell_price || 0;
-                    return sell ? `<span class="text-primary fw-bold">₩${sell.toLocaleString()}</span>` : '<span class="text-muted">-</span>';
-                }
-            },
-            {
-                label: '주 매출처',
-                render: it => `${escapeHtml(it.default_destination || '-')}`
-            },
-            {
-                label: '마진액 / 마진율',
-                render: it => {
-                    const buy = it.buy_price || 0;
-                    const sell = it.sell_price || 0;
-                    if (sell > 0 && buy > 0) {
-                        const amt = sell - buy;
-                        const rate = Math.round((amt / sell) * 1000) / 10;
-                        const isBest = rate === maxMarginRate && items.length > 1;
-                        return `
-                            <span class="${isBest ? 'cell-best-margin px-1 rounded' : ''}">
-                                ₩${amt.toLocaleString()} (${rate}%)
-                            </span>
-                        `;
+            let bestId = null;
+            let minVal = Infinity;
+            if (commonUnit) {
+                analyzed.forEach(it => {
+                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                        minVal = it.norm.normPrice;
+                        bestId = it.id;
                     }
-                    return '<span class="text-muted">-</span>';
-                }
-            },
-            {
-                label: '단가 변동 이력',
-                render: it => {
-                    let count = 0;
-                    try { count = JSON.parse(it.history || '[]').length; } catch(e){}
-                    return `
-                        <button type="button" class="btn-hist btn-sm py-0" onclick="app.openHistoryModal(${it.id})" title="시계열 변동 이력 보기">
-                            <i class='bx bx-history'></i> ${count}건
-                        </button>
-                    `;
-                }
-            },
-            {
-                label: '비고 / 메모',
-                render: it => {
-                    const cleanNote = (it.note || '').replace(/\[운임포함\]/g, '').trim();
-                    return `<span class="text-muted small">${escapeHtml(cleanNote || '-')}</span>`;
-                }
-            },
-            {
-                label: '단가 관리',
-                render: it => `
-                    <div class="d-flex align-items-center gap-1">
-                        <button type="button" class="btn-table-action" onclick="app.openEditModal(${it.id})" title="단가 수정">
-                            <i class='bx bx-edit text-primary'></i> 수정
-                        </button>
-                        <button type="button" class="btn-table-action btn-del" onclick="app.deletePrice(${it.id})" title="단가 삭제">
-                            <i class='bx bx-trash text-danger'></i> 삭제
-                        </button>
-                    </div>
-                `
+                });
+            } else {
+                analyzed.forEach(it => {
+                    const b = it.buy_price || 0;
+                    if (b > 0 && b < minVal) {
+                        minVal = b;
+                        bestId = it.id;
+                    }
+                });
             }
-        ];
 
-        let tbodyHtml = '<tbody>';
-        rowsDef.forEach(r => {
-            tbodyHtml += `<tr><td class="matrix-label-col">${r.label}</td>`;
-            items.forEach(it => {
-                tbodyHtml += `<td class="matrix-item-col">${r.render(it)}</td>`;
+            const bestItem = analyzed.find(it => it.id === bestId);
+            let bestBadge = '';
+            if (bestItem && analyzed.length > 1) {
+                if (commonUnit && bestItem.norm) {
+                    bestBadge = `[최저단가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.norm.normPrice.toLocaleString()}/${commonUnit})]`;
+                } else if (bestItem.buy_price) {
+                    bestBadge = `[최저가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.buy_price.toLocaleString()}원)]`;
+                }
+            }
+
+            let rows = '';
+            analyzed.forEach((it, cIdx) => {
+                const isBest = (it.id === bestId) && analyzed.length > 1;
+                const buy = it.buy_price || 0;
+                const sell = it.sell_price || 0;
+                const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
+                const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
+                const freightStr = (it.is_freight_included === 1 || it.is_freight_included === true) ? '도착도 (운임포함)' : '상차도 (운임별도)';
+
+                let normStr = '-';
+                if (it.norm) {
+                    normStr = `₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}`;
+                    if (commonUnit && !isBest && bestItem && bestItem.norm && it.norm.normPrice > bestItem.norm.normPrice) {
+                        const diffPct = Math.round(((it.norm.normPrice - bestItem.norm.normPrice) / bestItem.norm.normPrice) * 1000) / 10;
+                        normStr += ` (+${diffPct}%)`;
+                    }
+                }
+
+                rows += `
+                    <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
+                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' ★' : ''}</td>
+                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.item)}</td>
+                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.spec || '-')}</td>
+                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>
+                        <td style="text-align: right; padding-right: 6px;">${buy ? `₩${buy.toLocaleString()}` : '-'}</td>
+                        <td style="text-align: right; padding-right: 6px;">${normStr}</td>
+                        <td style="text-align: center;">${freightStr}</td>
+                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_destination || '-')}${sell ? ` (₩${sell.toLocaleString()})` : ''}</td>
+                        <td style="text-align: right; padding-right: 6px;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>
+                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.note || '-')}</td>
+                    </tr>
+                `;
             });
-            tbodyHtml += `</tr>`;
-        });
-        tbodyHtml += '</tbody>';
 
-        return `<table class="erp-matrix-table">${theadHtml}${tbodyHtml}</table>`;
-    },
-
-    toggleSelectAllSpecs: function(checked) {
-        const groups = this.getGroupedSpecs();
-        if (checked) {
-            groups.forEach(g => this.checkedSpecs.add(g.groupKey));
-        } else {
-            this.checkedSpecs.clear();
-        }
-
-        document.querySelectorAll('.spec-checkbox').forEach(cb => {
-            cb.checked = checked;
-            const card = cb.closest('.spec-matrix-card');
-            if (card) card.classList.toggle('selected', checked);
-        });
-
-        this.updateCheckedBadge();
-    },
-
-    onSpecCheck: function(groupKey, checked) {
-        if (checked) {
-            this.checkedSpecs.add(groupKey);
-        } else {
-            this.checkedSpecs.delete(groupKey);
-        }
-
-        const cards = document.querySelectorAll('.spec-matrix-card');
-        cards.forEach(card => {
-            if (card.getAttribute('data-group-key') === groupKey) {
-                card.classList.toggle('selected', checked);
-            }
-        });
-
-        this.updateCheckedBadge();
-    },
-
-    updateCheckedBadge: function() {
-        const badge = $('selectedSpecsBadge');
-        if (badge) {
-            badge.innerText = `${this.checkedSpecs.size}개 품목/규격 선택됨`;
-        }
-
-        const masterCb = $('selectAllSpecs');
-        if (masterCb) {
-            const groups = this.getGroupedSpecs();
-            masterCb.checked = groups.length > 0 && this.checkedSpecs.size >= groups.length;
-        }
-    },
-
-    toggleCardCollapse: function(bodyId, btn) {
-        const el = $(bodyId);
-        if (!el) return;
-        const isCollapsed = el.classList.toggle('d-none');
-        if (btn) {
-            const icon = btn.querySelector('i');
-            if (icon) {
-                icon.className = isCollapsed ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
-            }
-        }
-    },
-
-    expandAllSpecs: function(expand) {
-        document.querySelectorAll('.spec-card-body').forEach(b => {
-            b.classList.toggle('d-none', !expand);
-        });
-        document.querySelectorAll('.spec-card-header .bx-chevron-up, .spec-card-header .bx-chevron-down').forEach(icon => {
-            icon.className = expand ? 'bx bx-chevron-up' : 'bx bx-chevron-down';
-        });
-    },
-
-    openSpecCompare: function(groupKey) {
-        if (!groupKey) return;
-        this.activeModalSpec = groupKey;
-
-        const allGroups = this.getGroupedSpecs();
-        const targetGroup = allGroups.find(g => g.groupKey === groupKey);
-
-        if (!targetGroup || targetGroup.items.length === 0) {
-            alert('해당 품목/규격의 견적 데이터를 찾을 수 없습니다.');
-            return;
-        }
-
-        const items = targetGroup.items;
-        $('modalSpecBadge').innerText = `${targetGroup.item} [${targetGroup.spec}]`;
-
-        const minBuy = targetGroup.minBuy;
-        const maxSell = targetGroup.maxSell;
-        const avgMargin = targetGroup.avgMargin;
-        const bestSupplier = targetGroup.bestBuySupplier;
-
-        $('modalSpecSummary').innerHTML = `
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <span class="badge bg-dark">${items.length}개 공급처 견적 후보</span>
-                <span class="category-pill">${escapeHtml(targetGroup.category || '-')}</span>
-                <span class="badge bg-light text-dark border">단위: ${escapeHtml(targetGroup.unit || '-')}</span>
-            </div>
-            <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
-                <span class="badge-best-price">최저 매입: ₩${minBuy.toLocaleString()} (${escapeHtml(bestSupplier || '-')})</span>
-                <span class="badge-best-margin">최고 매출: ₩${maxSell.toLocaleString()}</span>
-                <span class="badge bg-light text-dark border">평균 마진율: ${avgMargin}%</span>
-            </div>
-        `;
-
-        $('modalMatrixTable').innerHTML = this.generateMatrixTableHtml(items, targetGroup);
-
-        if (!this.specCompareModalInstance && window.bootstrap && $('specCompareModal')) {
-            this.specCompareModalInstance = new bootstrap.Modal($('specCompareModal'));
-        }
-        if (this.specCompareModalInstance) {
-            this.specCompareModalInstance.show();
-        }
-    },
-
-    openCreateModalWithSpec: function(spec) {
-        this.openCreateModal();
-        if ($('inpSpec') && spec && spec !== '(규격미지정)') {
-            $('inpSpec').value = spec;
-        }
-    },
-
-    printSelectedSpecs: function() {
-        let keysToPrint = Array.from(this.checkedSpecs);
-        const allGroups = this.getGroupedSpecs();
-
-        if (keysToPrint.length === 0) {
-            if (!confirm(`선택된 품목/규격이 없습니다.\n현재 화면에 표시된 모든 품목/규격(총 ${allGroups.length}개)을 인쇄하시겠습니까?`)) {
-                return;
-            }
-            keysToPrint = allGroups.map(g => g.groupKey);
-        }
-
-        const printArea = $('printArea');
-        if (!printArea) return;
-
-        const today = new Date().toISOString().split('T')[0];
-        let html = `
-            <div style="padding: 10px 15px; margin-bottom: 15px; border-bottom: 2px solid #0f172a; display: flex; justify-content: space-between; align-items: flex-end;">
-                <div>
-                    <h2 style="margin: 0; font-size: 18pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">K&G 물류 단가표 — 품목/규격별 다자 비교 매트릭스 보고서</h2>
-                    <div style="font-size: 9pt; color: #475569; margin-top: 4px;">출력 품목/규격 수: ${keysToPrint.length}개 | 인쇄일자: ${today}</div>
-                </div>
-                <div style="text-align: right; font-size: 9pt; color: #64748b;">
-                    <strong>주식회사 케이앤지</strong>
-                </div>
-            </div>
-        `;
-
-        keysToPrint.forEach(k => {
-            const group = allGroups.find(g => g.groupKey === k);
-            if (!group || group.items.length === 0) return;
-
-            const items = group.items;
-            const minBuy = group.minBuy;
-
-            html += `
-                <div class="print-spec-block">
-                    <div class="print-spec-header">
-                        <div>
-                            <strong style="font-size: 12pt; color: #0f172a;">${escapeHtml(group.item)}</strong>
-                            <span style="font-size: 10.5pt; color: #2563eb; font-weight: 700; margin-left: 6px;">[${escapeHtml(group.spec)}]</span>
-                            <span style="font-size: 9pt; color: #475569; margin-left: 8px;">(분류: ${escapeHtml(group.category || '-')})</span>
-                            <span style="font-size: 9pt; color: #0f172a; margin-left: 8px;">후보: ${items.length}개 공급처</span>
-                        </div>
-                        <div style="font-size: 9.5pt; font-weight: 700; color: #16a34a;">
-                            ${minBuy > 0 ? `최저 매입: ₩${minBuy.toLocaleString()} (${escapeHtml(group.bestBuySupplier || '-')})` : ''}
-                        </div>
+            sectionsHtml += `
+                <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
+                    <div style="background: #0f172a; color: #ffffff; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 2px;">
+                        <span style="font-weight: bold; font-size: 11pt;">■ 섹션 ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 후보 대조)</span>
+                        <span style="font-size: 9.5pt; color: #86efac; font-weight: bold;">${bestBadge}</span>
                     </div>
-                    <div>
-                        ${this.generateMatrixTableHtml(items, group)}
+
+                    <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
+                        <thead>
+                            <tr style="background: #f1f5f9; border-bottom: 2px solid #0f172a;">
+                                <th style="width: 60px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
+                                <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">품목명</th>
+                                <th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">규격</th>
+                                <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">공급업체(주 매입처)</th>
+                                <th style="width: 95px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가</th>
+                                <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">환산단가(가성비)</th>
+                                <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px;">운임조건</th>
+                                <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">주 매출처(기준매출)</th>
+                                <th style="width: 100px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">마진액(마진율)</th>
+                                <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 6px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 9pt;">
+                        <strong style="color: #1e293b;">※ 담당자 검토 의견 및 추천 사유:</strong>
+                        <span style="color: #334155; margin-left: 6px;">${escapeHtml(sec.section_note || '-(별도 기재 의견 없음)-')}</span>
                     </div>
                 </div>
             `;
         });
-
-        printArea.innerHTML = html;
-        window.print();
-    },
-
-    printSingleSpec: function(groupKey) {
-        if (!groupKey) groupKey = this.activeModalSpec;
-        if (!groupKey) return;
-
-        const allGroups = this.getGroupedSpecs();
-        const group = allGroups.find(g => g.groupKey === groupKey);
-        if (!group || group.items.length === 0) return;
-
-        const printArea = $('printArea');
-        if (!printArea) return;
-
-        const today = new Date().toISOString().split('T')[0];
-        const items = group.items;
-        const minBuy = group.minBuy;
 
         printArea.innerHTML = `
-            <div style="padding: 10px 15px; margin-bottom: 15px; border-bottom: 2px solid #0f172a; display: flex; justify-content: space-between; align-items: flex-end;">
-                <div>
-                    <h2 style="margin: 0; font-size: 18pt; font-weight: 800; color: #0f172a;">K&G 품목/규격별 견적 비교표 [${escapeHtml(group.item)} - ${escapeHtml(group.spec)}]</h2>
-                    <div style="font-size: 9pt; color: #475569; margin-top: 4px;">분류: ${escapeHtml(group.category || '-')} | 후보: ${items.length}개 공급처 | 인쇄일자: ${today}</div>
-                </div>
-                <div style="text-align: right; font-size: 9pt; color: #64748b;">
-                    <strong>주식회사 케이앤지</strong>
-                </div>
-            </div>
-            <div class="print-spec-block">
-                <div class="print-spec-header">
+            <div class="print-container" style="padding: 10px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
+                <!-- 보고서 결재란 및 헤더 -->
+                <div class="report-header-wrap" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px;">
                     <div>
-                        <strong style="font-size: 12pt; color: #0f172a;">${escapeHtml(group.item)} [${escapeHtml(group.spec)}]</strong>
+                        <div style="font-size: 8.5pt; color: #64748b; font-family: monospace;">문서번호: ${docNo}</div>
+                        <h1 style="margin: 4px 0; font-size: 20pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">물류자재 구매단가 비교 검토 보고서</h1>
+                        <div style="font-size: 9pt; color: #475569; margin-top: 2px;">
+                            기안부서: 물류관리팀 &nbsp;|&nbsp; 기안일자: ${today} &nbsp;|&nbsp; 대상: 총 ${this.quoteSections.length}개 비교 섹션
+                        </div>
                     </div>
-                    <div style="font-size: 9.5pt; font-weight: 700; color: #16a34a;">
-                        ${minBuy > 0 ? `최저 매입단가: ₩${minBuy.toLocaleString()} (${escapeHtml(group.bestBuySupplier || '-')})` : ''}
+                    <div>
+                        <table class="report-approval-table" style="border-collapse: collapse; border: 1.5px solid #0f172a; text-align: center; font-size: 8.5pt;">
+                            <tr>
+                                <th rowspan="2" style="width: 24px; background: #f1f5f9; border: 1px solid #0f172a; padding: 4px; writing-mode: vertical-rl; letter-spacing: 3px;">결재</th>
+                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">기 안</th>
+                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">검 토</th>
+                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">승 인</th>
+                            </tr>
+                            <tr>
+                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
+                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
+                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
-                <div>
-                    ${this.generateMatrixTableHtml(items, group)}
+
+                <!-- 비교 섹션 목록 -->
+                ${sectionsHtml}
+
+                <!-- 보고서 하단 직인 및 서명란 -->
+                <div style="margin-top: 25px; padding-top: 10px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; font-size: 9pt; color: #64748b;">
+                    <div>K&G LOGISTICS MANAGEMENT SYSTEM &nbsp;|&nbsp; 본 문서는 사내 승인 전용 기밀 대외비 보고서입니다.</div>
+                    <div style="font-weight: bold; color: #0f172a; font-size: 11pt;">
+                        주식회사 케이앤지 &nbsp; <span style="font-size: 8.5pt; color: #94a3b8; font-weight: normal;">[직인생략]</span>
+                    </div>
                 </div>
             </div>
         `;
@@ -1981,114 +2082,14 @@ const app = {
         window.print();
     },
 
-    exportSelectedSpecsExcel: function() {
-        let keysToExport = Array.from(this.checkedSpecs);
-        const allGroups = this.getGroupedSpecs();
+    printSingleSection: function(sectionId) {
+        const sec = this.quoteSections.find(s => s.id === sectionId);
+        if (!sec) return;
 
-        if (keysToExport.length === 0) {
-            keysToExport = allGroups.map(g => g.groupKey);
-        }
-
-        if (keysToExport.length === 0) {
-            alert('내보낼 품목/규격 데이터가 없습니다.');
-            return;
-        }
-
-        if (typeof XLSX === 'undefined') {
-            alert('Excel 라이브러리를 불러오지 못했습니다.');
-            return;
-        }
-
-        const wb = XLSX.utils.book_new();
-
-        const allRows = [
-            ['K&G 물류 단가표 — 품목/규격별 다자 비교 매트릭스'],
-            [`내보내기 일자: ${new Date().toISOString().split('T')[0]}`, `대상 품목/규격 수: ${keysToExport.length}개`],
-            []
-        ];
-
-        keysToExport.forEach(k => {
-            const group = allGroups.find(g => g.groupKey === k);
-            if (!group || group.items.length === 0) return;
-
-            const items = group.items;
-            const minBuy = group.minBuy;
-
-            allRows.push([`[품목: ${group.item}] [규격: ${group.spec}] (분류: ${group.category || '-'}, 후보수: ${items.length}개, 최저매입: ${minBuy.toLocaleString()}원)`]);
-            
-            const headerRow = ['평가 항목', ...items.map((it, idx) => `후보 ${idx + 1}: ${it.default_supplier || it.item}${it.buy_price === minBuy && items.length > 1 ? ' (최저가★)' : ''}`)];
-            allRows.push(headerRow);
-
-            allRows.push(['공급업체(주 매입처)', ...items.map(it => it.default_supplier || '')]);
-            allRows.push(['품목명', ...items.map(it => it.item || '')]);
-            allRows.push(['규격', ...items.map(it => it.spec || '')]);
-            allRows.push(['자재분류', ...items.map(it => it.category || '')]);
-            allRows.push(['단위', ...items.map(it => it.unit || '')]);
-            allRows.push(['기준 매입단가', ...items.map(it => it.buy_price || 0)]);
-            allRows.push(['운임 조건', ...items.map(it => {
-                const isF = it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'));
-                return isF ? '운임포함 (도착도)' : '운임별도 (상차도)';
-            })]);
-            allRows.push(['기준 매출단가', ...items.map(it => it.sell_price || 0)]);
-            allRows.push(['주 매출처', ...items.map(it => it.default_destination || '')]);
-            allRows.push(['마진액', ...items.map(it => (it.sell_price && it.buy_price) ? (it.sell_price - it.buy_price) : 0)]);
-            allRows.push(['마진율(%)', ...items.map(it => (it.sell_price && it.buy_price) ? (Math.round(((it.sell_price - it.buy_price) / it.sell_price) * 1000) / 10) : 0)]);
-            allRows.push(['비고', ...items.map(it => (it.note || '').replace(/\[운임포함\]/g, '').trim())]);
-            allRows.push([]);
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet(allRows);
-        XLSX.utils.book_append_sheet(wb, ws, '품목규격비교매트릭스');
-
-        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-        XLSX.writeFile(wb, `KNG_품목규격별비교매트릭스_${today}.xlsx`);
-    },
-
-    exportSingleSpecExcel: function(groupKey) {
-        if (!groupKey) groupKey = this.activeModalSpec;
-        if (!groupKey) return;
-
-        const allGroups = this.getGroupedSpecs();
-        const group = allGroups.find(g => g.groupKey === groupKey);
-        if (!group || group.items.length === 0) return;
-
-        if (typeof XLSX === 'undefined') {
-            alert('Excel 라이브러리를 불러오지 못했습니다.');
-            return;
-        }
-
-        const wb = XLSX.utils.book_new();
-        const items = group.items;
-        const minBuy = group.minBuy;
-
-        const rows = [
-            [`K&G 품목/규격별 다자 비교 견적서 [${group.item} - ${group.spec}]`],
-            [`분류: ${group.category || '-'}`, `후보수: ${items.length}개`, `최저매입가: ${minBuy.toLocaleString()}원`],
-            [],
-            ['평가 항목', ...items.map((it, idx) => `후보 ${idx + 1}: ${it.default_supplier || it.item}${it.buy_price === minBuy && items.length > 1 ? ' (최저가★)' : ''}`)],
-            ['공급업체(주 매입처)', ...items.map(it => it.default_supplier || '')],
-            ['품목명', ...items.map(it => it.item || '')],
-            ['규격', ...items.map(it => it.spec || '')],
-            ['자재분류', ...items.map(it => it.category || '')],
-            ['단위', ...items.map(it => it.unit || '')],
-            ['기준 매입단가', ...items.map(it => it.buy_price || 0)],
-            ['운임 조건', ...items.map(it => {
-                const isF = it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'));
-                return isF ? '운임포함 (도착도)' : '운임별도 (상차도)';
-            })],
-            ['기준 매출단가', ...items.map(it => it.sell_price || 0)],
-            ['주 매출처', ...items.map(it => it.default_destination || '')],
-            ['마진액', ...items.map(it => (it.sell_price && it.buy_price) ? (it.sell_price - it.buy_price) : 0)],
-            ['마진율(%)', ...items.map(it => (it.sell_price && it.buy_price) ? (Math.round(((it.sell_price - it.buy_price) / it.sell_price) * 1000) / 10) : 0)],
-            ['비고', ...items.map(it => (it.note || '').replace(/\[운임포함\]/g, '').trim())]
-        ];
-
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, '품목규격비교');
-
-        const safeName = `${group.item}_${group.spec}`.replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
-        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
-        XLSX.writeFile(wb, `KNG_품목규격비교_${safeName}_${today}.xlsx`);
+        const origSections = this.quoteSections;
+        this.quoteSections = [sec];
+        this.printExecutiveReport();
+        this.quoteSections = origSections;
     }
 };
 
