@@ -85,6 +85,24 @@ function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
+// 3자리 콤마 자동 포맷팅 헬퍼
+function formatNumberWithComma(val) {
+    if (val === null || val === undefined || val === '') return '';
+    const str = String(val).replace(/,/g, '').trim();
+    if (!str) return '';
+    const parts = str.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : parts[0];
+}
+
+// 콤마 제거 후 숫자 파싱 헬퍼
+function parseNumber(val) {
+    if (val === null || val === undefined || val === '') return 0;
+    const clean = String(val).replace(/,/g, '').trim();
+    const num = parseFloat(clean);
+    return isNaN(num) ? 0 : num;
+}
+
 const app = {
     priceList: [],
     filteredList: [],
@@ -955,8 +973,8 @@ const app = {
             if (buySym) buySym.innerText = sym;
             if (sellSym) sellSym.innerText = sym;
 
-            if (rateInp && (!rateInp.value || parseFloat(rateInp.value) <= 0)) {
-                rateInp.value = this.defaultRates[curr] || '';
+            if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
+                rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
             }
 
             if (rateHelp) {
@@ -968,6 +986,64 @@ const app = {
             }
         }
         this.calcModalMargin();
+    },
+
+    onPriceInput: function(el) {
+        if (!el) return;
+        const cursorPosition = el.selectionStart;
+        const oldVal = el.value;
+        const clean = oldVal.replace(/[^0-9.]/g, '');
+        const formatted = formatNumberWithComma(clean);
+        el.value = formatted;
+
+        const cleanBefore = oldVal.slice(0, cursorPosition).replace(/,/g, '').length;
+        let newPos = 0;
+        let countedClean = 0;
+        for (let i = 0; i < formatted.length; i++) {
+            if (formatted[i] !== ',') countedClean++;
+            if (countedClean === cleanBefore) {
+                newPos = i + 1;
+                break;
+            }
+        }
+        try {
+            el.setSelectionRange(newPos, newPos);
+        } catch (e) {}
+
+        this.calcModalMargin();
+    },
+
+    onExchangeRateInput: function(el) {
+        if (!el) return;
+        const cursorPosition = el.selectionStart;
+        const oldVal = el.value;
+        const clean = oldVal.replace(/[^0-9.]/g, '');
+        const formatted = formatNumberWithComma(clean);
+        el.value = formatted;
+
+        const cleanBefore = oldVal.slice(0, cursorPosition).replace(/,/g, '').length;
+        let newPos = 0;
+        let countedClean = 0;
+        for (let i = 0; i < formatted.length; i++) {
+            if (formatted[i] !== ',') countedClean++;
+            if (countedClean === cleanBefore) {
+                newPos = i + 1;
+                break;
+            }
+        }
+        try {
+            el.setSelectionRange(newPos, newPos);
+        } catch (e) {}
+
+        this.calcModalMargin();
+    },
+
+    onEditRateInput: function(el) {
+        if (!el) return;
+        const oldVal = el.value;
+        const clean = oldVal.replace(/[^0-9.]/g, '');
+        el.value = formatNumberWithComma(clean);
+        this.calcEditRatePreview();
     },
 
     onFreightTypeChange: function(type) {
@@ -983,7 +1059,7 @@ const app = {
     setFreightRegion: function(region) {
         const inp = $('inpFreightRegion');
         if (inp) inp.value = region;
-        document.querySelectorAll('.region-chip').forEach(c => {
+        document.querySelectorAll('.erp-region-btn, .region-chip').forEach(c => {
             if (c.innerText.trim() === region) c.classList.add('active');
             else c.classList.remove('active');
         });
@@ -1006,7 +1082,7 @@ const app = {
         this.onFreightTypeChange('상차도');
         this.setFreightRegion('전국');
 
-        $('priceModalLabel').innerHTML = `<i class='bx bx-plus me-1'></i> 신규 물류 기준단가 등록`;
+        $('priceModalLabel').innerHTML = `신규 기준단가 등록`;
         this.calcModalMargin();
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
@@ -1027,7 +1103,7 @@ const app = {
         this.currentEditId = id;
         if ($('btnModalDelete')) $('btnModalDelete').classList.remove('d-none');
 
-        $('priceModalLabel').innerHTML = `<i class='bx bx-edit-alt me-1'></i> 기준단가 수정: <span class="text-warning">${escapeHtml(item.item)}</span>`;
+        $('priceModalLabel').innerHTML = `기준단가 수정: <span class="text-primary fw-bold">${escapeHtml(item.item)}</span>`;
         $('inpItem').value = item.item || '';
         $('inpSpec').value = item.spec || '';
         $('inpCategory').value = item.category || '';
@@ -1041,15 +1117,18 @@ const app = {
         const curr = item.currency || 'KRW';
         if ($('inpCurrency')) $('inpCurrency').value = curr;
         if (curr !== 'KRW') {
-            if ($('inpExchangeRate')) $('inpExchangeRate').value = item.exchange_rate || this.defaultRates[curr] || '';
+            const defaultRate = this.defaultRates[curr] || '';
+            const rateVal = item.exchange_rate || defaultRate;
+            if ($('inpExchangeRate')) $('inpExchangeRate').value = formatNumberWithComma(rateVal);
+
             const fBuy = (item.foreign_buy_price > 0) ? item.foreign_buy_price : (item.buy_price && item.exchange_rate ? (item.buy_price / item.exchange_rate) : '');
             const fSell = (item.foreign_sell_price > 0) ? item.foreign_sell_price : (item.sell_price && item.exchange_rate ? (item.sell_price / item.exchange_rate) : '');
-            $('inpBuyPrice').value = fBuy ? parseFloat(Number(fBuy).toFixed(2)) : '';
-            $('inpSellPrice').value = fSell ? parseFloat(Number(fSell).toFixed(2)) : '';
+            $('inpBuyPrice').value = fBuy ? formatNumberWithComma(parseFloat(Number(fBuy).toFixed(2))) : '';
+            $('inpSellPrice').value = fSell ? formatNumberWithComma(parseFloat(Number(fSell).toFixed(2))) : '';
         } else {
             if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
-            $('inpBuyPrice').value = item.buy_price || '';
-            $('inpSellPrice').value = item.sell_price || '';
+            $('inpBuyPrice').value = formatNumberWithComma(item.buy_price || '');
+            $('inpSellPrice').value = formatNumberWithComma(item.sell_price || '');
         }
         this.onCurrencyChange();
 
@@ -1084,8 +1163,8 @@ const app = {
 
     calcModalMargin: function() {
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
-        const rawBuy = parseFloat($('inpBuyPrice') ? $('inpBuyPrice').value : 0) || 0;
-        const rawSell = parseFloat($('inpSellPrice') ? $('inpSellPrice').value : 0) || 0;
+        const rawBuy = parseNumber($('inpBuyPrice') ? $('inpBuyPrice').value : 0);
+        const rawSell = parseNumber($('inpSellPrice') ? $('inpSellPrice').value : 0);
         const container = $('modalMarginCalc');
         if (!container) return;
 
@@ -1093,7 +1172,7 @@ const app = {
         let sell = rawSell;
 
         if (curr !== 'KRW') {
-            const rate = parseFloat($('inpExchangeRate') ? $('inpExchangeRate').value : 0) || 0;
+            const rate = parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0);
             const krwBuy = (rate > 0 && rawBuy > 0) ? Math.round(rawBuy * rate) : 0;
             const krwSell = (rate > 0 && rawSell > 0) ? Math.round(rawSell * rate) : 0;
 
@@ -1130,9 +1209,9 @@ const app = {
         const freightType = isFreightIn ? '하차도' : '상차도';
         const freightRegion = isFreightIn ? (($('inpFreightRegion') ? $('inpFreightRegion').value.trim() : '') || '전국') : '';
 
-        const rate = (curr !== 'KRW') ? (parseFloat($('inpExchangeRate') ? $('inpExchangeRate').value : 0) || 0) : 1;
-        const inputBuy = parseFloat($('inpBuyPrice') ? $('inpBuyPrice').value : 0) || 0;
-        const inputSell = parseFloat($('inpSellPrice') ? $('inpSellPrice').value : 0) || 0;
+        const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
+        const inputBuy = parseNumber($('inpBuyPrice') ? $('inpBuyPrice').value : 0);
+        const inputSell = parseNumber($('inpSellPrice') ? $('inpSellPrice').value : 0);
 
         let buyKrw = inputBuy;
         let sellKrw = inputSell;
@@ -1354,21 +1433,29 @@ const app = {
             inpItem.addEventListener('input', (e) => {
                 const val = e.target.value.trim().toLowerCase();
                 if (!val) { sugItem.style.display = 'none'; return; }
-                const itemKeys = Object.keys(this.itemsSpecsMap);
-                const matched = itemKeys.filter(k => k.toLowerCase().includes(val)).slice(0, 8);
+                const mapKeys = Object.keys(this.itemsSpecsMap || {});
+                const priceKeys = (this.priceList || []).map(p => p.item).filter(Boolean);
+                const itemKeys = Array.from(new Set([...mapKeys, ...priceKeys]));
+                const matched = itemKeys.filter(k => k.toLowerCase().includes(val)).slice(0, 10);
                 if (matched.length === 0) { sugItem.style.display = 'none'; return; }
 
-                sugItem.innerHTML = matched.map(m => `<div class="autocomplete-suggestion">${m}</div>`).join('');
+                sugItem.innerHTML = matched.map(m => `<div class="autocomplete-suggestion">${escapeHtml(m)}</div>`).join('');
                 sugItem.style.display = 'block';
 
                 sugItem.querySelectorAll('.autocomplete-suggestion').forEach(div => {
                     div.addEventListener('click', () => {
                         inpItem.value = div.innerText.trim();
                         sugItem.style.display = 'none';
-                        const info = this.itemsSpecsMap[inpItem.value];
+                        const info = (this.itemsSpecsMap || {})[inpItem.value];
                         if (info) {
                             if (info.defaultCategory && !$('inpCategory').value) $('inpCategory').value = info.defaultCategory;
                             if (info.defaultUnit && !$('inpUnit').value) $('inpUnit').value = info.defaultUnit;
+                        } else {
+                            const matchedPrice = (this.priceList || []).find(p => p.item === inpItem.value);
+                            if (matchedPrice) {
+                                if (matchedPrice.category && !$('inpCategory').value) $('inpCategory').value = matchedPrice.category;
+                                if (matchedPrice.unit && !$('inpUnit').value) $('inpUnit').value = matchedPrice.unit;
+                            }
                         }
                     });
                 });
@@ -1381,14 +1468,17 @@ const app = {
             const showSpecs = () => {
                 const currentItem = inpItem ? inpItem.value.trim() : '';
                 const val = inpSpec.value.trim().toLowerCase();
-                const info = this.itemsSpecsMap[currentItem];
-                const specs = info && info.specs ? info.specs : [];
+                const info = (this.itemsSpecsMap || {})[currentItem];
+                let specs = (info && info.specs) ? [...info.specs] : [];
+                (this.priceList || []).filter(p => p.item === currentItem && p.spec).forEach(p => {
+                    if (!specs.includes(p.spec)) specs.push(p.spec);
+                });
                 if (specs.length === 0) { sugSpec.style.display = 'none'; return; }
 
                 const filtered = val ? specs.filter(s => s.toLowerCase().includes(val)) : specs;
                 if (filtered.length === 0) { sugSpec.style.display = 'none'; return; }
 
-                sugSpec.innerHTML = filtered.map(s => `<div class="autocomplete-suggestion">${s}</div>`).join('');
+                sugSpec.innerHTML = filtered.map(s => `<div class="autocomplete-suggestion">${escapeHtml(s)}</div>`).join('');
                 sugSpec.style.display = 'block';
 
                 sugSpec.querySelectorAll('.autocomplete-suggestion').forEach(div => {
@@ -2011,7 +2101,7 @@ const app = {
                             const diffPct = Math.round((diff / bestItem.norm.normPrice) * 1000) / 10;
                             savingsBadge = `<span class="badge-savings ms-1" title="최저가 대비">+${diffPct}% 고가</span>`;
                         } else if (isUnitBest) {
-                            savingsBadge = `<span class="badge bg-success text-white ms-1" style="font-size: 10px;">최저단가★</span>`;
+                            savingsBadge = `<span class="badge bg-success text-white ms-1" style="font-size: 10px;">최저단가</span>`;
                         }
 
                         normHtml = `
@@ -2160,7 +2250,7 @@ const app = {
         $('editRateForeignPrice').innerText = `${sym}${this.currentEditRateForeignPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
         const rate = currentRate || this.defaultRates[currency] || 1350;
-        $('inpEditRateValue').value = rate;
+        $('inpEditRateValue').value = formatNumberWithComma(rate);
 
         const label = $('editRateInputLabel');
         if (label) {
@@ -2186,7 +2276,7 @@ const app = {
     },
 
     calcEditRatePreview: function() {
-        const rate = parseFloat($('inpEditRateValue') ? $('inpEditRateValue').value : 0) || 0;
+        const rate = parseNumber($('inpEditRateValue') ? $('inpEditRateValue').value : 0);
         const fPrice = this.currentEditRateForeignPrice || 0;
         const krw = (rate > 0 && fPrice > 0) ? Math.round(rate * fPrice) : 0;
         const el = $('editRateConvertedPreview');
@@ -2195,7 +2285,7 @@ const app = {
 
     submitEditRate: async function() {
         const itemId = $('editRateItemId') ? $('editRateItemId').value : null;
-        const newRate = parseFloat($('inpEditRateValue') ? $('inpEditRateValue').value : 0) || 0;
+        const newRate = parseNumber($('inpEditRateValue') ? $('inpEditRateValue').value : 0);
         if (!itemId || newRate <= 0) {
             alert('유효한 환율을 입력해주세요.');
             return;
@@ -2308,7 +2398,7 @@ const app = {
 
                 rows += `
                     <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
-                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' ★' : ''}<br><span style="font-size: 8pt; color: #475569;">[${escapeHtml(pt)}]</span></td>
+                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' [최저]' : ''}<br><span style="font-size: 8pt; color: #475569;">[${escapeHtml(pt)}]</span></td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.item)}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.spec || '-')}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>
@@ -2411,6 +2501,9 @@ const app = {
         this.quoteSections = origSections;
     }
 };
+
+window.app = app;
+window.unitPriceApp = app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();

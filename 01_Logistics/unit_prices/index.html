@@ -263,10 +263,8 @@
             <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
                 <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge badge-pt-quote" id="modalPriceTypeBadge" style="font-size: 11px; font-weight: 700;">견적가</span>
-                        <h6 class="modal-title fw-bold m-0" id="priceModalLabel" style="font-size: 13px;">
-                            <i class='bx bx-edit-alt me-1'></i> 물류 기준단가 등록 / 수정
-                        </h6>
+                        <span class="badge badge-pt-quote" id="modalPriceTypeBadge">견적가</span>
+                        <h6 class="modal-title fw-bold m-0" id="priceModalLabel" style="font-size: 13px;">물류 기준단가 등록 / 수정</h6>
                     </div>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -297,7 +295,7 @@
                                     </td>
                                     <th>품목명 <span class="text-danger">*</span></th>
                                     <td class="position-relative">
-                                        <input type="text" class="form-control fw-semibold" id="inpItem" placeholder="품목명을 입력하세요 (자동추천)" required autocomplete="off">
+                                        <input type="text" class="form-control fw-semibold" id="inpItem" placeholder="품목명 입력 (기등록 품목 자동추천)" required autocomplete="off">
                                         <div class="autocomplete-suggestions" id="sugItem"></div>
                                     </td>
                                     <th>규격 (Spec)</th>
@@ -334,7 +332,7 @@
                                     <th>적용 환율 <span class="text-danger">*</span></th>
                                     <td>
                                         <div class="d-flex align-items-center gap-1">
-                                            <input type="number" step="0.01" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1350" oninput="app.calcModalMargin()">
+                                            <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1,350" oninput="app.onExchangeRateInput(this)">
                                             <span class="text-muted small">원</span>
                                         </div>
                                         <span id="exchangeRateHelp" class="text-muted" style="font-size: 10px;">1 USD당 원화(KRW)</span>
@@ -342,7 +340,7 @@
                                     <th>원화 환산가</th>
                                     <td colspan="3">
                                         <div class="d-flex align-items-center gap-2 p-1 px-2 rounded bg-white border" id="previewConvertedKrwWrap" style="font-size: 11.5px;">
-                                            <span class="badge bg-secondary">실시간 원화 환산</span>
+                                            <span class="badge bg-secondary" style="border-radius: 2px;">원화 환산</span>
                                             <span class="text-muted">매입:</span>
                                             <strong class="text-dark" id="previewConvertedBuy">₩0</strong>
                                             <span class="text-muted ms-2">매출:</span>
@@ -356,14 +354,14 @@
                                     <th>기준 매입단가</th>
                                     <td>
                                         <div class="input-group">
-                                            <input type="number" step="any" class="form-control text-end pe-1" id="inpBuyPrice" placeholder="0" min="0" oninput="app.calcModalMargin()">
+                                            <input type="text" inputmode="numeric" class="form-control text-end pe-1 fw-bold" id="inpBuyPrice" placeholder="0" oninput="app.onPriceInput(this)">
                                             <span class="input-group-text" id="buyCurrencySymbol">원</span>
                                         </div>
                                     </td>
                                     <th class="text-primary">기준 매출단가</th>
                                     <td>
                                         <div class="input-group">
-                                            <input type="number" step="any" class="form-control text-end pe-2 fw-bold text-primary" id="inpSellPrice" placeholder="0" min="0" oninput="app.calcModalMargin()">
+                                            <input type="text" inputmode="numeric" class="form-control text-end pe-2 fw-bold text-primary" id="inpSellPrice" placeholder="0" oninput="app.onPriceInput(this)">
                                             <span class="input-group-text" id="sellCurrencySymbol">원</span>
                                         </div>
                                     </td>
@@ -371,51 +369,44 @@
                                     <td class="bg-light px-2" style="background-color: #f8fafc !important;">
                                         <div class="d-flex align-items-center justify-content-between h-100" id="modalMarginCalc">
                                             <span class="fw-bold text-secondary" style="font-size: 11.5px;">0원</span>
-                                            <span class="badge bg-secondary" style="font-size: 10px;">0%</span>
+                                            <span class="badge bg-secondary" style="font-size: 10px; border-radius: 2px;">0%</span>
                                         </div>
                                     </td>
                                 </tr>
 
-                                <!-- 5행: 운임 조건 고도화 (상차도 vs 하차도 + 하차도 시 지역 선택 및 직접입력) -->
+                                <!-- 5행: 운임 조건 고도화 (이카운트 ERP 표준 스타일) -->
                                 <tr>
                                     <th>운임 조건</th>
                                     <td colspan="5">
                                         <div class="d-flex flex-column gap-1">
-                                            <div class="d-flex align-items-center gap-4">
-                                                <div class="form-check m-0 d-flex align-items-center gap-1 cursor-pointer">
-                                                    <input class="form-check-input cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeEx" value="상차도" checked onchange="app.onFreightTypeChange('상차도')">
-                                                    <label class="form-check-label cursor-pointer user-select-none small text-dark" for="freightTypeEx">
-                                                        <strong class="text-secondary">상차도</strong> (운임별도 / 공급처 출하지 인도)
-                                                    </label>
-                                                </div>
-                                                <div class="form-check m-0 d-flex align-items-center gap-1 cursor-pointer">
-                                                    <input class="form-check-input cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeIn" value="하차도" onchange="app.onFreightTypeChange('하차도')">
-                                                    <label class="form-check-label cursor-pointer user-select-none small text-dark" for="freightTypeIn">
-                                                        <strong class="text-primary">하차도</strong> (도착도 / 운임포함 납품)
-                                                    </label>
-                                                </div>
+                                            <div class="d-flex align-items-center gap-4 py-1">
+                                                <label class="form-check-label d-inline-flex align-items-center gap-1 cursor-pointer user-select-none small text-dark">
+                                                    <input class="form-check-input mt-0 cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeEx" value="상차도" checked onchange="app.onFreightTypeChange('상차도')">
+                                                    <span>상차도 (운임별도 / 공급처 출하지인도)</span>
+                                                </label>
+                                                <label class="form-check-label d-inline-flex align-items-center gap-1 cursor-pointer user-select-none small text-primary fw-bold">
+                                                    <input class="form-check-input mt-0 cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeIn" value="하차도" onchange="app.onFreightTypeChange('하차도')">
+                                                    <span>하차도 (도착도 / 운임포함 납품)</span>
+                                                </label>
                                             </div>
 
-                                            <!-- 하차도 선택 시 표시되는 배송 지역 패널 -->
-                                            <div id="freightRegionPanel" class="d-none mt-1 p-2 border rounded bg-white shadow-sm">
+                                            <!-- 하차도 선택 시 표시되는 배송 지역 패널 (ERP 컴팩트 사각 버튼 스타일) -->
+                                            <div id="freightRegionPanel" class="d-none mt-1 p-2 border bg-white rounded-1 shadow-sm">
                                                 <div class="d-flex align-items-center gap-1 flex-wrap mb-1">
-                                                    <span class="text-muted small fw-semibold me-1" style="font-size: 11px;">
-                                                        <i class='bx bx-map-pin text-primary'></i> 납품 지역:
-                                                    </span>
-                                                    <button type="button" class="region-chip active" onclick="app.setFreightRegion('전국')">전국</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('수도권')">수도권</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('강원도')">강원도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('충청북도')">충청북도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('충청남도')">충청남도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('전라북도')">전라북도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('전라남도')">전라남도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('경상북도')">경상북도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('경상남도')">경상남도</button>
-                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('제주도')">제주도</button>
+                                                    <span class="text-secondary small fw-bold me-1" style="font-size: 11px;">납품 지역:</span>
+                                                    <button type="button" class="erp-region-btn active" onclick="app.setFreightRegion('전국')">전국</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('수도권')">수도권</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('강원도')">강원도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('충청북도')">충청북도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('충청남도')">충청남도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('전라북도')">전라북도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('전라남도')">전라남도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('경상북도')">경상북도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('경상남도')">경상남도</button>
+                                                    <button type="button" class="erp-region-btn" onclick="app.setFreightRegion('제주도')">제주도</button>
                                                 </div>
                                                 <div class="d-flex align-items-center gap-2 mt-1">
-                                                    <input type="text" class="form-control form-control-sm" id="inpFreightRegion" placeholder="지역 선택 칩을 누르거나 상세 현장명을 직접 입력하세요 (예: 충북 단양 현장)" value="전국">
-                                                    <span class="text-muted" style="font-size: 10.5px; white-space: nowrap;">* 상세 현장명 기재 가능</span>
+                                                    <input type="text" class="form-control form-control-sm" id="inpFreightRegion" placeholder="직접 현장명 입력 가능 (예: 충북 단양 현장)" value="전국">
                                                 </div>
                                             </div>
                                         </div>
@@ -448,18 +439,18 @@
                         <div class="d-flex justify-content-between align-items-center mt-2 px-1">
                             <div class="d-flex align-items-center gap-2">
                                 <button type="button" class="btn-erp btn-del d-none" id="btnModalDelete" onclick="app.deletePriceFromModal()" title="현재 등록된 단가 항목 삭제">
-                                    <i class='bx bx-trash text-danger'></i> 삭제
+                                    삭제
                                 </button>
                                 <span class="text-muted small" style="font-size: 11px;">
-                                    <i class='bx bx-keyboard text-primary'></i> <code>Tab</code> 셀 이동 / <code>F8</code> 저장
+                                    <code>Tab</code> 셀 이동 / <code>F8</code> 저장
                                 </span>
                             </div>
                             <div class="d-flex gap-1">
                                 <button type="button" class="btn-erp" data-bs-dismiss="modal">
-                                    <i class='bx bx-x'></i> 닫기
+                                    닫기
                                 </button>
                                 <button type="submit" class="btn-erp btn-erp-primary px-3 fw-bold">
-                                    <i class='bx bx-save'></i> 저장 [F8]
+                                    저장 [F8]
                                 </button>
                             </div>
                         </div>
@@ -472,11 +463,9 @@
     <!-- ── 4-1. 견적 비교 테이블 내 환율 빠른 수정 모달 ── -->
     <div class="modal fade" id="editRateModal" tabindex="-1" aria-labelledby="editRateModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-sm">
-            <div class="modal-content border-0 shadow-lg">
+            <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
                 <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h6 class="modal-title fw-bold mb-0" id="editRateModalLabel" style="font-size: 12.5px;">
-                        <i class='bx bx-dollar-circle text-warning'></i> 비교 적용 환율 변경
-                    </h6>
+                    <h6 class="modal-title fw-bold mb-0" id="editRateModalLabel" style="font-size: 12.5px;">비교 적용 환율 변경</h6>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
@@ -485,7 +474,7 @@
                         <span class="text-muted small">비교 품목:</span>
                         <div class="fw-bold text-dark text-truncate" id="editRateItemName">-</div>
                     </div>
-                    <div class="mb-2 p-2 rounded bg-light border small">
+                    <div class="mb-2 p-2 rounded-1 bg-light border small">
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">등록 외화 단가:</span>
                             <strong class="text-primary" id="editRateForeignPrice">$0.00</strong>
@@ -494,21 +483,21 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-dark" id="editRateInputLabel">적용 환율 (1 USD당 원화)</label>
                         <div class="input-group input-group-sm">
-                            <input type="number" step="0.01" class="form-control text-end fw-bold" id="inpEditRateValue" placeholder="1350" oninput="app.calcEditRatePreview()">
+                            <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpEditRateValue" placeholder="1,350" oninput="app.onEditRateInput(this)">
                             <span class="input-group-text">원</span>
                         </div>
                         <div class="text-end text-muted mt-1" style="font-size: 11px;">
                             환산 예상 원화: <strong class="text-success" id="editRateConvertedPreview">₩0</strong>
                         </div>
                     </div>
-                    <div class="alert alert-info py-1 px-2 mb-0" style="font-size: 10.5px;">
-                        <i class='bx bx-info-circle'></i> 견적 비교 테이블의 시뮬레이션용 환율만 변경되며, 단가표 마스터 데이터는 변경되지 않습니다.
+                    <div class="p-2 border rounded-1 bg-light text-secondary" style="font-size: 11px; line-height: 1.4;">
+                        견적 비교 테이블의 시뮬레이션용 환율만 변경되며, 물류 단가표 마스터 원본은 변경되지 않습니다.
                     </div>
                 </div>
                 <div class="modal-footer py-1 px-2 bg-light d-flex justify-content-between">
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-sm btn-primary px-3" onclick="app.submitEditRate()">
-                        <i class='bx bx-check'></i> 환율 적용
+                    <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="app.submitEditRate()">
+                        환율 적용
                     </button>
                 </div>
             </div>

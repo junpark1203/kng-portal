@@ -419,16 +419,25 @@ router.get('/inventory/items', (req, res) => {
     });
 });
 
-// 전체 품목 이름 목록 (입고 시 자동완성용 - 재고가 0이어도 표시)
+// 전체 품목 이름 목록 (입고 및 자동완성용 - 입출고 내역 및 물류단가표 통합)
 router.get('/items/all', (req, res) => {
-    const sql = `SELECT DISTINCT item FROM logistics_inbound ORDER BY item`;
+    const sql = `
+        SELECT DISTINCT item FROM (
+            SELECT item FROM logistics_inbound WHERE item IS NOT NULL AND TRIM(item) != ''
+            UNION
+            SELECT item FROM logistics_outbound WHERE item IS NOT NULL AND TRIM(item) != ''
+            UNION
+            SELECT item FROM logistics_unit_prices WHERE item IS NOT NULL AND TRIM(item) != ''
+        )
+        ORDER BY item ASC
+    `;
     db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows.map(r => r.item));
     });
 });
 
-// 전체 품목별 과거 등록된 규격 목록 및 기본 단위/분류 매핑 (직출고/입고 시 규격 추천용)
+// 전체 품목별 과거 등록된 규격 목록 및 기본 단위/분류 매핑 (직출고/입고/출고 및 물류단가표 상호 추천용)
 router.get('/items/specs-map', (req, res) => {
     const sql = `
         SELECT DISTINCT item, spec, unit, category
@@ -436,6 +445,8 @@ router.get('/items/specs-map', (req, res) => {
             SELECT item, spec, unit, category FROM logistics_inbound WHERE item IS NOT NULL AND TRIM(item) != ''
             UNION
             SELECT item, spec, unit, category FROM logistics_outbound WHERE item IS NOT NULL AND TRIM(item) != ''
+            UNION
+            SELECT item, spec, unit, category FROM logistics_unit_prices WHERE item IS NOT NULL AND TRIM(item) != ''
         )
         ORDER BY item ASC, spec ASC
     `;
