@@ -1467,8 +1467,34 @@ const app = {
         await this.deletePrice(id);
     },
 
+    syncModalRowsFromDom: function() {
+        this.modalRows.forEach((row, idx) => {
+            const itemEl = $(`gridItem_${idx}`);
+            if (itemEl && itemEl.value !== undefined) row.item = itemEl.value;
+            const specEl = $(`gridSpec_${idx}`);
+            if (specEl && specEl.value !== undefined) row.spec = specEl.value;
+            const unitEl = $(`gridUnit_${idx}`);
+            if (unitEl && unitEl.value !== undefined) row.unit = unitEl.value;
+            const buyEl = $(`gridBuy_${idx}`);
+            if (buyEl && buyEl.value !== undefined) row.buy_price = buyEl.value.replace(/[^0-9.]/g, '');
+            const sellEl = $(`gridSell_${idx}`);
+            if (sellEl && sellEl.value !== undefined) row.sell_price = sellEl.value.replace(/[^0-9.]/g, '');
+            const regionEl = $(`gridFreightRegion_${idx}`);
+            if (regionEl && regionEl.value !== undefined) row.freight_region = regionEl.value;
+            const noteEl = $(`gridNote_${idx}`);
+            if (noteEl && noteEl.value !== undefined) row.note = noteEl.value;
+        });
+
+        // 레거시 HTML 캐시 호환: 상단 inpItem이 남아있고 하단 1행이 비어있는 경우 폴백
+        const legacyItem = $('inpItem') ? $('inpItem').value.trim() : '';
+        if (legacyItem && this.modalRows.length > 0 && !this.modalRows[0].item) {
+            this.modalRows[0].item = legacyItem;
+        }
+    },
+
     handleSavePrice: async function(e) {
         if (e && e.preventDefault) e.preventDefault();
+        this.syncModalRowsFromDom();
         const editId = $('editId') ? $('editId').value : '';
         const category = $('inpCategory') ? $('inpCategory').value.trim() : '';
         const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
