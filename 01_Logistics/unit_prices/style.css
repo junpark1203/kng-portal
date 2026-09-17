@@ -1461,11 +1461,18 @@ body {
     border-color: #cbd5e1;
     background-color: #ffffff;
 }
+#priceModal .form-control:focus,
+#priceModal .form-select:focus {
+    outline: none !important;
+    border-color: #2563eb !important;
+    box-shadow: none !important;
+}
 #modalGridTable input.form-control:focus,
 #modalGridTable select.form-select:focus {
+    outline: none !important;
     border-color: #2563eb !important;
-    box-shadow: 0 0 0 1px #2563eb !important;
-    background-color: #eff6ff !important;
+    box-shadow: none !important;
+    background-color: #f0f7ff !important;
 }
 #modalGridTable tr.selected-row {
     background-color: #eff6ff !important;
