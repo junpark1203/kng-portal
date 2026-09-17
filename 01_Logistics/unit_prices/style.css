@@ -583,3 +583,264 @@ body {
     border-color: var(--erp-primary) !important;
     box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.2) !important;
 }
+
+/* ── 5. 규격 비교 매트릭스 시스템 스타일 ── */
+
+/* 테이블 내 클릭 가능한 규격 뱃지 버튼 */
+.btn-spec-pill {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+    color: #1e293b;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: all 0.15s ease;
+}
+.btn-spec-pill:hover {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
+}
+
+/* 뷰 모드 토글 버튼 그룹 */
+.erp-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 3px;
+    border: 1px solid var(--erp-border-light);
+}
+.erp-view-toggle .btn-erp {
+    border: none !important;
+    background: transparent;
+    color: #475569;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 2px;
+}
+.erp-view-toggle .btn-erp.active {
+    background: #ffffff !important;
+    color: #1d4ed8 !important;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 규격 매트릭스 카드 */
+.spec-matrix-card {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+}
+.spec-matrix-card.selected {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 1px #3b82f6;
+}
+.spec-card-header {
+    background: #f8fafc;
+    border-bottom: 1px solid var(--erp-border-light);
+    padding: 6px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.spec-card-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 가로 매트릭스 비교 테이블 */
+.erp-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    background: #ffffff;
+}
+.erp-matrix-table th, 
+.erp-matrix-table td {
+    border: 1px solid #e2e8f0;
+    padding: 5px 8px;
+    vertical-align: middle;
+}
+.erp-matrix-table .matrix-label-col {
+    width: 120px;
+    background: #f8fafc;
+    font-weight: 600;
+    color: #334155;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 2px solid #cbd5e1;
+}
+.erp-matrix-table .matrix-item-col {
+    min-width: 160px;
+    text-align: center;
+}
+.erp-matrix-table .matrix-item-header {
+    background: #1e293b;
+    color: #ffffff;
+    font-weight: 700;
+    padding: 7px 8px;
+}
+
+/* 최저 매입가 및 최고 마진 하이라이트 */
+.badge-best-price {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.badge-best-margin {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+.cell-best-price {
+    background-color: #f0fdf4 !important;
+    font-weight: 700 !important;
+    color: #15803d !important;
+}
+.cell-best-margin {
+    background-color: #eff6ff !important;
+    font-weight: 700 !important;
+    color: #1d4ed8 !important;
+}
+
+/* 차이점 하이라이트 */
+.compare-diff {
+    background-color: #fffbeb;
+}
+
+/* ── 6. 인쇄 전용 스타일 (@media print) ── */
+.print-only {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 8mm 6mm;
+    }
+
+    body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        font-size: 10pt !important;
+        color: #000000 !important;
+    }
+
+    /* 화면 UI 요소 전체 숨김 */
+    .no-print,
+    .erp-top-toolbar,
+    .erp-filter-ribbon,
+    .btn-erp,
+    .btn-close,
+    .modal-backdrop,
+    .form-check-input,
+    .btn-table-action,
+    .btn-hist,
+    .modal-footer,
+    #priceGridWrapper,
+    #specMatrixWrapper {
+        display: none !important;
+    }
+
+    /* 인쇄 전용 컨테이너 활성화 */
+    .print-only,
+    #printArea {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .print-spec-block {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 25px !important;
+        border: 1.5px solid #334155 !important;
+        border-radius: 2px !important;
+        overflow: hidden !important;
+    }
+
+    .print-spec-header {
+        background: #f1f5f9 !important;
+        padding: 6px 10px !important;
+        border-bottom: 1.5px solid #334155 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .erp-matrix-table {
+        font-size: 9.5pt !important;
+        border-collapse: collapse !important;
+    }
+
+    .erp-matrix-table th, 
+    .erp-matrix-table td {
+        border: 1px solid #64748b !important;
+        padding: 4px 6px !important;
+    }
+
+    .erp-matrix-table .matrix-label-col {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        border-right: 2px solid #334155 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .erp-matrix-table .matrix-item-header {
+        background: #334155 !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .cell-best-price {
+        background-color: #dcfce7 !important;
+        color: #14532d !important;
+        font-weight: 800 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+

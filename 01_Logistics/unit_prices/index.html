@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260916_2">
+    <link rel="stylesheet" href="style.css?v=20260917_1">
 </head>
 <body>
 
@@ -32,6 +32,16 @@
             <div class="erp-tab-group ms-1" id="categoryTabGroup">
                 <button type="button" class="erp-tab-btn active" data-category="" onclick="app.setCategoryFilter('')">전체</button>
             </div>
+
+            <!-- 뷰 모드 전환 탭 (품목별 ↔ 규격별 매트릭스) -->
+            <div class="erp-view-toggle ms-2" id="viewToggleGroup">
+                <button type="button" class="btn-erp active" id="viewModeItemBtn" onclick="app.switchViewMode('item')" title="기본 품목별 목록 단가표 뷰">
+                    <i class='bx bx-list-ul'></i> 품목별 단가표
+                </button>
+                <button type="button" class="btn-erp" id="viewModeSpecBtn" onclick="app.switchViewMode('spec')" title="규격 기준 다자 비교 매트릭스 뷰">
+                    <i class='bx bx-git-compare text-primary'></i> 규격별 비교 매트릭스
+                </button>
+            </div>
         </div>
 
         <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -41,8 +51,14 @@
             <button type="button" class="btn-erp btn-erp-success" onclick="app.populateFromHistory()" title="기존 입출고 및 직출고 장부에서 최근 단가를 자동으로 긁어와 채웁니다">
                 <i class='bx bx-sync'></i> 장부 단가 자동반영
             </button>
-            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 단가표 엑셀(CSV) 다운로드">
+            <button type="button" class="btn-erp" id="btnExportExcel" onclick="app.exportExcel()" title="현재 단가표 엑셀(CSV) 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
+            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopPrintSpecs" onclick="app.printSelectedSpecs()" title="체크된 규격들의 비교 매트릭스만 A4 가로 규격 비교표로 인쇄합니다">
+                <i class='bx bx-printer'></i> 선택 규격 인쇄
+            </button>
+            <button type="button" class="btn-erp btn-erp-success d-none" id="btnTopExportSpecs" onclick="app.exportSelectedSpecsExcel()" title="체크된 규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
+                <i class='bx bx-file'></i> 선택 규격 엑셀
             </button>
             <a href="../inout/index.html" class="btn-erp" title="사내 입출고내역 페이지로 이동">
                 <i class='bx bx-transfer'></i> 입출고내역
@@ -151,6 +167,39 @@
                 </tr>
             </tfoot>
         </table>
+    </div>
+
+    <!-- ── 3-2. 규격별 비교 매트릭스 대시보드 래퍼 (선택 뷰) ── -->
+    <div class="erp-grid-wrapper shadow-sm d-none" id="specMatrixWrapper">
+        <div class="spec-matrix-toolbar no-print p-2 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-check m-0 d-flex align-items-center gap-1">
+                    <input type="checkbox" class="form-check-input mt-0 cursor-pointer" id="selectAllSpecs" onchange="app.toggleSelectAllSpecs(this.checked)" title="모든 규격 선택 / 해제">
+                    <label for="selectAllSpecs" class="fw-bold small cursor-pointer text-dark user-select-none">전체 규격 선택</label>
+                </div>
+                <span class="badge bg-primary ms-1" id="selectedSpecsBadge">0개 규격 선택됨</span>
+                <span class="text-muted small ms-2" id="specMatrixTotalBadge">총 0개 규격</span>
+            </div>
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSelectedSpecs()" title="체크된 규격들의 비교 매트릭스만 모아서 A4 가로 규격 비교표로 인쇄/PDF 저장합니다">
+                    <i class='bx bx-printer'></i> 선택 규격 인쇄
+                </button>
+                <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSelectedSpecsExcel()" title="체크된 규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
+                    <i class='bx bx-download'></i> 선택 규격 엑셀
+                </button>
+                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(true)" title="모든 규격 매트릭스 카드 펼치기">
+                    <i class='bx bx-chevron-down'></i> 전체 펼치기
+                </button>
+                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(false)" title="모든 규격 매트릭스 카드 접기">
+                    <i class='bx bx-chevron-up'></i> 전체 접기
+                </button>
+            </div>
+        </div>
+
+        <!-- 규격별 매트릭스 카드 렌더링 영역 -->
+        <div id="specMatrixContainer" class="p-2 d-flex flex-column gap-3">
+            <!-- JS 렌더링 -->
+        </div>
     </div>
 
     <!-- ── 4. 단가 신규 등록 / 수정 모달 ── -->
@@ -299,10 +348,57 @@
         </div>
     </div>
 
+    <!-- ── 6. 단일 규격 다자 비교 매트릭스 팝업 모달 ── -->
+    <div class="modal fade" id="specCompareModal" tabindex="-1" aria-labelledby="specCompareModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header py-2 px-3 bg-dark text-white">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class='bx bx-git-compare text-primary fs-5'></i>
+                        <h6 class="modal-title fw-bold mb-0" id="specCompareModalLabel">규격별 다자 견적 비교 매트릭스</h6>
+                        <span class="badge bg-primary text-white ms-2" id="modalSpecBadge">규격명</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <!-- 요약 지표 스트립 -->
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-2 rounded bg-light border flex-wrap gap-2" id="modalSpecSummary">
+                        <!-- JS Render -->
+                    </div>
+                    <!-- 가로 대조 테이블 -->
+                    <div class="table-responsive border rounded" style="max-height: 480px; overflow-x: auto; overflow-y: auto;">
+                        <table class="erp-matrix-table w-100 mb-0" id="modalMatrixTable">
+                            <!-- JS Render -->
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.openCreateModalWithSpec(app.activeModalSpec)">
+                            <i class='bx bx-plus'></i> 이 규격에 새 품목 등록
+                        </button>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSingleSpec(app.activeModalSpec)">
+                            <i class='bx bx-printer'></i> 인쇄
+                        </button>
+                        <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSingleSpecExcel(app.activeModalSpec)">
+                            <i class='bx bx-download'></i> 엑셀 다운로드
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary px-3" data-bs-dismiss="modal">닫기</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 7. 인쇄 전용 렌더링 컨테이너 (화면에서는 숨김, @media print에서 활성화) ── -->
+    <div id="printArea" class="print-only"></div>
+
     <!-- 외부 라이브러리 (Bootstrap, SheetJS, GridResizer) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
-    <script src="app.js?v=20260917_1"></script>
+    <script src="app.js?v=20260917_3"></script>
 </body>
 </html>

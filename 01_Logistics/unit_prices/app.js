@@ -75,6 +75,16 @@ async function authFetch(url, options = {}) {
     return res.json();
 }
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 const app = {
     priceList: [],
     filteredList: [],
@@ -84,6 +94,10 @@ const app = {
     subSearchQuery: '',
     marginFilter: 'all',
     itemsSpecsMap: {},
+    viewMode: 'item', // 'item' | 'spec'
+    checkedSpecs: new Set(),
+    activeModalSpec: '',
+    specCompareModalInstance: null,
 
     init: async function() {
         this.bindEvents();
@@ -92,6 +106,9 @@ const app = {
         this.setupAutocomplete();
         if (window.ErpGridResizer) {
             window.ErpGridResizer.init('priceTable');
+        }
+        if ($('specCompareModal') && window.bootstrap) {
+            this.specCompareModalInstance = new bootstrap.Modal($('specCompareModal'));
         }
     },
 
@@ -280,6 +297,9 @@ const app = {
         this.filteredList = list;
         this.renderTable();
         this.renderStats();
+        if (this.viewMode === 'spec') {
+            this.renderSpecMatrix();
+        }
     },
 
     renderStats: function() {
@@ -359,10 +379,16 @@ const app = {
             html += `
                 <tr id="price_row_${r.id}">
                     <td class="row-index">${idx + 1}</td>
-                    <td class="text-center"><span class="category-pill">${r.category || '-'}</span></td>
-                    <td class="text-start ps-2 fw-semibold text-truncate" title="${r.item}">${r.item}</td>
-                    <td class="text-start ps-2 text-truncate text-muted" title="${r.spec || ''}">${r.spec || '-'}</td>
-                    <td class="text-center text-muted">${r.unit || '-'}</td>
+                    <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
+                    <td class="text-start ps-2 fw-semibold text-truncate" title="${escapeHtml(r.item)}">${escapeHtml(r.item)}</td>
+                    <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.spec || '')}">
+                        ${(r.spec && r.spec.trim()) ? `
+                            <button type="button" class="btn-spec-pill" data-spec="${escapeHtml(r.spec.trim())}" onclick="event.stopPropagation(); app.openSpecCompare(this.getAttribute('data-spec'))" title="'${escapeHtml(r.spec.trim())}' 규격의 모든 품목 다자 비교 매트릭스 보기">
+                                <i class='bx bx-git-compare text-primary'></i> ${escapeHtml(r.spec.trim())}
+                            </button>
+                        ` : '<span class="text-muted">-</span>'}
+                    </td>
+                    <td class="text-center text-muted">${escapeHtml(r.unit || '-')}</td>
                     <td class="td-buy pe-2">${buy ? buy.toLocaleString() + '원' : '-'}</td>
                     <td class="td-sell pe-2">${sell ? sell.toLocaleString() + '원' : '-'}</td>
                     <td class="td-margin-amt pe-2 ${marginAmt < 0 ? 'text-danger' : ''}">${marginAmt ? marginAmt.toLocaleString() + '원' : '-'}</td>
@@ -720,6 +746,626 @@ const app = {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    },
+
+    // ─────────────────────────────────────────
+    // 규격별 다자 비교 매트릭스 시스템
+    // ─────────────────────────────────────────
+    switchViewMode: function(mode) {
+        this.viewMode = mode;
+        const itemBtn = $('viewModeItemBtn');
+        const specBtn = $('viewModeSpecBtn');
+        if (itemBtn) itemBtn.classList.toggle('active', mode === 'item');
+        if (specBtn) specBtn.classList.toggle('active', mode === 'spec');
+
+        const priceGrid = $('priceGridWrapper');
+        const specGrid = $('specMatrixWrapper');
+        if (priceGrid) priceGrid.classList.toggle('d-none', mode !== 'item');
+        if (specGrid) specGrid.classList.toggle('d-none', mode !== 'spec');
+
+        const exportExcelBtn = $('btnExportExcel');
+        const topPrintSpecsBtn = $('btnTopPrintSpecs');
+        const topExportSpecsBtn = $('btnTopExportSpecs');
+        if (exportExcelBtn) exportExcelBtn.classList.toggle('d-none', mode !== 'item');
+        if (topPrintSpecsBtn) topPrintSpecsBtn.classList.toggle('d-none', mode !== 'spec');
+        if (topExportSpecsBtn) topExportSpecsBtn.classList.toggle('d-none', mode !== 'spec');
+
+        if (mode === 'spec') {
+            this.renderSpecMatrix();
+        }
+    },
+
+    getGroupedSpecs: function() {
+        const map = new Map();
+        this.filteredList.forEach(item => {
+            const rawSpec = (item.spec || '').trim();
+            const specKey = rawSpec || '(규격미지정)';
+            if (!map.has(specKey)) {
+                map.set(specKey, {
+                    spec: specKey,
+                    isNoSpec: !rawSpec,
+                    category: item.category || '일반자재',
+                    unit: item.unit || 'EA',
+                    items: []
+                });
+            }
+            map.get(specKey).items.push(item);
+        });
+
+        const groups = Array.from(map.values());
+        groups.forEach(g => {
+            let minBuy = Infinity;
+            let maxSell = 0;
+            let bestBuyItem = null;
+            let sumMargin = 0;
+            let validMarginCount = 0;
+
+            g.items.forEach(it => {
+                const buy = it.buy_price || 0;
+                const sell = it.sell_price || 0;
+                if (buy > 0 && buy < minBuy) {
+                    minBuy = buy;
+                    bestBuyItem = it;
+                }
+                if (sell > maxSell) maxSell = sell;
+                if (sell > 0 && buy > 0) {
+                    sumMargin += ((sell - buy) / sell) * 100;
+                    validMarginCount++;
+                }
+            });
+
+            g.minBuy = minBuy === Infinity ? 0 : minBuy;
+            g.maxSell = maxSell;
+            g.bestBuyItem = bestBuyItem;
+            g.avgMargin = validMarginCount > 0 ? Math.round((sumMargin / validMarginCount) * 10) / 10 : 0;
+        });
+
+        // 정렬: 품목 수 많은 순 -> 규격명 오름차순
+        groups.sort((a, b) => {
+            if (b.items.length !== a.items.length) return b.items.length - a.items.length;
+            return a.spec.localeCompare(b.spec, 'ko');
+        });
+
+        return groups;
+    },
+
+    renderSpecMatrix: function() {
+        const container = $('specMatrixContainer');
+        if (!container) return;
+
+        const groups = this.getGroupedSpecs();
+        if (groups.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted bg-white rounded border">
+                    <i class='bx bx-info-circle fs-3 me-1'></i> 조건에 일치하는 규격 매트릭스 데이터가 없습니다.
+                </div>
+            `;
+            if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = '총 0개 규격';
+            return;
+        }
+
+        if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = `총 ${groups.length}개 규격 (${this.filteredList.length}개 품목)`;
+
+        let html = '';
+        groups.forEach((g, idx) => {
+            const isChecked = this.checkedSpecs.has(g.spec);
+            const cardId = `spec_card_${idx}`;
+            const bodyId = `spec_card_body_${idx}`;
+
+            const bestBuyText = g.minBuy > 0 ? `최저 매입: ₩${g.minBuy.toLocaleString()} (${escapeHtml(g.bestBuyItem ? g.bestBuyItem.item : '-')})` : '매입단가 미등록';
+            const maxSellText = g.maxSell > 0 ? `최고 매출: ₩${g.maxSell.toLocaleString()}` : '-';
+
+            html += `
+                <div class="spec-matrix-card ${isChecked ? 'selected' : ''}" id="${cardId}" data-spec="${escapeHtml(g.spec)}">
+                    <div class="spec-card-header">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <input type="checkbox" class="form-check-input mt-0 spec-checkbox cursor-pointer" 
+                                   data-spec="${escapeHtml(g.spec)}" ${isChecked ? 'checked' : ''} 
+                                   onchange="app.onSpecCheck(this.getAttribute('data-spec'), this.checked)">
+                            <span class="spec-card-title">
+                                <i class='bx bx-cube-alt text-primary'></i> ${escapeHtml(g.spec)}
+                            </span>
+                            <span class="category-pill">${escapeHtml(g.category)}</span>
+                            <span class="badge bg-secondary">${g.items.length}개 품목 후보</span>
+                            <span class="badge-best-price"><i class='bx bx-check-circle'></i> ${bestBuyText}</span>
+                            <span class="badge-best-margin"><i class='bx bx-trending-up'></i> ${maxSellText} / 평균마진 ${g.avgMargin}%</span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn-erp btn-sm" data-spec="${escapeHtml(g.spec)}" onclick="app.openSpecCompare(this.getAttribute('data-spec'))" title="이 규격의 상세 팝업 매트릭스 열기">
+                                <i class='bx bx-expand-alt text-primary'></i> 상세 대조
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" data-spec="${escapeHtml(g.spec)}" onclick="app.openCreateModalWithSpec(this.getAttribute('data-spec'))" title="이 규격에 새로운 품목 추가 등록">
+                                <i class='bx bx-plus'></i> 품목 추가
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" onclick="app.toggleCardCollapse('${bodyId}', this)" title="매트릭스 표 접기/펼치기">
+                                <i class='bx bx-chevron-up'></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="spec-card-body p-2 border-top" id="${bodyId}">
+                        <div class="table-responsive">
+                            ${this.generateMatrixTableHtml(g.items, g.spec)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        this.updateCheckedBadge();
+    },
+
+    generateMatrixTableHtml: function(items, specName) {
+        if (!items || items.length === 0) {
+            return '<div class="text-muted p-3 text-center">등록된 품목이 없습니다.</div>';
+        }
+
+        let minBuy = Infinity;
+        let maxSell = 0;
+        let maxMarginRate = -Infinity;
+        items.forEach(it => {
+            const b = it.buy_price || 0;
+            const s = it.sell_price || 0;
+            if (b > 0 && b < minBuy) minBuy = b;
+            if (s > maxSell) maxSell = s;
+            if (s > 0 && b > 0) {
+                const r = Math.round(((s - b) / s) * 1000) / 10;
+                if (r > maxMarginRate) maxMarginRate = r;
+            }
+        });
+        if (minBuy === Infinity) minBuy = 0;
+
+        let theadHtml = `
+            <thead>
+                <tr>
+                    <th class="matrix-label-col">항목 \\ 품목 후보</th>
+                    ${items.map((it, idx) => {
+                        const isBestBuy = it.buy_price > 0 && it.buy_price === minBuy && items.length > 1;
+                        return `
+                            <th class="matrix-item-col matrix-item-header">
+                                <div class="d-flex justify-content-between align-items-center gap-1">
+                                    <span>후보 ${idx + 1}</span>
+                                    ${isBestBuy ? '<span class="badge bg-success" style="font-size: 10px;">최저가★</span>' : ''}
+                                </div>
+                            </th>
+                        `;
+                    }).join('')}
+                </tr>
+            </thead>
+        `;
+
+        const rowsDef = [
+            {
+                label: '품목명',
+                render: it => `<strong class="text-dark">${escapeHtml(it.item)}</strong>`
+            },
+            {
+                label: '자재분류',
+                render: it => `<span class="category-pill">${escapeHtml(it.category || '-')}</span>`
+            },
+            {
+                label: '단위',
+                render: it => `${escapeHtml(it.unit || '-')}`
+            },
+            {
+                label: '기준 매입단가',
+                render: it => {
+                    const buy = it.buy_price || 0;
+                    const isLowest = buy > 0 && buy === minBuy && items.length > 1;
+                    return buy ? `
+                        <span class="${isLowest ? 'cell-best-price px-2 py-1 rounded d-inline-block' : 'fw-bold text-dark'}">
+                            ₩${buy.toLocaleString()}
+                            ${isLowest ? '<i class="bx bx-check" title="최저 매입단가"></i>' : ''}
+                        </span>
+                    ` : '<span class="text-muted">-</span>';
+                }
+            },
+            {
+                label: '주 매입처',
+                render: it => `<span class="fw-semibold text-secondary">${escapeHtml(it.default_supplier || '-')}</span>`
+            },
+            {
+                label: '기준 매출단가',
+                render: it => {
+                    const sell = it.sell_price || 0;
+                    return sell ? `<span class="text-primary fw-bold">₩${sell.toLocaleString()}</span>` : '<span class="text-muted">-</span>';
+                }
+            },
+            {
+                label: '주 매출처',
+                render: it => `${escapeHtml(it.default_destination || '-')}`
+            },
+            {
+                label: '마진액 / 마진율',
+                render: it => {
+                    const buy = it.buy_price || 0;
+                    const sell = it.sell_price || 0;
+                    if (sell > 0 && buy > 0) {
+                        const amt = sell - buy;
+                        const rate = Math.round((amt / sell) * 1000) / 10;
+                        const isBest = rate === maxMarginRate && items.length > 1;
+                        return `
+                            <span class="${isBest ? 'cell-best-margin px-1 rounded' : ''}">
+                                ₩${amt.toLocaleString()} (${rate}%)
+                            </span>
+                        `;
+                    }
+                    return '<span class="text-muted">-</span>';
+                }
+            },
+            {
+                label: '단가 변동 이력',
+                render: it => {
+                    let count = 0;
+                    try { count = JSON.parse(it.history || '[]').length; } catch(e){}
+                    return `
+                        <button type="button" class="btn-hist btn-sm py-0" onclick="app.openHistoryModal(${it.id})" title="시계열 변동 이력 보기">
+                            <i class='bx bx-history'></i> ${count}건
+                        </button>
+                    `;
+                }
+            },
+            {
+                label: '비고 / 메모',
+                render: it => `<span class="text-muted small">${escapeHtml(it.note || '-')}</span>`
+            },
+            {
+                label: '단가 관리',
+                render: it => `
+                    <button type="button" class="btn-table-action" onclick="app.openEditModal(${it.id})" title="단가 수정">
+                        <i class='bx bx-edit text-primary'></i> 수정
+                    </button>
+                `
+            }
+        ];
+
+        let tbodyHtml = '<tbody>';
+        rowsDef.forEach(r => {
+            tbodyHtml += `<tr><td class="matrix-label-col">${r.label}</td>`;
+            items.forEach(it => {
+                tbodyHtml += `<td class="matrix-item-col">${r.render(it)}</td>`;
+            });
+            tbodyHtml += `</tr>`;
+        });
+        tbodyHtml += '</tbody>';
+
+        return `<table class="erp-matrix-table">${theadHtml}${tbodyHtml}</table>`;
+    },
+
+    toggleSelectAllSpecs: function(checked) {
+        const groups = this.getGroupedSpecs();
+        if (checked) {
+            groups.forEach(g => this.checkedSpecs.add(g.spec));
+        } else {
+            this.checkedSpecs.clear();
+        }
+
+        document.querySelectorAll('.spec-checkbox').forEach(cb => {
+            cb.checked = checked;
+            const card = cb.closest('.spec-matrix-card');
+            if (card) card.classList.toggle('selected', checked);
+        });
+
+        this.updateCheckedBadge();
+    },
+
+    onSpecCheck: function(spec, checked) {
+        if (checked) {
+            this.checkedSpecs.add(spec);
+        } else {
+            this.checkedSpecs.delete(spec);
+        }
+
+        const cards = document.querySelectorAll('.spec-matrix-card');
+        cards.forEach(card => {
+            if (card.getAttribute('data-spec') === spec) {
+                card.classList.toggle('selected', checked);
+            }
+        });
+
+        this.updateCheckedBadge();
+    },
+
+    updateCheckedBadge: function() {
+        const badge = $('selectedSpecsBadge');
+        if (badge) {
+            badge.innerText = `${this.checkedSpecs.size}개 규격 선택됨`;
+        }
+
+        const masterCb = $('selectAllSpecs');
+        if (masterCb) {
+            const groups = this.getGroupedSpecs();
+            masterCb.checked = groups.length > 0 && this.checkedSpecs.size >= groups.length;
+        }
+    },
+
+    toggleCardCollapse: function(bodyId, btn) {
+        const el = $(bodyId);
+        if (!el) return;
+        const isCollapsed = el.classList.toggle('d-none');
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) {
+                icon.className = isCollapsed ? 'bx bx-chevron-down' : 'bx bx-chevron-up';
+            }
+        }
+    },
+
+    expandAllSpecs: function(expand) {
+        document.querySelectorAll('.spec-card-body').forEach(b => {
+            b.classList.toggle('d-none', !expand);
+        });
+        document.querySelectorAll('.spec-card-header .bx-chevron-up, .spec-card-header .bx-chevron-down').forEach(icon => {
+            icon.className = expand ? 'bx bx-chevron-up' : 'bx bx-chevron-down';
+        });
+    },
+
+    openSpecCompare: function(spec) {
+        if (!spec) return;
+        this.activeModalSpec = spec;
+        $('modalSpecBadge').innerText = spec;
+
+        const cleanSpec = spec.trim().toLowerCase();
+        const items = this.priceList.filter(it => (it.spec || '').trim().toLowerCase() === cleanSpec);
+
+        if (items.length === 0) {
+            alert(`'${spec}' 규격으로 등록된 품목이 없습니다.`);
+            return;
+        }
+
+        let minBuy = Infinity;
+        let maxSell = 0;
+        let bestItem = null;
+        let sumMargin = 0;
+        let validMarginCount = 0;
+        items.forEach(it => {
+            const b = it.buy_price || 0;
+            const s = it.sell_price || 0;
+            if (b > 0 && b < minBuy) {
+                minBuy = b;
+                bestItem = it;
+            }
+            if (s > maxSell) maxSell = s;
+            if (s > 0 && b > 0) {
+                sumMargin += ((s - b) / s) * 100;
+                validMarginCount++;
+            }
+        });
+        if (minBuy === Infinity) minBuy = 0;
+        const avgMargin = validMarginCount > 0 ? Math.round((sumMargin / validMarginCount) * 10) / 10 : 0;
+
+        $('modalSpecSummary').innerHTML = `
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-dark">${items.length}개 후보 품목</span>
+                <span class="text-secondary small">대표 분류: <strong>${escapeHtml(items[0].category || '-')}</strong></span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="badge-best-price">최저 매입: ₩${minBuy.toLocaleString()} (${escapeHtml(bestItem ? bestItem.item : '-')})</span>
+                <span class="badge-best-margin">최고 매출: ₩${maxSell.toLocaleString()}</span>
+                <span class="badge bg-light text-dark border">평균 마진율: ${avgMargin}%</span>
+            </div>
+        `;
+
+        $('modalMatrixTable').innerHTML = this.generateMatrixTableHtml(items, spec);
+
+        if (!this.specCompareModalInstance && window.bootstrap && $('specCompareModal')) {
+            this.specCompareModalInstance = new bootstrap.Modal($('specCompareModal'));
+        }
+        if (this.specCompareModalInstance) {
+            this.specCompareModalInstance.show();
+        }
+    },
+
+    openCreateModalWithSpec: function(spec) {
+        this.openCreateModal();
+        if ($('inpSpec') && spec && spec !== '(규격미지정)') {
+            $('inpSpec').value = spec;
+        }
+    },
+
+    printSelectedSpecs: function() {
+        let specsToPrint = Array.from(this.checkedSpecs);
+        const allGroups = this.getGroupedSpecs();
+
+        if (specsToPrint.length === 0) {
+            if (!confirm(`선택된 규격이 없습니다.\n현재 화면에 표시된 모든 규격(총 ${allGroups.length}개)을 인쇄하시겠습니까?`)) {
+                return;
+            }
+            specsToPrint = allGroups.map(g => g.spec);
+        }
+
+        const printArea = $('printArea');
+        if (!printArea) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        let html = `
+            <div style="padding: 10px 15px; margin-bottom: 15px; border-bottom: 2px solid #0f172a; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h2 style="margin: 0; font-size: 18pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">K&G 물류 단가표 — 규격별 다자 비교 매트릭스 보고서</h2>
+                    <div style="font-size: 9pt; color: #475569; margin-top: 4px;">출력 규격 수: ${specsToPrint.length}개 | 인쇄일자: ${today}</div>
+                </div>
+                <div style="text-align: right; font-size: 9pt; color: #64748b;">
+                    <strong>주식회사 케이앤지</strong>
+                </div>
+            </div>
+        `;
+
+        specsToPrint.forEach(spec => {
+            const clean = spec.trim().toLowerCase();
+            const items = this.priceList.filter(it => (it.spec || '').trim().toLowerCase() === clean);
+            if (items.length === 0) return;
+
+            const cat = items[0].category || '일반자재';
+            let minBuy = Infinity;
+            items.forEach(it => { if (it.buy_price > 0 && it.buy_price < minBuy) minBuy = it.buy_price; });
+            if (minBuy === Infinity) minBuy = 0;
+
+            html += `
+                <div class="print-spec-block">
+                    <div class="print-spec-header">
+                        <div>
+                            <strong style="font-size: 12pt; color: #0f172a;">규격: ${escapeHtml(spec)}</strong>
+                            <span style="font-size: 9.5pt; color: #475569; margin-left: 8px;">[분류: ${escapeHtml(cat)}]</span>
+                            <span style="font-size: 9.5pt; color: #2563eb; margin-left: 8px;">후보: ${items.length}개 품목</span>
+                        </div>
+                        <div style="font-size: 9.5pt; font-weight: 700; color: #16a34a;">
+                            ${minBuy > 0 ? `최저 매입단가: ₩${minBuy.toLocaleString()}` : ''}
+                        </div>
+                    </div>
+                    <div>
+                        ${this.generateMatrixTableHtml(items, spec)}
+                    </div>
+                </div>
+            `;
+        });
+
+        printArea.innerHTML = html;
+        window.print();
+    },
+
+    printSingleSpec: function(spec) {
+        if (!spec) return;
+        const clean = spec.trim().toLowerCase();
+        const items = this.priceList.filter(it => (it.spec || '').trim().toLowerCase() === clean);
+        if (items.length === 0) return;
+
+        const printArea = $('printArea');
+        if (!printArea) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        let minBuy = Infinity;
+        items.forEach(it => { if (it.buy_price > 0 && it.buy_price < minBuy) minBuy = it.buy_price; });
+        if (minBuy === Infinity) minBuy = 0;
+
+        printArea.innerHTML = `
+            <div style="padding: 10px 15px; margin-bottom: 15px; border-bottom: 2px solid #0f172a; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h2 style="margin: 0; font-size: 18pt; font-weight: 800; color: #0f172a;">K&G 규격별 견적 비교표 [${escapeHtml(spec)}]</h2>
+                    <div style="font-size: 9pt; color: #475569; margin-top: 4px;">분류: ${escapeHtml(items[0].category || '-')} | 후보: ${items.length}개 품목 | 인쇄일자: ${today}</div>
+                </div>
+                <div style="text-align: right; font-size: 9pt; color: #64748b;">
+                    <strong>주식회사 케이앤지</strong>
+                </div>
+            </div>
+            <div class="print-spec-block">
+                <div class="print-spec-header">
+                    <div>
+                        <strong style="font-size: 12pt; color: #0f172a;">규격: ${escapeHtml(spec)}</strong>
+                    </div>
+                    <div style="font-size: 9.5pt; font-weight: 700; color: #16a34a;">
+                        ${minBuy > 0 ? `최저 매입단가: ₩${minBuy.toLocaleString()}` : ''}
+                    </div>
+                </div>
+                <div>
+                    ${this.generateMatrixTableHtml(items, spec)}
+                </div>
+            </div>
+        `;
+
+        window.print();
+    },
+
+    exportSelectedSpecsExcel: function() {
+        let specsToExport = Array.from(this.checkedSpecs);
+        const allGroups = this.getGroupedSpecs();
+
+        if (specsToExport.length === 0) {
+            specsToExport = allGroups.map(g => g.spec);
+        }
+
+        if (specsToExport.length === 0) {
+            alert('내보낼 규격 데이터가 없습니다.');
+            return;
+        }
+
+        if (typeof XLSX === 'undefined') {
+            alert('Excel 라이브러리를 불러오지 못했습니다.');
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        const allRows = [
+            ['K&G 물류 단가표 — 규격별 다자 비교 매트릭스'],
+            [`내보내기 일자: ${new Date().toISOString().split('T')[0]}`, `대상 규격 수: ${specsToExport.length}개`],
+            []
+        ];
+
+        specsToExport.forEach(spec => {
+            const clean = spec.trim().toLowerCase();
+            const items = this.priceList.filter(it => (it.spec || '').trim().toLowerCase() === clean);
+            if (items.length === 0) return;
+
+            let minBuy = Infinity;
+            items.forEach(it => { if (it.buy_price > 0 && it.buy_price < minBuy) minBuy = it.buy_price; });
+            if (minBuy === Infinity) minBuy = 0;
+
+            allRows.push([`[규격: ${spec}] (분류: ${items[0].category || '-'}, 후보수: ${items.length}개, 최저매입: ${minBuy.toLocaleString()}원)`]);
+            
+            const headerRow = ['평가 항목', ...items.map((it, idx) => `후보 ${idx + 1}: ${it.item}${it.buy_price === minBuy && items.length > 1 ? ' (최저가★)' : ''}`)];
+            allRows.push(headerRow);
+
+            allRows.push(['품목명', ...items.map(it => it.item || '')]);
+            allRows.push(['자재분류', ...items.map(it => it.category || '')]);
+            allRows.push(['단위', ...items.map(it => it.unit || '')]);
+            allRows.push(['기준 매입단가', ...items.map(it => it.buy_price || 0)]);
+            allRows.push(['주 매입처', ...items.map(it => it.default_supplier || '')]);
+            allRows.push(['기준 매출단가', ...items.map(it => it.sell_price || 0)]);
+            allRows.push(['주 매출처', ...items.map(it => it.default_destination || '')]);
+            allRows.push(['마진액', ...items.map(it => (it.sell_price && it.buy_price) ? (it.sell_price - it.buy_price) : 0)]);
+            allRows.push(['마진율(%)', ...items.map(it => (it.sell_price && it.buy_price) ? (Math.round(((it.sell_price - it.buy_price) / it.sell_price) * 1000) / 10) : 0)]);
+            allRows.push(['비고', ...items.map(it => it.note || '')]);
+            allRows.push([]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(allRows);
+        XLSX.utils.book_append_sheet(wb, ws, '규격별비교매트릭스');
+
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        XLSX.writeFile(wb, `KNG_규격별비교매트릭스_${today}.xlsx`);
+    },
+
+    exportSingleSpecExcel: function(spec) {
+        if (!spec) return;
+        const clean = spec.trim().toLowerCase();
+        const items = this.priceList.filter(it => (it.spec || '').trim().toLowerCase() === clean);
+        if (items.length === 0) return;
+
+        if (typeof XLSX === 'undefined') {
+            alert('Excel 라이브러리를 불러오지 못했습니다.');
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+        let minBuy = Infinity;
+        items.forEach(it => { if (it.buy_price > 0 && it.buy_price < minBuy) minBuy = it.buy_price; });
+        if (minBuy === Infinity) minBuy = 0;
+
+        const rows = [
+            [`K&G 규격별 다자 비교 견적서 [${spec}]`],
+            [`분류: ${items[0].category || '-'}`, `후보수: ${items.length}개`, `최저매입가: ${minBuy.toLocaleString()}원`],
+            [],
+            ['평가 항목', ...items.map((it, idx) => `후보 ${idx + 1}: ${it.item}${it.buy_price === minBuy && items.length > 1 ? ' (최저가★)' : ''}`)],
+            ['품목명', ...items.map(it => it.item || '')],
+            ['자재분류', ...items.map(it => it.category || '')],
+            ['단위', ...items.map(it => it.unit || '')],
+            ['기준 매입단가', ...items.map(it => it.buy_price || 0)],
+            ['주 매입처', ...items.map(it => it.default_supplier || '')],
+            ['기준 매출단가', ...items.map(it => it.sell_price || 0)],
+            ['주 매출처', ...items.map(it => it.default_destination || '')],
+            ['마진액', ...items.map(it => (it.sell_price && it.buy_price) ? (it.sell_price - it.buy_price) : 0)],
+            ['마진율(%)', ...items.map(it => (it.sell_price && it.buy_price) ? (Math.round(((it.sell_price - it.buy_price) / it.sell_price) * 1000) / 10) : 0)],
+            ['비고', ...items.map(it => it.note || '')]
+        ];
+
+        const ws = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, '규격비교');
+
+        const safeSpecName = spec.replace(/[^a-zA-Z0-9가-힣._-]/g, '_');
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        XLSX.writeFile(wb, `KNG_규격비교_${safeSpecName}_${today}.xlsx`);
     }
 };
 
