@@ -1208,4 +1208,19 @@ body {
     color: #94a3b8 !important;
 }
 
+/* ==========================================================================
+   6. ERP 모달 상단 시야 배치 & 위치 최적화
+   ========================================================================== */
+.modal-dialog {
+    margin: 45px auto !important;
+    max-height: calc(100vh - 90px);
+}
+
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 20px auto !important;
+    }
+}
+
+
 
