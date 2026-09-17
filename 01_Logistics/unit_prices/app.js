@@ -948,6 +948,7 @@ const app = {
         return {
             selected: false,
             price_type: preset.price_type || '견적가',
+            item: preset.item || '',
             spec: preset.spec || '',
             unit: preset.unit || defaultUnit || 'EA',
             buy_price: preset.buy_price !== undefined ? String(preset.buy_price) : '',
@@ -956,6 +957,32 @@ const app = {
             freight_region: preset.freight_region || '전국',
             note: preset.note || ''
         };
+    },
+
+    updateModalItemDatalist: function() {
+        const dl = $('modalItemDatalist');
+        if (!dl) return;
+        const mapKeys = Object.keys(this.itemsSpecsMap || {});
+        const priceKeys = (this.priceList || []).map(p => p.item).filter(Boolean);
+        const uniqueItems = Array.from(new Set([...mapKeys, ...priceKeys])).filter(Boolean).sort();
+        dl.innerHTML = uniqueItems.map(item => `<option value="${escapeHtml(item)}"></option>`).join('');
+    },
+
+    onGridItemInput: function(idx, val) {
+        if (!this.modalRows[idx]) return;
+        this.modalRows[idx].item = val;
+        const trimmed = (val || '').trim();
+        if (trimmed) {
+            const info = (this.itemsSpecsMap || {})[trimmed];
+            if (info && info.defaultUnit && (!this.modalRows[idx].unit || this.modalRows[idx].unit === 'EA')) {
+                this.modalRows[idx].unit = info.defaultUnit;
+                const uInp = $(`gridUnit_${idx}`);
+                if (uInp) uInp.value = info.defaultUnit;
+            }
+            if (info && info.defaultCategory && !$('inpCategory').value) {
+                $('inpCategory').value = info.defaultCategory;
+            }
+        }
     },
 
     onDefaultUnitChange: function() {
@@ -1055,6 +1082,14 @@ const app = {
                             <option value="실행가" ${row.price_type === '실행가' ? 'selected' : ''}>실행가</option>
                             <option value="기타" ${row.price_type === '기타' ? 'selected' : ''}>기타</option>
                         </select>
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm fw-bold text-dark" id="gridItem_${idx}" 
+                            list="modalItemDatalist" 
+                            value="${escapeHtml(row.item || '')}" 
+                            placeholder="품목명 입력" 
+                            oninput="app.onGridItemInput(${idx}, this.value)" 
+                            autocomplete="off">
                     </td>
                     <td class="align-middle">
                         <input type="text" class="form-control form-control-sm" id="gridSpec_${idx}" 
@@ -1212,8 +1247,8 @@ const app = {
         this.modalRows.push(this.createDefaultModalRow(preset));
         this.renderModalGrid();
         const newIdx = this.modalRows.length - 1;
-        const specInp = $(`gridSpec_${newIdx}`);
-        if (specInp) specInp.focus();
+        const itemInp = $(`gridItem_${newIdx}`);
+        if (itemInp) itemInp.focus();
     },
 
     copySelectedModalRows: function() {
@@ -1228,6 +1263,7 @@ const app = {
             this.modalRows.push({
                 selected: false,
                 price_type: item.price_type,
+                item: item.item, // 품목명 복사
                 spec: item.spec,
                 unit: item.unit,
                 buy_price: item.buy_price,
@@ -1240,10 +1276,11 @@ const app = {
 
         this.renderModalGrid();
         const lastIdx = this.modalRows.length - 1;
-        const specInp = $(`gridSpec_${lastIdx}`);
-        if (specInp) {
-            specInp.focus();
-            specInp.select();
+        // 품목명이 있으면 규격란으로 포커스, 품목명이 비어있으면 품목명란으로 포커스
+        const targetInp = this.modalRows[lastIdx].item ? $(`gridSpec_${lastIdx}`) : $(`gridItem_${lastIdx}`);
+        if (targetInp) {
+            targetInp.focus();
+            targetInp.select();
         }
     },
 
@@ -1268,22 +1305,25 @@ const app = {
 
     onCurrencyChange: function() {
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
-        const rateRow = $('exchangeRateRow');
+        const thRate = $('thExchangeRate');
+        const tdRate = $('tdExchangeRate');
         const rateInp = $('inpExchangeRate');
         const rateHelp = $('exchangeRateHelp');
 
         if (curr === 'KRW') {
-            if (rateRow) rateRow.classList.add('d-none');
+            if (thRate) thRate.classList.add('d-none');
+            if (tdRate) tdRate.classList.add('d-none');
         } else {
-            if (rateRow) rateRow.classList.remove('d-none');
+            if (thRate) thRate.classList.remove('d-none');
+            if (tdRate) tdRate.classList.remove('d-none');
             if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
                 rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
             }
             if (rateHelp) {
                 if (curr === 'JPY') {
-                    rateHelp.innerText = '1 JPY당 원화 (예: 100엔당 900원이면 9.0 입력)';
+                    rateHelp.innerText = '1 JPY당 원화 (예: 9.0)';
                 } else {
-                    rateHelp.innerText = `1 ${curr}당 원화(KRW) 환산율`;
+                    rateHelp.innerText = `1 ${curr}당 원화`;
                 }
             }
         }
@@ -1341,23 +1381,25 @@ const app = {
 
         $('priceModalLabel').innerHTML = `기준단가 다건 일괄 등록`;
         this.modalRows = [ this.createDefaultModalRow() ];
+        this.updateModalItemDatalist();
         this.renderModalGrid();
 
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
 
         setTimeout(() => {
-            if ($('inpItem')) $('inpItem').focus();
+            const firstItemInp = $('gridItem_0');
+            if (firstItemInp) firstItemInp.focus();
         }, 200);
     },
 
     openCreateModalWithItemSpec: function(item, spec) {
         this.openCreateModal();
-        if ($('inpItem') && item) $('inpItem').value = item;
+        if (item) this.modalRows[0].item = item;
         if (spec && spec !== '(규격미지정)') {
             this.modalRows[0].spec = spec;
-            this.renderModalGrid();
         }
+        this.renderModalGrid();
     },
 
     openEditModal: function(id) {
@@ -1376,7 +1418,6 @@ const app = {
         }
 
         $('priceModalLabel').innerHTML = `기준단가 수정: <span class="text-primary fw-bold">${escapeHtml(item.item)}</span>`;
-        $('inpItem').value = item.item || '';
         $('inpCategory').value = item.category || '';
         $('inpDefaultUnit').value = item.unit || '';
         $('inpSupplier').value = item.default_supplier || '';
@@ -1400,6 +1441,7 @@ const app = {
         this.modalRows = [{
             selected: false,
             price_type: item.price_type || '견적가',
+            item: item.item || '',
             spec: item.spec || '',
             unit: item.unit || '',
             buy_price: fBuy !== '' ? String(fBuy) : '',
@@ -1409,6 +1451,7 @@ const app = {
             note: (item.note || '').replace(/\[운임포함\]/g, '').trim()
         }];
 
+        this.updateModalItemDatalist();
         this.renderModalGrid();
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
@@ -1426,7 +1469,6 @@ const app = {
     handleSavePrice: async function(e) {
         if (e && e.preventDefault) e.preventDefault();
         const editId = $('editId') ? $('editId').value : '';
-        const itemName = $('inpItem') ? $('inpItem').value.trim() : '';
         const category = $('inpCategory') ? $('inpCategory').value.trim() : '';
         const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
@@ -1434,11 +1476,6 @@ const app = {
         const supplier = $('inpSupplier') ? $('inpSupplier').value.trim() : '';
         const destination = $('inpDestination') ? $('inpDestination').value.trim() : '';
 
-        if (!itemName) {
-            alert('품목명은 필수 입력 항목입니다.');
-            if ($('inpItem')) $('inpItem').focus();
-            return;
-        }
         if (curr !== 'KRW' && rate <= 0) {
             alert('외화 거래 시 유효한 환율(1외화당 원화)을 입력해주세요.');
             if ($('inpExchangeRate')) $('inpExchangeRate').focus();
@@ -1449,6 +1486,14 @@ const app = {
             if (editId) {
                 // ── 단건 수정 모드 ──
                 const row = this.modalRows[0] || {};
+                const rowItem = (row.item || '').trim();
+                if (!rowItem) {
+                    alert('품목명은 필수 입력 항목입니다.');
+                    const fItemInp = $('gridItem_0');
+                    if (fItemInp) fItemInp.focus();
+                    return;
+                }
+
                 const inputBuy = parseNumber(row.buy_price);
                 const inputSell = parseNumber(row.sell_price);
 
@@ -1466,7 +1511,7 @@ const app = {
 
                 const isFreightIn = row.freight_type === '하차도';
                 const payload = {
-                    item: itemName,
+                    item: rowItem,
                     spec: (row.spec || '').trim(),
                     category: category,
                     unit: (row.unit || defaultUnit || 'EA').trim(),
@@ -1492,47 +1537,36 @@ const app = {
                 alert('기준단가가 성공적으로 수정되었습니다.');
             } else {
                 // ── 다건 일괄 등록 모드 ──
-                const validRows = this.modalRows.filter(r => {
-                    const hasSpec = (r.spec || '').trim().length > 0;
-                    const hasBuy = parseNumber(r.buy_price) > 0;
-                    const hasSell = parseNumber(r.sell_price) > 0;
-                    const hasNote = (r.note || '').trim().length > 0;
-                    return hasSpec || hasBuy || hasSell || hasNote;
-                });
+                const validRows = this.modalRows.filter(r => (r.item || '').trim().length > 0);
 
                 if (validRows.length === 0) {
-                    alert('최소 1개 이상의 규격 또는 단가를 입력해주세요.');
+                    alert('최소 1개 이상의 행에 품목명을 입력해주세요.');
+                    const fItemInp = $('gridItem_0');
+                    if (fItemInp) fItemInp.focus();
                     return;
                 }
 
+                const mappedItems = validRows.map(r => ({
+                    item: r.item.trim(),
+                    price_type: r.price_type || '견적가',
+                    spec: (r.spec || '').trim(),
+                    unit: (r.unit || defaultUnit || 'EA').trim(),
+                    buy_price: parseNumber(r.buy_price),
+                    sell_price: parseNumber(r.sell_price),
+                    freight_type: r.freight_type || '상차도',
+                    freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
+                    note: (r.note || '').trim()
+                }));
+
                 const payload = {
-                    item: itemName,
                     category: category,
                     default_unit: defaultUnit,
                     currency: curr,
                     exchange_rate: (curr !== 'KRW') ? rate : 1,
                     default_supplier: supplier,
                     default_destination: destination,
-                    items: validRows.map(r => ({
-                        price_type: r.price_type || '견적가',
-                        spec: (r.spec || '').trim(),
-                        unit: (r.unit || defaultUnit || 'EA').trim(),
-                        buy_price: parseNumber(r.buy_price),
-                        sell_price: parseNumber(r.sell_price),
-                        freight_type: r.freight_type || '상차도',
-                        freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
-                        note: (r.note || '').trim()
-                    })),
-                    rows: validRows.map(r => ({
-                        price_type: r.price_type || '견적가',
-                        spec: (r.spec || '').trim(),
-                        unit: (r.unit || defaultUnit || 'EA').trim(),
-                        buy_price: parseNumber(r.buy_price),
-                        sell_price: parseNumber(r.sell_price),
-                        freight_type: r.freight_type || '상차도',
-                        freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
-                        note: (r.note || '').trim()
-                    }))
+                    items: mappedItems,
+                    rows: mappedItems
                 };
 
                 const res = await authFetch(`${API_BASE}/unit-prices/batch`, {
@@ -1541,7 +1575,11 @@ const app = {
                 });
 
                 const count = res.insertedCount || validRows.length;
-                alert(`${count}건의 기준단가가 성공적으로 등록되었습니다.`);
+                let alertMsg = `${count}건의 기준단가가 성공적으로 등록되었습니다.`;
+                if (res.skippedCount > 0) {
+                    alertMsg += `\n(기등록 중복 제외: ${res.skippedCount}건)`;
+                }
+                alert(alertMsg);
             }
 
             const modalEl = $('priceModal');

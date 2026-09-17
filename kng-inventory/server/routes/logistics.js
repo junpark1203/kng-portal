@@ -753,22 +753,23 @@ router.post('/unit-prices', async (req, res) => {
 router.post('/unit-prices/batch', async (req, res) => {
     try {
         const {
-            item, category = '', default_supplier = '', default_destination = '',
-            currency = 'KRW', exchange_rate = 1.0
+            item = '', category = '', default_supplier = '', default_destination = '',
+            default_unit = '', currency = 'KRW', exchange_rate = 1.0
         } = req.body;
 
         const detailRows = (Array.isArray(req.body.items) && req.body.items.length > 0)
             ? req.body.items
             : (Array.isArray(req.body.rows) ? req.body.rows : []);
 
-        if (!item || !item.trim()) {
-            return res.status(400).json({ error: '품목명은 필수 입력 항목입니다.' });
-        }
         if (detailRows.length === 0) {
             return res.status(400).json({ error: '등록할 단가 세부 항목이 최소 1건 이상 있어야 합니다.' });
         }
 
-        const trimmedItem = item.trim();
+        const validItemCount = detailRows.filter(r => (r.item || item || '').trim().length > 0).length;
+        if (validItemCount === 0) {
+            return res.status(400).json({ error: '최소 1개 이상의 행에 품목명을 입력해야 합니다.' });
+        }
+
         const trimmedSupplier = (default_supplier || '').trim();
         const trimmedDestination = (default_destination || '').trim();
         const rate = parseFloat(exchange_rate) || 1.0;
@@ -781,17 +782,23 @@ router.post('/unit-prices/batch', async (req, res) => {
 
         try {
             for (const row of detailRows) {
+                const rowItem = (row.item || item || '').trim();
+                if (!rowItem) {
+                    continue; // 품목명이 누락된 빈 행 건너뜀
+                }
+
                 const trimmedSpec = (row.spec || '').trim();
                 const rowPriceType = row.price_type || '견적가';
-                const rowUnit = (row.unit || '').trim();
+                const rowUnit = (row.unit || default_unit || '').trim();
+                const rowCategory = (row.category || category || '').trim();
 
                 // 기존 동일 품목, 규격, 공급처 확인
                 const existing = await dbGet(
                     `SELECT id FROM logistics_unit_prices WHERE item = ? AND spec = ? AND default_supplier = ?`,
-                    [trimmedItem, trimmedSpec, trimmedSupplier]
+                    [rowItem, trimmedSpec, trimmedSupplier]
                 );
                 if (existing) {
-                    skippedItems.push(`${trimmedSpec || '(규격미지정)'} (이미 등록됨)`);
+                    skippedItems.push(`${rowItem} ${trimmedSpec ? '(' + trimmedSpec + ')' : ''} (이미 등록됨)`);
                     continue;
                 }
 
@@ -831,7 +838,7 @@ router.post('/unit-prices/batch', async (req, res) => {
                 `;
 
                 const result = await dbRun(insertSql, [
-                    trimmedItem, trimmedSpec, category || '', rowUnit || '', currency || 'KRW',
+                    rowItem, trimmedSpec, rowCategory, rowUnit, currency || 'KRW',
                     krwBuy, krwSell,
                     trimmedSupplier, trimmedDestination,
                     JSON.stringify(initialHistory), rowNote,
