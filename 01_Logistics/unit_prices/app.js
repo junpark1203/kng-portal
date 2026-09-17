@@ -2648,8 +2648,15 @@ const app = {
                         ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}</span>`
                         : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도</span>`;
 
+                    const isChecked = !this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false;
+
                     rowsHtml += `
-                        <tr class="${isBest ? 'row-best-price' : ''}">
+                        <tr class="${isBest ? 'row-best-price' : ''} ${!isChecked ? 'row-unselected' : ''}" data-quote-item-id="${it.id}">
+                            <td class="text-center align-middle">
+                                <input type="checkbox" class="form-check-input quote-item-chk" 
+                                       onchange="app.toggleQuoteItemCheck(${sec.id}, ${it.id}, this.checked)" 
+                                       ${isChecked ? 'checked' : ''} title="보고서 인쇄 포함 여부">
+                            </td>
                             <td class="text-center">
                                 <div class="d-flex align-items-center justify-content-center gap-1">
                                     <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
@@ -2701,6 +2708,9 @@ const app = {
                 });
             }
 
+            const secItems = sec.items || [];
+            const allSecChecked = secItems.length > 0 && secItems.every(it => (!this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false));
+
             html += `
                 <div class="quote-section-card" id="quote_section_${sec.id}">
                     <div class="quote-section-header">
@@ -2712,8 +2722,11 @@ const app = {
                             <span class="badge bg-secondary">${analyzedItems.length}개 후보 비교</span>
                             ${bestSummaryHtml}
                         </div>
-                        <div class="d-flex align-items-center gap-1">
-                            <button type="button" class="btn-erp btn-sm" onclick="app.printSingleSection(${sec.id})" title="이 섹션만 A4 가로 보고서로 인쇄">
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <button type="button" class="btn-erp btn-sm" onclick="app.selectBestOnlyInSection(${sec.id})" title="이 섹션의 최저가(가성비) 품목만 선택하고 나머지는 제외">
+                                <i class='bx bx-check-double text-success'></i> 최저가만 선택
+                            </button>
+                            <button type="button" class="btn-erp btn-sm" onclick="app.openPrintOptionModal(${sec.id})" title="이 섹션만 A4 가로 보고서로 인쇄">
                                 <i class='bx bx-printer'></i> 인쇄
                             </button>
                             <button type="button" class="btn-erp btn-sm btn-del" onclick="app.deleteQuoteSection(${sec.id})" title="섹션 및 전체 후보 삭제">
@@ -2727,7 +2740,10 @@ const app = {
                             <table class="quote-compare-table w-100">
                                 <thead>
                                     <tr>
-                                        <th style="width: 75px;">후보</th>
+                                        <th style="width: 32px;" class="text-center" title="섹션 전체 선택/해제">
+                                            <input type="checkbox" class="form-check-input" onchange="app.toggleAllInSection(${sec.id}, this.checked)" ${allSecChecked ? 'checked' : ''}>
+                                        </th>
+                                        <th style="width: 70px;">후보</th>
                                         <th style="width: 70px;">단가구분</th>
                                         <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
                                         <th style="width: 120px;" class="text-start ps-2">규격</th>
@@ -2765,6 +2781,7 @@ const app = {
         });
 
         container.innerHTML = html;
+        this.updateQuoteSelectionBadges();
     },
 
     // ─────────────────────────────────────────
@@ -2840,7 +2857,199 @@ const app = {
         }
     },
 
-    printExecutiveReport: function() {
+    // ─────────────────────────────────────────
+    // 견적 비교 테이블 선택 항목 및 인쇄 설정 메서드
+    // ─────────────────────────────────────────
+    toggleQuoteItemCheck: function(secId, itemId, checked) {
+        if (!this.quoteSelectionMap) this.quoteSelectionMap = {};
+        this.quoteSelectionMap[itemId] = checked;
+        const tr = document.querySelector(`tr[data-quote-item-id="${itemId}"]`);
+        if (tr) tr.classList.toggle('row-unselected', !checked);
+        this.updateQuoteSelectionBadges();
+    },
+
+    toggleAllInSection: function(secId, forceChecked) {
+        if (!this.quoteSelectionMap) this.quoteSelectionMap = {};
+        const sec = (this.quoteSections || []).find(s => s.id === secId);
+        if (!sec || !sec.items) return;
+        sec.items.forEach(it => {
+            this.quoteSelectionMap[it.id] = forceChecked;
+        });
+        this.renderQuoteComparisonTable();
+    },
+
+    selectBestOnlyInSection: function(secId) {
+        if (!this.quoteSelectionMap) this.quoteSelectionMap = {};
+        const sec = (this.quoteSections || []).find(s => s.id === secId);
+        if (!sec || !sec.items || sec.items.length === 0) return;
+
+        const analyzed = sec.items.map(it => ({
+            ...it,
+            norm: this.parseUnitNormalize(it.spec, it.buy_price)
+        }));
+        const normUnits = analyzed.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
+        const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0])) ? normUnits[0] : null;
+
+        let bestId = null;
+        let minVal = Infinity;
+        if (commonUnit) {
+            analyzed.forEach(it => {
+                if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
+                    minVal = it.norm.normPrice;
+                    bestId = it.id;
+                }
+            });
+        } else {
+            analyzed.forEach(it => {
+                const b = it.buy_price || 0;
+                if (b > 0 && b < minVal) {
+                    minVal = b;
+                    bestId = it.id;
+                }
+            });
+        }
+
+        sec.items.forEach(it => {
+            this.quoteSelectionMap[it.id] = (bestId ? it.id === bestId : true);
+        });
+        this.renderQuoteComparisonTable();
+    },
+
+    updateQuoteSelectionBadges: function() {
+        let total = 0;
+        let selected = 0;
+        (this.quoteSections || []).forEach(sec => {
+            (sec.items || []).forEach(it => {
+                total++;
+                if (!this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false) {
+                    selected++;
+                }
+            });
+        });
+
+        const badge = $('quoteSelectedItemCountBadge');
+        if (badge) {
+            badge.classList.remove('d-none');
+            badge.innerText = `선택 ${selected}개 / 전체 ${total}개`;
+        }
+        const modalSel = $('modalPrintSelectedCount');
+        if (modalSel) modalSel.innerText = selected;
+        const modalTot = $('modalPrintTotalCount');
+        if (modalTot) modalTot.innerText = total;
+    },
+
+    openPrintOptionModal: function(singleSecId = null) {
+        this.printTargetSecId = singleSecId;
+        this.updateQuoteSelectionBadges();
+        this.loadPrintColumnSettings();
+
+        const modalTitle = $('printOptionModalLabel');
+        if (modalTitle) {
+            if (singleSecId) {
+                const sec = (this.quoteSections || []).find(s => s.id === singleSecId);
+                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> [${sec ? escapeHtml(sec.section_name) : ''}] 섹션 인쇄 맞춤 설정`;
+            } else {
+                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> 견적 비교 보고서 인쇄 맞춤 설정 (전체 대상)`;
+            }
+        }
+
+        if (!this.printOptionModalInstance && window.bootstrap) {
+            this.printOptionModalInstance = new bootstrap.Modal($('printOptionModal'));
+        }
+        if (this.printOptionModalInstance) {
+            this.printOptionModalInstance.show();
+        }
+    },
+
+    applyPrintPreset: function(preset) {
+        if (preset === 'external') {
+            // 구매/대외 발주용: 매출처, 마진 숨김
+            if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = true;
+            if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = true;
+            if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = true;
+            if ($('chkPrintFreight')) $('chkPrintFreight').checked = true;
+            if ($('chkPrintDestination')) $('chkPrintDestination').checked = false;
+            if ($('chkPrintMargin')) $('chkPrintMargin').checked = false;
+            if ($('chkPrintNote')) $('chkPrintNote').checked = true;
+            if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = true;
+        } else if (preset === 'internal') {
+            // 내부 경영진 결재용: 전체 항목 표시
+            if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = true;
+            if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = true;
+            if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = true;
+            if ($('chkPrintFreight')) $('chkPrintFreight').checked = true;
+            if ($('chkPrintDestination')) $('chkPrintDestination').checked = true;
+            if ($('chkPrintMargin')) $('chkPrintMargin').checked = true;
+            if ($('chkPrintNote')) $('chkPrintNote').checked = true;
+            if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = true;
+        }
+        this.savePrintColumnSettings();
+    },
+
+    savePrintColumnSettings: function() {
+        const settings = {
+            supplier: $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true,
+            buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
+            normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
+            freight: $('chkPrintFreight') ? $('chkPrintFreight').checked : true,
+            destination: $('chkPrintDestination') ? $('chkPrintDestination').checked : false,
+            margin: $('chkPrintMargin') ? $('chkPrintMargin').checked : false,
+            note: $('chkPrintNote') ? $('chkPrintNote').checked : true,
+            opinion: $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true
+        };
+        try {
+            localStorage.setItem('kng_quote_print_columns', JSON.stringify(settings));
+        } catch (e) {}
+    },
+
+    loadPrintColumnSettings: function() {
+        try {
+            const saved = localStorage.getItem('kng_quote_print_columns');
+            if (saved) {
+                const s = JSON.parse(saved);
+                if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = s.supplier !== false;
+                if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = s.buyPrice !== false;
+                if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = s.normPrice !== false;
+                if ($('chkPrintFreight')) $('chkPrintFreight').checked = s.freight !== false;
+                if ($('chkPrintDestination')) $('chkPrintDestination').checked = Boolean(s.destination);
+                if ($('chkPrintMargin')) $('chkPrintMargin').checked = Boolean(s.margin);
+                if ($('chkPrintNote')) $('chkPrintNote').checked = s.note !== false;
+                if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = s.opinion !== false;
+                return;
+            }
+        } catch (e) {}
+
+        // 기본값: 매출처, 마진은 보안 차원에서 체크 해제
+        if ($('chkPrintDestination')) $('chkPrintDestination').checked = false;
+        if ($('chkPrintMargin')) $('chkPrintMargin').checked = false;
+    },
+
+    executePrintReport: function() {
+        this.savePrintColumnSettings();
+        const scope = document.querySelector('input[name="printScope"]:checked')?.value || 'selected';
+        const columns = {
+            supplier: $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true,
+            buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
+            normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
+            freight: $('chkPrintFreight') ? $('chkPrintFreight').checked : true,
+            destination: $('chkPrintDestination') ? $('chkPrintDestination').checked : false,
+            margin: $('chkPrintMargin') ? $('chkPrintMargin').checked : false,
+            note: $('chkPrintNote') ? $('chkPrintNote').checked : true,
+            opinion: $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true
+        };
+
+        if (this.printOptionModalInstance) {
+            this.printOptionModalInstance.hide();
+        }
+
+        this.printExecutiveReport({
+            scope: scope,
+            targetSecId: this.printTargetSecId,
+            columns: columns
+        });
+    },
+
+    printExecutiveReport: function(options = {}) {
         if (!this.quoteSections || this.quoteSections.length === 0) {
             alert('인쇄할 견적 비교 섹션이 없습니다.');
             return;
@@ -2849,13 +3058,43 @@ const app = {
         const printArea = $('printArea');
         if (!printArea) return;
 
+        const scope = options.scope || 'selected';
+        const targetSecId = options.targetSecId || null;
+        const cols = options.columns || {
+            supplier: true,
+            buyPrice: true,
+            normPrice: true,
+            freight: true,
+            destination: false,
+            margin: false,
+            note: true,
+            opinion: true
+        };
+
         const today = new Date().toISOString().split('T')[0];
         const docNo = `KNG-EST-${today.replace(/-/g, '')}-01`;
 
+        let sectionsToPrint = this.quoteSections;
+        if (targetSecId) {
+            sectionsToPrint = this.quoteSections.filter(s => s.id === targetSecId);
+        }
+
         let sectionsHtml = '';
-        this.quoteSections.forEach((sec, idx) => {
-            const items = sec.items || [];
+        let validSectionsCount = 0;
+        let totalPrintedItemCount = 0;
+
+        sectionsToPrint.forEach((sec, idx) => {
+            let items = sec.items || [];
             if (items.length === 0) return;
+
+            // 선택 항목 필터링
+            if (scope === 'selected') {
+                items = items.filter(it => !this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false);
+            }
+            if (items.length === 0) return; // 선택된 항목이 없으면 섹션 제외
+
+            validSectionsCount++;
+            totalPrintedItemCount += items.length;
 
             const analyzed = items.map(it => ({
                 ...it,
@@ -2932,13 +3171,13 @@ const app = {
                         <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' [최저]' : ''}<br><span style="font-size: 8pt; color: #475569;">[${escapeHtml(pt)}]</span></td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.item)}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.spec || '-')}</td>
-                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>
-                        <td style="text-align: right; padding-right: 6px;">${buyStr}</td>
-                        <td style="text-align: right; padding-right: 6px;">${normStr}</td>
-                        <td style="text-align: center;">${freightStr}</td>
-                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_destination || '-')}${sell ? ` (₩${sell.toLocaleString()})` : ''}</td>
-                        <td style="text-align: right; padding-right: 6px;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>
-                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.note || '-')}</td>
+                        ${cols.supplier ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding-right: 6px;">${buyStr}</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding-right: 6px;">${normStr}</td>` : ''}
+                        ${cols.freight ? `<td style="text-align: center;">${freightStr}</td>` : ''}
+                        ${cols.destination ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_destination || '-')}${sell ? ` (₩${sell.toLocaleString()})` : ''}</td>` : ''}
+                        ${cols.margin ? `<td style="text-align: right; padding-right: 6px;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
+                        ${cols.note ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
                 `;
             });
@@ -2953,16 +3192,16 @@ const app = {
                     <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
                         <thead>
                             <tr style="background: #f1f5f9; border-bottom: 2px solid #0f172a;">
-                                <th style="width: 70px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
+                                <th style="width: 65px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
                                 <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">품목명</th>
-                                <th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">규격</th>
-                                <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">공급업체(주 매입처)</th>
-                                <th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가(환율)</th>
-                                <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">환산단가(가성비)</th>
-                                <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px;">운임조건</th>
-                                <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">주 매출처(기준매출)</th>
-                                <th style="width: 100px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">마진액(마진율)</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">비고</th>
+                                <th style="width: 105px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">규격</th>
+                                ${cols.supplier ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">공급업체(주 매입처)</th>' : ''}
+                                ${cols.buyPrice ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가(환율)</th>' : ''}
+                                ${cols.normPrice ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">환산단가(가성비)</th>' : ''}
+                                ${cols.freight ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px;">운임조건</th>' : ''}
+                                ${cols.destination ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">주 매출처(기준매출)</th>' : ''}
+                                ${cols.margin ? '<th style="width: 100px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">마진액(마진율)</th>' : ''}
+                                ${cols.note ? '<th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">비고</th>' : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -2970,13 +3209,25 @@ const app = {
                         </tbody>
                     </table>
 
-                    <div style="margin-top: 6px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 9pt;">
-                        <strong style="color: #1e293b;">※ 담당자 검토 의견 및 추천 사유:</strong>
-                        <span style="color: #334155; margin-left: 6px;">${escapeHtml(sec.section_note || '-(별도 기재 의견 없음)-')}</span>
-                    </div>
+                    ${cols.opinion ? `
+                        <div style="margin-top: 6px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 9pt;">
+                            <strong style="color: #1e293b;">※ 담당자 검토 의견 및 추천 사유:</strong>
+                            <span style="color: #334155; margin-left: 6px;">${escapeHtml(sec.section_note || '-(별도 기재 의견 없음)-')}</span>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         });
+
+        if (validSectionsCount === 0) {
+            alert('인쇄할 선택 품목이 없습니다. 최소 1개 이상의 품목을 체크해주세요.');
+            return;
+        }
+
+        const isInternalReport = cols.destination || cols.margin;
+        const reportTitle = isInternalReport
+            ? '물류자재 구매단가 비교 검토 보고서 (경영진 결재용)'
+            : '물류자재 구매단가 비교 검토 보고서 (발주/대외 견적용)';
 
         printArea.innerHTML = `
             <div class="print-container" style="padding: 10px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
@@ -2984,9 +3235,10 @@ const app = {
                 <div class="report-header-wrap" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px;">
                     <div>
                         <div style="font-size: 8.5pt; color: #64748b; font-family: monospace;">문서번호: ${docNo}</div>
-                        <h1 style="margin: 4px 0; font-size: 20pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">물류자재 구매단가 비교 검토 보고서</h1>
+                        <h1 style="margin: 4px 0; font-size: 20pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">${reportTitle}</h1>
                         <div style="font-size: 9pt; color: #475569; margin-top: 2px;">
-                            기안부서: 물류관리팀 &nbsp;|&nbsp; 기안일자: ${today} &nbsp;|&nbsp; 대상: 총 ${this.quoteSections.length}개 비교 섹션
+                            기안부서: 물류관리팀 &nbsp;|&nbsp; 기안일자: ${today} &nbsp;|&nbsp; 대상: 총 ${validSectionsCount}개 비교 섹션 (${totalPrintedItemCount}개 품목)
+                            ${!isInternalReport ? ' &nbsp;|&nbsp; <span style="color: #0369a1; font-weight: bold;">[영업 대외비 보호: 마진/매출처 숨김]</span>' : ''}
                         </div>
                     </div>
                     <div>
@@ -3023,13 +3275,7 @@ const app = {
     },
 
     printSingleSection: function(sectionId) {
-        const sec = this.quoteSections.find(s => s.id === sectionId);
-        if (!sec) return;
-
-        const origSections = this.quoteSections;
-        this.quoteSections = [sec];
-        this.printExecutiveReport();
-        this.quoteSections = origSections;
+        this.openPrintOptionModal(sectionId);
     }
 };
 

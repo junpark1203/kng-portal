@@ -795,6 +795,33 @@ body {
     color: #15803d !important;
 }
 
+/* 체크박스 및 미선택(인쇄 제외) 행 시각 효과 */
+.quote-item-chk {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+.quote-compare-table tr.row-unselected td {
+    opacity: 0.42;
+    background-color: #f8fafc !important;
+}
+.quote-compare-table tr.row-unselected:hover td {
+    opacity: 0.75;
+    background-color: #f1f5f9 !important;
+}
+
+/* 인쇄 설정 모달 스타일 커스텀 */
+#printOptionModal .modal-body {
+    background-color: #f8fafc;
+}
+#printOptionModal .form-check-input {
+    cursor: pointer;
+}
+#printOptionModal .form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
 /* 뱃지: 최저가 추천 & 단위 환산 단가 */
 .badge-best-pick {
     background: #16a34a;
