@@ -123,6 +123,18 @@ const app = {
                 }
             });
         }
+
+        // F8 저장 단축키 지원 (ECOUNT ERP 표준)
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'F8') {
+                const priceModal = $('priceModal');
+                if (priceModal && priceModal.classList.contains('show')) {
+                    e.preventDefault();
+                    const form = $('priceForm');
+                    if (form) form.requestSubmit();
+                }
+            }
+        });
     },
 
     loadItemSpecs: async function() {

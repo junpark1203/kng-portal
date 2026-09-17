@@ -844,3 +844,87 @@ body {
     }
 }
 
+/* ── 7. ECOUNT ERP 전표/마스터 폼 테이블 그리드 스타일 (.erp-form-table) ── */
+.erp-form-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    margin-bottom: 0;
+}
+.erp-form-table th {
+    background-color: #f8fafc;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border: 1px solid #cbd5e1;
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+    height: 30px;
+}
+.erp-form-table td {
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 30px;
+    position: relative;
+}
+.erp-form-table .form-control,
+.erp-form-table .form-select {
+    width: 100%;
+    height: 30px !important;
+    font-size: 12px !important;
+    padding: 2px 8px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    color: #1e293b;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+.erp-form-table .form-control:focus,
+.erp-form-table .form-select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+.erp-form-table input[type=number]::-webkit-inner-spin-button,
+.erp-form-table input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.erp-form-table input[type=number] {
+    -moz-appearance: textfield;
+}
+.erp-form-table td:focus-within {
+    box-shadow: inset 0 0 0 2px #2563eb !important;
+    background-color: #eff6ff !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+.erp-form-table .input-group {
+    flex-wrap: nowrap;
+    width: 100%;
+    height: 30px;
+}
+.erp-form-table .input-group .form-control {
+    border-radius: 0 !important;
+}
+.erp-form-table .input-group-text {
+    height: 30px;
+    padding: 0 8px;
+    font-size: 11px;
+    background-color: #f8fafc;
+    border: none;
+    border-left: 1px solid #cbd5e1;
+    color: #64748b;
+    border-radius: 0 !important;
+}
+
+
