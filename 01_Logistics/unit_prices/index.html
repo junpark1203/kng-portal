@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_2">
+    <link rel="stylesheet" href="style.css?v=20260917_3">
 </head>
 <body>
 
@@ -38,8 +38,8 @@
                 <button type="button" class="btn-erp active" id="viewModeItemBtn" onclick="app.switchViewMode('item')" title="기본 품목별 목록 단가표 뷰">
                     <i class='bx bx-list-ul'></i> 품목별 단가표
                 </button>
-                <button type="button" class="btn-erp" id="viewModeSpecBtn" onclick="app.switchViewMode('spec')" title="규격 기준 다자 비교 매트릭스 뷰">
-                    <i class='bx bx-git-compare text-primary'></i> 규격별 비교 매트릭스
+                <button type="button" class="btn-erp" id="viewModeSpecBtn" onclick="app.switchViewMode('spec')" title="품목 및 규격 기준 다자 견적 비교 매트릭스 뷰">
+                    <i class='bx bx-git-compare text-primary'></i> 다자 비교 매트릭스
                 </button>
             </div>
         </div>
@@ -54,11 +54,11 @@
             <button type="button" class="btn-erp" id="btnExportExcel" onclick="app.exportExcel()" title="현재 단가표 엑셀(CSV) 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
             </button>
-            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopPrintSpecs" onclick="app.printSelectedSpecs()" title="체크된 규격들의 비교 매트릭스만 A4 가로 규격 비교표로 인쇄합니다">
-                <i class='bx bx-printer'></i> 선택 규격 인쇄
+            <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopPrintSpecs" onclick="app.printSelectedSpecs()" title="체크된 품목/규격들의 비교 매트릭스를 A4 가로 비교표로 인쇄합니다">
+                <i class='bx bx-printer'></i> 선택 견적 인쇄
             </button>
-            <button type="button" class="btn-erp btn-erp-success d-none" id="btnTopExportSpecs" onclick="app.exportSelectedSpecsExcel()" title="체크된 규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
-                <i class='bx bx-file'></i> 선택 규격 엑셀
+            <button type="button" class="btn-erp btn-erp-success d-none" id="btnTopExportSpecs" onclick="app.exportSelectedSpecsExcel()" title="체크된 품목/규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
+                <i class='bx bx-file'></i> 선택 견적 엑셀
             </button>
             <a href="../inout/index.html" class="btn-erp" title="사내 입출고내역 페이지로 이동">
                 <i class='bx bx-transfer'></i> 입출고내역
@@ -174,23 +174,23 @@
         <div class="spec-matrix-toolbar no-print p-2 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div class="d-flex align-items-center gap-2">
                 <div class="form-check m-0 d-flex align-items-center gap-1">
-                    <input type="checkbox" class="form-check-input mt-0 cursor-pointer" id="selectAllSpecs" onchange="app.toggleSelectAllSpecs(this.checked)" title="모든 규격 선택 / 해제">
-                    <label for="selectAllSpecs" class="fw-bold small cursor-pointer text-dark user-select-none">전체 규격 선택</label>
+                    <input type="checkbox" class="form-check-input mt-0 cursor-pointer" id="selectAllSpecs" onchange="app.toggleSelectAllSpecs(this.checked)" title="모든 품목/규격 선택 / 해제">
+                    <label for="selectAllSpecs" class="fw-bold small cursor-pointer text-dark user-select-none">전체 선택</label>
                 </div>
-                <span class="badge bg-primary ms-1" id="selectedSpecsBadge">0개 규격 선택됨</span>
-                <span class="text-muted small ms-2" id="specMatrixTotalBadge">총 0개 규격</span>
+                <span class="badge bg-primary ms-1" id="selectedSpecsBadge">0개 품목/규격 선택됨</span>
+                <span class="text-muted small ms-2" id="specMatrixTotalBadge">총 0개 비교 세트</span>
             </div>
             <div class="d-flex align-items-center gap-1 flex-wrap">
-                <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSelectedSpecs()" title="체크된 규격들의 비교 매트릭스만 모아서 A4 가로 규격 비교표로 인쇄/PDF 저장합니다">
-                    <i class='bx bx-printer'></i> 선택 규격 인쇄
+                <button type="button" class="btn-erp btn-erp-primary" onclick="app.printSelectedSpecs()" title="체크된 품목/규격들의 비교 매트릭스만 모아서 A4 가로 비교표로 인쇄/PDF 저장합니다">
+                    <i class='bx bx-printer'></i> 선택 견적 인쇄
                 </button>
-                <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSelectedSpecsExcel()" title="체크된 규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
-                    <i class='bx bx-download'></i> 선택 규격 엑셀
+                <button type="button" class="btn-erp btn-erp-success" onclick="app.exportSelectedSpecsExcel()" title="체크된 품목/규격들의 다자 비교 매트릭스를 엑셀로 다운로드합니다">
+                    <i class='bx bx-download'></i> 선택 견적 엑셀
                 </button>
-                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(true)" title="모든 규격 매트릭스 카드 펼치기">
+                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(true)" title="모든 비교 매트릭스 카드 펼치기">
                     <i class='bx bx-chevron-down'></i> 전체 펼치기
                 </button>
-                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(false)" title="모든 규격 매트릭스 카드 접기">
+                <button type="button" class="btn-erp" onclick="app.expandAllSpecs(false)" title="모든 비교 매트릭스 카드 접기">
                     <i class='bx bx-chevron-up'></i> 전체 접기
                 </button>
             </div>
@@ -267,9 +267,15 @@
                                 <tr>
                                     <th>기준 매입단가</th>
                                     <td>
-                                        <div class="input-group">
-                                            <input type="number" class="form-control text-end pe-2" id="inpBuyPrice" placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
-                                            <span class="input-group-text">원</span>
+                                        <div class="d-flex align-items-center justify-content-between h-100">
+                                            <div class="input-group" style="flex: 1;">
+                                                <input type="number" class="form-control text-end pe-1" id="inpBuyPrice" placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
+                                                <span class="input-group-text">원</span>
+                                            </div>
+                                            <div class="form-check m-0 ms-1 me-1 d-flex align-items-center gap-1 text-nowrap">
+                                                <input class="form-check-input mt-0 cursor-pointer" type="checkbox" id="inpFreightIncluded" style="width: 13px; height: 13px;">
+                                                <label class="form-check-label cursor-pointer text-primary fw-bold user-select-none" for="inpFreightIncluded" style="font-size: 11px;">운임포함</label>
+                                            </div>
                                         </div>
                                     </td>
                                     <th class="text-primary">기준 매출단가</th>
@@ -312,8 +318,13 @@
 
                         <!-- 모달 하단 툴바 -->
                         <div class="d-flex justify-content-between align-items-center mt-2 px-1">
-                            <div class="text-muted small">
-                                <i class='bx bx-keyboard text-primary'></i> <span style="font-size: 11px;">각 셀 클릭 또는 <code>Tab</code> 키로 빠른 연속 입력이 가능합니다.</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn-erp btn-del d-none" id="btnModalDelete" onclick="app.deletePriceFromModal()" title="현재 등록된 단가 항목 삭제">
+                                    <i class='bx bx-trash text-danger'></i> 삭제
+                                </button>
+                                <span class="text-muted small" style="font-size: 11px;">
+                                    <i class='bx bx-keyboard text-primary'></i> <code>Tab</code> 셀 이동 / <code>F8</code> 저장
+                                </span>
                             </div>
                             <div class="d-flex gap-1">
                                 <button type="button" class="btn-erp" data-bs-dismiss="modal">
@@ -430,6 +441,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_5"></script>
+    <script src="app.js?v=20260917_6"></script>
 </body>
 </html>

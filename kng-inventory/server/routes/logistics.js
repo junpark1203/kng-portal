@@ -238,12 +238,16 @@ function initLogisticsTables(database) {
                                 default_destination TEXT DEFAULT '',
                                 history TEXT DEFAULT '[]',
                                 note TEXT DEFAULT '',
+                                is_freight_included INTEGER DEFAULT 0,
                                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                             )
                         `, (errUp) => {
                             if (!errUp) {
-                                database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec ON logistics_unit_prices(item, spec)`);
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN is_freight_included INTEGER DEFAULT 0`, () => {});
+                                database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec`, () => {
+                                    database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec_supplier ON logistics_unit_prices(item, spec, default_supplier)`);
+                                });
                             }
                         });
 
@@ -587,7 +591,7 @@ router.get('/unit-prices/map', async (req, res) => {
 // 3. 단가 신규 등록 (사전 견적 등)
 router.post('/unit-prices', async (req, res) => {
     try {
-        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date } = req.body;
+        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date, is_freight_included = 0 } = req.body;
 
         if (!item || !item.trim()) {
             return res.status(400).json({ error: '품목명은 필수 입력 항목입니다.' });
@@ -595,11 +599,12 @@ router.post('/unit-prices', async (req, res) => {
 
         const trimmedItem = item.trim();
         const trimmedSpec = (spec || '').trim();
+        const trimmedSupplier = (default_supplier || '').trim();
         const dateStr = (effective_date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
 
-        const existing = await dbGet(`SELECT id FROM logistics_unit_prices WHERE item = ? AND spec = ?`, [trimmedItem, trimmedSpec]);
+        const existing = await dbGet(`SELECT id FROM logistics_unit_prices WHERE item = ? AND spec = ? AND default_supplier = ?`, [trimmedItem, trimmedSpec, trimmedSupplier]);
         if (existing) {
-            return res.status(400).json({ error: '이미 등록되어 있는 품목 및 규격입니다. 수정을 이용해주세요.' });
+            return res.status(400).json({ error: '동일한 품목, 규격, 공급처로 등록된 단가가 이미 존재합니다. 수정을 이용해주세요.' });
         }
 
         const initialHistory = [{
@@ -610,21 +615,22 @@ router.post('/unit-prices', async (req, res) => {
             prev_buy_price: 0,
             prev_sell_price: 0,
             source: 'manual',
-            partner: default_supplier || default_destination || '',
+            partner: trimmedSupplier || default_destination || '',
             note: note || '사전 등록 / 견적서 기준'
         }];
 
         const insertSql = `
             INSERT INTO logistics_unit_prices
-            (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, is_freight_included, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `;
 
         const result = await dbRun(insertSql, [
             trimmedItem, trimmedSpec, category || '', unit || '', currency || 'KRW',
             parseFloat(buy_price) || 0, parseFloat(sell_price) || 0,
-            default_supplier || '', default_destination || '',
-            JSON.stringify(initialHistory), note || ''
+            trimmedSupplier, default_destination || '',
+            JSON.stringify(initialHistory), note || '',
+            parseInt(is_freight_included, 10) ? 1 : 0
         ]);
 
         res.status(201).json({ id: result.lastID, message: '단가 등록이 완료되었습니다.' });
@@ -637,7 +643,7 @@ router.post('/unit-prices', async (req, res) => {
 router.put('/unit-prices/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date } = req.body;
+        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date, is_freight_included } = req.body;
 
         const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE id = ?`, [id]);
         if (!existing) {
@@ -672,7 +678,7 @@ router.put('/unit-prices/:id', async (req, res) => {
             UPDATE logistics_unit_prices
             SET item = ?, spec = ?, category = ?, unit = ?, currency = ?,
                 buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
-                history = ?, note = ?, updated_at = CURRENT_TIMESTAMP
+                history = ?, note = ?, is_freight_included = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
 
@@ -683,10 +689,11 @@ router.put('/unit-prices/:id', async (req, res) => {
             unit !== undefined ? unit : existing.unit,
             currency || existing.currency || 'KRW',
             newBuy, newSell,
-            default_supplier !== undefined ? default_supplier : existing.default_supplier,
+            default_supplier !== undefined ? (default_supplier || '').trim() : existing.default_supplier,
             default_destination !== undefined ? default_destination : existing.default_destination,
             JSON.stringify(historyList),
             note !== undefined ? note : existing.note,
+            is_freight_included !== undefined ? (parseInt(is_freight_included, 10) ? 1 : 0) : (existing.is_freight_included || 0),
             id
         ]);
 
