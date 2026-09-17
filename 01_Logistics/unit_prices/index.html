@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_3">
+    <link rel="stylesheet" href="style.css?v=20260917_4">
 </head>
 <body>
 
@@ -53,6 +53,9 @@
             </button>
             <button type="button" class="btn-erp" id="btnExportExcel" onclick="app.exportExcel()" title="현재 단가표 엑셀(CSV) 다운로드">
                 <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
+            <button type="button" class="btn-erp btn-del d-none" id="btnTopBatchDelete" onclick="app.deleteSelectedItems()" title="체크된 단가 항목들을 일괄 삭제합니다">
+                <i class='bx bx-trash text-danger'></i> <span id="topBatchDeleteText">선택 삭제 (0)</span>
             </button>
             <button type="button" class="btn-erp btn-erp-primary d-none" id="btnTopPrintSpecs" onclick="app.printSelectedSpecs()" title="체크된 품목/규격들의 비교 매트릭스를 A4 가로 비교표로 인쇄합니다">
                 <i class='bx bx-printer'></i> 선택 견적 인쇄
@@ -106,9 +109,15 @@
             </select>
 
             <span class="text-muted ms-1" style="font-size: 11px;" id="filterResultCount">조회 0건</span>
+            <span class="badge bg-primary ms-1 d-none" id="selectedItemsBadge">0건 선택됨</span>
         </div>
 
         <div class="d-flex align-items-center gap-1 flex-wrap">
+            <!-- 선택 삭제 버튼 (선택 시 활성화) -->
+            <button type="button" class="btn-erp btn-del d-none" id="btnBatchDelete" onclick="app.deleteSelectedItems()" title="체크된 단가 항목들을 일괄 삭제합니다">
+                <i class='bx bx-trash text-danger'></i> <span id="batchDeleteText">선택 삭제 (0)</span>
+            </button>
+
             <!-- 결과 내 재검색 인풋 -->
             <div class="input-group input-group-sm erp-subsearch-group">
                 <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
@@ -133,7 +142,12 @@
         <table id="priceTable" class="erp-sheet-table">
             <thead>
                 <tr>
-                    <th class="th-no" style="width: 40px;">No.</th>
+                    <th class="th-no" style="width: 54px;">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <input type="checkbox" class="form-check-input mt-0 cursor-pointer" id="selectAllItems" onchange="app.toggleSelectAllItems(this.checked)" title="전체 선택/해제">
+                            <span style="font-size: 11px;">No.</span>
+                        </div>
+                    </th>
                     <th class="th-category" style="width: 80px;">자재분류</th>
                     <th class="th-item text-start ps-2" style="min-width: 200px;">품목명</th>
                     <th class="th-spec text-start ps-2" style="width: 130px;">규격</th>
@@ -441,6 +455,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_6"></script>
+    <script src="app.js?v=20260917_7"></script>
 </body>
 </html>

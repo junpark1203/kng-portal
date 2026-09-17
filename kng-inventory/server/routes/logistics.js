@@ -713,6 +713,25 @@ router.delete('/unit-prices/:id', async (req, res) => {
     }
 });
 
+// 5-1. 단가 다중 일괄 삭제
+router.post('/unit-prices/batch-delete', async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: '삭제할 단가 ID 목록이 전달되지 않았습니다.' });
+        }
+        const validIds = ids.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+        if (validIds.length === 0) {
+            return res.status(400).json({ error: '유효한 단가 ID가 없습니다.' });
+        }
+        const placeholders = validIds.map(() => '?').join(',');
+        await dbRun(`DELETE FROM logistics_unit_prices WHERE id IN (${placeholders})`, validIds);
+        res.json({ message: `${validIds.length}건의 단가가 일괄 삭제되었습니다.`, deletedCount: validIds.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 6. 기존 입출고 장부에서 초기 단가표 자동 생성/추출
 router.post('/unit-prices/populate-from-history', async (req, res) => {
     try {

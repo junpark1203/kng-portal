@@ -96,6 +96,7 @@ const app = {
     itemsSpecsMap: {},
     viewMode: 'item', // 'item' | 'spec'
     checkedSpecs: new Set(),
+    checkedItemIds: new Set(),
     activeModalSpec: '',
     specCompareModalInstance: null,
 
@@ -165,6 +166,13 @@ const app = {
         }
 
         try {
+            // Prune checkedItemIds that no longer exist
+            if (this.checkedItemIds && this.checkedItemIds.size > 0) {
+                const existingIds = new Set(this.priceList.map(p => p.id));
+                for (const id of this.checkedItemIds) {
+                    if (!existingIds.has(id)) this.checkedItemIds.delete(id);
+                }
+            }
             this.renderCategoryTabs();
             this.applyFiltersAndRender();
         } catch (renderErr) {
@@ -395,9 +403,17 @@ const app = {
             let histCount = 0;
             try { histCount = JSON.parse(r.history || '[]').length; } catch(e){}
 
+            const isChecked = this.checkedItemIds.has(r.id);
             html += `
-                <tr id="price_row_${r.id}">
-                    <td class="row-index">${idx + 1}</td>
+                <tr id="price_row_${r.id}" class="${isChecked ? 'selected-row' : ''}">
+                    <td class="row-index text-center">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <input type="checkbox" class="form-check-input mt-0 item-checkbox cursor-pointer" 
+                                   data-id="${r.id}" ${isChecked ? 'checked' : ''} 
+                                   onchange="app.onItemCheck(${r.id}, this.checked)">
+                            <span class="row-num">${idx + 1}</span>
+                        </div>
+                    </td>
                     <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
                     <td class="text-start ps-2 fw-semibold text-truncate" title="${escapeHtml(r.item)}">${escapeHtml(r.item)}</td>
                     <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.spec || '')}">
@@ -435,6 +451,7 @@ const app = {
         });
 
         tbody.innerHTML = html;
+        this.updateItemSelectionState();
 
         // 하단 합계 요약 바
         if (tfoot) {
@@ -611,9 +628,111 @@ const app = {
         try {
             await authFetch(`${API_BASE}/unit-prices/${id}`, { method: 'DELETE' });
             alert('삭제되었습니다.');
+            this.checkedItemIds.delete(id);
+            this.updateItemSelectionState();
             await this.loadPrices();
         } catch (err) {
             alert('삭제 실패: ' + err.message);
+        }
+    },
+
+    toggleSelectAllItems: function(checked) {
+        if (checked) {
+            this.filteredList.forEach(r => this.checkedItemIds.add(r.id));
+        } else {
+            this.filteredList.forEach(r => this.checkedItemIds.delete(r.id));
+        }
+
+        document.querySelectorAll('.item-checkbox').forEach(cb => {
+            const id = parseInt(cb.getAttribute('data-id'), 10);
+            const isSel = this.checkedItemIds.has(id);
+            cb.checked = isSel;
+            const tr = document.getElementById(`price_row_${id}`);
+            if (tr) tr.classList.toggle('selected-row', isSel);
+        });
+
+        this.updateItemSelectionState();
+    },
+
+    onItemCheck: function(id, checked) {
+        if (checked) {
+            this.checkedItemIds.add(id);
+        } else {
+            this.checkedItemIds.delete(id);
+        }
+
+        const tr = document.getElementById(`price_row_${id}`);
+        if (tr) tr.classList.toggle('selected-row', checked);
+
+        this.updateItemSelectionState();
+    },
+
+    updateItemSelectionState: function() {
+        const size = this.checkedItemIds.size;
+        const totalVisible = this.filteredList.length;
+
+        const masterCb = $('selectAllItems');
+        if (masterCb) {
+            const visibleCheckedCount = this.filteredList.filter(r => this.checkedItemIds.has(r.id)).length;
+            masterCb.checked = totalVisible > 0 && visibleCheckedCount === totalVisible;
+            masterCb.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < totalVisible;
+        }
+
+        const badge = $('selectedItemsBadge');
+        if (badge) {
+            badge.innerText = `${size}건 선택됨`;
+            badge.classList.toggle('d-none', size === 0);
+        }
+
+        const btnBatch = $('btnBatchDelete');
+        const btnTopBatch = $('btnTopBatchDelete');
+        const textBatch = $('batchDeleteText');
+        const textTopBatch = $('topBatchDeleteText');
+
+        if (btnBatch) btnBatch.classList.toggle('d-none', size === 0);
+        if (btnTopBatch) btnTopBatch.classList.toggle('d-none', size === 0);
+        if (textBatch) textBatch.innerText = `선택 삭제 (${size})`;
+        if (textTopBatch) textTopBatch.innerText = `선택 삭제 (${size})`;
+    },
+
+    deleteSelectedItems: async function() {
+        const ids = Array.from(this.checkedItemIds);
+        if (ids.length === 0) {
+            alert('선택된 단가 항목이 없습니다.');
+            return;
+        }
+
+        if (!confirm(`선택한 ${ids.length}개의 단가 항목을 일괄 삭제하시겠습니까?\n이 품목들의 가격 변동 이력도 함께 영구 삭제됩니다.`)) {
+            return;
+        }
+
+        try {
+            let success = false;
+            try {
+                const res = await authFetch(`${API_BASE}/unit-prices/batch-delete`, {
+                    method: 'POST',
+                    body: JSON.stringify({ ids })
+                });
+                if (res && (res.deletedCount || res.message)) {
+                    success = true;
+                }
+            } catch (apiErr) {
+                console.warn('Batch delete endpoint failed, falling back to sequential delete:', apiErr);
+            }
+
+            if (!success) {
+                for (const id of ids) {
+                    await authFetch(`${API_BASE}/unit-prices/${id}`, { method: 'DELETE' });
+                }
+            }
+
+            alert(`선택한 ${ids.length}건의 단가 항목이 성공적으로 삭제되었습니다.`);
+            this.checkedItemIds.clear();
+            await this.loadPrices();
+            await this.loadItemSpecs();
+        } catch (err) {
+            alert('일괄 삭제 중 오류가 발생했습니다: ' + err.message);
+            await this.loadPrices();
         }
     },
 

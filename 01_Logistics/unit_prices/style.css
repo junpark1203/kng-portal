@@ -323,7 +323,7 @@ body {
 }
 
 /* 헤더 열 너비 및 정렬 규격 */
-.th-no          { width: 40px !important; }
+.th-no          { width: 54px !important; }
 .th-category    { width: 80px !important; }
 .th-item        { min-width: 200px !important; }
 .th-spec        { width: 130px !important; }
@@ -368,11 +368,41 @@ body {
     background-color: var(--erp-row-hover) !important;
 }
 
+.erp-sheet-table tbody tr.selected-row td {
+    background-color: #eff6ff !important;
+}
+.erp-sheet-table tbody tr.selected-row:hover td {
+    background-color: #dbeafe !important;
+}
+
 .row-index {
     text-align: center !important;
     color: var(--erp-text-muted) !important;
     background-color: #f8fafc !important;
     font-weight: 600 !important;
+    padding: 1px 2px !important;
+}
+.row-index .form-check-input,
+.th-no .form-check-input {
+    width: 13px !important;
+    height: 13px !important;
+    margin: 0 !important;
+    cursor: pointer;
+}
+.row-index .row-num {
+    font-size: 10.5px;
+    color: var(--erp-text-muted);
+}
+
+.btn-erp.btn-del {
+    color: #dc2626 !important;
+    border-color: #fca5a5 !important;
+    background-color: #fef2f2 !important;
+}
+.btn-erp.btn-del:hover {
+    background-color: #fee2e2 !important;
+    border-color: #ef4444 !important;
+    color: #b91c1c !important;
 }
 
 /* 숫자 셀 (tabular-nums 고정폭 숫자) */
