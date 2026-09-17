@@ -550,6 +550,28 @@ router.get('/unit-prices', async (req, res) => {
 
         sql += ` ORDER BY ${sortCol} ${sortOrder}`;
 
+        if (req.query.limit) {
+            const limit = Math.max(1, parseInt(req.query.limit, 10) || 50);
+            const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+            const offset = (page - 1) * limit;
+
+            const countSql = sql.replace('SELECT * FROM', 'SELECT COUNT(*) as total FROM').split(' ORDER BY')[0];
+            const countResult = await dbGet(countSql, params);
+            const total = countResult ? countResult.total : 0;
+
+            sql += ` LIMIT ? OFFSET ?`;
+            const pagedParams = [...params, limit, offset];
+
+            const rows = await dbAll(sql, pagedParams);
+            return res.json({
+                data: rows || [],
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            });
+        }
+
         const rows = await dbAll(sql, params);
         res.json(rows || []);
     } catch (err) {

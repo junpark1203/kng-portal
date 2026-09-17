@@ -99,6 +99,10 @@ const app = {
     checkedItemIds: new Set(),
     activeModalSpec: '',
     specCompareModalInstance: null,
+    currentPage: 1,
+    pageSize: 50,
+    matrixCurrentPage: 1,
+    matrixPageSize: 20,
 
     init: async function() {
         this.bindEvents();
@@ -152,7 +156,7 @@ const app = {
         let data = null;
         try {
             data = await authFetch(`${API_BASE}/unit-prices`);
-            this.priceList = data || [];
+            this.priceList = Array.isArray(data) ? data : (data && data.data ? data.data : []);
         } catch (err) {
             console.error('loadPrices network error:', err);
             $('priceTableBody').innerHTML = `
@@ -322,6 +326,8 @@ const app = {
         }
 
         this.filteredList = list;
+        this.currentPage = 1;
+        this.matrixCurrentPage = 1;
         this.renderTable();
         this.renderStats();
         if (this.viewMode === 'spec') {
@@ -357,7 +363,8 @@ const app = {
         const tbody = $('priceTableBody');
         const tfoot = $('priceTableFoot');
 
-        if (this.filteredList.length === 0) {
+        const totalCount = this.filteredList.length;
+        if (totalCount === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="13" class="text-center py-5 text-muted">
@@ -366,6 +373,7 @@ const app = {
                 </tr>
             `;
             if (tfoot) tfoot.classList.add('d-none');
+            this.renderPagination(0);
             return;
         }
 
@@ -375,8 +383,35 @@ const app = {
         let validRateCount = 0;
         let sumRate = 0;
 
+        this.filteredList.forEach(r => {
+            const buy = r.buy_price || 0;
+            const sell = r.sell_price || 0;
+            const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
+            if (sell > 0 && buy > 0) {
+                const marginRate = Math.round(((sell - buy) / sell) * 1000) / 10;
+                sumRate += marginRate;
+                validRateCount++;
+            }
+            sumBuy += buy;
+            sumSell += sell;
+            sumMargin += marginAmt;
+        });
+
+        // ── 페이징 계산 및 슬라이스 ──
+        let pagedList = this.filteredList;
+        let startIndex = 0;
+        if (this.pageSize !== 'all') {
+            const size = parseInt(this.pageSize, 10) || 50;
+            const totalPages = Math.ceil(totalCount / size) || 1;
+            if (this.currentPage > totalPages) this.currentPage = totalPages;
+            if (this.currentPage < 1) this.currentPage = 1;
+            startIndex = (this.currentPage - 1) * size;
+            pagedList = this.filteredList.slice(startIndex, startIndex + size);
+        }
+
         let html = '';
-        this.filteredList.forEach((r, idx) => {
+        pagedList.forEach((r, idx) => {
+            const globalIdx = startIndex + idx;
             const buy = r.buy_price || 0;
             const sell = r.sell_price || 0;
             const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
@@ -391,14 +426,7 @@ const app = {
                 else if (marginRate >= 10) badgeClass = 'margin-mid';
                 else if (marginRate >= 0) badgeClass = 'margin-low';
                 else badgeClass = 'margin-loss';
-
-                sumRate += marginRate;
-                validRateCount++;
             }
-
-            sumBuy += buy;
-            sumSell += sell;
-            sumMargin += marginAmt;
 
             let histCount = 0;
             try { histCount = JSON.parse(r.history || '[]').length; } catch(e){}
@@ -411,7 +439,7 @@ const app = {
                             <input type="checkbox" class="form-check-input mt-0 item-checkbox cursor-pointer" 
                                    data-id="${r.id}" ${isChecked ? 'checked' : ''} 
                                    onchange="app.onItemCheck(${r.id}, this.checked)">
-                            <span class="row-num">${idx + 1}</span>
+                            <span class="row-num">${globalIdx + 1}</span>
                         </div>
                     </td>
                     <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
@@ -453,17 +481,20 @@ const app = {
         tbody.innerHTML = html;
         this.updateItemSelectionState();
 
-        // 하단 합계 요약 바
+        // 하단 합계 요약 바 (전체 필터된 데이터 기준)
         if (tfoot) {
             tfoot.classList.remove('d-none');
             const cnt = this.filteredList.length;
-            $('footSummaryItems').innerText = `총 ${cnt}개 품목`;
+            $('footSummaryItems').innerText = `총 ${cnt.toLocaleString()}개 품목`;
             $('footAvgBuy').innerText = `${Math.round(sumBuy / cnt).toLocaleString()}원 (평균)`;
             $('footAvgSell').innerText = `${Math.round(sumSell / cnt).toLocaleString()}원 (평균)`;
             $('footAvgMarginAmt').innerText = `${Math.round(sumMargin / cnt).toLocaleString()}원 (평균)`;
             const avgR = validRateCount > 0 ? (Math.round((sumRate / validRateCount) * 10) / 10) : 0;
             $('footAvgMarginRate').innerText = `${avgR}%`;
         }
+
+        // ── 페이징 컨트롤 바 렌더링 ──
+        this.renderPagination(totalCount);
 
         // ERP 그리드 리사이저 동기화
         if (window.ErpGridResizer) {
@@ -477,6 +508,94 @@ const app = {
                 console.warn('ErpGridResizer sync warning:', e);
             }
         }
+    },
+
+    renderPagination: function(totalCount) {
+        const bar = $('itemPaginationBar');
+        if (!bar) return;
+
+        if (totalCount === 0) {
+            bar.classList.add('d-none');
+            return;
+        }
+        bar.classList.remove('d-none');
+
+        const size = this.pageSize === 'all' ? totalCount : (parseInt(this.pageSize, 10) || 50);
+        const totalPages = this.pageSize === 'all' ? 1 : Math.ceil(totalCount / size);
+        const currentPage = this.currentPage;
+
+        const start = totalCount > 0 ? ((currentPage - 1) * size + 1) : 0;
+        const end = Math.min(currentPage * size, totalCount);
+
+        const infoEl = $('pagingInfoText');
+        if (infoEl) {
+            if (this.pageSize === 'all') {
+                infoEl.innerText = `전체 ${totalCount.toLocaleString()}건`;
+            } else {
+                infoEl.innerText = `전체 ${totalCount.toLocaleString()}건 중 ${start.toLocaleString()} - ${end.toLocaleString()}건 (${currentPage} / ${totalPages} 페이지)`;
+            }
+        }
+
+        const nav = $('paginationNav');
+        if (!nav) return;
+
+        if (totalPages <= 1) {
+            nav.innerHTML = '';
+            return;
+        }
+
+        let navHtml = '';
+        const prevDisabled = currentPage === 1;
+        navHtml += `
+            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToPage(1)" title="첫 페이지">
+                <i class='bx bx-chevrons-left'></i>
+            </button>
+            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToPage(${currentPage - 1})" title="이전 페이지">
+                <i class='bx bx-chevron-left'></i>
+            </button>
+        `;
+
+        const maxButtons = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+        if (endPage - startPage + 1 < maxButtons) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            const isActive = p === currentPage;
+            navHtml += `
+                <button type="button" class="btn-erp btn-sm ${isActive ? 'btn-erp-primary active fw-bold' : ''}" 
+                        onclick="app.goToPage(${p})">
+                    ${p}
+                </button>
+            `;
+        }
+
+        const nextDisabled = currentPage === totalPages;
+        navHtml += `
+            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToPage(${currentPage + 1})" title="다음 페이지">
+                <i class='bx bx-chevron-right'></i>
+            </button>
+            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToPage(${totalPages})" title="마지막 페이지">
+                <i class='bx bx-chevrons-right'></i>
+            </button>
+        `;
+
+        nav.innerHTML = navHtml;
+    },
+
+    goToPage: function(page) {
+        this.currentPage = page;
+        this.renderTable();
+        const grid = $('priceGridWrapper');
+        if (grid) grid.scrollTop = 0;
+    },
+
+    changePageSize: function(val) {
+        this.pageSize = val === 'all' ? 'all' : parseInt(val, 10);
+        this.currentPage = 1;
+        this.renderTable();
     },
 
     // ─────────────────────────────────────────
@@ -636,11 +755,19 @@ const app = {
         }
     },
 
+    getPagedItems: function() {
+        if (this.pageSize === 'all') return this.filteredList;
+        const size = parseInt(this.pageSize, 10) || 50;
+        const start = (this.currentPage - 1) * size;
+        return this.filteredList.slice(start, start + size);
+    },
+
     toggleSelectAllItems: function(checked) {
+        const paged = this.getPagedItems();
         if (checked) {
-            this.filteredList.forEach(r => this.checkedItemIds.add(r.id));
+            paged.forEach(r => this.checkedItemIds.add(r.id));
         } else {
-            this.filteredList.forEach(r => this.checkedItemIds.delete(r.id));
+            paged.forEach(r => this.checkedItemIds.delete(r.id));
         }
 
         document.querySelectorAll('.item-checkbox').forEach(cb => {
@@ -669,13 +796,14 @@ const app = {
 
     updateItemSelectionState: function() {
         const size = this.checkedItemIds.size;
-        const totalVisible = this.filteredList.length;
+        const paged = this.getPagedItems();
+        const totalInPage = paged.length;
 
         const masterCb = $('selectAllItems');
         if (masterCb) {
-            const visibleCheckedCount = this.filteredList.filter(r => this.checkedItemIds.has(r.id)).length;
-            masterCb.checked = totalVisible > 0 && visibleCheckedCount === totalVisible;
-            masterCb.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < totalVisible;
+            const visibleCheckedCount = paged.filter(r => this.checkedItemIds.has(r.id)).length;
+            masterCb.checked = totalInPage > 0 && visibleCheckedCount === totalInPage;
+            masterCb.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < totalInPage;
         }
 
         const badge = $('selectedItemsBadge');
@@ -1030,23 +1158,38 @@ const app = {
         if (!container) return;
 
         const groups = this.getGroupedSpecs();
-        if (groups.length === 0) {
+        const totalCount = groups.length;
+        if (totalCount === 0) {
             container.innerHTML = `
                 <div class="text-center py-5 text-muted bg-white rounded border">
                     <i class='bx bx-info-circle fs-3 me-1'></i> 조건에 일치하는 품목/규격 매트릭스 데이터가 없습니다.
                 </div>
             `;
             if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = '총 0개 품목/규격';
+            this.renderMatrixPagination(0);
             return;
         }
 
-        if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = `총 ${groups.length}개 품목/규격 (${this.filteredList.length}건 견적)`;
+        if ($('specMatrixTotalBadge')) $('specMatrixTotalBadge').innerText = `총 ${totalCount.toLocaleString()}개 품목/규격 (${this.filteredList.length.toLocaleString()}건 견적)`;
+
+        let pagedGroups = groups;
+        let startIdx = 0;
+        if (this.matrixPageSize !== 'all') {
+            const size = parseInt(this.matrixPageSize, 10) || 20;
+            const totalPages = Math.ceil(totalCount / size) || 1;
+            if (this.matrixCurrentPage > totalPages) this.matrixCurrentPage = totalPages;
+            if (this.matrixCurrentPage < 1) this.matrixCurrentPage = 1;
+
+            startIdx = (this.matrixCurrentPage - 1) * size;
+            pagedGroups = groups.slice(startIdx, startIdx + size);
+        }
 
         let html = '';
-        groups.forEach((g, idx) => {
+        pagedGroups.forEach((g, idx) => {
+            const globalIdx = startIdx + idx;
             const isChecked = this.checkedSpecs.has(g.groupKey);
-            const cardId = `spec_card_${idx}`;
-            const bodyId = `spec_card_body_${idx}`;
+            const cardId = `spec_card_${globalIdx}`;
+            const bodyId = `spec_card_body_${globalIdx}`;
 
             const bestBuyText = g.minBuy > 0 ? `최저 매입: ₩${g.minBuy.toLocaleString()} (${escapeHtml(g.bestBuySupplier || '-')})` : '매입단가 미등록';
             const maxSellText = g.maxSell > 0 ? `최고 매출: ₩${g.maxSell.toLocaleString()}` : '-';
@@ -1093,6 +1236,94 @@ const app = {
 
         container.innerHTML = html;
         this.updateCheckedBadge();
+        this.renderMatrixPagination(totalCount);
+    },
+
+    renderMatrixPagination: function(totalCount) {
+        const bar = $('matrixPaginationBar');
+        if (!bar) return;
+
+        if (totalCount === 0) {
+            bar.classList.add('d-none');
+            return;
+        }
+        bar.classList.remove('d-none');
+
+        const size = this.matrixPageSize === 'all' ? totalCount : (parseInt(this.matrixPageSize, 10) || 20);
+        const totalPages = this.matrixPageSize === 'all' ? 1 : Math.ceil(totalCount / size);
+        const currentPage = this.matrixCurrentPage;
+
+        const start = totalCount > 0 ? ((currentPage - 1) * size + 1) : 0;
+        const end = Math.min(currentPage * size, totalCount);
+
+        const infoEl = $('matrixPagingInfoText');
+        if (infoEl) {
+            if (this.matrixPageSize === 'all') {
+                infoEl.innerText = `전체 ${totalCount.toLocaleString()}개 품목/규격`;
+            } else {
+                infoEl.innerText = `전체 ${totalCount.toLocaleString()}개 중 ${start} - ${end}개 (${currentPage} / ${totalPages} 페이지)`;
+            }
+        }
+
+        const nav = $('matrixPaginationNav');
+        if (!nav) return;
+
+        if (totalPages <= 1) {
+            nav.innerHTML = '';
+            return;
+        }
+
+        let navHtml = '';
+        const prevDisabled = currentPage === 1;
+        navHtml += `
+            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(1)" title="첫 페이지">
+                <i class='bx bx-chevrons-left'></i>
+            </button>
+            <button type="button" class="btn-erp btn-sm" ${prevDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${currentPage - 1})" title="이전 페이지">
+                <i class='bx bx-chevron-left'></i>
+            </button>
+        `;
+
+        const maxButtons = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+        if (endPage - startPage + 1 < maxButtons) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+            const isActive = p === currentPage;
+            navHtml += `
+                <button type="button" class="btn-erp btn-sm ${isActive ? 'btn-erp-primary active fw-bold' : ''}" 
+                        onclick="app.goToMatrixPage(${p})">
+                    ${p}
+                </button>
+            `;
+        }
+
+        const nextDisabled = currentPage === totalPages;
+        navHtml += `
+            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${currentPage + 1})" title="다음 페이지">
+                <i class='bx bx-chevron-right'></i>
+            </button>
+            <button type="button" class="btn-erp btn-sm" ${nextDisabled ? 'disabled' : ''} onclick="app.goToMatrixPage(${totalPages})" title="마지막 페이지">
+                <i class='bx bx-chevrons-right'></i>
+            </button>
+        `;
+
+        nav.innerHTML = navHtml;
+    },
+
+    goToMatrixPage: function(page) {
+        this.matrixCurrentPage = page;
+        this.renderSpecMatrix();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    changeMatrixPageSize: function(val) {
+        this.matrixPageSize = val === 'all' ? 'all' : parseInt(val, 10);
+        this.matrixCurrentPage = 1;
+        this.renderSpecMatrix();
     },
 
     generateMatrixTableHtml: function(items, groupInfo) {

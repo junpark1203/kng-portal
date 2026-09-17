@@ -983,4 +983,49 @@ body {
     border-radius: 0 !important;
 }
 
+/* ── 7. ERP 페이징 컨트롤 바 (.erp-pagination-bar) ── */
+.erp-pagination-bar {
+    font-size: 11.5px;
+    min-height: 34px;
+    box-sizing: border-box;
+    background: #f8fafc;
+    border-color: var(--erp-border) !important;
+    user-select: none;
+}
+
+.erp-page-size-select {
+    width: 110px !important;
+    height: 24px !important;
+    font-size: 11px !important;
+    padding: 1px 18px 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer;
+}
+
+.erp-pagination-bar .btn-erp {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    min-width: 24px;
+    justify-content: center;
+}
+
+.erp-pagination-bar .btn-erp.active {
+    background: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+.erp-pagination-bar .btn-erp:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background-color: #f1f5f9 !important;
+    border-color: var(--erp-border) !important;
+    color: #94a3b8 !important;
+}
+
 
