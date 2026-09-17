@@ -1046,13 +1046,31 @@ const app = {
         this.calcEditRatePreview();
     },
 
+    setFreightType: function(type) {
+        if ($('freightTypeIn')) $('freightTypeIn').checked = (type === '하차도');
+        if ($('freightTypeEx')) $('freightTypeEx').checked = (type === '상차도');
+        this.onFreightTypeChange(type);
+    },
+
     onFreightTypeChange: function(type) {
         const panel = $('freightRegionPanel');
-        if (!panel) return;
-        if (type === '하차도') {
-            panel.classList.remove('d-none');
-        } else {
-            panel.classList.add('d-none');
+        if (panel) {
+            if (type === '하차도') {
+                panel.classList.remove('d-none');
+            } else {
+                panel.classList.add('d-none');
+            }
+        }
+        const btnEx = $('btnFreightEx');
+        const btnIn = $('btnFreightIn');
+        if (btnEx && btnIn) {
+            if (type === '하차도') {
+                btnIn.classList.add('active');
+                btnEx.classList.remove('active');
+            } else {
+                btnEx.classList.add('active');
+                btnIn.classList.remove('active');
+            }
         }
     },
 
@@ -1078,8 +1096,7 @@ const app = {
         if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
         this.onCurrencyChange();
 
-        if ($('freightTypeEx')) $('freightTypeEx').checked = true;
-        this.onFreightTypeChange('상차도');
+        this.setFreightType('상차도');
         this.setFreightRegion('전국');
 
         $('priceModalLabel').innerHTML = `신규 기준단가 등록`;
@@ -1134,13 +1151,7 @@ const app = {
 
         // 운임 조건 및 지역
         const isFreight = (item.freight_type === '하차도') || item.is_freight_included === 1 || item.is_freight_included === true || (item.note && item.note.includes('[운임포함]'));
-        if (isFreight) {
-            if ($('freightTypeIn')) $('freightTypeIn').checked = true;
-            this.onFreightTypeChange('하차도');
-        } else {
-            if ($('freightTypeEx')) $('freightTypeEx').checked = true;
-            this.onFreightTypeChange('상차도');
-        }
+        this.setFreightType(isFreight ? '하차도' : '상차도');
         this.setFreightRegion(item.freight_region || '전국');
 
         $('inpSupplier').value = item.default_supplier || '';
@@ -1429,42 +1440,120 @@ const app = {
         const inpSpec = $('inpSpec');
         const sugSpec = $('sugSpec');
 
+        // ── 1. 품목명 자동완성 ──
         if (inpItem && sugItem) {
+            let activeIdx = -1;
+
+            const updateActive = (items, idx) => {
+                items.forEach((div, i) => {
+                    if (i === idx) {
+                        div.classList.add('active-suggestion');
+                        div.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        div.classList.remove('active-suggestion');
+                    }
+                });
+            };
+
+            const selectItem = (val) => {
+                if (!val) return;
+                inpItem.value = val;
+                sugItem.style.display = 'none';
+                activeIdx = -1;
+
+                const info = (this.itemsSpecsMap || {})[val];
+                if (info) {
+                    if (info.defaultCategory && !$('inpCategory').value) $('inpCategory').value = info.defaultCategory;
+                    if (info.defaultUnit && !$('inpUnit').value) $('inpUnit').value = info.defaultUnit;
+                } else {
+                    const matchedPrice = (this.priceList || []).find(p => p.item === val);
+                    if (matchedPrice) {
+                        if (matchedPrice.category && !$('inpCategory').value) $('inpCategory').value = matchedPrice.category;
+                        if (matchedPrice.unit && !$('inpUnit').value) $('inpUnit').value = matchedPrice.unit;
+                    }
+                }
+            };
+
             inpItem.addEventListener('input', (e) => {
                 const val = e.target.value.trim().toLowerCase();
-                if (!val) { sugItem.style.display = 'none'; return; }
+                if (!val) { sugItem.style.display = 'none'; activeIdx = -1; return; }
                 const mapKeys = Object.keys(this.itemsSpecsMap || {});
                 const priceKeys = (this.priceList || []).map(p => p.item).filter(Boolean);
                 const itemKeys = Array.from(new Set([...mapKeys, ...priceKeys]));
                 const matched = itemKeys.filter(k => k.toLowerCase().includes(val)).slice(0, 10);
-                if (matched.length === 0) { sugItem.style.display = 'none'; return; }
+                if (matched.length === 0) { sugItem.style.display = 'none'; activeIdx = -1; return; }
 
-                sugItem.innerHTML = matched.map(m => `<div class="autocomplete-suggestion">${escapeHtml(m)}</div>`).join('');
+                sugItem.innerHTML = matched.map((m, i) => `<div class="autocomplete-suggestion" data-index="${i}">${escapeHtml(m)}</div>`).join('');
                 sugItem.style.display = 'block';
+                activeIdx = -1;
 
-                sugItem.querySelectorAll('.autocomplete-suggestion').forEach(div => {
+                const items = sugItem.querySelectorAll('.autocomplete-suggestion');
+                items.forEach((div, i) => {
+                    div.addEventListener('mouseenter', () => {
+                        activeIdx = i;
+                        updateActive(items, activeIdx);
+                    });
                     div.addEventListener('click', () => {
-                        inpItem.value = div.innerText.trim();
-                        sugItem.style.display = 'none';
-                        const info = (this.itemsSpecsMap || {})[inpItem.value];
-                        if (info) {
-                            if (info.defaultCategory && !$('inpCategory').value) $('inpCategory').value = info.defaultCategory;
-                            if (info.defaultUnit && !$('inpUnit').value) $('inpUnit').value = info.defaultUnit;
-                        } else {
-                            const matchedPrice = (this.priceList || []).find(p => p.item === inpItem.value);
-                            if (matchedPrice) {
-                                if (matchedPrice.category && !$('inpCategory').value) $('inpCategory').value = matchedPrice.category;
-                                if (matchedPrice.unit && !$('inpUnit').value) $('inpUnit').value = matchedPrice.unit;
-                            }
-                        }
+                        selectItem(div.innerText.trim());
+                        if (inpSpec) inpSpec.focus();
                     });
                 });
             });
 
-            inpItem.addEventListener('blur', () => setTimeout(() => sugItem.style.display = 'none', 200));
+            inpItem.addEventListener('keydown', (e) => {
+                if (sugItem.style.display === 'none') return;
+                const items = sugItem.querySelectorAll('.autocomplete-suggestion');
+                if (!items.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = (activeIdx + 1) % items.length;
+                    updateActive(items, activeIdx);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = (activeIdx - 1 + items.length) % items.length;
+                    updateActive(items, activeIdx);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const target = (activeIdx >= 0 && activeIdx < items.length) ? items[activeIdx] : items[0];
+                    selectItem(target.innerText.trim());
+                    if (inpSpec) inpSpec.focus();
+                } else if (e.key === 'Escape') {
+                    sugItem.style.display = 'none';
+                    activeIdx = -1;
+                } else if (e.key === 'Tab') {
+                    if (activeIdx >= 0 && activeIdx < items.length) {
+                        selectItem(items[activeIdx].innerText.trim());
+                    } else {
+                        sugItem.style.display = 'none';
+                    }
+                }
+            });
+
+            inpItem.addEventListener('blur', () => setTimeout(() => { sugItem.style.display = 'none'; activeIdx = -1; }, 200));
         }
 
+        // ── 2. 규격(Spec) 자동완성 ──
         if (inpSpec && sugSpec) {
+            let activeIdx = -1;
+
+            const updateActive = (items, idx) => {
+                items.forEach((div, i) => {
+                    if (i === idx) {
+                        div.classList.add('active-suggestion');
+                        div.scrollIntoView({ block: 'nearest' });
+                    } else {
+                        div.classList.remove('active-suggestion');
+                    }
+                });
+            };
+
+            const selectSpec = (val) => {
+                inpSpec.value = val;
+                sugSpec.style.display = 'none';
+                activeIdx = -1;
+            };
+
             const showSpecs = () => {
                 const currentItem = inpItem ? inpItem.value.trim() : '';
                 const val = inpSpec.value.trim().toLowerCase();
@@ -1473,25 +1562,61 @@ const app = {
                 (this.priceList || []).filter(p => p.item === currentItem && p.spec).forEach(p => {
                     if (!specs.includes(p.spec)) specs.push(p.spec);
                 });
-                if (specs.length === 0) { sugSpec.style.display = 'none'; return; }
+                if (specs.length === 0) { sugSpec.style.display = 'none'; activeIdx = -1; return; }
 
                 const filtered = val ? specs.filter(s => s.toLowerCase().includes(val)) : specs;
-                if (filtered.length === 0) { sugSpec.style.display = 'none'; return; }
+                if (filtered.length === 0) { sugSpec.style.display = 'none'; activeIdx = -1; return; }
 
-                sugSpec.innerHTML = filtered.map(s => `<div class="autocomplete-suggestion">${escapeHtml(s)}</div>`).join('');
+                sugSpec.innerHTML = filtered.map((s, i) => `<div class="autocomplete-suggestion" data-index="${i}">${escapeHtml(s)}</div>`).join('');
                 sugSpec.style.display = 'block';
+                activeIdx = -1;
 
-                sugSpec.querySelectorAll('.autocomplete-suggestion').forEach(div => {
+                const items = sugSpec.querySelectorAll('.autocomplete-suggestion');
+                items.forEach((div, i) => {
+                    div.addEventListener('mouseenter', () => {
+                        activeIdx = i;
+                        updateActive(items, activeIdx);
+                    });
                     div.addEventListener('click', () => {
-                        inpSpec.value = div.innerText.trim();
-                        sugSpec.style.display = 'none';
+                        selectSpec(div.innerText.trim());
                     });
                 });
             };
 
             inpSpec.addEventListener('focus', showSpecs);
             inpSpec.addEventListener('input', showSpecs);
-            inpSpec.addEventListener('blur', () => setTimeout(() => sugSpec.style.display = 'none', 200));
+
+            inpSpec.addEventListener('keydown', (e) => {
+                if (sugSpec.style.display === 'none') return;
+                const items = sugSpec.querySelectorAll('.autocomplete-suggestion');
+                if (!items.length) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeIdx = (activeIdx + 1) % items.length;
+                    updateActive(items, activeIdx);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeIdx = (activeIdx - 1 + items.length) % items.length;
+                    updateActive(items, activeIdx);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const target = (activeIdx >= 0 && activeIdx < items.length) ? items[activeIdx] : items[0];
+                    selectSpec(target.innerText.trim());
+                    if ($('inpBuyPrice')) $('inpBuyPrice').focus();
+                } else if (e.key === 'Escape') {
+                    sugSpec.style.display = 'none';
+                    activeIdx = -1;
+                } else if (e.key === 'Tab') {
+                    if (activeIdx >= 0 && activeIdx < items.length) {
+                        selectSpec(items[activeIdx].innerText.trim());
+                    } else {
+                        sugSpec.style.display = 'none';
+                    }
+                }
+            });
+
+            inpSpec.addEventListener('blur', () => setTimeout(() => { sugSpec.style.display = 'none'; activeIdx = -1; }, 200));
         }
     },
 
