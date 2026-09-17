@@ -125,6 +125,7 @@ const app = {
     focusedRowIndex: -1,
     defaultRates: { USD: 1350, EUR: 1480, CNY: 190, JPY: 9.0 },
     currencySymbols: { KRW: '₩', USD: '$', EUR: '€', CNY: '¥', JPY: '¥' },
+    modalRows: [],
 
     init: async function() {
         this.bindEvents();
@@ -940,56 +941,185 @@ const app = {
     },
 
     // ─────────────────────────────────────────
-    // 단가 등록 / 수정 모달 핸들러
+    // 단가 등록 / 수정 모달 핸들러 (방안 2: 다건 그리드 지원)
     // ─────────────────────────────────────────
-    onPriceTypeChange: function() {
-        const sel = $('inpPriceType');
-        const badge = $('modalPriceTypeBadge');
-        if (!sel || !badge) return;
-        const pt = sel.value || '견적가';
-        badge.innerText = pt;
-        badge.className = 'badge';
-        if (pt === '계약가') badge.classList.add('badge-pt-contract');
-        else if (pt === '일시가') badge.classList.add('badge-pt-spot');
-        else if (pt === '표준가') badge.classList.add('badge-pt-std');
-        else badge.classList.add('badge-pt-quote');
+    createDefaultModalRow: function(preset = {}) {
+        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
+        return {
+            selected: false,
+            price_type: preset.price_type || '견적가',
+            spec: preset.spec || '',
+            unit: preset.unit || defaultUnit || 'EA',
+            buy_price: preset.buy_price !== undefined ? String(preset.buy_price) : '',
+            sell_price: preset.sell_price !== undefined ? String(preset.sell_price) : '',
+            freight_type: preset.freight_type || '상차도',
+            freight_region: preset.freight_region || '전국',
+            note: preset.note || ''
+        };
     },
 
-    onCurrencyChange: function() {
+    onDefaultUnitChange: function() {
+        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
+        if (!defaultUnit) return;
+        this.modalRows.forEach((r, idx) => {
+            if (!r.unit || r.unit === 'EA') {
+                r.unit = defaultUnit;
+                const uInp = $(`gridUnit_${idx}`);
+                if (uInp) uInp.value = defaultUnit;
+            }
+        });
+    },
+
+    calcRowMarginHtml: function(buyVal, sellVal) {
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
-        const rateRow = $('exchangeRateRow');
-        const buySym = $('buyCurrencySymbol');
-        const sellSym = $('sellCurrencySymbol');
-        const rateHelp = $('exchangeRateHelp');
-        const rateInp = $('inpExchangeRate');
+        const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
+        const rawBuy = parseNumber(buyVal);
+        const rawSell = parseNumber(sellVal);
 
-        if (curr === 'KRW') {
-            if (rateRow) rateRow.classList.add('d-none');
-            if (buySym) buySym.innerText = '원';
-            if (sellSym) sellSym.innerText = '원';
-        } else {
-            if (rateRow) rateRow.classList.remove('d-none');
-            const sym = this.currencySymbols[curr] || '$';
-            if (buySym) buySym.innerText = sym;
-            if (sellSym) sellSym.innerText = sym;
-
-            if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
-                rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
-            }
-
-            if (rateHelp) {
-                if (curr === 'JPY') {
-                    rateHelp.innerText = '1 JPY당 원화 (예: 100엔당 900원이면 9.0 입력)';
-                } else {
-                    rateHelp.innerText = `1 ${curr}당 원화(KRW) 환산율`;
-                }
-            }
+        if (rawSell <= 0 && rawBuy <= 0) {
+            return `<span class="text-muted" style="font-size:11px;">-</span>`;
         }
-        this.calcModalMargin();
+
+        let buyKrw = rawBuy;
+        let sellKrw = rawSell;
+        if (curr !== 'KRW' && rate > 0) {
+            buyKrw = Math.round(rawBuy * rate);
+            sellKrw = Math.round(rawSell * rate);
+        }
+
+        if (rawSell > 0 && rawBuy > 0) {
+            const diffKrw = sellKrw - buyKrw;
+            const marginPct = Math.round((diffKrw / sellKrw) * 1000) / 10;
+            let badgeColor = 'bg-primary';
+            if (marginPct >= 20) badgeColor = 'bg-success';
+            else if (marginPct < 0) badgeColor = 'bg-danger';
+
+            const diffFmt = (diffKrw >= 0 ? '+' : '') + diffKrw.toLocaleString() + '원';
+            return `
+                <div class="d-flex flex-column align-items-center justify-content-center">
+                    <span class="fw-bold ${diffKrw >= 0 ? 'text-primary' : 'text-danger'}" style="font-size: 11px;">${diffFmt}</span>
+                    <span class="badge ${badgeColor}" style="font-size: 10px; padding: 2px 5px; margin-top: 1px;">마진 ${marginPct}%</span>
+                </div>
+            `;
+        } else if (rawBuy > 0) {
+            return `<span class="text-muted" style="font-size:11px;">매출가 미입력</span>`;
+        } else {
+            return `<span class="text-muted" style="font-size:11px;">매입가 미입력</span>`;
+        }
     },
 
-    onPriceInput: function(el) {
-        if (!el) return;
+    renderModalGrid: function() {
+        const tbody = $('modalGridBody');
+        if (!tbody) return;
+        const isEditMode = Boolean(this.currentEditId);
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const currSymbol = this.currencySymbols[curr] || '₩';
+        const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
+
+        const rowCountEl = $('modalRowCount');
+        if (rowCountEl) rowCountEl.innerText = `${this.modalRows.length}개`;
+        const btnCountText = $('btnSaveCountText');
+        if (btnCountText) {
+            btnCountText.innerText = isEditMode ? '수정사항 저장 [F8]' : `전체 ${this.modalRows.length}건 일괄 저장 [F8]`;
+        }
+
+        const checkAll = $('checkAllModalRows');
+        if (checkAll) {
+            checkAll.checked = this.modalRows.length > 0 && this.modalRows.every(r => r.selected);
+        }
+
+        let html = '';
+        this.modalRows.forEach((row, idx) => {
+            const rowBuyNum = parseNumber(row.buy_price);
+            const rowSellNum = parseNumber(row.sell_price);
+            const krwBuyText = (curr !== 'KRW' && rate > 0 && rowBuyNum > 0)
+                ? `<div class="text-muted text-end" style="font-size:10px;">≈ ₩${Math.round(rowBuyNum * rate).toLocaleString()}</div>` : '';
+            const krwSellText = (curr !== 'KRW' && rate > 0 && rowSellNum > 0)
+                ? `<div class="text-muted text-end" style="font-size:10px;">≈ ₩${Math.round(rowSellNum * rate).toLocaleString()}</div>` : '';
+
+            html += `
+                <tr class="${row.selected ? 'selected-row' : ''}" data-row-index="${idx}">
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="form-check-input row-chk" 
+                            onchange="app.toggleModalRowCheck(${idx}, this.checked)" 
+                            ${row.selected ? 'checked' : ''} 
+                            ${isEditMode ? 'disabled' : ''}>
+                    </td>
+                    <td class="text-center align-middle fw-bold text-muted" style="font-size: 11.5px;">${idx + 1}</td>
+                    <td class="align-middle">
+                        <select class="form-select form-select-sm" onchange="app.updateModalRow(${idx}, 'price_type', this.value)">
+                            <option value="견적가" ${row.price_type === '견적가' ? 'selected' : ''}>견적가</option>
+                            <option value="계약가" ${row.price_type === '계약가' ? 'selected' : ''}>계약가</option>
+                            <option value="표준가" ${row.price_type === '표준가' ? 'selected' : ''}>표준가</option>
+                            <option value="일시가" ${row.price_type === '일시가' ? 'selected' : ''}>일시가</option>
+                            <option value="실행가" ${row.price_type === '실행가' ? 'selected' : ''}>실행가</option>
+                            <option value="기타" ${row.price_type === '기타' ? 'selected' : ''}>기타</option>
+                        </select>
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm" id="gridSpec_${idx}" 
+                            value="${escapeHtml(row.spec)}" placeholder="규격/사양 (예: 50x50x2.0T)" 
+                            oninput="app.updateModalRow(${idx}, 'spec', this.value)">
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm text-center" id="gridUnit_${idx}" 
+                            value="${escapeHtml(row.unit)}" placeholder="단위" style="width: 55px;" 
+                            oninput="app.updateModalRow(${idx}, 'unit', this.value)">
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm text-end grid-buy-input" id="gridBuy_${idx}" 
+                            value="${row.buy_price ? formatNumberWithComma(row.buy_price) : ''}" 
+                            placeholder="${currSymbol}0" 
+                            oninput="app.onGridPriceInput(${idx}, 'buy_price', this)">
+                        <div id="gridBuyKrwPreview_${idx}">${krwBuyText}</div>
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm text-end grid-sell-input" id="gridSell_${idx}" 
+                            value="${row.sell_price ? formatNumberWithComma(row.sell_price) : ''}" 
+                            placeholder="${currSymbol}0" 
+                            oninput="app.onGridPriceInput(${idx}, 'sell_price', this)">
+                        <div id="gridSellKrwPreview_${idx}">${krwSellText}</div>
+                    </td>
+                    <td class="text-center align-middle" id="gridMargin_${idx}">
+                        ${this.calcRowMarginHtml(row.buy_price, row.sell_price)}
+                    </td>
+                    <td class="align-middle">
+                        <div class="d-flex align-items-center gap-1">
+                            <select class="form-select form-select-sm" style="width: 78px;" 
+                                onchange="app.onGridFreightTypeChange(${idx}, this.value)">
+                                <option value="상차도" ${row.freight_type === '상차도' ? 'selected' : ''}>상차도</option>
+                                <option value="하차도" ${row.freight_type === '하차도' ? 'selected' : ''}>하차도</option>
+                            </select>
+                            <input type="text" class="form-control form-control-sm ${row.freight_type === '하차도' ? '' : 'd-none'}" 
+                                id="gridFreightRegion_${idx}" 
+                                value="${escapeHtml(row.freight_region || '전국')}" 
+                                placeholder="도착지(예:화성)" style="width: 105px;" 
+                                oninput="app.updateModalRow(${idx}, 'freight_region', this.value)">
+                        </div>
+                    </td>
+                    <td class="align-middle">
+                        <input type="text" class="form-control form-control-sm" id="gridNote_${idx}" 
+                            value="${escapeHtml(row.note)}" placeholder="특이사항/메모" 
+                            oninput="app.updateModalRow(${idx}, 'note', this.value)">
+                    </td>
+                    <td class="text-center align-middle">
+                        ${!isEditMode ? `
+                            <button type="button" class="btn btn-outline-danger btn-grid-del" onclick="app.removeModalRow(${idx})" title="이 행 삭제">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        ` : `
+                            <span class="text-muted" style="font-size:11px;">-</span>
+                        `}
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    },
+
+    onGridPriceInput: function(idx, field, el) {
+        if (!el || !this.modalRows[idx]) return;
         const cursorPosition = el.selectionStart;
         const oldVal = el.value;
         const clean = oldVal.replace(/[^0-9.]/g, '');
@@ -1010,7 +1140,154 @@ const app = {
             el.setSelectionRange(newPos, newPos);
         } catch (e) {}
 
-        this.calcModalMargin();
+        this.modalRows[idx][field] = clean;
+
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
+        const num = parseNumber(clean);
+
+        if (field === 'buy_price') {
+            const previewEl = $(`gridBuyKrwPreview_${idx}`);
+            if (previewEl) {
+                previewEl.innerHTML = (curr !== 'KRW' && rate > 0 && num > 0)
+                    ? `<div class="text-muted text-end" style="font-size:10px;">≈ ₩${Math.round(num * rate).toLocaleString()}</div>`
+                    : '';
+            }
+        } else if (field === 'sell_price') {
+            const previewEl = $(`gridSellKrwPreview_${idx}`);
+            if (previewEl) {
+                previewEl.innerHTML = (curr !== 'KRW' && rate > 0 && num > 0)
+                    ? `<div class="text-muted text-end" style="font-size:10px;">≈ ₩${Math.round(num * rate).toLocaleString()}</div>`
+                    : '';
+            }
+        }
+
+        const marginCell = $(`gridMargin_${idx}`);
+        if (marginCell) {
+            marginCell.innerHTML = this.calcRowMarginHtml(this.modalRows[idx].buy_price, this.modalRows[idx].sell_price);
+        }
+    },
+
+    onGridFreightTypeChange: function(idx, type) {
+        if (!this.modalRows[idx]) return;
+        this.modalRows[idx].freight_type = type;
+        const regionInp = $(`gridFreightRegion_${idx}`);
+        if (regionInp) {
+            if (type === '하차도') {
+                regionInp.classList.remove('d-none');
+                if (!this.modalRows[idx].freight_region) {
+                    this.modalRows[idx].freight_region = '전국';
+                    regionInp.value = '전국';
+                }
+            } else {
+                regionInp.classList.add('d-none');
+            }
+        }
+    },
+
+    updateModalRow: function(idx, field, val) {
+        if (!this.modalRows[idx]) return;
+        this.modalRows[idx][field] = val;
+    },
+
+    toggleModalRowCheck: function(idx, checked) {
+        if (!this.modalRows[idx]) return;
+        this.modalRows[idx].selected = checked;
+        const tr = document.querySelector(`tr[data-row-index="${idx}"]`);
+        if (tr) tr.classList.toggle('selected-row', checked);
+        const checkAll = $('checkAllModalRows');
+        if (checkAll) {
+            checkAll.checked = this.modalRows.length > 0 && this.modalRows.every(r => r.selected);
+        }
+    },
+
+    toggleCheckAllModalRows: function(checked) {
+        this.modalRows.forEach(r => {
+            r.selected = checked;
+        });
+        this.renderModalGrid();
+    },
+
+    addModalRow: function(preset) {
+        this.modalRows.push(this.createDefaultModalRow(preset));
+        this.renderModalGrid();
+        const newIdx = this.modalRows.length - 1;
+        const specInp = $(`gridSpec_${newIdx}`);
+        if (specInp) specInp.focus();
+    },
+
+    copySelectedModalRows: function() {
+        const selected = this.modalRows.filter(r => r.selected);
+        const toCopy = selected.length > 0 ? selected : [ this.modalRows[this.modalRows.length - 1] ];
+        if (!toCopy || toCopy.length === 0 || !toCopy[0]) {
+            this.addModalRow();
+            return;
+        }
+
+        toCopy.forEach(item => {
+            this.modalRows.push({
+                selected: false,
+                price_type: item.price_type,
+                spec: item.spec,
+                unit: item.unit,
+                buy_price: item.buy_price,
+                sell_price: item.sell_price,
+                freight_type: item.freight_type,
+                freight_region: item.freight_region,
+                note: item.note
+            });
+        });
+
+        this.renderModalGrid();
+        const lastIdx = this.modalRows.length - 1;
+        const specInp = $(`gridSpec_${lastIdx}`);
+        if (specInp) {
+            specInp.focus();
+            specInp.select();
+        }
+    },
+
+    deleteSelectedModalRows: function() {
+        const remaining = this.modalRows.filter(r => !r.selected);
+        if (remaining.length === 0) {
+            this.modalRows = [ this.createDefaultModalRow() ];
+        } else {
+            this.modalRows = remaining;
+        }
+        this.renderModalGrid();
+    },
+
+    removeModalRow: function(idx) {
+        if (this.modalRows.length <= 1) {
+            this.modalRows = [ this.createDefaultModalRow() ];
+        } else {
+            this.modalRows.splice(idx, 1);
+        }
+        this.renderModalGrid();
+    },
+
+    onCurrencyChange: function() {
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const rateRow = $('exchangeRateRow');
+        const rateInp = $('inpExchangeRate');
+        const rateHelp = $('exchangeRateHelp');
+
+        if (curr === 'KRW') {
+            if (rateRow) rateRow.classList.add('d-none');
+        } else {
+            if (rateRow) rateRow.classList.remove('d-none');
+            if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
+                rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
+            }
+            if (rateHelp) {
+                if (curr === 'JPY') {
+                    rateHelp.innerText = '1 JPY당 원화 (예: 100엔당 900원이면 9.0 입력)';
+                } else {
+                    rateHelp.innerText = `1 ${curr}당 원화(KRW) 환산율`;
+                }
+            }
+        }
+        this.renderModalGrid();
     },
 
     onExchangeRateInput: function(el) {
@@ -1035,7 +1312,7 @@ const app = {
             el.setSelectionRange(newPos, newPos);
         } catch (e) {}
 
-        this.calcModalMargin();
+        this.renderModalGrid();
     },
 
     onEditRateInput: function(el) {
@@ -1046,69 +1323,41 @@ const app = {
         this.calcEditRatePreview();
     },
 
-    setFreightType: function(type) {
-        if ($('freightTypeIn')) $('freightTypeIn').checked = (type === '하차도');
-        if ($('freightTypeEx')) $('freightTypeEx').checked = (type === '상차도');
-        this.onFreightTypeChange(type);
-    },
-
-    onFreightTypeChange: function(type) {
-        const panel = $('freightRegionPanel');
-        if (panel) {
-            if (type === '하차도') {
-                panel.classList.remove('d-none');
-            } else {
-                panel.classList.add('d-none');
-            }
-        }
-        const btnEx = $('btnFreightEx');
-        const btnIn = $('btnFreightIn');
-        if (btnEx && btnIn) {
-            if (type === '하차도') {
-                btnIn.classList.add('active');
-                btnEx.classList.remove('active');
-            } else {
-                btnEx.classList.add('active');
-                btnIn.classList.remove('active');
-            }
-        }
-    },
-
-    setFreightRegion: function(region) {
-        const inp = $('inpFreightRegion');
-        if (inp) inp.value = region;
-        document.querySelectorAll('.erp-region-btn, .region-chip').forEach(c => {
-            if (c.innerText.trim() === region) c.classList.add('active');
-            else c.classList.remove('active');
-        });
-    },
-
     openCreateModal: function() {
         $('priceForm').reset();
         $('editId').value = '';
         this.currentEditId = null;
         if ($('btnModalDelete')) $('btnModalDelete').classList.add('d-none');
 
-        if ($('inpPriceType')) $('inpPriceType').value = '견적가';
-        this.onPriceTypeChange();
+        const toolbar = $('modalGridToolbar');
+        if (toolbar) {
+            toolbar.classList.remove('d-none');
+            toolbar.classList.add('d-flex');
+        }
 
         if ($('inpCurrency')) $('inpCurrency').value = 'KRW';
         if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
         this.onCurrencyChange();
 
-        this.setFreightType('상차도');
-        this.setFreightRegion('전국');
+        $('priceModalLabel').innerHTML = `기준단가 다건 일괄 등록`;
+        this.modalRows = [ this.createDefaultModalRow() ];
+        this.renderModalGrid();
 
-        $('priceModalLabel').innerHTML = `신규 기준단가 등록`;
-        this.calcModalMargin();
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
+
+        setTimeout(() => {
+            if ($('inpItem')) $('inpItem').focus();
+        }, 200);
     },
 
     openCreateModalWithItemSpec: function(item, spec) {
         this.openCreateModal();
         if ($('inpItem') && item) $('inpItem').value = item;
-        if ($('inpSpec') && spec && spec !== '(규격미지정)') $('inpSpec').value = spec;
+        if (spec && spec !== '(규격미지정)') {
+            this.modalRows[0].spec = spec;
+            this.renderModalGrid();
+        }
     },
 
     openEditModal: function(id) {
@@ -1120,45 +1369,47 @@ const app = {
         this.currentEditId = id;
         if ($('btnModalDelete')) $('btnModalDelete').classList.remove('d-none');
 
+        const toolbar = $('modalGridToolbar');
+        if (toolbar) {
+            toolbar.classList.add('d-none');
+            toolbar.classList.remove('d-flex');
+        }
+
         $('priceModalLabel').innerHTML = `기준단가 수정: <span class="text-primary fw-bold">${escapeHtml(item.item)}</span>`;
         $('inpItem').value = item.item || '';
-        $('inpSpec').value = item.spec || '';
         $('inpCategory').value = item.category || '';
-        $('inpUnit').value = item.unit || '';
+        $('inpDefaultUnit').value = item.unit || '';
+        $('inpSupplier').value = item.default_supplier || '';
+        $('inpDestination').value = item.default_destination || '';
 
-        // 단가 구분
-        if ($('inpPriceType')) $('inpPriceType').value = item.price_type || '견적가';
-        this.onPriceTypeChange();
-
-        // 통화 및 환율
         const curr = item.currency || 'KRW';
         if ($('inpCurrency')) $('inpCurrency').value = curr;
         if (curr !== 'KRW') {
             const defaultRate = this.defaultRates[curr] || '';
             const rateVal = item.exchange_rate || defaultRate;
             if ($('inpExchangeRate')) $('inpExchangeRate').value = formatNumberWithComma(rateVal);
-
-            const fBuy = (item.foreign_buy_price > 0) ? item.foreign_buy_price : (item.buy_price && item.exchange_rate ? (item.buy_price / item.exchange_rate) : '');
-            const fSell = (item.foreign_sell_price > 0) ? item.foreign_sell_price : (item.sell_price && item.exchange_rate ? (item.sell_price / item.exchange_rate) : '');
-            $('inpBuyPrice').value = fBuy ? formatNumberWithComma(parseFloat(Number(fBuy).toFixed(2))) : '';
-            $('inpSellPrice').value = fSell ? formatNumberWithComma(parseFloat(Number(fSell).toFixed(2))) : '';
         } else {
             if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
-            $('inpBuyPrice').value = formatNumberWithComma(item.buy_price || '');
-            $('inpSellPrice').value = formatNumberWithComma(item.sell_price || '');
         }
         this.onCurrencyChange();
 
-        // 운임 조건 및 지역
         const isFreight = (item.freight_type === '하차도') || item.is_freight_included === 1 || item.is_freight_included === true || (item.note && item.note.includes('[운임포함]'));
-        this.setFreightType(isFreight ? '하차도' : '상차도');
-        this.setFreightRegion(item.freight_region || '전국');
+        const fBuy = (item.currency !== 'KRW' && item.foreign_buy_price > 0) ? item.foreign_buy_price : (item.buy_price || '');
+        const fSell = (item.currency !== 'KRW' && item.foreign_sell_price > 0) ? item.foreign_sell_price : (item.sell_price || '');
 
-        $('inpSupplier').value = item.default_supplier || '';
-        $('inpDestination').value = item.default_destination || '';
-        $('inpNote').value = (item.note || '').replace(/\[운임포함\]/g, '').trim();
+        this.modalRows = [{
+            selected: false,
+            price_type: item.price_type || '견적가',
+            spec: item.spec || '',
+            unit: item.unit || '',
+            buy_price: fBuy !== '' ? String(fBuy) : '',
+            sell_price: fSell !== '' ? String(fSell) : '',
+            freight_type: isFreight ? '하차도' : '상차도',
+            freight_region: item.freight_region || '전국',
+            note: (item.note || '').replace(/\[운임포함\]/g, '').trim()
+        }];
 
-        this.calcModalMargin();
+        this.renderModalGrid();
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
     },
@@ -1172,114 +1423,125 @@ const app = {
         await this.deletePrice(id);
     },
 
-    calcModalMargin: function() {
-        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
-        const rawBuy = parseNumber($('inpBuyPrice') ? $('inpBuyPrice').value : 0);
-        const rawSell = parseNumber($('inpSellPrice') ? $('inpSellPrice').value : 0);
-        const container = $('modalMarginCalc');
-        if (!container) return;
-
-        let buy = rawBuy;
-        let sell = rawSell;
-
-        if (curr !== 'KRW') {
-            const rate = parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0);
-            const krwBuy = (rate > 0 && rawBuy > 0) ? Math.round(rawBuy * rate) : 0;
-            const krwSell = (rate > 0 && rawSell > 0) ? Math.round(rawSell * rate) : 0;
-
-            const prevBuy = $('previewConvertedBuy');
-            const prevSell = $('previewConvertedSell');
-            if (prevBuy) prevBuy.innerText = `₩${krwBuy.toLocaleString()}`;
-            if (prevSell) prevSell.innerText = `₩${krwSell.toLocaleString()}`;
-
-            buy = krwBuy;
-            sell = krwSell;
-        }
-
-        if (sell > 0 && buy > 0) {
-            const diff = sell - buy;
-            const rate = Math.round((diff / sell) * 1000) / 10;
-            let badgeColor = 'bg-primary';
-            if (rate >= 20) badgeColor = 'bg-success';
-            else if (rate < 0) badgeColor = 'bg-danger';
-
-            container.innerHTML = `
-                <span class="fw-bold fs-6 text-dark me-2">${diff.toLocaleString()}원</span>
-                <span class="badge ${badgeColor}" style="font-size: 11px;">마진율 ${rate}%</span>
-            `;
-        } else {
-            container.innerHTML = `<span class="text-muted" style="font-size: 11.5px;">매입/매출단가를 입력하면 자동 계산됩니다.</span>`;
-        }
-    },
-
     handleSavePrice: async function(e) {
-        e.preventDefault();
-        const editId = $('editId').value;
+        if (e && e.preventDefault) e.preventDefault();
+        const editId = $('editId') ? $('editId').value : '';
+        const itemName = $('inpItem') ? $('inpItem').value.trim() : '';
+        const category = $('inpCategory') ? $('inpCategory').value.trim() : '';
+        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
-        const isFreightIn = $('freightTypeIn') && $('freightTypeIn').checked;
-        const freightType = isFreightIn ? '하차도' : '상차도';
-        const freightRegion = isFreightIn ? (($('inpFreightRegion') ? $('inpFreightRegion').value.trim() : '') || '전국') : '';
-
         const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
-        const inputBuy = parseNumber($('inpBuyPrice') ? $('inpBuyPrice').value : 0);
-        const inputSell = parseNumber($('inpSellPrice') ? $('inpSellPrice').value : 0);
+        const supplier = $('inpSupplier') ? $('inpSupplier').value.trim() : '';
+        const destination = $('inpDestination') ? $('inpDestination').value.trim() : '';
 
-        let buyKrw = inputBuy;
-        let sellKrw = inputSell;
-        let foreignBuy = 0;
-        let foreignSell = 0;
-
-        if (curr !== 'KRW') {
-            foreignBuy = inputBuy;
-            foreignSell = inputSell;
-            buyKrw = (rate > 0 && inputBuy > 0) ? Math.round(inputBuy * rate) : 0;
-            sellKrw = (rate > 0 && inputSell > 0) ? Math.round(inputSell * rate) : 0;
-        }
-
-        let noteVal = $('inpNote') ? $('inpNote').value.trim() : '';
-
-        const payload = {
-            item: $('inpItem') ? $('inpItem').value.trim() : '',
-            spec: $('inpSpec') ? $('inpSpec').value.trim() : '',
-            category: $('inpCategory') ? $('inpCategory').value.trim() : '',
-            unit: $('inpUnit') ? $('inpUnit').value.trim() : '',
-            price_type: $('inpPriceType') ? $('inpPriceType').value : '견적가',
-            currency: curr,
-            exchange_rate: (curr !== 'KRW') ? rate : 1,
-            foreign_buy_price: foreignBuy,
-            foreign_sell_price: foreignSell,
-            buy_price: buyKrw,
-            sell_price: sellKrw,
-            freight_type: freightType,
-            freight_region: freightRegion,
-            is_freight_included: isFreightIn ? 1 : 0,
-            default_supplier: $('inpSupplier') ? $('inpSupplier').value.trim() : '',
-            default_destination: $('inpDestination') ? $('inpDestination').value.trim() : '',
-            note: noteVal
-        };
-
-        if (!payload.item) {
+        if (!itemName) {
             alert('품목명은 필수 입력 항목입니다.');
+            if ($('inpItem')) $('inpItem').focus();
             return;
         }
         if (curr !== 'KRW' && rate <= 0) {
             alert('외화 거래 시 유효한 환율(1외화당 원화)을 입력해주세요.');
+            if ($('inpExchangeRate')) $('inpExchangeRate').focus();
             return;
         }
 
         try {
             if (editId) {
+                // ── 단건 수정 모드 ──
+                const row = this.modalRows[0] || {};
+                const inputBuy = parseNumber(row.buy_price);
+                const inputSell = parseNumber(row.sell_price);
+
+                let buyKrw = inputBuy;
+                let sellKrw = inputSell;
+                let foreignBuy = 0;
+                let foreignSell = 0;
+
+                if (curr !== 'KRW') {
+                    foreignBuy = inputBuy;
+                    foreignSell = inputSell;
+                    buyKrw = (rate > 0 && inputBuy > 0) ? Math.round(inputBuy * rate) : 0;
+                    sellKrw = (rate > 0 && inputSell > 0) ? Math.round(inputSell * rate) : 0;
+                }
+
+                const isFreightIn = row.freight_type === '하차도';
+                const payload = {
+                    item: itemName,
+                    spec: (row.spec || '').trim(),
+                    category: category,
+                    unit: (row.unit || defaultUnit || 'EA').trim(),
+                    price_type: row.price_type || '견적가',
+                    currency: curr,
+                    exchange_rate: (curr !== 'KRW') ? rate : 1,
+                    foreign_buy_price: foreignBuy,
+                    foreign_sell_price: foreignSell,
+                    buy_price: buyKrw,
+                    sell_price: sellKrw,
+                    freight_type: row.freight_type || '상차도',
+                    freight_region: isFreightIn ? ((row.freight_region || '').trim() || '전국') : '',
+                    is_freight_included: isFreightIn ? 1 : 0,
+                    default_supplier: supplier,
+                    default_destination: destination,
+                    note: (row.note || '').trim()
+                };
+
                 await authFetch(`${API_BASE}/unit-prices/${editId}`, {
                     method: 'PUT',
                     body: JSON.stringify(payload)
                 });
                 alert('기준단가가 성공적으로 수정되었습니다.');
             } else {
-                await authFetch(`${API_BASE}/unit-prices`, {
+                // ── 다건 일괄 등록 모드 ──
+                const validRows = this.modalRows.filter(r => {
+                    const hasSpec = (r.spec || '').trim().length > 0;
+                    const hasBuy = parseNumber(r.buy_price) > 0;
+                    const hasSell = parseNumber(r.sell_price) > 0;
+                    const hasNote = (r.note || '').trim().length > 0;
+                    return hasSpec || hasBuy || hasSell || hasNote;
+                });
+
+                if (validRows.length === 0) {
+                    alert('최소 1개 이상의 규격 또는 단가를 입력해주세요.');
+                    return;
+                }
+
+                const payload = {
+                    item: itemName,
+                    category: category,
+                    default_unit: defaultUnit,
+                    currency: curr,
+                    exchange_rate: (curr !== 'KRW') ? rate : 1,
+                    default_supplier: supplier,
+                    default_destination: destination,
+                    items: validRows.map(r => ({
+                        price_type: r.price_type || '견적가',
+                        spec: (r.spec || '').trim(),
+                        unit: (r.unit || defaultUnit || 'EA').trim(),
+                        buy_price: parseNumber(r.buy_price),
+                        sell_price: parseNumber(r.sell_price),
+                        freight_type: r.freight_type || '상차도',
+                        freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
+                        note: (r.note || '').trim()
+                    })),
+                    rows: validRows.map(r => ({
+                        price_type: r.price_type || '견적가',
+                        spec: (r.spec || '').trim(),
+                        unit: (r.unit || defaultUnit || 'EA').trim(),
+                        buy_price: parseNumber(r.buy_price),
+                        sell_price: parseNumber(r.sell_price),
+                        freight_type: r.freight_type || '상차도',
+                        freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
+                        note: (r.note || '').trim()
+                    }))
+                };
+
+                const res = await authFetch(`${API_BASE}/unit-prices/batch`, {
                     method: 'POST',
                     body: JSON.stringify(payload)
                 });
-                alert('신규 기준단가가 등록되었습니다.');
+
+                const count = res.insertedCount || validRows.length;
+                alert(`${count}건의 기준단가가 성공적으로 등록되었습니다.`);
             }
 
             const modalEl = $('priceModal');
@@ -1464,12 +1726,18 @@ const app = {
                 const info = (this.itemsSpecsMap || {})[val];
                 if (info) {
                     if (info.defaultCategory && !$('inpCategory').value) $('inpCategory').value = info.defaultCategory;
-                    if (info.defaultUnit && !$('inpUnit').value) $('inpUnit').value = info.defaultUnit;
+                    if (info.defaultUnit && !$('inpDefaultUnit').value) {
+                        $('inpDefaultUnit').value = info.defaultUnit;
+                        this.onDefaultUnitChange();
+                    }
                 } else {
                     const matchedPrice = (this.priceList || []).find(p => p.item === val);
                     if (matchedPrice) {
                         if (matchedPrice.category && !$('inpCategory').value) $('inpCategory').value = matchedPrice.category;
-                        if (matchedPrice.unit && !$('inpUnit').value) $('inpUnit').value = matchedPrice.unit;
+                        if (matchedPrice.unit && !$('inpDefaultUnit').value) {
+                            $('inpDefaultUnit').value = matchedPrice.unit;
+                            this.onDefaultUnitChange();
+                        }
                     }
                 }
             };
@@ -1495,7 +1763,8 @@ const app = {
                     });
                     div.addEventListener('click', () => {
                         selectItem(div.innerText.trim());
-                        if (inpSpec) inpSpec.focus();
+                        const firstGridSpec = $('gridSpec_0');
+                        if (firstGridSpec) firstGridSpec.focus();
                     });
                 });
             });
@@ -1517,7 +1786,8 @@ const app = {
                     e.preventDefault();
                     const target = (activeIdx >= 0 && activeIdx < items.length) ? items[activeIdx] : items[0];
                     selectItem(target.innerText.trim());
-                    if (inpSpec) inpSpec.focus();
+                    const firstGridSpec = $('gridSpec_0');
+                    if (firstGridSpec) firstGridSpec.focus();
                 } else if (e.key === 'Escape') {
                     sugItem.style.display = 'none';
                     activeIdx = -1;

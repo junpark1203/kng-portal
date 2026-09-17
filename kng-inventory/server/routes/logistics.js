@@ -749,6 +749,123 @@ router.post('/unit-prices', async (req, res) => {
     }
 });
 
+// 3-1. 단가 다건 일괄 등록 (마스터-디테일 지원)
+router.post('/unit-prices/batch', async (req, res) => {
+    try {
+        const {
+            item, category = '', default_supplier = '', default_destination = '',
+            currency = 'KRW', exchange_rate = 1.0
+        } = req.body;
+
+        const detailRows = (Array.isArray(req.body.items) && req.body.items.length > 0)
+            ? req.body.items
+            : (Array.isArray(req.body.rows) ? req.body.rows : []);
+
+        if (!item || !item.trim()) {
+            return res.status(400).json({ error: '품목명은 필수 입력 항목입니다.' });
+        }
+        if (detailRows.length === 0) {
+            return res.status(400).json({ error: '등록할 단가 세부 항목이 최소 1건 이상 있어야 합니다.' });
+        }
+
+        const trimmedItem = item.trim();
+        const trimmedSupplier = (default_supplier || '').trim();
+        const trimmedDestination = (default_destination || '').trim();
+        const rate = parseFloat(exchange_rate) || 1.0;
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        const insertedIds = [];
+        const skippedItems = [];
+
+        await dbRun('BEGIN TRANSACTION');
+
+        try {
+            for (const row of detailRows) {
+                const trimmedSpec = (row.spec || '').trim();
+                const rowPriceType = row.price_type || '견적가';
+                const rowUnit = (row.unit || '').trim();
+
+                // 기존 동일 품목, 규격, 공급처 확인
+                const existing = await dbGet(
+                    `SELECT id FROM logistics_unit_prices WHERE item = ? AND spec = ? AND default_supplier = ?`,
+                    [trimmedItem, trimmedSpec, trimmedSupplier]
+                );
+                if (existing) {
+                    skippedItems.push(`${trimmedSpec || '(규격미지정)'} (이미 등록됨)`);
+                    continue;
+                }
+
+                let fBuy = parseFloat(row.foreign_buy_price) || 0;
+                let fSell = parseFloat(row.foreign_sell_price) || 0;
+                let krwBuy = parseFloat(row.buy_price) || 0;
+                let krwSell = parseFloat(row.sell_price) || 0;
+
+                if (currency !== 'KRW' && rate > 0) {
+                    if (fBuy <= 0 && krwBuy > 0) fBuy = krwBuy;
+                    if (fSell <= 0 && krwSell > 0) fSell = krwSell;
+                    krwBuy = Math.round(fBuy * rate);
+                    krwSell = Math.round(fSell * rate);
+                }
+
+                const rowFreightType = row.freight_type || '상차도';
+                const isFreightInt = (rowFreightType === '하차도' || parseInt(row.is_freight_included, 10)) ? 1 : 0;
+                const rowFreightRegion = (row.freight_region || '').trim();
+                const rowNote = (row.note || '').trim();
+
+                const initialHistory = [{
+                    date: dateStr,
+                    timestamp: new Date().toISOString(),
+                    buy_price: krwBuy,
+                    sell_price: krwSell,
+                    prev_buy_price: 0,
+                    prev_sell_price: 0,
+                    source: 'manual',
+                    partner: trimmedSupplier || trimmedDestination || '',
+                    note: rowNote || `${rowPriceType} 사전 일괄등록`
+                }];
+
+                const insertSql = `
+                    INSERT INTO logistics_unit_prices
+                    (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, is_freight_included, price_type, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                `;
+
+                const result = await dbRun(insertSql, [
+                    trimmedItem, trimmedSpec, category || '', rowUnit || '', currency || 'KRW',
+                    krwBuy, krwSell,
+                    trimmedSupplier, trimmedDestination,
+                    JSON.stringify(initialHistory), rowNote,
+                    isFreightInt,
+                    rowPriceType, rate, fBuy, fSell,
+                    rowFreightType, rowFreightRegion
+                ]);
+
+                insertedIds.push(result.lastID);
+            }
+
+            await dbRun('COMMIT');
+
+            let msg = `총 ${insertedIds.length}건의 단가가 등록되었습니다.`;
+            if (skippedItems.length > 0) {
+                msg += ` (중복 제외: ${skippedItems.length}건)`;
+            }
+
+            res.status(201).json({
+                success: true,
+                insertedCount: insertedIds.length,
+                skippedCount: skippedItems.length,
+                insertedIds,
+                message: msg
+            });
+        } catch (txErr) {
+            await dbRun('ROLLBACK');
+            throw txErr;
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // 4. 단가 수정 (수동 수정 시 시계열 이력 기록)
 router.put('/unit-prices/:id', async (req, res) => {
     try {

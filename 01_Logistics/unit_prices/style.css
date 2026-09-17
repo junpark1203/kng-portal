@@ -1444,6 +1444,50 @@ body {
     flex-shrink: 0;
 }
 
+/* ==========================================================================
+   10. 마스터-디테일 모달 그리드 인라인 시트 스타일
+   ========================================================================== */
+#modalGridTable td {
+    padding: 2px 4px !important;
+    vertical-align: middle;
+    height: 30px;
+}
+#modalGridTable input.form-control,
+#modalGridTable select.form-select {
+    height: 25px !important;
+    padding: 2px 5px !important;
+    font-size: 11px !important;
+    border-radius: 2px;
+    border-color: #cbd5e1;
+    background-color: #ffffff;
+}
+#modalGridTable input.form-control:focus,
+#modalGridTable select.form-select:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 1px #2563eb !important;
+    background-color: #eff6ff !important;
+}
+#modalGridTable tr.selected-row {
+    background-color: #eff6ff !important;
+}
+#modalGridTable .btn-grid-del {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    padding: 2px 5px;
+    border-radius: 2px;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+#modalGridTable .btn-grid-del:hover {
+    color: #ef4444;
+    background-color: #fee2e2;
+}
+
+
 
 
 
