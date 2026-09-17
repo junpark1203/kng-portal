@@ -308,6 +308,10 @@
             }
         },
 
+        sync: function(tableId, options) {
+            return this.init(tableId, options);
+        },
+
         resetWidths: function(tableId) {
             const inst = ErpGridResizer.instances[tableId];
             if (inst) {

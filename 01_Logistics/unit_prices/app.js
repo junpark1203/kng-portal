@@ -136,13 +136,12 @@ const app = {
     },
 
     loadPrices: async function() {
+        let data = null;
         try {
-            const data = await authFetch(`${API_BASE}/unit-prices`);
+            data = await authFetch(`${API_BASE}/unit-prices`);
             this.priceList = data || [];
-            this.renderCategoryTabs();
-            this.applyFiltersAndRender();
         } catch (err) {
-            console.error('loadPrices error:', err);
+            console.error('loadPrices network error:', err);
             $('priceTableBody').innerHTML = `
                 <tr>
                     <td colspan="13" class="text-center py-4 text-danger">
@@ -150,6 +149,14 @@ const app = {
                     </td>
                 </tr>
             `;
+            return;
+        }
+
+        try {
+            this.renderCategoryTabs();
+            this.applyFiltersAndRender();
+        } catch (renderErr) {
+            console.error('loadPrices render error:', renderErr);
         }
     },
 
@@ -428,7 +435,15 @@ const app = {
 
         // ERP 그리드 리사이저 동기화
         if (window.ErpGridResizer) {
-            window.ErpGridResizer.sync('priceTable');
+            try {
+                if (typeof window.ErpGridResizer.sync === 'function') {
+                    window.ErpGridResizer.sync('priceTable');
+                } else if (typeof window.ErpGridResizer.init === 'function') {
+                    window.ErpGridResizer.init('priceTable');
+                }
+            } catch (e) {
+                console.warn('ErpGridResizer sync warning:', e);
+            }
         }
     },
 
