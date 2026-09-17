@@ -403,6 +403,32 @@ body {
     background-color: #dbeafe !important;
 }
 
+/* ── 키보드 포커스 행 (.focused-row) - ECOUNT ERP 표준 스타일 ── */
+.erp-sheet-table tbody tr.focused-row td {
+    background-color: #e0f2fe !important;
+    border-top: 1px solid #0284c7 !important;
+    border-bottom: 1px solid #0284c7 !important;
+}
+.erp-sheet-table tbody tr.focused-row td:first-child {
+    border-left: 3px solid #0284c7 !important;
+}
+.erp-sheet-table tbody tr.focused-row td:last-child {
+    border-right: 1px solid #0284c7 !important;
+}
+
+/* 포커스된 행이 선택(체크)도 되어 있을 때 */
+.erp-sheet-table tbody tr.focused-row.selected-row td {
+    background-color: #bae6fd !important;
+    border-top: 1px solid #0284c7 !important;
+    border-bottom: 1px solid #0284c7 !important;
+}
+.erp-sheet-table tbody tr.focused-row.selected-row td:first-child {
+    border-left: 3px solid #0284c7 !important;
+}
+.erp-sheet-table tbody tr.focused-row.selected-row td:last-child {
+    border-right: 1px solid #0284c7 !important;
+}
+
 .row-index {
     text-align: center !important;
     color: var(--erp-text-muted) !important;

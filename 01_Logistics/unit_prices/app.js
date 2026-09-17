@@ -105,6 +105,7 @@ const app = {
     matrixPageSize: 20,
     sortColumn: '',
     sortOrder: 'asc', // 'asc' | 'desc'
+    focusedRowIndex: -1,
 
     init: async function() {
         this.bindEvents();
@@ -140,6 +141,63 @@ const app = {
                     const form = $('priceForm');
                     if (form) form.requestSubmit();
                 }
+            }
+        });
+
+        // 그리드 키보드 방향키(↑/↓) 이동 및 스페이스바(Space) 체크 지원
+        window.addEventListener('keydown', (e) => {
+            // 모달 열림 상태 체크
+            const openModal = document.querySelector('.modal.show');
+            if (openModal) return;
+
+            // 텍스트 인풋/텍스트에어리어/셀렉트 입력 중 가로채기 방지
+            const activeEl = document.activeElement;
+            const activeTag = activeEl ? activeEl.tagName.toLowerCase() : '';
+            const isTyping = activeEl && (
+                activeTag === 'textarea' ||
+                activeTag === 'select' ||
+                activeTag === 'button' ||
+                (activeTag === 'input' && activeEl.type !== 'checkbox') ||
+                activeEl.isContentEditable
+            );
+            if (isTyping) return;
+
+            // 품목별 목록 그리드 뷰(item)에서만 동작
+            if (this.viewMode !== 'item') return;
+
+            const rows = $('priceTableBody') ? Array.from($('priceTableBody').querySelectorAll('tr[id^="price_row_"]')) : [];
+            if (!rows || rows.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                let nextIdx = (this.focusedRowIndex < 0) ? 0 : (this.focusedRowIndex + 1);
+                if (nextIdx >= rows.length) nextIdx = rows.length - 1;
+                this.focusRow(nextIdx, true);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                let prevIdx = (this.focusedRowIndex < 0) ? 0 : (this.focusedRowIndex - 1);
+                if (prevIdx < 0) prevIdx = 0;
+                this.focusRow(prevIdx, true);
+            } else if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                if (this.focusedRowIndex < 0) {
+                    this.focusRow(0, true);
+                }
+                this.toggleCurrentRowCheck();
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                this.focusRow(0, true);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                this.focusRow(rows.length - 1, true);
+            } else if (e.key === 'PageDown') {
+                e.preventDefault();
+                let nextIdx = (this.focusedRowIndex < 0) ? 0 : Math.min(rows.length - 1, this.focusedRowIndex + 10);
+                this.focusRow(nextIdx, true);
+            } else if (e.key === 'PageUp') {
+                e.preventDefault();
+                let prevIdx = (this.focusedRowIndex < 0) ? 0 : Math.max(0, this.focusedRowIndex - 10);
+                this.focusRow(prevIdx, true);
             }
         });
     },
@@ -224,6 +282,7 @@ const app = {
         if ($('subSearchInput')) $('subSearchInput').value = '';
         if ($('clearSubSearchBtn')) $('clearSubSearchBtn').classList.add('d-none');
         if ($('marginFilter')) $('marginFilter').value = 'all';
+        this.focusedRowIndex = -1;
         this.selectedCategory = '';
         this.searchQuery = '';
         this.subSearchQuery = '';
@@ -336,6 +395,7 @@ const app = {
         }
         this.currentPage = 1;
         this.matrixCurrentPage = 1;
+        this.focusedRowIndex = -1;
         this.renderTable();
         this.updateSortIcons();
         this.renderStats();
@@ -441,12 +501,18 @@ const app = {
             try { histCount = JSON.parse(r.history || '[]').length; } catch(e){}
 
             const isChecked = this.checkedItemIds.has(r.id);
+            const isFocused = this.focusedRowIndex === idx;
             html += `
-                <tr id="price_row_${r.id}" class="${isChecked ? 'selected-row' : ''}">
+                <tr id="price_row_${r.id}" 
+                    class="${isChecked ? 'selected-row' : ''} ${isFocused ? 'focused-row' : ''}"
+                    data-row-index="${idx}"
+                    data-item-id="${r.id}"
+                    onclick="app.onRowClick(event, ${idx}, ${r.id})">
                     <td class="row-index text-center">
                         <div class="d-flex align-items-center justify-content-center gap-1">
                             <input type="checkbox" class="form-check-input mt-0 item-checkbox cursor-pointer" 
                                    data-id="${r.id}" ${isChecked ? 'checked' : ''} 
+                                   onclick="event.stopPropagation(); app.focusRow(${idx}, false);"
                                    onchange="app.onItemCheck(${r.id}, this.checked)">
                             <span class="row-num">${globalIdx + 1}</span>
                         </div>
@@ -595,6 +661,7 @@ const app = {
     },
 
     goToPage: function(page) {
+        this.focusedRowIndex = -1;
         this.currentPage = page;
         this.renderTable();
         const grid = $('priceGridWrapper');
@@ -602,6 +669,7 @@ const app = {
     },
 
     changePageSize: function(val) {
+        this.focusedRowIndex = -1;
         this.pageSize = val === 'all' ? 'all' : parseInt(val, 10);
         this.currentPage = 1;
         this.renderTable();
@@ -611,6 +679,7 @@ const app = {
     // 헤더 열 다중 정렬 (오름차순 / 내림차순)
     // ─────────────────────────────────────────
     sortBy: function(column) {
+        this.focusedRowIndex = -1;
         if (this.sortColumn === column) {
             this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
         } else {
@@ -730,6 +799,81 @@ const app = {
                 if (th) th.classList.remove('sorted-th');
             }
         });
+    },
+
+    // ─────────────────────────────────────────
+    // 키보드 방향키 이동 & 스페이스바 체크 지원
+    // ─────────────────────────────────────────
+    onRowClick: function(event, idx, id) {
+        // 버튼이나 링크 클릭 시 고유 기능 수행 허용 (포커스만 맞춤)
+        if (event.target.closest('button, a')) {
+            this.focusRow(idx, false);
+            return;
+        }
+        // 체크박스 클릭은 체크박스 전용 핸들러에서 처리
+        if (event.target.closest('.item-checkbox')) {
+            return;
+        }
+        // 테이블 외부 버튼/인풋 포커스를 해제하여 키보드 조작 즉시 유효화
+        if (document.activeElement && document.activeElement !== document.body && !document.activeElement.classList.contains('item-checkbox')) {
+            document.activeElement.blur();
+        }
+        this.focusRow(idx, false);
+    },
+
+    focusRow: function(idx, shouldScroll = true) {
+        const rows = $('priceTableBody') ? Array.from($('priceTableBody').querySelectorAll('tr[id^="price_row_"]')) : [];
+        if (!rows || rows.length === 0) return;
+
+        if (idx < 0) idx = 0;
+        if (idx >= rows.length) idx = rows.length - 1;
+
+        if (this.focusedRowIndex >= 0 && this.focusedRowIndex < rows.length) {
+            rows[this.focusedRowIndex].classList.remove('focused-row');
+        }
+
+        this.focusedRowIndex = idx;
+        const targetRow = rows[idx];
+        if (targetRow) {
+            targetRow.classList.add('focused-row');
+            if (shouldScroll) {
+                this.scrollRowIntoView(targetRow);
+            }
+        }
+    },
+
+    scrollRowIntoView: function(rowEl) {
+        if (!rowEl) return;
+        const grid = $('priceGridWrapper');
+        if (!grid) {
+            rowEl.scrollIntoView({ block: 'nearest' });
+            return;
+        }
+        const gridRect = grid.getBoundingClientRect();
+        const rowRect = rowEl.getBoundingClientRect();
+        const headerHeight = 28; // Sticky thead 높이 보정
+
+        if (rowRect.top < gridRect.top + headerHeight) {
+            grid.scrollTop -= (gridRect.top + headerHeight - rowRect.top);
+        } else if (rowRect.bottom > gridRect.bottom) {
+            grid.scrollTop += (rowRect.bottom - gridRect.bottom);
+        }
+    },
+
+    toggleCurrentRowCheck: function() {
+        const rows = $('priceTableBody') ? Array.from($('priceTableBody').querySelectorAll('tr[id^="price_row_"]')) : [];
+        if (this.focusedRowIndex < 0 || this.focusedRowIndex >= rows.length) return;
+
+        const focusedRow = rows[this.focusedRowIndex];
+        if (!focusedRow) return;
+
+        const chk = focusedRow.querySelector('.item-checkbox');
+        if (chk) {
+            const newChecked = !chk.checked;
+            chk.checked = newChecked;
+            const id = parseInt(chk.getAttribute('data-id'), 10);
+            this.onItemCheck(id, newChecked);
+        }
     },
 
     // ─────────────────────────────────────────
