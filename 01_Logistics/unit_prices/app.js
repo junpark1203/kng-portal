@@ -1570,37 +1570,106 @@ const app = {
                     return;
                 }
 
-                const mappedItems = validRows.map(r => ({
-                    item: r.item.trim(),
-                    price_type: r.price_type || '견적가',
-                    spec: (r.spec || '').trim(),
-                    unit: (r.unit || 'EA').trim(),
-                    buy_price: parseNumber(r.buy_price),
-                    sell_price: parseNumber(r.sell_price),
-                    freight_type: r.freight_type || '상차도',
-                    freight_region: r.freight_type === '하차도' ? ((r.freight_region || '').trim() || '전국') : '',
-                    note: (r.note || '').trim()
-                }));
+                // 각 행을 단가 마스터 등록 표준 페이로드로 구성
+                const buildRowPayload = (r) => {
+                    const rBuy = parseNumber(r.buy_price);
+                    const rSell = parseNumber(r.sell_price);
+                    let buyKrw = rBuy;
+                    let sellKrw = rSell;
+                    let foreignBuy = 0;
+                    let foreignSell = 0;
 
-                const payload = {
-                    category: category,
-                    currency: curr,
-                    exchange_rate: (curr !== 'KRW') ? rate : 1,
-                    default_supplier: supplier,
-                    default_destination: destination,
-                    items: mappedItems,
-                    rows: mappedItems
+                    if (curr !== 'KRW') {
+                        foreignBuy = rBuy;
+                        foreignSell = rSell;
+                        buyKrw = (rate > 0 && rBuy > 0) ? Math.round(rBuy * rate) : 0;
+                        sellKrw = (rate > 0 && rSell > 0) ? Math.round(rSell * rate) : 0;
+                    }
+
+                    const isFreightIn = r.freight_type === '하차도';
+                    return {
+                        item: r.item.trim(),
+                        spec: (r.spec || '').trim(),
+                        category: category,
+                        unit: (r.unit || 'EA').trim(),
+                        price_type: r.price_type || '견적가',
+                        currency: curr,
+                        exchange_rate: (curr !== 'KRW') ? rate : 1,
+                        foreign_buy_price: foreignBuy,
+                        foreign_sell_price: foreignSell,
+                        buy_price: buyKrw,
+                        sell_price: sellKrw,
+                        freight_type: r.freight_type || '상차도',
+                        freight_region: isFreightIn ? ((r.freight_region || '').trim() || '전국') : '',
+                        is_freight_included: isFreightIn ? 1 : 0,
+                        default_supplier: supplier,
+                        default_destination: destination,
+                        note: (r.note || '').trim()
+                    };
                 };
 
-                const res = await authFetch(`${API_BASE}/unit-prices/batch`, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
-                });
+                let successCount = 0;
+                let skipCount = 0;
 
-                const count = res.insertedCount || validRows.length;
-                let alertMsg = `${count}건의 기준단가가 성공적으로 등록되었습니다.`;
-                if (res.skippedCount > 0) {
-                    alertMsg += `\n(기등록 중복 제외: ${res.skippedCount}건)`;
+                // 1건 등록인 경우: 가장 안정적이고 호환성 높은 기존 단건 등록 API 호출
+                if (validRows.length === 1) {
+                    const singlePayload = buildRowPayload(validRows[0]);
+                    await authFetch(`${API_BASE}/unit-prices`, {
+                        method: 'POST',
+                        body: JSON.stringify(singlePayload)
+                    });
+                    successCount = 1;
+                } else {
+                    // 다건(2건 이상)인 경우: batch API 우선 시도 (item 필드 포함)
+                    const batchItems = validRows.map(r => buildRowPayload(r));
+                    const batchPayload = {
+                        item: batchItems[0].item,
+                        spec: batchItems[0].spec,
+                        category: category,
+                        currency: curr,
+                        exchange_rate: (curr !== 'KRW') ? rate : 1,
+                        default_supplier: supplier,
+                        default_destination: destination,
+                        items: batchItems,
+                        rows: batchItems
+                    };
+
+                    let batchSuccess = false;
+                    try {
+                        const bRes = await authFetch(`${API_BASE}/unit-prices/batch`, {
+                            method: 'POST',
+                            body: JSON.stringify(batchPayload)
+                        });
+                        successCount = bRes.insertedCount || validRows.length;
+                        skipCount = bRes.skippedCount || 0;
+                        batchSuccess = true;
+                    } catch (batchErr) {
+                        console.warn('단가 일괄(Batch) API 호출 실패, 단건 순차 등록으로 폴백 실행:', batchErr);
+                    }
+
+                    // batch 엔드포인트 미지원 또는 실패 시: 단건 순차 등록 폴백
+                    if (!batchSuccess) {
+                        for (const rowItem of validRows) {
+                            try {
+                                await authFetch(`${API_BASE}/unit-prices`, {
+                                    method: 'POST',
+                                    body: JSON.stringify(buildRowPayload(rowItem))
+                                });
+                                successCount++;
+                            } catch (singleErr) {
+                                if (singleErr.message && (singleErr.message.includes('이미 존재') || singleErr.message.includes('중복'))) {
+                                    skipCount++;
+                                } else {
+                                    throw singleErr;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let alertMsg = `${successCount}건의 기준단가가 성공적으로 등록되었습니다.`;
+                if (skipCount > 0) {
+                    alertMsg += `\n(기등록 중복 제외: ${skipCount}건)`;
                 }
                 alert(alertMsg);
             }
