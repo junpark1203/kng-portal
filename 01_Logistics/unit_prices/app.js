@@ -103,6 +103,8 @@ const app = {
     pageSize: 50,
     matrixCurrentPage: 1,
     matrixPageSize: 20,
+    sortColumn: '',
+    sortOrder: 'asc', // 'asc' | 'desc'
 
     init: async function() {
         this.bindEvents();
@@ -227,6 +229,9 @@ const app = {
         this.subSearchQuery = '';
         this.searchTarget = '';
         this.marginFilter = 'all';
+        this.sortColumn = '';
+        this.sortOrder = 'asc';
+        this.updateSortIcons();
         this.renderCategoryTabs();
         this.applyFiltersAndRender();
     },
@@ -326,9 +331,13 @@ const app = {
         }
 
         this.filteredList = list;
+        if (this.sortColumn) {
+            this.applySort();
+        }
         this.currentPage = 1;
         this.matrixCurrentPage = 1;
         this.renderTable();
+        this.updateSortIcons();
         this.renderStats();
         if (this.viewMode === 'spec') {
             this.renderSpecMatrix();
@@ -596,6 +605,131 @@ const app = {
         this.pageSize = val === 'all' ? 'all' : parseInt(val, 10);
         this.currentPage = 1;
         this.renderTable();
+    },
+
+    // ─────────────────────────────────────────
+    // 헤더 열 다중 정렬 (오름차순 / 내림차순)
+    // ─────────────────────────────────────────
+    sortBy: function(column) {
+        if (this.sortColumn === column) {
+            this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortColumn = column;
+            this.sortOrder = 'asc';
+        }
+        this.applySort();
+        this.currentPage = 1;
+        this.renderTable();
+        this.updateSortIcons();
+    },
+
+    applySort: function() {
+        if (!this.sortColumn) return;
+        const col = this.sortColumn;
+        const mult = this.sortOrder === 'desc' ? -1 : 1;
+
+        this.filteredList.sort((a, b) => {
+            switch (col) {
+                case 'category': {
+                    const valA = a.category || '';
+                    const valB = b.category || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'item': {
+                    const valA = a.item || '';
+                    const valB = b.item || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'spec': {
+                    const valA = a.spec || '';
+                    const valB = b.spec || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'unit': {
+                    const valA = a.unit || '';
+                    const valB = b.unit || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'buy_price': {
+                    const valA = Number(a.buy_price) || 0;
+                    const valB = Number(b.buy_price) || 0;
+                    return (valA - valB) * mult;
+                }
+                case 'sell_price': {
+                    const valA = Number(a.sell_price) || 0;
+                    const valB = Number(b.sell_price) || 0;
+                    return (valA - valB) * mult;
+                }
+                case 'margin_amt': {
+                    const buyA = Number(a.buy_price) || 0;
+                    const sellA = Number(a.sell_price) || 0;
+                    const mA = (sellA > 0 && buyA > 0) ? (sellA - buyA) : 0;
+
+                    const buyB = Number(b.buy_price) || 0;
+                    const sellB = Number(b.sell_price) || 0;
+                    const mB = (sellB > 0 && buyB > 0) ? (sellB - buyB) : 0;
+
+                    return (mA - mB) * mult;
+                }
+                case 'margin_rate': {
+                    const buyA = Number(a.buy_price) || 0;
+                    const sellA = Number(a.sell_price) || 0;
+                    const rA = (sellA > 0 && buyA > 0) ? ((sellA - buyA) / sellA) : -999999;
+
+                    const buyB = Number(b.buy_price) || 0;
+                    const sellB = Number(b.sell_price) || 0;
+                    const rB = (sellB > 0 && buyB > 0) ? ((sellB - buyB) / sellB) : -999999;
+
+                    return (rA - rB) * mult;
+                }
+                case 'default_supplier': {
+                    const valA = a.default_supplier || '';
+                    const valB = b.default_supplier || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'default_destination': {
+                    const valA = a.default_destination || '';
+                    const valB = b.default_destination || '';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
+                case 'history': {
+                    let lenA = 0, lenB = 0;
+                    try { lenA = JSON.parse(a.history || '[]').length; } catch(e){}
+                    try { lenB = JSON.parse(b.history || '[]').length; } catch(e){}
+                    return (lenA - lenB) * mult;
+                }
+                default:
+                    return 0;
+            }
+        });
+    },
+
+    updateSortIcons: function() {
+        const columns = [
+            'category', 'item', 'spec', 'unit', 'buy_price', 'sell_price',
+            'margin_amt', 'margin_rate', 'default_supplier', 'default_destination', 'history'
+        ];
+
+        columns.forEach(col => {
+            const icon = $('sort_icon_' + col);
+            const th = icon ? icon.closest('th') : null;
+            if (!icon) return;
+
+            if (this.sortColumn === col) {
+                if (this.sortOrder === 'asc') {
+                    icon.className = 'bx bx-sort-up sort-icon active';
+                    icon.setAttribute('title', '오름차순 정렬됨 (클릭 시 내림차순)');
+                } else {
+                    icon.className = 'bx bx-sort-down sort-icon active';
+                    icon.setAttribute('title', '내림차순 정렬됨 (클릭 시 오름차순)');
+                }
+                if (th) th.classList.add('sorted-th');
+            } else {
+                icon.className = 'bx bx-sort-alt-2 sort-icon';
+                icon.removeAttribute('title');
+                if (th) th.classList.remove('sorted-th');
+            }
+        });
     },
 
     // ─────────────────────────────────────────

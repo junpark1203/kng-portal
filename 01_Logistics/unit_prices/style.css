@@ -322,6 +322,34 @@ body {
     overflow: visible !important;
 }
 
+/* 정렬 가능한 헤더 */
+.erp-sheet-table thead th.sortable {
+    cursor: pointer !important;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+.erp-sheet-table thead th.sortable:hover {
+    background-color: #e2e8f0 !important;
+    color: var(--erp-primary) !important;
+}
+.erp-sheet-table thead th.sorted-th {
+    background-color: #eff6ff !important;
+    color: var(--erp-primary) !important;
+    border-bottom: 2px solid var(--erp-primary) !important;
+}
+.sort-icon {
+    font-size: 12px;
+    vertical-align: middle;
+    color: #94a3b8;
+    transition: color 0.12s ease, transform 0.12s ease;
+}
+.erp-sheet-table thead th.sortable:hover .sort-icon {
+    color: var(--erp-primary);
+}
+.sort-icon.active {
+    color: var(--erp-primary) !important;
+    font-weight: 700;
+}
+
 /* 헤더 열 너비 및 정렬 규격 */
 .th-no          { width: 54px !important; }
 .th-category    { width: 80px !important; }
