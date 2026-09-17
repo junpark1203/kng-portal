@@ -274,18 +274,18 @@
 
                         <table class="erp-form-table shadow-sm">
                             <colgroup>
-                                <col style="width: 120px;">
-                                <col style="width: 160px;">
-                                <col style="width: 95px;">
-                                <col style="width: 160px;">
+                                <col style="width: 105px;">
+                                <col style="width: 175px;">
+                                <col style="width: 100px;">
+                                <col style="width: 175px;">
                                 <col style="width: 95px;">
                                 <col>
                             </colgroup>
                             <tbody>
-                                <!-- 1행: 단가구분 & 품목명 & 규격 -->
+                                <!-- 1행: 단가구분 & 자재분류 -->
                                 <tr>
                                     <th>단가구분 <span class="text-danger">*</span></th>
-                                    <td>
+                                    <td colspan="2">
                                         <select class="form-select fw-bold" id="inpPriceType" onchange="app.onPriceTypeChange()">
                                             <option value="견적가" selected>견적가 (공급처 제안/가견적)</option>
                                             <option value="계약가">계약가 (기간계약 확정단가)</option>
@@ -293,27 +293,31 @@
                                             <option value="표준가">표준가 (사내 기준원가/표준가)</option>
                                         </select>
                                     </td>
-                                    <th>품목명 <span class="text-danger">*</span></th>
-                                    <td class="position-relative">
-                                        <input type="text" class="form-control fw-semibold" id="inpItem" placeholder="품목명 입력 (기등록 품목 자동추천)" required autocomplete="off">
-                                        <div class="autocomplete-suggestions" id="sugItem"></div>
-                                    </td>
-                                    <th>규격 (Spec)</th>
-                                    <td class="position-relative">
-                                        <input type="text" class="form-control" id="inpSpec" placeholder="예: 25kg/CAN, 250kg/DRUM" autocomplete="off">
-                                        <div class="autocomplete-suggestions" id="sugSpec"></div>
+                                    <th>자재분류</th>
+                                    <td colspan="2">
+                                        <input type="text" class="form-control" id="inpCategory" placeholder="예: 그리스, 테일씰, 소모자재" autocomplete="off">
                                     </td>
                                 </tr>
 
-                                <!-- 2행: 자재분류 & 단위 & 거래통화 -->
+                                <!-- 2행: 품목명 (시원한 전폭 배치 및 자동완성 지원) -->
                                 <tr>
-                                    <th>자재분류</th>
-                                    <td>
-                                        <input type="text" class="form-control" id="inpCategory" placeholder="예: 유류, 테일씰그리스, 소모자재" autocomplete="off">
+                                    <th>품목명 <span class="text-danger">*</span></th>
+                                    <td colspan="5" class="position-relative">
+                                        <input type="text" class="form-control fw-bold fs-6 text-dark" id="inpItem" placeholder="품목명을 입력하세요 (기등록 품목 자동추천 및 방향키 이동 지원)" required autocomplete="off">
+                                        <div class="autocomplete-suggestions" id="sugItem"></div>
+                                    </td>
+                                </tr>
+
+                                <!-- 3행: 규격 (Spec) & 단위 (Unit) & 거래통화 -->
+                                <tr>
+                                    <th>규격 (Spec)</th>
+                                    <td class="position-relative">
+                                        <input type="text" class="form-control" id="inpSpec" placeholder="예: 190kg, 25kg/CAN" autocomplete="off">
+                                        <div class="autocomplete-suggestions" id="sugSpec"></div>
                                     </td>
                                     <th>단위 (Unit)</th>
                                     <td>
-                                        <input type="text" class="form-control text-center" id="inpUnit" placeholder="예: CAN, DRUM, EA, kg" autocomplete="off">
+                                        <input type="text" class="form-control text-center" id="inpUnit" placeholder="DRUM, CAN, EA, kg" autocomplete="off">
                                     </td>
                                     <th>거래통화</th>
                                     <td>
@@ -327,7 +331,7 @@
                                     </td>
                                 </tr>
 
-                                <!-- 3행: 외화 환율 입력 및 원화 환산 미리보기 (외화 선택 시만 노출) -->
+                                <!-- 3-1행: 외화 환율 입력 및 원화 환산 미리보기 (외화 선택 시만 노출) -->
                                 <tr id="exchangeRateRow" class="d-none" style="background-color: #f1f5f9;">
                                     <th>적용 환율 <span class="text-danger">*</span></th>
                                     <td>
@@ -349,14 +353,26 @@
                                     </td>
                                 </tr>
 
-                                <!-- 4행: 기준 매입단가 & 기준 매출단가 & 예상 마진(율) -->
+                                <!-- 4행: 주 매입처 & 기준 매입단가 -->
                                 <tr>
+                                    <th>주 매입처</th>
+                                    <td colspan="2">
+                                        <input type="text" class="form-control" id="inpSupplier" placeholder="주요 매입/공급처명 (Supplier)" autocomplete="off">
+                                    </td>
                                     <th>기준 매입단가</th>
-                                    <td>
+                                    <td colspan="2">
                                         <div class="input-group">
                                             <input type="text" inputmode="numeric" class="form-control text-end pe-1 fw-bold" id="inpBuyPrice" placeholder="0" oninput="app.onPriceInput(this)">
                                             <span class="input-group-text" id="buyCurrencySymbol">원</span>
                                         </div>
+                                    </td>
+                                </tr>
+
+                                <!-- 5행: 주 매출처 & 기준 매출단가 & 예상 마진(율) -->
+                                <tr>
+                                    <th>주 매출처</th>
+                                    <td>
+                                        <input type="text" class="form-control" id="inpDestination" placeholder="주 납품처/거래처명" autocomplete="off">
                                     </td>
                                     <th class="text-primary">기준 매출단가</th>
                                     <td>
@@ -374,7 +390,7 @@
                                     </td>
                                 </tr>
 
-                                <!-- 5행: 운임 조건 고도화 (이카운트 ERP 표준 스타일) -->
+                                <!-- 6행: 운임 조건 (이카운트 ERP 표준 스타일) -->
                                 <tr>
                                     <th>운임 조건</th>
                                     <td colspan="5">
@@ -417,18 +433,6 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </td>
-                                </tr>
-
-                                <!-- 6행: 주 매입처 & 주 매출처 -->
-                                <tr>
-                                    <th>주 매입처</th>
-                                    <td colspan="2">
-                                        <input type="text" class="form-control" id="inpSupplier" placeholder="주요 공급업체명 (Supplier)" autocomplete="off">
-                                    </td>
-                                    <th>주 매출처</th>
-                                    <td colspan="2">
-                                        <input type="text" class="form-control" id="inpDestination" placeholder="주요 납품처 / 거래처명 (Destination)" autocomplete="off">
                                     </td>
                                 </tr>
 

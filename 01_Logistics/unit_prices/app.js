@@ -1603,7 +1603,13 @@ const app = {
                     e.preventDefault();
                     const target = (activeIdx >= 0 && activeIdx < items.length) ? items[activeIdx] : items[0];
                     selectSpec(target.innerText.trim());
-                    if ($('inpBuyPrice')) $('inpBuyPrice').focus();
+                    if ($('inpUnit') && !$('inpUnit').value.trim()) {
+                        $('inpUnit').focus();
+                    } else if ($('inpSupplier') && !$('inpSupplier').value.trim()) {
+                        $('inpSupplier').focus();
+                    } else if ($('inpBuyPrice')) {
+                        $('inpBuyPrice').focus();
+                    }
                 } else if (e.key === 'Escape') {
                     sugSpec.style.display = 'none';
                     activeIdx = -1;
