@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_15">
+    <link rel="stylesheet" href="style.css?v=20260917_16">
 </head>
 <body>
 
@@ -282,9 +282,9 @@
                                 <table class="erp-form-table w-100">
                                     <colgroup>
                                         <col style="width: 90px;">
-                                        <col style="width: 250px;">
+                                        <col style="width: 25%;">
                                         <col style="width: 90px;">
-                                        <col style="width: 250px;">
+                                        <col style="width: 25%;">
                                         <col style="width: 85px;">
                                         <col>
                                     </colgroup>
@@ -305,28 +305,29 @@
                                             </td>
                                         </tr>
 
-                                        <!-- 2행: 거래통화 & 기본 단위 & 적용 환율 -->
+                                        <!-- 2행: 거래통화 & 적용 환율 (인라인 배치) -->
                                         <tr>
                                             <th>거래통화</th>
-                                            <td>
-                                                <select class="form-select text-center fw-bold" id="inpCurrency" onchange="app.onCurrencyChange()">
-                                                    <option value="KRW" selected>KRW (원화 ₩)</option>
-                                                    <option value="USD">USD (달러 $)</option>
-                                                    <option value="EUR">EUR (유로 €)</option>
-                                                    <option value="CNY">CNY (위안 ¥)</option>
-                                                    <option value="JPY">JPY (엔화 ¥)</option>
-                                                </select>
-                                            </td>
-                                            <th>기본 단위</th>
-                                            <td>
-                                                <input type="text" class="form-control text-center" id="inpDefaultUnit" placeholder="EA, DRUM, CAN, kg" autocomplete="off" oninput="app.onDefaultUnitChange()">
-                                            </td>
-                                            <th id="thExchangeRate" class="d-none">적용 환율 <span class="text-danger">*</span></th>
-                                            <td id="tdExchangeRate" class="d-none">
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1,350" oninput="app.onExchangeRateInput(this)">
-                                                    <span class="text-muted small">원</span>
-                                                    <span id="exchangeRateHelp" class="text-muted ms-2" style="font-size: 10px;">1 USD당 원화</span>
+                                            <td colspan="5">
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <select class="form-select text-center fw-bold" id="inpCurrency" style="width: 170px;" onchange="app.onCurrencyChange()">
+                                                        <option value="KRW" selected>KRW (원화 ₩)</option>
+                                                        <option value="USD">USD (달러 $)</option>
+                                                        <option value="EUR">EUR (유로 €)</option>
+                                                        <option value="CNY">CNY (위안 ¥)</option>
+                                                        <option value="JPY">JPY (엔화 ¥)</option>
+                                                    </select>
+                                                    <div id="exchangeRateBox" class="d-none align-items-center gap-1">
+                                                        <span class="badge bg-light text-dark border ms-1 py-1 px-2 fw-semibold">
+                                                            <i class='bx bx-transfer-alt text-primary'></i> 적용 환율 <span class="text-danger">*</span>
+                                                        </span>
+                                                        <input type="text" inputmode="numeric" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1,350" style="width: 110px;" oninput="app.onExchangeRateInput(this)">
+                                                        <span class="text-muted small">원</span>
+                                                        <span id="exchangeRateHelp" class="text-muted ms-1" style="font-size: 11px;">(1 USD당 원화)</span>
+                                                    </div>
+                                                    <span class="text-muted ms-auto small" style="font-size: 11px;">
+                                                        * 외화(USD 등) 선택 시 원화 환산단가가 자동 계산됩니다.
+                                                    </span>
                                                 </div>
                                             </td>
                                         </tr>
@@ -580,6 +581,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_15"></script>
+    <script src="app.js?v=20260917_16"></script>
 </body>
 </html>

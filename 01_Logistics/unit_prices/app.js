@@ -944,13 +944,12 @@ const app = {
     // 단가 등록 / 수정 모달 핸들러 (방안 2: 다건 그리드 지원)
     // ─────────────────────────────────────────
     createDefaultModalRow: function(preset = {}) {
-        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
         return {
             selected: false,
             price_type: preset.price_type || '견적가',
             item: preset.item || '',
             spec: preset.spec || '',
-            unit: preset.unit || defaultUnit || 'EA',
+            unit: preset.unit || 'EA',
             buy_price: preset.buy_price !== undefined ? String(preset.buy_price) : '',
             sell_price: preset.sell_price !== undefined ? String(preset.sell_price) : '',
             freight_type: preset.freight_type || '상차도',
@@ -985,17 +984,7 @@ const app = {
         }
     },
 
-    onDefaultUnitChange: function() {
-        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
-        if (!defaultUnit) return;
-        this.modalRows.forEach((r, idx) => {
-            if (!r.unit || r.unit === 'EA') {
-                r.unit = defaultUnit;
-                const uInp = $(`gridUnit_${idx}`);
-                if (uInp) uInp.value = defaultUnit;
-            }
-        });
-    },
+    onDefaultUnitChange: function() {},
 
     calcRowMarginHtml: function(buyVal, sellVal) {
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
@@ -1308,23 +1297,32 @@ const app = {
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
         const thRate = $('thExchangeRate');
         const tdRate = $('tdExchangeRate');
+        const rateBox = $('exchangeRateBox');
         const rateInp = $('inpExchangeRate');
         const rateHelp = $('exchangeRateHelp');
 
         if (curr === 'KRW') {
             if (thRate) thRate.classList.add('d-none');
             if (tdRate) tdRate.classList.add('d-none');
+            if (rateBox) {
+                rateBox.classList.remove('d-flex');
+                rateBox.classList.add('d-none');
+            }
         } else {
             if (thRate) thRate.classList.remove('d-none');
             if (tdRate) tdRate.classList.remove('d-none');
+            if (rateBox) {
+                rateBox.classList.remove('d-none');
+                rateBox.classList.add('d-flex');
+            }
             if (rateInp && (!rateInp.value || parseNumber(rateInp.value) <= 0)) {
                 rateInp.value = formatNumberWithComma(this.defaultRates[curr] || '');
             }
             if (rateHelp) {
                 if (curr === 'JPY') {
-                    rateHelp.innerText = '1 JPY당 원화 (예: 9.0)';
+                    rateHelp.innerText = '(1 JPY당 원화, 예: 9.0)';
                 } else {
-                    rateHelp.innerText = `1 ${curr}당 원화`;
+                    rateHelp.innerText = `(1 ${curr}당 원화)`;
                 }
             }
         }
@@ -1420,7 +1418,7 @@ const app = {
 
         $('priceModalLabel').innerHTML = `기준단가 수정: <span class="text-primary fw-bold">${escapeHtml(item.item)}</span>`;
         $('inpCategory').value = item.category || '';
-        $('inpDefaultUnit').value = item.unit || '';
+        if ($('inpDefaultUnit')) $('inpDefaultUnit').value = item.unit || '';
         $('inpSupplier').value = item.default_supplier || '';
         $('inpDestination').value = item.default_destination || '';
 
@@ -1497,7 +1495,6 @@ const app = {
         this.syncModalRowsFromDom();
         const editId = $('editId') ? $('editId').value : '';
         const category = $('inpCategory') ? $('inpCategory').value.trim() : '';
-        const defaultUnit = $('inpDefaultUnit') ? $('inpDefaultUnit').value.trim() : '';
         const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
         const rate = (curr !== 'KRW') ? parseNumber($('inpExchangeRate') ? $('inpExchangeRate').value : 0) : 1;
         const supplier = $('inpSupplier') ? $('inpSupplier').value.trim() : '';
@@ -1541,7 +1538,7 @@ const app = {
                     item: rowItem,
                     spec: (row.spec || '').trim(),
                     category: category,
-                    unit: (row.unit || defaultUnit || 'EA').trim(),
+                    unit: (row.unit || 'EA').trim(),
                     price_type: row.price_type || '견적가',
                     currency: curr,
                     exchange_rate: (curr !== 'KRW') ? rate : 1,
@@ -1577,7 +1574,7 @@ const app = {
                     item: r.item.trim(),
                     price_type: r.price_type || '견적가',
                     spec: (r.spec || '').trim(),
-                    unit: (r.unit || defaultUnit || 'EA').trim(),
+                    unit: (r.unit || 'EA').trim(),
                     buy_price: parseNumber(r.buy_price),
                     sell_price: parseNumber(r.sell_price),
                     freight_type: r.freight_type || '상차도',
@@ -1587,7 +1584,6 @@ const app = {
 
                 const payload = {
                     category: category,
-                    default_unit: defaultUnit,
                     currency: curr,
                     exchange_rate: (curr !== 'KRW') ? rate : 1,
                     default_supplier: supplier,
@@ -1791,7 +1787,7 @@ const app = {
                 const info = (this.itemsSpecsMap || {})[val];
                 if (info) {
                     if (info.defaultCategory && !$('inpCategory').value) $('inpCategory').value = info.defaultCategory;
-                    if (info.defaultUnit && !$('inpDefaultUnit').value) {
+                    if (info.defaultUnit && $('inpDefaultUnit') && !$('inpDefaultUnit').value) {
                         $('inpDefaultUnit').value = info.defaultUnit;
                         this.onDefaultUnitChange();
                     }
@@ -1799,7 +1795,7 @@ const app = {
                     const matchedPrice = (this.priceList || []).find(p => p.item === val);
                     if (matchedPrice) {
                         if (matchedPrice.category && !$('inpCategory').value) $('inpCategory').value = matchedPrice.category;
-                        if (matchedPrice.unit && !$('inpDefaultUnit').value) {
+                        if (matchedPrice.unit && $('inpDefaultUnit') && !$('inpDefaultUnit').value) {
                             $('inpDefaultUnit').value = matchedPrice.unit;
                             this.onDefaultUnitChange();
                         }
