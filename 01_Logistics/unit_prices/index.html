@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_9">
+    <link rel="stylesheet" href="style.css?v=20260917_10">
 </head>
 <body>
 
@@ -150,22 +150,25 @@
                             <span style="font-size: 11px;">No.</span>
                         </div>
                     </th>
+                    <th class="th-price-type sortable text-center" style="width: 72px;" onclick="app.sortBy('price_type')" title="단가 구분 (견적가/계약가/일시가/표준가) 기준 정렬">
+                        <span>단가구분</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_price_type'></i>
+                    </th>
                     <th class="th-category sortable text-center" style="width: 80px;" onclick="app.sortBy('category')" title="자재분류 기준 오름차순/내림차순 정렬">
                         <span>자재분류</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_category'></i>
                     </th>
-                    <th class="th-item sortable text-start ps-2" style="min-width: 200px;" onclick="app.sortBy('item')" title="품목명 기준 오름차순/내림차순 정렬">
+                    <th class="th-item sortable text-start ps-2" style="min-width: 190px;" onclick="app.sortBy('item')" title="품목명 기준 오름차순/내림차순 정렬">
                         <span>품목명</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_item'></i>
                     </th>
-                    <th class="th-spec sortable text-start ps-2" style="width: 130px;" onclick="app.sortBy('spec')" title="규격 기준 오름차순/내림차순 정렬">
+                    <th class="th-spec sortable text-start ps-2" style="width: 125px;" onclick="app.sortBy('spec')" title="규격 기준 오름차순/내림차순 정렬">
                         <span>규격</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_spec'></i>
                     </th>
-                    <th class="th-unit sortable text-center" style="width: 50px;" onclick="app.sortBy('unit')" title="단위 기준 오름차순/내림차순 정렬">
+                    <th class="th-unit sortable text-center" style="width: 48px;" onclick="app.sortBy('unit')" title="단위 기준 오름차순/내림차순 정렬">
                         <span>단위</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_unit'></i>
                     </th>
-                    <th class="th-buy-price sortable text-end pe-2" style="width: 100px;" onclick="app.sortBy('buy_price')" title="기준 매입단가 기준 오름차순/내림차순 정렬">
+                    <th class="th-buy-price sortable text-end pe-2" style="width: 120px;" onclick="app.sortBy('buy_price')" title="기준 매입단가 기준 오름차순/내림차순 정렬">
                         <span>기준 매입단가</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_buy_price'></i>
                     </th>
-                    <th class="th-sell-price sortable text-end pe-2" style="width: 100px;" onclick="app.sortBy('sell_price')" title="기준 매출단가 기준 오름차순/내림차순 정렬">
+                    <th class="th-sell-price sortable text-end pe-2" style="width: 110px;" onclick="app.sortBy('sell_price')" title="기준 매출단가 기준 오름차순/내림차순 정렬">
                         <span>기준 매출단가</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_sell_price'></i>
                     </th>
                     <th class="th-margin-amt sortable text-end pe-2" style="width: 90px;" onclick="app.sortBy('margin_amt')" title="마진액 기준 오름차순/내림차순 정렬">
@@ -174,10 +177,10 @@
                     <th class="th-margin-rate sortable text-center" style="width: 75px;" onclick="app.sortBy('margin_rate')" title="마진율 기준 오름차순/내림차순 정렬">
                         <span>마진율</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_margin_rate'></i>
                     </th>
-                    <th class="th-supplier sortable text-start ps-2" style="width: 115px;" onclick="app.sortBy('default_supplier')" title="주 매입처 기준 오름차순/내림차순 정렬">
-                        <span>주 매입처</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_supplier'></i>
+                    <th class="th-supplier sortable text-start ps-2" style="width: 130px;" onclick="app.sortBy('default_supplier')" title="주 매입처 및 운임조건 기준 정렬">
+                        <span>주 매입처 (운임)</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_supplier'></i>
                     </th>
-                    <th class="th-destination sortable text-start ps-2" style="width: 115px;" onclick="app.sortBy('default_destination')" title="주 매출처 기준 오름차순/내림차순 정렬">
+                    <th class="th-destination sortable text-start ps-2" style="width: 110px;" onclick="app.sortBy('default_destination')" title="주 매출처 기준 오름차순/내림차순 정렬">
                         <span>주 매출처</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_destination'></i>
                     </th>
                     <th class="th-history sortable text-center" style="width: 70px;" onclick="app.sortBy('history')" title="단가이력 건수 기준 오름차순/내림차순 정렬">
@@ -188,14 +191,14 @@
             </thead>
             <tbody id="priceTableBody">
                 <tr>
-                    <td colspan="13" class="text-center py-5 text-muted">
+                    <td colspan="14" class="text-center py-5 text-muted">
                         <i class='bx bx-loader-alt bx-spin me-1'></i> 단가표 데이터를 불러오는 중입니다...
                     </td>
                 </tr>
             </tbody>
             <tfoot id="priceTableFoot" class="d-none">
                 <tr>
-                    <td colspan="2" class="text-center bg-light fw-bold text-secondary">합계/평균</td>
+                    <td colspan="3" class="text-center bg-light fw-bold text-secondary">합계/평균</td>
                     <td colspan="3" class="ps-2 fw-bold text-dark" id="footSummaryItems">총 0개 품목</td>
                     <td class="text-end pe-2 text-dark fw-bold" id="footAvgBuy">0원</td>
                     <td class="text-end pe-2 text-primary fw-bold" id="footAvgSell">0원</td>
@@ -254,14 +257,13 @@
         </div>
     </div>
 
-    <!-- ── 4. 단가 신규 등록 / 수정 모달 ── -->
     <!-- ── 4. 단가 신규 등록 / 수정 모달 (ECOUNT ERP 테이블 그리드 스타일) ── -->
     <div class="modal fade" id="priceModal" tabindex="-1" aria-labelledby="priceModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-1 overflow-hidden">
                 <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary" style="font-size: 10px; font-weight: 700;">MASTER</span>
+                        <span class="badge badge-pt-quote" id="modalPriceTypeBadge" style="font-size: 11px; font-weight: 700;">견적가</span>
                         <h6 class="modal-title fw-bold m-0" id="priceModalLabel" style="font-size: 13px;">
                             <i class='bx bx-edit-alt me-1'></i> 물류 기준단가 등록 / 수정
                         </h6>
@@ -275,66 +277,94 @@
                         <table class="erp-form-table shadow-sm">
                             <colgroup>
                                 <col style="width: 120px;">
-                                <col style="width: 155px;">
+                                <col style="width: 160px;">
                                 <col style="width: 95px;">
-                                <col style="width: 155px;">
+                                <col style="width: 160px;">
                                 <col style="width: 95px;">
                                 <col>
                             </colgroup>
                             <tbody>
-                                <!-- 1행: 품목명 & 규격 -->
+                                <!-- 1행: 단가구분 & 품목명 & 규격 -->
                                 <tr>
+                                    <th>단가구분 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <select class="form-select fw-bold" id="inpPriceType" onchange="app.onPriceTypeChange()">
+                                            <option value="견적가" selected>견적가 (공급처 제안/가견적)</option>
+                                            <option value="계약가">계약가 (기간계약 확정단가)</option>
+                                            <option value="일시가">일시가/스팟가 (현장 긴급/일회성)</option>
+                                            <option value="표준가">표준가 (사내 기준원가/표준가)</option>
+                                        </select>
+                                    </td>
                                     <th>품목명 <span class="text-danger">*</span></th>
-                                    <td colspan="3" class="position-relative">
-                                        <input type="text" class="form-control fw-semibold" id="inpItem" placeholder="품목명을 입력하세요 (입력 시 자동추천)" required autocomplete="off">
+                                    <td class="position-relative">
+                                        <input type="text" class="form-control fw-semibold" id="inpItem" placeholder="품목명을 입력하세요 (자동추천)" required autocomplete="off">
                                         <div class="autocomplete-suggestions" id="sugItem"></div>
                                     </td>
                                     <th>규격 (Spec)</th>
                                     <td class="position-relative">
-                                        <input type="text" class="form-control" id="inpSpec" placeholder="규격 입력 (예: 25kg/CAN)" autocomplete="off">
+                                        <input type="text" class="form-control" id="inpSpec" placeholder="예: 25kg/CAN, 250kg/DRUM" autocomplete="off">
                                         <div class="autocomplete-suggestions" id="sugSpec"></div>
                                     </td>
                                 </tr>
 
-                                <!-- 2행: 자재분류 & 단위 & 통화 -->
+                                <!-- 2행: 자재분류 & 단위 & 거래통화 -->
                                 <tr>
                                     <th>자재분류</th>
                                     <td>
-                                        <input type="text" class="form-control" id="inpCategory" placeholder="예: 유류, 안전용품" autocomplete="off">
+                                        <input type="text" class="form-control" id="inpCategory" placeholder="예: 유류, 테일씰그리스, 소모자재" autocomplete="off">
                                     </td>
                                     <th>단위 (Unit)</th>
                                     <td>
-                                        <input type="text" class="form-control text-center" id="inpUnit" placeholder="예: CAN, DRUM, EA" autocomplete="off">
+                                        <input type="text" class="form-control text-center" id="inpUnit" placeholder="예: CAN, DRUM, EA, kg" autocomplete="off">
                                     </td>
-                                    <th>통화</th>
+                                    <th>거래통화</th>
                                     <td>
-                                        <select class="form-select text-center fw-semibold" id="inpCurrency">
-                                            <option value="KRW" selected>KRW (원화)</option>
-                                            <option value="USD">USD (달러)</option>
+                                        <select class="form-select text-center fw-bold" id="inpCurrency" onchange="app.onCurrencyChange()">
+                                            <option value="KRW" selected>KRW (원화 ₩)</option>
+                                            <option value="USD">USD (달러 $)</option>
+                                            <option value="EUR">EUR (유로 €)</option>
+                                            <option value="CNY">CNY (위안 ¥)</option>
+                                            <option value="JPY">JPY (엔화 ¥)</option>
                                         </select>
                                     </td>
                                 </tr>
 
-                                <!-- 3행: 기준 매입단가 & 기준 매출단가 & 예상 마진(율) -->
+                                <!-- 3행: 외화 환율 입력 및 원화 환산 미리보기 (외화 선택 시만 노출) -->
+                                <tr id="exchangeRateRow" class="d-none" style="background-color: #f1f5f9;">
+                                    <th>적용 환율 <span class="text-danger">*</span></th>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <input type="number" step="0.01" class="form-control text-end fw-bold" id="inpExchangeRate" placeholder="1350" oninput="app.calcModalMargin()">
+                                            <span class="text-muted small">원</span>
+                                        </div>
+                                        <span id="exchangeRateHelp" class="text-muted" style="font-size: 10px;">1 USD당 원화(KRW)</span>
+                                    </td>
+                                    <th>원화 환산가</th>
+                                    <td colspan="3">
+                                        <div class="d-flex align-items-center gap-2 p-1 px-2 rounded bg-white border" id="previewConvertedKrwWrap" style="font-size: 11.5px;">
+                                            <span class="badge bg-secondary">실시간 원화 환산</span>
+                                            <span class="text-muted">매입:</span>
+                                            <strong class="text-dark" id="previewConvertedBuy">₩0</strong>
+                                            <span class="text-muted ms-2">매출:</span>
+                                            <strong class="text-primary" id="previewConvertedSell">₩0</strong>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- 4행: 기준 매입단가 & 기준 매출단가 & 예상 마진(율) -->
                                 <tr>
                                     <th>기준 매입단가</th>
                                     <td>
-                                        <div class="d-flex align-items-center justify-content-between h-100">
-                                            <div class="input-group" style="flex: 1;">
-                                                <input type="number" class="form-control text-end pe-1" id="inpBuyPrice" placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
-                                                <span class="input-group-text">원</span>
-                                            </div>
-                                            <div class="form-check m-0 ms-1 me-1 d-flex align-items-center gap-1 text-nowrap">
-                                                <input class="form-check-input mt-0 cursor-pointer" type="checkbox" id="inpFreightIncluded" style="width: 13px; height: 13px;">
-                                                <label class="form-check-label cursor-pointer text-primary fw-bold user-select-none" for="inpFreightIncluded" style="font-size: 11px;">운임포함</label>
-                                            </div>
+                                        <div class="input-group">
+                                            <input type="number" step="any" class="form-control text-end pe-1" id="inpBuyPrice" placeholder="0" min="0" oninput="app.calcModalMargin()">
+                                            <span class="input-group-text" id="buyCurrencySymbol">원</span>
                                         </div>
                                     </td>
                                     <th class="text-primary">기준 매출단가</th>
                                     <td>
                                         <div class="input-group">
-                                            <input type="number" class="form-control text-end pe-2 fw-bold text-primary" id="inpSellPrice" placeholder="0" min="0" step="1" oninput="app.calcModalMargin()">
-                                            <span class="input-group-text">원</span>
+                                            <input type="number" step="any" class="form-control text-end pe-2 fw-bold text-primary" id="inpSellPrice" placeholder="0" min="0" oninput="app.calcModalMargin()">
+                                            <span class="input-group-text" id="sellCurrencySymbol">원</span>
                                         </div>
                                     </td>
                                     <th>예상 마진(율)</th>
@@ -346,7 +376,53 @@
                                     </td>
                                 </tr>
 
-                                <!-- 4행: 주 매입처 & 주 매출처 -->
+                                <!-- 5행: 운임 조건 고도화 (상차도 vs 하차도 + 하차도 시 지역 선택 및 직접입력) -->
+                                <tr>
+                                    <th>운임 조건</th>
+                                    <td colspan="5">
+                                        <div class="d-flex flex-column gap-1">
+                                            <div class="d-flex align-items-center gap-4">
+                                                <div class="form-check m-0 d-flex align-items-center gap-1 cursor-pointer">
+                                                    <input class="form-check-input cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeEx" value="상차도" checked onchange="app.onFreightTypeChange('상차도')">
+                                                    <label class="form-check-label cursor-pointer user-select-none small text-dark" for="freightTypeEx">
+                                                        <strong class="text-secondary">상차도</strong> (운임별도 / 공급처 출하지 인도)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check m-0 d-flex align-items-center gap-1 cursor-pointer">
+                                                    <input class="form-check-input cursor-pointer" type="radio" name="freightTypeRadio" id="freightTypeIn" value="하차도" onchange="app.onFreightTypeChange('하차도')">
+                                                    <label class="form-check-label cursor-pointer user-select-none small text-dark" for="freightTypeIn">
+                                                        <strong class="text-primary">하차도</strong> (도착도 / 운임포함 납품)
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <!-- 하차도 선택 시 표시되는 배송 지역 패널 -->
+                                            <div id="freightRegionPanel" class="d-none mt-1 p-2 border rounded bg-white shadow-sm">
+                                                <div class="d-flex align-items-center gap-1 flex-wrap mb-1">
+                                                    <span class="text-muted small fw-semibold me-1" style="font-size: 11px;">
+                                                        <i class='bx bx-map-pin text-primary'></i> 납품 지역:
+                                                    </span>
+                                                    <button type="button" class="region-chip active" onclick="app.setFreightRegion('전국')">전국</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('수도권')">수도권</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('강원도')">강원도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('충청북도')">충청북도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('충청남도')">충청남도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('전라북도')">전라북도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('전라남도')">전라남도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('경상북도')">경상북도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('경상남도')">경상남도</button>
+                                                    <button type="button" class="region-chip" onclick="app.setFreightRegion('제주도')">제주도</button>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    <input type="text" class="form-control form-control-sm" id="inpFreightRegion" placeholder="지역 선택 칩을 누르거나 상세 현장명을 직접 입력하세요 (예: 충북 단양 현장)" value="전국">
+                                                    <span class="text-muted" style="font-size: 10.5px; white-space: nowrap;">* 상세 현장명 기재 가능</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- 6행: 주 매입처 & 주 매출처 -->
                                 <tr>
                                     <th>주 매입처</th>
                                     <td colspan="2">
@@ -358,7 +434,7 @@
                                     </td>
                                 </tr>
 
-                                <!-- 5행: 비고 / 가격산정 메모 -->
+                                <!-- 7행: 비고 / 가격산정 메모 -->
                                 <tr>
                                     <th>비고 / 단가메모</th>
                                     <td colspan="5">
@@ -388,6 +464,52 @@
                             </div>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 4-1. 견적 비교 테이블 내 환율 빠른 수정 모달 ── -->
+    <div class="modal fade" id="editRateModal" tabindex="-1" aria-labelledby="editRateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-bold mb-0" id="editRateModalLabel" style="font-size: 12.5px;">
+                        <i class='bx bx-dollar-circle text-warning'></i> 비교 적용 환율 변경
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="editRateItemId">
+                    <div class="mb-2">
+                        <span class="text-muted small">비교 품목:</span>
+                        <div class="fw-bold text-dark text-truncate" id="editRateItemName">-</div>
+                    </div>
+                    <div class="mb-2 p-2 rounded bg-light border small">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">등록 외화 단가:</span>
+                            <strong class="text-primary" id="editRateForeignPrice">$0.00</strong>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark" id="editRateInputLabel">적용 환율 (1 USD당 원화)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" class="form-control text-end fw-bold" id="inpEditRateValue" placeholder="1350" oninput="app.calcEditRatePreview()">
+                            <span class="input-group-text">원</span>
+                        </div>
+                        <div class="text-end text-muted mt-1" style="font-size: 11px;">
+                            환산 예상 원화: <strong class="text-success" id="editRateConvertedPreview">₩0</strong>
+                        </div>
+                    </div>
+                    <div class="alert alert-info py-1 px-2 mb-0" style="font-size: 10.5px;">
+                        <i class='bx bx-info-circle'></i> 견적 비교 테이블의 시뮬레이션용 환율만 변경되며, 단가표 마스터 데이터는 변경되지 않습니다.
+                    </div>
+                </div>
+                <div class="modal-footer py-1 px-2 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3" onclick="app.submitEditRate()">
+                        <i class='bx bx-check'></i> 환율 적용
+                    </button>
                 </div>
             </div>
         </div>
@@ -516,6 +638,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_11"></script>
+    <script src="app.js?v=20260917_12"></script>
 </body>
 </html>

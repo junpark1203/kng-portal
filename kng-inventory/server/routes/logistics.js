@@ -245,6 +245,12 @@ function initLogisticsTables(database) {
                         `, (errUp) => {
                             if (!errUp) {
                                 database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN is_freight_included INTEGER DEFAULT 0`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN price_type TEXT DEFAULT '견적가'`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN exchange_rate REAL DEFAULT 1.0`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN foreign_buy_price REAL DEFAULT 0`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN foreign_sell_price REAL DEFAULT 0`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN freight_type TEXT DEFAULT '상차도'`, () => {});
+                                database.run(`ALTER TABLE logistics_unit_prices ADD COLUMN freight_region TEXT DEFAULT ''`, () => {});
                                 database.run(`DROP INDEX IF EXISTS idx_unit_prices_item_spec`, () => {
                                     database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_unit_prices_item_spec_supplier ON logistics_unit_prices(item, spec, default_supplier)`);
                                 });
@@ -276,11 +282,26 @@ function initLogisticsTables(database) {
                                     default_destination TEXT DEFAULT '',
                                     is_freight_included INTEGER DEFAULT 0,
                                     note TEXT DEFAULT '',
+                                    price_type TEXT DEFAULT '견적가',
+                                    currency TEXT DEFAULT 'KRW',
+                                    exchange_rate REAL DEFAULT 1.0,
+                                    foreign_buy_price REAL DEFAULT 0,
+                                    foreign_sell_price REAL DEFAULT 0,
+                                    freight_type TEXT DEFAULT '상차도',
+                                    freight_region TEXT DEFAULT '',
                                     display_order INTEGER DEFAULT 0,
                                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                     FOREIGN KEY(section_id) REFERENCES logistics_quote_sections(id) ON DELETE CASCADE
                                 )
-                            `);
+                            `, () => {
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN price_type TEXT DEFAULT '견적가'`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN currency TEXT DEFAULT 'KRW'`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN exchange_rate REAL DEFAULT 1.0`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN foreign_buy_price REAL DEFAULT 0`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN foreign_sell_price REAL DEFAULT 0`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN freight_type TEXT DEFAULT '상차도'`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_items ADD COLUMN freight_region TEXT DEFAULT ''`, () => {});
+                            });
                             database.run(`CREATE INDEX IF NOT EXISTS idx_quote_items_sec ON logistics_quote_items(section_id)`);
                         });
 
@@ -646,7 +667,14 @@ router.get('/unit-prices/map', async (req, res) => {
 // 3. 단가 신규 등록 (사전 견적 등)
 router.post('/unit-prices', async (req, res) => {
     try {
-        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date, is_freight_included = 0 } = req.body;
+        const {
+            item, spec = '', category = '', unit = '', currency = 'KRW',
+            buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '',
+            note = '', effective_date, is_freight_included = 0,
+            price_type = '견적가', exchange_rate = 1.0,
+            foreign_buy_price = 0, foreign_sell_price = 0,
+            freight_type = '상차도', freight_region = ''
+        } = req.body;
 
         if (!item || !item.trim()) {
             return res.status(400).json({ error: '품목명은 필수 입력 항목입니다.' });
@@ -662,30 +690,46 @@ router.post('/unit-prices', async (req, res) => {
             return res.status(400).json({ error: '동일한 품목, 규격, 공급처로 등록된 단가가 이미 존재합니다. 수정을 이용해주세요.' });
         }
 
+        const rate = parseFloat(exchange_rate) || 1.0;
+        const fBuy = parseFloat(foreign_buy_price) || 0;
+        const fSell = parseFloat(foreign_sell_price) || 0;
+        let krwBuy = parseFloat(buy_price) || 0;
+        let krwSell = parseFloat(sell_price) || 0;
+
+        if (currency !== 'KRW' && rate > 0) {
+            if (fBuy > 0 && (!krwBuy || krwBuy === fBuy)) krwBuy = Math.round(fBuy * rate);
+            if (fSell > 0 && (!krwSell || krwSell === fSell)) krwSell = Math.round(fSell * rate);
+        }
+
+        const isFreightInt = (freight_type === '하차도' || parseInt(is_freight_included, 10)) ? 1 : 0;
+        const finalFreightType = freight_type || (isFreightInt ? '하차도' : '상차도');
+
         const initialHistory = [{
             date: dateStr,
             timestamp: new Date().toISOString(),
-            buy_price: parseFloat(buy_price) || 0,
-            sell_price: parseFloat(sell_price) || 0,
+            buy_price: krwBuy,
+            sell_price: krwSell,
             prev_buy_price: 0,
             prev_sell_price: 0,
             source: 'manual',
             partner: trimmedSupplier || default_destination || '',
-            note: note || '사전 등록 / 견적서 기준'
+            note: note || `${price_type} 사전 등록`
         }];
 
         const insertSql = `
             INSERT INTO logistics_unit_prices
-            (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, is_freight_included, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            (item, spec, category, unit, currency, buy_price, sell_price, default_supplier, default_destination, history, note, is_freight_included, price_type, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `;
 
         const result = await dbRun(insertSql, [
             trimmedItem, trimmedSpec, category || '', unit || '', currency || 'KRW',
-            parseFloat(buy_price) || 0, parseFloat(sell_price) || 0,
+            krwBuy, krwSell,
             trimmedSupplier, default_destination || '',
             JSON.stringify(initialHistory), note || '',
-            parseInt(is_freight_included, 10) ? 1 : 0
+            isFreightInt,
+            price_type || '견적가', rate, fBuy, fSell,
+            finalFreightType, (freight_region || '').trim()
         ]);
 
         res.status(201).json({ id: result.lastID, message: '단가 등록이 완료되었습니다.' });
@@ -698,15 +742,32 @@ router.post('/unit-prices', async (req, res) => {
 router.put('/unit-prices/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const { item, spec = '', category = '', unit = '', currency = 'KRW', buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '', note = '', effective_date, is_freight_included } = req.body;
+        const {
+            item, spec = '', category = '', unit = '', currency = 'KRW',
+            buy_price = 0, sell_price = 0, default_supplier = '', default_destination = '',
+            note = '', effective_date, is_freight_included,
+            price_type, exchange_rate, foreign_buy_price, foreign_sell_price,
+            freight_type, freight_region
+        } = req.body;
 
         const existing = await dbGet(`SELECT * FROM logistics_unit_prices WHERE id = ?`, [id]);
         if (!existing) {
             return res.status(404).json({ error: '수정할 단가 데이터를 찾을 수 없습니다.' });
         }
 
-        const newBuy = parseFloat(buy_price) || 0;
-        const newSell = parseFloat(sell_price) || 0;
+        const curr = currency || existing.currency || 'KRW';
+        const rate = exchange_rate !== undefined ? (parseFloat(exchange_rate) || 1.0) : (existing.exchange_rate || 1.0);
+        const fBuy = foreign_buy_price !== undefined ? (parseFloat(foreign_buy_price) || 0) : (existing.foreign_buy_price || 0);
+        const fSell = foreign_sell_price !== undefined ? (parseFloat(foreign_sell_price) || 0) : (existing.foreign_sell_price || 0);
+
+        let newBuy = parseFloat(buy_price) || 0;
+        let newSell = parseFloat(sell_price) || 0;
+
+        if (curr !== 'KRW' && rate > 0) {
+            if (fBuy > 0 && (!newBuy || newBuy === fBuy)) newBuy = Math.round(fBuy * rate);
+            if (fSell > 0 && (!newSell || newSell === fSell)) newSell = Math.round(fSell * rate);
+        }
+
         const oldBuy = existing.buy_price || 0;
         const oldSell = existing.sell_price || 0;
         const dateStr = (effective_date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
@@ -729,11 +790,18 @@ router.put('/unit-prices/:id', async (req, res) => {
             if (historyList.length > 50) historyList = historyList.slice(0, 50);
         }
 
+        const finalFreightType = freight_type !== undefined ? freight_type : (existing.freight_type || '상차도');
+        const isFreightInt = (finalFreightType === '하차도' || parseInt(is_freight_included, 10)) ? 1 : 0;
+        const finalFreightRegion = freight_region !== undefined ? (freight_region || '').trim() : (existing.freight_region || '');
+        const finalPriceType = price_type !== undefined ? price_type : (existing.price_type || '견적가');
+
         const updateSql = `
             UPDATE logistics_unit_prices
             SET item = ?, spec = ?, category = ?, unit = ?, currency = ?,
                 buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
-                history = ?, note = ?, is_freight_included = ?, updated_at = CURRENT_TIMESTAMP
+                history = ?, note = ?, is_freight_included = ?,
+                price_type = ?, exchange_rate = ?, foreign_buy_price = ?, foreign_sell_price = ?,
+                freight_type = ?, freight_region = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `;
 
@@ -742,13 +810,15 @@ router.put('/unit-prices/:id', async (req, res) => {
             (spec !== undefined ? spec : existing.spec).trim(),
             category !== undefined ? category : existing.category,
             unit !== undefined ? unit : existing.unit,
-            currency || existing.currency || 'KRW',
+            curr,
             newBuy, newSell,
             default_supplier !== undefined ? (default_supplier || '').trim() : existing.default_supplier,
             default_destination !== undefined ? default_destination : existing.default_destination,
             JSON.stringify(historyList),
             note !== undefined ? note : existing.note,
-            is_freight_included !== undefined ? (parseInt(is_freight_included, 10) ? 1 : 0) : (existing.is_freight_included || 0),
+            isFreightInt,
+            finalPriceType, rate, fBuy, fSell,
+            finalFreightType, finalFreightRegion,
             id
         ]);
 
@@ -940,9 +1010,16 @@ router.post('/quote-sections/add-items', async (req, res) => {
             const sellPrice = parseFloat(it.sell_price) || 0;
             const supplier = (it.default_supplier || '').trim();
             const destination = (it.default_destination || '').trim();
-            const isFreight = (it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]'))) ? 1 : 0;
+            const isFreight = (it.is_freight_included === 1 || it.is_freight_included === true || (it.note && it.note.includes('[운임포함]')) || it.freight_type === '하차도') ? 1 : 0;
             const note = (it.note || '').trim();
             const unitPriceId = it.unit_price_id ? parseInt(it.unit_price_id, 10) : (it.id ? parseInt(it.id, 10) : null);
+            const priceType = it.price_type || '견적가';
+            const curr = it.currency || 'KRW';
+            const rate = parseFloat(it.exchange_rate) || 1.0;
+            const fBuy = parseFloat(it.foreign_buy_price) || 0;
+            const fSell = parseFloat(it.foreign_sell_price) || 0;
+            const freightType = it.freight_type || (isFreight ? '하차도' : '상차도');
+            const freightRegion = (it.freight_region || '').trim();
 
             // 동일 섹션 내 완전히 동일한 품목/규격/공급처 중복 방지
             const dupCheck = await dbGet(
@@ -953,11 +1030,12 @@ router.post('/quote-sections/add-items', async (req, res) => {
             if (!dupCheck) {
                 await dbRun(`
                     INSERT INTO logistics_quote_items
-                    (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, display_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_items WHERE section_id = ?))
+                    (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, price_type, currency, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_items WHERE section_id = ?))
                 `, [
                     targetSectionId, unitPriceId, itemName, spec, category, unit,
                     buyPrice, sellPrice, supplier, destination, isFreight, note,
+                    priceType, curr, rate, fBuy, fSell, freightType, freightRegion,
                     targetSectionId
                 ]);
                 addedCount++;
@@ -1025,6 +1103,48 @@ router.delete('/quote-items/:id', async (req, res) => {
     try {
         await dbRun(`DELETE FROM logistics_quote_items WHERE id = ?`, [req.params.id]);
         res.json({ success: true, message: '품목이 삭제되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5-1. 견적 비교 테이블 내 개별 품목 환율 및 단가 수정 API (시뮬레이션)
+router.put('/quote-items/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { exchange_rate, buy_price, sell_price, note } = req.body;
+
+        const item = await dbGet(`SELECT * FROM logistics_quote_items WHERE id = ?`, [id]);
+        if (!item) {
+            return res.status(404).json({ error: '비교 품목을 찾을 수 없습니다.' });
+        }
+
+        const newRate = exchange_rate !== undefined ? (parseFloat(exchange_rate) || 1.0) : (item.exchange_rate || 1.0);
+        let newBuy = buy_price !== undefined ? parseFloat(buy_price) : item.buy_price;
+        let newSell = sell_price !== undefined ? parseFloat(sell_price) : item.sell_price;
+
+        // 환율 변경 시 외화 단가가 존재하면 원화 환산단가 자동 재계산
+        if (exchange_rate !== undefined && item.currency && item.currency !== 'KRW') {
+            const fBuy = item.foreign_buy_price || 0;
+            const fSell = item.foreign_sell_price || 0;
+            if (fBuy > 0) newBuy = Math.round(fBuy * newRate);
+            if (fSell > 0) newSell = Math.round(fSell * newRate);
+        }
+
+        await dbRun(`
+            UPDATE logistics_quote_items
+            SET exchange_rate = ?, buy_price = ?, sell_price = ?, note = COALESCE(?, note)
+            WHERE id = ?
+        `, [newRate, newBuy, newSell, note !== undefined ? note : null, id]);
+
+        res.json({
+            success: true,
+            id: id,
+            exchange_rate: newRate,
+            buy_price: newBuy,
+            sell_price: newSell,
+            message: '환율 및 원화 환산단가가 성공적으로 업데이트되었습니다.'
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

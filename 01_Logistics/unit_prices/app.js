@@ -99,11 +99,14 @@ const app = {
     quoteSections: [],
     addToQuoteModalInstance: null,
     newSectionModalInstance: null,
+    editRateModalInstance: null,
     currentPage: 1,
     pageSize: 50,
     sortColumn: '',
     sortOrder: 'asc', // 'asc' | 'desc'
     focusedRowIndex: -1,
+    defaultRates: { USD: 1350, EUR: 1480, CNY: 190, JPY: 9.0 },
+    currencySymbols: { KRW: '₩', USD: '$', EUR: '€', CNY: '¥', JPY: '¥' },
 
     init: async function() {
         this.bindEvents();
@@ -119,6 +122,9 @@ const app = {
         }
         if ($('newSectionModal') && window.bootstrap) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
+        }
+        if ($('editRateModal') && window.bootstrap) {
+            this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
         }
     },
 
@@ -501,6 +507,42 @@ const app = {
             let histCount = 0;
             try { histCount = JSON.parse(r.history || '[]').length; } catch(e){}
 
+            // 단가 구분 뱃지 결정
+            const pt = r.price_type || '견적가';
+            let ptBadgeClass = 'badge-pt-quote';
+            if (pt === '계약가') ptBadgeClass = 'badge-pt-contract';
+            else if (pt === '일시가') ptBadgeClass = 'badge-pt-spot';
+            else if (pt === '표준가') ptBadgeClass = 'badge-pt-std';
+
+            // 통화 및 환율 표기
+            const isForeign = r.currency && r.currency !== 'KRW';
+            const currSymbol = this.currencySymbols[r.currency] || '$';
+            let buyDisplay = buy ? buy.toLocaleString() + '원' : '-';
+            let sellDisplay = sell ? sell.toLocaleString() + '원' : '-';
+
+            if (isForeign && r.foreign_buy_price > 0) {
+                buyDisplay = `
+                    <div class="currency-dual-wrap" title="적용 환율: 1 ${r.currency} = ${r.exchange_rate ? r.exchange_rate.toLocaleString() : '-'}원">
+                        <span class="currency-foreign">${currSymbol}${parseFloat(r.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        <span class="currency-krw">(₩${buy ? buy.toLocaleString() : '0'}) <span class="badge bg-light text-secondary border" style="font-size: 8.5px; padding: 0 2px;">@${r.exchange_rate ? r.exchange_rate.toLocaleString() : '-'}</span></span>
+                    </div>
+                `;
+            }
+            if (isForeign && r.foreign_sell_price > 0) {
+                sellDisplay = `
+                    <div class="currency-dual-wrap">
+                        <span class="currency-foreign text-primary">${currSymbol}${parseFloat(r.foreign_sell_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        <span class="currency-krw">(₩${sell ? sell.toLocaleString() : '0'})</span>
+                    </div>
+                `;
+            }
+
+            // 운임 조건 뱃지
+            const isFreightIn = (r.freight_type === '하차도') || (r.is_freight_included === 1 || r.is_freight_included === true || (r.note && r.note.includes('[운임포함]')));
+            const freightBadge = isFreightIn
+                ? `<span class="badge-freight-in ms-1" style="font-size: 9.5px; padding: 0 3px;" title="하차도 (운임포함 납품)"><i class='bx bx-check-circle'></i> 하차도${r.freight_region ? ` [${escapeHtml(r.freight_region)}]` : ''}</span>`
+                : `<span class="badge-freight-ex ms-1" style="font-size: 9.5px; padding: 0 3px;" title="상차도 (운임별도 / 출하지인도)">상차도</span>`;
+
             const isChecked = this.checkedItemIds.has(r.id);
             const isFocused = this.focusedRowIndex === idx;
             html += `
@@ -518,21 +560,22 @@ const app = {
                             <span class="row-num">${globalIdx + 1}</span>
                         </div>
                     </td>
+                    <td class="text-center"><span class="${ptBadgeClass}">${escapeHtml(pt)}</span></td>
                     <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
                     <td class="text-start ps-2 fw-semibold text-truncate" title="${escapeHtml(r.item)}">${escapeHtml(r.item)}</td>
                     <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.spec || '')}">
                         ${(r.spec && r.spec.trim()) ? `<span class="spec-pill">${escapeHtml(r.spec.trim())}</span>` : '<span class="text-muted">-</span>'}
                     </td>
                     <td class="text-center text-muted">${escapeHtml(r.unit || '-')}</td>
-                    <td class="td-buy pe-2">
-                        ${buy ? buy.toLocaleString() + '원' : '-'}
-                        ${(r.is_freight_included === 1 || r.is_freight_included === true || (r.note && r.note.includes('[운임포함]'))) ? '<span class="badge-freight-in ms-1" style="font-size: 9.5px; padding: 0 3px;" title="운임 포함 (도착도)">운임포함</span>' : ''}
-                    </td>
-                    <td class="td-sell pe-2">${sell ? sell.toLocaleString() + '원' : '-'}</td>
+                    <td class="td-buy pe-2">${buyDisplay}</td>
+                    <td class="td-sell pe-2">${sellDisplay}</td>
                     <td class="td-margin-amt pe-2 ${marginAmt < 0 ? 'text-danger' : ''}">${marginAmt ? marginAmt.toLocaleString() + '원' : '-'}</td>
                     <td class="text-center"><span class="margin-badge ${badgeClass}">${marginRateStr}</span></td>
-                    <td class="text-start ps-2 text-truncate" title="${r.default_supplier || ''}">${r.default_supplier || '-'}</td>
-                    <td class="text-start ps-2 text-truncate" title="${r.default_destination || ''}">${r.default_destination || '-'}</td>
+                    <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.default_supplier || '')}">
+                        <span>${escapeHtml(r.default_supplier || '-')}</span>
+                        ${freightBadge}
+                    </td>
+                    <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.default_destination || '')}">${escapeHtml(r.default_destination || '-')}</td>
                     <td class="text-center">
                         <button type="button" class="btn-hist" onclick="app.openHistoryModal(${r.id})" title="단가 변동 이력 타임라인 보기">
                             <i class='bx bx-history'></i> ${histCount}건
@@ -696,6 +739,11 @@ const app = {
 
         this.filteredList.sort((a, b) => {
             switch (col) {
+                case 'price_type': {
+                    const valA = a.price_type || '견적가';
+                    const valB = b.price_type || '견적가';
+                    return valA.localeCompare(valB, 'ko') * mult;
+                }
                 case 'category': {
                     const valA = a.category || '';
                     const valB = b.category || '';
@@ -874,16 +922,91 @@ const app = {
     },
 
     // ─────────────────────────────────────────
-    // 단가 등록 / 수정 모달
+    // 단가 등록 / 수정 모달 핸들러
     // ─────────────────────────────────────────
+    onPriceTypeChange: function() {
+        const sel = $('inpPriceType');
+        const badge = $('modalPriceTypeBadge');
+        if (!sel || !badge) return;
+        const pt = sel.value || '견적가';
+        badge.innerText = pt;
+        badge.className = 'badge';
+        if (pt === '계약가') badge.classList.add('badge-pt-contract');
+        else if (pt === '일시가') badge.classList.add('badge-pt-spot');
+        else if (pt === '표준가') badge.classList.add('badge-pt-std');
+        else badge.classList.add('badge-pt-quote');
+    },
+
+    onCurrencyChange: function() {
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const rateRow = $('exchangeRateRow');
+        const buySym = $('buyCurrencySymbol');
+        const sellSym = $('sellCurrencySymbol');
+        const rateHelp = $('exchangeRateHelp');
+        const rateInp = $('inpExchangeRate');
+
+        if (curr === 'KRW') {
+            if (rateRow) rateRow.classList.add('d-none');
+            if (buySym) buySym.innerText = '원';
+            if (sellSym) sellSym.innerText = '원';
+        } else {
+            if (rateRow) rateRow.classList.remove('d-none');
+            const sym = this.currencySymbols[curr] || '$';
+            if (buySym) buySym.innerText = sym;
+            if (sellSym) sellSym.innerText = sym;
+
+            if (rateInp && (!rateInp.value || parseFloat(rateInp.value) <= 0)) {
+                rateInp.value = this.defaultRates[curr] || '';
+            }
+
+            if (rateHelp) {
+                if (curr === 'JPY') {
+                    rateHelp.innerText = '1 JPY당 원화 (예: 100엔당 900원이면 9.0 입력)';
+                } else {
+                    rateHelp.innerText = `1 ${curr}당 원화(KRW) 환산율`;
+                }
+            }
+        }
+        this.calcModalMargin();
+    },
+
+    onFreightTypeChange: function(type) {
+        const panel = $('freightRegionPanel');
+        if (!panel) return;
+        if (type === '하차도') {
+            panel.classList.remove('d-none');
+        } else {
+            panel.classList.add('d-none');
+        }
+    },
+
+    setFreightRegion: function(region) {
+        const inp = $('inpFreightRegion');
+        if (inp) inp.value = region;
+        document.querySelectorAll('.region-chip').forEach(c => {
+            if (c.innerText.trim() === region) c.classList.add('active');
+            else c.classList.remove('active');
+        });
+    },
+
     openCreateModal: function() {
         $('priceForm').reset();
         $('editId').value = '';
         this.currentEditId = null;
         if ($('btnModalDelete')) $('btnModalDelete').classList.add('d-none');
-        if ($('inpFreightIncluded')) $('inpFreightIncluded').checked = false;
-        $('priceModalLabel').innerHTML = `<i class='bx bx-plus me-1'></i> 신규 물류 기준단가 등록 (사전 견적가)`;
-        $('inpCurrency').value = 'KRW';
+
+        if ($('inpPriceType')) $('inpPriceType').value = '견적가';
+        this.onPriceTypeChange();
+
+        if ($('inpCurrency')) $('inpCurrency').value = 'KRW';
+        if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
+        this.onCurrencyChange();
+
+        if ($('freightTypeEx')) $('freightTypeEx').checked = true;
+        this.onFreightTypeChange('상차도');
+        this.setFreightRegion('전국');
+
+        $('priceModalLabel').innerHTML = `<i class='bx bx-plus me-1'></i> 신규 물류 기준단가 등록`;
         this.calcModalMargin();
         const modal = new bootstrap.Modal($('priceModal'));
         modal.show();
@@ -904,17 +1027,43 @@ const app = {
         this.currentEditId = id;
         if ($('btnModalDelete')) $('btnModalDelete').classList.remove('d-none');
 
-        const isFreight = item.is_freight_included === 1 || item.is_freight_included === true || (item.note && item.note.includes('[운임포함]'));
-        if ($('inpFreightIncluded')) $('inpFreightIncluded').checked = !!isFreight;
-
         $('priceModalLabel').innerHTML = `<i class='bx bx-edit-alt me-1'></i> 기준단가 수정: <span class="text-warning">${escapeHtml(item.item)}</span>`;
         $('inpItem').value = item.item || '';
         $('inpSpec').value = item.spec || '';
         $('inpCategory').value = item.category || '';
         $('inpUnit').value = item.unit || '';
-        $('inpCurrency').value = item.currency || 'KRW';
-        $('inpBuyPrice').value = item.buy_price || '';
-        $('inpSellPrice').value = item.sell_price || '';
+
+        // 단가 구분
+        if ($('inpPriceType')) $('inpPriceType').value = item.price_type || '견적가';
+        this.onPriceTypeChange();
+
+        // 통화 및 환율
+        const curr = item.currency || 'KRW';
+        if ($('inpCurrency')) $('inpCurrency').value = curr;
+        if (curr !== 'KRW') {
+            if ($('inpExchangeRate')) $('inpExchangeRate').value = item.exchange_rate || this.defaultRates[curr] || '';
+            const fBuy = (item.foreign_buy_price > 0) ? item.foreign_buy_price : (item.buy_price && item.exchange_rate ? (item.buy_price / item.exchange_rate) : '');
+            const fSell = (item.foreign_sell_price > 0) ? item.foreign_sell_price : (item.sell_price && item.exchange_rate ? (item.sell_price / item.exchange_rate) : '');
+            $('inpBuyPrice').value = fBuy ? parseFloat(Number(fBuy).toFixed(2)) : '';
+            $('inpSellPrice').value = fSell ? parseFloat(Number(fSell).toFixed(2)) : '';
+        } else {
+            if ($('inpExchangeRate')) $('inpExchangeRate').value = '';
+            $('inpBuyPrice').value = item.buy_price || '';
+            $('inpSellPrice').value = item.sell_price || '';
+        }
+        this.onCurrencyChange();
+
+        // 운임 조건 및 지역
+        const isFreight = (item.freight_type === '하차도') || item.is_freight_included === 1 || item.is_freight_included === true || (item.note && item.note.includes('[운임포함]'));
+        if (isFreight) {
+            if ($('freightTypeIn')) $('freightTypeIn').checked = true;
+            this.onFreightTypeChange('하차도');
+        } else {
+            if ($('freightTypeEx')) $('freightTypeEx').checked = true;
+            this.onFreightTypeChange('상차도');
+        }
+        this.setFreightRegion(item.freight_region || '전국');
+
         $('inpSupplier').value = item.default_supplier || '';
         $('inpDestination').value = item.default_destination || '';
         $('inpNote').value = (item.note || '').replace(/\[운임포함\]/g, '').trim();
@@ -934,10 +1083,28 @@ const app = {
     },
 
     calcModalMargin: function() {
-        const buy = parseFloat($('inpBuyPrice').value) || 0;
-        const sell = parseFloat($('inpSellPrice').value) || 0;
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const rawBuy = parseFloat($('inpBuyPrice') ? $('inpBuyPrice').value : 0) || 0;
+        const rawSell = parseFloat($('inpSellPrice') ? $('inpSellPrice').value : 0) || 0;
         const container = $('modalMarginCalc');
         if (!container) return;
+
+        let buy = rawBuy;
+        let sell = rawSell;
+
+        if (curr !== 'KRW') {
+            const rate = parseFloat($('inpExchangeRate') ? $('inpExchangeRate').value : 0) || 0;
+            const krwBuy = (rate > 0 && rawBuy > 0) ? Math.round(rawBuy * rate) : 0;
+            const krwSell = (rate > 0 && rawSell > 0) ? Math.round(rawSell * rate) : 0;
+
+            const prevBuy = $('previewConvertedBuy');
+            const prevSell = $('previewConvertedSell');
+            if (prevBuy) prevBuy.innerText = `₩${krwBuy.toLocaleString()}`;
+            if (prevSell) prevSell.innerText = `₩${krwSell.toLocaleString()}`;
+
+            buy = krwBuy;
+            sell = krwSell;
+        }
 
         if (sell > 0 && buy > 0) {
             const diff = sell - buy;
@@ -958,30 +1125,55 @@ const app = {
     handleSavePrice: async function(e) {
         e.preventDefault();
         const editId = $('editId').value;
-        const isFreight = $('inpFreightIncluded') && $('inpFreightIncluded').checked ? 1 : 0;
-        let noteVal = $('inpNote').value.trim();
-        if (isFreight && !noteVal.includes('[운임포함]')) {
-            noteVal = (noteVal ? noteVal + ' ' : '') + '[운임포함]';
-        } else if (!isFreight && noteVal.includes('[운임포함]')) {
-            noteVal = noteVal.replace(/\[운임포함\]/g, '').trim();
+        const curr = $('inpCurrency') ? $('inpCurrency').value : 'KRW';
+        const isFreightIn = $('freightTypeIn') && $('freightTypeIn').checked;
+        const freightType = isFreightIn ? '하차도' : '상차도';
+        const freightRegion = isFreightIn ? (($('inpFreightRegion') ? $('inpFreightRegion').value.trim() : '') || '전국') : '';
+
+        const rate = (curr !== 'KRW') ? (parseFloat($('inpExchangeRate') ? $('inpExchangeRate').value : 0) || 0) : 1;
+        const inputBuy = parseFloat($('inpBuyPrice') ? $('inpBuyPrice').value : 0) || 0;
+        const inputSell = parseFloat($('inpSellPrice') ? $('inpSellPrice').value : 0) || 0;
+
+        let buyKrw = inputBuy;
+        let sellKrw = inputSell;
+        let foreignBuy = 0;
+        let foreignSell = 0;
+
+        if (curr !== 'KRW') {
+            foreignBuy = inputBuy;
+            foreignSell = inputSell;
+            buyKrw = (rate > 0 && inputBuy > 0) ? Math.round(inputBuy * rate) : 0;
+            sellKrw = (rate > 0 && inputSell > 0) ? Math.round(inputSell * rate) : 0;
         }
 
+        let noteVal = $('inpNote') ? $('inpNote').value.trim() : '';
+
         const payload = {
-            item: $('inpItem').value.trim(),
-            spec: $('inpSpec').value.trim(),
-            category: $('inpCategory').value.trim(),
-            unit: $('inpUnit').value.trim(),
-            currency: $('inpCurrency').value || 'KRW',
-            buy_price: parseFloat($('inpBuyPrice').value) || 0,
-            sell_price: parseFloat($('inpSellPrice').value) || 0,
-            default_supplier: $('inpSupplier').value.trim(),
-            default_destination: $('inpDestination').value.trim(),
-            note: noteVal,
-            is_freight_included: isFreight
+            item: $('inpItem') ? $('inpItem').value.trim() : '',
+            spec: $('inpSpec') ? $('inpSpec').value.trim() : '',
+            category: $('inpCategory') ? $('inpCategory').value.trim() : '',
+            unit: $('inpUnit') ? $('inpUnit').value.trim() : '',
+            price_type: $('inpPriceType') ? $('inpPriceType').value : '견적가',
+            currency: curr,
+            exchange_rate: (curr !== 'KRW') ? rate : 1,
+            foreign_buy_price: foreignBuy,
+            foreign_sell_price: foreignSell,
+            buy_price: buyKrw,
+            sell_price: sellKrw,
+            freight_type: freightType,
+            freight_region: freightRegion,
+            is_freight_included: isFreightIn ? 1 : 0,
+            default_supplier: $('inpSupplier') ? $('inpSupplier').value.trim() : '',
+            default_destination: $('inpDestination') ? $('inpDestination').value.trim() : '',
+            note: noteVal
         };
 
         if (!payload.item) {
             alert('품목명은 필수 입력 항목입니다.');
+            return;
+        }
+        if (curr !== 'KRW' && rate <= 0) {
+            alert('외화 거래 시 유효한 환율(1외화당 원화)을 입력해주세요.');
             return;
         }
 
@@ -1758,7 +1950,7 @@ const app = {
             if (analyzedItems.length === 0) {
                 rowsHtml = `
                     <tr>
-                        <td colspan="11" class="text-center py-4 text-muted">
+                        <td colspan="12" class="text-center py-4 text-muted">
                             이 섹션에 담긴 품목이 없습니다. [품목별 단가표]에서 항목을 체크하여 이 섹션으로 담아보세요.
                         </td>
                     </tr>
@@ -1770,6 +1962,44 @@ const app = {
                     const sell = it.sell_price || 0;
                     const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
                     const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
+
+                    // 단가구분 뱃지
+                    const pt = it.price_type || '견적가';
+                    let ptBadgeClass = 'badge-pt-quote';
+                    if (pt === '계약가') ptBadgeClass = 'badge-pt-contract';
+                    else if (pt === '일시가') ptBadgeClass = 'badge-pt-spot';
+                    else if (pt === '표준가') ptBadgeClass = 'badge-pt-std';
+
+                    // 외화 및 환율 버튼 표기
+                    const isForeign = it.currency && it.currency !== 'KRW';
+                    const currSymbol = this.currencySymbols[it.currency] || '$';
+                    const fBuy = it.foreign_buy_price || 0;
+                    const rate = it.exchange_rate || 0;
+
+                    let buyCellHtml = '';
+                    if (isForeign && fBuy > 0) {
+                        buyCellHtml = `
+                            <div class="d-flex flex-column align-items-end">
+                                <span class="${isBest ? 'text-success fw-bold' : 'fw-bold text-dark'}" style="font-size: 11.5px;">
+                                    ${currSymbol}${parseFloat(fBuy).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </span>
+                                <div class="d-flex align-items-center gap-1 mt-0">
+                                    <span class="text-muted" style="font-size: 10px;">(₩${buy ? buy.toLocaleString() : '0'})</span>
+                                    <button type="button" class="rate-badge-btn" 
+                                            onclick="app.openEditRateModal(${it.id}, ${rate}, '${it.currency}', '${escapeHtml(it.item)}', ${fBuy})" 
+                                            title="클릭하여 이 품목의 비교 환율 수정 (단가표 마스터는 불변)">
+                                        <i class='bx bx-edit'></i> @${rate.toLocaleString()}원
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        buyCellHtml = `
+                            <span class="${isBest ? 'text-success fw-bold' : 'fw-semibold text-dark'}">
+                                ${buy ? `₩${buy.toLocaleString()}` : '-'}
+                            </span>
+                        `;
+                    }
 
                     // 환산 단가 컬럼 렌더링
                     let normHtml = '<span class="text-muted small">-</span>';
@@ -1792,7 +2022,10 @@ const app = {
                         `;
                     }
 
-                    const freightIn = it.is_freight_included === 1 || it.is_freight_included === true;
+                    const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+                    const freightBadge = isFreightIn
+                        ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}</span>`
+                        : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도</span>`;
 
                     rowsHtml += `
                         <tr class="${isBest ? 'row-best-price' : ''}">
@@ -1801,6 +2034,9 @@ const app = {
                                     <span class="badge ${isBest ? 'bg-success' : 'bg-secondary'}" style="font-size: 10px;">후보 ${cIdx + 1}</span>
                                     ${isBest ? '<i class="bx bx-check-circle text-success fs-6" title="최저가 추천 품목"></i>' : ''}
                                 </div>
+                            </td>
+                            <td class="text-center">
+                                <span class="${ptBadgeClass}">${escapeHtml(pt)}</span>
                             </td>
                             <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(it.item)}">
                                 ${escapeHtml(it.item)}
@@ -1812,17 +2048,13 @@ const app = {
                                 <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
                             </td>
                             <td class="text-end pe-2">
-                                <span class="${isBest ? 'text-success fw-bold' : 'fw-semibold text-dark'}">
-                                    ${buy ? `₩${buy.toLocaleString()}` : '-'}
-                                </span>
+                                ${buyCellHtml}
                             </td>
                             <td class="text-end pe-2">
                                 ${normHtml}
                             </td>
                             <td class="text-center">
-                                ${freightIn 
-                                    ? `<span class="badge-freight-in"><i class='bx bx-check-circle'></i> 도착도 (운임포함)</span>`
-                                    : `<span class="badge-freight-ex"><i class='bx bx-box'></i> 상차도 (운임별도)</span>`}
+                                ${freightBadge}
                             </td>
                             <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_destination || '')}">
                                 <span>${escapeHtml(it.default_destination || '-')}</span>
@@ -1874,13 +2106,14 @@ const app = {
                             <table class="quote-compare-table w-100">
                                 <thead>
                                     <tr>
-                                        <th style="width: 75px;">구분</th>
+                                        <th style="width: 75px;">후보</th>
+                                        <th style="width: 70px;">단가구분</th>
                                         <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
                                         <th style="width: 120px;" class="text-start ps-2">규격</th>
                                         <th style="width: 130px;" class="text-start ps-2">공급업체(주 매입처)</th>
-                                        <th style="width: 105px;" class="text-end pe-2">기준 매입단가</th>
+                                        <th style="width: 135px;" class="text-end pe-2">기준 매입단가(환율)</th>
                                         <th style="width: 140px;" class="text-end pe-2" title="포장단위별(kg, L) 동일 환산 기준단가">환산단가(가성비)</th>
-                                        <th style="width: 120px;">운임조건</th>
+                                        <th style="width: 130px;">운임조건</th>
                                         <th style="width: 130px;" class="text-start ps-2">주 매출처(기준매출)</th>
                                         <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
                                         <th class="text-start ps-2">비고</th>
@@ -1911,6 +2144,79 @@ const app = {
         });
 
         container.innerHTML = html;
+    },
+
+    // ─────────────────────────────────────────
+    // 견적 비교 테이블 내 환율 간편 수정 모달 메서드
+    // ─────────────────────────────────────────
+    openEditRateModal: function(itemId, currentRate, currency, itemName, foreignPrice) {
+        if (!$('editRateModal')) return;
+        $('editRateItemId').value = itemId;
+        $('editRateItemName').innerText = itemName || '-';
+        this.currentEditRateCurrency = currency || 'USD';
+        this.currentEditRateForeignPrice = parseFloat(foreignPrice) || 0;
+
+        const sym = this.currencySymbols[currency] || '$';
+        $('editRateForeignPrice').innerText = `${sym}${this.currentEditRateForeignPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+        const rate = currentRate || this.defaultRates[currency] || 1350;
+        $('inpEditRateValue').value = rate;
+
+        const label = $('editRateInputLabel');
+        if (label) {
+            if (currency === 'JPY') {
+                label.innerText = '적용 환율 (1 JPY당 원화, 예: 100엔=900원이면 9.0)';
+            } else {
+                label.innerText = `적용 환율 (1 ${currency}당 원화)`;
+            }
+        }
+
+        this.calcEditRatePreview();
+
+        if (!this.editRateModalInstance && window.bootstrap) {
+            this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
+        }
+        if (this.editRateModalInstance) {
+            this.editRateModalInstance.show();
+            setTimeout(() => {
+                const inp = $('inpEditRateValue');
+                if (inp) { inp.focus(); inp.select(); }
+            }, 200);
+        }
+    },
+
+    calcEditRatePreview: function() {
+        const rate = parseFloat($('inpEditRateValue') ? $('inpEditRateValue').value : 0) || 0;
+        const fPrice = this.currentEditRateForeignPrice || 0;
+        const krw = (rate > 0 && fPrice > 0) ? Math.round(rate * fPrice) : 0;
+        const el = $('editRateConvertedPreview');
+        if (el) el.innerText = `₩${krw.toLocaleString()}`;
+    },
+
+    submitEditRate: async function() {
+        const itemId = $('editRateItemId') ? $('editRateItemId').value : null;
+        const newRate = parseFloat($('inpEditRateValue') ? $('inpEditRateValue').value : 0) || 0;
+        if (!itemId || newRate <= 0) {
+            alert('유효한 환율을 입력해주세요.');
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-items/${itemId}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    exchange_rate: newRate
+                })
+            });
+
+            if (this.editRateModalInstance) {
+                this.editRateModalInstance.hide();
+            }
+
+            await this.loadQuoteSections();
+        } catch (err) {
+            alert('환율 변경 실패: ' + err.message);
+        }
     },
 
     printExecutiveReport: function() {
@@ -1976,7 +2282,20 @@ const app = {
                 const sell = it.sell_price || 0;
                 const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
                 const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
-                const freightStr = (it.is_freight_included === 1 || it.is_freight_included === true) ? '도착도 (운임포함)' : '상차도 (운임별도)';
+                
+                const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+                const freightStr = isFreightIn 
+                    ? `하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}` 
+                    : '상차도';
+
+                const pt = it.price_type || '견적가';
+                const isForeign = it.currency && it.currency !== 'KRW';
+                const currSym = this.currencySymbols[it.currency] || '$';
+
+                let buyStr = buy ? `₩${buy.toLocaleString()}` : '-';
+                if (isForeign && it.foreign_buy_price > 0) {
+                    buyStr = `${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2})}<br><span style="font-size: 8pt; color: #64748b;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</span>`;
+                }
 
                 let normStr = '-';
                 if (it.norm) {
@@ -1989,11 +2308,11 @@ const app = {
 
                 rows += `
                     <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
-                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' ★' : ''}</td>
+                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' ★' : ''}<br><span style="font-size: 8pt; color: #475569;">[${escapeHtml(pt)}]</span></td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.item)}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.spec || '-')}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>
-                        <td style="text-align: right; padding-right: 6px;">${buy ? `₩${buy.toLocaleString()}` : '-'}</td>
+                        <td style="text-align: right; padding-right: 6px;">${buyStr}</td>
                         <td style="text-align: right; padding-right: 6px;">${normStr}</td>
                         <td style="text-align: center;">${freightStr}</td>
                         <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_destination || '-')}${sell ? ` (₩${sell.toLocaleString()})` : ''}</td>
@@ -2013,11 +2332,11 @@ const app = {
                     <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
                         <thead>
                             <tr style="background: #f1f5f9; border-bottom: 2px solid #0f172a;">
-                                <th style="width: 60px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
+                                <th style="width: 70px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
                                 <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">품목명</th>
                                 <th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">규격</th>
                                 <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">공급업체(주 매입처)</th>
-                                <th style="width: 95px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가</th>
+                                <th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가(환율)</th>
                                 <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">환산단가(가성비)</th>
                                 <th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px;">운임조건</th>
                                 <th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">주 매출처(기준매출)</th>
