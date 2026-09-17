@@ -1084,10 +1084,11 @@ const app = {
                         </select>
                     </td>
                     <td class="align-middle">
-                        <input type="text" class="form-control form-control-sm fw-bold text-dark" id="gridItem_${idx}" 
+                        <input type="text" class="form-control form-control-sm fw-bold text-dark grid-item-input" id="gridItem_${idx}" 
                             list="modalItemDatalist" 
                             value="${escapeHtml(row.item || '')}" 
-                            placeholder="품목명 입력" 
+                            title="${escapeHtml(row.item || '')}" 
+                            placeholder="품목명 입력 (예: STS304 심리스 파이프)" 
                             oninput="app.onGridItemInput(${idx}, this.value)" 
                             autocomplete="off">
                     </td>
@@ -1098,7 +1099,7 @@ const app = {
                     </td>
                     <td class="align-middle">
                         <input type="text" class="form-control form-control-sm text-center" id="gridUnit_${idx}" 
-                            value="${escapeHtml(row.unit)}" placeholder="단위" style="width: 55px;" 
+                            value="${escapeHtml(row.unit)}" placeholder="단위" style="width: 50px;" 
                             oninput="app.updateModalRow(${idx}, 'unit', this.value)">
                     </td>
                     <td class="align-middle">
@@ -1120,7 +1121,7 @@ const app = {
                     </td>
                     <td class="align-middle">
                         <div class="d-flex align-items-center gap-1">
-                            <select class="form-select form-select-sm" style="width: 78px;" 
+                            <select class="form-select form-select-sm" style="width: 84px; min-width: 84px;" 
                                 onchange="app.onGridFreightTypeChange(${idx}, this.value)">
                                 <option value="상차도" ${row.freight_type === '상차도' ? 'selected' : ''}>상차도</option>
                                 <option value="하차도" ${row.freight_type === '하차도' ? 'selected' : ''}>하차도</option>
@@ -1128,7 +1129,7 @@ const app = {
                             <input type="text" class="form-control form-control-sm ${row.freight_type === '하차도' ? '' : 'd-none'}" 
                                 id="gridFreightRegion_${idx}" 
                                 value="${escapeHtml(row.freight_region || '전국')}" 
-                                placeholder="도착지(예:화성)" style="width: 105px;" 
+                                placeholder="도착지(예:화성)" style="width: 110px;" 
                                 oninput="app.updateModalRow(${idx}, 'freight_region', this.value)">
                         </div>
                     </td>

@@ -1447,19 +1447,33 @@ body {
 /* ==========================================================================
    10. 마스터-디테일 모달 그리드 인라인 시트 스타일
    ========================================================================== */
+#priceModal .modal-dialog {
+    max-width: 1440px !important;
+    width: 95vw !important;
+    margin: 1.25rem auto;
+}
 #modalGridTable td {
     padding: 2px 4px !important;
     vertical-align: middle;
     height: 30px;
 }
-#modalGridTable input.form-control,
-#modalGridTable select.form-select {
+#modalGridTable input.form-control {
     height: 25px !important;
-    padding: 2px 5px !important;
+    padding: 2px 6px !important;
     font-size: 11px !important;
     border-radius: 2px;
     border-color: #cbd5e1;
     background-color: #ffffff;
+}
+#modalGridTable select.form-select {
+    height: 25px !important;
+    padding: 2px 18px 2px 6px !important;
+    font-size: 11px !important;
+    border-radius: 2px;
+    border-color: #cbd5e1;
+    background-color: #ffffff;
+    background-position: right 4px center !important;
+    background-size: 10px 8px !important;
 }
 #priceModal .form-control:focus,
 #priceModal .form-select:focus {
