@@ -957,7 +957,57 @@ router.put('/unit-prices/:id', async (req, res) => {
             id
         ]);
 
-        res.json({ message: '단가 수정이 완료되었습니다.' });
+        // ── 견적 비교 테이블(logistics_quote_items) 동기화 (방안 A) ──
+        const newItemName = (item || existing.item).trim();
+        const newSpec = (spec !== undefined ? spec : existing.spec).trim();
+        const newCategory = category !== undefined ? category : existing.category;
+        const newUnit = unit !== undefined ? unit : existing.unit;
+        const newSupplier = default_supplier !== undefined ? (default_supplier || '').trim() : existing.default_supplier;
+        const newDestination = default_destination !== undefined ? default_destination : existing.default_destination;
+        const newNote = note !== undefined ? note : existing.note;
+
+        // 1) unit_price_id로 매칭되는 견적 비교 항목 동시 갱신
+        const quoteUpdateResult = await dbRun(`
+            UPDATE logistics_quote_items
+            SET item = ?, spec = ?, category = ?, unit = ?, currency = ?,
+                buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
+                is_freight_included = ?, note = ?, price_type = ?, exchange_rate = ?,
+                foreign_buy_price = ?, foreign_sell_price = ?, freight_type = ?, freight_region = ?
+            WHERE unit_price_id = ?
+        `, [
+            newItemName, newSpec, newCategory, newUnit, curr,
+            newBuy, newSell, newSupplier, newDestination,
+            isFreightInt, newNote, finalPriceType, rate,
+            fBuy, fSell, finalFreightType, finalFreightRegion,
+            id
+        ]);
+
+        let syncedCount = quoteUpdateResult && quoteUpdateResult.changes ? quoteUpdateResult.changes : 0;
+
+        // 2) 레거시 데이터 fallback (unit_price_id 미지정 건 품목명/규격/공급처 매칭)
+        if (syncedCount === 0) {
+            const fallbackResult = await dbRun(`
+                UPDATE logistics_quote_items
+                SET unit_price_id = ?, item = ?, spec = ?, category = ?, unit = ?, currency = ?,
+                    buy_price = ?, sell_price = ?, default_supplier = ?, default_destination = ?,
+                    is_freight_included = ?, note = ?, price_type = ?, exchange_rate = ?,
+                    foreign_buy_price = ?, foreign_sell_price = ?, freight_type = ?, freight_region = ?
+                WHERE (unit_price_id IS NULL OR unit_price_id = 0)
+                  AND item = ? AND spec = ? AND default_supplier = ?
+            `, [
+                id, newItemName, newSpec, newCategory, newUnit, curr,
+                newBuy, newSell, newSupplier, newDestination,
+                isFreightInt, newNote, finalPriceType, rate,
+                fBuy, fSell, finalFreightType, finalFreightRegion,
+                existing.item, existing.spec, existing.default_supplier
+            ]);
+            syncedCount = fallbackResult && fallbackResult.changes ? fallbackResult.changes : 0;
+        }
+
+        res.json({
+            message: '단가 수정이 완료되었습니다.',
+            syncedQuoteCount: syncedCount
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

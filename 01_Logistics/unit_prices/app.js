@@ -1364,6 +1364,7 @@ const app = {
         $('editId').value = '';
         this.currentEditId = null;
         if ($('btnModalDelete')) $('btnModalDelete').classList.add('d-none');
+        if ($('editQuoteInUseAlert')) $('editQuoteInUseAlert').classList.add('d-none');
 
         const toolbar = $('modalGridToolbar');
         if (toolbar) {
@@ -1406,6 +1407,30 @@ const app = {
         $('editId').value = item.id;
         this.currentEditId = id;
         if ($('btnModalDelete')) $('btnModalDelete').classList.remove('d-none');
+
+        // 견적 비교 테이블 포함 여부 사전 확인 및 배너 표시
+        const relatedSections = [];
+        (this.quoteSections || []).forEach(sec => {
+            const hasItem = (sec.items || []).some(it => 
+                (it.unit_price_id && String(it.unit_price_id) === String(id)) ||
+                (it.item === item.item && (it.spec || '') === (item.spec || '') && (it.default_supplier || '') === (item.default_supplier || ''))
+            );
+            if (hasItem) {
+                relatedSections.push(sec.section_name || `섹션 #${sec.id}`);
+            }
+        });
+
+        const alertEl = $('editQuoteInUseAlert');
+        const alertDesc = $('editQuoteInUseDesc');
+        if (alertEl && alertDesc) {
+            if (relatedSections.length > 0) {
+                alertEl.classList.remove('d-none');
+                const secListStr = relatedSections.map(s => `[${s}]`).join(', ');
+                alertDesc.innerHTML = `현재 견적 비교 테이블의 <strong>${secListStr}</strong> (${relatedSections.length}개 섹션)에 포함되어 있습니다.<br>여기서 단가나 스펙을 수정하시면 <strong>견적 비교 테이블의 해당 품목도 자동으로 함께 수정</strong>됩니다.`;
+            } else {
+                alertEl.classList.add('d-none');
+            }
+        }
 
         const toolbar = $('modalGridToolbar');
         if (toolbar) {
@@ -1551,11 +1576,77 @@ const app = {
                     note: (row.note || '').trim()
                 };
 
-                await authFetch(`${API_BASE}/unit-prices/${editId}`, {
+                // ── 견적 비교 테이블 등록 여부 확인 및 상세 경고창 ──
+                const existingItem = this.priceList.find(p => String(p.id) === String(editId));
+                const relatedSections = [];
+                if (existingItem) {
+                    (this.quoteSections || []).forEach(sec => {
+                        const hasItem = (sec.items || []).some(it => 
+                            (it.unit_price_id && String(it.unit_price_id) === String(editId)) ||
+                            (it.item === existingItem.item && (it.spec || '') === (existingItem.spec || '') && (it.default_supplier || '') === (existingItem.default_supplier || ''))
+                        );
+                        if (hasItem) {
+                            relatedSections.push(sec.section_name || `섹션 #${sec.id}`);
+                        }
+                    });
+                }
+
+                if (existingItem && relatedSections.length > 0) {
+                    const changes = [];
+                    if (existingItem.item !== rowItem) {
+                        changes.push(`품목명: '${existingItem.item}' → '${rowItem}'`);
+                    }
+                    if ((existingItem.spec || '').trim() !== (row.spec || '').trim()) {
+                        changes.push(`규격: '${existingItem.spec || '-'}' → '${(row.spec || '').trim() || '-'}'`);
+                    }
+                    if ((existingItem.default_supplier || '').trim() !== supplier) {
+                        changes.push(`주 매입처: '${existingItem.default_supplier || '-'}' → '${supplier || '-'}'`);
+                    }
+                    if (curr !== (existingItem.currency || 'KRW')) {
+                        changes.push(`통화: ${existingItem.currency || 'KRW'} → ${curr}`);
+                    }
+                    if (curr !== 'KRW' && (existingItem.foreign_buy_price || 0) !== foreignBuy) {
+                        changes.push(`외화 매입단가: ${(existingItem.foreign_buy_price || 0).toLocaleString()} → ${foreignBuy.toLocaleString()} ${curr}`);
+                    }
+                    if ((existingItem.buy_price || 0) !== buyKrw) {
+                        changes.push(`기준 매입단가: ${(existingItem.buy_price || 0).toLocaleString()}원 → ${buyKrw.toLocaleString()}원`);
+                    }
+                    if ((existingItem.sell_price || 0) !== sellKrw) {
+                        changes.push(`기준 매출단가: ${(existingItem.sell_price || 0).toLocaleString()}원 → ${sellKrw.toLocaleString()}원`);
+                    }
+                    const oldFreight = existingItem.freight_type || (existingItem.is_freight_included ? '하차도' : '상차도');
+                    const newFreight = row.freight_type || '상차도';
+                    if (oldFreight !== newFreight) {
+                        changes.push(`운임조건: ${oldFreight} → ${newFreight}`);
+                    }
+                    if (changes.length === 0) {
+                        changes.push('상세 정보(비고 및 기타 속성)');
+                    }
+
+                    const sectionNamesStr = relatedSections.map(s => `[${s}]`).join(', ');
+                    const changeListStr = changes.map(c => ` • ${c}`).join('\n');
+
+                    const confirmMsg = 
+                        `⚠️ [견적 비교 테이블 연동 안내]\n\n` +
+                        `해당 항목은 이미 견적 비교 테이블에서 사용 중인 항목입니다.\n\n` +
+                        `■ 등록된 비교 섹션 (${relatedSections.length}곳):\n   ${sectionNamesStr}\n\n` +
+                        `■ 변경 예정 내용:\n${changeListStr}\n\n` +
+                        `단가표에서 위 정보를 수정하면 견적 비교 테이블에서도 함께 수정됩니다.\n` +
+                        `계속하시겠습니까?`;
+
+                    if (!confirm(confirmMsg)) {
+                        return;
+                    }
+                }
+
+                const res = await authFetch(`${API_BASE}/unit-prices/${editId}`, {
                     method: 'PUT',
                     body: JSON.stringify(payload)
                 });
-                alert('기준단가가 성공적으로 수정되었습니다.');
+                const syncMsg = (res && res.syncedQuoteCount > 0)
+                    ? `\n(견적 비교 테이블 ${res.syncedQuoteCount}개 항목 함께 자동 반영 완료)`
+                    : '';
+                alert(`기준단가가 성공적으로 수정되었습니다.${syncMsg}`);
             } else {
                 // ── 다건 일괄 등록 모드 ──
                 const validRows = this.modalRows.filter(r => (r.item || '').trim().length > 0);
@@ -1677,6 +1768,7 @@ const app = {
 
             await this.loadPrices();
             await this.loadItemSpecs();
+            await this.loadQuoteSections();
         } catch (err) {
             alert('저장 실패: ' + err.message);
         }
@@ -1686,7 +1778,23 @@ const app = {
         const item = this.priceList.find(p => p.id === id);
         if (!item) return;
 
-        if (!confirm(`[${item.item} (${item.spec || '규격없음'}) / ${item.default_supplier || '공급처미지정'}] 단가 마스터를 삭제하시겠습니까?\n이 품목의 가격 변동 이력도 함께 삭제됩니다.`)) {
+        const relatedSections = [];
+        (this.quoteSections || []).forEach(sec => {
+            const hasItem = (sec.items || []).some(it => 
+                (it.unit_price_id && String(it.unit_price_id) === String(id)) ||
+                (it.item === item.item && (it.spec || '') === (item.spec || '') && (it.default_supplier || '') === (item.default_supplier || ''))
+            );
+            if (hasItem) {
+                relatedSections.push(sec.section_name || `섹션 #${sec.id}`);
+            }
+        });
+
+        let quoteNote = '';
+        if (relatedSections.length > 0) {
+            quoteNote = `\n\n⚠️ 참고: 현재 견적 비교 테이블의 [${relatedSections.join(', ')}] 섹션에 등록되어 있습니다.\n단가표에서 삭제하더라도 견적 비교 테이블에 등록된 비교 견적 데이터는 보존됩니다.`;
+        }
+
+        if (!confirm(`[${item.item} (${item.spec || '규격없음'}) / ${item.default_supplier || '공급처미지정'}] 단가 마스터를 삭제하시겠습니까?\n이 품목의 가격 변동 이력도 함께 삭제됩니다.${quoteNote}`)) {
             return;
         }
 
