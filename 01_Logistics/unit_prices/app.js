@@ -2467,8 +2467,11 @@ const app = {
                 alert('검토서 데이터를 불러올 수 없습니다.');
                 return;
             }
-            // 작업대 변경 없이 주어진 프로젝트 데이터로 바로 인쇄 실행
-            this.printExecutiveReportFromData(res.project, res.sections);
+            if (this.quoteArchiveModalInstance) {
+                this.quoteArchiveModalInstance.hide();
+            }
+            // 작업대 변경 없이 보관함 데이터 맞춤 설정 모달 열기
+            this.openArchivePrintOptionModal(res.project, res.sections);
         } catch (err) {
             alert('인쇄 준비 실패: ' + err.message);
         }
@@ -3531,6 +3534,17 @@ const app = {
 
     openPrintOptionModal: function(singleSecId = null) {
         this.printTargetSecId = singleSecId;
+        this.printArchiveData = null; // 작업대 인쇄 모드로 초기화
+
+        // 인쇄 범위 라디오 버튼 작업대 모드로 복원
+        if ($('printScopeSelected')) {
+            $('printScopeSelected').disabled = false;
+            $('printScopeSelected').checked = true;
+        }
+        if ($('printScopeAll')) {
+            $('printScopeAll').disabled = false;
+        }
+
         this.updateQuoteSelectionBadges();
         this.loadPrintColumnSettings();
         this.updatePrintPresetUI();
@@ -3541,8 +3555,45 @@ const app = {
                 const sec = (this.quoteSections || []).find(s => s.id === singleSecId);
                 modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> [${sec ? escapeHtml(sec.section_name) : ''}] 섹션 인쇄 맞춤 설정`;
             } else {
-                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> 견적 비교 보고서 인쇄 맞춤 설정 (전체 대상)`;
+                modalTitle.innerHTML = `<i class='bx bx-printer text-primary me-1'></i> 견적 비교 보고서 인쇄 맞춤 설정 (작업대 대상)`;
             }
+        }
+
+        if (!this.printOptionModalInstance && window.bootstrap) {
+            this.printOptionModalInstance = new bootstrap.Modal($('printOptionModal'));
+        }
+        if (this.printOptionModalInstance) {
+            this.printOptionModalInstance.show();
+        }
+    },
+
+    openArchivePrintOptionModal: function(project, sections) {
+        this.printTargetSecId = null;
+        this.printArchiveData = { project, sections }; // 보관함 인쇄 모드로 데이터 기억
+
+        // 보관함 내 전체 품목 수 계산
+        let totalItems = 0;
+        (sections || []).forEach(sec => {
+            totalItems += (sec.items || []).length;
+        });
+
+        // 인쇄 범위: 보관함 문서는 전체 출력으로 지정
+        if ($('printScopeAll')) {
+            $('printScopeAll').disabled = false;
+            $('printScopeAll').checked = true;
+        }
+        if ($('printScopeSelected')) {
+            $('printScopeSelected').disabled = true;
+        }
+        if ($('modalPrintTotalCount')) $('modalPrintTotalCount').innerText = totalItems;
+        if ($('modalPrintSelectedCount')) $('modalPrintSelectedCount').innerText = totalItems;
+
+        this.loadPrintColumnSettings();
+        this.updatePrintPresetUI();
+
+        const modalTitle = $('printOptionModalLabel');
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class='bx bx-printer text-success me-1'></i> [보관함: ${escapeHtml(project.title || '검토서')}] 인쇄 맞춤 설정`;
         }
 
         if (!this.printOptionModalInstance && window.bootstrap) {
@@ -3688,11 +3739,22 @@ const app = {
             this.printOptionModalInstance.hide();
         }
 
-        this.printExecutiveReport({
-            scope: scope,
-            targetSecId: this.printTargetSecId,
-            columns: columns
-        });
+        if (this.printArchiveData) {
+            const archiveData = this.printArchiveData;
+            this.printArchiveData = null; // 인쇄 후 초기화
+            this.printExecutiveReport({
+                scope: 'all',
+                columns: columns,
+                customSections: archiveData.sections,
+                customProject: archiveData.project
+            });
+        } else {
+            this.printExecutiveReport({
+                scope: scope,
+                targetSecId: this.printTargetSecId,
+                columns: columns
+            });
+        }
     },
 
     printExecutiveReportFromData: function(project, sections) {
