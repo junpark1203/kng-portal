@@ -1969,9 +1969,13 @@ function generatePrintTemplate(opts) {
                 sumHtml += `<tr>${row.innerHTML}</tr>`;
                 return;
             }
+            // 인쇄 시 불필요한 드래그 핸들(6개 점) 및 토글 화살표 아이콘 제거
+            const cleanNo = cells[0].innerHTML.replace(/<i[^>]*bx-grid-vertical[^>]*><\/i>/gi, '').trim();
+            const cleanLabel = cells[1].innerHTML.replace(/<i[^>]*bx-chevron-(down|up)[^>]*><\/i>/gi, '').trim();
+
             sumHtml += `<tr>`;
-            sumHtml += `<td class="text-center">${cells[0].innerHTML}</td>`;
-            sumHtml += `<td>${cells[1].innerHTML}</td>`;
+            sumHtml += `<td class="text-center">${cleanNo}</td>`;
+            sumHtml += `<td>${cleanLabel}</td>`;
             if (opts.includeEstimate) sumHtml += `<td class="text-right">${cells[2].innerHTML}</td>`;
             if (opts.includeActual) sumHtml += `<td class="text-right">${cells[3].innerHTML}</td>`;
             if (opts.includeEstimate && opts.includeActual) sumHtml += `<td class="text-right">${cells[4].innerHTML}</td>`;
@@ -2260,11 +2264,12 @@ function generatePrintTemplate(opts) {
 
     // 7. Remarks
     if (opts.showRemarks) {
+        const safeRemarks = escapeHtml(d.remarks || "").replace(/\r?\n/g, "<br>");
         html += `
         <div class="print-section">
             <h2 class="section-title">특이사항 및 비고</h2>
-            <div class="print-remarks">
-                ${(d.remarks || "").replace(/\\n/g, "<br>")}
+            <div class="print-remarks" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6;">
+                ${safeRemarks || '-(특이사항 없음)-'}
             </div>
         </div>`;
     }

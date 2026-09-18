@@ -722,6 +722,17 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
         padding: 10px;
         min-height: 80px;
         font-size: 12px;
+        white-space: pre-wrap !important;
+        word-break: break-word;
+        line-height: 1.6;
+    }
+
+    /* 인쇄 시 드래그 핸들(6개 점 아이콘) 및 아코디언 토글 화살표 숨김 */
+    .bx-grid-vertical,
+    .drag-handle,
+    .bx-chevron-down,
+    .bx-chevron-up {
+        display: none !important;
     }
     
     /* Ensure no weird colors leak through */
