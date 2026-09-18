@@ -79,6 +79,12 @@
 input, button, select, textarea {
     font-family: inherit;
 }
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -95,10 +101,12 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     font-family: 'Manrope', 'Inter', sans-serif;
 }
 
-/* ???? Layout Shell ???? */
+/* ──── Layout Shell ──── */
 .app-container {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
 }
 
 /* ════════════════════════════════════════════
@@ -106,6 +114,9 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
    ════════════════════════════════════════════ */
 .sidebar {
     width: 230px;
+    height: 100%;
+    max-height: 100vh;
+    overflow: hidden;
     background: var(--sidebar-bg);
     background-color: var(--sidebar-bg-solid);
     display: flex;
@@ -419,7 +430,9 @@ h1, h2, h3, .brand-font, .page-title, .modal-header h3 {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    height: 100%;
+    max-height: 100vh;
+    overflow: hidden;
     min-width: 0;
 }
 
@@ -1879,6 +1892,7 @@ th.sortable.active.asc i {
    ?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름?癒λ름 */
 .iframe-container {
     flex: 1;
+    height: calc(100% - 48px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1887,6 +1901,7 @@ th.sortable.active.asc i {
 
 .iframe-container iframe {
     width: 100%;
+    height: 100%;
     flex: 1;
     min-height: 0;
     border: none;

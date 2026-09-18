@@ -2754,7 +2754,7 @@ const app = {
         }
         if (this.newSectionModalInstance) {
             this.newSectionModalInstance.show();
-            setTimeout(() => { if (inp) inp.focus(); }, 200);
+            setTimeout(() => { if (inp) inp.focus({ preventScroll: true }); }, 200);
         }
     },
 
@@ -2806,7 +2806,7 @@ const app = {
             this.editSectionNameModalInstance.show();
             setTimeout(() => {
                 if (inp) {
-                    inp.focus();
+                    inp.focus({ preventScroll: true });
                     inp.select();
                 }
             }, 200);
