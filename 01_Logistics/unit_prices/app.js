@@ -2330,9 +2330,16 @@ const app = {
             unit: p.unit,
             buy_price: p.buy_price || 0,
             sell_price: p.sell_price || 0,
+            currency: p.currency || 'KRW',
+            exchange_rate: parseFloat(p.exchange_rate) || 1.0,
+            foreign_buy_price: parseFloat(p.foreign_buy_price) || 0,
+            foreign_sell_price: parseFloat(p.foreign_sell_price) || 0,
+            price_type: p.price_type || '견적가',
             default_supplier: p.default_supplier,
             default_destination: p.default_destination,
-            is_freight_included: (p.is_freight_included === 1 || p.is_freight_included === true || (p.note && p.note.includes('[운임포함]'))) ? 1 : 0,
+            freight_type: p.freight_type || ((p.is_freight_included === 1 || p.is_freight_included === true || (p.note && p.note.includes('[운임포함]'))) ? '하차도' : '상차도'),
+            freight_region: p.freight_region || '',
+            is_freight_included: (p.is_freight_included === 1 || p.is_freight_included === true || p.freight_type === '하차도' || (p.note && p.note.includes('[운임포함]'))) ? 1 : 0,
             note: p.note
         }));
 
@@ -3134,7 +3141,6 @@ const app = {
         };
 
         const today = new Date().toISOString().split('T')[0];
-        const docNo = `KNG-EST-${today.replace(/-/g, '')}-01`;
 
         let sectionsToPrint = this.quoteSections;
         if (targetSecId) {
@@ -3144,6 +3150,7 @@ const app = {
         let sectionsHtml = '';
         let validSectionsCount = 0;
         let totalPrintedItemCount = 0;
+        const executiveSummaryItems = [];
 
         sectionsToPrint.forEach((sec, idx) => {
             let items = sec.items || [];
@@ -3158,48 +3165,72 @@ const app = {
             validSectionsCount++;
             totalPrintedItemCount += items.length;
 
-            const analyzed = items.map(it => ({
-                ...it,
-                norm: this.parseUnitNormalize(it.spec, it.buy_price)
-            }));
+            // 외화 정보 누락 보정 (unit_price_id로 마스터 단가표 priceList 매핑)
+            const analyzed = items.map(it => {
+                let curr = it.currency || 'KRW';
+                let exRate = parseFloat(it.exchange_rate) || 1.0;
+                let fBuy = parseFloat(it.foreign_buy_price) || 0;
+                let fSell = parseFloat(it.foreign_sell_price) || 0;
+                let pt = it.price_type || '견적가';
+                let freightType = it.freight_type || (it.is_freight_included ? '하차도' : '상차도');
+                let freightRegion = it.freight_region || '';
 
+                if ((!fBuy || curr === 'KRW') && it.unit_price_id && Array.isArray(this.priceList)) {
+                    const master = this.priceList.find(p => p.id === it.unit_price_id);
+                    if (master) {
+                        if (master.currency && master.currency !== 'KRW') {
+                            curr = master.currency;
+                            exRate = parseFloat(master.exchange_rate) || exRate;
+                            fBuy = parseFloat(master.foreign_buy_price) || fBuy;
+                            fSell = parseFloat(master.foreign_sell_price) || fSell;
+                        }
+                        if (master.price_type) pt = master.price_type;
+                        if (master.freight_type) freightType = master.freight_type;
+                        if (master.freight_region) freightRegion = master.freight_region;
+                    }
+                }
+
+                const norm = this.parseUnitNormalize(it.spec, it.buy_price);
+                return {
+                    ...it,
+                    currency: curr,
+                    exchange_rate: exRate,
+                    foreign_buy_price: fBuy,
+                    foreign_sell_price: fSell,
+                    price_type: pt,
+                    freight_type: freightType,
+                    freight_region: freightRegion,
+                    norm: norm
+                };
+            });
+
+            // 공통 단위 판단 및 단위단가 기준 최저가순 오름차순 정렬
             const normUnits = analyzed.filter(it => it.norm && it.norm.unit).map(it => it.norm.unit);
             const commonUnit = (normUnits.length > 0 && normUnits.length === analyzed.length && normUnits.every(u => u === normUnits[0]))
                 ? normUnits[0]
                 : null;
 
-            let bestId = null;
-            let minVal = Infinity;
-            if (commonUnit) {
-                analyzed.forEach(it => {
-                    if (it.norm && it.norm.normPrice > 0 && it.norm.normPrice < minVal) {
-                        minVal = it.norm.normPrice;
-                        bestId = it.id;
-                    }
-                });
-            } else {
-                analyzed.forEach(it => {
-                    const b = it.buy_price || 0;
-                    if (b > 0 && b < minVal) {
-                        minVal = b;
-                        bestId = it.id;
-                    }
-                });
-            }
+            // 오름차순 정렬: 단위단가(normPrice) 기준 최저가부터 점점 비싸지는 순서로 배치
+            analyzed.sort((a, b) => {
+                const priceA = (commonUnit && a.norm && a.norm.normPrice > 0) ? a.norm.normPrice : (a.buy_price || Infinity);
+                const priceB = (commonUnit && b.norm && b.norm.normPrice > 0) ? b.norm.normPrice : (b.buy_price || Infinity);
+                return priceA - priceB;
+            });
 
-            const bestItem = analyzed.find(it => it.id === bestId);
-            let bestBadge = '';
-            if (bestItem && analyzed.length > 1) {
-                if (commonUnit && bestItem.norm) {
-                    bestBadge = `[최저단가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.norm.normPrice.toLocaleString()}/${commonUnit})]`;
-                } else if (bestItem.buy_price) {
-                    bestBadge = `[최저가 추천: ${escapeHtml(bestItem.item)} (₩${bestItem.buy_price.toLocaleString()}원)]`;
-                }
+            // 1위 최저가 품목 도출 (요약표 및 강조용)
+            const bestItem = analyzed[0];
+            if (bestItem) {
+                executiveSummaryItems.push({
+                    secIdx: validSectionsCount,
+                    sectionName: sec.section_name,
+                    item: bestItem,
+                    commonUnit: commonUnit
+                });
             }
 
             let rows = '';
             analyzed.forEach((it, cIdx) => {
-                const isBest = (it.id === bestId) && analyzed.length > 1;
+                const isBest = (cIdx === 0) && analyzed.length > 1;
                 const buy = it.buy_price || 0;
                 const sell = it.sell_price || 0;
                 const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
@@ -3210,13 +3241,12 @@ const app = {
                     ? `하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}` 
                     : '상차도';
 
-                const pt = it.price_type || '견적가';
                 const isForeign = it.currency && it.currency !== 'KRW';
                 const currSym = this.currencySymbols[it.currency] || '$';
 
                 let buyStr = buy ? `₩${buy.toLocaleString()}` : '-';
                 if (isForeign && it.foreign_buy_price > 0) {
-                    buyStr = `${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2})}<br><span style="font-size: 8pt; color: #64748b;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</span>`;
+                    buyStr = `<div style="font-weight: 700;">${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div><div style="font-size: 8pt; color: #475569;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</div>`;
                 }
 
                 let normStr = '-';
@@ -3224,46 +3254,50 @@ const app = {
                     normStr = `₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}`;
                     if (commonUnit && !isBest && bestItem && bestItem.norm && it.norm.normPrice > bestItem.norm.normPrice) {
                         const diffPct = Math.round(((it.norm.normPrice - bestItem.norm.normPrice) / bestItem.norm.normPrice) * 1000) / 10;
-                        normStr += ` (+${diffPct}%)`;
+                        normStr += ` <span style="color: #dc2626; font-size: 8pt; font-weight: normal;">(+${diffPct}%)</span>`;
                     }
                 }
 
+                // 1번 최저가 행은 굵은 테두리(2px) 및 은은한 그린 배경으로 강조
+                const bestRowStyle = isBest 
+                    ? 'background-color: #f0fdf4; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: bold;' 
+                    : '';
+
                 rows += `
-                    <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
-                        <td style="text-align: center;">후보 ${cIdx + 1}${isBest ? ' [최저]' : ''}<br><span style="font-size: 8pt; color: #475569;">[${escapeHtml(pt)}]</span></td>
-                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.item)}</td>
-                        <td style="text-align: left; padding-left: 6px;">${escapeHtml(it.spec || '-')}</td>
-                        ${cols.supplier ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
-                        ${cols.buyPrice ? `<td style="text-align: right; padding-right: 6px;">${buyStr}</td>` : ''}
-                        ${cols.normPrice ? `<td style="text-align: right; padding-right: 6px;">${normStr}</td>` : ''}
-                        ${cols.freight ? `<td style="text-align: center;">${freightStr}</td>` : ''}
-                        ${cols.destination ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.default_destination || '-')}${sell ? ` (₩${sell.toLocaleString()})` : ''}</td>` : ''}
-                        ${cols.margin ? `<td style="text-align: right; padding-right: 6px;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
-                        ${cols.note ? `<td style="text-align: left; padding-left: 6px;">${escapeHtml(it.note || '-')}</td>` : ''}
+                    <tr style="${bestRowStyle}">
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-left: 2px solid #0f172a;' : ''}">${cIdx + 1}</td>
+                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">${escapeHtml(it.item)}</td>
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.spec || '-')}</td>
+                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''}">${normStr}</td>` : ''}
+                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${freightStr}</td>` : ''}
+                        ${cols.destination ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_destination || '-')}${sell ? ` <span style="color:#2563eb;">(₩${sell.toLocaleString()})</span>` : ''}</td>` : ''}
+                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
+                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-right: 2px solid #0f172a;' : ''}">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
                 `;
             });
 
             sectionsHtml += `
                 <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
-                    <div style="background: #0f172a; color: #ffffff; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 2px;">
-                        <span style="font-weight: bold; font-size: 11pt;">■ 섹션 ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 후보 대조)</span>
-                        <span style="font-size: 9.5pt; color: #86efac; font-weight: bold;">${bestBadge}</span>
+                    <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px;">
+                        <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
                     </div>
 
                     <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
                         <thead>
-                            <tr style="background: #f1f5f9; border-bottom: 2px solid #0f172a;">
-                                <th style="width: 65px; border: 1px solid #cbd5e1; padding: 5px;">구분</th>
-                                <th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">품목명</th>
-                                <th style="width: 105px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">규격</th>
-                                ${cols.supplier ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">공급업체(주 매입처)</th>' : ''}
-                                ${cols.buyPrice ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">기준 매입단가(환율)</th>' : ''}
-                                ${cols.normPrice ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">환산단가(가성비)</th>' : ''}
-                                ${cols.freight ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 5px;">운임조건</th>' : ''}
-                                ${cols.destination ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 5px; text-align: left;">주 매출처(기준매출)</th>' : ''}
-                                ${cols.margin ? '<th style="width: 100px; border: 1px solid #cbd5e1; padding: 5px; text-align: right;">마진액(마진율)</th>' : ''}
-                                ${cols.note ? '<th style="border: 1px solid #cbd5e1; padding: 5px; text-align: left;">비고</th>' : ''}
+                            <tr style="background: #f1f5f9; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: bold;">
+                                <th style="width: 48px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">순번</th>
+                                <th style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center;">품목명</th>
+                                <th style="width: 105px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">규격</th>
+                                ${cols.supplier ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">공급업체</th>' : ''}
+                                ${cols.buyPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">매입단가(환율)</th>' : ''}
+                                ${cols.normPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">단위단가(최저가대비)</th>' : ''}
+                                ${cols.freight ? '<th style="width: 95px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">운임조건</th>' : ''}
+                                ${cols.destination ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">주 매출처</th>' : ''}
+                                ${cols.margin ? '<th style="width: 100px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">마진액(마진율)</th>' : ''}
+                                ${cols.note ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">비고</th>' : ''}
                             </tr>
                         </thead>
                         <tbody>
@@ -3272,8 +3306,8 @@ const app = {
                     </table>
 
                     ${cols.opinion ? `
-                        <div style="margin-top: 6px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 9pt;">
-                            <strong style="color: #1e293b;">※ 담당자 검토 의견 및 추천 사유:</strong>
+                        <div style="margin-top: 5px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-left: 4px solid #2563eb; font-size: 8.5pt;">
+                            <strong style="color: #1e293b;">※ 담당자 검토 의견:</strong>
                             <span style="color: #334155; margin-left: 6px;">${escapeHtml(sec.section_note || '-(별도 기재 의견 없음)-')}</span>
                         </div>
                     ` : ''}
@@ -3286,50 +3320,82 @@ const app = {
             return;
         }
 
-        const isInternalReport = cols.destination || cols.margin;
-        const reportTitle = isInternalReport
-            ? '물류자재 구매단가 비교 검토 보고서 (경영진 결재용)'
-            : '물류자재 구매단가 비교 검토 보고서 (발주/대외 견적용)';
+        // 최상단 품목별 최저가 추천 종합 요약표 (Executive Summary) 렌더링
+        let summaryTableHtml = '';
+        if (executiveSummaryItems.length > 0) {
+            let summaryRows = '';
+            executiveSummaryItems.forEach((sum, sIdx) => {
+                const it = sum.item;
+                const buy = it.buy_price || 0;
+                const isForeign = it.currency && it.currency !== 'KRW';
+                const currSym = this.currencySymbols[it.currency] || '$';
+                let buyStr = buy ? `₩${buy.toLocaleString()}` : '-';
+                if (isForeign && it.foreign_buy_price > 0) {
+                    buyStr = `<strong>${currSym}${parseFloat(it.foreign_buy_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> <span style="font-size: 8pt; color: #475569;">(₩${buy.toLocaleString()} @${it.exchange_rate ? it.exchange_rate.toLocaleString() : '-'})</span>`;
+                }
+
+                let normStr = it.norm ? `₩${it.norm.normPrice.toLocaleString()}/${it.norm.unit}` : '-';
+                const isFreightIn = (it.freight_type === '하차도') || it.is_freight_included === 1 || it.is_freight_included === true;
+                const freightStr = isFreightIn 
+                    ? `하차도${it.freight_region ? ` (${escapeHtml(it.freight_region)})` : ''}` 
+                    : '상차도';
+
+                summaryRows += `
+                    <tr style="border-bottom: 1px solid #cbd5e1; background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
+                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${escapeHtml(sum.sectionName)}</td>
+                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
+                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
+                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.spec || '-')}</td>
+                        <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${normStr}</td>
+                        <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>
+                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${freightStr}</td>
+                    </tr>
+                `;
+            });
+
+            summaryTableHtml = `
+                <div class="print-summary-box" style="margin-bottom: 22px; border: 1.5px solid #059669; border-radius: 3px; background: #ffffff; padding: 8px 10px; page-break-inside: avoid;">
+                    <div style="font-size: 10.5pt; font-weight: 800; color: #065f46; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>■ 품목별 최저가 추천 종합 요약</span>
+                        <span style="font-size: 8.5pt; font-weight: normal; color: #047857;">* 각 비교군별 단위단가 기준 1위 최저단가 품목</span>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                        <thead>
+                            <tr style="background: #ecfdf5; border-top: 1.5px solid #059669; border-bottom: 1.5px solid #059669; color: #065f46; font-weight: bold;">
+                                <th style="width: 42px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">순번</th>
+                                <th style="width: 150px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">비교 품목군</th>
+                                <th style="padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">추천 선정 품목</th>
+                                <th style="width: 110px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">공급업체</th>
+                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">규격</th>
+                                <th style="width: 120px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">단위단가(최저)</th>
+                                <th style="width: 125px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">매입단가(환율)</th>
+                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">운임조건</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${summaryRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
 
         printArea.innerHTML = `
             <div class="print-container" style="padding: 10px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
-                <!-- 보고서 결재란 및 헤더 -->
-                <div class="report-header-wrap" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 15px;">
-                    <div>
-                        <div style="font-size: 8.5pt; color: #64748b; font-family: monospace;">문서번호: ${docNo}</div>
-                        <h1 style="margin: 4px 0; font-size: 20pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">${reportTitle}</h1>
-                        <div style="font-size: 9pt; color: #475569; margin-top: 2px;">
-                            기안부서: 물류관리팀 &nbsp;|&nbsp; 기안일자: ${today} &nbsp;|&nbsp; 대상: 총 ${validSectionsCount}개 비교 섹션 (${totalPrintedItemCount}개 품목)
-                            ${!isInternalReport ? ' &nbsp;|&nbsp; <span style="color: #0369a1; font-weight: bold;">[영업 대외비 보호: 마진/매출처 숨김]</span>' : ''}
-                        </div>
-                    </div>
-                    <div>
-                        <table class="report-approval-table" style="border-collapse: collapse; border: 1.5px solid #0f172a; text-align: center; font-size: 8.5pt;">
-                            <tr>
-                                <th rowspan="2" style="width: 24px; background: #f1f5f9; border: 1px solid #0f172a; padding: 4px; writing-mode: vertical-rl; letter-spacing: 3px;">결재</th>
-                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">기 안</th>
-                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">검 토</th>
-                                <th style="width: 65px; border: 1px solid #0f172a; padding: 3px; background: #f8fafc;">승 인</th>
-                            </tr>
-                            <tr>
-                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
-                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
-                                <td style="height: 52px; border: 1px solid #0f172a;"></td>
-                            </tr>
-                        </table>
+                <!-- 보고서 심플 헤더 (결재란 및 문서번호 삭제) -->
+                <div class="report-header-wrap" style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 16px;">
+                    <h1 style="margin: 0 0 6px 0; font-size: 21pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-align: center;">자재 구매 단가 비교 검토</h1>
+                    <div style="font-size: 9.5pt; color: #475569; text-align: center;">
+                        <strong>보고일자:</strong> ${today} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>대상:</strong> 총 ${validSectionsCount}개 품목 (${totalPrintedItemCount}개 규격)
                     </div>
                 </div>
 
-                <!-- 비교 섹션 목록 -->
+                <!-- 1. 최상단 품목별 최저가 추천 종합 요약표 (Executive Summary) -->
+                ${summaryTableHtml}
+
+                <!-- 2. 세부 비교 품목 테이블 목록 -->
                 ${sectionsHtml}
-
-                <!-- 보고서 하단 직인 및 서명란 -->
-                <div style="margin-top: 25px; padding-top: 10px; border-top: 1px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center; font-size: 9pt; color: #64748b;">
-                    <div>K&G LOGISTICS MANAGEMENT SYSTEM &nbsp;|&nbsp; 본 문서는 사내 승인 전용 기밀 대외비 보고서입니다.</div>
-                    <div style="font-weight: bold; color: #0f172a; font-size: 11pt;">
-                        주식회사 케이앤지 &nbsp; <span style="font-size: 8.5pt; color: #94a3b8; font-weight: normal;">[직인생략]</span>
-                    </div>
-                </div>
             </div>
         `;
 
