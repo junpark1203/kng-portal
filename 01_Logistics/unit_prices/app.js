@@ -2942,6 +2942,7 @@ const app = {
         this.printTargetSecId = singleSecId;
         this.updateQuoteSelectionBadges();
         this.loadPrintColumnSettings();
+        this.updatePrintPresetUI();
 
         const modalTitle = $('printOptionModalLabel');
         if (modalTitle) {
@@ -2983,7 +2984,68 @@ const app = {
             if ($('chkPrintNote')) $('chkPrintNote').checked = true;
             if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = true;
         }
+        this.updatePrintPresetUI();
         this.savePrintColumnSettings();
+    },
+
+    onPrintColumnChange: function() {
+        this.updatePrintPresetUI();
+        this.savePrintColumnSettings();
+    },
+
+    updatePrintPresetUI: function() {
+        const destChecked = $('chkPrintDestination') ? $('chkPrintDestination').checked : false;
+        const marginChecked = $('chkPrintMargin') ? $('chkPrintMargin').checked : false;
+        const suppChecked = $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true;
+        const buyChecked = $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true;
+        const normChecked = $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true;
+        const freightChecked = $('chkPrintFreight') ? $('chkPrintFreight').checked : true;
+        const noteChecked = $('chkPrintNote') ? $('chkPrintNote').checked : true;
+        const opinionChecked = $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true;
+
+        const btnExt = $('btnPrintPresetExternal');
+        const btnInt = $('btnPrintPresetInternal');
+        const statusBadge = $('printPresetStatusBadge');
+
+        const isExternal = !destChecked && !marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
+        const isInternal = destChecked && marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
+
+        if (btnExt) {
+            if (isExternal) {
+                btnExt.classList.add('active');
+                const icon = btnExt.querySelector('.preset-icon');
+                if (icon) icon.className = 'bx bx-check-circle fs-6 preset-icon';
+            } else {
+                btnExt.classList.remove('active');
+                const icon = btnExt.querySelector('.preset-icon');
+                if (icon) icon.className = 'bx bx-shield-quarter preset-icon';
+            }
+        }
+
+        if (btnInt) {
+            if (isInternal) {
+                btnInt.classList.add('active');
+                const icon = btnInt.querySelector('.preset-icon');
+                if (icon) icon.className = 'bx bx-check-circle fs-6 preset-icon';
+            } else {
+                btnInt.classList.remove('active');
+                const icon = btnInt.querySelector('.preset-icon');
+                if (icon) icon.className = 'bx bx-briefcase-alt preset-icon';
+            }
+        }
+
+        if (statusBadge) {
+            if (isExternal) {
+                statusBadge.className = 'badge bg-success-subtle text-success border border-success-subtle fw-semibold';
+                statusBadge.innerHTML = `<i class='bx bx-check me-1'></i>구매/대외 발주용 적용 중`;
+            } else if (isInternal) {
+                statusBadge.className = 'badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold';
+                statusBadge.innerHTML = `<i class='bx bx-check me-1'></i>경영진 결재용 적용 중`;
+            } else {
+                statusBadge.className = 'badge bg-light text-secondary border fw-normal';
+                statusBadge.innerHTML = `<i class='bx bx-slider me-1'></i>직접 사용자 지정`;
+            }
+        }
     },
 
     savePrintColumnSettings: function() {

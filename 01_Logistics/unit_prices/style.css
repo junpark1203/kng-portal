@@ -1534,8 +1534,79 @@ body {
     color: #ef4444;
     background-color: #fee2e2;
 }
+/* ==========================================================================
+   11. 인쇄 맞춤 설정 모달 보고서 프리셋 토글 버튼 스타일
+   ========================================================================== */
+.btn-preset-toggle {
+    background-color: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 7px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s ease-in-out;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    position: relative;
+    user-select: none;
+}
+.btn-preset-toggle:hover {
+    background-color: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+.btn-preset-toggle:active {
+    transform: translateY(1px);
+}
 
+/* 1) 구매/대외 발주용 선택(Active) 상태 */
+.btn-preset-toggle.preset-external.active {
+    background-color: #ecfdf5 !important;
+    border: 2px solid #059669 !important;
+    color: #065f46 !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.18) !important;
+}
+.btn-preset-toggle.preset-external.active .preset-icon {
+    color: #059669 !important;
+}
 
+/* 2) 내부 경영진 결재용 선택(Active) 상태 */
+.btn-preset-toggle.preset-internal.active {
+    background-color: #eff6ff !important;
+    border: 2px solid #2563eb !important;
+    color: #1e40af !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.18) !important;
+}
+.btn-preset-toggle.preset-internal.active .preset-icon {
+    color: #2563eb !important;
+}
 
+/* 선택 상태 인라인 뱃지 */
+.preset-selected-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 2px;
+    font-weight: 700;
+    display: none;
+}
+.btn-preset-toggle.active .preset-selected-tag {
+    display: inline-block;
+}
+.btn-preset-toggle.preset-external.active .preset-selected-tag {
+    background-color: #059669;
+    color: #ffffff;
+}
+.btn-preset-toggle.preset-internal.active .preset-selected-tag {
+    background-color: #2563eb;
+    color: #ffffff;
+}
 
 

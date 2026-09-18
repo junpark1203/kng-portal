@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260917_25">
+    <link rel="stylesheet" href="style.css?v=20260918_1">
 </head>
 <body>
 
@@ -613,14 +613,20 @@
                             <label class="form-label fw-bold small text-dark mb-0">
                                 <i class='bx bx-slider-alt text-primary'></i> 보고서 용도별 빠른 설정 (프리셋)
                             </label>
-                            <span class="text-muted" style="font-size: 10px;">클릭 시 출력 항목 자동 세팅</span>
+                            <span id="printPresetStatusBadge" class="badge bg-light text-secondary border fw-normal" style="font-size: 10.5px;">
+                                클릭 시 출력 항목 자동 세팅
+                            </span>
                         </div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-success flex-fill py-1 d-flex align-items-center justify-content-center gap-1" onclick="app.applyPrintPreset('external')">
-                                <i class='bx bx-shield-quarter'></i> <span>구매/대외 발주용 (마진·매출처 숨김)</span>
+                            <button type="button" class="btn-preset-toggle preset-external flex-fill" id="btnPrintPresetExternal" onclick="app.applyPrintPreset('external')" title="구매/대외 발주용: 마진 및 매출처 숨김">
+                                <i class='bx bx-shield-quarter preset-icon'></i>
+                                <span>구매/대외 발주용 (마진·매출처 숨김)</span>
+                                <span class="preset-selected-tag">선택됨</span>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-primary flex-fill py-1 d-flex align-items-center justify-content-center gap-1" onclick="app.applyPrintPreset('internal')">
-                                <i class='bx bx-briefcase-alt'></i> <span>내부 경영진 결재용 (전체 포함)</span>
+                            <button type="button" class="btn-preset-toggle preset-internal flex-fill" id="btnPrintPresetInternal" onclick="app.applyPrintPreset('internal')" title="내부 경영진 결재용: 마진 및 매출처 포함 전체 출력">
+                                <i class='bx bx-briefcase-alt preset-icon'></i>
+                                <span>내부 경영진 결재용 (전체 포함)</span>
+                                <span class="preset-selected-tag">선택됨</span>
                             </button>
                         </div>
                     </div>
@@ -635,31 +641,31 @@
                             <div class="row g-2">
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintSupplier" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintSupplier" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintSupplier">공급업체(주 매입처)</label>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintBuyPrice" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintBuyPrice" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintBuyPrice">기준 매입단가(환율)</label>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintNormPrice" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintNormPrice" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintNormPrice">환산단가(가성비 지수)</label>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintFreight" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintFreight" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintFreight">운임조건(상/하차도)</label>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintDestination">
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintDestination" onchange="app.onPrintColumnChange()">
                                         <label class="form-check-label small fw-semibold text-danger" for="chkPrintDestination">
                                             주 매출처 (기준매출)
                                         </label>
@@ -667,7 +673,7 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintMargin">
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintMargin" onchange="app.onPrintColumnChange()">
                                         <label class="form-check-label small fw-semibold text-danger" for="chkPrintMargin">
                                             예상 마진액 및 마진율
                                         </label>
@@ -675,13 +681,13 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintNote" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintNote" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintNote">비고 / 단가메모</label>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintOpinion" checked>
+                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintOpinion" onchange="app.onPrintColumnChange()" checked>
                                         <label class="form-check-label small" for="chkPrintOpinion">하단 담당자 종합 검토의견</label>
                                     </div>
                                 </div>
@@ -709,6 +715,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260917_25"></script>
+    <script src="app.js?v=20260918_1"></script>
 </body>
 </html>
