@@ -155,10 +155,20 @@ function initEvents() {
     document.getElementById('btnSaveSettlement').addEventListener('click', saveSettlement);
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
     
-    document.getElementById('btnPrint').addEventListener('click', () => document.getElementById('printOptionModal').classList.add('active'));
+    document.getElementById('btnPrint').addEventListener('click', openPrintModal);
     document.getElementById('btnClosePrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
     document.getElementById('btnCancelPrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
     document.getElementById('btnExecutePrint').addEventListener('click', executePrint);
+    document.getElementById('btnSetDefaultPrintTitle')?.addEventListener('click', () => {
+        const titleInp = document.getElementById('inpPrintTitle');
+        if (titleInp) titleInp.value = '실제 비용 기준 정산 및 품목별 원가 산출';
+    });
+    document.getElementById('btnSetDocPrintTitle')?.addEventListener('click', () => {
+        const titleInp = document.getElementById('inpPrintTitle');
+        if (titleInp && state.doc && state.doc.title) {
+            titleInp.value = state.doc.title;
+        }
+    });
     // UI Checkbox logic
     document.querySelectorAll('.parent-chk').forEach(parent => {
         parent.addEventListener('change', function() {
@@ -1767,10 +1777,32 @@ function exportExcel() {
 }
 
 
+function openPrintModal() {
+    const titleInp = document.getElementById('inpPrintTitle');
+    if (titleInp) {
+        // 기존 입력값이 없으면 문서명 또는 기본값 세팅
+        if (!titleInp.value || titleInp.value.trim() === '') {
+            titleInp.value = (state.doc && state.doc.title) ? state.doc.title : '실제 비용 기준 정산 및 품목별 원가 산출';
+        }
+    }
+    document.getElementById('printOptionModal').classList.add('active');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function executePrint() {
     const mode = document.querySelector('input[name="printMode"]:checked').value;
+    const customTitle = (document.getElementById('inpPrintTitle')?.value || '').trim() || '실제 비용 기준 정산 및 품목별 원가 산출';
     
-    let opts = { mode };
+    let opts = { mode, customTitle };
     opts.includeEstimate = document.getElementById('chkPrintData_Estimate').checked;
     opts.includeActual = document.getElementById('chkPrintData_Actual').checked;
     
@@ -1814,9 +1846,13 @@ function executePrint() {
     document.getElementById('printContainer').innerHTML = html;
     document.getElementById('printOptionModal').classList.remove('active');
     
+    const prevDocTitle = document.title;
+    document.title = customTitle;
+
     setTimeout(() => {
         window.print();
         setTimeout(() => {
+            document.title = prevDocTitle;
             document.getElementById('printContainer').innerHTML = '';
         }, 500);
     }, 100);
@@ -1834,10 +1870,11 @@ function generatePrintTemplate(opts) {
     html += `<tbody><tr><td style="border: none; padding: 0 15mm;">`;
     html += `<div class="print-report">`;
     
-    // Header (Always show)
+    // Header (Always show - 사용자가 지정한 제목 반영)
+    const reportTitle = escapeHtml(opts.customTitle || "실제 비용 기준 정산 및 품목별 원가 산출");
     html += `
         <div class="print-header">
-            <h1 class="print-title">실제 비용 기준 정산 및 품목별 원가 산출</h1>
+            <h1 class="print-title">${reportTitle}</h1>
         </div>
     `;
 
