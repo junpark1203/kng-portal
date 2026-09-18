@@ -233,10 +233,27 @@
         <div class="quote-compare-toolbar no-print p-2 bg-white border rounded mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm">
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span class="fw-bold text-dark d-inline-flex align-items-center gap-1" style="font-size: 13px;">
-                    <i class='bx bx-git-compare text-primary'></i> 자재 선정 & 복수 견적 비교 테이블
+                    <i class='bx bx-git-compare text-primary'></i> 견적 비교 테이블
                 </span>
+
+                <!-- 검토서 보관함 선택 드롭다운 -->
+                <div class="d-flex align-items-center gap-1 border-start ps-2 ms-1">
+                    <label for="selectQuoteProject" class="small fw-semibold text-secondary d-none d-md-inline" style="font-size: 11.5px;">
+                        <i class='bx bx-archive text-primary'></i> 검토서 보관함:
+                    </label>
+                    <select class="form-select form-select-sm" id="selectQuoteProject" style="min-width: 220px; max-width: 280px; font-weight: 600; font-size: 12px;" onchange="app.onQuoteProjectChange(this.value)">
+                        <option value="">검토서 불러오는 중...</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11.5px; height: 28px;" onclick="app.openNewProjectModal()" title="새로운 비교 검토서 프로젝트를 생성합니다">
+                        <i class='bx bx-folder-plus'></i> 새 검토서
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 11.5px; height: 28px;" onclick="app.openEditProjectModal()" title="현재 선택된 검토서의 제목, 상태, 일자 및 비고를 관리합니다">
+                        <i class='bx bx-cog'></i> 설정
+                    </button>
+                </div>
+
                 <span class="badge bg-secondary" id="quoteTotalSectionCountBadge">0개 섹션</span>
-                <span class="badge bg-primary" id="quoteTotalItemCountBadge">총 0개 품목 비교 중</span>
+                <span class="badge bg-primary" id="quoteTotalItemCountBadge">총 0개 품목</span>
                 <span class="badge bg-info text-dark d-none" id="quoteSelectedItemCountBadge">선택 0개</span>
             </div>
             <div class="d-flex align-items-center gap-1 flex-wrap">
@@ -250,6 +267,11 @@
                     <i class='bx bx-plus text-success'></i> 품목 추가로 담기
                 </button>
             </div>
+        </div>
+
+        <!-- ── [신규] 최상단 품목별 최저가 추천 종합 요약 카드 (화면 실시간 노출 & 비고 인라인 입력) ── -->
+        <div id="quoteExecutiveSummaryWrapper" class="mb-3">
+            <!-- JS Rendered Executive Summary Card -->
         </div>
 
         <!-- 섹션별 비교 카드 렌더링 영역 -->
@@ -534,7 +556,17 @@
                     <p class="text-muted small mb-2">선택한 <strong class="text-primary" id="modalSelectedCount">0</strong>개 품목을 비교할 섹션(항목)을 지정해주세요.</p>
                     
                     <!-- 선택된 품목 요약 리스트 -->
-                    <div class="p-2 border rounded bg-light mb-3" style="max-height: 120px; overflow-y: auto;" id="modalSelectedItemsList">
+                    <div class="p-2 border rounded bg-light mb-2" style="max-height: 100px; overflow-y: auto;" id="modalSelectedItemsList">
+                    </div>
+
+                    <!-- 담을 대상 검토서 프로젝트 선택 -->
+                    <div class="mb-3 p-2 bg-light border rounded">
+                        <label class="form-label fw-bold small text-dark mb-1 d-flex justify-content-between align-items-center">
+                            <span><i class='bx bx-archive text-primary me-1'></i> 담을 대상 검토서</span>
+                            <span class="text-muted" style="font-size: 10.5px; font-weight: normal;">* 선택한 검토서에 섹션이 추가됩니다</span>
+                        </label>
+                        <select class="form-select form-select-sm" id="selectTargetQuoteProject" onchange="app.onTargetQuoteProjectChange(this.value)">
+                        </select>
                     </div>
 
                     <div class="mb-3">
@@ -561,6 +593,104 @@
                     <button type="button" class="btn btn-sm btn-primary px-3" onclick="app.submitAddToQuote()">
                         <i class='bx bx-check'></i> 비교 테이블에 담기
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 6-0. 새 검토서 프로젝트 생성 모달 ── -->
+    <div class="modal fade" id="newProjectModal" tabindex="-1" aria-labelledby="newProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-bold mb-0" id="newProjectModalLabel">
+                        <i class='bx bx-folder-plus text-primary me-1'></i> 새 비교 검토서(프로젝트) 생성
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark mb-1">검토서 명칭 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="inpNewProjectTitle" placeholder="예: [강릉제진] 2026-09 유류품 공급 단가 검토" maxlength="60">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark mb-1">보고일자</label>
+                            <input type="date" class="form-control form-control-sm" id="inpNewProjectDate">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark mb-1">문서 상태</label>
+                            <select class="form-select form-select-sm" id="inpNewProjectStatus">
+                                <option value="작성중" selected>작성중 (단가표 실시간 동기화)</option>
+                                <option value="확정">확정 (단가 잠금/과거 보존)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark mb-1">총괄 비고 / 메모 (선택)</label>
+                        <textarea class="form-control form-control-sm" id="inpNewProjectMemo" rows="2" placeholder="현장 특이사항, 납기 조건 등"></textarea>
+                    </div>
+                    <div class="form-check p-2 bg-light border rounded mt-2">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" id="chkNewProjectCopyCurrent">
+                        <label class="form-check-label small fw-semibold text-primary" for="chkNewProjectCopyCurrent">
+                            현재 화면의 섹션 및 비교 품목들을 그대로 복사하여 시작하기
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="app.submitCreateProject()">
+                        <i class='bx bx-check'></i> 검토서 생성
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 6-0-1. 현재 검토서 프로젝트 정보 수정/관리 모달 ── -->
+    <div class="modal fade" id="editProjectModal" tabindex="-1" aria-labelledby="editProjectModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h6 class="modal-title fw-bold mb-0" id="editProjectModalLabel">
+                        <i class='bx bx-cog text-primary me-1'></i> 검토서 설정 및 관리
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="editProjectId">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark mb-1">검토서 명칭 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="inpEditProjectTitle" maxlength="60">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark mb-1">보고일자</label>
+                            <input type="date" class="form-control form-control-sm" id="inpEditProjectDate">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold text-dark mb-1">문서 상태</label>
+                            <select class="form-select form-select-sm" id="inpEditProjectStatus">
+                                <option value="작성중">작성중 (단가표 실시간 동기화)</option>
+                                <option value="확정">확정 (단가 잠금/과거 보존)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-dark mb-1">총괄 비고 / 메모</label>
+                        <textarea class="form-control form-control-sm" id="inpEditProjectMemo" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="app.deleteCurrentProject()">
+                        <i class='bx bx-trash'></i> 검토서 삭제
+                    </button>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="app.submitUpdateProject()">
+                            <i class='bx bx-save'></i> 변경사항 저장
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -718,6 +848,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_4"></script>
+    <script src="app.js?v=20260918_5"></script>
 </body>
 </html>
