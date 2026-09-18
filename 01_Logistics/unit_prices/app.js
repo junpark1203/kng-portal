@@ -2576,11 +2576,53 @@ const app = {
         }
     },
 
-    getSectionBenchmark: function(sec) {
-        if (!sec) return null;
+    getSectionBenchmarks: function(sec) {
+        if (!sec) return [];
+        const result = [];
+
+        // 1. target_benchmarks JSON 처리
+        if (sec.target_benchmarks) {
+            let list = [];
+            if (Array.isArray(sec.target_benchmarks)) {
+                list = sec.target_benchmarks;
+            } else if (typeof sec.target_benchmarks === 'string' && sec.target_benchmarks.trim()) {
+                try {
+                    const parsed = JSON.parse(sec.target_benchmarks);
+                    if (Array.isArray(parsed)) list = parsed;
+                } catch (e) {}
+            }
+            list.forEach(b => {
+                if (!b) return;
+                const maker = (b.maker || '').trim();
+                const item = (b.item || '').trim();
+                const spec = (b.spec || '').trim();
+                if (maker || item || spec) {
+                    result.push({ maker, item, spec });
+                }
+            });
+            if (result.length > 0) return result;
+        }
+
+        // 2. target_spec / recommended_spec JSON 형태 처리
         let maker = (sec.target_maker || '').trim();
         let item = (sec.target_item || '').trim();
         let spec = (sec.target_spec || sec.recommended_spec || '').trim();
+
+        if (spec.startsWith('[') && spec.endsWith(']')) {
+            try {
+                const parsed = JSON.parse(spec);
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(b => {
+                        if (!b) return;
+                        const m = (b.maker || '').trim();
+                        const i = (b.item || '').trim();
+                        const s = (b.spec || '').trim();
+                        if (m || i || s) result.push({ maker: m, item: i, spec: s });
+                    });
+                    if (result.length > 0) return result;
+                }
+            } catch (e) {}
+        }
 
         if (spec.startsWith('{') && spec.endsWith('}')) {
             try {
@@ -2591,8 +2633,87 @@ const app = {
             } catch (e) {}
         }
 
-        if (!maker && !item && !spec) return null;
-        return { maker, item, spec };
+        if (maker || item || spec) {
+            result.push({ maker, item, spec });
+        }
+        return result;
+    },
+
+    getSectionBenchmark: function(sec) {
+        const list = this.getSectionBenchmarks(sec);
+        return list.length > 0 ? list[0] : null;
+    },
+
+    renderBenchmarkRows: function(tbodyId, list) {
+        const tbody = $(tbodyId);
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        const items = (Array.isArray(list) && list.length > 0) ? list : [{ maker: '', item: '', spec: '' }];
+        items.forEach((bm) => {
+            this.addBenchmarkRow(tbodyId, bm);
+        });
+    },
+
+    addBenchmarkRow: function(tbodyId, data = {}) {
+        const tbody = $(tbodyId);
+        if (!tbody) return;
+        const rowCount = tbody.querySelectorAll('tr').length;
+        const tr = document.createElement('tr');
+        tr.className = 'benchmark-input-row';
+        tr.innerHTML = `
+            <td class="text-center fw-bold text-secondary benchmark-row-no" style="font-size: 11px;">${rowCount + 1}</td>
+            <td>
+                <input type="text" class="form-control form-control-sm bm-input-maker" 
+                       placeholder="예: 현대오일뱅크, 한국쉘" maxlength="50" value="${escapeHtml(data.maker || '')}">
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm bm-input-item" 
+                       placeholder="예: 베어링 실란트 HD-100" maxlength="50" value="${escapeHtml(data.item || '')}">
+            </td>
+            <td>
+                <input type="text" class="form-control form-control-sm bm-input-spec" 
+                       placeholder="예: 250kg Drum, VG 46" maxlength="50" value="${escapeHtml(data.spec || '')}">
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn-subgrid-del" title="이 기준품 삭제" onclick="app.removeBenchmarkRow(this)">
+                    <i class='bx bx-trash'></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    },
+
+    removeBenchmarkRow: function(btnEl) {
+        const tr = btnEl.closest('tr');
+        if (!tr) return;
+        const tbody = tr.parentElement;
+        tr.remove();
+        if (tbody) {
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((row, idx) => {
+                const noEl = row.querySelector('.benchmark-row-no');
+                if (noEl) noEl.innerText = idx + 1;
+            });
+            if (rows.length === 0) {
+                this.addBenchmarkRow(tbody.id, {});
+            }
+        }
+    },
+
+    getBenchmarkRowsData: function(tbodyId) {
+        const tbody = $(tbodyId);
+        if (!tbody) return [];
+        const rows = tbody.querySelectorAll('tr');
+        const results = [];
+        rows.forEach(tr => {
+            const maker = (tr.querySelector('.bm-input-maker')?.value || '').trim();
+            const item = (tr.querySelector('.bm-input-item')?.value || '').trim();
+            const spec = (tr.querySelector('.bm-input-spec')?.value || '').trim();
+            if (maker || item || spec) {
+                results.push({ maker, item, spec });
+            }
+        });
+        return results;
     },
 
     openAddToQuoteModal: function() {
@@ -2618,8 +2739,8 @@ const app = {
                             <span class="badge bg-light text-secondary border ms-1">${escapeHtml(it.default_supplier || '공급처미지정')}</span>
                         </div>
                         <div class="text-end">
-                            <span class="text-primary fw-bold">${buyStr}</span>
-                            <span class="badge bg-light text-dark border ms-1" style="font-size: 10px;">${freightStr}</span>
+                            <span class="fw-bold text-primary">${buyStr}</span>
+                            <span class="text-muted ms-1" style="font-size: 11px;">(${freightStr})</span>
                         </div>
                     </div>
                 `;
@@ -2646,12 +2767,7 @@ const app = {
 
         const inputNew = $('inputNewSectionName');
         if (inputNew) inputNew.value = '';
-        const inputMaker = $('inputNewSectionTargetMaker');
-        if (inputMaker) inputMaker.value = '';
-        const inputItem = $('inputNewSectionTargetItem');
-        if (inputItem) inputItem.value = '';
-        const inputSpec = $('inputNewSectionTargetSpec');
-        if (inputSpec) inputSpec.value = '';
+        this.renderBenchmarkRows('addQuoteBenchmarkTableBody', []);
 
         this.onSectionChoiceChange();
 
@@ -2668,25 +2784,22 @@ const app = {
         const choice = choiceRadio ? choiceRadio.value : 'new';
         const selectSec = $('selectExistingSection');
         const inputNew = $('inputNewSectionName');
-        const inputMaker = $('inputNewSectionTargetMaker');
-        const inputItem = $('inputNewSectionTargetItem');
-        const inputSpec = $('inputNewSectionTargetSpec');
+        const wrapNewInputs = $('newSectionInputsWrap');
 
-        if (choice === 'existing') {
-            if (selectSec) selectSec.disabled = false;
-            if (inputNew) inputNew.disabled = true;
-            if (inputMaker) inputMaker.disabled = true;
-            if (inputItem) inputItem.disabled = true;
-            if (inputSpec) inputSpec.disabled = true;
-        } else {
+        if (choice === 'new') {
             if (selectSec) selectSec.disabled = true;
+            if (wrapNewInputs) wrapNewInputs.style.display = 'block';
             if (inputNew) {
                 inputNew.disabled = false;
                 setTimeout(() => inputNew.focus(), 150);
             }
-            if (inputMaker) inputMaker.disabled = false;
-            if (inputItem) inputItem.disabled = false;
-            if (inputSpec) inputSpec.disabled = false;
+        } else {
+            if (selectSec) {
+                selectSec.disabled = false;
+                setTimeout(() => selectSec.focus(), 150);
+            }
+            if (wrapNewInputs) wrapNewInputs.style.display = 'none';
+            if (inputNew) inputNew.disabled = true;
         }
     },
 
@@ -2698,12 +2811,14 @@ const app = {
         let targetMaker = '';
         let targetItem = '';
         let targetSpec = '';
+        let targetBenchmarks = [];
 
         if (choice === 'existing') {
             const selectSec = $('selectExistingSection');
-            sectionId = selectSec ? parseInt(selectSec.value, 10) : null;
+            sectionId = selectSec ? parseInt(selectSec.value) : null;
             if (!sectionId) {
-                alert('추가할 기존 비교 섹션을 선택해주세요.');
+                alert('기존 비교 섹션을 선택해주세요.');
+                if (selectSec) selectSec.focus();
                 return;
             }
             const sec = this.quoteSections.find(s => s.id === sectionId);
@@ -2716,12 +2831,10 @@ const app = {
                 if (inputNew) inputNew.focus();
                 return;
             }
-            const inputMaker = $('inputNewSectionTargetMaker');
-            if (inputMaker) targetMaker = inputMaker.value.trim();
-            const inputItem = $('inputNewSectionTargetItem');
-            if (inputItem) targetItem = inputItem.value.trim();
-            const inputSpec = $('inputNewSectionTargetSpec');
-            if (inputSpec) targetSpec = inputSpec.value.trim();
+            targetBenchmarks = this.getBenchmarkRowsData('addQuoteBenchmarkTableBody');
+            targetMaker = targetBenchmarks[0]?.maker || '';
+            targetItem = targetBenchmarks[0]?.item || '';
+            targetSpec = targetBenchmarks[0]?.spec || '';
         }
 
         const selected = this.priceList.filter(p => this.checkedItemIds.has(p.id));
@@ -2761,6 +2874,7 @@ const app = {
                     target_maker: targetMaker,
                     target_item: targetItem,
                     target_spec: targetSpec,
+                    target_benchmarks: targetBenchmarks,
                     items: itemsPayload
                 })
             });
@@ -2789,12 +2903,7 @@ const app = {
     openNewSectionModal: function() {
         const inp = $('inpDirectSectionName');
         if (inp) inp.value = '';
-        const inpMaker = $('inpDirectTargetMaker');
-        if (inpMaker) inpMaker.value = '';
-        const inpItem = $('inpDirectTargetItem');
-        if (inpItem) inpItem.value = '';
-        const inpSpec = $('inpDirectTargetSpec');
-        if (inpSpec) inpSpec.value = '';
+        this.renderBenchmarkRows('directBenchmarkTableBody', []);
 
         if (!this.newSectionModalInstance && window.bootstrap && $('newSectionModal')) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
@@ -2808,16 +2917,14 @@ const app = {
     createDirectSection: async function() {
         const inp = $('inpDirectSectionName');
         const name = inp ? inp.value.trim() : '';
-        const inpMaker = $('inpDirectTargetMaker');
-        const targetMaker = inpMaker ? inpMaker.value.trim() : '';
-        const inpItem = $('inpDirectTargetItem');
-        const targetItem = inpItem ? inpItem.value.trim() : '';
-        const inpSpec = $('inpDirectTargetSpec');
-        const targetSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!name) {
             alert('섹션명을 입력해주세요.');
             return;
         }
+        const benchmarks = this.getBenchmarkRowsData('directBenchmarkTableBody');
+        const targetMaker = benchmarks[0]?.maker || '';
+        const targetItem = benchmarks[0]?.item || '';
+        const targetSpec = benchmarks[0]?.spec || '';
 
         try {
             await authFetch(`${API_BASE}/quote-sections/add-items`, {
@@ -2828,6 +2935,7 @@ const app = {
                     target_maker: targetMaker,
                     target_item: targetItem,
                     target_spec: targetSpec,
+                    target_benchmarks: benchmarks,
                     items: []
                 })
             });
@@ -2848,19 +2956,9 @@ const app = {
         if (inp) {
             inp.value = sec.section_name || '';
         }
-        const bm = this.getSectionBenchmark(sec);
-        const inpMaker = $('inpEditTargetMaker');
-        if (inpMaker) {
-            inpMaker.value = bm ? (bm.maker || '') : (sec.target_maker || '');
-        }
-        const inpItem = $('inpEditTargetItem');
-        if (inpItem) {
-            inpItem.value = bm ? (bm.item || '') : (sec.target_item || '');
-        }
-        const inpSpec = $('inpEditTargetSpec');
-        if (inpSpec) {
-            inpSpec.value = bm ? (bm.spec || '') : (sec.recommended_spec || sec.target_spec || '');
-        }
+        const benchmarks = this.getSectionBenchmarks(sec);
+        this.renderBenchmarkRows('editBenchmarkTableBody', benchmarks);
+
         if (!this.editSectionNameModalInstance && window.bootstrap && $('editSectionNameModal')) {
             this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
         }
@@ -2879,17 +2977,16 @@ const app = {
         const secId = $('editSectionNameId') ? parseInt($('editSectionNameId').value) : null;
         const inp = $('inpEditSectionName');
         const newName = inp ? inp.value.trim() : '';
-        const inpMaker = $('inpEditTargetMaker');
-        const newMaker = inpMaker ? inpMaker.value.trim() : '';
-        const inpItem = $('inpEditTargetItem');
-        const newItem = inpItem ? inpItem.value.trim() : '';
-        const inpSpec = $('inpEditTargetSpec');
-        const newSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!secId) return;
         if (!newName) {
             alert('변경할 섹션명을 입력해주세요.');
             return;
         }
+
+        const benchmarks = this.getBenchmarkRowsData('editBenchmarkTableBody');
+        const newMaker = benchmarks[0]?.maker || '';
+        const newItem = benchmarks[0]?.item || '';
+        const newSpec = benchmarks[0]?.spec || '';
 
         try {
             await authFetch(`${API_BASE}/quote-sections/${secId}`, {
@@ -2898,7 +2995,8 @@ const app = {
                     section_name: newName,
                     target_maker: newMaker,
                     target_item: newItem,
-                    target_spec: newSpec
+                    target_spec: newSpec,
+                    target_benchmarks: benchmarks
                 })
             });
 
@@ -2910,6 +3008,7 @@ const app = {
                 sec.target_item = newItem;
                 sec.target_spec = newSpec;
                 sec.recommended_spec = newSpec;
+                sec.target_benchmarks = JSON.stringify(benchmarks);
             }
 
             if (this.editSectionNameModalInstance) {
@@ -3044,12 +3143,12 @@ const app = {
             }
 
             const bestItem = analyzed.find(it => it.id === bestId) || analyzed[0];
-            const bm = this.getSectionBenchmark(sec);
+            const benchmarks = this.getSectionBenchmarks(sec);
             if (bestItem) {
                 summaryItems.push({
                     secId: sec.id,
                     secName: sec.section_name,
-                    benchmark: bm,
+                    benchmarks: benchmarks,
                     item: bestItem,
                     commonUnit: commonUnit,
                     totalCandidates: items.length
@@ -3103,12 +3202,12 @@ const app = {
                             <i class='bx bx-folder text-primary'></i> ${escapeHtml(sum.secName)}
                         </a>
                         <span class="text-muted ms-1" style="font-size: 10px;">(${sum.totalCandidates}개 후보)</span>
-                        ${sum.benchmark ? `
+                        ${(sum.benchmarks && sum.benchmarks.length > 0) ? sum.benchmarks.map((bm, bIdx) => `
                             <div class="text-muted mt-0.5" style="font-size: 10.5px; line-height: 1.25;">
-                                <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 9.5px; font-weight: normal;">기준</span>
-                                ${sum.benchmark.maker ? `<strong>[${escapeHtml(sum.benchmark.maker)}]</strong> ` : ''}${escapeHtml(sum.benchmark.item || '')}${sum.benchmark.spec ? ` <span class="text-secondary">(${escapeHtml(sum.benchmark.spec)})</span>` : ''}
+                                <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 9.5px; font-weight: normal;">${sum.benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`}</span>
+                                ${bm.maker ? `<strong>[${escapeHtml(bm.maker)}]</strong> ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` <span class="text-secondary">(${escapeHtml(bm.spec)})</span>` : ''}
                             </div>
-                        ` : ''}
+                        `).join('') : ''}
                     </td>
                     <td class="text-start ps-2 text-truncate" style="max-width: 130px;" title="${escapeHtml(it.default_supplier || '')}">
                         <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
@@ -3311,40 +3410,45 @@ const app = {
                 }
             }
 
-            const bm = this.getSectionBenchmark(sec);
+            const benchmarks = this.getSectionBenchmarks(sec);
 
-            // 설계/권장 기준품 (제안 1: ERP 실무 표준형 대조 행)
+            // 설계/권장 기준품 (ERP 실무 표준형 대조 행 - 복수 기준품 지원)
             let benchmarkRowHtml = '';
-            if (bm) {
-                benchmarkRowHtml = `
-                    <tr class="row-benchmark-spec">
-                        <td class="text-center align-middle" style="color: #94a3b8; font-size: 11px;">-</td>
-                        <td class="text-center">
-                            <span class="badge bg-dark text-white fw-bold px-2 py-0.5" style="font-size: 10px; letter-spacing: 0.5px;">기준</span>
-                        </td>
-                        <td class="text-center">
-                            <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
-                        </td>
-                        <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.maker || '-')}">
-                            ${bm.maker ? `<span class="text-primary"><i class='bx bx-pin me-1'></i>${escapeHtml(bm.maker)}</span>` : '<span class="text-muted">-</span>'}
-                        </td>
-                        <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.item || '-')}">
-                            ${escapeHtml(bm.item || '-')}
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9.5px; font-weight: 500;">설계기준품</span>
-                        </td>
-                        <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
-                            <span class="spec-pill fw-bold" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">${escapeHtml(bm.spec || '-')}</span>
-                        </td>
-                        <td class="text-center text-muted">-</td>
-                        <td class="text-end pe-2 text-muted" style="font-size: 11px;">(대조 기준)</td>
-                        <td class="text-end pe-2 text-muted">-</td>
-                        <td class="text-end pe-2 text-muted">-</td>
-                        <td class="text-start ps-2 text-muted" style="font-size: 11px; font-style: italic;">
-                            권장 규격품 / 견적 후보 대조 기준
-                        </td>
-                        <td class="text-center text-muted">-</td>
-                    </tr>
-                `;
+            if (benchmarks.length > 0) {
+                benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
+                    const badgeText = benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`;
+                    const itemBadgeText = benchmarks.length === 1 ? '설계기준품' : `설계기준품 #${bIdx + 1}`;
+                    const noteText = benchmarks.length === 1 ? '권장 규격품 / 견적 후보 대조 기준' : `권장 규격품 #${bIdx + 1} / 견적 후보 대조 기준`;
+                    return `
+                        <tr class="row-benchmark-spec">
+                            <td class="text-center align-middle" style="color: #94a3b8; font-size: 11px;">-</td>
+                            <td class="text-center">
+                                <span class="badge bg-dark text-white fw-bold px-2 py-0.5" style="font-size: 10px; letter-spacing: 0.5px;">${badgeText}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
+                            </td>
+                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.maker || '-')}">
+                                ${bm.maker ? `<span class="text-primary"><i class='bx bx-pin me-1'></i>${escapeHtml(bm.maker)}</span>` : '<span class="text-muted">-</span>'}
+                            </td>
+                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.item || '-')}">
+                                ${escapeHtml(bm.item || '-')}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9.5px; font-weight: 500;">${itemBadgeText}</span>
+                            </td>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
+                                <span class="spec-pill fw-bold" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">${escapeHtml(bm.spec || '-')}</span>
+                            </td>
+                            <td class="text-center text-muted">-</td>
+                            <td class="text-end pe-2 text-muted" style="font-size: 11px;">(대조 기준)</td>
+                            <td class="text-end pe-2 text-muted">-</td>
+                            <td class="text-end pe-2 text-muted">-</td>
+                            <td class="text-start ps-2 text-muted" style="font-size: 11px; font-style: italic;">
+                                ${noteText}
+                            </td>
+                            <td class="text-center text-muted">-</td>
+                        </tr>
+                    `;
+                }).join('');
             }
 
             // 테이블 렌더링
@@ -4018,7 +4122,7 @@ const app = {
             }
             if (items.length === 0) return; // 선택된 항목이 없으면 섹션 제외
 
-            const bm = this.getSectionBenchmark(sec);
+            const benchmarks = this.getSectionBenchmarks(sec);
 
             validSectionsCount++;
             totalPrintedItemCount += items.length;
@@ -4081,34 +4185,38 @@ const app = {
                 executiveSummaryItems.push({
                     secIdx: validSectionsCount,
                     sectionName: sec.section_name,
-                    bm: bm,
+                    benchmarks: benchmarks,
                     item: bestItem,
                     commonUnit: commonUnit
                 });
             }
 
             let benchmarkRowHtml = '';
-            if (bm) {
-                benchmarkRowHtml = `
-                    <tr style="background-color: #f1f5f9; border-top: 1.5px solid #0f172a; border-bottom: 2px solid #94a3b8; font-weight: 600; color: #1e293b;">
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
-                            <span style="display: inline-block; padding: 1px 5px; background: #1e293b; color: #ffffff; border-radius: 2px; font-size: 7.5pt; font-weight: bold;">기준</span>
-                        </td>
-                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">${escapeHtml(bm.maker || '-')}</td>` : ''}
-                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">
-                            ${escapeHtml(bm.item || '-')}
-                            <span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #e0e7ff; color: #3730a3; border-radius: 2px; font-size: 7pt; font-weight: bold;">설계기준품</span>
-                        </td>
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
-                            <span style="display: inline-block; padding: 1px 5px; background: #e2e8f0; color: #0f172a; border-radius: 2px; font-weight: bold;">${escapeHtml(bm.spec || '-')}</span>
-                        </td>
-                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b;">-</td>` : ''}
-                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b; font-size: 8pt;">(대조 기준)</td>` : ''}
-                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
-                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
-                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt; font-style: italic;">권장 규격품 (대조 기준)</td>` : ''}
-                    </tr>
-                `;
+            if (benchmarks.length > 0) {
+                benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
+                    const badgeText = benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`;
+                    const itemBadgeText = benchmarks.length === 1 ? '설계기준품' : `설계기준품 #${bIdx + 1}`;
+                    return `
+                        <tr style="background-color: #f1f5f9; border-top: 1.5px solid #0f172a; border-bottom: 2px solid #94a3b8; font-weight: 600; color: #1e293b;">
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
+                                <span style="display: inline-block; padding: 1px 5px; background: #1e293b; color: #ffffff; border-radius: 2px; font-size: 7.5pt; font-weight: bold;">${badgeText}</span>
+                            </td>
+                            ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">${escapeHtml(bm.maker || '-')}</td>` : ''}
+                            <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">
+                                ${escapeHtml(bm.item || '-')}
+                                <span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #e0e7ff; color: #3730a3; border-radius: 2px; font-size: 7pt; font-weight: bold;">${itemBadgeText}</span>
+                            </td>
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
+                                <span style="display: inline-block; padding: 1px 5px; background: #e2e8f0; color: #0f172a; border-radius: 2px; font-weight: bold;">${escapeHtml(bm.spec || '-')}</span>
+                            </td>
+                            ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b;">-</td>` : ''}
+                            ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b; font-size: 8pt;">(대조 기준)</td>` : ''}
+                            ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
+                            ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
+                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt; font-style: italic;">권장 규격품 (대조 기준)</td>` : ''}
+                        </tr>
+                    `;
+                }).join('');
             }
 
             let rows = benchmarkRowHtml;
@@ -4165,9 +4273,9 @@ const app = {
                 <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
                     <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;">
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
-                        ${bm ? `
+                        ${benchmarks.length > 0 ? `
                             <span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
-                                기준품: ${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
+                                기준품 (${benchmarks.length}개): ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
                             </span>
                         ` : ''}
                     </div>
@@ -4231,12 +4339,12 @@ const app = {
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
                             ${escapeHtml(sum.sectionName)}
-                            ${sum.bm ? `
+                            ${(sum.benchmarks && sum.benchmarks.length > 0) ? sum.benchmarks.map((bm, bIdx) => `
                                 <div style="font-size: 7.5pt; color: #475569; font-weight: 500; margin-top: 2px;">
-                                    <span style="display: inline-block; padding: 1px 4px; background: #e2e8f0; color: #1e293b; border-radius: 2px; font-size: 7pt; font-weight: bold;">기준</span>
-                                    ${sum.bm.maker ? `[${escapeHtml(sum.bm.maker)}] ` : ''}${escapeHtml(sum.bm.item || '')}${sum.bm.spec ? ` (${escapeHtml(sum.bm.spec)})` : ''}
+                                    <span style="display: inline-block; padding: 1px 4px; background: #e2e8f0; color: #1e293b; border-radius: 2px; font-size: 7pt; font-weight: bold;">${sum.benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`}</span>
+                                    ${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
                                 </div>
-                            ` : ''}
+                            `).join('') : ''}
                         </td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>

@@ -290,6 +290,7 @@ function initLogisticsTables(database) {
                                     target_maker TEXT DEFAULT '',
                                     target_item TEXT DEFAULT '',
                                     target_spec TEXT DEFAULT '',
+                                    target_benchmarks TEXT DEFAULT '',
                                     display_order INTEGER DEFAULT 0,
                                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -301,6 +302,7 @@ function initLogisticsTables(database) {
                                 database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN target_spec TEXT DEFAULT ''`, () => {});
                                 database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN target_maker TEXT DEFAULT ''`, () => {});
                                 database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN target_item TEXT DEFAULT ''`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN target_benchmarks TEXT DEFAULT ''`, () => {});
                             });
                             database.run(`
                                 CREATE TABLE IF NOT EXISTS logistics_quote_items (
@@ -1220,8 +1222,8 @@ router.post('/quote-projects/save-from-draft', async (req, res) => {
         // 작업대의 모든 섹션과 품목을 새 프로젝트로 복제 (스냅샷 생성)
         for (const sec of draftSections) {
             const newSecRes = await dbRun(
-                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, display_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                [newProjectId, sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.display_order]
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, target_benchmarks, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [newProjectId, sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.target_benchmarks || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
             const draftItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
@@ -1283,8 +1285,8 @@ router.post('/quote-projects/:id/restore-to-draft', async (req, res) => {
         // 보관함의 섹션/품목을 작업대(0)로 복제
         for (const sec of targetSections) {
             const newSecRes = await dbRun(
-                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, display_order) VALUES (0, ?, ?, ?, ?, ?, ?)`,
-                [sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.display_order]
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, target_benchmarks, display_order) VALUES (0, ?, ?, ?, ?, ?, ?, ?)`,
+                [sec.name, sec.memo, sec.target_maker || '', sec.target_item || '', sec.target_spec || '', sec.target_benchmarks || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
             const items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
@@ -1337,6 +1339,7 @@ router.get('/quote-projects/:id/sections', async (req, res) => {
             target_maker: sec.target_maker || '',
             target_item: sec.target_item || '',
             target_spec: sec.target_spec || '',
+            target_benchmarks: sec.target_benchmarks || '',
             recommended_spec: sec.target_spec || '',
             items: items.filter(it => it.section_id === sec.id)
         }));
@@ -1465,6 +1468,7 @@ router.get('/quote-sections', async (req, res) => {
             target_maker: sec.target_maker || '',
             target_item: sec.target_item || '',
             target_spec: sec.target_spec || '',
+            target_benchmarks: sec.target_benchmarks || '',
             recommended_spec: sec.target_spec || '',
             items: items.filter(it => it.section_id === sec.id)
         }));
@@ -1478,7 +1482,7 @@ router.get('/quote-sections', async (req, res) => {
 // 2. 단가표에서 선택한 품목들을 섹션에 추가 (기본값: 현재 작업대 project_id=0)
 router.post('/quote-sections/add-items', async (req, res) => {
     try {
-        let { section_id, section_name, name, section_note, memo, target_maker, target_item, target_spec, recommended_spec, items, project_id } = req.body;
+        let { section_id, section_name, name, section_note, memo, target_maker, target_item, target_spec, recommended_spec, target_benchmarks, items, project_id } = req.body;
         const candidateItems = Array.isArray(items) ? items : [];
         let targetProjectId = project_id !== undefined ? parseInt(project_id, 10) : 0;
 
@@ -1487,9 +1491,39 @@ router.post('/quote-sections/add-items', async (req, res) => {
         let targetSectionId = section_id ? parseInt(section_id, 10) : null;
         let finalSectionName = (section_name || name || '').trim();
         const finalSectionMemo = (section_note || memo || '').trim();
-        const finalTargetMaker = (target_maker || '').trim();
-        const finalTargetItem = (target_item || '').trim();
-        const finalTargetSpec = (target_spec !== undefined ? target_spec : (recommended_spec || '')).trim();
+        let finalTargetMaker = (target_maker || '').trim();
+        let finalTargetItem = (target_item || '').trim();
+        let finalTargetSpec = (target_spec !== undefined ? target_spec : (recommended_spec || '')).trim();
+
+        // target_benchmarks 가공 및 동기화
+        let benchmarkList = [];
+        if (Array.isArray(target_benchmarks)) {
+            benchmarkList = target_benchmarks.map(b => ({
+                maker: (b.maker || '').trim(),
+                item: (b.item || '').trim(),
+                spec: (b.spec || '').trim()
+            })).filter(b => b.maker || b.item || b.spec);
+        } else if (typeof target_benchmarks === 'string' && target_benchmarks.trim()) {
+            try {
+                const parsed = JSON.parse(target_benchmarks);
+                if (Array.isArray(parsed)) {
+                    benchmarkList = parsed.map(b => ({
+                        maker: (b.maker || '').trim(),
+                        item: (b.item || '').trim(),
+                        spec: (b.spec || '').trim()
+                    })).filter(b => b.maker || b.item || b.spec);
+                }
+            } catch (e) {}
+        }
+
+        if (benchmarkList.length === 0 && (finalTargetMaker || finalTargetItem || finalTargetSpec)) {
+            benchmarkList.push({ maker: finalTargetMaker, item: finalTargetItem, spec: finalTargetSpec });
+        } else if (benchmarkList.length > 0) {
+            if (!finalTargetMaker && benchmarkList[0].maker) finalTargetMaker = benchmarkList[0].maker;
+            if (!finalTargetItem && benchmarkList[0].item) finalTargetItem = benchmarkList[0].item;
+            if (!finalTargetSpec && benchmarkList[0].spec) finalTargetSpec = benchmarkList[0].spec;
+        }
+        const finalBenchmarksJson = benchmarkList.length > 0 ? JSON.stringify(benchmarkList) : '';
 
         // section_id가 없거나 유효하지 않으면 새 섹션 생성 또는 이름으로 검색
         if (!targetSectionId) {
@@ -1502,13 +1536,13 @@ router.post('/quote-sections/add-items', async (req, res) => {
             );
             if (existingSec) {
                 targetSectionId = existingSec.id;
-                if (finalTargetSpec || finalTargetMaker || finalTargetItem) {
-                    await dbRun(`UPDATE logistics_quote_sections SET target_maker = ?, target_item = ?, target_spec = ? WHERE id = ?`, [finalTargetMaker, finalTargetItem, finalTargetSpec, targetSectionId]);
+                if (finalTargetSpec || finalTargetMaker || finalTargetItem || finalBenchmarksJson) {
+                    await dbRun(`UPDATE logistics_quote_sections SET target_maker = ?, target_item = ?, target_spec = ?, target_benchmarks = ? WHERE id = ?`, [finalTargetMaker, finalTargetItem, finalTargetSpec, finalBenchmarksJson, targetSectionId]);
                 }
             } else {
                 const secRes = await dbRun(
-                    `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, display_order) VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_sections WHERE project_id = ?))`,
-                    [targetProjectId, finalSectionName, finalSectionMemo, finalTargetMaker, finalTargetItem, finalTargetSpec, targetProjectId]
+                    `INSERT INTO logistics_quote_sections (project_id, name, memo, target_maker, target_item, target_spec, target_benchmarks, display_order) VALUES (?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_sections WHERE project_id = ?))`,
+                    [targetProjectId, finalSectionName, finalSectionMemo, finalTargetMaker, finalTargetItem, finalTargetSpec, finalBenchmarksJson, targetProjectId]
                 );
                 targetSectionId = secRes.lastID;
             }
@@ -1516,8 +1550,8 @@ router.post('/quote-sections/add-items', async (req, res) => {
             const secRow = await dbGet(`SELECT id, name FROM logistics_quote_sections WHERE id = ?`, [targetSectionId]);
             if (secRow) {
                 finalSectionName = secRow.name;
-                if (finalTargetSpec || finalTargetMaker || finalTargetItem) {
-                    await dbRun(`UPDATE logistics_quote_sections SET target_maker = ?, target_item = ?, target_spec = ? WHERE id = ?`, [finalTargetMaker, finalTargetItem, finalTargetSpec, targetSectionId]);
+                if (finalTargetSpec || finalTargetMaker || finalTargetItem || finalBenchmarksJson) {
+                    await dbRun(`UPDATE logistics_quote_sections SET target_maker = ?, target_item = ?, target_spec = ?, target_benchmarks = ? WHERE id = ?`, [finalTargetMaker, finalTargetItem, finalTargetSpec, finalBenchmarksJson, targetSectionId]);
                 }
             }
         }
@@ -1586,7 +1620,7 @@ router.post('/quote-sections/add-items', async (req, res) => {
 router.put('/quote-sections/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const { name, memo, section_name, section_note, target_maker, target_item, target_spec, recommended_spec } = req.body;
+        const { name, memo, section_name, section_note, target_maker, target_item, target_spec, recommended_spec, target_benchmarks } = req.body;
 
         const sec = await dbGet(`SELECT * FROM logistics_quote_sections WHERE id = ?`, [id]);
         if (!sec) {
@@ -1595,19 +1629,56 @@ router.put('/quote-sections/:id', async (req, res) => {
 
         const reqName = name !== undefined ? name : section_name;
         const reqMemo = memo !== undefined ? memo : section_note;
-        const reqMaker = target_maker;
-        const reqItem = target_item;
-        const reqSpec = target_spec !== undefined ? target_spec : recommended_spec;
+        let reqMaker = target_maker;
+        let reqItem = target_item;
+        let reqSpec = target_spec !== undefined ? target_spec : recommended_spec;
+
+        let benchmarkList = null;
+        if (target_benchmarks !== undefined) {
+            benchmarkList = [];
+            if (Array.isArray(target_benchmarks)) {
+                benchmarkList = target_benchmarks.map(b => ({
+                    maker: (b.maker || '').trim(),
+                    item: (b.item || '').trim(),
+                    spec: (b.spec || '').trim()
+                })).filter(b => b.maker || b.item || b.spec);
+            } else if (typeof target_benchmarks === 'string' && target_benchmarks.trim()) {
+                try {
+                    const parsed = JSON.parse(target_benchmarks);
+                    if (Array.isArray(parsed)) {
+                        benchmarkList = parsed.map(b => ({
+                            maker: (b.maker || '').trim(),
+                            item: (b.item || '').trim(),
+                            spec: (b.spec || '').trim()
+                        })).filter(b => b.maker || b.item || b.spec);
+                    }
+                } catch (e) {}
+            }
+        }
 
         const newName = reqName !== undefined ? (String(reqName).trim() || sec.name) : sec.name;
         const newMemo = reqMemo !== undefined ? String(reqMemo).trim() : (sec.memo || '');
-        const newMaker = reqMaker !== undefined ? String(reqMaker).trim() : (sec.target_maker || '');
-        const newItem = reqItem !== undefined ? String(reqItem).trim() : (sec.target_item || '');
-        const newSpec = reqSpec !== undefined ? String(reqSpec).trim() : (sec.target_spec || '');
+        let newMaker = reqMaker !== undefined ? String(reqMaker).trim() : (sec.target_maker || '');
+        let newItem = reqItem !== undefined ? String(reqItem).trim() : (sec.target_item || '');
+        let newSpec = reqSpec !== undefined ? String(reqSpec).trim() : (sec.target_spec || '');
+        let newBenchmarks = sec.target_benchmarks || '';
+
+        if (benchmarkList !== null) {
+            newBenchmarks = benchmarkList.length > 0 ? JSON.stringify(benchmarkList) : '';
+            if (benchmarkList.length > 0) {
+                newMaker = benchmarkList[0].maker;
+                newItem = benchmarkList[0].item;
+                newSpec = benchmarkList[0].spec;
+            } else {
+                newMaker = '';
+                newItem = '';
+                newSpec = '';
+            }
+        }
 
         await dbRun(
-            `UPDATE logistics_quote_sections SET name = ?, memo = ?, target_maker = ?, target_item = ?, target_spec = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [newName, newMemo, newMaker, newItem, newSpec, id]
+            `UPDATE logistics_quote_sections SET name = ?, memo = ?, target_maker = ?, target_item = ?, target_spec = ?, target_benchmarks = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [newName, newMemo, newMaker, newItem, newSpec, newBenchmarks, id]
         );
 
         res.json({ success: true, message: '섹션 정보가 저장되었습니다.' });

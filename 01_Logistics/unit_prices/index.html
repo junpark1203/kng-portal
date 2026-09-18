@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260918_13">
+    <link rel="stylesheet" href="style.css?v=20260918_14">
 </head>
 <body>
 
@@ -537,7 +537,7 @@
 
     <!-- ── 6. 견적 비교 테이블 담기 모달 (이카운트 ERP 스타일) ── -->
     <div class="modal fade" id="addToQuoteModal" tabindex="-1" aria-labelledby="addToQuoteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 580px;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 650px;">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
                 <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
@@ -576,32 +576,42 @@
                                     <tbody>
                                         <tr>
                                             <th class="erp-th-label required" style="width: 120px;">비교 섹션명</th>
-                                            <td class="erp-td-input" colspan="3">
-                                                <input type="text" class="form-control" id="inputNewSectionName" 
-                                                       placeholder="섹션(항목)명 (예: 테일씰그리스, 작동유)" maxlength="40">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="erp-th-label" style="width: 120px;">기준 제조사</th>
-                                            <td class="erp-td-input" colspan="3">
-                                                <input type="text" class="form-control" id="inputNewSectionTargetMaker" 
-                                                       placeholder="권장 기준 제조사 (선택, 예: 현대오일뱅크)" maxlength="40">
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th class="erp-th-label" style="width: 120px;">기준 품명</th>
-                                            <td class="erp-td-input" style="width: 44%;">
-                                                <input type="text" class="form-control" id="inputNewSectionTargetItem" 
-                                                       placeholder="권장 품명 (선택)" maxlength="40">
-                                            </td>
-                                            <th class="erp-th-label" style="width: 85px;">기준 규격</th>
                                             <td class="erp-td-input">
-                                                <input type="text" class="form-control" id="inputNewSectionTargetSpec" 
-                                                       placeholder="규격 (선택)" maxlength="50">
+                                                <input type="text" class="form-control" id="inputNewSectionName" 
+                                                       placeholder="섹션(항목)명 (예: 테일씰그리스, 작동유)" maxlength="50">
                                             </td>
                                         </tr>
                                     </tbody>
                                 </table>
+                                <div class="p-2 border-top bg-light">
+                                    <div class="d-flex align-items-center justify-content-between mb-1.5">
+                                        <div class="d-flex align-items-center gap-1.5">
+                                            <span class="fw-bold text-dark" style="font-size: 11.5px;">
+                                                <i class='bx bx-pin text-primary me-1'></i>설계 / 권장 기준품 (선택사항)
+                                            </span>
+                                            <span class="text-muted" style="font-size: 10px;">(복수 입력 가능)</span>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-subgrid-add" onclick="app.addBenchmarkRow('addQuoteBenchmarkTableBody')">
+                                            <i class='bx bx-plus me-0.5'></i>기준품 추가
+                                        </button>
+                                    </div>
+                                    <div class="erp-subgrid-wrap">
+                                        <table class="erp-subgrid-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 40px;">No</th>
+                                                    <th style="width: 32%;">기준 제조사/브랜드</th>
+                                                    <th style="width: 34%;">기준 품명/모델</th>
+                                                    <th>기준 규격</th>
+                                                    <th style="width: 36px;">삭제</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="addQuoteBenchmarkTableBody">
+                                                <!-- 동적 기준품 행 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -718,7 +728,7 @@
 
     <!-- ── 6-1. 새 비교 섹션 만들기 모달 (이카운트 ERP 명세서 스타일) ── -->
     <div class="modal fade" id="newSectionModal" tabindex="-1" aria-labelledby="newSectionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 650px;">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
                 <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
@@ -755,33 +765,36 @@
                                 <tr class="erp-group-header-row">
                                     <th colspan="4">
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
-                                                비교표 최상단 [기준] 대조용 · 선택사항
-                                            </span>
+                                            <div class="d-flex align-items-center gap-1.5">
+                                                <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
+                                                    대조용 · 복수 입력 가능
+                                                </span>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-subgrid-add" onclick="app.addBenchmarkRow('directBenchmarkTableBody')">
+                                                <i class='bx bx-plus me-0.5'></i>기준품 추가
+                                            </button>
                                         </div>
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th class="erp-th-label" style="width: 135px;">기준 제조사 / 브랜드</th>
-                                    <td class="erp-td-input" colspan="3">
-                                        <input type="text" class="form-control" id="inpDirectTargetMaker" 
-                                               placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트 등 (선택사항)" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="erp-th-label" style="width: 135px;">기준 품명 / 모델</th>
-                                    <td class="erp-td-input" style="width: 42%;">
-                                        <input type="text" class="form-control" id="inpDirectTargetItem" 
-                                               placeholder="예: 메인 베어링 실란트 HD-100" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
-                                    </td>
-                                    <th class="erp-th-label" style="width: 95px;">기준 규격</th>
-                                    <td class="erp-td-input">
-                                        <input type="text" class="form-control" id="inpDirectTargetSpec" 
-                                               placeholder="예: 250kg Drum, ISO VG 46" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                                    <td colspan="4" class="p-2" style="background-color: #ffffff;">
+                                        <div class="erp-subgrid-wrap">
+                                            <table class="erp-subgrid-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 40px;">No</th>
+                                                        <th style="width: 32%;">기준 제조사 / 브랜드</th>
+                                                        <th style="width: 34%;">기준 품명 / 모델</th>
+                                                        <th>기준 규격</th>
+                                                        <th style="width: 36px;">삭제</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="directBenchmarkTableBody">
+                                                    <!-- 동적 기준품 행 -->
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -793,7 +806,7 @@
                         <div class="d-flex align-items-start gap-1.5">
                             <i class='bx bx-info-circle text-primary fs-6 mt-0.5'></i>
                             <div style="font-size: 11px; line-height: 1.45;">
-                                <strong>안내:</strong> 기준품을 등록하시면 섹션 최상단에 <strong>[기준] 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 일반 비교 섹션으로 생성)
+                                <strong>안내:</strong> 기준품을 등록하시면 섹션 최상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 일반 비교 섹션으로 생성)
                             </div>
                         </div>
                     </div>
@@ -818,7 +831,7 @@
 
     <!-- ── 6-1-2. 비교 섹션명 및 권장 규격 변경 모달 (이카운트 ERP 명세서 스타일) ── -->
     <div class="modal fade" id="editSectionNameModal" tabindex="-1" aria-labelledby="editSectionNameModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 650px;">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
                 <!-- ERP 타이틀 바 -->
                 <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
@@ -862,33 +875,36 @@
                                 <tr class="erp-group-header-row">
                                     <th colspan="4">
                                         <div class="d-flex align-items-center justify-content-between">
-                                            <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
-                                                비교표 최상단 [기준] 대조용 · 선택사항
-                                            </span>
+                                            <div class="d-flex align-items-center gap-1.5">
+                                                <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
+                                                    대조용 · 복수 입력 가능
+                                                </span>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-subgrid-add" onclick="app.addBenchmarkRow('editBenchmarkTableBody')">
+                                                <i class='bx bx-plus me-0.5'></i>기준품 추가
+                                            </button>
                                         </div>
                                     </th>
                                 </tr>
                                 <tr>
-                                    <th class="erp-th-label" style="width: 135px;">기준 제조사 / 브랜드</th>
-                                    <td class="erp-td-input" colspan="3">
-                                        <input type="text" class="form-control" id="inpEditTargetMaker" 
-                                               placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트 등 (제조사 미지정 시 비워둠)" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th class="erp-th-label" style="width: 135px;">기준 품명 / 모델</th>
-                                    <td class="erp-td-input" style="width: 42%;">
-                                        <input type="text" class="form-control" id="inpEditTargetItem" 
-                                               placeholder="예: 메인 베어링 실란트 HD-100" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
-                                    </td>
-                                    <th class="erp-th-label" style="width: 95px;">기준 규격</th>
-                                    <td class="erp-td-input">
-                                        <input type="text" class="form-control" id="inpEditTargetSpec" 
-                                               placeholder="예: 250kg Drum, ISO VG 46" 
-                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                                    <td colspan="4" class="p-2" style="background-color: #ffffff;">
+                                        <div class="erp-subgrid-wrap">
+                                            <table class="erp-subgrid-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 40px;">No</th>
+                                                        <th style="width: 32%;">기준 제조사 / 브랜드</th>
+                                                        <th style="width: 34%;">기준 품명 / 모델</th>
+                                                        <th>기준 규격</th>
+                                                        <th style="width: 36px;">삭제</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="editBenchmarkTableBody">
+                                                    <!-- 동적 기준품 행 -->
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -902,8 +918,8 @@
                             <div style="font-size: 11px; line-height: 1.45;">
                                 <strong>안내 사항:</strong>
                                 <ul class="mb-0 ps-3 mt-0.5">
-                                    <li><strong>설계/권장 기준품</strong>을 입력하시면 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치되어, 등록된 견적 후보 품목들과 <strong>제조사, 품명, 규격을 수직 1:1로 즉시 대조</strong>할 수 있습니다.</li>
-                                    <li>기준품이 지정되지 않은 일반 비교의 경우, 기준품 입력란을 비워두시면 기존처럼 견적 후보들만 깔끔하게 나열됩니다.</li>
+                                    <li><strong>설계/권장 기준품</strong>을 1개 이상 입력하시면 비교 테이블 및 출력물 상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어, 견적 후보 품목들과 <strong>제조사, 품명, 규격을 1:1로 수직 대조</strong>할 수 있습니다.</li>
+                                    <li>기준품이 지정되지 않은 일반 비교의 경우 행을 모두 삭제하거나 비워두시면 됩니다.</li>
                                 </ul>
                             </div>
                         </div>
@@ -1061,6 +1077,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_13"></script>
+    <script src="app.js?v=20260918_14"></script>
 </body>
 </html>
