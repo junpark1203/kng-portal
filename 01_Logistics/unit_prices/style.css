@@ -961,16 +961,27 @@ body {
 @media print {
     @page {
         size: A4 landscape;
-        margin: 12mm 10mm 12mm 10mm;
+        margin: 10mm 8mm 10mm 8mm;
     }
 
-    body {
+    html,
+    html body,
+    body,
+    body.modal-open {
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
         background: #ffffff !important;
         padding: 0 !important;
         margin: 0 !important;
         font-size: 9.5pt !important;
         color: #000000 !important;
         font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Malgun Gothic', sans-serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
     /* 화면 UI 요소 전체 숨김 */
@@ -993,11 +1004,44 @@ body {
 
     /* 인쇄 전용 보고서 컨테이너 활성화 */
     .print-only,
-    #printArea {
+    #printArea,
+    .print-container {
         display: block !important;
+        position: static !important;
         width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
         margin: 0 !important;
         padding: 0 !important;
+    }
+
+    /* 인쇄 섹션 및 테이블 다중 페이지 넘김(Pagination) 제어 */
+    .print-quote-section {
+        margin-bottom: 20px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    .print-quote-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+    }
+
+    .print-quote-table thead {
+        display: table-header-group !important;
+    }
+
+    .print-quote-table tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    .print-summary-box {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .report-page {

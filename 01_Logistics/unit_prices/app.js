@@ -4039,35 +4039,47 @@ const app = {
         this.savePrintColumnSettings();
         const scope = document.querySelector('input[name="printScope"]:checked')?.value || 'selected';
         const columns = {
-            supplier: $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true,
-            buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
-            normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
-            freight: $('chkPrintFreight') ? $('chkPrintFreight').checked : true,
-            margin: $('chkPrintMargin') ? $('chkPrintMargin').checked : false,
-            note: $('chkPrintNote') ? $('chkPrintNote').checked : true,
-            opinion: $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true
+            supplier: $('chkPrintSupplier')?.checked !== false,
+            buyPrice: $('chkPrintBuyPrice')?.checked !== false,
+            normPrice: $('chkPrintNormPrice')?.checked !== false,
+            freight: $('chkPrintFreight')?.checked !== false,
+            margin: $('chkPrintMargin')?.checked === true,
+            note: $('chkPrintNote')?.checked !== false,
+            opinion: $('chkPrintOpinion')?.checked !== false
         };
 
         if (this.printOptionModalInstance) {
             this.printOptionModalInstance.hide();
         }
+        // modal-open 클래스 및 백드롭 즉시 제거 안전장치 (다중 페이지 페이징 방해 원인 차단)
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
 
-        if (this.printArchiveData) {
-            const archiveData = this.printArchiveData;
-            this.printArchiveData = null; // 인쇄 후 초기화
-            this.printExecutiveReport({
-                scope: 'all',
-                columns: columns,
-                customSections: archiveData.sections,
-                customProject: archiveData.project
-            });
-        } else {
-            this.printExecutiveReport({
-                scope: scope,
-                targetSecId: this.printTargetSecId,
-                columns: columns
-            });
-        }
+        const runPrint = () => {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = 'visible';
+            if (this.printArchiveData) {
+                const archiveData = this.printArchiveData;
+                this.printArchiveData = null; // 인쇄 후 초기화
+                this.printExecutiveReport({
+                    scope: 'all',
+                    columns: columns,
+                    customSections: archiveData.sections,
+                    customProject: archiveData.project
+                });
+            } else {
+                this.printExecutiveReport({
+                    scope: scope,
+                    targetSecId: this.printTargetSecId,
+                    columns: columns
+                });
+            }
+        };
+
+        // 모달 페이드아웃 완료 후 인쇄 트리거 (다중 페이지 페이징 완벽 보장)
+        setTimeout(runPrint, 200);
     },
 
     printExecutiveReportFromData: function(project, sections) {
@@ -4283,7 +4295,7 @@ const app = {
             });
 
             sectionsHtml += `
-                <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
+                <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid; break-inside: avoid;">
                     <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;">
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
                         ${benchmarks.length > 0 ? `
@@ -4350,14 +4362,8 @@ const app = {
                 summaryRows += `
                     <tr style="border-bottom: 1px solid #cbd5e1; background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
-                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
+                        <td style="text-align: left; padding: 6px 10px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
                             ${escapeHtml(sum.sectionName)}
-                            ${(sum.benchmarks && sum.benchmarks.length > 0) ? sum.benchmarks.map((bm, bIdx) => `
-                                <div style="font-size: 7.5pt; color: #475569; font-weight: 500; margin-top: 2px;">
-                                    <span style="display: inline-block; padding: 1px 4px; background: #e2e8f0; color: #1e293b; border-radius: 2px; font-size: 7pt; font-weight: bold;">${sum.benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`}</span>
-                                    ${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
-                                </div>
-                            `).join('') : ''}
                         </td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
@@ -4371,7 +4377,7 @@ const app = {
             });
 
             summaryTableHtml = `
-                <div class="print-summary-box" style="margin-bottom: 22px; border: 1.5px solid #059669; border-radius: 3px; background: #ffffff; padding: 8px 10px; page-break-inside: avoid;">
+                <div class="print-summary-box" style="margin-bottom: 22px; border: 1.5px solid #059669; border-radius: 3px; background: #ffffff; padding: 8px 10px; page-break-inside: avoid; break-inside: avoid;">
                     <div style="font-size: 10.5pt; font-weight: 800; color: #065f46; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
                         <span>■ 품목별 최저가 추천 종합 요약</span>
                         <span style="font-size: 8.5pt; font-weight: normal; color: #047857;">* 각 비교군별 단위단가 기준 1위 최저단가 품목</span>
@@ -4418,9 +4424,12 @@ const app = {
 
                 <!-- 2. 세부 비교 품목 테이블 목록 -->
                 ${sectionsHtml}
+            </div>
         `;
 
-        window.print();
+        setTimeout(() => {
+            window.print();
+        }, 60);
     },
 
     printSingleSection: function(sectionId) {
