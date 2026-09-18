@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="../logistics-theme.css">
     <link rel="stylesheet" href="../../Common/css/erp-grid.css">
     <!-- 모듈 전용 고도화 ECOUNT ERP 스타일시트 -->
-    <link rel="stylesheet" href="style.css?v=20260918_1">
+    <link rel="stylesheet" href="style.css?v=20260918_13">
 </head>
 <body>
 
@@ -535,63 +535,94 @@
         </div>
     </div>
 
-    <!-- ── 6. 견적 비교 테이블 담기 모달 ── -->
+    <!-- ── 6. 견적 비교 테이블 담기 모달 (이카운트 ERP 스타일) ── -->
     <div class="modal fade" id="addToQuoteModal" tabindex="-1" aria-labelledby="addToQuoteModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 580px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center gap-2">
-                        <i class='bx bx-git-compare text-primary fs-5'></i>
-                        <h6 class="modal-title fw-bold mb-0" id="addToQuoteModalLabel">견적 비교 테이블에 담기</h6>
+                        <span class="erp-modal-title" id="addToQuoteModalLabel">
+                            <i class='bx bx-git-compare text-primary fs-5'></i> 비교 작업대 품목 담기
+                        </span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary" style="font-size: 10px; font-weight: 500;">
+                            단가표 ➔ 작업대
+                        </span>
                     </div>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-3">
-                    <p class="text-muted small mb-2">선택한 <strong class="text-primary" id="modalSelectedCount">0</strong>개 품목을 <strong>비교 작업대</strong>의 어느 섹션에 담을지 지정해주세요.</p>
+                <div class="modal-body p-3 bg-light">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-secondary small">
+                            선택된 단가 품목: <strong class="text-primary fw-bold" id="modalSelectedCount">0</strong>건
+                        </span>
+                        <span class="text-muted" style="font-size: 10.5px;">아래 비교 섹션을 지정하여 추가합니다.</span>
+                    </div>
                     
                     <!-- 선택된 품목 요약 리스트 -->
-                    <div class="p-2 border rounded bg-light mb-3" style="max-height: 110px; overflow-y: auto;" id="modalSelectedItemsList">
+                    <div class="p-2 border rounded bg-white mb-2.5" style="max-height: 105px; overflow-y: auto;" id="modalSelectedItemsList">
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold small text-dark">비교 섹션(항목) 지정</label>
-                        <div class="d-flex flex-column gap-2">
-                            <div class="form-check">
+                    <div class="d-flex flex-column gap-2">
+                        <!-- 옵션 1: 신규 섹션 생성 -->
+                        <div class="p-2 bg-white border rounded">
+                            <div class="form-check mb-1.5">
                                 <input class="form-check-input" type="radio" name="sectionChoice" id="choiceNew" value="new" checked onchange="app.onSectionChoiceChange()">
-                                <label class="form-check-label small fw-bold text-primary" for="choiceNew">새로운 비교 섹션명 생성</label>
-                                <div id="newSectionInputsWrap" class="mt-1 d-flex flex-column gap-1.5 p-2 rounded border bg-light">
-                                    <input type="text" class="form-control form-control-sm" id="inputNewSectionName" 
-                                           placeholder="섹션(항목)명 (예: 테일씰그리스, 작동유)" maxlength="40">
-                                    <div class="row g-1 mt-1">
-                                        <div class="col-12">
-                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetMaker" 
-                                                   placeholder="권장 기준 제조사 (선택, 예: 현대오일뱅크)" maxlength="40">
-                                        </div>
-                                        <div class="col-7">
-                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetItem" 
-                                                   placeholder="권장 기준 품명 (선택, 예: 테일씰그리스)" maxlength="40">
-                                        </div>
-                                        <div class="col-5">
-                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetSpec" 
-                                                   placeholder="기준 규격 (선택, 예: 250kg)" maxlength="50">
-                                        </div>
-                                    </div>
-                                </div>
+                                <label class="form-check-label small fw-bold text-dark" for="choiceNew">
+                                    <i class='bx bx-folder-plus text-primary me-1'></i> 새로운 비교 섹션 생성
+                                </label>
                             </div>
-                            <div class="form-check" id="radioExistingSectionWrap">
+                            <div id="newSectionInputsWrap" class="erp-modal-form-wrap">
+                                <table class="erp-modal-form-table">
+                                    <tbody>
+                                        <tr>
+                                            <th class="erp-th-label required" style="width: 120px;">비교 섹션명</th>
+                                            <td class="erp-td-input" colspan="3">
+                                                <input type="text" class="form-control" id="inputNewSectionName" 
+                                                       placeholder="섹션(항목)명 (예: 테일씰그리스, 작동유)" maxlength="40">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="erp-th-label" style="width: 120px;">기준 제조사</th>
+                                            <td class="erp-td-input" colspan="3">
+                                                <input type="text" class="form-control" id="inputNewSectionTargetMaker" 
+                                                       placeholder="권장 기준 제조사 (선택, 예: 현대오일뱅크)" maxlength="40">
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th class="erp-th-label" style="width: 120px;">기준 품명</th>
+                                            <td class="erp-td-input" style="width: 44%;">
+                                                <input type="text" class="form-control" id="inputNewSectionTargetItem" 
+                                                       placeholder="권장 품명 (선택)" maxlength="40">
+                                            </td>
+                                            <th class="erp-th-label" style="width: 85px;">기준 규격</th>
+                                            <td class="erp-td-input">
+                                                <input type="text" class="form-control" id="inputNewSectionTargetSpec" 
+                                                       placeholder="규격 (선택)" maxlength="50">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- 옵션 2: 기존 섹션에 추가 -->
+                        <div class="p-2 bg-white border rounded" id="radioExistingSectionWrap">
+                            <div class="form-check mb-1">
                                 <input class="form-check-input" type="radio" name="sectionChoice" id="choiceExisting" value="existing" onchange="app.onSectionChoiceChange()">
-                                <label class="form-check-label small" for="choiceExisting">기존 비교 섹션에 추가</label>
-                                <select class="form-select form-select-sm mt-1" id="selectExistingSection">
-                                    <option value="">-- 기존 섹션을 선택하세요 --</option>
-                                </select>
+                                <label class="form-check-label small fw-bold text-dark" for="choiceExisting">
+                                    <i class='bx bx-folder text-secondary me-1'></i> 기존 비교 섹션에 추가
+                                </label>
                             </div>
+                            <select class="form-select form-select-sm" id="selectExistingSection">
+                                <option value="">-- 기존 섹션을 선택하세요 --</option>
+                            </select>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-between">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-sm btn-primary px-3" onclick="app.submitAddToQuote()">
-                        <i class='bx bx-check'></i> 작업대에 담기
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between align-items-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="app.submitAddToQuote()">
+                        <i class='bx bx-check me-1'></i> 작업대에 담기
                     </button>
                 </div>
             </div>
@@ -685,98 +716,214 @@
         </div>
     </div>
 
-    <!-- ── 6-1. 새 비교 섹션 만들기 모달 ── -->
+    <!-- ── 6-1. 새 비교 섹션 만들기 모달 (이카운트 ERP 명세서 스타일) ── -->
     <div class="modal fade" id="newSectionModal" tabindex="-1" aria-labelledby="newSectionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-md">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h6 class="modal-title fw-bold mb-0" id="newSectionModalLabel"><i class='bx bx-folder-plus text-primary'></i> 새 비교 섹션</h6>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="erp-modal-title" id="newSectionModalLabel">
+                            <i class='bx bx-folder-plus text-primary fs-5'></i> 비교 섹션 명세 등록 [신규]
+                        </span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary" style="font-size: 10px; font-weight: 500;">
+                            견적비교 작업대
+                        </span>
+                    </div>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-3">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold mb-1">비교 섹션(항목)명 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" id="inpDirectSectionName" placeholder="예: 테일씰그리스, 작동유, 2공구 급결제" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                <div class="modal-body p-3 bg-light">
+                    <!-- ERP 명세서 그리드 테이블 -->
+                    <div class="erp-modal-form-wrap shadow-2xs mb-2.5">
+                        <table class="erp-modal-form-table">
+                            <tbody>
+                                <tr class="erp-group-header-row">
+                                    <th colspan="4">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span><i class='bx bx-layer text-primary me-1'></i> 1. 기본 섹션 정보</span>
+                                            <span class="text-muted fw-normal" style="font-size: 10px;">* 필수 항목</span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label required" style="width: 135px;">비교 섹션명</th>
+                                    <td class="erp-td-input" colspan="3">
+                                        <input type="text" class="form-control" id="inpDirectSectionName" 
+                                               placeholder="예: 메인 베어링 실란트, 작동유, 2공구 급결제 등" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                                    </td>
+                                </tr>
+                                <tr class="erp-group-header-row">
+                                    <th colspan="4">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
+                                                비교표 최상단 [기준] 대조용 · 선택사항
+                                            </span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label" style="width: 135px;">기준 제조사 / 브랜드</th>
+                                    <td class="erp-td-input" colspan="3">
+                                        <input type="text" class="form-control" id="inpDirectTargetMaker" 
+                                               placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트 등 (선택사항)" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label" style="width: 135px;">기준 품명 / 모델</th>
+                                    <td class="erp-td-input" style="width: 42%;">
+                                        <input type="text" class="form-control" id="inpDirectTargetItem" 
+                                               placeholder="예: 메인 베어링 실란트 HD-100" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                                    </td>
+                                    <th class="erp-th-label" style="width: 95px;">기준 규격</th>
+                                    <td class="erp-td-input">
+                                        <input type="text" class="form-control" id="inpDirectTargetSpec" 
+                                               placeholder="예: 250kg Drum, ISO VG 46" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="p-2.5 rounded border" style="background-color: #f8fafc;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold small text-dark d-flex align-items-center gap-1">
-                                <i class='bx bx-pin text-primary'></i> 설계/권장 기준품 (선택사항)
-                            </span>
-                            <span class="text-muted" style="font-size: 10px;">비교표 1행 [기준] 배치</span>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 제조사/브랜드</label>
-                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetMaker" placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+
+                    <!-- 안내 가이드 박스 -->
+                    <div class="erp-modal-guide-box">
+                        <div class="d-flex align-items-start gap-1.5">
+                            <i class='bx bx-info-circle text-primary fs-6 mt-0.5'></i>
+                            <div style="font-size: 11px; line-height: 1.45;">
+                                <strong>안내:</strong> 기준품을 등록하시면 섹션 최상단에 <strong>[기준] 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 일반 비교 섹션으로 생성)
                             </div>
-                            <div class="col-7">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 품명/모델</label>
-                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetItem" placeholder="예: 테일씰그리스 HD-100" onkeydown="if(event.key==='Enter') app.createDirectSection()">
-                            </div>
-                            <div class="col-5">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 규격</label>
-                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetSpec" placeholder="예: 250kg Drum" onkeydown="if(event.key==='Enter') app.createDirectSection()">
-                            </div>
-                        </div>
-                        <div class="text-muted mt-2" style="font-size: 10.5px; line-height: 1.35;">
-                            * 입력 시 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치됩니다. (비워두면 미표시)
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 px-3 bg-light">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-sm btn-primary" onclick="app.createDirectSection()">생성</button>
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between align-items-center">
+                    <div class="text-muted d-none d-sm-block" style="font-size: 11px;">
+                        <kbd class="erp-kbd">Enter</kbd> 생성 &nbsp;
+                        <kbd class="erp-kbd">Esc</kbd> 닫기
+                    </div>
+                    <div class="d-flex gap-1.5">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">
+                            <i class='bx bx-x me-1'></i> 취소
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="app.createDirectSection()">
+                            <i class='bx bx-plus me-1'></i> 섹션 생성
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── 6-1-2. 비교 섹션명 및 권장 규격 변경 모달 ── -->
+    <!-- ── 6-1-2. 비교 섹션명 및 권장 규격 변경 모달 (이카운트 ERP 명세서 스타일) ── -->
     <div class="modal fade" id="editSectionNameModal" tabindex="-1" aria-labelledby="editSectionNameModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-md">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h6 class="modal-title fw-bold mb-0" id="editSectionNameModalLabel">
-                        <i class='bx bx-edit-alt text-primary'></i> 비교 섹션 정보 수정
-                    </h6>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 600px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; overflow: hidden;">
+                <!-- ERP 타이틀 바 -->
+                <div class="modal-header erp-modal-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="erp-modal-title" id="editSectionNameModalLabel">
+                            <i class='bx bx-edit-alt text-primary fs-5'></i> 비교 섹션 명세 정보 [수정]
+                        </span>
+                        <span class="badge bg-secondary-subtle text-light border border-secondary" style="font-size: 10px; font-weight: 500;">
+                            견적비교 작업대
+                        </span>
+                    </div>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body p-3">
+                
+                <div class="modal-body p-3 bg-light">
                     <input type="hidden" id="editSectionNameId">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold mb-1">비교 섹션(항목)명 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" id="inpEditSectionName" placeholder="예: 테일씰그리스, 작동유, 2공구 급결제" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                    
+                    <!-- 이카운트 ERP 스타일 명세서형 입력 그리드 테이블 -->
+                    <div class="erp-modal-form-wrap shadow-2xs mb-2.5">
+                        <table class="erp-modal-form-table">
+                            <tbody>
+                                <!-- 1. 기본 정보 헤더 -->
+                                <tr class="erp-group-header-row">
+                                    <th colspan="4">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span><i class='bx bx-layer text-primary me-1'></i> 1. 기본 섹션 정보</span>
+                                            <span class="text-muted fw-normal" style="font-size: 10px;">* 필수 항목</span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label required" style="width: 135px;">비교 섹션명</th>
+                                    <td class="erp-td-input" colspan="3">
+                                        <input type="text" class="form-control" id="inpEditSectionName" 
+                                               placeholder="예: 메인 베어링 실란트, 작동유, 2공구 급결제 등" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                                    </td>
+                                </tr>
+
+                                <!-- 2. 설계/권장 기준품 헤더 -->
+                                <tr class="erp-group-header-row">
+                                    <th colspan="4">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span><i class='bx bx-pin text-primary me-1'></i> 2. 설계 / 권장 기준품 (Benchmark Spec)</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-medium" style="font-size: 9.5px;">
+                                                비교표 최상단 [기준] 대조용 · 선택사항
+                                            </span>
+                                        </div>
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label" style="width: 135px;">기준 제조사 / 브랜드</th>
+                                    <td class="erp-td-input" colspan="3">
+                                        <input type="text" class="form-control" id="inpEditTargetMaker" 
+                                               placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트 등 (제조사 미지정 시 비워둠)" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="erp-th-label" style="width: 135px;">기준 품명 / 모델</th>
+                                    <td class="erp-td-input" style="width: 42%;">
+                                        <input type="text" class="form-control" id="inpEditTargetItem" 
+                                               placeholder="예: 메인 베어링 실란트 HD-100" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                                    </td>
+                                    <th class="erp-th-label" style="width: 95px;">기준 규격</th>
+                                    <td class="erp-td-input">
+                                        <input type="text" class="form-control" id="inpEditTargetSpec" 
+                                               placeholder="예: 250kg Drum, ISO VG 46" 
+                                               maxlength="50" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="p-2.5 rounded border" style="background-color: #f8fafc;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="fw-bold small text-dark d-flex align-items-center gap-1">
-                                <i class='bx bx-pin text-primary'></i> 설계/권장 기준품 (선택사항)
-                            </span>
-                            <span class="text-muted" style="font-size: 10px;">비교표 1행 [기준] 배치</span>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 제조사/브랜드</label>
-                                <input type="text" class="form-control form-control-sm" id="inpEditTargetMaker" placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+
+                    <!-- ECOUNT ERP 스타일 하단 안내 가이드 패널 -->
+                    <div class="erp-modal-guide-box">
+                        <div class="d-flex align-items-start gap-1.5">
+                            <i class='bx bx-info-circle text-primary fs-6 mt-0.5'></i>
+                            <div style="font-size: 11px; line-height: 1.45;">
+                                <strong>안내 사항:</strong>
+                                <ul class="mb-0 ps-3 mt-0.5">
+                                    <li><strong>설계/권장 기준품</strong>을 입력하시면 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치되어, 등록된 견적 후보 품목들과 <strong>제조사, 품명, 규격을 수직 1:1로 즉시 대조</strong>할 수 있습니다.</li>
+                                    <li>기준품이 지정되지 않은 일반 비교의 경우, 기준품 입력란을 비워두시면 기존처럼 견적 후보들만 깔끔하게 나열됩니다.</li>
+                                </ul>
                             </div>
-                            <div class="col-7">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 품명/모델</label>
-                                <input type="text" class="form-control form-control-sm" id="inpEditTargetItem" placeholder="예: 테일씰그리스 HD-100" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
-                            </div>
-                            <div class="col-5">
-                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 규격</label>
-                                <input type="text" class="form-control form-control-sm" id="inpEditTargetSpec" placeholder="예: 250kg Drum" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
-                            </div>
-                        </div>
-                        <div class="text-muted mt-2" style="font-size: 10.5px; line-height: 1.35;">
-                            * 입력 시 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 미표시)
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-end gap-1">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="button" class="btn btn-sm btn-primary" onclick="app.submitEditSectionName()">저장</button>
+
+                <!-- ERP 모달 액션 푸터 -->
+                <div class="modal-footer erp-modal-footer d-flex justify-content-between align-items-center">
+                    <div class="text-muted d-none d-sm-block" style="font-size: 11px;">
+                        <kbd class="erp-kbd">Enter</kbd> 저장 &nbsp;
+                        <kbd class="erp-kbd">Esc</kbd> 닫기
+                    </div>
+                    <div class="d-flex gap-1.5">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">
+                            <i class='bx bx-x me-1'></i> 취소
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary px-3 fw-bold" onclick="app.submitEditSectionName()">
+                            <i class='bx bx-check me-1'></i> 저장
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -914,6 +1061,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_12"></script>
+    <script src="app.js?v=20260918_13"></script>
 </body>
 </html>

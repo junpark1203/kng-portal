@@ -1685,6 +1685,133 @@ body {
     background-color: #e2e8f0 !important;
 }
 
+/* ── ECOUNT ERP 스타일 명세서형 모달 폼 테이블 ── */
+.erp-modal-form-wrap {
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #ffffff;
+}
 
+.erp-modal-form-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-bottom: 0;
+}
 
+.erp-modal-form-table tr {
+    border-bottom: 1px solid #e2e8f0;
+}
 
+.erp-modal-form-table tr:last-child {
+    border-bottom: none;
+}
+
+/* 그룹 구분 헤더 행 */
+.erp-modal-form-table .erp-group-header-row th {
+    background: linear-gradient(90deg, #f1f5f9 0%, #f8fafc 100%);
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 11.5px;
+    padding: 7px 10px;
+    border-top: 1px solid #cbd5e1;
+    border-bottom: 1px solid #cbd5e1;
+    letter-spacing: -0.2px;
+}
+
+.erp-modal-form-table .erp-group-header-row:first-child th {
+    border-top: none;
+}
+
+/* 레이블 셀 (th) */
+.erp-modal-form-table th.erp-th-label {
+    background-color: #f8fafc;
+    color: #334155;
+    font-weight: 600;
+    font-size: 11.5px;
+    padding: 7px 10px;
+    vertical-align: middle;
+    border-right: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.erp-modal-form-table th.erp-th-label.required::after {
+    content: " *";
+    color: #ef4444;
+    font-weight: 700;
+}
+
+/* 인풋 셀 (td) */
+.erp-modal-form-table td.erp-td-input {
+    padding: 5px 8px;
+    vertical-align: middle;
+    background-color: #ffffff;
+}
+
+.erp-modal-form-table td.erp-td-input .form-control {
+    font-size: 12px;
+    padding: 5px 8px;
+    height: 31px;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    color: #0f172a;
+    transition: all 0.15s ease;
+}
+
+.erp-modal-form-table td.erp-td-input .form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    background-color: #ffffff;
+}
+
+.erp-modal-form-table td.erp-td-input .form-control::placeholder {
+    color: #94a3b8;
+    font-size: 11.5px;
+}
+
+/* 안내 가이드 박스 */
+.erp-modal-guide-box {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 3.5px solid #2563eb;
+    border-radius: 3px;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #334155;
+    line-height: 1.45;
+}
+
+/* 모달 헤더 & 푸터 ERP 스타일 */
+.erp-modal-header {
+    background: #1e293b !important;
+    border-bottom: 1px solid #0f172a !important;
+    padding: 10px 14px !important;
+}
+
+.erp-modal-title {
+    font-size: 13.5px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ffffff;
+}
+
+.erp-modal-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 8px 14px !important;
+}
+
+.erp-kbd {
+    background-color: #ffffff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10.5px;
+    font-family: inherit;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
