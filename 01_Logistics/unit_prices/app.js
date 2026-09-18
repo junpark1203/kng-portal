@@ -2576,6 +2576,25 @@ const app = {
         }
     },
 
+    getSectionBenchmark: function(sec) {
+        if (!sec) return null;
+        let maker = (sec.target_maker || '').trim();
+        let item = (sec.target_item || '').trim();
+        let spec = (sec.target_spec || sec.recommended_spec || '').trim();
+
+        if (spec.startsWith('{') && spec.endsWith('}')) {
+            try {
+                const parsed = JSON.parse(spec);
+                maker = parsed.maker || maker;
+                item = parsed.item || item;
+                spec = parsed.spec || '';
+            } catch (e) {}
+        }
+
+        if (!maker && !item && !spec) return null;
+        return { maker, item, spec };
+    },
+
     openAddToQuoteModal: function() {
         if (this.checkedItemIds.size === 0) {
             alert('비교할 단가 항목을 먼저 1개 이상 체크(선택)해주세요.');
@@ -2627,6 +2646,12 @@ const app = {
 
         const inputNew = $('inputNewSectionName');
         if (inputNew) inputNew.value = '';
+        const inputMaker = $('inputNewSectionTargetMaker');
+        if (inputMaker) inputMaker.value = '';
+        const inputItem = $('inputNewSectionTargetItem');
+        if (inputItem) inputItem.value = '';
+        const inputSpec = $('inputNewSectionTargetSpec');
+        if (inputSpec) inputSpec.value = '';
 
         this.onSectionChoiceChange();
 
@@ -2643,16 +2668,25 @@ const app = {
         const choice = choiceRadio ? choiceRadio.value : 'new';
         const selectSec = $('selectExistingSection');
         const inputNew = $('inputNewSectionName');
+        const inputMaker = $('inputNewSectionTargetMaker');
+        const inputItem = $('inputNewSectionTargetItem');
+        const inputSpec = $('inputNewSectionTargetSpec');
 
         if (choice === 'existing') {
             if (selectSec) selectSec.disabled = false;
             if (inputNew) inputNew.disabled = true;
+            if (inputMaker) inputMaker.disabled = true;
+            if (inputItem) inputItem.disabled = true;
+            if (inputSpec) inputSpec.disabled = true;
         } else {
             if (selectSec) selectSec.disabled = true;
             if (inputNew) {
                 inputNew.disabled = false;
                 setTimeout(() => inputNew.focus(), 150);
             }
+            if (inputMaker) inputMaker.disabled = false;
+            if (inputItem) inputItem.disabled = false;
+            if (inputSpec) inputSpec.disabled = false;
         }
     },
 
@@ -2661,8 +2695,10 @@ const app = {
         const choice = choiceRadio ? choiceRadio.value : 'new';
         let sectionId = null;
         let sectionName = '';
-
+        let targetMaker = '';
+        let targetItem = '';
         let targetSpec = '';
+
         if (choice === 'existing') {
             const selectSec = $('selectExistingSection');
             sectionId = selectSec ? parseInt(selectSec.value, 10) : null;
@@ -2680,6 +2716,10 @@ const app = {
                 if (inputNew) inputNew.focus();
                 return;
             }
+            const inputMaker = $('inputNewSectionTargetMaker');
+            if (inputMaker) targetMaker = inputMaker.value.trim();
+            const inputItem = $('inputNewSectionTargetItem');
+            if (inputItem) targetItem = inputItem.value.trim();
             const inputSpec = $('inputNewSectionTargetSpec');
             if (inputSpec) targetSpec = inputSpec.value.trim();
         }
@@ -2718,6 +2758,8 @@ const app = {
                     project_id: 0,
                     section_id: sectionId,
                     section_name: sectionName,
+                    target_maker: targetMaker,
+                    target_item: targetItem,
                     target_spec: targetSpec,
                     items: itemsPayload
                 })
@@ -2747,8 +2789,13 @@ const app = {
     openNewSectionModal: function() {
         const inp = $('inpDirectSectionName');
         if (inp) inp.value = '';
+        const inpMaker = $('inpDirectTargetMaker');
+        if (inpMaker) inpMaker.value = '';
+        const inpItem = $('inpDirectTargetItem');
+        if (inpItem) inpItem.value = '';
         const inpSpec = $('inpDirectTargetSpec');
         if (inpSpec) inpSpec.value = '';
+
         if (!this.newSectionModalInstance && window.bootstrap && $('newSectionModal')) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
         }
@@ -2761,6 +2808,10 @@ const app = {
     createDirectSection: async function() {
         const inp = $('inpDirectSectionName');
         const name = inp ? inp.value.trim() : '';
+        const inpMaker = $('inpDirectTargetMaker');
+        const targetMaker = inpMaker ? inpMaker.value.trim() : '';
+        const inpItem = $('inpDirectTargetItem');
+        const targetItem = inpItem ? inpItem.value.trim() : '';
         const inpSpec = $('inpDirectTargetSpec');
         const targetSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!name) {
@@ -2774,6 +2825,8 @@ const app = {
                 body: JSON.stringify({
                     project_id: 0,
                     section_name: name,
+                    target_maker: targetMaker,
+                    target_item: targetItem,
                     target_spec: targetSpec,
                     items: []
                 })
@@ -2795,9 +2848,18 @@ const app = {
         if (inp) {
             inp.value = sec.section_name || '';
         }
+        const bm = this.getSectionBenchmark(sec);
+        const inpMaker = $('inpEditTargetMaker');
+        if (inpMaker) {
+            inpMaker.value = bm ? (bm.maker || '') : (sec.target_maker || '');
+        }
+        const inpItem = $('inpEditTargetItem');
+        if (inpItem) {
+            inpItem.value = bm ? (bm.item || '') : (sec.target_item || '');
+        }
         const inpSpec = $('inpEditTargetSpec');
         if (inpSpec) {
-            inpSpec.value = sec.recommended_spec || sec.target_spec || '';
+            inpSpec.value = bm ? (bm.spec || '') : (sec.recommended_spec || sec.target_spec || '');
         }
         if (!this.editSectionNameModalInstance && window.bootstrap && $('editSectionNameModal')) {
             this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
@@ -2817,6 +2879,10 @@ const app = {
         const secId = $('editSectionNameId') ? parseInt($('editSectionNameId').value) : null;
         const inp = $('inpEditSectionName');
         const newName = inp ? inp.value.trim() : '';
+        const inpMaker = $('inpEditTargetMaker');
+        const newMaker = inpMaker ? inpMaker.value.trim() : '';
+        const inpItem = $('inpEditTargetItem');
+        const newItem = inpItem ? inpItem.value.trim() : '';
         const inpSpec = $('inpEditTargetSpec');
         const newSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!secId) return;
@@ -2830,9 +2896,21 @@ const app = {
                 method: 'PUT',
                 body: JSON.stringify({
                     section_name: newName,
+                    target_maker: newMaker,
+                    target_item: newItem,
                     target_spec: newSpec
                 })
             });
+
+            const sec = (this.quoteSections || []).find(s => s.id === secId);
+            if (sec) {
+                sec.section_name = newName;
+                sec.name = newName;
+                sec.target_maker = newMaker;
+                sec.target_item = newItem;
+                sec.target_spec = newSpec;
+                sec.recommended_spec = newSpec;
+            }
 
             if (this.editSectionNameModalInstance) {
                 this.editSectionNameModalInstance.hide();
@@ -2966,10 +3044,12 @@ const app = {
             }
 
             const bestItem = analyzed.find(it => it.id === bestId) || analyzed[0];
+            const bm = this.getSectionBenchmark(sec);
             if (bestItem) {
                 summaryItems.push({
                     secId: sec.id,
                     secName: sec.section_name,
+                    benchmark: bm,
                     item: bestItem,
                     commonUnit: commonUnit,
                     totalCandidates: items.length
@@ -3023,6 +3103,12 @@ const app = {
                             <i class='bx bx-folder text-primary'></i> ${escapeHtml(sum.secName)}
                         </a>
                         <span class="text-muted ms-1" style="font-size: 10px;">(${sum.totalCandidates}개 후보)</span>
+                        ${sum.benchmark ? `
+                            <div class="text-muted mt-0.5" style="font-size: 10.5px; line-height: 1.25;">
+                                <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 9.5px; font-weight: normal;">기준</span>
+                                ${sum.benchmark.maker ? `<strong>[${escapeHtml(sum.benchmark.maker)}]</strong> ` : ''}${escapeHtml(sum.benchmark.item || '')}${sum.benchmark.spec ? ` <span class="text-secondary">(${escapeHtml(sum.benchmark.spec)})</span>` : ''}
+                            </div>
+                        ` : ''}
                     </td>
                     <td class="text-start ps-2 text-truncate" style="max-width: 130px;" title="${escapeHtml(it.default_supplier || '')}">
                         <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
@@ -3068,40 +3154,37 @@ const app = {
                             <i class='bx bx-check-shield fs-6'></i>
                         </div>
                         <div>
-                            <span class="fw-bold text-dark" style="font-size: 13px;">
-                                ■ 품목별 최저가 추천 종합 요약
-                            </span>
-                            <span class="text-muted ms-2" style="font-size: 11px;">
-                                [${projectName}] <span class="d-none d-sm-inline">기준일: ${projectDate}</span>
-                            </span>
+                            <span class="fw-bold text-dark" style="font-size: 13px;">품목별 최저단가 추천 종합 요약 (Executive Summary)</span>
+                            <span class="text-muted ms-2" style="font-size: 11px;">각 비교군별 단위단가 기준 1위 추천</span>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-1">
-                        <span class="badge bg-success" style="font-size: 10.5px;">총 ${summaryItems.length}개 추천 선정</span>
-                        <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 11px; height: 26px;" onclick="app.openPrintOptionModal()" title="요약표 및 세부 비교표 전체 인쇄">
-                            <i class='bx bx-printer'></i> 전체 보고서 인쇄
-                        </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-white text-dark border px-2 py-1" style="font-size: 11px;">
+                            <i class='bx bx-file text-primary me-1'></i>${projectName} (${projectDate})
+                        </span>
                     </div>
                 </div>
-                <div class="table-responsive bg-white">
-                    <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 12px; border-collapse: collapse;">
-                        <thead class="table-light" style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                            <tr>
-                                <th style="width: 45px;" class="text-center">순번</th>
-                                <th style="width: 160px;" class="text-start ps-2">비교 품목군</th>
-                                <th style="width: 130px;" class="text-start ps-2">공급업체</th>
-                                <th style="min-width: 170px;" class="text-start ps-2">추천 선정 품목</th>
-                                <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                <th style="width: 110px;" class="text-center">운임조건</th>
-                                <th style="width: 135px;" class="text-end pe-2">매입단가(환율)</th>
-                                <th style="width: 140px;" class="text-end pe-2">단위단가(최저)</th>
-                                <th style="min-width: 180px;" class="text-start ps-2">비고 (선정사유)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHtml}
-                        </tbody>
-                    </table>
+                <div class="p-0">
+                    <div class="table-responsive">
+                        <table class="quote-compare-table w-100 mb-0" style="font-size: 11.5px;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                    <th style="width: 45px;" class="text-center">순번</th>
+                                    <th style="min-width: 140px;" class="text-start ps-2">비교 품목군 (섹션)</th>
+                                    <th style="width: 130px;" class="text-start ps-2">추천 공급업체</th>
+                                    <th style="min-width: 160px;" class="text-start ps-2">추천 선정 품목</th>
+                                    <th style="width: 120px;" class="text-start ps-2">규격</th>
+                                    <th style="width: 95px;" class="text-center">운임조건</th>
+                                    <th style="width: 130px;" class="text-end pe-2">매입단가 (환율)</th>
+                                    <th style="width: 125px;" class="text-end pe-2">환산단가 (최저)</th>
+                                    <th style="min-width: 180px;" class="text-start ps-2">선정사유 및 비고 (실시간 입력)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         `;
@@ -3137,32 +3220,30 @@ const app = {
     },
 
     renderQuoteComparisonView: function() {
-        // 최상단 최저가 추천 종합 요약 카드 렌더링
+        const wrapper = $('quoteComparisonWrapper');
+        if (!wrapper) return;
+
+        // 최상단 종합 요약 카드 실시간 렌더링
         this.renderQuoteExecutiveSummary();
 
         const container = $('quoteSectionsContainer');
         if (!container) return;
 
-        if (this.quoteSections.length === 0) {
-            const summaryWrapper = $('quoteExecutiveSummaryWrapper');
-            if (summaryWrapper) summaryWrapper.innerHTML = '';
-
+        if (!this.quoteSections || this.quoteSections.length === 0) {
             container.innerHTML = `
-                <div class="text-center py-5 bg-white rounded border shadow-sm p-4">
-                    <div class="mb-3">
-                        <i class='bx bx-git-compare text-primary' style="font-size: 48px;"></i>
-                    </div>
-                    <h5 class="fw-bold text-dark">등록된 견적 비교 섹션이 없습니다</h5>
-                    <p class="text-muted small mb-3">
-                        [품목별 단가표]에서 비교를 원하는 품목들을 체크(Space 또는 클릭)한 후<br>
-                        <strong>[견적 비교 테이블에 담기]</strong> 버튼을 눌러 비교 섹션(예: 테일씰그리스, 급결제 등)을 구성해보세요.
+                <div class="text-center py-5 text-muted bg-white rounded border">
+                    <i class='bx bx-git-compare fs-1 text-secondary mb-2'></i>
+                    <p class="mb-2 fw-semibold">현재 비교 작업대에 담긴 품목이 없습니다.</p>
+                    <p class="small text-muted mb-3">
+                        좌측 [품목별 단가표]에서 비교할 품목들을 체크한 뒤 <strong>[작업대에 담기]</strong> 버튼을 누르거나,<br>
+                        아래 버튼으로 새로운 비교 섹션을 바로 만들어보세요.
                     </p>
                     <div class="d-flex justify-content-center gap-2">
-                        <button type="button" class="btn-erp btn-erp-primary" onclick="app.switchViewMode('item')">
-                            <i class='bx bx-list-ul'></i> 품목별 단가표로 이동하기
+                        <button type="button" class="btn btn-sm btn-primary" onclick="app.openNewSectionModal()">
+                            <i class='bx bx-plus'></i> 새 비교 섹션 생성
                         </button>
-                        <button type="button" class="btn-erp" onclick="app.openNewSectionModal()">
-                            <i class='bx bx-folder-plus'></i> 새 섹션 직접 만들기
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="app.openArchiveModal()">
+                            <i class='bx bx-folder-open'></i> 과거 검토서 보관함 열기
                         </button>
                     </div>
                 </div>
@@ -3230,10 +3311,46 @@ const app = {
                 }
             }
 
+            const bm = this.getSectionBenchmark(sec);
+
+            // 설계/권장 기준품 (제안 1: ERP 실무 표준형 대조 행)
+            let benchmarkRowHtml = '';
+            if (bm) {
+                benchmarkRowHtml = `
+                    <tr class="row-benchmark-spec">
+                        <td class="text-center align-middle" style="color: #94a3b8; font-size: 11px;">-</td>
+                        <td class="text-center">
+                            <span class="badge bg-dark text-white fw-bold px-2 py-0.5" style="font-size: 10px; letter-spacing: 0.5px;">기준</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
+                        </td>
+                        <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.maker || '-')}">
+                            ${bm.maker ? `<span class="text-primary"><i class='bx bx-pin me-1'></i>${escapeHtml(bm.maker)}</span>` : '<span class="text-muted">-</span>'}
+                        </td>
+                        <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.item || '-')}">
+                            ${escapeHtml(bm.item || '-')}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9.5px; font-weight: 500;">설계기준품</span>
+                        </td>
+                        <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
+                            <span class="spec-pill fw-bold" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">${escapeHtml(bm.spec || '-')}</span>
+                        </td>
+                        <td class="text-center text-muted">-</td>
+                        <td class="text-end pe-2 text-muted" style="font-size: 11px;">(대조 기준)</td>
+                        <td class="text-end pe-2 text-muted">-</td>
+                        <td class="text-end pe-2 text-muted">-</td>
+                        <td class="text-start ps-2 text-muted" style="font-size: 11px; font-style: italic;">
+                            권장 규격품 / 견적 후보 대조 기준
+                        </td>
+                        <td class="text-center text-muted">-</td>
+                    </tr>
+                `;
+            }
+
             // 테이블 렌더링
             let rowsHtml = '';
             if (analyzedItems.length === 0) {
-                rowsHtml = `
+                rowsHtml = benchmarkRowHtml + `
                     <tr>
                         <td colspan="12" class="text-center py-4 text-muted">
                             이 섹션에 담긴 품목이 없습니다. [품목별 단가표]에서 항목을 체크하여 이 섹션으로 담아보세요.
@@ -3241,6 +3358,7 @@ const app = {
                     </tr>
                 `;
             } else {
+                rowsHtml = benchmarkRowHtml;
                 analyzedItems.forEach((it, cIdx) => {
                     const isBest = (it.id === bestItemId) && analyzedItems.length > 1;
                     const buy = it.buy_price || 0;
@@ -3375,10 +3493,9 @@ const app = {
 
             const secItems = sec.items || [];
             const allSecChecked = secItems.length > 0 && secItems.every(it => (!this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false));
-            const targetSpec = (sec.recommended_spec || sec.target_spec || '').trim();
-            const targetSpecBadge = targetSpec ? `
-                <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격">
-                    <i class='bx bx-check-shield text-success'></i> 권장규격: <strong>${escapeHtml(targetSpec)}</strong>
+            const targetSpecBadge = bm ? `
+                <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격품">
+                    <i class='bx bx-pin text-primary'></i> 기준품: <strong>${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
                 </span>
             ` : '';
 
@@ -3901,7 +4018,7 @@ const app = {
             }
             if (items.length === 0) return; // 선택된 항목이 없으면 섹션 제외
 
-            const targetSpec = (sec.recommended_spec || sec.target_spec || '').trim();
+            const bm = this.getSectionBenchmark(sec);
 
             validSectionsCount++;
             totalPrintedItemCount += items.length;
@@ -3964,13 +4081,37 @@ const app = {
                 executiveSummaryItems.push({
                     secIdx: validSectionsCount,
                     sectionName: sec.section_name,
-                    targetSpec: targetSpec,
+                    bm: bm,
                     item: bestItem,
                     commonUnit: commonUnit
                 });
             }
 
-            let rows = '';
+            let benchmarkRowHtml = '';
+            if (bm) {
+                benchmarkRowHtml = `
+                    <tr style="background-color: #f1f5f9; border-top: 1.5px solid #0f172a; border-bottom: 2px solid #94a3b8; font-weight: 600; color: #1e293b;">
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
+                            <span style="display: inline-block; padding: 1px 5px; background: #1e293b; color: #ffffff; border-radius: 2px; font-size: 7.5pt; font-weight: bold;">기준</span>
+                        </td>
+                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">${escapeHtml(bm.maker || '-')}</td>` : ''}
+                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">
+                            ${escapeHtml(bm.item || '-')}
+                            <span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #e0e7ff; color: #3730a3; border-radius: 2px; font-size: 7pt; font-weight: bold;">설계기준품</span>
+                        </td>
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
+                            <span style="display: inline-block; padding: 1px 5px; background: #e2e8f0; color: #0f172a; border-radius: 2px; font-weight: bold;">${escapeHtml(bm.spec || '-')}</span>
+                        </td>
+                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b;">-</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b; font-size: 8pt;">(대조 기준)</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
+                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
+                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt; font-style: italic;">권장 규격품 (대조 기준)</td>` : ''}
+                    </tr>
+                `;
+            }
+
+            let rows = benchmarkRowHtml;
             analyzed.forEach((it, cIdx) => {
                 const isBest = (cIdx === 0) && analyzed.length > 1;
                 const buy = it.buy_price || 0;
@@ -4024,7 +4165,11 @@ const app = {
                 <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
                     <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;">
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
-                        ${targetSpec ? `<span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">권장 규격: ${escapeHtml(targetSpec)}</span>` : ''}
+                        ${bm ? `
+                            <span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
+                                기준품: ${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
+                            </span>
+                        ` : ''}
                     </div>
 
                     <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
@@ -4086,7 +4231,12 @@ const app = {
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
                             ${escapeHtml(sum.sectionName)}
-                            ${sum.targetSpec ? `<div style="font-size: 7.5pt; color: #059669; font-weight: 600; margin-top: 2px;">(권장: ${escapeHtml(sum.targetSpec)})</div>` : ''}
+                            ${sum.bm ? `
+                                <div style="font-size: 7.5pt; color: #475569; font-weight: 500; margin-top: 2px;">
+                                    <span style="display: inline-block; padding: 1px 4px; background: #e2e8f0; color: #1e293b; border-radius: 2px; font-size: 7pt; font-weight: bold;">기준</span>
+                                    ${sum.bm.maker ? `[${escapeHtml(sum.bm.maker)}] ` : ''}${escapeHtml(sum.bm.item || '')}${sum.bm.spec ? ` (${escapeHtml(sum.bm.spec)})` : ''}
+                                </div>
+                            ` : ''}
                         </td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>

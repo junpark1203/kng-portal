@@ -559,11 +559,23 @@
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="sectionChoice" id="choiceNew" value="new" checked onchange="app.onSectionChoiceChange()">
                                 <label class="form-check-label small fw-bold text-primary" for="choiceNew">새로운 비교 섹션명 생성</label>
-                                <div id="newSectionInputsWrap" class="mt-1 d-flex flex-column gap-1">
+                                <div id="newSectionInputsWrap" class="mt-1 d-flex flex-column gap-1.5 p-2 rounded border bg-light">
                                     <input type="text" class="form-control form-control-sm" id="inputNewSectionName" 
                                            placeholder="섹션(항목)명 (예: 테일씰그리스, 작동유)" maxlength="40">
-                                    <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetSpec" 
-                                           placeholder="권장 규격 (선택사항, 예: 250kg Drum, ISO VG 46)" maxlength="50">
+                                    <div class="row g-1 mt-1">
+                                        <div class="col-12">
+                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetMaker" 
+                                                   placeholder="권장 기준 제조사 (선택, 예: 현대오일뱅크)" maxlength="40">
+                                        </div>
+                                        <div class="col-7">
+                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetItem" 
+                                                   placeholder="권장 기준 품명 (선택, 예: 테일씰그리스)" maxlength="40">
+                                        </div>
+                                        <div class="col-5">
+                                            <input type="text" class="form-control form-control-sm" id="inputNewSectionTargetSpec" 
+                                                   placeholder="기준 규격 (선택, 예: 250kg)" maxlength="50">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-check" id="radioExistingSectionWrap">
@@ -675,26 +687,44 @@
 
     <!-- ── 6-1. 새 비교 섹션 만들기 모달 ── -->
     <div class="modal fade" id="newSectionModal" tabindex="-1" aria-labelledby="newSectionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
                     <h6 class="modal-title fw-bold mb-0" id="newSectionModalLabel"><i class='bx bx-folder-plus text-primary'></i> 새 비교 섹션</h6>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">섹션(항목)명 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" id="inpDirectSectionName" placeholder="예: 테일씰그리스" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold mb-1">비교 섹션(항목)명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="inpDirectSectionName" placeholder="예: 테일씰그리스, 작동유, 2공구 급결제" onkeydown="if(event.key==='Enter') app.createDirectSection()">
                     </div>
-                    <div>
-                        <label class="form-label small fw-bold mb-1 d-flex justify-content-between align-items-center">
-                            <span><i class='bx bx-check-shield text-primary'></i> 권장 규격 (선택사항)</span>
-                            <span class="text-muted fw-normal" style="font-size: 10px;">필요 시 입력</span>
-                        </label>
-                        <input type="text" class="form-control form-control-sm" id="inpDirectTargetSpec" placeholder="예: 250kg Drum, ISO VG 46, KS 규격 동등품" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                    <div class="p-2.5 rounded border" style="background-color: #f8fafc;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold small text-dark d-flex align-items-center gap-1">
+                                <i class='bx bx-pin text-primary'></i> 설계/권장 기준품 (선택사항)
+                            </span>
+                            <span class="text-muted" style="font-size: 10px;">비교표 1행 [기준] 배치</span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 제조사/브랜드</label>
+                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetMaker" placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 품명/모델</label>
+                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetItem" placeholder="예: 테일씰그리스 HD-100" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 규격</label>
+                                <input type="text" class="form-control form-control-sm" id="inpDirectTargetSpec" placeholder="예: 250kg Drum" onkeydown="if(event.key==='Enter') app.createDirectSection()">
+                            </div>
+                        </div>
+                        <div class="text-muted mt-2" style="font-size: 10.5px; line-height: 1.35;">
+                            * 입력 시 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치됩니다. (비워두면 미표시)
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer py-1 px-2 bg-light">
+                <div class="modal-footer py-2 px-3 bg-light">
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-sm btn-primary" onclick="app.createDirectSection()">생성</button>
                 </div>
@@ -704,30 +734,47 @@
 
     <!-- ── 6-1-2. 비교 섹션명 및 권장 규격 변경 모달 ── -->
     <div class="modal fade" id="editSectionNameModal" tabindex="-1" aria-labelledby="editSectionNameModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-dialog modal-dialog-centered modal-md">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header py-2 px-3 bg-dark text-white d-flex justify-content-between align-items-center">
                     <h6 class="modal-title fw-bold mb-0" id="editSectionNameModalLabel">
-                        <i class='bx bx-edit-alt text-primary'></i> 섹션 정보 수정
+                        <i class='bx bx-edit-alt text-primary'></i> 비교 섹션 정보 수정
                     </h6>
                     <button type="button" class="btn-close btn-close-white btn-sm" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="editSectionNameId">
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">섹션(항목)명 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" id="inpEditSectionName" placeholder="예: 테일씰그리스" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold mb-1">비교 섹션(항목)명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="inpEditSectionName" placeholder="예: 테일씰그리스, 작동유, 2공구 급결제" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
                     </div>
-                    <div>
-                        <label class="form-label small fw-bold mb-1 d-flex justify-content-between align-items-center">
-                            <span><i class='bx bx-check-shield text-primary'></i> 권장 규격 (선택사항)</span>
-                            <span class="text-muted fw-normal" style="font-size: 10px;">비우면 미표시</span>
-                        </label>
-                        <input type="text" class="form-control form-control-sm" id="inpEditTargetSpec" placeholder="예: 250kg Drum, ISO VG 46, KS 규격 동등품" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
-                        <div class="text-muted mt-1" style="font-size: 10.5px;">* 견적 후보들 간의 규격 대조 및 인쇄 보고서의 기준 규격으로 표시됩니다.</div>
+                    <div class="p-2.5 rounded border" style="background-color: #f8fafc;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold small text-dark d-flex align-items-center gap-1">
+                                <i class='bx bx-pin text-primary'></i> 설계/권장 기준품 (선택사항)
+                            </span>
+                            <span class="text-muted" style="font-size: 10px;">비교표 1행 [기준] 배치</span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 제조사/브랜드</label>
+                                <input type="text" class="form-control form-control-sm" id="inpEditTargetMaker" placeholder="예: 현대오일뱅크, 한국쉘, 삼화페인트" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 품명/모델</label>
+                                <input type="text" class="form-control form-control-sm" id="inpEditTargetItem" placeholder="예: 테일씰그리스 HD-100" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label mb-1 text-secondary" style="font-size: 11px;">기준 규격</label>
+                                <input type="text" class="form-control form-control-sm" id="inpEditTargetSpec" placeholder="예: 250kg Drum" onkeydown="if(event.key==='Enter') app.submitEditSectionName()">
+                            </div>
+                        </div>
+                        <div class="text-muted mt-2" style="font-size: 10.5px; line-height: 1.35;">
+                            * 입력 시 비교 테이블 최상단에 <strong>[기준] 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 미표시)
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer py-1 px-2 bg-light d-flex justify-content-end gap-1">
+                <div class="modal-footer py-2 px-3 bg-light d-flex justify-content-end gap-1">
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">취소</button>
                     <button type="button" class="btn btn-sm btn-primary" onclick="app.submitEditSectionName()">저장</button>
                 </div>
@@ -867,6 +914,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_10"></script>
+    <script src="app.js?v=20260918_12"></script>
 </body>
 </html>
