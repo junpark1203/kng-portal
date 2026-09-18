@@ -3423,9 +3423,7 @@ const app = {
             let benchmarkRowHtml = '';
             if (benchmarks.length > 0) {
                 benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
-                    const badgeText = benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`;
-                    const itemBadgeText = benchmarks.length === 1 ? '설계기준품' : `설계기준품 #${bIdx + 1}`;
-                    const noteText = benchmarks.length === 1 ? '권장 규격품 / 견적 후보 대조 기준' : `권장 규격품 #${bIdx + 1} / 견적 후보 대조 기준`;
+                    const badgeText = benchmarks.length === 1 ? '권장' : `권장 ${bIdx + 1}`;
                     return `
                         <tr class="row-benchmark-spec">
                             <td class="text-center align-middle" style="color: #94a3b8; font-size: 11px;">-</td>
@@ -3436,19 +3434,20 @@ const app = {
                                 <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
                             </td>
                             <td class="text-center text-muted" title="기준품(대조 규격)">-</td>
-                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(this.formatBenchmarkItem(bm))}">
-                                <span class="text-primary me-1"><i class='bx bx-pin'></i></span>${escapeHtml(this.formatBenchmarkItem(bm))}
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9.5px; font-weight: 500;">${itemBadgeText}</span>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(this.formatBenchmarkItem(bm))}">
+                                <div style="display: inline-block; border: 2px solid #2563eb; padding: 2px 7px; border-radius: 2px; color: #1e40af; font-weight: bold; background: #eff6ff; font-size: 11px;">
+                                    ${escapeHtml(this.formatBenchmarkItem(bm))}
+                                </div>
                             </td>
                             <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
                                 <span class="spec-pill fw-bold" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">${escapeHtml(bm.spec || '-')}</span>
                             </td>
                             <td class="text-center text-muted">-</td>
-                            <td class="text-end pe-2 text-muted" style="font-size: 11px;">(대조 기준)</td>
+                            <td class="text-center text-muted">-</td>
                             <td class="text-end pe-2 text-muted">-</td>
                             <td class="text-end pe-2 text-muted">-</td>
-                            <td class="text-start ps-2 text-muted" style="font-size: 11px; font-style: italic;">
-                                ${noteText}
+                            <td class="text-center text-muted" style="font-size: 11px;">
+                                제조사 권장 기준
                             </td>
                             <td class="text-center text-muted">-</td>
                         </tr>
@@ -3606,14 +3605,14 @@ const app = {
             if (benchmarks.length === 1) {
                 const bm = benchmarks[0];
                 targetSpecBadge = `
-                    <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격품">
-                        <i class='bx bx-pin text-primary'></i> 기준품: <strong>${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
+                    <span class="quote-spec-badge" title="이 비교 섹션의 제조사 권장 기준품">
+                        <i class='bx bx-pin text-primary'></i> 권장기준: <strong>${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
                     </span>
                 `;
             } else if (benchmarks.length > 1) {
                 targetSpecBadge = `
-                    <span class="quote-spec-badge" title="이 비교 섹션의 복수 기준/권장 규격품 (${benchmarks.length}개)">
-                        <i class='bx bx-pin text-primary'></i> 기준품 (${benchmarks.length}개): <strong>${benchmarks.map((bm) => `${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(', ')}</strong>
+                    <span class="quote-spec-badge" title="이 비교 섹션의 제조사 권장 기준품 (${benchmarks.length}개)">
+                        <i class='bx bx-pin text-primary'></i> 권장기준 (${benchmarks.length}개): <strong>${benchmarks.map((bm) => `${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(', ')}</strong>
                     </span>
                 `;
             }
@@ -4209,26 +4208,26 @@ const app = {
             let benchmarkRowHtml = '';
             if (benchmarks.length > 0) {
                 benchmarkRowHtml = benchmarks.map((bm, bIdx) => {
-                    const badgeText = benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`;
-                    const itemBadgeText = benchmarks.length === 1 ? '설계기준품' : `설계기준품 #${bIdx + 1}`;
+                    const badgeText = benchmarks.length === 1 ? '권장' : `권장 ${bIdx + 1}`;
                     return `
-                        <tr style="background-color: #f1f5f9; border-top: 1.5px solid #0f172a; border-bottom: 2px solid #94a3b8; font-weight: 600; color: #1e293b;">
-                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
-                                <span style="display: inline-block; padding: 1px 5px; background: #1e293b; color: #ffffff; border-radius: 2px; font-size: 7.5pt; font-weight: bold;">${badgeText}</span>
+                        <tr style="background-color: #f8fafc; font-weight: 600; color: #1e293b;">
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-weight: bold; color: #475569; font-size: 8pt;">
+                                ${badgeText}
                             </td>
                             ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
-                            <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">
-                                <span style="color: #2563eb; margin-right: 3px;">■</span>${escapeHtml(this.formatBenchmarkItem(bm))}
-                                <span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #e0e7ff; color: #3730a3; border-radius: 2px; font-size: 7pt; font-weight: bold;">${itemBadgeText}</span>
+                            <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1;">
+                                <div style="display: inline-block; border: 2px solid #2563eb; padding: 2px 8px; border-radius: 2px; color: #1e40af; font-weight: bold; background: #eff6ff; font-size: 8.5pt; line-height: 1.35;">
+                                    ${escapeHtml(this.formatBenchmarkItem(bm))}
+                                </div>
                             </td>
                             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
                                 <span style="display: inline-block; padding: 1px 5px; background: #e2e8f0; color: #0f172a; border-radius: 2px; font-weight: bold;">${escapeHtml(bm.spec || '-')}</span>
                             </td>
-                            ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b;">-</td>` : ''}
-                            ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b; font-size: 8pt;">(대조 기준)</td>` : ''}
-                            ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
-                            ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; color: #64748b;">-</td>` : ''}
-                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt; font-style: italic;">권장 규격품 (대조 기준)</td>` : ''}
+                            ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
+                            ${cols.buyPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
+                            ${cols.normPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
+                            ${cols.margin ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
+                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #475569; font-size: 8pt;">제조사 권장 기준</td>` : ''}
                         </tr>
                     `;
                 }).join('');
@@ -4264,22 +4263,25 @@ const app = {
                     }
                 }
 
-                // 1번 최저가 행은 굵은 테두리(2px) 및 은은한 그린 배경으로 강조
-                const bestRowStyle = isBest 
-                    ? 'background-color: #f0fdf4; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: bold;' 
-                    : '';
+                // 1번 최저가 행은 모든 셀에 2.5px 검정 굵은 테두리(상/하/좌/우) 및 은은한 그린 배경으로 완벽 강조
+                const isBestLastCol = (colKey) => {
+                    if (!isBest) return '';
+                    const keys = ['순번', cols.supplier ? 'supplier' : null, 'item', 'spec', cols.freight ? 'freight' : null, cols.buyPrice ? 'buyPrice' : null, cols.normPrice ? 'normPrice' : null, cols.margin ? 'margin' : null, cols.note ? 'note' : null].filter(Boolean);
+                    return keys[keys.length - 1] === colKey ? 'border-right: 2.5px solid #0f172a !important;' : '';
+                };
+                const bestTdBase = isBest ? 'border-top: 2.5px solid #0f172a !important; border-bottom: 2.5px solid #0f172a !important;' : '';
 
                 rows += `
-                    <tr style="${bestRowStyle}">
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-left: 2px solid #0f172a;' : ''}">${cIdx + 1}</td>
-                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
-                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">${escapeHtml(it.item)}</td>
-                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.spec || '-')}</td>
-                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${freightStr}</td>` : ''}
-                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>` : ''}
-                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''}">${normStr}</td>` : ''}
-                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
-                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-right: 2px solid #0f172a;' : ''}">${escapeHtml(it.note || '-')}</td>` : ''}
+                    <tr style="${isBest ? 'background-color: #f0fdf4; font-weight: bold;' : ''}">
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBest ? 'border-left: 2.5px solid #0f172a !important;' : ''}">${cIdx + 1}</td>
+                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('supplier')}">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('item')}">${escapeHtml(it.item)}</td>
+                        <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('spec')}">${escapeHtml(it.spec || '-')}</td>
+                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('freight')}">${freightStr}</td>` : ''}
+                        ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('buyPrice')}">${buyStr}</td>` : ''}
+                        ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''} ${bestTdBase} ${isBestLastCol('normPrice')}">${normStr}</td>` : ''}
+                        ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${bestTdBase} ${isBestLastCol('margin')}">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
+                        ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${bestTdBase} ${isBestLastCol('note')}">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
                 `;
             });
@@ -4290,7 +4292,7 @@ const app = {
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
                         ${benchmarks.length > 0 ? `
                             <span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
-                                기준품 (${benchmarks.length}개): ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
+                                ${benchmarks.length === 1 ? '권장기준' : `권장기준 (${benchmarks.length}개)`}: ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
                             </span>
                         ` : ''}
                     </div>
