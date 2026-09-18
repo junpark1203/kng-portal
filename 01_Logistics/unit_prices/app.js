@@ -3597,11 +3597,21 @@ const app = {
 
             const secItems = sec.items || [];
             const allSecChecked = secItems.length > 0 && secItems.every(it => (!this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false));
-            const targetSpecBadge = bm ? `
-                <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격품">
-                    <i class='bx bx-pin text-primary'></i> 기준품: <strong>${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
-                </span>
-            ` : '';
+            let targetSpecBadge = '';
+            if (benchmarks.length === 1) {
+                const bm = benchmarks[0];
+                targetSpecBadge = `
+                    <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격품">
+                        <i class='bx bx-pin text-primary'></i> 기준품: <strong>${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
+                    </span>
+                `;
+            } else if (benchmarks.length > 1) {
+                targetSpecBadge = `
+                    <span class="quote-spec-badge" title="이 비교 섹션의 복수 기준/권장 규격품 (${benchmarks.length}개)">
+                        <i class='bx bx-pin text-primary'></i> 기준품 (${benchmarks.length}개): <strong>${benchmarks.map((bm) => `${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(', ')}</strong>
+                    </span>
+                `;
+            }
 
             html += `
                 <div class="quote-section-card" id="quote_section_${sec.id}">
