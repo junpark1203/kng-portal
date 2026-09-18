@@ -2576,6 +2576,17 @@ const app = {
         }
     },
 
+    formatBenchmarkItem: function(bm) {
+        if (!bm) return '';
+        const item = (bm.item || '').trim();
+        const maker = (bm.maker || '').trim();
+        if (maker && item) {
+            if (item.includes(maker)) return item;
+            return `[${maker}] ${item}`;
+        }
+        return item || (maker ? `[${maker}]` : '');
+    },
+
     getSectionBenchmarks: function(sec) {
         if (!sec) return [];
         const result = [];
@@ -2660,15 +2671,12 @@ const app = {
         const rowCount = tbody.querySelectorAll('tr').length;
         const tr = document.createElement('tr');
         tr.className = 'benchmark-input-row';
+        const formattedItem = this.formatBenchmarkItem(data);
         tr.innerHTML = `
             <td class="text-center fw-bold text-secondary benchmark-row-no" style="font-size: 11px;">${rowCount + 1}</td>
             <td>
-                <input type="text" class="form-control form-control-sm bm-input-maker" 
-                       placeholder="예: 현대오일뱅크, 한국쉘" maxlength="50" value="${escapeHtml(data.maker || '')}">
-            </td>
-            <td>
                 <input type="text" class="form-control form-control-sm bm-input-item" 
-                       placeholder="예: 베어링 실란트 HD-100" maxlength="50" value="${escapeHtml(data.item || '')}">
+                       placeholder="예: [현대오일뱅크] 테일씰그리스 HD, CONDAT WR89" maxlength="100" value="${escapeHtml(formattedItem)}">
             </td>
             <td>
                 <input type="text" class="form-control form-control-sm bm-input-spec" 
@@ -2706,11 +2714,10 @@ const app = {
         const rows = tbody.querySelectorAll('tr');
         const results = [];
         rows.forEach(tr => {
-            const maker = (tr.querySelector('.bm-input-maker')?.value || '').trim();
             const item = (tr.querySelector('.bm-input-item')?.value || '').trim();
             const spec = (tr.querySelector('.bm-input-spec')?.value || '').trim();
-            if (maker || item || spec) {
-                results.push({ maker, item, spec });
+            if (item || spec) {
+                results.push({ maker: '', item, spec });
             }
         });
         return results;
@@ -3205,7 +3212,7 @@ const app = {
                         ${(sum.benchmarks && sum.benchmarks.length > 0) ? sum.benchmarks.map((bm, bIdx) => `
                             <div class="text-muted mt-0.5" style="font-size: 10.5px; line-height: 1.25;">
                                 <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 9.5px; font-weight: normal;">${sum.benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`}</span>
-                                ${bm.maker ? `<strong>[${escapeHtml(bm.maker)}]</strong> ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` <span class="text-secondary">(${escapeHtml(bm.spec)})</span>` : ''}
+                                <strong>${escapeHtml(this.formatBenchmarkItem(bm))}</strong>${bm.spec ? ` <span class="text-secondary">(${escapeHtml(bm.spec)})</span>` : ''}
                             </div>
                         `).join('') : ''}
                     </td>
@@ -3428,11 +3435,9 @@ const app = {
                             <td class="text-center">
                                 <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
                             </td>
-                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.maker || '-')}">
-                                ${bm.maker ? `<span class="text-primary"><i class='bx bx-pin me-1'></i>${escapeHtml(bm.maker)}</span>` : '<span class="text-muted">-</span>'}
-                            </td>
-                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(bm.item || '-')}">
-                                ${escapeHtml(bm.item || '-')}
+                            <td class="text-center text-muted" title="기준품(대조 규격)">-</td>
+                            <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(this.formatBenchmarkItem(bm))}">
+                                <span class="text-primary me-1"><i class='bx bx-pin'></i></span>${escapeHtml(this.formatBenchmarkItem(bm))}
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1" style="font-size: 9.5px; font-weight: 500;">${itemBadgeText}</span>
                             </td>
                             <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
@@ -3602,13 +3607,13 @@ const app = {
                 const bm = benchmarks[0];
                 targetSpecBadge = `
                     <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격품">
-                        <i class='bx bx-pin text-primary'></i> 기준품: <strong>${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
+                        <i class='bx bx-pin text-primary'></i> 기준품: <strong>${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}</strong>
                     </span>
                 `;
             } else if (benchmarks.length > 1) {
                 targetSpecBadge = `
                     <span class="quote-spec-badge" title="이 비교 섹션의 복수 기준/권장 규격품 (${benchmarks.length}개)">
-                        <i class='bx bx-pin text-primary'></i> 기준품 (${benchmarks.length}개): <strong>${benchmarks.map((bm) => `${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(', ')}</strong>
+                        <i class='bx bx-pin text-primary'></i> 기준품 (${benchmarks.length}개): <strong>${benchmarks.map((bm) => `${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(', ')}</strong>
                     </span>
                 `;
             }
@@ -4211,9 +4216,9 @@ const app = {
                             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
                                 <span style="display: inline-block; padding: 1px 5px; background: #1e293b; color: #ffffff; border-radius: 2px; font-size: 7.5pt; font-weight: bold;">${badgeText}</span>
                             </td>
-                            ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">${escapeHtml(bm.maker || '-')}</td>` : ''}
+                            ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
                             <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">
-                                ${escapeHtml(bm.item || '-')}
+                                <span style="color: #2563eb; margin-right: 3px;">■</span>${escapeHtml(this.formatBenchmarkItem(bm))}
                                 <span style="display: inline-block; margin-left: 4px; padding: 1px 4px; background: #e0e7ff; color: #3730a3; border-radius: 2px; font-size: 7pt; font-weight: bold;">${itemBadgeText}</span>
                             </td>
                             <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
@@ -4285,7 +4290,7 @@ const app = {
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
                         ${benchmarks.length > 0 ? `
                             <span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">
-                                기준품 (${benchmarks.length}개): ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
+                                기준품 (${benchmarks.length}개): ${benchmarks.map((bm, bIdx) => `${benchmarks.length > 1 ? `#${bIdx + 1} ` : ''}${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}`).join(' / ')}
                             </span>
                         ` : ''}
                     </div>
@@ -4352,7 +4357,7 @@ const app = {
                             ${(sum.benchmarks && sum.benchmarks.length > 0) ? sum.benchmarks.map((bm, bIdx) => `
                                 <div style="font-size: 7.5pt; color: #475569; font-weight: 500; margin-top: 2px;">
                                     <span style="display: inline-block; padding: 1px 4px; background: #e2e8f0; color: #1e293b; border-radius: 2px; font-size: 7pt; font-weight: bold;">${sum.benchmarks.length === 1 ? '기준' : `기준 ${bIdx + 1}`}</span>
-                                    ${bm.maker ? `[${escapeHtml(bm.maker)}] ` : ''}${escapeHtml(bm.item || '')}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
+                                    ${escapeHtml(this.formatBenchmarkItem(bm))}${bm.spec ? ` (${escapeHtml(bm.spec)})` : ''}
                                 </div>
                             `).join('') : ''}
                         </td>

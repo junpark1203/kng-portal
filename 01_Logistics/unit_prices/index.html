@@ -599,10 +599,9 @@
                                         <table class="erp-subgrid-table">
                                             <thead>
                                                 <tr>
-                                                    <th style="width: 40px;">No</th>
-                                                    <th style="width: 32%;">기준 제조사/브랜드</th>
-                                                    <th style="width: 34%;">기준 품명/모델</th>
-                                                    <th>기준 규격</th>
+                                                    <th style="width: 38px;">No</th>
+                                                    <th>기준 품명 (제조사 / 모델명)</th>
+                                                    <th style="width: 38%;">기준 규격</th>
                                                     <th style="width: 36px;">삭제</th>
                                                 </tr>
                                             </thead>
@@ -783,10 +782,9 @@
                                             <table class="erp-subgrid-table">
                                                 <thead>
                                                     <tr>
-                                                        <th style="width: 40px;">No</th>
-                                                        <th style="width: 32%;">기준 제조사 / 브랜드</th>
-                                                        <th style="width: 34%;">기준 품명 / 모델</th>
-                                                        <th>기준 규격</th>
+                                                        <th style="width: 38px;">No</th>
+                                                        <th>기준 품명 (제조사 / 모델명)</th>
+                                                        <th style="width: 38%;">기준 규격</th>
                                                         <th style="width: 36px;">삭제</th>
                                                     </tr>
                                                 </thead>
@@ -806,7 +804,7 @@
                         <div class="d-flex align-items-start gap-1.5">
                             <i class='bx bx-info-circle text-primary fs-6 mt-0.5'></i>
                             <div style="font-size: 11px; line-height: 1.45;">
-                                <strong>안내:</strong> 기준품을 등록하시면 섹션 최상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (비워두면 일반 비교 섹션으로 생성)
+                                <strong>안내:</strong> 단가표와 동일하게 제조사를 포함한 기준 품명(예: <code>[현대오일뱅크] 테일씰그리스 HD</code>)과 규격을 입력하시면 비교 테이블 및 출력물 상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어 견적 후보들과 1:1 대조됩니다. (기준품은 공급업체가 아니므로 공급사란에 '-'로 표기되며, 비워둘 시 일반 비교 섹션으로 생성)
                             </div>
                         </div>
                     </div>
@@ -893,10 +891,9 @@
                                             <table class="erp-subgrid-table">
                                                 <thead>
                                                     <tr>
-                                                        <th style="width: 40px;">No</th>
-                                                        <th style="width: 32%;">기준 제조사 / 브랜드</th>
-                                                        <th style="width: 34%;">기준 품명 / 모델</th>
-                                                        <th>기준 규격</th>
+                                                        <th style="width: 38px;">No</th>
+                                                        <th>기준 품명 (제조사 / 모델명)</th>
+                                                        <th style="width: 38%;">기준 규격</th>
                                                         <th style="width: 36px;">삭제</th>
                                                     </tr>
                                                 </thead>
@@ -918,7 +915,8 @@
                             <div style="font-size: 11px; line-height: 1.45;">
                                 <strong>안내 사항:</strong>
                                 <ul class="mb-0 ps-3 mt-0.5">
-                                    <li><strong>설계/권장 기준품</strong>을 1개 이상 입력하시면 비교 테이블 및 출력물 상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어, 견적 후보 품목들과 <strong>제조사, 품명, 규격을 1:1로 수직 대조</strong>할 수 있습니다.</li>
+                                    <li><strong>설계/권장 기준품</strong>을 1개 이상 입력하시면 비교 테이블 및 출력물 상단에 <strong>[기준 1], [기준 2]... 행</strong>으로 배치되어, 견적 후보 품목들과 <strong>품명(제조사 포함) 및 규격을 1:1로 수직 대조</strong>할 수 있습니다.</li>
+                                    <li>기준품은 견적 공급사가 아니므로 비교 테이블의 공급업체란에는 <strong>'-'</strong>로 명확히 구분되어 표기됩니다.</li>
                                     <li>기준품이 지정되지 않은 일반 비교의 경우 행을 모두 삭제하거나 비워두시면 됩니다.</li>
                                 </ul>
                             </div>
@@ -1077,6 +1075,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_15"></script>
+    <script src="app.js?v=20260918_16"></script>
 </body>
 </html>
