@@ -119,6 +119,7 @@ const app = {
     quoteSections: [],
     addToQuoteModalInstance: null,
     newSectionModalInstance: null,
+    editSectionNameModalInstance: null,
     saveToArchiveModalInstance: null,
     quoteArchiveModalInstance: null,
     editRateModalInstance: null,
@@ -146,6 +147,9 @@ const app = {
         }
         if ($('newSectionModal') && window.bootstrap) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
+        }
+        if ($('editSectionNameModal') && window.bootstrap) {
+            this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
         }
         if ($('saveToArchiveModal') && window.bootstrap) {
             this.saveToArchiveModalInstance = new bootstrap.Modal($('saveToArchiveModal'));
@@ -2774,6 +2778,54 @@ const app = {
         }
     },
 
+    openEditSectionNameModal: function(sectionId) {
+        const sec = (this.quoteSections || []).find(s => s.id === sectionId);
+        if (!sec) return;
+        if ($('editSectionNameId')) $('editSectionNameId').value = sectionId;
+        const inp = $('inpEditSectionName');
+        if (inp) {
+            inp.value = sec.section_name || '';
+        }
+        if (!this.editSectionNameModalInstance && window.bootstrap && $('editSectionNameModal')) {
+            this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
+        }
+        if (this.editSectionNameModalInstance) {
+            this.editSectionNameModalInstance.show();
+            setTimeout(() => {
+                if (inp) {
+                    inp.focus();
+                    inp.select();
+                }
+            }, 200);
+        }
+    },
+
+    submitEditSectionName: async function() {
+        const secId = $('editSectionNameId') ? parseInt($('editSectionNameId').value) : null;
+        const inp = $('inpEditSectionName');
+        const newName = inp ? inp.value.trim() : '';
+        if (!secId) return;
+        if (!newName) {
+            alert('변경할 섹션명을 입력해주세요.');
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/${secId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ section_name: newName })
+            });
+
+            if (this.editSectionNameModalInstance) {
+                this.editSectionNameModalInstance.hide();
+            }
+
+            await this.loadQuoteSections();
+        } catch (err) {
+            alert('섹션명 변경 실패: ' + err.message);
+        }
+    },
+
     deleteQuoteSection: async function(sectionId) {
         const sec = this.quoteSections.find(s => s.id === sectionId);
         const name = sec ? sec.section_name : '섹션';
@@ -3310,10 +3362,13 @@ const app = {
                 <div class="quote-section-card" id="quote_section_${sec.id}">
                     <div class="quote-section-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="quote-section-title">
+                            <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" title="더블클릭하거나 수정 버튼을 눌러 섹션명을 변경할 수 있습니다" style="cursor: pointer;">
                                 <i class='bx bx-folder-open text-primary'></i>
                                 <span>${escapeHtml(sec.section_name)}</span>
                             </span>
+                            <button type="button" class="btn-edit-sec" onclick="app.openEditSectionNameModal(${sec.id})" title="섹션명 변경">
+                                <i class='bx bx-edit-alt'></i> 수정
+                            </button>
                             <span class="badge bg-secondary">${analyzedItems.length}개 후보 비교</span>
                             ${bestSummaryHtml}
                         </div>
