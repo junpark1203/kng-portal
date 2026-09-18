@@ -746,3 +746,455 @@ textarea.calc-input:read-only, textarea.calc-input[readonly] {
     }
 }
 
+/* ==========================================================================
+   인쇄 맞춤 설정 모달 프리미엄 ERP 디자인 (물류관리 단가표/견적비교 스타일 연동)
+   ========================================================================== */
+.is-print-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.is-print-modal.active {
+    display: flex !important;
+}
+
+.is-print-modal-content {
+    width: 100%;
+    max-width: 540px !important;
+    max-height: 92vh !important;
+    height: min(760px, 92vh) !important;
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    animation: isModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes isModalFadeIn {
+    from { opacity: 0; transform: scale(0.97) translateY(-8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 모달 헤더 */
+.is-print-modal-header {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    padding: 12px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-shrink: 0 !important;
+    border-bottom: 1px solid #1e293b;
+}
+
+.is-print-header-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.is-print-modal-title {
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin: 0 0 2px 0 !important;
+    letter-spacing: -0.2px;
+}
+
+.is-print-modal-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+    display: block;
+}
+
+.is-print-modal-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.35rem;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.is-print-modal-close:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* 모달 바디 (스크롤 격리) */
+.is-print-modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding: 16px 18px !important;
+    background: #f8fafc !important;
+    min-height: 0 !important;
+}
+
+.is-print-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.is-print-modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.is-print-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* 모달 카드 공통 */
+.is-print-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.is-print-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.is-print-card-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.is-print-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.is-print-badge-preset {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+/* 칩 버튼 */
+.btn-chip {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-size: 0.73rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-chip:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.btn-chip-primary {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+.btn-chip-primary:hover {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* 인풋 박스 */
+.is-print-input-wrap {
+    width: 100%;
+}
+
+.is-print-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 11px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    color: #0f172a;
+    font-weight: 600;
+    background: #ffffff;
+    transition: all 0.15s ease;
+}
+
+.is-print-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.is-print-hint {
+    font-size: 0.73rem;
+    color: #64748b;
+    margin-top: 5px;
+    line-height: 1.4;
+}
+
+/* 체크 그리드 (예상견적 vs 실제청구) */
+.is-print-check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.is-print-check-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin: 0;
+}
+
+.is-print-check-card:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.is-print-check-card input[type="checkbox"] {
+    margin-top: 2px;
+    accent-color: #2563eb;
+    cursor: pointer;
+    width: 15px;
+    height: 15px;
+}
+
+.is-print-check-card .check-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.is-print-check-card .check-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.is-print-check-card .check-desc {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+/* 프리셋 카드 버튼 그리드 */
+.is-print-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.btn-preset-card {
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    min-height: 80px;
+}
+
+.btn-preset-card:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.btn-preset-card .preset-icon-box {
+    font-size: 1.25rem;
+    color: #64748b;
+    margin-bottom: 4px;
+}
+
+.btn-preset-card .preset-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: block;
+    line-height: 1.3;
+}
+
+.btn-preset-card .preset-desc {
+    font-size: 0.68rem;
+    color: #64748b;
+    display: block;
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
+.btn-preset-card .preset-check-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: #ffffff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+}
+
+/* 프리셋 활성화(Active) 상태 */
+.btn-preset-card.active {
+    border: 2px solid #2563eb !important;
+    background: #eff6ff !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+.btn-preset-card.active .preset-name {
+    color: #1d4ed8;
+}
+
+.btn-preset-card.active .preset-icon-box {
+    color: #2563eb;
+}
+
+.btn-preset-card.active .preset-check-badge {
+    display: flex;
+}
+
+/* 직접 지정 섹션 카드 */
+.custom-print-options {
+    background: #ffffff;
+    border: 1px solid #bfdbfe;
+    border-left: 3px solid #2563eb;
+}
+
+.custom-chk-group {
+    padding: 6px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.custom-chk-group:last-child {
+    border-bottom: none;
+}
+
+.custom-chk-group label {
+    margin: 0;
+    user-select: none;
+}
+
+.custom-chk-group input[type="checkbox"] {
+    accent-color: #2563eb;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* 모달 푸터 */
+.is-print-modal-footer {
+    background: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding: 10px 18px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-shrink: 0 !important;
+}
+
+.is-print-footer-info {
+    font-size: 0.74rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.btn-modal-sub {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-modal-sub:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.btn-modal-main {
+    background: #2563eb;
+    border: 1px solid #1d4ed8;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 6px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+    transition: all 0.15s ease;
+}
+
+.btn-modal-main:hover {
+    background: #1d4ed8;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+

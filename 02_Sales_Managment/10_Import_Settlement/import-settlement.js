@@ -156,8 +156,11 @@ function initEvents() {
     document.getElementById('btnSaveSettlementBottom').addEventListener('click', saveSettlement);
     
     document.getElementById('btnPrint').addEventListener('click', openPrintModal);
-    document.getElementById('btnClosePrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
-    document.getElementById('btnCancelPrintModal').addEventListener('click', () => document.getElementById('printOptionModal').classList.remove('active'));
+    document.getElementById('btnClosePrintModal').addEventListener('click', closePrintModal);
+    document.getElementById('btnCancelPrintModal').addEventListener('click', closePrintModal);
+    document.getElementById('printOptionModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'printOptionModal') closePrintModal();
+    });
     document.getElementById('btnExecutePrint').addEventListener('click', executePrint);
     document.getElementById('btnSetDefaultPrintTitle')?.addEventListener('click', () => {
         const titleInp = document.getElementById('inpPrintTitle');
@@ -180,20 +183,36 @@ function initEvents() {
     document.querySelectorAll('.child-chk').forEach(child => {
         child.addEventListener('change', function() {
             const parent = document.getElementById(this.dataset.parent);
+            if (!parent) return;
             const siblings = document.querySelectorAll(`.child-chk[data-parent="${this.dataset.parent}"]`);
             const anyChecked = Array.from(siblings).some(s => s.checked);
             parent.checked = anyChecked;
         });
     });
 
-    
-    const printModeRadios = document.querySelectorAll('input[name="printMode"]');
-    printModeRadios.forEach(radio => radio.addEventListener('change', e => {
-        document.getElementById('customPrintOptions').style.display = e.target.value === 'custom' ? 'block' : 'none';
-    }));
+    // 프리셋 버튼 클릭 이벤트 연동
+    document.querySelectorAll('.btn-preset-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const radio = this.querySelector('input[name="printMode"]');
+            if (radio) {
+                radio.checked = true;
+            }
+            document.querySelectorAll('.btn-preset-card').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
 
-    document.getElementById('btnCloseQuoteModal').addEventListener('click', () => document.getElementById('quoteModal').classList.remove('active'));
-    document.getElementById('btnCancelQuoteModal').addEventListener('click', () => document.getElementById('quoteModal').classList.remove('active'));
+            const mode = this.dataset.mode || (radio ? radio.value : 'summary');
+            const customOptions = document.getElementById('customPrintOptions');
+            if (customOptions) {
+                customOptions.style.display = mode === 'custom' ? 'block' : 'none';
+            }
+        });
+    });
+
+    document.getElementById('btnCloseQuoteModal').addEventListener('click', closeQuoteModal);
+    document.getElementById('btnCancelQuoteModal').addEventListener('click', closeQuoteModal);
+    document.getElementById('quoteModal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'quoteModal') closeQuoteModal();
+    });
     document.getElementById('btnConfirmQuote').addEventListener('click', loadSelectedQuote);
 
     // 기본 정보 입력
@@ -292,10 +311,16 @@ async function openQuoteModal() {
             });
             tbody.innerHTML = html;
         }
+        document.body.style.overflow = 'hidden';
         document.getElementById('quoteModal').classList.add('active');
     } catch(err) {
         showToast('견적 목록을 불러오는 중 오류가 발생했습니다.', true);
     }
+}
+
+function closeQuoteModal() {
+    document.getElementById('quoteModal')?.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function loadSelectedQuote() {
@@ -455,7 +480,7 @@ function loadSelectedQuote() {
     }
 
     // 화면 갱신
-    document.getElementById('quoteModal').classList.remove('active');
+    closeQuoteModal();
     fillFormFromState();
     switchView('edit');
 }
@@ -1785,7 +1810,13 @@ function openPrintModal() {
             titleInp.value = (state.doc && state.doc.title) ? state.doc.title : '실제 비용 기준 정산 및 품목별 원가 산출';
         }
     }
+    document.body.style.overflow = 'hidden';
     document.getElementById('printOptionModal').classList.add('active');
+}
+
+function closePrintModal() {
+    document.getElementById('printOptionModal')?.classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function escapeHtml(str) {
@@ -1844,7 +1875,7 @@ function executePrint() {
     const html = generatePrintTemplate(opts);
 
     document.getElementById('printContainer').innerHTML = html;
-    document.getElementById('printOptionModal').classList.remove('active');
+    closePrintModal();
     
     const prevDocTitle = document.title;
     document.title = customTitle;
