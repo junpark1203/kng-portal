@@ -3428,19 +3428,17 @@ const app = {
                         <tr class="row-benchmark-spec">
                             <td class="text-center align-middle" style="color: #94a3b8; font-size: 11px;">-</td>
                             <td class="text-center">
-                                <span class="badge bg-dark text-white fw-bold px-2 py-0.5" style="font-size: 10px; letter-spacing: 0.5px;">${badgeText}</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle fw-bold px-2 py-0.5" style="font-size: 10px; letter-spacing: 0.5px;">${badgeText}</span>
                             </td>
                             <td class="text-center">
                                 <span class="badge bg-secondary text-white" style="font-size: 10px;">설계/권장</span>
                             </td>
                             <td class="text-center text-muted" title="기준품(대조 규격)">-</td>
-                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(this.formatBenchmarkItem(bm))}">
-                                <div style="display: inline-block; border: 2px solid #2563eb; padding: 2px 7px; border-radius: 2px; color: #1e40af; font-weight: bold; background: #eff6ff; font-size: 11px;">
-                                    ${escapeHtml(this.formatBenchmarkItem(bm))}
-                                </div>
+                            <td class="text-start ps-2 text-truncate fw-bold" style="color: #2563eb;" title="${escapeHtml(this.formatBenchmarkItem(bm))}">
+                                ${escapeHtml(this.formatBenchmarkItem(bm))}
                             </td>
-                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(bm.spec || '-')}">
-                                <span class="spec-pill fw-bold" style="background:#e2e8f0; color:#1e293b; border-color:#cbd5e1;">${escapeHtml(bm.spec || '-')}</span>
+                            <td class="text-start ps-2 text-truncate fw-bold" style="color: #2563eb;" title="${escapeHtml(bm.spec || '-')}">
+                                ${escapeHtml(bm.spec || '-')}
                             </td>
                             <td class="text-center text-muted">-</td>
                             <td class="text-center text-muted">-</td>
@@ -4211,23 +4209,21 @@ const app = {
                     const badgeText = benchmarks.length === 1 ? '권장' : `권장 ${bIdx + 1}`;
                     return `
                         <tr style="background-color: #f8fafc; font-weight: 600; color: #1e293b;">
-                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-weight: bold; color: #475569; font-size: 8pt;">
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; font-weight: bold; color: #2563eb; font-size: 8pt;">
                                 ${badgeText}
                             </td>
                             ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
-                            <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1;">
-                                <div style="display: inline-block; border: 2px solid #2563eb; padding: 2px 8px; border-radius: 2px; color: #1e40af; font-weight: bold; background: #eff6ff; font-size: 8.5pt; line-height: 1.35;">
-                                    ${escapeHtml(this.formatBenchmarkItem(bm))}
-                                </div>
+                            <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1; color: #2563eb; font-weight: bold;">
+                                ${escapeHtml(this.formatBenchmarkItem(bm))}
                             </td>
-                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">
-                                <span style="display: inline-block; padding: 1px 5px; background: #e2e8f0; color: #0f172a; border-radius: 2px; font-weight: bold;">${escapeHtml(bm.spec || '-')}</span>
+                            <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #2563eb; font-weight: bold;">
+                                ${escapeHtml(bm.spec || '-')}
                             </td>
                             ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #94a3b8;">-</td>` : ''}
                             ${cols.buyPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
                             ${cols.normPrice ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
                             ${cols.margin ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 8px; color: #94a3b8;">-</td>` : ''}
-                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #475569; font-size: 8pt;">제조사 권장 기준</td>` : ''}
+                            ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; color: #64748b; font-size: 8pt;">제조사 권장 기준</td>` : ''}
                         </tr>
                     `;
                 }).join('');
