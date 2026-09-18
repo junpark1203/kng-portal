@@ -78,7 +78,7 @@
                 <option value="item">품목명</option>
                 <option value="spec">규격</option>
                 <option value="supplier">매입처</option>
-                <option value="destination">매출처</option>
+                <option value="category">자재분류</option>
             </select>
 
             <!-- 스마트 다중 검색창 -->
@@ -156,14 +156,20 @@
                     <th class="th-category sortable text-center" style="width: 80px;" onclick="app.sortBy('category')" title="자재분류 기준 오름차순/내림차순 정렬">
                         <span>자재분류</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_category'></i>
                     </th>
+                    <th class="th-supplier sortable text-start ps-2" style="width: 125px;" onclick="app.sortBy('default_supplier')" title="주 매입처(공급업체) 기준 오름차순/내림차순 정렬">
+                        <span>주 매입처</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_supplier'></i>
+                    </th>
                     <th class="th-item sortable text-start ps-2" style="min-width: 190px;" onclick="app.sortBy('item')" title="품목명 기준 오름차순/내림차순 정렬">
                         <span>품목명</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_item'></i>
                     </th>
-                    <th class="th-spec sortable text-start ps-2" style="width: 125px;" onclick="app.sortBy('spec')" title="규격 기준 오름차순/내림차순 정렬">
+                    <th class="th-spec sortable text-start ps-2" style="width: 120px;" onclick="app.sortBy('spec')" title="규격 기준 오름차순/내림차순 정렬">
                         <span>규격</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_spec'></i>
                     </th>
                     <th class="th-unit sortable text-center" style="width: 48px;" onclick="app.sortBy('unit')" title="단위 기준 오름차순/내림차순 정렬">
                         <span>단위</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_unit'></i>
+                    </th>
+                    <th class="th-freight sortable text-center" style="width: 90px;" onclick="app.sortBy('freight_type')" title="운임조건 (하차도/상차도) 기준 정렬">
+                        <span>운임조건</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_freight_type'></i>
                     </th>
                     <th class="th-buy-price sortable text-end pe-2" style="width: 120px;" onclick="app.sortBy('buy_price')" title="기준 매입단가 기준 오름차순/내림차순 정렬">
                         <span>기준 매입단가</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_buy_price'></i>
@@ -176,12 +182,6 @@
                     </th>
                     <th class="th-margin-rate sortable text-center" style="width: 75px;" onclick="app.sortBy('margin_rate')" title="마진율 기준 오름차순/내림차순 정렬">
                         <span>마진율</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_margin_rate'></i>
-                    </th>
-                    <th class="th-supplier sortable text-start ps-2" style="width: 130px;" onclick="app.sortBy('default_supplier')" title="주 매입처 및 운임조건 기준 정렬">
-                        <span>주 매입처 (운임)</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_supplier'></i>
-                    </th>
-                    <th class="th-destination sortable text-start ps-2" style="width: 110px;" onclick="app.sortBy('default_destination')" title="주 매출처 기준 오름차순/내림차순 정렬">
-                        <span>주 매출처</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_default_destination'></i>
                     </th>
                     <th class="th-history sortable text-center" style="width: 70px;" onclick="app.sortBy('history')" title="단가이력 건수 기준 오름차순/내림차순 정렬">
                         <span>단가이력</span> <i class='bx bx-sort-alt-2 sort-icon' id='sort_icon_history'></i>
@@ -199,12 +199,12 @@
             <tfoot id="priceTableFoot" class="d-none">
                 <tr>
                     <td colspan="3" class="text-center bg-light fw-bold text-secondary">합계/평균</td>
-                    <td colspan="3" class="ps-2 fw-bold text-dark" id="footSummaryItems">총 0개 품목</td>
+                    <td colspan="5" class="ps-2 fw-bold text-dark" id="footSummaryItems">총 0개 품목</td>
                     <td class="text-end pe-2 text-dark fw-bold" id="footAvgBuy">0원</td>
                     <td class="text-end pe-2 text-primary fw-bold" id="footAvgSell">0원</td>
                     <td class="text-end pe-2 fw-bold" id="footAvgMarginAmt">0원</td>
                     <td class="text-center fw-bold" id="footAvgMarginRate">0%</td>
-                    <td colspan="4"></td>
+                    <td colspan="2"></td>
                 </tr>
             </tfoot>
         </table>
@@ -665,14 +665,6 @@
                                 </div>
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintDestination" onchange="app.onPrintColumnChange()">
-                                        <label class="form-check-label small fw-semibold text-danger" for="chkPrintDestination">
-                                            주 매출처 (기준매출)
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="form-check">
                                         <input class="form-check-input print-col-chk" type="checkbox" id="chkPrintMargin" onchange="app.onPrintColumnChange()">
                                         <label class="form-check-label small fw-semibold text-danger" for="chkPrintMargin">
                                             예상 마진액 및 마진율
@@ -715,6 +707,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js?v=20260917_1"></script>
-    <script src="app.js?v=20260918_2"></script>
+    <script src="app.js?v=20260918_3"></script>
 </body>
 </html>

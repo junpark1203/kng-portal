@@ -380,10 +380,10 @@ const app = {
                     targetText = item.spec || '';
                 } else if (this.searchTarget === 'supplier') {
                     targetText = item.default_supplier || '';
-                } else if (this.searchTarget === 'destination') {
-                    targetText = item.default_destination || '';
+                } else if (this.searchTarget === 'category') {
+                    targetText = item.category || '';
                 } else {
-                    targetText = `${item.item || ''} ${item.spec || ''} ${item.category || ''} ${item.default_supplier || ''} ${item.default_destination || ''} ${item.note || ''}`;
+                    targetText = `${item.item || ''} ${item.spec || ''} ${item.category || ''} ${item.default_supplier || ''} ${item.note || ''}`;
                 }
                 const lowerTarget = targetText.toLowerCase();
                 return tokens.every(token => lowerTarget.includes(token));
@@ -394,7 +394,7 @@ const app = {
         if (this.subSearchQuery) {
             const subTokens = this.subSearchQuery.split(/\s+/).filter(Boolean);
             list = list.filter(item => {
-                const combined = `${item.item || ''} ${item.spec || ''} ${item.category || ''} ${item.default_supplier || ''} ${item.default_destination || ''} ${item.note || ''}`.toLowerCase();
+                const combined = `${item.item || ''} ${item.spec || ''} ${item.category || ''} ${item.default_supplier || ''} ${item.note || ''}`.toLowerCase();
                 return subTokens.every(st => combined.includes(st));
             });
         }
@@ -462,7 +462,7 @@ const app = {
         if (totalCount === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="13" class="text-center py-5 text-muted">
+                    <td colspan="14" class="text-center py-5 text-muted">
                         <i class='bx bx-info-circle me-1'></i> 조건에 일치하는 단가 데이터가 없습니다.
                     </td>
                 </tr>
@@ -581,20 +581,17 @@ const app = {
                     </td>
                     <td class="text-center"><span class="${ptBadgeClass}">${escapeHtml(pt)}</span></td>
                     <td class="text-center"><span class="category-pill">${escapeHtml(r.category || '-')}</span></td>
+                    <td class="text-start ps-2 text-truncate fw-semibold text-dark" title="${escapeHtml(r.default_supplier || '')}">${escapeHtml(r.default_supplier || '-')}</td>
                     <td class="text-start ps-2 fw-semibold text-truncate" title="${escapeHtml(r.item)}">${escapeHtml(r.item)}</td>
                     <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.spec || '')}">
                         ${(r.spec && r.spec.trim()) ? `<span class="spec-pill">${escapeHtml(r.spec.trim())}</span>` : '<span class="text-muted">-</span>'}
                     </td>
                     <td class="text-center text-muted">${escapeHtml(r.unit || '-')}</td>
+                    <td class="text-center">${freightBadge}</td>
                     <td class="td-buy pe-2">${buyDisplay}</td>
                     <td class="td-sell pe-2">${sellDisplay}</td>
                     <td class="td-margin-amt pe-2 ${marginAmt < 0 ? 'text-danger' : ''}">${marginAmt ? marginAmt.toLocaleString() + '원' : '-'}</td>
                     <td class="text-center"><span class="margin-badge ${badgeClass}">${marginRateStr}</span></td>
-                    <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.default_supplier || '')}">
-                        <span>${escapeHtml(r.default_supplier || '-')}</span>
-                        ${freightBadge}
-                    </td>
-                    <td class="text-start ps-2 text-truncate" title="${escapeHtml(r.default_destination || '')}">${escapeHtml(r.default_destination || '-')}</td>
                     <td class="text-center">
                         <button type="button" class="btn-hist" onclick="app.openHistoryModal(${r.id})" title="단가 변동 이력 타임라인 보기">
                             <i class='bx bx-history'></i> ${histCount}건
@@ -820,9 +817,9 @@ const app = {
                     const valB = b.default_supplier || '';
                     return valA.localeCompare(valB, 'ko') * mult;
                 }
-                case 'default_destination': {
-                    const valA = a.default_destination || '';
-                    const valB = b.default_destination || '';
+                case 'freight_type': {
+                    const valA = a.freight_type || (a.is_freight_included ? '하차도' : '상차도');
+                    const valB = b.freight_type || (b.is_freight_included ? '하차도' : '상차도');
                     return valA.localeCompare(valB, 'ko') * mult;
                 }
                 case 'history': {
@@ -839,8 +836,8 @@ const app = {
 
     updateSortIcons: function() {
         const columns = [
-            'category', 'item', 'spec', 'unit', 'buy_price', 'sell_price',
-            'margin_amt', 'margin_rate', 'default_supplier', 'default_destination', 'history'
+            'price_type', 'category', 'default_supplier', 'item', 'spec', 'unit', 'freight_type', 'buy_price', 'sell_price',
+            'margin_amt', 'margin_rate', 'history'
         ];
 
         columns.forEach(col => {
@@ -2117,25 +2114,29 @@ const app = {
             return;
         }
 
-        const headers = ['No', '자재분류', '품목명', '규격', '단위', '기준 매입단가', '기준 매출단가', '마진액', '마진율(%)', '주 매입처', '주 매출처', '비고'];
+        const headers = ['No', '단가구분', '자재분류', '주 매입처', '품목명', '규격', '단위', '운임조건', '기준 매입단가', '기준 매출단가', '마진액', '마진율(%)', '비고'];
         const rows = this.filteredList.map((r, idx) => {
             const buy = r.buy_price || 0;
             const sell = r.sell_price || 0;
             const marginAmt = (sell > 0 && buy > 0) ? (sell - buy) : 0;
             const marginRate = (sell > 0 && buy > 0) ? Math.round(((sell - buy) / sell) * 1000) / 10 : 0;
+            const pt = r.price_type || '견적가';
+            const isFreightIn = (r.freight_type === '하차도') || (r.is_freight_included === 1 || r.is_freight_included === true || (r.note && r.note.includes('[운임포함]')));
+            const freightStr = isFreightIn ? `하차도${r.freight_region ? ` [${r.freight_region}]` : ''}` : '상차도';
 
             return [
                 idx + 1,
+                pt,
                 r.category || '',
+                r.default_supplier || '',
                 r.item || '',
                 r.spec || '',
                 r.unit || '',
+                freightStr,
                 buy,
                 sell,
                 marginAmt,
                 marginRate,
-                r.default_supplier || '',
-                r.default_destination || '',
                 r.note || ''
             ];
         });
@@ -2673,27 +2674,23 @@ const app = {
                             <td class="text-center">
                                 <span class="${ptBadgeClass}">${escapeHtml(pt)}</span>
                             </td>
+                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_supplier || '')}">
+                                <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
+                            </td>
                             <td class="text-start ps-2 fw-bold text-dark text-truncate" title="${escapeHtml(it.item)}">
                                 ${escapeHtml(it.item)}
                             </td>
                             <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.spec || '')}">
                                 <span class="spec-pill">${escapeHtml(it.spec || '-')}</span>
                             </td>
-                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_supplier || '')}">
-                                <strong class="text-dark">${escapeHtml(it.default_supplier || '-')}</strong>
+                            <td class="text-center">
+                                ${freightBadge}
                             </td>
                             <td class="text-end pe-2">
                                 ${buyCellHtml}
                             </td>
                             <td class="text-end pe-2">
                                 ${normHtml}
-                            </td>
-                            <td class="text-center">
-                                ${freightBadge}
-                            </td>
-                            <td class="text-start ps-2 text-truncate" title="${escapeHtml(it.default_destination || '')}">
-                                <span>${escapeHtml(it.default_destination || '-')}</span>
-                                ${sell ? `<span class="text-primary small ms-1">(₩${sell.toLocaleString()})</span>` : ''}
                             </td>
                             <td class="text-end pe-2">
                                 ${(sell > 0 && buy > 0) ? `
@@ -2752,13 +2749,12 @@ const app = {
                                         </th>
                                         <th style="width: 70px;">후보</th>
                                         <th style="width: 70px;">단가구분</th>
+                                        <th style="width: 130px;" class="text-start ps-2">공급업체</th>
                                         <th style="min-width: 150px;" class="text-start ps-2">품목명</th>
                                         <th style="width: 120px;" class="text-start ps-2">규격</th>
-                                        <th style="width: 130px;" class="text-start ps-2">공급업체(주 매입처)</th>
+                                        <th style="width: 120px;">운임조건</th>
                                         <th style="width: 135px;" class="text-end pe-2">기준 매입단가(환율)</th>
                                         <th style="width: 140px;" class="text-end pe-2" title="포장단위별(kg, L) 동일 환산 기준단가">환산단가(가성비)</th>
-                                        <th style="width: 130px;">운임조건</th>
-                                        <th style="width: 130px;" class="text-start ps-2">주 매출처(기준매출)</th>
                                         <th style="width: 110px;" class="text-end pe-2">마진액(마진율)</th>
                                         <th class="text-start ps-2">비고</th>
                                         <th style="width: 45px;">제외</th>
@@ -2971,22 +2967,20 @@ const app = {
 
     applyPrintPreset: function(preset) {
         if (preset === 'external') {
-            // 구매/대외 발주용: 매출처, 마진 숨김
+            // 구매/대외 발주용: 마진 숨김
             if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = true;
             if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = true;
             if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = true;
             if ($('chkPrintFreight')) $('chkPrintFreight').checked = true;
-            if ($('chkPrintDestination')) $('chkPrintDestination').checked = false;
             if ($('chkPrintMargin')) $('chkPrintMargin').checked = false;
             if ($('chkPrintNote')) $('chkPrintNote').checked = true;
             if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = true;
         } else if (preset === 'internal') {
-            // 내부 경영진 결재용: 전체 항목 표시
+            // 내부 경영진 결재용: 마진 포함 전체 항목 표시
             if ($('chkPrintSupplier')) $('chkPrintSupplier').checked = true;
             if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = true;
             if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = true;
             if ($('chkPrintFreight')) $('chkPrintFreight').checked = true;
-            if ($('chkPrintDestination')) $('chkPrintDestination').checked = true;
             if ($('chkPrintMargin')) $('chkPrintMargin').checked = true;
             if ($('chkPrintNote')) $('chkPrintNote').checked = true;
             if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = true;
@@ -3001,7 +2995,6 @@ const app = {
     },
 
     updatePrintPresetUI: function() {
-        const destChecked = $('chkPrintDestination') ? $('chkPrintDestination').checked : false;
         const marginChecked = $('chkPrintMargin') ? $('chkPrintMargin').checked : false;
         const suppChecked = $('chkPrintSupplier') ? $('chkPrintSupplier').checked : true;
         const buyChecked = $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true;
@@ -3014,8 +3007,8 @@ const app = {
         const btnInt = $('btnPrintPresetInternal');
         const statusBadge = $('printPresetStatusBadge');
 
-        const isExternal = !destChecked && !marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
-        const isInternal = destChecked && marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
+        const isExternal = !marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
+        const isInternal = marginChecked && suppChecked && buyChecked && normChecked && freightChecked && noteChecked && opinionChecked;
 
         if (btnExt) {
             if (isExternal) {
@@ -3061,7 +3054,6 @@ const app = {
             buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
             normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
             freight: $('chkPrintFreight') ? $('chkPrintFreight').checked : true,
-            destination: $('chkPrintDestination') ? $('chkPrintDestination').checked : false,
             margin: $('chkPrintMargin') ? $('chkPrintMargin').checked : false,
             note: $('chkPrintNote') ? $('chkPrintNote').checked : true,
             opinion: $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true
@@ -3080,7 +3072,6 @@ const app = {
                 if ($('chkPrintBuyPrice')) $('chkPrintBuyPrice').checked = s.buyPrice !== false;
                 if ($('chkPrintNormPrice')) $('chkPrintNormPrice').checked = s.normPrice !== false;
                 if ($('chkPrintFreight')) $('chkPrintFreight').checked = s.freight !== false;
-                if ($('chkPrintDestination')) $('chkPrintDestination').checked = Boolean(s.destination);
                 if ($('chkPrintMargin')) $('chkPrintMargin').checked = Boolean(s.margin);
                 if ($('chkPrintNote')) $('chkPrintNote').checked = s.note !== false;
                 if ($('chkPrintOpinion')) $('chkPrintOpinion').checked = s.opinion !== false;
@@ -3088,8 +3079,7 @@ const app = {
             }
         } catch (e) {}
 
-        // 기본값: 매출처, 마진은 보안 차원에서 체크 해제
-        if ($('chkPrintDestination')) $('chkPrintDestination').checked = false;
+        // 기본값: 마진은 보안 차원에서 체크 해제
         if ($('chkPrintMargin')) $('chkPrintMargin').checked = false;
     },
 
@@ -3101,7 +3091,6 @@ const app = {
             buyPrice: $('chkPrintBuyPrice') ? $('chkPrintBuyPrice').checked : true,
             normPrice: $('chkPrintNormPrice') ? $('chkPrintNormPrice').checked : true,
             freight: $('chkPrintFreight') ? $('chkPrintFreight').checked : true,
-            destination: $('chkPrintDestination') ? $('chkPrintDestination').checked : false,
             margin: $('chkPrintMargin') ? $('chkPrintMargin').checked : false,
             note: $('chkPrintNote') ? $('chkPrintNote').checked : true,
             opinion: $('chkPrintOpinion') ? $('chkPrintOpinion').checked : true
@@ -3134,7 +3123,6 @@ const app = {
             buyPrice: true,
             normPrice: true,
             freight: true,
-            destination: false,
             margin: false,
             note: true,
             opinion: true
@@ -3266,13 +3254,12 @@ const app = {
                 rows += `
                     <tr style="${bestRowStyle}">
                         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-left: 2px solid #0f172a;' : ''}">${cIdx + 1}</td>
+                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
                         <td style="text-align: left; padding: 6px 8px; border: 1px solid #cbd5e1;">${escapeHtml(it.item)}</td>
                         <td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.spec || '-')}</td>
-                        ${cols.supplier ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_supplier || '-')}</td>` : ''}
+                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${freightStr}</td>` : ''}
                         ${cols.buyPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>` : ''}
                         ${cols.normPrice ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1; ${isBest ? 'color: #047857;' : ''}">${normStr}</td>` : ''}
-                        ${cols.freight ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${freightStr}</td>` : ''}
-                        ${cols.destination ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px;">${escapeHtml(it.default_destination || '-')}${sell ? ` <span style="color:#2563eb;">(₩${sell.toLocaleString()})</span>` : ''}</td>` : ''}
                         ${cols.margin ? `<td style="text-align: right; padding: 6px 8px; border: 1px solid #cbd5e1;">${(sell > 0 && buy > 0) ? `₩${marginAmt.toLocaleString()} (${marginRate}%)` : '-'}</td>` : ''}
                         ${cols.note ? `<td style="text-align: center; border: 1px solid #cbd5e1; padding: 6px 4px; ${isBest ? 'border-right: 2px solid #0f172a;' : ''}">${escapeHtml(it.note || '-')}</td>` : ''}
                     </tr>
@@ -3289,13 +3276,12 @@ const app = {
                         <thead>
                             <tr style="background: #f1f5f9; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; font-weight: bold;">
                                 <th style="width: 48px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">순번</th>
+                                ${cols.supplier ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">공급업체</th>' : ''}
                                 <th style="border: 1px solid #cbd5e1; padding: 6px 6px; text-align: center;">품목명</th>
                                 <th style="width: 105px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">규격</th>
-                                ${cols.supplier ? '<th style="width: 115px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">공급업체</th>' : ''}
+                                ${cols.freight ? '<th style="width: 95px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">운임조건</th>' : ''}
                                 ${cols.buyPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">매입단가(환율)</th>' : ''}
                                 ${cols.normPrice ? '<th style="width: 130px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">단위단가(최저가대비)</th>' : ''}
-                                ${cols.freight ? '<th style="width: 95px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">운임조건</th>' : ''}
-                                ${cols.destination ? '<th style="width: 110px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">주 매출처</th>' : ''}
                                 ${cols.margin ? '<th style="width: 100px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">마진액(마진율)</th>' : ''}
                                 ${cols.note ? '<th style="width: 120px; border: 1px solid #cbd5e1; padding: 6px 4px; text-align: center;">비고</th>' : ''}
                             </tr>
@@ -3344,12 +3330,12 @@ const app = {
                     <tr style="border-bottom: 1px solid #cbd5e1; background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${escapeHtml(sum.sectionName)}</td>
-                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
+                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.spec || '-')}</td>
+                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${freightStr}</td>
                         <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #047857;">${normStr}</td>
                         <td style="text-align: right; padding: 5px 8px; border: 1px solid #cbd5e1;">${buyStr}</td>
-                        <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${freightStr}</td>
                     </tr>
                 `;
             });
@@ -3364,13 +3350,13 @@ const app = {
                         <thead>
                             <tr style="background: #ecfdf5; border-top: 1.5px solid #059669; border-bottom: 1.5px solid #059669; color: #065f46; font-weight: bold;">
                                 <th style="width: 42px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">순번</th>
-                                <th style="width: 150px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">비교 품목군</th>
-                                <th style="padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">추천 선정 품목</th>
+                                <th style="width: 140px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">비교 품목군</th>
                                 <th style="width: 110px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">공급업체</th>
+                                <th style="padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">추천 선정 품목</th>
                                 <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">규격</th>
+                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">운임조건</th>
                                 <th style="width: 120px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">단위단가(최저)</th>
                                 <th style="width: 125px; padding: 5px 8px; border: 1px solid #cbd5e1; text-align: center;">매입단가(환율)</th>
-                                <th style="width: 85px; padding: 5px; border: 1px solid #cbd5e1; text-align: center;">운임조건</th>
                             </tr>
                         </thead>
                         <tbody>
