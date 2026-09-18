@@ -2264,13 +2264,11 @@ function generatePrintTemplate(opts) {
 
     // 7. Remarks
     if (opts.showRemarks) {
-        const safeRemarks = escapeHtml(d.remarks || "").replace(/\r?\n/g, "<br>");
+        const safeRemarks = escapeHtml((d.remarks || "").trim()).replace(/\r?\n/g, "<br>");
         html += `
         <div class="print-section">
             <h2 class="section-title">특이사항 및 비고</h2>
-            <div class="print-remarks" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6;">
-                ${safeRemarks || '-(특이사항 없음)-'}
-            </div>
+            <div class="print-remarks" style="white-space: pre-wrap; word-break: break-word; line-height: 1.6;">${safeRemarks || '-(특이사항 없음)-'}</div>
         </div>`;
     }
 
