@@ -280,11 +280,11 @@ function initLogisticsTables(database) {
                                 });
                             });
 
-                            // 6-1. 견적 비교 테이블 (섹션 마스터 및 비교 품목 내역)
+                            // 6-1. 견적 비교 테이블 (섹션 마스터 및 비교 품목 내역, project_id=0은 현재 작업대)
                             database.run(`
                                 CREATE TABLE IF NOT EXISTS logistics_quote_sections (
                                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                    project_id INTEGER DEFAULT 1,
+                                    project_id INTEGER DEFAULT 0,
                                     name TEXT NOT NULL,
                                     memo TEXT DEFAULT '',
                                     display_order INTEGER DEFAULT 0,
@@ -292,8 +292,8 @@ function initLogisticsTables(database) {
                                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                                 )
                             `, () => {
-                                database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN project_id INTEGER DEFAULT 1`, () => {
-                                    database.run(`UPDATE logistics_quote_sections SET project_id = 1 WHERE project_id IS NULL OR project_id = 0`, () => {});
+                                database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN project_id INTEGER DEFAULT 0`, () => {
+                                    database.run(`UPDATE logistics_quote_sections SET project_id = 0 WHERE project_id IS NULL OR project_id = 1`, () => {});
                                 });
                             });
                             database.run(`
@@ -995,7 +995,7 @@ router.put('/unit-prices/:id', async (req, res) => {
         const newDestination = default_destination !== undefined ? default_destination : existing.default_destination;
         const newNote = note !== undefined ? note : existing.note;
 
-        // 1) unit_price_id로 매칭되는 견적 비교 항목 동시 갱신 ('확정' 상태가 아닌 프로젝트 대상)
+        // 1) unit_price_id로 매칭되는 견적 비교 항목 동시 갱신 (오직 현재 활성 작업대 project_id = 0 만 대상!)
         const quoteUpdateResult = await dbRun(`
             UPDATE logistics_quote_items
             SET item = ?, spec = ?, category = ?, unit = ?, currency = ?,
@@ -1004,9 +1004,8 @@ router.put('/unit-prices/:id', async (req, res) => {
                 foreign_buy_price = ?, foreign_sell_price = ?, freight_type = ?, freight_region = ?
             WHERE unit_price_id = ?
               AND section_id IN (
-                  SELECT s.id FROM logistics_quote_sections s
-                  LEFT JOIN logistics_quote_projects p ON s.project_id = p.id
-                  WHERE p.status IS NULL OR p.status != '확정'
+                  SELECT id FROM logistics_quote_sections
+                  WHERE project_id = 0 OR project_id IS NULL
               )
         `, [
             newItemName, newSpec, newCategory, newUnit, curr,
@@ -1018,7 +1017,7 @@ router.put('/unit-prices/:id', async (req, res) => {
 
         let syncedCount = quoteUpdateResult && quoteUpdateResult.changes ? quoteUpdateResult.changes : 0;
 
-        // 2) 레거시 데이터 fallback (unit_price_id 미지정 건 품목명/규격/공급처 매칭)
+        // 2) 레거시 데이터 fallback (unit_price_id 미지정 건 품목명/규격/공급처 매칭, 작업대 한정)
         if (syncedCount === 0) {
             const fallbackResult = await dbRun(`
                 UPDATE logistics_quote_items
@@ -1029,9 +1028,8 @@ router.put('/unit-prices/:id', async (req, res) => {
                 WHERE (unit_price_id IS NULL OR unit_price_id = 0)
                   AND item = ? AND spec = ? AND default_supplier = ?
                   AND section_id IN (
-                      SELECT s.id FROM logistics_quote_sections s
-                      LEFT JOIN logistics_quote_projects p ON s.project_id = p.id
-                      WHERE p.status IS NULL OR p.status != '확정'
+                      SELECT id FROM logistics_quote_sections
+                      WHERE project_id = 0 OR project_id IS NULL
                   )
             `, [
                 id, newItemName, newSpec, newCategory, newUnit, curr,
@@ -1170,7 +1168,7 @@ router.post('/unit-prices/populate-from-history', async (req, res) => {
 // --- Logistics Quotation Projects (검토서 보관함 관리) ---
 // -------------------------------------------------------------
 
-// 0-1. 검토서 프로젝트 목록 조회
+// 0-1. 검토서 보관함 목록 조회
 router.get('/quote-projects', async (req, res) => {
     try {
         const projects = await dbAll(`
@@ -1178,6 +1176,7 @@ router.get('/quote-projects', async (req, res) => {
                    (SELECT COUNT(*) FROM logistics_quote_sections s WHERE s.project_id = p.id) AS section_count,
                    (SELECT COUNT(*) FROM logistics_quote_items i JOIN logistics_quote_sections s ON i.section_id = s.id WHERE s.project_id = p.id) AS item_count
             FROM logistics_quote_projects p
+            WHERE p.id > 0
             ORDER BY p.id DESC
         `);
         res.json(projects);
@@ -1186,59 +1185,159 @@ router.get('/quote-projects', async (req, res) => {
     }
 });
 
-// 0-2. 검토서 프로젝트 신규 생성 (선택적으로 기존 프로젝트 복사)
-router.post('/quote-projects', async (req, res) => {
+// 0-2. [핵심] 현재 작업대(project_id=0) 내용을 검토서 보관함에 새 스냅샷으로 저장
+router.post('/quote-projects/save-from-draft', async (req, res) => {
     try {
-        const { title, doc_date, status, memo, copy_from_project_id } = req.body;
-        const finalTitle = (title || '').trim() || '새 자재 단가 비교 검토서';
+        const { title, doc_date, memo, clear_draft } = req.body;
+        const finalTitle = (title || '').trim();
+        if (!finalTitle) {
+            return res.status(400).json({ error: '검토서 명칭을 입력해주세요.' });
+        }
         const finalDate = (doc_date || '').trim() || new Date().toISOString().split('T')[0];
-        const finalStatus = status || '작성중';
         const finalMemo = (memo || '').trim();
 
+        // 현재 작업대(project_id = 0)의 섹션들 조회
+        const draftSections = await dbAll(`SELECT * FROM logistics_quote_sections WHERE project_id = 0 ORDER BY display_order ASC, id ASC`);
+        if (!draftSections || draftSections.length === 0) {
+            return res.status(400).json({ error: '현재 비교 작업대에 저장할 섹션이 없습니다. 단가표에서 품목을 먼저 담아주세요.' });
+        }
+
+        await dbRun("BEGIN TRANSACTION");
+
+        // 새 검토서 프로젝트 레코드 생성
         const insertRes = await dbRun(
-            `INSERT INTO logistics_quote_projects (title, doc_date, status, memo) VALUES (?, ?, ?, ?)`,
-            [finalTitle, finalDate, finalStatus, finalMemo]
+            `INSERT INTO logistics_quote_projects (title, doc_date, status, memo) VALUES (?, ?, '확정', ?)`,
+            [finalTitle, finalDate, finalMemo]
         );
         const newProjectId = insertRes.lastID;
 
-        // 기존 프로젝트로부터 섹션 및 품목 복사 옵션이 있는 경우
-        if (copy_from_project_id) {
-            const oldSections = await dbAll(`SELECT * FROM logistics_quote_sections WHERE project_id = ? ORDER BY display_order ASC, id ASC`, [copy_from_project_id]);
-            for (const sec of oldSections) {
-                const newSecRes = await dbRun(
-                    `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (?, ?, ?, ?)`,
-                    [newProjectId, sec.name, sec.memo, sec.display_order]
-                );
-                const newSecId = newSecRes.lastID;
-                const oldItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
-                for (const it of oldItems) {
-                    await dbRun(`
-                        INSERT INTO logistics_quote_items
-                        (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, price_type, currency, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, display_order)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        newSecId, it.unit_price_id, it.item, it.spec, it.category, it.unit,
-                        it.buy_price, it.sell_price, it.default_supplier, it.default_destination,
-                        it.is_freight_included, it.note, it.price_type, it.currency,
-                        it.exchange_rate, it.foreign_buy_price, it.foreign_sell_price,
-                        it.freight_type, it.freight_region, it.display_order
-                    ]);
-                }
+        // 작업대의 모든 섹션과 품목을 새 프로젝트로 복제 (스냅샷 생성)
+        for (const sec of draftSections) {
+            const newSecRes = await dbRun(
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (?, ?, ?, ?)`,
+                [newProjectId, sec.name, sec.memo, sec.display_order]
+            );
+            const newSecId = newSecRes.lastID;
+            const draftItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
+            for (const it of draftItems) {
+                await dbRun(`
+                    INSERT INTO logistics_quote_items
+                    (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, price_type, currency, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    newSecId, it.unit_price_id, it.item, it.spec, it.category, it.unit,
+                    it.buy_price, it.sell_price, it.default_supplier, it.default_destination,
+                    it.is_freight_included, it.note, it.price_type, it.currency,
+                    it.exchange_rate, it.foreign_buy_price, it.foreign_sell_price,
+                    it.freight_type, it.freight_region, it.display_order
+                ]);
             }
         }
+
+        // 옵션: 저장 후 현재 작업대 비우기
+        if (clear_draft === true || clear_draft === 'true') {
+            for (const sec of draftSections) {
+                await dbRun(`DELETE FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
+            }
+            await dbRun(`DELETE FROM logistics_quote_sections WHERE project_id = 0`);
+        }
+
+        await dbRun("COMMIT");
 
         res.json({
             success: true,
             id: newProjectId,
             title: finalTitle,
-            message: `[${finalTitle}] 검토서가 성공적으로 생성되었습니다.`
+            message: `[${finalTitle}] 검토서가 보관함에 안전하게 저장되었습니다.`
         });
+    } catch (err) {
+        await dbRun("ROLLBACK").catch(() => {});
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 0-3. [핵심] 보관함 문서를 현재 작업대(project_id=0)로 복원하여 이어서 편집
+router.post('/quote-projects/:id/restore-to-draft', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const project = await dbGet(`SELECT * FROM logistics_quote_projects WHERE id = ?`, [id]);
+        if (!project) return res.status(404).json({ error: '해당 검토서를 찾을 수 없습니다.' });
+
+        const targetSections = await dbAll(`SELECT * FROM logistics_quote_sections WHERE project_id = ? ORDER BY display_order ASC, id ASC`, [id]);
+
+        await dbRun("BEGIN TRANSACTION");
+
+        // 기존 작업대 비우기
+        const oldDraftSecs = await dbAll(`SELECT id FROM logistics_quote_sections WHERE project_id = 0`);
+        for (const s of oldDraftSecs) {
+            await dbRun(`DELETE FROM logistics_quote_items WHERE section_id = ?`, [s.id]);
+        }
+        await dbRun(`DELETE FROM logistics_quote_sections WHERE project_id = 0`);
+
+        // 보관함의 섹션/품목을 작업대(0)로 복제
+        for (const sec of targetSections) {
+            const newSecRes = await dbRun(
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (0, ?, ?, ?)`,
+                [sec.name, sec.memo, sec.display_order]
+            );
+            const newSecId = newSecRes.lastID;
+            const items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
+            for (const it of items) {
+                await dbRun(`
+                    INSERT INTO logistics_quote_items
+                    (section_id, unit_price_id, item, spec, category, unit, buy_price, sell_price, default_supplier, default_destination, is_freight_included, note, price_type, currency, exchange_rate, foreign_buy_price, foreign_sell_price, freight_type, freight_region, display_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    newSecId, it.unit_price_id, it.item, it.spec, it.category, it.unit,
+                    it.buy_price, it.sell_price, it.default_supplier, it.default_destination,
+                    it.is_freight_included, it.note, it.price_type, it.currency,
+                    it.exchange_rate, it.foreign_buy_price, it.foreign_sell_price,
+                    it.freight_type, it.freight_region, it.display_order
+                ]);
+            }
+        }
+
+        await dbRun("COMMIT");
+
+        res.json({
+            success: true,
+            message: `[${project.title}] 검토서 내용이 비교 작업대로 불러와졌습니다.`,
+            project: project
+        });
+    } catch (err) {
+        await dbRun("ROLLBACK").catch(() => {});
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 0-4. [핵심] 보관함 문서 단독 조회 (작업대 오염 없이 바로 A4 인쇄할 때 사용)
+router.get('/quote-projects/:id/sections', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const project = await dbGet(`SELECT * FROM logistics_quote_projects WHERE id = ?`, [id]);
+        if (!project) return res.status(404).json({ error: '해당 검토서를 찾을 수 없습니다.' });
+
+        const sections = await dbAll(`SELECT * FROM logistics_quote_sections WHERE project_id = ? ORDER BY display_order ASC, id ASC`, [id]);
+        const secIds = sections.map(s => s.id);
+        let items = [];
+        if (secIds.length > 0) {
+            items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id IN (${secIds.join(',')}) ORDER BY display_order ASC, id ASC`);
+        }
+
+        const result = sections.map(sec => ({
+            ...sec,
+            section_name: sec.name || '',
+            section_note: sec.memo || '',
+            items: items.filter(it => it.section_id === sec.id)
+        }));
+
+        res.json({ project, sections: result });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 0-3. 검토서 프로젝트 정보 수정 (명칭, 일자, 상태, 비고)
+// 0-5. 검토서 프로젝트 정보 수정 (명칭, 일자, 비고)
 router.put('/quote-projects/:id', async (req, res) => {
     try {
         const id = req.params.id;
@@ -1264,44 +1363,90 @@ router.put('/quote-projects/:id', async (req, res) => {
     }
 });
 
-// 0-4. 검토서 프로젝트 삭제 (단, 1건 남았을 때는 보호)
+// 0-6. 검토서 프로젝트 삭제
 router.delete('/quote-projects/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const count = await dbGet(`SELECT COUNT(*) as cnt FROM logistics_quote_projects`);
-        if (count && count.cnt <= 1) {
-            return res.status(400).json({ error: '최소 1개의 검토서는 유지되어야 하므로 삭제할 수 없습니다.' });
-        }
         const secRows = await dbAll(`SELECT id FROM logistics_quote_sections WHERE project_id = ?`, [id]);
         for (const s of secRows) {
             await dbRun(`DELETE FROM logistics_quote_items WHERE section_id = ?`, [s.id]);
         }
         await dbRun(`DELETE FROM logistics_quote_sections WHERE project_id = ?`, [id]);
         await dbRun(`DELETE FROM logistics_quote_projects WHERE id = ?`, [id]);
-        res.json({ success: true, message: '검토서 및 하위 섹션이 성공적으로 삭제되었습니다.' });
+        res.json({ success: true, message: '검토서가 성공적으로 삭제되었습니다.' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
 // -------------------------------------------------------------
-// --- Logistics Quotation Comparison (견적 비교 테이블 및 섹션 관리) ---
+// --- Logistics Quotation Comparison (견적 비교 작업대 및 섹션 관리) ---
 // -------------------------------------------------------------
 
-// 1. 비교 섹션 및 섹션별 품목 목록 조회 (project_id 지원)
+// 1-1. 현재 활성 작업대(project_id=0) 비우기 (초기화)
+router.delete('/quote-sections/clear-draft', async (req, res) => {
+    try {
+        const secRows = await dbAll(`SELECT id FROM logistics_quote_sections WHERE project_id = 0 OR project_id IS NULL`);
+        for (const s of secRows) {
+            await dbRun(`DELETE FROM logistics_quote_items WHERE section_id = ?`, [s.id]);
+        }
+        await dbRun(`DELETE FROM logistics_quote_sections WHERE project_id = 0 OR project_id IS NULL`);
+        res.json({ success: true, message: '비교 작업대가 초기화되었습니다.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 1-2. 단가표 수정 시 사용 여부 검사 API (작업대 및 보관함 전체 체크)
+router.get('/quote-sections/check-in-use/:unitPriceId', async (req, res) => {
+    try {
+        const uid = parseInt(req.params.unitPriceId, 10);
+        // 1) 현재 활성 작업대(project_id = 0)에서 사용 중인 섹션명 목록
+        const draftSections = await dbAll(`
+            SELECT DISTINCT s.name FROM logistics_quote_items i
+            JOIN logistics_quote_sections s ON i.section_id = s.id
+            WHERE i.unit_price_id = ? AND (s.project_id = 0 OR s.project_id IS NULL)
+        `, [uid]);
+
+        // 2) 보관함 프로젝트(project_id > 0)에서 사용 중인 검토서 제목 목록
+        const archiveProjects = await dbAll(`
+            SELECT DISTINCT p.title FROM logistics_quote_items i
+            JOIN logistics_quote_sections s ON i.section_id = s.id
+            JOIN logistics_quote_projects p ON s.project_id = p.id
+            WHERE i.unit_price_id = ? AND s.project_id > 0
+        `, [uid]);
+
+        res.json({
+            inDraft: draftSections.length > 0,
+            draftSections: draftSections.map(s => s.name),
+            inArchive: archiveProjects.length > 0,
+            archiveProjects: archiveProjects.map(p => p.title)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 1-3. 비교 섹션 및 섹션별 품목 목록 조회 (기본값: 현재 작업대 project_id=0)
 router.get('/quote-sections', async (req, res) => {
     try {
-        const projectId = req.query.project_id ? parseInt(req.query.project_id, 10) : null;
+        const targetProjectId = req.query.project_id !== undefined ? parseInt(req.query.project_id, 10) : 0;
         let secSql = `SELECT * FROM logistics_quote_sections`;
         const secParams = [];
-        if (projectId) {
+        if (targetProjectId === 0) {
+            secSql += ` WHERE (project_id = 0 OR project_id IS NULL)`;
+        } else {
             secSql += ` WHERE project_id = ?`;
-            secParams.push(projectId);
+            secParams.push(targetProjectId);
         }
         secSql += ` ORDER BY display_order ASC, id ASC`;
 
         const sections = await dbAll(secSql, secParams);
-        const items = await dbAll(`SELECT * FROM logistics_quote_items ORDER BY display_order ASC, id ASC`);
+        const secIds = sections.map(s => s.id);
+        let items = [];
+        if (secIds.length > 0) {
+            items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id IN (${secIds.join(',')}) ORDER BY display_order ASC, id ASC`);
+        }
 
         const result = sections.map(sec => ({
             ...sec,
@@ -1316,12 +1461,12 @@ router.get('/quote-sections', async (req, res) => {
     }
 });
 
-// 2. 단가표에서 선택한 품목들을 섹션에 추가 (신규 섹션 생성 또는 기존 섹션)
+// 2. 단가표에서 선택한 품목들을 섹션에 추가 (기본값: 현재 작업대 project_id=0)
 router.post('/quote-sections/add-items', async (req, res) => {
     try {
         let { section_id, section_name, name, section_note, memo, items, project_id } = req.body;
         const candidateItems = Array.isArray(items) ? items : [];
-        let targetProjectId = project_id ? parseInt(project_id, 10) : 1;
+        let targetProjectId = project_id !== undefined ? parseInt(project_id, 10) : 0;
 
         await dbRun("BEGIN TRANSACTION");
 

@@ -114,14 +114,13 @@ const app = {
     itemsSpecsMap: {},
     viewMode: 'item', // 'item' | 'quote'
     checkedItemIds: new Set(),
-    quoteProjects: [],
-    currentProjectId: 1,
-    currentProject: null,
+    archiveProjects: [],
+    archiveSearchQuery: '',
     quoteSections: [],
     addToQuoteModalInstance: null,
     newSectionModalInstance: null,
-    newProjectModalInstance: null,
-    editProjectModalInstance: null,
+    saveToArchiveModalInstance: null,
+    quoteArchiveModalInstance: null,
     editRateModalInstance: null,
     currentPage: 1,
     pageSize: 50,
@@ -136,7 +135,7 @@ const app = {
         this.bindEvents();
         await this.loadItemSpecs();
         await this.loadPrices();
-        await this.loadQuoteProjects();
+        await this.loadArchiveList();
         await this.loadQuoteSections();
         this.setupAutocomplete();
         if (window.ErpGridResizer) {
@@ -147,6 +146,12 @@ const app = {
         }
         if ($('newSectionModal') && window.bootstrap) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
+        }
+        if ($('saveToArchiveModal') && window.bootstrap) {
+            this.saveToArchiveModalInstance = new bootstrap.Modal($('saveToArchiveModal'));
+        }
+        if ($('quoteArchiveModal') && window.bootstrap) {
+            this.quoteArchiveModalInstance = new bootstrap.Modal($('quoteArchiveModal'));
         }
         if ($('editRateModal') && window.bootstrap) {
             this.editRateModalInstance = new bootstrap.Modal($('editRateModal'));
@@ -1432,7 +1437,7 @@ const app = {
             if (relatedSections.length > 0) {
                 alertEl.classList.remove('d-none');
                 const secListStr = relatedSections.map(s => `[${s}]`).join(', ');
-                alertDesc.innerHTML = `현재 견적 비교 테이블의 <strong>${secListStr}</strong> (${relatedSections.length}개 섹션)에 포함되어 있습니다.<br>여기서 단가나 스펙을 수정하시면 <strong>견적 비교 테이블의 해당 품목도 자동으로 함께 수정</strong>됩니다.`;
+                alertDesc.innerHTML = `현재 자재 선정 & 견적 비교 <strong>작업대(Workspace)</strong>의 <strong>${secListStr}</strong> (${relatedSections.length}개 섹션)에 포함되어 있습니다.<br>• 단가표 수정 시 <strong>작업대 섹션의 해당 품목도 실시간 자동 동기화</strong>됩니다.<br>• 단, <span class="text-success fw-bold">보관함에 저장 완료된 과거 검토서들은 원래 단가 그대로 안전하게 보존</span>됩니다.`;
             } else {
                 alertEl.classList.add('d-none');
             }
@@ -1633,11 +1638,12 @@ const app = {
                     const changeListStr = changes.map(c => ` • ${c}`).join('\n');
 
                     const confirmMsg = 
-                        `⚠️ [견적 비교 테이블 연동 안내]\n\n` +
-                        `해당 항목은 이미 견적 비교 테이블에서 사용 중인 항목입니다.\n\n` +
-                        `■ 등록된 비교 섹션 (${relatedSections.length}곳):\n   ${sectionNamesStr}\n\n` +
+                        `⚠️ [견적 비교 작업대 연동 안내]\n\n` +
+                        `해당 항목은 현재 견적 비교 작업대(Workspace)에서 사용 중인 항목입니다.\n\n` +
+                        `■ 등록된 작업대 섹션 (${relatedSections.length}곳):\n   ${sectionNamesStr}\n\n` +
                         `■ 변경 예정 내용:\n${changeListStr}\n\n` +
-                        `단가표에서 위 정보를 수정하면 견적 비교 테이블에서도 함께 수정됩니다.\n` +
+                        `• 단가표 수정 시 [작업대] 섹션의 해당 품목도 실시간으로 자동 동기화됩니다.\n` +
+                        `• [보관함]에 이미 저장된 과거 검토서들은 원래 확정 단가 그대로 안전하게 불변 보존됩니다.\n\n` +
                         `계속하시겠습니까?`;
 
                     if (!confirm(confirmMsg)) {
@@ -1650,7 +1656,7 @@ const app = {
                     body: JSON.stringify(payload)
                 });
                 const syncMsg = (res && res.syncedQuoteCount > 0)
-                    ? `\n(견적 비교 테이블 ${res.syncedQuoteCount}개 항목 함께 자동 반영 완료)`
+                    ? `\n(견적 비교 작업대 ${res.syncedQuoteCount}개 항목 실시간 동기화 완료 / 보관함 과거 문서는 불변 보존됨)`
                     : '';
                 alert(`기준단가가 성공적으로 수정되었습니다.${syncMsg}`);
             } else {
@@ -2272,187 +2278,248 @@ const app = {
     },
 
     // ─────────────────────────────────────────
-    // 견적 비교 프로젝트 (검토서 보관함) 관리 시스템
+    // 견적 비교 작업대 및 검토서 보관함 시스템 (Tab 2)
     // ─────────────────────────────────────────
-    loadQuoteProjects: async function() {
+    loadArchiveList: async function() {
         try {
             const data = await authFetch(`${API_BASE}/quote-projects`);
-            this.quoteProjects = Array.isArray(data) ? data : [];
+            this.archiveProjects = Array.isArray(data) ? data : [];
         } catch (e) {
-            console.warn('loadQuoteProjects error:', e);
-            this.quoteProjects = [];
+            console.warn('loadArchiveList error:', e);
+            this.archiveProjects = [];
         }
 
-        if (this.quoteProjects.length === 0) {
-            this.quoteProjects = [{ id: 1, title: '자재 구매 단가 비교 검토', doc_date: '', status: '작성중', memo: '' }];
-        }
-
-        if (!this.currentProjectId || !this.quoteProjects.some(p => p.id === this.currentProjectId)) {
-            this.currentProjectId = this.quoteProjects[0].id;
-        }
-        this.currentProject = this.quoteProjects.find(p => p.id === this.currentProjectId) || this.quoteProjects[0];
-
-        // 1. 툴바의 검토서 보관함 셀렉트 갱신
-        const select = $('selectQuoteProject');
-        if (select) {
-            select.innerHTML = this.quoteProjects.map(p => {
-                const statusTag = p.status === '확정' ? '🔒[확정]' : '📝[작성중]';
-                return `<option value="${p.id}" ${p.id === this.currentProjectId ? 'selected' : ''}>${statusTag} ${escapeHtml(p.title)} (${p.section_count || 0}섹션 / ${p.item_count || 0}품목)</option>`;
-            }).join('');
-        }
-
-        // 2. 단가표에서 담기 모달(selectTargetQuoteProject) 셀렉트 갱신
-        const targetSelect = $('selectTargetQuoteProject');
-        if (targetSelect) {
-            targetSelect.innerHTML = this.quoteProjects.map(p => {
-                return `<option value="${p.id}" ${p.id === this.currentProjectId ? 'selected' : ''}>${escapeHtml(p.title)} (${p.section_count || 0}개 섹션 등록됨)</option>`;
-            }).join('');
-        }
+        const badge = $('archiveCountBadge');
+        if (badge) badge.innerText = this.archiveProjects.length;
     },
 
-    onQuoteProjectChange: async function(projectId) {
-        if (!projectId) return;
-        this.currentProjectId = parseInt(projectId, 10);
-        this.currentProject = this.quoteProjects.find(p => p.id === this.currentProjectId) || null;
-        await this.loadQuoteSections();
-    },
-
-    openNewProjectModal: function() {
-        const inpTitle = $('inpNewProjectTitle');
-        if (inpTitle) inpTitle.value = '';
-        const inpDate = $('inpNewProjectDate');
-        if (inpDate) inpDate.value = new Date().toISOString().split('T')[0];
-        const inpStatus = $('inpNewProjectStatus');
-        if (inpStatus) inpStatus.value = '작성중';
-        const inpMemo = $('inpNewProjectMemo');
-        if (inpMemo) inpMemo.value = '';
-        const chkCopy = $('chkNewProjectCopyCurrent');
-        if (chkCopy) chkCopy.checked = false;
-
-        if (!this.newProjectModalInstance && window.bootstrap && $('newProjectModal')) {
-            this.newProjectModalInstance = new bootstrap.Modal($('newProjectModal'));
-        }
-        if (this.newProjectModalInstance) {
-            this.newProjectModalInstance.show();
-            setTimeout(() => { if (inpTitle) inpTitle.focus(); }, 200);
-        }
-    },
-
-    submitCreateProject: async function() {
-        const title = $('inpNewProjectTitle') ? $('inpNewProjectTitle').value.trim() : '';
-        if (!title) {
-            alert('검토서 명칭을 입력해주세요.');
-            if ($('inpNewProjectTitle')) $('inpNewProjectTitle').focus();
+    openSaveToArchiveModal: function() {
+        if (!this.quoteSections || this.quoteSections.length === 0) {
+            alert('현재 작업대에 저장할 비교 섹션이 없습니다.\n[품목별 단가표]에서 비교할 품목들을 먼저 담아주세요.');
             return;
         }
-        const docDate = $('inpNewProjectDate') ? $('inpNewProjectDate').value.trim() : '';
-        const status = $('inpNewProjectStatus') ? $('inpNewProjectStatus').value : '작성중';
-        const memo = $('inpNewProjectMemo') ? $('inpNewProjectMemo').value.trim() : '';
-        const copyCurrent = $('chkNewProjectCopyCurrent') ? $('chkNewProjectCopyCurrent').checked : false;
+
+        const today = new Date().toISOString().split('T')[0];
+        const inpTitle = $('inpArchiveTitle');
+        if (inpTitle) inpTitle.value = `[${today}] 자재 구매 단가 비교 검토`;
+        const inpDate = $('inpArchiveDate');
+        if (inpDate) inpDate.value = today;
+        const inpMemo = $('inpArchiveMemo');
+        if (inpMemo) inpMemo.value = '';
+        const chkClear = $('chkArchiveClearDraft');
+        if (chkClear) chkClear.checked = false;
+
+        if (!this.saveToArchiveModalInstance && window.bootstrap && $('saveToArchiveModal')) {
+            this.saveToArchiveModalInstance = new bootstrap.Modal($('saveToArchiveModal'));
+        }
+        if (this.saveToArchiveModalInstance) {
+            this.saveToArchiveModalInstance.show();
+            setTimeout(() => { if (inpTitle) { inpTitle.focus(); inpTitle.select(); } }, 200);
+        }
+    },
+
+    submitSaveToArchive: async function() {
+        const inpTitle = $('inpArchiveTitle');
+        const title = inpTitle ? inpTitle.value.trim() : '';
+        if (!title) {
+            alert('검토서 명칭을 입력해주세요.');
+            if (inpTitle) inpTitle.focus();
+            return;
+        }
+
+        const docDate = $('inpArchiveDate') ? $('inpArchiveDate').value.trim() : '';
+        const memo = $('inpArchiveMemo') ? $('inpArchiveMemo').value.trim() : '';
+        const clearDraft = $('chkArchiveClearDraft') ? $('chkArchiveClearDraft').checked : false;
 
         try {
             const payload = {
                 title,
                 doc_date: docDate,
-                status,
                 memo,
-                copy_from_project_id: copyCurrent ? this.currentProjectId : null
+                clear_draft: clearDraft
             };
-            const res = await authFetch(`${API_BASE}/quote-projects`, {
+            const res = await authFetch(`${API_BASE}/quote-projects/save-from-draft`, {
                 method: 'POST',
                 body: JSON.stringify(payload)
             });
 
-            if (this.newProjectModalInstance) {
-                this.newProjectModalInstance.hide();
+            if (this.saveToArchiveModalInstance) {
+                this.saveToArchiveModalInstance.hide();
             }
 
-            this.currentProjectId = res.id;
-            await this.loadQuoteProjects();
-            await this.loadQuoteSections();
-            alert(res.message || '새 검토서가 생성되었습니다.');
+            await this.loadArchiveList();
+            if (clearDraft) {
+                await this.loadQuoteSections();
+            }
+            alert(res.message || '검토서가 보관함에 성공적으로 저장되었습니다.');
         } catch (err) {
-            alert('검토서 생성 실패: ' + err.message);
+            alert('보관함 저장 실패: ' + err.message);
         }
     },
 
-    openEditProjectModal: function() {
-        const p = this.currentProject;
-        if (!p) return;
+    openArchiveModal: async function() {
+        await this.loadArchiveList();
+        this.archiveSearchQuery = '';
+        const searchInp = $('inpArchiveSearch');
+        if (searchInp) searchInp.value = '';
+        this.renderArchiveList();
 
-        $('editProjectId').value = p.id;
-        if ($('inpEditProjectTitle')) $('inpEditProjectTitle').value = p.title || '';
-        if ($('inpEditProjectDate')) $('inpEditProjectDate').value = (p.doc_date || '').substring(0, 10) || new Date().toISOString().split('T')[0];
-        if ($('inpEditProjectStatus')) $('inpEditProjectStatus').value = p.status || '작성중';
-        if ($('inpEditProjectMemo')) $('inpEditProjectMemo').value = p.memo || '';
-
-        if (!this.editProjectModalInstance && window.bootstrap && $('editProjectModal')) {
-            this.editProjectModalInstance = new bootstrap.Modal($('editProjectModal'));
+        if (!this.quoteArchiveModalInstance && window.bootstrap && $('quoteArchiveModal')) {
+            this.quoteArchiveModalInstance = new bootstrap.Modal($('quoteArchiveModal'));
         }
-        if (this.editProjectModalInstance) {
-            this.editProjectModalInstance.show();
+        if (this.quoteArchiveModalInstance) {
+            this.quoteArchiveModalInstance.show();
         }
     },
 
-    submitUpdateProject: async function() {
-        const id = this.currentProjectId;
-        if (!id) return;
-        const title = $('inpEditProjectTitle') ? $('inpEditProjectTitle').value.trim() : '';
-        if (!title) {
-            alert('검토서 명칭을 입력해주세요.');
+    filterArchiveList: function(keyword) {
+        this.archiveSearchQuery = (keyword || '').trim().toLowerCase();
+        this.renderArchiveList();
+    },
+
+    renderArchiveList: function() {
+        const tbody = $('quoteArchiveListBody');
+        if (!tbody) return;
+
+        let list = this.archiveProjects || [];
+        if (this.archiveSearchQuery) {
+            list = list.filter(p => (p.title || '').toLowerCase().includes(this.archiveSearchQuery) || (p.memo || '').toLowerCase().includes(this.archiveSearchQuery));
+        }
+
+        if (list.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        ${this.archiveSearchQuery ? '검색 결과와 일치하는 검토서가 없습니다.' : '보관함에 저장된 검토서가 없습니다. 작업대에서 [보관함에 저장]을 눌러 저장해보세요.'}
+                    </td>
+                </tr>
+            `;
             return;
         }
-        const docDate = $('inpEditProjectDate') ? $('inpEditProjectDate').value.trim() : '';
-        const status = $('inpEditProjectStatus') ? $('inpEditProjectStatus').value : '작성중';
-        const memo = $('inpEditProjectMemo') ? $('inpEditProjectMemo').value.trim() : '';
+
+        let html = '';
+        list.forEach((p, idx) => {
+            const dateStr = p.doc_date ? p.doc_date.substring(0, 10) : '-';
+            html += `
+                <tr>
+                    <td class="text-center fw-bold text-secondary">${idx + 1}</td>
+                    <td class="text-start ps-2">
+                        <strong class="text-dark">${escapeHtml(p.title)}</strong>
+                    </td>
+                    <td class="text-center text-muted">${dateStr}</td>
+                    <td class="text-center">
+                        <span class="badge bg-secondary">${p.section_count || 0}섹션 / ${p.item_count || 0}품목</span>
+                    </td>
+                    <td class="text-start ps-2 small text-muted text-truncate" style="max-width: 160px;" title="${escapeHtml(p.memo || '')}">
+                        ${escapeHtml(p.memo || '-')}
+                    </td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size: 11px; height: 24px;" 
+                                    onclick="app.restoreFromArchive(${p.id})" title="이 검토서를 작업대로 불러와서 이어서 편집합니다">
+                                <i class='bx bx-import'></i> 불러오기
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size: 11px; height: 24px;" 
+                                    onclick="app.printArchivedProject(${p.id})" title="작업대 변경 없이 이 검토서 내용으로 즉시 A4 보고서를 인쇄합니다">
+                                <i class='bx bx-printer'></i> 인쇄
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size: 11px; height: 24px;" 
+                                    onclick="app.deleteArchivedProject(${p.id})" title="이 검토서를 보관함에서 삭제합니다">
+                                <i class='bx bx-trash'></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    },
+
+    restoreFromArchive: async function(projectId) {
+        const p = (this.archiveProjects || []).find(item => item.id === projectId);
+        const name = p ? p.title : '선택한 검토서';
+
+        if (!confirm(`[${name}] 검토서 내용을 현재 비교 작업대로 불러오시겠습니까?\n\n※ 주의: 현재 작업대에 작성 중이던 섹션과 품목은 이 검토서 내용으로 대체됩니다.`)) {
+            return;
+        }
 
         try {
-            await authFetch(`${API_BASE}/quote-projects/${id}`, {
-                method: 'PUT',
-                body: JSON.stringify({ title, doc_date: docDate, status, memo })
+            const res = await authFetch(`${API_BASE}/quote-projects/${projectId}/restore-to-draft`, {
+                method: 'POST'
             });
-            if (this.editProjectModalInstance) {
-                this.editProjectModalInstance.hide();
+
+            if (this.quoteArchiveModalInstance) {
+                this.quoteArchiveModalInstance.hide();
             }
-            await this.loadQuoteProjects();
-            alert('검토서 정보가 성공적으로 수정되었습니다.');
+
+            await this.loadQuoteSections();
+            this.switchViewMode('quote');
+            alert(res.message || '검토서가 비교 작업대로 성공적으로 불러와졌습니다.');
         } catch (err) {
-            alert('검토서 수정 실패: ' + err.message);
+            alert('불러오기 실패: ' + err.message);
         }
     },
 
-    deleteCurrentProject: async function() {
-        const p = this.currentProject;
-        if (!p) return;
-        if (!confirm(`[${p.title}] 검토서와 포함된 모든 비교 섹션을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+    printArchivedProject: async function(projectId) {
+        try {
+            const res = await authFetch(`${API_BASE}/quote-projects/${projectId}/sections`);
+            if (!res || !res.project || !res.sections) {
+                alert('검토서 데이터를 불러올 수 없습니다.');
+                return;
+            }
+            // 작업대 변경 없이 주어진 프로젝트 데이터로 바로 인쇄 실행
+            this.printExecutiveReportFromData(res.project, res.sections);
+        } catch (err) {
+            alert('인쇄 준비 실패: ' + err.message);
+        }
+    },
+
+    deleteArchivedProject: async function(projectId) {
+        const p = (this.archiveProjects || []).find(item => item.id === projectId);
+        const name = p ? p.title : '검토서';
+        if (!confirm(`[${name}] 검토서를 보관함에서 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
             return;
         }
 
         try {
-            const res = await authFetch(`${API_BASE}/quote-projects/${p.id}`, {
+            await authFetch(`${API_BASE}/quote-projects/${projectId}`, {
                 method: 'DELETE'
             });
-            if (this.editProjectModalInstance) {
-                this.editProjectModalInstance.hide();
-            }
-            this.currentProjectId = null;
-            await this.loadQuoteProjects();
-            await this.loadQuoteSections();
-            alert(res.message || '검토서가 삭제되었습니다.');
+            await this.loadArchiveList();
+            this.renderArchiveList();
+            alert('검토서가 보관함에서 삭제되었습니다.');
         } catch (err) {
             alert('검토서 삭제 실패: ' + err.message);
         }
     },
 
+    clearDraftSections: async function() {
+        if (!this.quoteSections || this.quoteSections.length === 0) {
+            alert('현재 작업대에 비울 비교 섹션이 없습니다.');
+            return;
+        }
+
+        if (!confirm('현재 비교 작업대의 모든 섹션과 품목을 비우시겠습니까?\n\n※ 아직 [보관함에 저장]하지 않은 작업 내용은 삭제됩니다.')) {
+            return;
+        }
+
+        try {
+            await authFetch(`${API_BASE}/quote-sections/clear-draft`, {
+                method: 'DELETE'
+            });
+            await this.loadQuoteSections();
+            alert('비교 작업대가 깨끗이 비워졌습니다. 단가표에서 새 비교 작업을 시작하실 수 있습니다.');
+        } catch (err) {
+            alert('작업대 비우기 실패: ' + err.message);
+        }
+    },
+
     // ─────────────────────────────────────────
-    // 사용자 정의 섹션 기반 견적 비교 테이블 시스템 (Tab 2)
+    // 사용자 정의 섹션 기반 견적 비교 테이블 시스템 (Tab 2: 작업대)
     // ─────────────────────────────────────────
     loadQuoteSections: async function() {
         try {
-            const url = this.currentProjectId 
-                ? `${API_BASE}/quote-sections?project_id=${this.currentProjectId}`
-                : `${API_BASE}/quote-sections`;
-            const data = await authFetch(url);
+            const data = await authFetch(`${API_BASE}/quote-sections?project_id=0`);
             this.quoteSections = Array.isArray(data) ? data : [];
         } catch (e) {
             console.warn('loadQuoteSections error:', e);
@@ -2533,14 +2600,6 @@ const app = {
             }).join('');
         }
 
-        // 대상 프로젝트 드롭다운 채우기
-        const targetSelect = $('selectTargetQuoteProject');
-        if (targetSelect) {
-            targetSelect.innerHTML = (this.quoteProjects || []).map(p => {
-                return `<option value="${p.id}" ${p.id === this.currentProjectId ? 'selected' : ''}>${escapeHtml(p.title)} (${p.section_count || 0}개 섹션)</option>`;
-            }).join('');
-        }
-
         // 기존 섹션 드롭다운 채우기
         const selectSec = $('selectExistingSection');
         const choiceExisting = $('choiceExisting');
@@ -2570,30 +2629,6 @@ const app = {
         if (this.addToQuoteModalInstance) {
             this.addToQuoteModalInstance.show();
         }
-    },
-
-    onTargetQuoteProjectChange: async function(projectId) {
-        if (!projectId) return;
-        const pid = parseInt(projectId, 10);
-        try {
-            const data = await authFetch(`${API_BASE}/quote-sections?project_id=${pid}`);
-            const secs = Array.isArray(data) ? data : [];
-            const selectSec = $('selectExistingSection');
-            const choiceExisting = $('choiceExisting');
-            const choiceNew = $('choiceNew');
-            if (selectSec) {
-                selectSec.innerHTML = '<option value="">-- 기존 섹션을 선택하세요 --</option>' + 
-                    secs.map(s => `<option value="${s.id}">${escapeHtml(s.section_name)} (${(s.items || []).length}개 후보 등록됨)</option>`).join('');
-            }
-            if (secs.length === 0) {
-                if (choiceExisting) choiceExisting.disabled = true;
-                if (choiceNew) choiceNew.checked = true;
-                if (selectSec) selectSec.disabled = true;
-            } else {
-                if (choiceExisting) choiceExisting.disabled = false;
-            }
-            this.onSectionChoiceChange();
-        } catch (e) {}
     },
 
     onSectionChoiceChange: function() {
@@ -2666,14 +2701,11 @@ const app = {
             note: p.note
         }));
 
-        const targetSelect = $('selectTargetQuoteProject');
-        const targetProjectId = targetSelect ? parseInt(targetSelect.value, 10) : (this.currentProjectId || 1);
-
         try {
             const res = await authFetch(`${API_BASE}/quote-sections/add-items`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    project_id: targetProjectId,
+                    project_id: 0,
                     section_id: sectionId,
                     section_name: sectionName,
                     items: itemsPayload
@@ -2689,17 +2721,15 @@ const app = {
             this.updateItemSelectionState();
             this.renderTable();
 
-            // 대상 프로젝트로 전환 및 데이터 새로고침
-            this.currentProjectId = targetProjectId;
-            await this.loadQuoteProjects();
+            // 작업대 데이터 새로고침
             await this.loadQuoteSections();
 
             // 견적 비교 탭으로 자동 이동
             this.switchViewMode('quote');
 
-            alert(`선택한 ${res.addedCount || itemsPayload.length}개 품목이 [${res.section_name || sectionName}] 견적 비교 테이블에 성공적으로 담겼습니다.`);
+            alert(`선택한 ${res.addedCount || itemsPayload.length}개 품목이 [${res.section_name || sectionName}] 비교 작업대에 성공적으로 담겼습니다.`);
         } catch (err) {
-            alert('견적 비교 테이블 담기 실패: ' + err.message);
+            alert('비교 작업대 담기 실패: ' + err.message);
         }
     },
 
@@ -2727,7 +2757,7 @@ const app = {
             await authFetch(`${API_BASE}/quote-sections/add-items`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    project_id: this.currentProjectId || 1,
+                    project_id: 0,
                     section_name: name,
                     items: []
                 })
@@ -2735,7 +2765,6 @@ const app = {
             if (this.newSectionModalInstance) {
                 this.newSectionModalInstance.hide();
             }
-            await this.loadQuoteProjects();
             await this.loadQuoteSections();
         } catch (err) {
             alert('섹션 생성 실패: ' + err.message);
@@ -3666,8 +3695,29 @@ const app = {
         });
     },
 
+    printExecutiveReportFromData: function(project, sections) {
+        this.printExecutiveReport({
+            scope: 'all',
+            columns: {
+                supplier: true,
+                buyPrice: true,
+                normPrice: true,
+                freight: true,
+                margin: false,
+                note: true,
+                opinion: true
+            },
+            customSections: sections,
+            customProject: project
+        });
+    },
+
     printExecutiveReport: function(options = {}) {
-        if (!this.quoteSections || this.quoteSections.length === 0) {
+        const sectionsSource = (options.customSections && options.customSections.length > 0)
+            ? options.customSections
+            : this.quoteSections;
+
+        if (!sectionsSource || sectionsSource.length === 0) {
             alert('인쇄할 견적 비교 섹션이 없습니다.');
             return;
         }
@@ -3689,9 +3739,9 @@ const app = {
 
         const today = new Date().toISOString().split('T')[0];
 
-        let sectionsToPrint = this.quoteSections;
+        let sectionsToPrint = sectionsSource;
         if (targetSecId) {
-            sectionsToPrint = this.quoteSections.filter(s => s.id === targetSecId);
+            sectionsToPrint = sectionsSource.filter(s => s.id === targetSecId);
         }
 
         let sectionsHtml = '';
@@ -3703,8 +3753,8 @@ const app = {
             let items = sec.items || [];
             if (items.length === 0) return;
 
-            // 선택 항목 필터링
-            if (scope === 'selected') {
+            // 선택 항목 필터링 (보관함 독립 인쇄 시 전체 품목 포함)
+            if (scope === 'selected' && !options.customSections) {
                 items = items.filter(it => !this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false);
             }
             if (items.length === 0) return; // 선택된 항목이 없으면 섹션 제외
@@ -3928,8 +3978,9 @@ const app = {
             `;
         }
 
-        const reportTitle = (this.currentProject && this.currentProject.title) ? escapeHtml(this.currentProject.title) : '자재 구매 단가 비교 검토';
-        const reportDate = (this.currentProject && this.currentProject.doc_date) ? this.currentProject.doc_date.substring(0, 10) : today;
+        const activeProject = options.customProject || this.currentProject;
+        const reportTitle = (activeProject && activeProject.title) ? escapeHtml(activeProject.title) : '자재 구매 단가 비교 검토';
+        const reportDate = (activeProject && activeProject.doc_date) ? activeProject.doc_date.substring(0, 10) : today;
 
         printArea.innerHTML = `
             <div class="print-container" style="padding: 10px; font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;">
@@ -3938,7 +3989,7 @@ const app = {
                     <h1 style="margin: 0 0 6px 0; font-size: 21pt; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; text-align: center;">${reportTitle}</h1>
                     <div style="font-size: 9.5pt; color: #475569; text-align: center;">
                         <strong>보고일자:</strong> ${reportDate} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>대상:</strong> 총 ${validSectionsCount}개 품목 (${totalPrintedItemCount}개 규격)
-                        ${this.currentProject?.memo ? `<div style="font-size: 8.5pt; color: #64748b; margin-top: 3px;">※ ${escapeHtml(this.currentProject.memo)}</div>` : ''}
+                        ${activeProject?.memo ? `<div style="font-size: 8.5pt; color: #64748b; margin-top: 3px;">※ ${escapeHtml(activeProject.memo)}</div>` : ''}
                     </div>
                 </div>
 
