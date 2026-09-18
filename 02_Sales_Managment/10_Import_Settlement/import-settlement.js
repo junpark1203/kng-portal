@@ -1864,11 +1864,7 @@ function generatePrintTemplate(opts) {
     if (!d) return "";
     
     let sectionNum = 1;
-    let html = `<table style="width: 100%; border: none; margin: 0; padding: 0; border-spacing: 0;">`;
-    html += `<thead style="height: 20mm; border: none;"><tr><td style="border: none;"></td></tr></thead>`;
-    html += `<tfoot style="height: 20mm; border: none;"><tr><td style="border: none;"></td></tr></tfoot>`;
-    html += `<tbody><tr><td style="border: none; padding: 0 15mm;">`;
-    html += `<div class="print-report">`;
+    let html = `<div class="print-report" style="width: 100%; box-sizing: border-box; margin: 0; padding: 0;">`;
     
     // Header (Always show - 사용자가 지정한 제목 반영)
     const reportTitle = escapeHtml(opts.customTitle || "실제 비용 기준 정산 및 품목별 원가 산출");
@@ -2274,7 +2270,6 @@ function generatePrintTemplate(opts) {
     }
 
     html += `</div>`;
-    html += `</td></tr></tbody></table>`;
     return html;
 }
 
