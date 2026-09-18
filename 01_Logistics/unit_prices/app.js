@@ -2662,6 +2662,7 @@ const app = {
         let sectionId = null;
         let sectionName = '';
 
+        let targetSpec = '';
         if (choice === 'existing') {
             const selectSec = $('selectExistingSection');
             sectionId = selectSec ? parseInt(selectSec.value, 10) : null;
@@ -2679,6 +2680,8 @@ const app = {
                 if (inputNew) inputNew.focus();
                 return;
             }
+            const inputSpec = $('inputNewSectionTargetSpec');
+            if (inputSpec) targetSpec = inputSpec.value.trim();
         }
 
         const selected = this.priceList.filter(p => this.checkedItemIds.has(p.id));
@@ -2715,6 +2718,7 @@ const app = {
                     project_id: 0,
                     section_id: sectionId,
                     section_name: sectionName,
+                    target_spec: targetSpec,
                     items: itemsPayload
                 })
             });
@@ -2743,6 +2747,8 @@ const app = {
     openNewSectionModal: function() {
         const inp = $('inpDirectSectionName');
         if (inp) inp.value = '';
+        const inpSpec = $('inpDirectTargetSpec');
+        if (inpSpec) inpSpec.value = '';
         if (!this.newSectionModalInstance && window.bootstrap && $('newSectionModal')) {
             this.newSectionModalInstance = new bootstrap.Modal($('newSectionModal'));
         }
@@ -2755,6 +2761,8 @@ const app = {
     createDirectSection: async function() {
         const inp = $('inpDirectSectionName');
         const name = inp ? inp.value.trim() : '';
+        const inpSpec = $('inpDirectTargetSpec');
+        const targetSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!name) {
             alert('섹션명을 입력해주세요.');
             return;
@@ -2766,6 +2774,7 @@ const app = {
                 body: JSON.stringify({
                     project_id: 0,
                     section_name: name,
+                    target_spec: targetSpec,
                     items: []
                 })
             });
@@ -2786,6 +2795,10 @@ const app = {
         if (inp) {
             inp.value = sec.section_name || '';
         }
+        const inpSpec = $('inpEditTargetSpec');
+        if (inpSpec) {
+            inpSpec.value = sec.recommended_spec || sec.target_spec || '';
+        }
         if (!this.editSectionNameModalInstance && window.bootstrap && $('editSectionNameModal')) {
             this.editSectionNameModalInstance = new bootstrap.Modal($('editSectionNameModal'));
         }
@@ -2804,6 +2817,8 @@ const app = {
         const secId = $('editSectionNameId') ? parseInt($('editSectionNameId').value) : null;
         const inp = $('inpEditSectionName');
         const newName = inp ? inp.value.trim() : '';
+        const inpSpec = $('inpEditTargetSpec');
+        const newSpec = inpSpec ? inpSpec.value.trim() : '';
         if (!secId) return;
         if (!newName) {
             alert('변경할 섹션명을 입력해주세요.');
@@ -2813,7 +2828,10 @@ const app = {
         try {
             await authFetch(`${API_BASE}/quote-sections/${secId}`, {
                 method: 'PUT',
-                body: JSON.stringify({ section_name: newName })
+                body: JSON.stringify({
+                    section_name: newName,
+                    target_spec: newSpec
+                })
             });
 
             if (this.editSectionNameModalInstance) {
@@ -2822,7 +2840,7 @@ const app = {
 
             await this.loadQuoteSections();
         } catch (err) {
-            alert('섹션명 변경 실패: ' + err.message);
+            alert('섹션 정보 변경 실패: ' + err.message);
         }
     },
 
@@ -3357,18 +3375,25 @@ const app = {
 
             const secItems = sec.items || [];
             const allSecChecked = secItems.length > 0 && secItems.every(it => (!this.quoteSelectionMap || this.quoteSelectionMap[it.id] !== false));
+            const targetSpec = (sec.recommended_spec || sec.target_spec || '').trim();
+            const targetSpecBadge = targetSpec ? `
+                <span class="quote-spec-badge" title="이 비교 섹션의 기준/권장 규격">
+                    <i class='bx bx-check-shield text-success'></i> 권장규격: <strong>${escapeHtml(targetSpec)}</strong>
+                </span>
+            ` : '';
 
             html += `
                 <div class="quote-section-card" id="quote_section_${sec.id}">
                     <div class="quote-section-header">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" title="더블클릭하거나 수정 버튼을 눌러 섹션명을 변경할 수 있습니다" style="cursor: pointer;">
+                            <span class="quote-section-title" ondblclick="app.openEditSectionNameModal(${sec.id})" title="더블클릭하거나 수정 버튼을 눌러 섹션명 및 권장 규격을 변경할 수 있습니다" style="cursor: pointer;">
                                 <i class='bx bx-folder-open text-primary'></i>
                                 <span>${escapeHtml(sec.section_name)}</span>
                             </span>
-                            <button type="button" class="btn-edit-sec" onclick="app.openEditSectionNameModal(${sec.id})" title="섹션명 변경">
+                            <button type="button" class="btn-edit-sec" onclick="app.openEditSectionNameModal(${sec.id})" title="섹션명 및 권장 규격 수정">
                                 <i class='bx bx-edit-alt'></i> 수정
                             </button>
+                            ${targetSpecBadge}
                             <span class="badge bg-secondary">${analyzedItems.length}개 후보 비교</span>
                             ${bestSummaryHtml}
                         </div>
@@ -3876,6 +3901,8 @@ const app = {
             }
             if (items.length === 0) return; // 선택된 항목이 없으면 섹션 제외
 
+            const targetSpec = (sec.recommended_spec || sec.target_spec || '').trim();
+
             validSectionsCount++;
             totalPrintedItemCount += items.length;
 
@@ -3937,6 +3964,7 @@ const app = {
                 executiveSummaryItems.push({
                     secIdx: validSectionsCount,
                     sectionName: sec.section_name,
+                    targetSpec: targetSpec,
                     item: bestItem,
                     commonUnit: commonUnit
                 });
@@ -3994,8 +4022,9 @@ const app = {
 
             sectionsHtml += `
                 <div class="print-quote-section" style="margin-bottom: 22px; page-break-inside: avoid;">
-                    <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px;">
+                    <div style="background: #0f172a; color: #ffffff; padding: 6px 12px; border-radius: 2px; display: flex; align-items: center; justify-content: space-between;">
                         <span style="font-weight: 800; font-size: 10.5pt;">■ ${idx + 1}. ${escapeHtml(sec.section_name)} (${items.length}개 비교)</span>
+                        ${targetSpec ? `<span style="font-size: 8.5pt; background: rgba(255, 255, 255, 0.18); padding: 2px 8px; border-radius: 3px; font-weight: 600; letter-spacing: -0.2px;">권장 규격: ${escapeHtml(targetSpec)}</span>` : ''}
                     </div>
 
                     <table class="print-quote-table" style="width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 9pt;">
@@ -4055,7 +4084,10 @@ const app = {
                 summaryRows += `
                     <tr style="border-bottom: 1px solid #cbd5e1; background-color: ${sIdx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1; font-weight: bold;">${sIdx + 1}</td>
-                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${escapeHtml(sum.sectionName)}</td>
+                        <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">
+                            ${escapeHtml(sum.sectionName)}
+                            ${sum.targetSpec ? `<div style="font-size: 7.5pt; color: #059669; font-weight: 600; margin-top: 2px;">(권장: ${escapeHtml(sum.targetSpec)})</div>` : ''}
+                        </td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.default_supplier || '-')}</td>
                         <td style="text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; color: #047857; font-weight: bold;">${escapeHtml(it.item)}</td>
                         <td style="text-align: center; padding: 5px; border: 1px solid #cbd5e1;">${escapeHtml(it.spec || '-')}</td>

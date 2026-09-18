@@ -781,6 +781,23 @@ body {
     color: #1d4ed8;
 }
 
+.quote-spec-badge {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.quote-spec-badge strong {
+    color: #15803d;
+    font-weight: 700;
+}
+
 /* 비교 대조 테이블 */
 .quote-compare-table {
     width: 100%;

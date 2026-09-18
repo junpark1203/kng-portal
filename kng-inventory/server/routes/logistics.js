@@ -287,6 +287,7 @@ function initLogisticsTables(database) {
                                     project_id INTEGER DEFAULT 0,
                                     name TEXT NOT NULL,
                                     memo TEXT DEFAULT '',
+                                    target_spec TEXT DEFAULT '',
                                     display_order INTEGER DEFAULT 0,
                                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -295,6 +296,7 @@ function initLogisticsTables(database) {
                                 database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN project_id INTEGER DEFAULT 0`, () => {
                                     database.run(`UPDATE logistics_quote_sections SET project_id = 0 WHERE project_id IS NULL OR project_id = 1`, () => {});
                                 });
+                                database.run(`ALTER TABLE logistics_quote_sections ADD COLUMN target_spec TEXT DEFAULT ''`, () => {});
                             });
                             database.run(`
                                 CREATE TABLE IF NOT EXISTS logistics_quote_items (
@@ -1214,8 +1216,8 @@ router.post('/quote-projects/save-from-draft', async (req, res) => {
         // 작업대의 모든 섹션과 품목을 새 프로젝트로 복제 (스냅샷 생성)
         for (const sec of draftSections) {
             const newSecRes = await dbRun(
-                `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (?, ?, ?, ?)`,
-                [newProjectId, sec.name, sec.memo, sec.display_order]
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_spec, display_order) VALUES (?, ?, ?, ?, ?)`,
+                [newProjectId, sec.name, sec.memo, sec.target_spec || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
             const draftItems = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
@@ -1277,8 +1279,8 @@ router.post('/quote-projects/:id/restore-to-draft', async (req, res) => {
         // 보관함의 섹션/품목을 작업대(0)로 복제
         for (const sec of targetSections) {
             const newSecRes = await dbRun(
-                `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (0, ?, ?, ?)`,
-                [sec.name, sec.memo, sec.display_order]
+                `INSERT INTO logistics_quote_sections (project_id, name, memo, target_spec, display_order) VALUES (0, ?, ?, ?, ?)`,
+                [sec.name, sec.memo, sec.target_spec || '', sec.display_order]
             );
             const newSecId = newSecRes.lastID;
             const items = await dbAll(`SELECT * FROM logistics_quote_items WHERE section_id = ?`, [sec.id]);
@@ -1328,6 +1330,8 @@ router.get('/quote-projects/:id/sections', async (req, res) => {
             ...sec,
             section_name: sec.name || '',
             section_note: sec.memo || '',
+            target_spec: sec.target_spec || '',
+            recommended_spec: sec.target_spec || '',
             items: items.filter(it => it.section_id === sec.id)
         }));
 
@@ -1452,6 +1456,8 @@ router.get('/quote-sections', async (req, res) => {
             ...sec,
             section_name: sec.name || '',
             section_note: sec.memo || '',
+            target_spec: sec.target_spec || '',
+            recommended_spec: sec.target_spec || '',
             items: items.filter(it => it.section_id === sec.id)
         }));
 
@@ -1464,7 +1470,7 @@ router.get('/quote-sections', async (req, res) => {
 // 2. 단가표에서 선택한 품목들을 섹션에 추가 (기본값: 현재 작업대 project_id=0)
 router.post('/quote-sections/add-items', async (req, res) => {
     try {
-        let { section_id, section_name, name, section_note, memo, items, project_id } = req.body;
+        let { section_id, section_name, name, section_note, memo, target_spec, recommended_spec, items, project_id } = req.body;
         const candidateItems = Array.isArray(items) ? items : [];
         let targetProjectId = project_id !== undefined ? parseInt(project_id, 10) : 0;
 
@@ -1473,6 +1479,7 @@ router.post('/quote-sections/add-items', async (req, res) => {
         let targetSectionId = section_id ? parseInt(section_id, 10) : null;
         let finalSectionName = (section_name || name || '').trim();
         const finalSectionMemo = (section_note || memo || '').trim();
+        const finalTargetSpec = (target_spec !== undefined ? target_spec : (recommended_spec || '')).trim();
 
         // section_id가 없거나 유효하지 않으면 새 섹션 생성 또는 이름으로 검색
         if (!targetSectionId) {
@@ -1485,10 +1492,13 @@ router.post('/quote-sections/add-items', async (req, res) => {
             );
             if (existingSec) {
                 targetSectionId = existingSec.id;
+                if (finalTargetSpec) {
+                    await dbRun(`UPDATE logistics_quote_sections SET target_spec = ? WHERE id = ?`, [finalTargetSpec, targetSectionId]);
+                }
             } else {
                 const secRes = await dbRun(
-                    `INSERT INTO logistics_quote_sections (project_id, name, memo, display_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_sections WHERE project_id = ?))`,
-                    [targetProjectId, finalSectionName, finalSectionMemo, targetProjectId]
+                    `INSERT INTO logistics_quote_sections (project_id, name, memo, target_spec, display_order) VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM logistics_quote_sections WHERE project_id = ?))`,
+                    [targetProjectId, finalSectionName, finalSectionMemo, finalTargetSpec, targetProjectId]
                 );
                 targetSectionId = secRes.lastID;
             }
@@ -1496,6 +1506,9 @@ router.post('/quote-sections/add-items', async (req, res) => {
             const secRow = await dbGet(`SELECT id, name FROM logistics_quote_sections WHERE id = ?`, [targetSectionId]);
             if (secRow) {
                 finalSectionName = secRow.name;
+                if (finalTargetSpec) {
+                    await dbRun(`UPDATE logistics_quote_sections SET target_spec = ? WHERE id = ?`, [finalTargetSpec, targetSectionId]);
+                }
             }
         }
 
@@ -1559,11 +1572,11 @@ router.post('/quote-sections/add-items', async (req, res) => {
     }
 });
 
-// 3. 섹션 수정 (이름 변경 또는 검토 의견/메모 업데이트)
+// 3. 섹션 수정 (이름 변경, 권장 규격 및 검토 의견/메모 업데이트)
 router.put('/quote-sections/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const { name, memo, section_name, section_note } = req.body;
+        const { name, memo, section_name, section_note, target_spec, recommended_spec } = req.body;
 
         const sec = await dbGet(`SELECT * FROM logistics_quote_sections WHERE id = ?`, [id]);
         if (!sec) {
@@ -1572,12 +1585,15 @@ router.put('/quote-sections/:id', async (req, res) => {
 
         const reqName = name !== undefined ? name : section_name;
         const reqMemo = memo !== undefined ? memo : section_note;
+        const reqSpec = target_spec !== undefined ? target_spec : recommended_spec;
+
         const newName = reqName !== undefined ? (String(reqName).trim() || sec.name) : sec.name;
         const newMemo = reqMemo !== undefined ? String(reqMemo).trim() : (sec.memo || '');
+        const newSpec = reqSpec !== undefined ? String(reqSpec).trim() : (sec.target_spec || '');
 
         await dbRun(
-            `UPDATE logistics_quote_sections SET name = ?, memo = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [newName, newMemo, id]
+            `UPDATE logistics_quote_sections SET name = ?, memo = ?, target_spec = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [newName, newMemo, newSpec, id]
         );
 
         res.json({ success: true, message: '섹션 정보가 저장되었습니다.' });
