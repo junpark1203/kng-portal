@@ -538,13 +538,13 @@ body {
 }
 .po-stamp-box {
     position: relative;
-    height: 70px;
+    height: 65px;
     display: flex;
     align-items: center;
 }
 .po-stamp-img {
     position: absolute;
-    right: 40px;
+    right: 25px;
     top: 50%;
     transform: translateY(-50%);
     width: 60px;

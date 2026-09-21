@@ -1066,29 +1066,42 @@ const app = {
                         <div style="white-space: pre-line;">${po.notes_instructions || 'All other terms of this Purchase Order shall be subject to the Sales Agreement.'}</div>
                     </div>
 
-                    <!-- 공식 서명란 (Buyer 단독 서명) -->
+                    <!-- 공식 서명란 (발주자 Buyer 왼쪽, 공급자 Seller 오른쪽) -->
                     <table class="po-signature-table">
-                        <tr>
-                            <td style="width: 55%; border: none;"></td>
-                            <td style="width: 45%; padding: 0;">
-                                <table style="width: 100%; border-collapse: collapse;">
-                                    <tr>
-                                        <th style="border: 1px solid #000; padding: 4px 6px;">Official Distributor (Buyer)</th>
-                                    </tr>
-                                    <tr>
-                                        <td style="border: 1px solid #000; padding: 6px 8px;">
-                                            <strong>${po.buyer_name || 'K&G CO., LTD.'}</strong>
-                                            <div class="po-stamp-box">
-                                                ${stampHtml}
-                                            </div>
-                                            <div style="font-weight: bold; border-top: 1px solid #000; padding-top: 4px;">
-                                                ${this.settings.ceo_name || 'CEO / Youn, Jong'}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Issued & Confirmed by: Official Distributor (Buyer)</th>
+                                <th style="width: 50%;">Accepted & Confirmed by: Manufacturer (Seller)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="width: 50%; vertical-align: top;">
+                                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
+                                        ${po.buyer_name || 'K&G CO., LTD.'}
+                                    </div>
+                                    <div class="po-stamp-box">
+                                        ${stampHtml}
+                                    </div>
+                                    <div style="font-weight: bold; border-top: 1px solid #000; padding-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>${this.settings.ceo_name || 'CEO / Youn, Jong'}</span>
+                                        <span style="font-size: 9px; font-weight: normal; color: #333;">Date: ${po.issue_date || ''}</span>
+                                    </div>
+                                </td>
+                                <td style="width: 50%; vertical-align: top;">
+                                    <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
+                                        ${po.seller_name || 'Manufacturer / Supplier'}
+                                    </div>
+                                    <div class="po-stamp-box" style="justify-content: center; align-items: center; color: #777; font-size: 10px;">
+                                        <span style="border: 1px dashed #999; padding: 4px 10px; border-radius: 3px; letter-spacing: 0.3px;">Authorized Signature & Official Stamp</span>
+                                    </div>
+                                    <div style="font-weight: bold; border-top: 1px solid #000; padding-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span>Authorized Signature</span>
+                                        <span style="font-size: 9px; font-weight: normal; color: #333;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
             </div>
