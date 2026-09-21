@@ -50,6 +50,10 @@ const { initExhibitionReportTables } = exhibitionReportRoutes;
 const expenseResolutionRoutes = require('./routes/expense-resolution');
 const { initExpenseResolutionTables } = expenseResolutionRoutes;
 
+// 발주서(Purchase Order) 모듈
+const purchaseOrderRoutes = require('./routes/purchase-order');
+const { initPurchaseOrderTables } = purchaseOrderRoutes;
+
 // 개인 업무일지 모듈
 const workLogsRoutes = require('./routes/work-logs');
 const { initWorkLogsTables } = workLogsRoutes;
@@ -214,6 +218,11 @@ const EXPENSE_RESOLUTION_UPLOAD_DIR = path.join(UPLOAD_DIR, 'expense-resolution'
 if (!fs.existsSync(EXPENSE_RESOLUTION_UPLOAD_DIR)) fs.mkdirSync(EXPENSE_RESOLUTION_UPLOAD_DIR, { recursive: true });
 app.use('/api/expense-resolution/uploads', express.static(EXPENSE_RESOLUTION_UPLOAD_DIR, { fallthrough: false }));
 
+// 발주서 첨부파일 (도면, 직인/서명 등)
+const PO_UPLOAD_DIR = path.join(UPLOAD_DIR, 'purchase-orders');
+if (!fs.existsSync(PO_UPLOAD_DIR)) fs.mkdirSync(PO_UPLOAD_DIR, { recursive: true });
+app.use('/api/purchase-orders/uploads', express.static(PO_UPLOAD_DIR, { fallthrough: false }));
+
 // 행복한안전 월마감 저장 슬롯 API — 인증 불필요 (포털 iframe 밖에서도 접근 필요)
 // 주의: DB 초기화 전에 호출될 수 있으므로, db 사용 전 체크 필요
 app.get('/api/happysafety/saves', (req, res) => {
@@ -338,6 +347,11 @@ const db = new sqlite3.Database(dbFile, (err) => {
             expenseResolutionRoutes.setDb(db);
             console.log('expense_resolution API 준비 완료');
         });
+        // 발주서(Purchase Order) 테이블 초기화 + 라우트에 DB 주입
+        initPurchaseOrderTables(db).then(() => {
+            purchaseOrderRoutes.setDb(db);
+            console.log('purchase_orders API 준비 완료');
+        }).catch(err => console.error('purchase_orders 초기화 실패:', err));
         // 휴가원 테이블 초기화 + 라우트에 DB 주입
         initLeaveRequestTables(db).then(() => {
             leaveRequestRoutes.setDb(db);
@@ -1311,6 +1325,7 @@ app.use('/api/ledger', ledgerRoutes(db));
 app.use('/api/external-logistics', externalLogisticsRoutes(db));
 app.use('/api/gongsaero-bidding', gongsaeroBiddingRoutes.router);
 app.use('/api/site-sales-statements', siteSalesStatementRoutes.router);
+app.use('/api/purchase-orders', purchaseOrderRoutes.router);
 
 // (행복한안전 월마감 저장 API는 인증 미들웨어 전에 선언됨 — 상단 참고)
 

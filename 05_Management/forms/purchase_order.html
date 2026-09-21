@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>발주서 관리 (Purchase Order)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="./purchase_order.css">
+</head>
+<body>
+
+    <!-- 상단 페이지 헤더 -->
+    <div class="page-header">
+        <div class="page-title-area">
+            <h1><i class='bx bx-cart-alt text-primary'></i> 발주서 관리 (Purchase Order)</h1>
+            <p>해외 및 국내 공급처 발주서 작성, 이력 보관 및 A4 표준 무역 서식 인쇄 모듈</p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="app.openSettingsModal()">
+                <i class='bx bx-cog'></i> 직인 / 서명 설정
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="app.openCreateModal()">
+                <i class='bx bx-plus'></i> 신규 발주서 작성
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI 요약 통계 카드 -->
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-blue">
+                <i class='bx bx-file'></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-label">전체 발주 건수</div>
+                <div class="kpi-value" id="kpiTotalCount">0 건</div>
+                <div class="kpi-sub" id="kpiThisMonthCount">이번 달: 0 건</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-green">
+                <i class='bx bx-dollar-circle'></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-label">총 발주 금액 (USD)</div>
+                <div class="kpi-value" id="kpiTotalUsd">$0.00</div>
+                <div class="kpi-sub" id="kpiTotalKrw">원화 환산 약 0 원</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-amber">
+                <i class='bx bx-time-five'></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-label">진행 중 발주 (발주/선적)</div>
+                <div class="kpi-value" id="kpiActiveCount">0 건</div>
+                <div class="kpi-sub">선적 및 통관 대기</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon-wrap kpi-icon-purple">
+                <i class='bx bx-check-double'></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-label">입고 완료 건수</div>
+                <div class="kpi-value" id="kpiCompletedCount">0 건</div>
+                <div class="kpi-sub">물류창고 입고 완료</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 검색 및 필터 바 -->
+    <div class="filter-card">
+        <form id="filterForm" onsubmit="app.onSearch(event)">
+            <div class="filter-row">
+                <div class="filter-item flex-grow-1" style="min-width: 240px;">
+                    <label>검색어</label>
+                    <input type="text" class="form-control form-control-sm" id="searchKeyword" placeholder="발주번호, 공급사(Seller), 품명 등">
+                </div>
+                <div class="filter-item">
+                    <label>진행상태</label>
+                    <select class="form-select form-select-sm" id="filterStatus" style="width: 120px;">
+                        <option value="전체">전체 상태</option>
+                        <option value="작성중">작성중 (Draft)</option>
+                        <option value="발주완료">발주완료 (Issued)</option>
+                        <option value="선적진행">선적진행 (Shipped)</option>
+                        <option value="입고완료">입고완료 (Completed)</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>발행일자</label>
+                    <input type="date" class="form-control form-control-sm" id="filterStartDate">
+                    <span>~</span>
+                    <input type="date" class="form-control form-control-sm" id="filterEndDate">
+                </div>
+                <div class="filter-item ms-auto">
+                    <button type="submit" class="btn btn-primary btn-sm"><i class='bx bx-search'></i> 조회</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="app.resetFilters()"><i class='bx bx-refresh'></i> 초기화</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 발주서 목록 그리드 카드 -->
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;">#</th>
+                        <th style="width: 12%;">발주번호 (PO No.)</th>
+                        <th style="width: 9%;">발행일자</th>
+                        <th style="width: 9%;">유효일자</th>
+                        <th style="width: 18%;">공급처 (Seller)</th>
+                        <th style="width: 18%;">대표 품목</th>
+                        <th style="width: 6%;">통화</th>
+                        <th style="width: 10%; text-align: right;">총 금액</th>
+                        <th style="width: 7%;">진행상태</th>
+                        <th style="width: 11%;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="poTableBody">
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted">
+                            <i class='bx bx-loader-alt bx-spin fs-4 mb-2'></i><br>데이터를 불러오는 중입니다...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 발주서 작성/수정 모달 (Modal-XL) -->
+    <!-- ========================================================================= -->
+    <div class="modal fade" id="poFormModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-light py-2">
+                    <h5 class="modal-title fs-6 fw-bold" id="poModalTitle">
+                        <i class='bx bx-edit-alt text-primary'></i> 발주서 작성 (Purchase Order)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <form id="poMainForm">
+                        <input type="hidden" id="poId">
+
+                        <!-- 1. 기본 헤더 정보 -->
+                        <div class="form-section-title">
+                            <span>1. 기본 발주 정보 (PO Header)</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="text-muted fw-normal" style="font-size: 11px;">진행상태:</label>
+                                <select class="form-select form-select-sm py-0" id="formStatus" style="width: 110px;">
+                                    <option value="작성중">작성중</option>
+                                    <option value="발주완료">발주완료</option>
+                                    <option value="선적진행">선적진행</option>
+                                    <option value="입고완료">입고완료</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label mb-1 fw-bold text-primary">PO Number (사용자 직접 입력) *</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" id="formPoNumber" placeholder="예: KNG25-TSG001" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="app.generateRecommendPoNumber()" title="추천 번호 생성">
+                                        <i class='bx bx-magic-wand'></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Issue Date (발행일자) *</label>
+                                <input type="date" class="form-control form-control-sm" id="formIssueDate" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">References (참조계약)</label>
+                                <input type="text" class="form-control form-control-sm" id="formReferences" placeholder="예: Sales Agreement (June 30, 2025)">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Validity Date (유효일자)</label>
+                                <input type="date" class="form-control form-control-sm" id="formValidityDate">
+                            </div>
+                        </div>
+
+                        <!-- 2. Buyer & Seller 정보 (2단 그리드) -->
+                        <div class="form-section-title">
+                            <span>2. 거래 당사자 (Buyer & Manufacturer/Seller)</span>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="app.loadBuyerPreset()">
+                                <i class='bx bx-reset'></i> K&G 기본정보 불러오기
+                            </button>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <!-- Buyer (K&G) -->
+                            <div class="col-md-6 border-end">
+                                <h6 class="fw-bold text-dark mb-2" style="font-size: 12px;">Official Distributor (Buyer)</h6>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0" style="font-size: 11px;">Company Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="formBuyerName" value="K&G CO., LTD.">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0" style="font-size: 11px;">Address</label>
+                                    <input type="text" class="form-control form-control-sm" id="formBuyerAddress" value="#2302, 87, Ogeum-ro, Songpa-gu, Seoul, Republic of Korea">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">ATTN (담당자)</label>
+                                        <input type="text" class="form-control form-control-sm" id="formBuyerAttn" value="Joon Park">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">Tel</label>
+                                        <input type="text" class="form-control form-control-sm" id="formBuyerTel" value="+82-10-5949-5249">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">E-mail</label>
+                                        <input type="email" class="form-control form-control-sm" id="formBuyerEmail" value="jpark120325@gmail.com">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Seller -->
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-dark mb-2" style="font-size: 12px;">Manufacturer (Seller)</h6>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0" style="font-size: 11px;">Company Name *</label>
+                                    <input type="text" class="form-control form-control-sm" id="formSellerName" placeholder="예: XINYU RECORD TECHNOLOGY CO., LTD." required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0" style="font-size: 11px;">Address</label>
+                                    <input type="text" class="form-control form-control-sm" id="formSellerAddress" placeholder="예: No.4 Factory Building, Block D...">
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">ATTN (담당자)</label>
+                                        <input type="text" class="form-control form-control-sm" id="formSellerAttn" placeholder="예: Mr. Feng Lei (Felix)">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">Tel</label>
+                                        <input type="text" class="form-control form-control-sm" id="formSellerTel" placeholder="예: +86-0790-6260609">
+                                    </div>
+                                    <div class="col-4">
+                                        <label class="form-label mb-0" style="font-size: 11px;">E-mail</label>
+                                        <input type="email" class="form-control form-control-sm" id="formSellerEmail" placeholder="예: felix@lkd-record.com">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 무역 및 운송 조건 -->
+                        <div class="form-section-title">
+                            <span>3. 무역 및 운송 조건 (Trade & Shipping Terms)</span>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label mb-1">Terms of Payment (결제조건)</label>
+                                <input type="text" class="form-control form-control-sm" id="formPaymentTerms" placeholder="예: 30% T/T in advance, 70% within 15 business days after the delivery is completed">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Terms of Delivery (인코텀즈)</label>
+                                <input type="text" class="form-control form-control-sm" id="formDeliveryTerms" placeholder="예: CIF Incheon">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Country of Origin (원산지)</label>
+                                <input type="text" class="form-control form-control-sm" id="formCountryOfOrigin" value="China">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Loading Port (선적항)</label>
+                                <input type="text" class="form-control form-control-sm" id="formLoadingPort" placeholder="예: Any port in China">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Discharging Port (도착항)</label>
+                                <input type="text" class="form-control form-control-sm" id="formDischargingPort" value="Incheon, S.Korea">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1">Delivery Date (납기)</label>
+                                <input type="text" class="form-control form-control-sm" id="formDeliveryDate" placeholder="예: Within 15 days after the advance payment">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label mb-1 text-primary fw-bold">Shipment Spec (선적 규격)</label>
+                                <input type="text" class="form-control form-control-sm" id="formShipmentSpec" placeholder="예: 1 x 20ft FCL 또는 LCL">
+                            </div>
+                        </div>
+
+                        <!-- 4. 발주 품목 및 수량 그리드 -->
+                        <div class="form-section-title">
+                            <span>4. 발주 품목 및 금액 (Products & Packaging)</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="text-muted fw-normal" style="font-size: 11px;">통화 (Currency):</label>
+                                <select class="form-select form-select-sm py-0" id="formCurrency" style="width: 90px;" onchange="app.recalculateTotals()">
+                                    <option value="USD">USD ($)</option>
+                                    <option value="KRW">KRW (₩)</option>
+                                    <option value="EUR">EUR (€)</option>
+                                    <option value="CNY">CNY (¥)</option>
+                                    <option value="JPY">JPY (¥)</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" onclick="app.addItemRow()">
+                                    <i class='bx bx-plus'></i> 품목 추가
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive mb-2">
+                            <table class="items-grid-table" id="itemsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 4%;">No</th>
+                                        <th style="width: 22%;">Product (품명) *</th>
+                                        <th style="width: 10%;">HS CODE (6자리)</th>
+                                        <th style="width: 12%;">Packaging Unit</th>
+                                        <th style="width: 9%;">Order Q'ty *</th>
+                                        <th style="width: 6%;">Unit</th>
+                                        <th style="width: 10%;">Unit Price *</th>
+                                        <th style="width: 11%;">Total Price</th>
+                                        <th style="width: 12%;">Packaging Q'ty</th>
+                                        <th style="width: 4%;">삭제</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemsTableBody">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-light fw-bold">
+                                        <td colspan="4" class="text-center">Total</td>
+                                        <td class="text-end" id="gridTotalQty">0</td>
+                                        <td id="gridUnitLabel">KG</td>
+                                        <td></td>
+                                        <td class="text-end text-primary" id="gridTotalPrice">$0.00</td>
+                                        <td id="gridTotalPkgQty">-</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- 영문 총금액 자동 표기 박스 -->
+                        <div class="p-2 mb-3 bg-light border rounded d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary">Amount in Words</span>
+                            <span class="fw-bold text-dark" id="formAmountInWords" style="font-size: 12px;">Say Zero Dollars Only</span>
+                        </div>
+
+                        <!-- 5. 특약사항 & 도면 첨부 -->
+                        <div class="form-section-title">
+                            <span>5. 특약사항 (Notes or Special Instructions) & 사양 도면</span>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0" style="font-size: 11px;">지시사항 및 포장 조항 (텍스트)</label>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0" style="font-size: 10.5px;" onclick="app.insertShippingDocsPreset()">
+                                            + 필수 선적서류 문구 삽입
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0" style="font-size: 10.5px;" onclick="app.insertTailGreaseNotesPreset()">
+                                            + Tail Grease 특약 문구 삽입
+                                        </button>
+                                    </div>
+                                </div>
+                                <textarea class="form-control" id="formNotes" rows="7" style="font-size: 11.5px; line-height: 1.4;" placeholder="1. All 25kg drums must be packaged according to the specifications in the drawing below..."></textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label mb-1" style="font-size: 11px;">사양 도면 이미지 (Drawing Image)</label>
+                                <div class="drawing-preview-box" id="drawingDropZone" onclick="document.getElementById('drawingFileInput').click()">
+                                    <input type="file" id="drawingFileInput" accept="image/*" class="d-none" onchange="app.onDrawingFileSelected(event)">
+                                    <div id="drawingEmptyNotice">
+                                        <i class='bx bx-image-add fs-2 text-muted mb-1'></i>
+                                        <div style="font-size: 11.5px;" class="text-muted">클릭하거나 도면 이미지를 끌어다 놓으세요</div>
+                                        <div style="font-size: 10px;" class="text-muted mt-1">(PNG, JPG 드럼/제품 도면 등)</div>
+                                    </div>
+                                    <div id="drawingImgWrap" class="d-none w-100">
+                                        <img id="drawingPreviewImg" class="drawing-preview-img" src="" alt="도면 미리보기">
+                                        <div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size: 10.5px;" onclick="event.stopPropagation(); app.removeDrawingImage()">
+                                                <i class='bx bx-trash'></i> 도면 삭제
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6. 직인 날인 옵션 -->
+                        <div class="p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class='bx bxs-badge-check text-success fs-5'></i>
+                                <div>
+                                    <div class="fw-bold" style="font-size: 12px;">공식 서명란 직인/사인 날인 설정</div>
+                                    <div class="text-muted" style="font-size: 11px;">출력 시 대표자 직인을 기본으로 포함하여 발행합니다.</div>
+                                </div>
+                            </div>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="formIncludeSeal" checked>
+                                <label class="form-check-label" for="formIncludeSeal" style="font-size: 12px;">직인/사인 포함</label>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer py-2 bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="app.savePurchaseOrder()">
+                        <i class='bx bx-save'></i> 발주서 저장
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 직인 / 서명 관리 모달 -->
+    <!-- ========================================================================= -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-light py-2">
+                    <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-shield-quarter text-primary'></i> 대표자 직인 및 서명 관리</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1" style="font-size: 12px;">회사 대표 직인 (Seal Image)</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div style="width: 80px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa;">
+                                <img id="settingSealImg" src="../../assets/images/stamp.png" style="max-width: 70px; max-height: 70px; mix-blend-mode: multiply;" alt="직인">
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" id="sealFileInput" accept="image/*" class="form-control form-control-sm mb-1" onchange="app.uploadSealFile(event)">
+                                <div class="text-muted" style="font-size: 10.5px;">배경이 투명한 PNG 형식의 직인 이미지를 권장합니다.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1" style="font-size: 12px;">대표자 영문 서명 (CEO Signature)</label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div style="width: 80px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa;">
+                                <img id="settingSignImg" src="" style="max-width: 70px; max-height: 70px; display: none;" alt="서명">
+                                <span id="settingSignEmptyText" class="text-muted" style="font-size: 10px;">서명 없음</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" id="signFileInput" accept="image/*" class="form-control form-control-sm mb-1" onchange="app.uploadSignFile(event)">
+                                <div class="text-muted" style="font-size: 10.5px;">서명이 등록되면 직인 위에 함께 오버레이됩니다.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-2">
+                    <div class="mb-2">
+                        <label class="form-label fw-bold mb-1" style="font-size: 12px;">대표자 영문 표기</label>
+                        <input type="text" class="form-control form-control-sm" id="settingCeoName" value="CEO / Youn, Jong">
+                    </div>
+                </div>
+                <div class="modal-footer py-2 bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="app.saveSettings()">설정 저장</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 인쇄 옵션 확인 모달 -->
+    <!-- ========================================================================= -->
+    <div class="modal fade" id="printOptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-light py-2">
+                    <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-printer text-primary'></i> 발주서 인쇄 옵션</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="printOptSeal" checked>
+                        <label class="form-check-label fw-bold" for="printOptSeal" style="font-size: 12px;">
+                            대표자 직인 / 서명 포함 출력
+                        </label>
+                        <div class="text-muted ps-0" style="font-size: 10.5px;">
+                            체크 해제 시 공식 직인이 없는 공란 날인란으로 인쇄됩니다.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="app.executePrint()">
+                        <i class='bx bx-printer'></i> 인쇄하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- A4 Portrait Print Container (첨부 PDF와 100% 동일한 고품질 인쇄 템플릿) -->
+    <!-- ========================================================================= -->
+    <div id="printContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./purchase_order.js"></script>
+</body>
+</html>
