@@ -248,6 +248,8 @@ function switchView(view) {
     document.getElementById('editView').classList.remove('active');
     document.getElementById(view + 'View').classList.add('active');
     state.view = view;
+    document.body.style.overflow = 'auto';
+    window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ─────────────────────────────────────────────────────────────
