@@ -4975,27 +4975,37 @@ const app = {
         } else if (printType === 'outbound_receipt') {
             let itemRowsHtml = "";
             items.forEach((item, idx) => {
-                let lotsInfo = (item.consumed_lots || []).map(l => `${l.location_name}`).join(', ');
+                let lotsInfo = (item.consumed_lots && item.consumed_lots.length > 0) 
+                    ? item.consumed_lots.map(l => l.location_name || l.lot_number || '').filter(Boolean).join(', ') 
+                    : (item.location_name || '-');
+                
+                const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty).toLocaleString() : '0';
+                const shipFeeVal = (item.shipping_fee != null && !isNaN(item.shipping_fee)) 
+                    ? Number(item.shipping_fee) 
+                    : (idx === 0 && data.shipping_fee != null && !isNaN(data.shipping_fee) ? Number(data.shipping_fee) : null);
+                const shipFeeStr = shipFeeVal != null ? shipFeeVal.toLocaleString() : '-';
+
                 itemRowsHtml += `
                         <tr>
                             <td class="text-center">${idx + 1}</td>
-                            <td>${item.item}</td>
-                            <td class="text-center">${item.spec}</td>
-                            <td class="text-center">${item.unit}</td>
-                            <td class="text-right">${item.qty.toLocaleString()}</td>
-                            <td class="text-right">${item.shipping_fee.toLocaleString()}</td>
+                            <td>${item.item || '-'}</td>
+                            <td class="text-center">${item.spec || '-'}</td>
+                            <td class="text-center">${item.unit || 'EA'}</td>
+                            <td class="text-right">${itemQty}</td>
+                            <td class="text-right">${shipFeeStr}</td>
                             <td class="text-center">${lotsInfo}</td>
                         </tr>`;
             });
             const emptyRowsCount = Math.max(0, 13 - items.length);
             const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-            
+            const recipientName = data.destination || data.party || data.actual_destination || data.supplier || '-';
+
             htmlContent += `
                 <div class="hybrid-header">
                     <div class="header-left">
                         <h1 class="title">출 고 내 역 서</h1>
-                        <div class="date-text">${data.date}</div>
-                        <div class="recipient-text"><strong>${data.destination}</strong> 귀하</div>
+                        <div class="date-text">${data.date || ''}</div>
+                        <div class="recipient-text"><strong>${recipientName}</strong> 귀하</div>
                     </div>
                     <div class="header-right">
                         ${supplierHtml}
@@ -5033,7 +5043,13 @@ const app = {
         htmlContent += `
             </div>
             <script>
-                window.onload = function() { window.print(); window.close(); }
+                window.addEventListener('afterprint', function() { window.close(); });
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.focus();
+                        window.print();
+                    }, 200);
+                };
             </script>
             </body>
             </html>
