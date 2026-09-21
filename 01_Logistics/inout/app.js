@@ -4980,8 +4980,8 @@ const app = {
                         color: #000000 !important;
                         text-align: center !important;
                         vertical-align: middle !important;
-                        height: 24px !important;
-                        padding: 2px 4px !important;
+                        height: 26px !important;
+                        padding: 3px 4px !important;
                     }
                     .sheet-table th:last-child, .sheet-table td:last-child {
                         border-right: none !important;
@@ -4994,8 +4994,8 @@ const app = {
                         padding: 3px 4px !important;
                         text-align: center;
                         vertical-align: middle;
-                        height: 24px !important;
-                        line-height: 1.2;
+                        height: 26px !important;
+                        line-height: 1.25;
                     }
                     .sheet-table td.text-start {
                         text-align: left !important;
@@ -5024,6 +5024,7 @@ const app = {
                         font-weight: bold !important;
                         font-size: 11px !important;
                         padding: 4px 4px !important;
+                        height: 28px !important;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
                     }
@@ -5128,9 +5129,9 @@ const app = {
                     </tr>`;
             }
 
-            // 빈 행 채우기 (정산장부와 동일한 A4 레이아웃 볼륨 유지)
+            // 빈 행 채우기 (기본 14행으로 A4 용지 밸런스 유지)
             const currentCount = items.length + (data.shipping_fee && Number(data.shipping_fee) > 0 ? 1 : 0);
-            const emptyRowsCount = Math.max(0, 10 - currentCount);
+            const emptyRowsCount = Math.max(0, 14 - currentCount);
             let emptyRowsHtml = "";
             for (let i = 0; i < emptyRowsCount; i++) {
                 emptyRowsHtml += `
@@ -5183,7 +5184,7 @@ const app = {
                         ${itemRowsHtml}
                         ${emptyRowsHtml}
                         <tr class="total-row">
-                            <td colspan="6" style="text-align: center;">[ 총   합   계 ]</td>
+                            <td colspan="6" style="text-align: center;">[   합       계   ]</td>
                             <td class="text-end">${totalAmount.toLocaleString()}</td>
                             <td class="text-end">${totalVat.toLocaleString()}</td>
                             <td class="text-end" style="font-weight: 800;">${totalSum.toLocaleString()}</td>
@@ -5191,10 +5192,9 @@ const app = {
                     </tbody>
                 </table>
 
-                <!-- 하단 비고 및 출력일시 (금전 거래 내역이므로 인수자 서명 제외) -->
+                <!-- 하단 비고 -->
                 <div class="meta-info-row">
                     <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
-                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
                 </div>
             `;
 
@@ -5224,7 +5224,7 @@ const app = {
                     </tr>`;
             });
 
-            const emptyRowsCount = Math.max(0, 11 - items.length);
+            const emptyRowsCount = Math.max(0, 14 - items.length);
             let emptyRowsHtml = "";
             for (let i = 0; i < emptyRowsCount; i++) {
                 emptyRowsHtml += `
@@ -5276,7 +5276,7 @@ const app = {
                         ${itemRowsHtml}
                         ${emptyRowsHtml}
                         <tr class="total-row">
-                            <td colspan="4" style="text-align: center;">[ 총  입  고  수  량 ]</td>
+                            <td colspan="4" style="text-align: center;">[   합       계   ]</td>
                             <td class="text-end" style="font-weight: 800;">${totalQty.toLocaleString()}</td>
                             <td colspan="3"></td>
                         </tr>
@@ -5285,7 +5285,6 @@ const app = {
 
                 <div class="meta-info-row">
                     <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
-                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
                 </div>
 
                 <div class="signature-box">
@@ -5321,7 +5320,7 @@ const app = {
                     </tr>`;
             });
 
-            const emptyRowsCount = Math.max(0, 11 - items.length);
+            const emptyRowsCount = Math.max(0, 14 - items.length);
             let emptyRowsHtml = "";
             for (let i = 0; i < emptyRowsCount; i++) {
                 emptyRowsHtml += `
@@ -5378,7 +5377,7 @@ const app = {
                         ${itemRowsHtml}
                         ${emptyRowsHtml}
                         <tr class="total-row">
-                            <td colspan="4" style="text-align: center;">[ 총  출  고  수  량 ]</td>
+                            <td colspan="4" style="text-align: center;">[   합       계   ]</td>
                             <td class="text-end" style="font-weight: 800;">${totalQty.toLocaleString()}</td>
                             <td colspan="3"></td>
                         </tr>
@@ -5387,7 +5386,6 @@ const app = {
 
                 <div class="meta-info-row">
                     <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
-                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
                 </div>
 
                 <!-- 물류 실물 인수자 서명란 -->
