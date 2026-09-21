@@ -544,16 +544,63 @@ body {
 }
 .po-stamp-box {
     position: relative;
-    height: 65px;
+    height: 62px;
     display: flex;
     align-items: center;
 }
-.po-stamp-img {
+/* 단독 중앙 배치 사인 이미지 */
+.po-sign-center {
+    max-height: 52px;
+    max-width: 150px;
+    object-fit: contain;
+    margin: auto;
+    display: block;
+}
+/* 텍스트 서명 위 안착 자필 사인 */
+.po-sign-above-text {
     position: absolute;
-    right: 25px;
+    bottom: 2px;
+    left: 8px;
+    max-height: 48px;
+    max-width: 140px;
+    object-fit: contain;
+    z-index: 1;
+}
+/* 단독 중앙 배치 직인 도장 */
+.po-seal-center {
+    position: absolute;
+    left: 50%;
     top: 50%;
-    transform: translateY(-50%);
-    width: 60px;
-    height: 60px;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
     mix-blend-mode: multiply;
+}
+/* 성명 끝에 걸쳐서 날인되는 직인 도장 */
+.po-seal-overlap {
+    position: absolute;
+    bottom: -10px;
+    right: 35px;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    z-index: 2;
+}
+
+.po-sign-footer {
+    font-weight: bold;
+    border-top: 1px solid #000;
+    padding-top: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    min-height: 22px;
+}
+.po-sign-date {
+    font-size: 9px;
+    font-weight: normal;
+    color: #333;
 }

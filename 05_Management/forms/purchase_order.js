@@ -92,7 +92,15 @@ const app = {
     },
 
     openSettingsModal: function() {
-        document.getElementById('settingSealImg').src = resolveUrl(this.settings.seal_url || '../../assets/images/stamp.png');
+        const sealImg = document.getElementById('settingSealImg');
+        if (this.settings.seal_url) {
+            sealImg.src = resolveUrl(this.settings.seal_url);
+            sealImg.style.display = 'block';
+        } else {
+            sealImg.src = '';
+            sealImg.style.display = 'none';
+        }
+
         const signImg = document.getElementById('settingSignImg');
         const signEmptyText = document.getElementById('settingSignEmptyText');
         if (this.settings.sign_url) {
@@ -100,6 +108,7 @@ const app = {
             signImg.style.display = 'block';
             signEmptyText.style.display = 'none';
         } else {
+            signImg.src = '';
             signImg.style.display = 'none';
             signEmptyText.style.display = 'block';
         }
@@ -120,11 +129,22 @@ const app = {
             const data = await parseJsonResponse(res);
             if (data.url) {
                 this.settings.seal_url = data.url;
-                document.getElementById('settingSealImg').src = resolveUrl(data.url);
+                const sealImg = document.getElementById('settingSealImg');
+                sealImg.src = resolveUrl(data.url);
+                sealImg.style.display = 'block';
             }
         } catch (err) {
             alert('직인 파일 업로드 실패: ' + err.message);
         }
+    },
+
+    removeSealPreset: function() {
+        if (!confirm('등록된 회사 직인 이미지를 삭제하시겠습니까?')) return;
+        this.settings.seal_url = '';
+        const sealImg = document.getElementById('settingSealImg');
+        sealImg.src = '';
+        sealImg.style.display = 'none';
+        document.getElementById('sealFileInput').value = '';
     },
 
     uploadSignFile: async function(event) {
@@ -150,6 +170,16 @@ const app = {
         }
     },
 
+    removeSignPreset: function() {
+        if (!confirm('등록된 대표자 자필 사인 이미지를 삭제하시겠습니까?')) return;
+        this.settings.sign_url = '';
+        const signImg = document.getElementById('settingSignImg');
+        signImg.src = '';
+        signImg.style.display = 'none';
+        document.getElementById('settingSignEmptyText').style.display = 'block';
+        document.getElementById('signFileInput').value = '';
+    },
+
     saveSettings: async function() {
         this.settings.ceo_name = document.getElementById('settingCeoName').value.trim() || 'CEO / Youn, Jong';
         try {
@@ -160,7 +190,7 @@ const app = {
             });
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-                alert('직인 및 서명 설정이 저장되었습니다.');
+                alert('대표자 직인 및 서명 설정이 저장되었습니다.');
             } else {
                 alert('설정 저장에 실패했습니다.');
             }
@@ -871,30 +901,74 @@ const app = {
             const po = await parseJsonResponse(res);
             this.currentPrintPo = po;
 
-            // 직인 포함 여부 기본 체크 설정
-            document.getElementById('printOptSeal').checked = po.include_seal === 1;
+            // 대표자 성명 텍스트 표시
+            const ceoText = this.settings.ceo_name ? `(${this.settings.ceo_name})` : '';
+            const ceoLabel = document.getElementById('printOptCeoNameText');
+            if (ceoLabel) ceoLabel.innerText = ceoText;
+
+            // 기본 프리셋 설정
+            if (this.settings.sign_url) {
+                this.setPrintPreset('global'); // 사인이 있으면 글로벌 표준 (성명 + 사인) 기본
+            } else if (this.settings.seal_url) {
+                this.setPrintPreset('asia'); // 사인이 없고 직인만 있으면 국내/아시아 (성명 + 직인) 기본
+            } else {
+                this.setPrintPreset('global');
+            }
+
             new bootstrap.Modal(document.getElementById('printOptionModal')).show();
         } catch (err) {
             alert('인쇄 준비 실패: ' + err.message);
         }
     },
 
+    setPrintPreset: function(type) {
+        const optName = document.getElementById('printOptName');
+        const optSign = document.getElementById('printOptSign');
+        const optSeal = document.getElementById('printOptSeal');
+        if (!optName || !optSign || !optSeal) return;
+
+        if (type === 'all') {
+            optName.checked = true;
+            optSign.checked = !!this.settings.sign_url;
+            optSeal.checked = !!this.settings.seal_url;
+        } else if (type === 'global') {
+            optName.checked = true;
+            optSign.checked = !!this.settings.sign_url;
+            optSeal.checked = false;
+        } else if (type === 'asia') {
+            optName.checked = true;
+            optSign.checked = false;
+            optSeal.checked = !!this.settings.seal_url;
+        } else if (type === 'blank') {
+            optName.checked = false;
+            optSign.checked = false;
+            optSeal.checked = false;
+        }
+    },
+
+    onPrintOptionChange: function() {
+        // 개별 옵션 변경 시 필요에 따라 처리
+    },
+
     executePrint: function() {
         const po = this.currentPrintPo;
         if (!po) return;
 
-        const includeSeal = document.getElementById('printOptSeal').checked;
+        const includeName = document.getElementById('printOptName') ? document.getElementById('printOptName').checked : true;
+        const includeSign = document.getElementById('printOptSign') ? document.getElementById('printOptSign').checked : true;
+        const includeSeal = document.getElementById('printOptSeal') ? document.getElementById('printOptSeal').checked : false;
+
         bootstrap.Modal.getInstance(document.getElementById('printOptionModal')).hide();
 
         const container = document.getElementById('printContainer');
-        container.innerHTML = this.generatePrintHtml(po, includeSeal);
+        container.innerHTML = this.generatePrintHtml(po, { includeName, includeSign, includeSeal });
 
         setTimeout(() => {
             window.print();
         }, 200);
     },
 
-    generatePrintHtml: function(po, includeSeal) {
+    generatePrintHtml: function(po, printOpts = {}) {
         const items = po.items || [];
         const currency = po.currency || 'USD';
         const currSymbol = currency === 'USD' ? '$' : (currency === 'EUR' ? '€' : (currency === 'KRW' ? '₩' : currency + ' '));
@@ -944,14 +1018,66 @@ const app = {
             `;
         }
 
-        // 직인/사인 날인 HTML
-        let stampHtml = '';
-        if (includeSeal && this.settings.seal_url) {
-            stampHtml = `<img src="${resolveUrl(this.settings.seal_url)}" class="po-stamp-img" alt="직인">`;
+        // --- 스마트 날인(사인/도장/성명) 레이아웃 생성 ---
+        const includeName = printOpts.includeName !== false;
+        const includeSign = !!printOpts.includeSign && !!this.settings.sign_url;
+        const includeSeal = !!printOpts.includeSeal && !!this.settings.seal_url;
+
+        let buyerStampHtml = '';
+
+        if (includeSign && includeSeal) {
+            // [사인 + 도장 동시 출력]
+            if (includeName) {
+                // 서명 텍스트 위 사인이 있고, 성명 우측 끝에 도장이 약 30% 걸쳐 날인
+                buyerStampHtml = `
+                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-above-text" alt="서명">
+                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
+                `;
+            } else {
+                // 성명 텍스트 없이 사인과 도장만: 좌측에 사인, 우측에 도장 나란히 배치
+                buyerStampHtml = `
+                    <div style="display: flex; justify-content: space-around; align-items: center; width: 100%; height: 100%;">
+                        <img src="${resolveUrl(this.settings.sign_url)}" style="max-height: 48px; max-width: 120px; object-fit: contain;" alt="서명">
+                        <img src="${resolveUrl(this.settings.seal_url)}" style="width: 54px; height: 54px; mix-blend-mode: multiply;" alt="직인">
+                    </div>
+                `;
+            }
+        } else if (includeSign) {
+            // [자필 사인만 출력]
+            if (includeName) {
+                // 성명 텍스트 바로 위 안착
+                buyerStampHtml = `
+                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-above-text" alt="서명">
+                `;
+            } else {
+                // 성명 없이 사인 단독: 칸 중앙에 안정감 있게 단독 배치
+                buyerStampHtml = `
+                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-center" alt="서명">
+                `;
+            }
+        } else if (includeSeal) {
+            // [대표 직인(도장)만 출력]
+            if (includeName) {
+                // 성명 텍스트 우측 끝에 약 30% 걸쳐 날인
+                buyerStampHtml = `
+                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
+                `;
+            } else {
+                // 성명 없이 도장 단독: 칸 중앙에 단독 배치
+                buyerStampHtml = `
+                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-center" alt="직인">
+                `;
+            }
         }
-        if (includeSeal && this.settings.sign_url) {
-            stampHtml += `<img src="${resolveUrl(this.settings.sign_url)}" class="po-stamp-img" style="opacity: 0.95;" alt="서명">`;
-        }
+
+        // 하단 영문 성명 텍스트 및 날짜 행
+        const ceoNameText = includeName ? (this.settings.ceo_name || 'CEO / Youn, Jong') : '&nbsp;';
+        const buyerFooterHtml = `
+            <div class="po-sign-footer">
+                <span class="po-ceo-name" style="${includeName ? '' : 'visibility: hidden;'}">${ceoNameText}</span>
+                <span class="po-sign-date">Date: ${po.issue_date || ''}</span>
+            </div>
+        `;
 
         return `
             <div class="po-print-sheet">
@@ -1076,28 +1202,25 @@ const app = {
                         </thead>
                         <tbody>
                             <tr>
-                                <td style="width: 50%; vertical-align: top;">
+                                <td style="width: 50%; vertical-align: top; position: relative;">
                                     <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
                                         ${po.buyer_name || 'K&G CO., LTD.'}
                                     </div>
                                     <div class="po-stamp-box">
-                                        ${stampHtml}
+                                        ${buyerStampHtml}
                                     </div>
-                                    <div style="font-weight: bold; border-top: 1px solid #000; padding-top: 4px; display: flex; justify-content: space-between; align-items: center;">
-                                        <span>${this.settings.ceo_name || 'CEO / Youn, Jong'}</span>
-                                        <span style="font-size: 9px; font-weight: normal; color: #333;">Date: ${po.issue_date || ''}</span>
-                                    </div>
+                                    ${buyerFooterHtml}
                                 </td>
-                                <td style="width: 50%; vertical-align: top;">
+                                <td style="width: 50%; vertical-align: top; position: relative;">
                                     <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
                                         ${po.seller_name || 'Manufacturer / Supplier'}
                                     </div>
                                     <div class="po-stamp-box" style="justify-content: center; align-items: center; color: #777; font-size: 10px;">
                                         <span style="border: 1px dashed #999; padding: 4px 10px; border-radius: 3px; letter-spacing: 0.3px;">Authorized Signature & Official Stamp</span>
                                     </div>
-                                    <div style="font-weight: bold; border-top: 1px solid #000; padding-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="po-sign-footer">
                                         <span>Authorized Signature</span>
-                                        <span style="font-size: 9px; font-weight: normal; color: #333;">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                                        <span class="po-sign-date">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
                                     </div>
                                 </td>
                             </tr>
