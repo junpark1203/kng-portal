@@ -401,6 +401,8 @@ body {
     border: 1.5px solid #000000;
     padding: 0;
     margin-bottom: 0;
+    box-sizing: border-box;
+    background: #ffffff;
 }
 
 .po-print-title {
@@ -413,9 +415,25 @@ body {
     letter-spacing: 1px;
 }
 
-.po-meta-table {
+/* 내부 모든 테이블 공통 규칙:
+   부모 .po-main-border-box의 1.5px 테두리와 충돌/겹침/깎임 방지 */
+.po-main-border-box table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
+    box-sizing: border-box;
+    margin: 0;
+}
+.po-main-border-box table th:first-child,
+.po-main-border-box table td:first-child {
+    border-left: none !important;
+}
+.po-main-border-box table th:last-child,
+.po-main-border-box table td:last-child {
+    border-right: none !important;
+}
+
+.po-meta-table {
     border-bottom: 1.5px solid #000000;
 }
 .po-meta-table th, .po-meta-table td {
@@ -434,8 +452,6 @@ body {
 }
 
 .po-parties-table {
-    width: 100%;
-    border-collapse: collapse;
     border-bottom: 1.5px solid #000000;
 }
 .po-parties-table th {
@@ -457,8 +473,6 @@ body {
 }
 
 .po-terms-table {
-    width: 100%;
-    border-collapse: collapse;
     border-bottom: 1.5px solid #000000;
 }
 .po-terms-table th, .po-terms-table td {
@@ -472,8 +486,6 @@ body {
 }
 
 .po-products-table {
-    width: 100%;
-    border-collapse: collapse;
     border-bottom: 1.5px solid #000000;
 }
 .po-products-table th, .po-products-table td {
@@ -493,13 +505,15 @@ body {
 .po-total-row td {
     font-weight: bold;
     font-size: 10.5px;
+    border-top: 1.5px solid #000000;
 }
 
-.po-amount-words-row {
-    border-bottom: 1.5px solid #000000;
-    padding: 4px 8px;
-    font-size: 10px;
+.po-amount-words-row td {
+    border-top: 1.5px solid #000000 !important;
+    padding: 5px 8px !important;
+    font-size: 10.5px;
     font-weight: bold;
+    text-align: left;
     background: #ffffff;
 }
 
@@ -508,6 +522,7 @@ body {
     padding: 6px 8px;
     font-size: 10px;
     line-height: 1.4;
+    box-sizing: border-box;
 }
 .po-notes-title {
     font-weight: bold;
@@ -527,8 +542,7 @@ body {
 }
 
 .po-signature-table {
-    width: 100%;
-    border-collapse: collapse;
+    border-bottom: none;
 }
 .po-signature-table th {
     border: 1px solid #000000;
@@ -539,6 +553,7 @@ body {
 }
 .po-signature-table td {
     border: 1px solid #000000;
+    border-bottom: none !important;
     padding: 6px 8px;
     font-size: 10.5px;
 }

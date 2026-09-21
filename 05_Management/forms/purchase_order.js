@@ -1285,13 +1285,13 @@ const app = {
                                 <td class="text-right">${totalAmountStr}</td>
                                 <td class="text-center">${po.total_pkg_qty || ''}</td>
                             </tr>
+                            <tr class="po-amount-words-row">
+                                <td colspan="8">
+                                    Amount in Words: <span style="font-weight: 800;">${po.amount_in_words || ''}</span>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
-
-                    <!-- 영문 총금액 표기행 -->
-                    <div class="po-amount-words-row">
-                        Amount in Words: <span style="font-weight: 800;">${po.amount_in_words || ''}</span>
-                    </div>
 
                     <!-- 특약사항 및 지시사항 -->
                     <div class="po-notes-section">
