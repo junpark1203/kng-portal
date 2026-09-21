@@ -464,14 +464,28 @@ const app = {
             const po = await parseJsonResponse(res);
             
             this.openCreateModal();
-            // 데이터 복사
+
+            document.getElementById('poModalTitle').innerHTML = `<i class='bx bx-copy text-primary'></i> 발주서 복사 등록 (${po.po_number} 기반)`;
+
+            // 1. Buyer 정보 복사 (기존 발주서에 입력된 정보 그대로 반영)
+            if (po.buyer_name) document.getElementById('formBuyerName').value = po.buyer_name;
+            if (po.buyer_address) document.getElementById('formBuyerAddress').value = po.buyer_address;
+            if (po.buyer_attn) document.getElementById('formBuyerAttn').value = po.buyer_attn;
+            if (po.buyer_tel) document.getElementById('formBuyerTel').value = po.buyer_tel;
+            if (po.buyer_email) document.getElementById('formBuyerEmail').value = po.buyer_email;
+
+            // 2. References & Dates
             document.getElementById('formReferences').value = po.references_text || '';
+            if (po.validity_date) document.getElementById('formValidityDate').value = po.validity_date;
+
+            // 3. Seller 정보 복사
             document.getElementById('formSellerName').value = po.seller_name || '';
             document.getElementById('formSellerAddress').value = po.seller_address || '';
             document.getElementById('formSellerAttn').value = po.seller_attn || '';
             document.getElementById('formSellerTel').value = po.seller_tel || '';
             document.getElementById('formSellerEmail').value = po.seller_email || '';
 
+            // 4. 무역 조건 복사
             document.getElementById('formPaymentTerms').value = po.payment_terms || '';
             document.getElementById('formDeliveryTerms').value = po.delivery_terms || '';
             document.getElementById('formCountryOfOrigin').value = po.country_of_origin || '';
@@ -480,12 +494,17 @@ const app = {
             document.getElementById('formDeliveryDate').value = po.delivery_date || '';
             document.getElementById('formShipmentSpec').value = po.shipment_spec || '';
 
+            // 5. 통화, 특약, 직인옵션, 도면 복사
             document.getElementById('formCurrency').value = po.currency || 'USD';
             document.getElementById('formNotes').value = po.notes_instructions || '';
+            document.getElementById('formIncludeSeal').checked = po.include_seal === 1;
             if (po.drawing_image_url) {
                 this.setDrawingPreview(po.drawing_image_url);
+            } else {
+                this.removeDrawingImage();
             }
 
+            // 6. 품목 상세 복사
             document.getElementById('itemsTableBody').innerHTML = '';
             if (po.items && po.items.length > 0) {
                 po.items.forEach(item => this.addItemRow(item));
