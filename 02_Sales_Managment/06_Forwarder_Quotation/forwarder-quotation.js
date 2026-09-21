@@ -2132,8 +2132,8 @@ function generatePrintHTML() {
                 const total = p.unitPrice * (item.qty || 0);
                 sumPerTerm[term] += total;
                 html += `<td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; font-size:10px;">
-                    ${p.currency || ''} ${formatNum(p.unitPrice)}<br>
-                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total)})</span>
+                    ${p.currency || ''} ${formatNum(p.unitPrice, 2)}<br>
+                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total, 2)})</span>
                 </td>`;
             } else {
                 html += `<td style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#aaa;">—</td>`;
@@ -2169,7 +2169,7 @@ function generatePrintHTML() {
         const sumKrw = sumVal * exRate;
 
         html += `<th style="text-align:right; padding:6px; border:1px solid #e2e8f0; background:#f8fafc; font-size:10px;">
-            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal)}</span><br>
+            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal, 2)}</span><br>
             <span style="color:#555; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
         </th>`;
     });
@@ -2490,8 +2490,8 @@ function generateExcelHTML() {
                 const total = p.unitPrice * (item.qty || 0);
                 sumPerTerm[term] += total;
                 html += `<td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; font-size:10px;">
-                    ${p.currency || ''} ${formatNum(p.unitPrice)}<br>
-                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total)})</span>
+                    ${p.currency || ''} ${formatNum(p.unitPrice, 2)}<br>
+                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total, 2)})</span>
                 </td>`;
             } else {
                 html += `<td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#aaa;">—</td>`;
@@ -2527,7 +2527,7 @@ function generateExcelHTML() {
         const sumKrw = sumVal * exRate;
 
         html += `<th style="text-align:right; padding:6px; border:1px solid #ccc; background:#f2f2f2; font-size:10px;">
-            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal)}</span><br>
+            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal, 2)}</span><br>
             <span style="color:#555; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
         </th>`;
     });
