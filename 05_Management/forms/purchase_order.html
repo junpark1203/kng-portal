@@ -407,30 +407,28 @@
     <!-- ========================================================================= -->
     <!-- 직인 / 서명 관리 모달 -->
     <!-- ========================================================================= -->
-    <!-- ========================================================================= -->
-    <!-- 직인 / 서명 관리 모달 -->
-    <!-- ========================================================================= -->
     <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-light py-2">
-                    <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-shield-quarter text-primary'></i> 대표자 직인 및 서명 관리</h5>
+                    <h5 class="modal-title fs-6 fw-bold"><i class='bx bx-shield-quarter text-primary'></i> 대표자 직인 및 서명/사인 관리</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-3">
                     <!-- 1. 회사 대표 직인 (도장) -->
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-1" style="font-size: 12px;">
-                            <i class='bx bx-check-shield text-danger'></i> 1. 회사 대표 직인 (Official Seal / 도장)
+                            <i class='bx bx-check-shield text-danger'></i> 1. 회사 대표 직인 (Official Seal / 도장 이미지)
                         </label>
                         <div class="d-flex align-items-center gap-3">
-                            <div style="width: 80px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa; position: relative;">
-                                <img id="settingSealImg" src="../../assets/images/stamp.png" style="max-width: 70px; max-height: 70px; mix-blend-mode: multiply;" alt="직인">
+                            <div style="width: 75px; height: 75px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa; position: relative; flex-shrink: 0;">
+                                <img id="settingSealImg" src="../../assets/images/stamp.png" style="max-width: 65px; max-height: 65px; mix-blend-mode: multiply;" alt="직인">
+                                <span id="settingSealEmptyText" class="text-muted d-none" style="font-size: 10px;">도장 없음</span>
                             </div>
                             <div class="flex-grow-1">
                                 <input type="file" id="sealFileInput" accept="image/*" class="form-control form-control-sm mb-1" onchange="app.uploadSealFile(event)">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted" style="font-size: 10.5px;">투명 배경 PNG 권장 (성명 끝부분에 날인)</span>
+                                    <span class="text-muted" style="font-size: 10.5px;">투명 배경 PNG 권장 (서명 우측 끝에 겹쳐서 날인)</span>
                                     <button type="button" class="btn btn-link text-danger p-0 text-decoration-none" style="font-size: 10.5px;" onclick="app.removeSealPreset()">
                                         <i class='bx bx-trash'></i> 직인 삭제
                                     </button>
@@ -439,20 +437,42 @@
                         </div>
                     </div>
 
-                    <!-- 2. 대표자 자필 사인 (자필 서명) -->
+                    <!-- 2. 영문 자필 서명 (가로형 영문 서명 이미지) -->
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-1" style="font-size: 12px;">
-                            <i class='bx bx-pen text-primary'></i> 2. 대표자 자필 사인 (Handwritten Signature / 자필 서명)
+                            <i class='bx bx-edit text-primary'></i> 2. 영문 자필 서명 (English Signature / 영문 서명 이미지)
                         </label>
                         <div class="d-flex align-items-center gap-3">
-                            <div style="width: 80px; height: 80px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa; position: relative;">
-                                <img id="settingSignImg" src="" style="max-width: 70px; max-height: 70px; display: none;" alt="서명">
+                            <div style="width: 75px; height: 75px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa; position: relative; flex-shrink: 0;">
+                                <img id="settingEngSignImg" src="" style="max-width: 68px; max-height: 68px; display: none;" alt="영문 서명">
+                                <span id="settingEngSignEmptyText" class="text-muted" style="font-size: 10px;">서명 없음</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <input type="file" id="engSignFileInput" accept="image/*" class="form-control form-control-sm mb-1" onchange="app.uploadEngSignFile(event)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="text-muted" style="font-size: 10.5px;">가로형 영문 자필 서명 (날인란 가장 아래에 배치)</span>
+                                    <button type="button" class="btn btn-link text-danger p-0 text-decoration-none" style="font-size: 10.5px;" onclick="app.removeEngSignPreset()">
+                                        <i class='bx bx-trash'></i> 서명 삭제
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. 대표자 자필 사인 (약식/일반 사인 이미지) -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1" style="font-size: 12px;">
+                            <i class='bx bx-pen text-success'></i> 3. 대표자 자필 사인 (Handwritten Sign / 사인 이미지)
+                        </label>
+                        <div class="d-flex align-items-center gap-3">
+                            <div style="width: 75px; height: 75px; border: 1px dashed #cbd5e1; border-radius: 6px; display: flex; align-items: center; justify-content: center; background: #fafafa; position: relative; flex-shrink: 0;">
+                                <img id="settingSignImg" src="" style="max-width: 68px; max-height: 68px; display: none;" alt="사인">
                                 <span id="settingSignEmptyText" class="text-muted" style="font-size: 10px;">사인 없음</span>
                             </div>
                             <div class="flex-grow-1">
                                 <input type="file" id="signFileInput" accept="image/*" class="form-control form-control-sm mb-1" onchange="app.uploadSignFile(event)">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-muted" style="font-size: 10.5px;">투명 배경 PNG 권장 (성명 바로 위에 배치)</span>
+                                    <span class="text-muted" style="font-size: 10.5px;">약식/일반 사인 이미지 (영문 서명 위에 배치)</span>
                                     <button type="button" class="btn btn-link text-danger p-0 text-decoration-none" style="font-size: 10.5px;" onclick="app.removeSignPreset()">
                                         <i class='bx bx-trash'></i> 사인 삭제
                                     </button>
@@ -463,13 +483,13 @@
 
                     <hr class="my-2">
 
-                    <!-- 3. 대표자 영문 표기 (성명/직함 텍스트) -->
+                    <!-- 4. 대표자 영문 표기 (성명/직함 텍스트) -->
                     <div class="mb-2">
                         <label class="form-label fw-bold mb-1" style="font-size: 12px;">
-                            <i class='bx bx-font text-secondary'></i> 3. 대표자 영문 성명 / 직함 (Typed Name)
+                            <i class='bx bx-font text-secondary'></i> 4. 대표자 영문 성명 / 직함 (Typed Name)
                         </label>
                         <input type="text" class="form-control form-control-sm" id="settingCeoName" value="CEO / Youn, Jong" placeholder="예: CEO / Youn, Jong">
-                        <div class="text-muted mt-1" style="font-size: 10.5px;">발주서 하단 서명 기준선 위에 활자로 타이핑되는 공식 표기입니다.</div>
+                        <div class="text-muted mt-1" style="font-size: 10.5px;">발주서 하단 서명 기준선 아래에 활자로 타이핑되는 공식 표기입니다.</div>
                     </div>
                 </div>
                 <div class="modal-footer py-2 bg-light">
@@ -497,16 +517,22 @@
                         <label class="form-label fw-bold mb-1" style="font-size: 12px;">빠른 프리셋 선택</label>
                         <div class="d-flex flex-wrap gap-1">
                             <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('all')">
-                                <i class='bx bx-check-double'></i> 전체 포함 (성명+사인+직인)
+                                <i class='bx bx-check-double'></i> 전체 포함
                             </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('global')">
-                                <i class='bx bx-globe'></i> 글로벌 표준 (성명+사인)
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('eng_seal')">
+                                <i class='bx bx-stamp'></i> 서명 + 도장 (공식 무역)
                             </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('asia')">
-                                <i class='bx bx-stamp'></i> 국내/아시아 (성명+직인)
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('eng_sign')">
+                                <i class='bx bx-globe'></i> 서명 + 사인 (글로벌)
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('eng_only')">
+                                <i class='bx bx-edit-alt'></i> 서명 단독
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('seal_only')">
+                                <i class='bx bx-badge-check'></i> 도장 단독
                             </button>
                             <button type="button" class="btn btn-outline-secondary btn-sm py-1 px-2" style="font-size: 11px;" onclick="app.setPrintPreset('blank')">
-                                <i class='bx bx-edit'></i> 수기 날인용 (공란)
+                                <i class='bx bx-edit'></i> 수기용 (공란)
                             </button>
                         </div>
                     </div>
@@ -514,36 +540,45 @@
                     <div class="p-3 bg-light rounded border mb-2">
                         <label class="form-label fw-bold mb-2 text-dark" style="font-size: 12px;">발주자 날인 구성 요소 개별 선택</label>
                         
-                        <!-- 1) 대표자 영문 성명 -->
+                        <!-- 1) 영문 자필 서명 -->
                         <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="printOptEngSign" checked onchange="app.onPrintOptionChange()">
+                            <label class="form-check-label fw-bold" for="printOptEngSign" style="font-size: 12px;">
+                                영문 자필 서명 (English Signature 이미지)
+                            </label>
+                            <div class="text-muted" style="font-size: 10.5px;">서명란 가장 아래에 위치하며, 도장 선택 시 우측 끝에 도장이 겹쳐집니다.</div>
+                        </div>
+
+                        <!-- 2) 대표자 자필 사인 -->
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="printOptSign" onchange="app.onPrintOptionChange()">
+                            <label class="form-check-label fw-bold" for="printOptSign" style="font-size: 12px;">
+                                대표자 자필 사인 (Handwritten Sign 이미지)
+                            </label>
+                            <div class="text-muted" style="font-size: 10.5px;">영문 서명과 함께 선택 시 영문 서명 위에 위치합니다.</div>
+                        </div>
+
+                        <!-- 3) 회사 대표 직인 (도장) -->
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="printOptSeal" checked onchange="app.onPrintOptionChange()">
+                            <label class="form-check-label fw-bold" for="printOptSeal" style="font-size: 12px;">
+                                회사 대표 직인 / 도장 (Official Seal 이미지)
+                            </label>
+                            <div class="text-muted" style="font-size: 10.5px;">서명이 있으면 서명 우측 끝에 약 30% 자연스럽게 걸쳐서 날인됩니다.</div>
+                        </div>
+
+                        <!-- 4) 대표자 영문 성명 표기 (텍스트) -->
+                        <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="printOptName" checked onchange="app.onPrintOptionChange()">
                             <label class="form-check-label fw-bold" for="printOptName" style="font-size: 12px;">
-                                대표자 영문 성명 / 직함 표기 <span class="text-muted fw-normal" id="printOptCeoNameText"></span>
+                                대표자 영문 성명 / 직함 텍스트 표기 <span class="text-muted fw-normal" id="printOptCeoNameText"></span>
                             </label>
-                            <div class="text-muted" style="font-size: 10.5px;">하단 기준선 위에 활자로 타이핑되어 인쇄됩니다.</div>
-                        </div>
-
-                        <!-- 2) 자필 서명 -->
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="printOptSign" checked onchange="app.onPrintOptionChange()">
-                            <label class="form-check-label fw-bold" for="printOptSign" style="font-size: 12px;">
-                                대표자 자필 사인 (Handwritten Signature)
-                            </label>
-                            <div class="text-muted" style="font-size: 10.5px;">성명이 있으면 성명 바로 위에 배치되고, 단독 선택 시 칸 중앙에 안착합니다.</div>
-                        </div>
-
-                        <!-- 3) 공식 직인 (도장) -->
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="printOptSeal" onchange="app.onPrintOptionChange()">
-                            <label class="form-check-label fw-bold" for="printOptSeal" style="font-size: 12px;">
-                                회사 대표 직인 / 도장 (Official Seal)
-                            </label>
-                            <div class="text-muted" style="font-size: 10.5px;">성명이 있으면 성명 끝부분에 약 30% 자연스럽게 걸쳐서 날인됩니다.</div>
+                            <div class="text-muted" style="font-size: 10.5px;">하단 기준선 아래에 활자로 타이핑되어 인쇄됩니다.</div>
                         </div>
                     </div>
 
                     <div class="text-primary small" style="font-size: 11px;">
-                        <i class='bx bx-info-circle'></i> 선택하신 조합에 맞춰 도장과 사인이 겹치지 않고 자연스러운 무역 서식 레이아웃으로 자동 정렬됩니다.
+                        <i class='bx bx-info-circle'></i> 서명은 아래, 사인은 위, 도장은 서명 우측 끝에 걸쳐지는 스마트 레이아웃으로 자동 정렬됩니다.
                     </div>
                 </div>
                 <div class="modal-footer py-2 bg-light">

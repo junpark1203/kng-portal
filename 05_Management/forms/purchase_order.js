@@ -61,6 +61,7 @@ const app = {
     currentPo: null,
     settings: {
         seal_url: '../../assets/images/stamp.png',
+        eng_sign_url: '',
         sign_url: '',
         ceo_name: 'CEO / Youn, Jong'
     },
@@ -82,9 +83,10 @@ const app = {
             const res = await authFetch(`${API_BASE}/config/settings`);
             if (res.ok) {
                 const data = await parseJsonResponse(res);
-                if (data.seal_url) this.settings.seal_url = data.seal_url;
-                if (data.sign_url) this.settings.sign_url = data.sign_url;
-                if (data.ceo_name) this.settings.ceo_name = data.ceo_name;
+                if (data.seal_url !== undefined) this.settings.seal_url = data.seal_url;
+                if (data.eng_sign_url !== undefined) this.settings.eng_sign_url = data.eng_sign_url;
+                if (data.sign_url !== undefined) this.settings.sign_url = data.sign_url;
+                if (data.ceo_name !== undefined) this.settings.ceo_name = data.ceo_name;
             }
         } catch (e) {
             console.warn('설정을 불러오지 못했습니다. 기본값을 사용합니다.', e);
@@ -92,26 +94,46 @@ const app = {
     },
 
     openSettingsModal: function() {
+        // 1. 회사 대표 직인 (도장)
         const sealImg = document.getElementById('settingSealImg');
+        const sealEmptyText = document.getElementById('settingSealEmptyText');
         if (this.settings.seal_url) {
             sealImg.src = resolveUrl(this.settings.seal_url);
             sealImg.style.display = 'block';
+            if (sealEmptyText) sealEmptyText.classList.add('d-none');
         } else {
             sealImg.src = '';
             sealImg.style.display = 'none';
+            if (sealEmptyText) sealEmptyText.classList.remove('d-none');
         }
 
+        // 2. 영문 자필 서명 (English Handwritten Signature 이미지)
+        const engSignImg = document.getElementById('settingEngSignImg');
+        const engSignEmptyText = document.getElementById('settingEngSignEmptyText');
+        if (this.settings.eng_sign_url) {
+            engSignImg.src = resolveUrl(this.settings.eng_sign_url);
+            engSignImg.style.display = 'block';
+            if (engSignEmptyText) engSignEmptyText.style.display = 'none';
+        } else {
+            engSignImg.src = '';
+            engSignImg.style.display = 'none';
+            if (engSignEmptyText) engSignEmptyText.style.display = 'block';
+        }
+
+        // 3. 대표자 자필 사인 (Handwritten Sign 이미지)
         const signImg = document.getElementById('settingSignImg');
         const signEmptyText = document.getElementById('settingSignEmptyText');
         if (this.settings.sign_url) {
             signImg.src = resolveUrl(this.settings.sign_url);
             signImg.style.display = 'block';
-            signEmptyText.style.display = 'none';
+            if (signEmptyText) signEmptyText.style.display = 'none';
         } else {
             signImg.src = '';
             signImg.style.display = 'none';
-            signEmptyText.style.display = 'block';
+            if (signEmptyText) signEmptyText.style.display = 'block';
         }
+
+        // 4. 대표자 영문 성명/직함 텍스트
         document.getElementById('settingCeoName').value = this.settings.ceo_name || 'CEO / Youn, Jong';
         new bootstrap.Modal(document.getElementById('settingsModal')).show();
     },
@@ -132,6 +154,8 @@ const app = {
                 const sealImg = document.getElementById('settingSealImg');
                 sealImg.src = resolveUrl(data.url);
                 sealImg.style.display = 'block';
+                const emptyText = document.getElementById('settingSealEmptyText');
+                if (emptyText) emptyText.classList.add('d-none');
             }
         } catch (err) {
             alert('직인 파일 업로드 실패: ' + err.message);
@@ -144,7 +168,44 @@ const app = {
         const sealImg = document.getElementById('settingSealImg');
         sealImg.src = '';
         sealImg.style.display = 'none';
+        const emptyText = document.getElementById('settingSealEmptyText');
+        if (emptyText) emptyText.classList.remove('d-none');
         document.getElementById('sealFileInput').value = '';
+    },
+
+    uploadEngSignFile: async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await authFetch(`${API_BASE}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await parseJsonResponse(res);
+            if (data.url) {
+                this.settings.eng_sign_url = data.url;
+                const engSignImg = document.getElementById('settingEngSignImg');
+                engSignImg.src = resolveUrl(data.url);
+                engSignImg.style.display = 'block';
+                const emptyText = document.getElementById('settingEngSignEmptyText');
+                if (emptyText) emptyText.style.display = 'none';
+            }
+        } catch (err) {
+            alert('영문 자필 서명 업로드 실패: ' + err.message);
+        }
+    },
+
+    removeEngSignPreset: function() {
+        if (!confirm('등록된 영문 자필 서명 이미지를 삭제하시겠습니까?')) return;
+        this.settings.eng_sign_url = '';
+        const engSignImg = document.getElementById('settingEngSignImg');
+        engSignImg.src = '';
+        engSignImg.style.display = 'none';
+        const emptyText = document.getElementById('settingEngSignEmptyText');
+        if (emptyText) emptyText.style.display = 'block';
+        document.getElementById('engSignFileInput').value = '';
     },
 
     uploadSignFile: async function(event) {
@@ -163,10 +224,11 @@ const app = {
                 const signImg = document.getElementById('settingSignImg');
                 signImg.src = resolveUrl(data.url);
                 signImg.style.display = 'block';
-                document.getElementById('settingSignEmptyText').style.display = 'none';
+                const emptyText = document.getElementById('settingSignEmptyText');
+                if (emptyText) emptyText.style.display = 'none';
             }
         } catch (err) {
-            alert('서명 파일 업로드 실패: ' + err.message);
+            alert('자필 사인 파일 업로드 실패: ' + err.message);
         }
     },
 
@@ -176,7 +238,8 @@ const app = {
         const signImg = document.getElementById('settingSignImg');
         signImg.src = '';
         signImg.style.display = 'none';
-        document.getElementById('settingSignEmptyText').style.display = 'block';
+        const emptyText = document.getElementById('settingSignEmptyText');
+        if (emptyText) emptyText.style.display = 'block';
         document.getElementById('signFileInput').value = '';
     },
 
@@ -190,7 +253,7 @@ const app = {
             });
             if (res.ok) {
                 bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
-                alert('대표자 직인 및 서명 설정이 저장되었습니다.');
+                alert('대표자 직인 및 서명/사인 설정이 저장되었습니다.');
             } else {
                 alert('설정 저장에 실패했습니다.');
             }
@@ -926,12 +989,16 @@ const app = {
             if (ceoLabel) ceoLabel.innerText = ceoText;
 
             // 기본 프리셋 설정
-            if (this.settings.sign_url) {
-                this.setPrintPreset('global'); // 사인이 있으면 글로벌 표준 (성명 + 사인) 기본
+            if (this.settings.eng_sign_url && this.settings.seal_url) {
+                this.setPrintPreset('eng_seal'); // 영문 서명 + 직인 (공식 무역) 기본
+            } else if (this.settings.eng_sign_url && this.settings.sign_url) {
+                this.setPrintPreset('eng_sign'); // 서명 + 사인
+            } else if (this.settings.eng_sign_url) {
+                this.setPrintPreset('eng_only'); // 영문 서명 단독
             } else if (this.settings.seal_url) {
-                this.setPrintPreset('asia'); // 사인이 없고 직인만 있으면 국내/아시아 (성명 + 직인) 기본
+                this.setPrintPreset('seal_only'); // 도장 단독
             } else {
-                this.setPrintPreset('global');
+                this.setPrintPreset('all');
             }
 
             new bootstrap.Modal(document.getElementById('printOptionModal')).show();
@@ -941,27 +1008,47 @@ const app = {
     },
 
     setPrintPreset: function(type) {
-        const optName = document.getElementById('printOptName');
+        const optEngSign = document.getElementById('printOptEngSign');
         const optSign = document.getElementById('printOptSign');
         const optSeal = document.getElementById('printOptSeal');
-        if (!optName || !optSign || !optSeal) return;
+        const optName = document.getElementById('printOptName');
+        if (!optEngSign || !optSign || !optSeal || !optName) return;
 
         if (type === 'all') {
-            optName.checked = true;
+            optEngSign.checked = !!this.settings.eng_sign_url;
             optSign.checked = !!this.settings.sign_url;
             optSeal.checked = !!this.settings.seal_url;
-        } else if (type === 'global') {
             optName.checked = true;
-            optSign.checked = !!this.settings.sign_url;
-            optSeal.checked = false;
-        } else if (type === 'asia') {
-            optName.checked = true;
+        } else if (type === 'eng_seal') {
+            // 영문 서명 + 직인 (공식 무역)
+            optEngSign.checked = !!this.settings.eng_sign_url;
             optSign.checked = false;
             optSeal.checked = !!this.settings.seal_url;
+            optName.checked = true;
+        } else if (type === 'eng_sign') {
+            // 영문 서명 + 사인 (글로벌)
+            optEngSign.checked = !!this.settings.eng_sign_url;
+            optSign.checked = !!this.settings.sign_url;
+            optSeal.checked = false;
+            optName.checked = true;
+        } else if (type === 'eng_only') {
+            // 영문 서명 단독
+            optEngSign.checked = !!this.settings.eng_sign_url;
+            optSign.checked = false;
+            optSeal.checked = false;
+            optName.checked = true;
+        } else if (type === 'seal_only') {
+            // 도장 단독
+            optEngSign.checked = false;
+            optSign.checked = false;
+            optSeal.checked = !!this.settings.seal_url;
+            optName.checked = true;
         } else if (type === 'blank') {
-            optName.checked = false;
+            // 수기용 (공란)
+            optEngSign.checked = false;
             optSign.checked = false;
             optSeal.checked = false;
+            optName.checked = false;
         }
     },
 
@@ -973,14 +1060,15 @@ const app = {
         const po = this.currentPrintPo;
         if (!po) return;
 
+        const includeEngSign = document.getElementById('printOptEngSign') ? document.getElementById('printOptEngSign').checked : true;
+        const includeSign = document.getElementById('printOptSign') ? document.getElementById('printOptSign').checked : false;
+        const includeSeal = document.getElementById('printOptSeal') ? document.getElementById('printOptSeal').checked : true;
         const includeName = document.getElementById('printOptName') ? document.getElementById('printOptName').checked : true;
-        const includeSign = document.getElementById('printOptSign') ? document.getElementById('printOptSign').checked : true;
-        const includeSeal = document.getElementById('printOptSeal') ? document.getElementById('printOptSeal').checked : false;
 
         bootstrap.Modal.getInstance(document.getElementById('printOptionModal')).hide();
 
         const container = document.getElementById('printContainer');
-        container.innerHTML = this.generatePrintHtml(po, { includeName, includeSign, includeSeal });
+        container.innerHTML = this.generatePrintHtml(po, { includeEngSign, includeSign, includeSeal, includeName });
 
         setTimeout(() => {
             window.print();
@@ -1037,56 +1125,57 @@ const app = {
             `;
         }
 
-        // --- 스마트 날인(사인/도장/성명) 레이아웃 생성 ---
+        // --- 스마트 날인(영문서명 / 자필사인 / 직인도장 / 영문성명) 레이아웃 생성 ---
         const includeName = printOpts.includeName !== false;
-        const includeSign = !!printOpts.includeSign && !!this.settings.sign_url;
-        const includeSeal = !!printOpts.includeSeal && !!this.settings.seal_url;
+        const hasEngSign = !!printOpts.includeEngSign && !!this.settings.eng_sign_url;
+        const hasSign = !!printOpts.includeSign && !!this.settings.sign_url;
+        const hasSeal = !!printOpts.includeSeal && !!this.settings.seal_url;
 
         let buyerStampHtml = '';
 
-        if (includeSign && includeSeal) {
-            // [사인 + 도장 동시 출력]
-            if (includeName) {
-                // 서명 텍스트 위 사인이 있고, 성명 우측 끝에 도장이 약 30% 걸쳐 날인
-                buyerStampHtml = `
-                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-above-text" alt="서명">
-                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
-                `;
-            } else {
-                // 성명 텍스트 없이 사인과 도장만: 좌측에 사인, 우측에 도장 나란히 배치
-                buyerStampHtml = `
-                    <div style="display: flex; justify-content: space-around; align-items: center; width: 100%; height: 100%;">
-                        <img src="${resolveUrl(this.settings.sign_url)}" style="max-height: 48px; max-width: 120px; object-fit: contain;" alt="서명">
-                        <img src="${resolveUrl(this.settings.seal_url)}" style="width: 54px; height: 54px; mix-blend-mode: multiply;" alt="직인">
-                    </div>
-                `;
-            }
-        } else if (includeSign) {
-            // [자필 사인만 출력]
-            if (includeName) {
-                // 성명 텍스트 바로 위 안착
-                buyerStampHtml = `
-                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-above-text" alt="서명">
-                `;
-            } else {
-                // 성명 없이 사인 단독: 칸 중앙에 안정감 있게 단독 배치
-                buyerStampHtml = `
-                    <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-center" alt="서명">
-                `;
-            }
-        } else if (includeSeal) {
-            // [대표 직인(도장)만 출력]
-            if (includeName) {
-                // 성명 텍스트 우측 끝에 약 30% 걸쳐 날인
-                buyerStampHtml = `
-                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
-                `;
-            } else {
-                // 성명 없이 도장 단독: 칸 중앙에 단독 배치
-                buyerStampHtml = `
-                    <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-center" alt="직인">
-                `;
-            }
+        if (hasEngSign && hasSign && hasSeal) {
+            // [영문 서명 + 자필 사인 + 직인 도장 모두 선택]
+            // 사인은 서명 위 상단, 영문 서명은 가장 아래, 도장은 서명 우측 끝에 30% 오버랩 날인
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-top" alt="자필사인">
+                <img src="${resolveUrl(this.settings.eng_sign_url)}" class="po-eng-sign-bottom" alt="영문서명">
+                <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
+            `;
+        } else if (hasEngSign && hasSeal) {
+            // [영문 서명 + 직인 도장 (공식 무역 표준)]
+            // 영문 서명은 가장 아래, 도장은 서명 우측 끝부분에 30% 걸쳐 날인
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.eng_sign_url)}" class="po-eng-sign-bottom" alt="영문서명">
+                <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
+            `;
+        } else if (hasEngSign && hasSign) {
+            // [영문 서명 + 자필 사인 (글로벌 표준)]
+            // 서명은 아래, 사인은 서명 위에 위치
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-top" alt="자필사인">
+                <img src="${resolveUrl(this.settings.eng_sign_url)}" class="po-eng-sign-bottom" alt="영문서명">
+            `;
+        } else if (hasSign && hasSeal) {
+            // [자필 사인 + 직인 도장]
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-top" style="top: 10px; left: 16px;" alt="자필사인">
+                <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-overlap" alt="직인">
+            `;
+        } else if (hasEngSign) {
+            // [영문 서명 단독: 칸 중앙 배치]
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.eng_sign_url)}" class="po-eng-sign-center" alt="영문서명">
+            `;
+        } else if (hasSign) {
+            // [자필 사인 단독: 칸 중앙 배치]
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.sign_url)}" class="po-sign-center" alt="자필사인">
+            `;
+        } else if (hasSeal) {
+            // [회사 직인 단독: 칸 중앙 배치]
+            buyerStampHtml = `
+                <img src="${resolveUrl(this.settings.seal_url)}" class="po-seal-center" alt="직인">
+            `;
         }
 
         // 하단 영문 성명 텍스트 및 날짜 행

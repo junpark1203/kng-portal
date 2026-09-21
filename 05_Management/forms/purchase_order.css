@@ -544,29 +544,62 @@ body {
 }
 .po-stamp-box {
     position: relative;
-    height: 62px;
+    height: 70px;
     display: flex;
     align-items: center;
 }
-/* 단독 중앙 배치 사인 이미지 */
-.po-sign-center {
-    max-height: 52px;
-    max-width: 150px;
-    object-fit: contain;
-    margin: auto;
-    display: block;
-}
-/* 텍스트 서명 위 안착 자필 사인 */
-.po-sign-above-text {
+/* 영문 자필 서명: 가장 아래 서명선 바로 위 배치 */
+.po-eng-sign-bottom {
     position: absolute;
     bottom: 2px;
     left: 8px;
-    max-height: 48px;
-    max-width: 140px;
+    max-height: 44px;
+    max-width: 170px;
     object-fit: contain;
     z-index: 1;
 }
-/* 단독 중앙 배치 직인 도장 */
+/* 영문 자필 서명: 단독 중앙 배치 */
+.po-eng-sign-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 55px;
+    max-width: 190px;
+    object-fit: contain;
+}
+/* 대표자 자필 사인: 영문 서명 위 상단 배치 */
+.po-sign-top {
+    position: absolute;
+    top: 2px;
+    left: 20px;
+    max-height: 36px;
+    max-width: 110px;
+    object-fit: contain;
+    z-index: 2;
+}
+/* 대표자 자필 사인: 단독 중앙 배치 */
+.po-sign-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 52px;
+    max-width: 140px;
+    object-fit: contain;
+}
+/* 도장(직인): 영문 서명 끝에 약 30% 걸쳐 날인 */
+.po-seal-overlap {
+    position: absolute;
+    bottom: -8px;
+    right: 30px;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+    z-index: 3;
+}
+/* 도장(직인): 단독 중앙 배치 */
 .po-seal-center {
     position: absolute;
     left: 50%;
@@ -576,17 +609,6 @@ body {
     height: 58px;
     object-fit: contain;
     mix-blend-mode: multiply;
-}
-/* 성명 끝에 걸쳐서 날인되는 직인 도장 */
-.po-seal-overlap {
-    position: absolute;
-    bottom: -10px;
-    right: 35px;
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
-    mix-blend-mode: multiply;
-    z-index: 2;
 }
 
 .po-sign-footer {
