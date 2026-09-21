@@ -1884,7 +1884,7 @@ const app = {
                     <button type="button" class="btn-acc-primary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'transaction_statement')">
                         거래명세서
                     </button>
-                    <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'outbound_statement')">
+                    <button type="button" class="btn-acc-secondary" onclick="event.stopPropagation(); app.printDirectStatement(${data.id}, 'outbound', 'outbound_receipt')">
                         출고내역서
                     </button>
                 `;
@@ -4663,398 +4663,764 @@ const app = {
     },
     
     printDirectStatement: async function(id, type, printType) {
+        let printWindow = null;
         try {
+            // 브라우저 팝업 차단 및 about:blank 방지: 사용자 클릭 이벤트 컨텍스트에서 새 창 선제 오픈
+            printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.open();
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="ko">
+                    <head>
+                        <meta charset="UTF-8">
+                        <title>인쇄 문서 로딩 중</title>
+                        <style>
+                            body {
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                                align-items: center;
+                                height: 80vh;
+                                margin: 0;
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                color: #495057;
+                            }
+                            .loader {
+                                border: 3px solid #f3f3f3;
+                                border-top: 3px solid #2b579a;
+                                border-radius: 50%;
+                                width: 32px;
+                                height: 32px;
+                                animation: spin 1s linear infinite;
+                                margin-bottom: 14px;
+                            }
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="loader"></div>
+                        <div>인쇄 데이터를 불러오는 중입니다... 잠시만 기다려주세요.</div>
+                    </body>
+                    </html>
+                `);
+                printWindow.document.close();
+            }
+
             const data = await authFetch(`${API_BASE}/history/${type}/${id}`);
             this.currentHistoryDetail = data;
-            this.printHistoryDetail(printType, data);
+            this.printHistoryDetail(printType, data, printWindow);
         } catch (err) {
+            if (printWindow && !printWindow.closed) {
+                printWindow.close();
+            }
             alert('인쇄 데이터를 가져오지 못했습니다: ' + err.message);
         }
     },
 
-    printHistoryDetail: function(customPrintType = null, customData = null) {
+    printHistoryDetail: function(customPrintType = null, customData = null, targetWindow = null) {
         const data = customData || this.currentHistoryDetail;
-        if (!data) return;
+        if (!data) {
+            alert('인쇄할 데이터가 없습니다.');
+            if (targetWindow && !targetWindow.closed) targetWindow.close();
+            return;
+        }
         
         let printType = customPrintType;
         if (!printType) {
             const checkedRadio = document.querySelector('input[name="printType"]:checked');
             printType = checkedRadio ? checkedRadio.value : (data.type === 'inbound' ? 'inbound_receipt' : 'transaction_statement');
         }
+
+        // 인쇄 타입 매핑 정규화 (오타 및 호환성 완벽 보장)
+        if (printType === 'outbound_statement' || printType === 'outbound') {
+            printType = 'outbound_receipt';
+        } else if (printType === 'inbound_statement' || printType === 'inbound') {
+            printType = 'inbound_receipt';
+        } else if (printType === 'transaction' || printType === 'statement') {
+            printType = 'transaction_statement';
+        }
+
         const preset = JSON.parse(localStorage.getItem('kng_company_preset') || '{}');
-        
-        // Defaults if preset not set
         const bizNo = preset.bizNo || '845-88-00551';
         const bizName = preset.bizName || '주식회사 케앤지';
         const ceo = preset.ceo || '윤종';
         const address = preset.address || '서울시 강동구 구천면로 159, 1층 2호, 3호';
         const bizType = preset.bizType || '도소매/임대업';
         const bizItem = preset.bizItem || '건설자재, 용품외';
-        
-        let printWindow = window.open('', '_blank');
+
+        let printWindow = targetWindow;
+        if (!printWindow || printWindow.closed) {
+            printWindow = window.open('', '_blank');
+        }
+        if (!printWindow) {
+            alert('팝업 차단이 활성화되어 있어 인쇄 창을 열 수 없습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+            return;
+        }
+
+        function numberToKorean(number) {
+            const inputNumber = parseInt(number, 10);
+            if (isNaN(inputNumber) || inputNumber === 0) return "영";
+            const hanA = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
+            const danA = ["", "십", "백", "천"];
+            const danG = ["", "만", "억", "조"];
+            let result = "";
+            let numStr = inputNumber.toString();
+            let length = numStr.length;
+            for (let i = 0; i < length; i++) {
+                let n = parseInt(numStr.charAt(i));
+                let pos = length - i - 1;
+                if (n > 0) result += hanA[n] + danA[pos % 4];
+                if (pos % 4 === 0 && pos > 0) {
+                    let chunk = numStr.substring(Math.max(0, i - 3), i + 1);
+                    if (parseInt(chunk) > 0) result += danG[pos / 4];
+                }
+            }
+            return result;
+        }
+
+        const items = (data.items && data.items.length > 0) ? data.items : [data];
+        const recipientName = data.destination || data.party || data.actual_destination || data.supplier || '-';
+
+        // 공급자 정보 표 (정산장부 표준 380px)
+        const supplierHeaderTitle = (printType === 'inbound_receipt') ? '공급받는자' : '공급자';
+        const supplierHtml = `
+            <table class="supplier-table">
+                <tr>
+                    <th rowspan="4" class="vertical-th">${supplierHeaderTitle}</th>
+                    <th style="width: 55px;">등록번호</th>
+                    <td colspan="3">${bizNo}</td>
+                </tr>
+                <tr>
+                    <th>상 호</th>
+                    <td style="width: 110px;">${bizName}</td>
+                    <th style="width: 45px;">대표자</th>
+                    <td class="stamp-cell" style="width: 70px;">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
+                </tr>
+                <tr>
+                    <th>주 소</th>
+                    <td colspan="3" class="address-cell">${address}</td>
+                </tr>
+                <tr>
+                    <th>업 태</th>
+                    <td>${bizType}</td>
+                    <th>종 목</th>
+                    <td>${bizItem}</td>
+                </tr>
+            </table>`;
+
+        // 공통 A4 Portrait 스타일
         let htmlContent = `
-            <html>
+            <!DOCTYPE html>
+            <html lang="ko">
             <head>
-                <title>인쇄</title>
-                <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;700&display=swap" rel="stylesheet">
+                <meta charset="UTF-8">
+                <title>${printType === 'transaction_statement' ? '거래명세서' : (printType === 'inbound_receipt' ? '입고내역서' : '출고내역서')}</title>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
                 <style>
-                    body { font-family: 'Pretendard', 'Malgun Gothic', sans-serif; padding: 20px; color:#333; }
-                    /* Common Styles */
                     * { box-sizing: border-box; }
-                    @page { size: A4; margin: 15mm; }
-                    .print-wrapper { max-width: 800px; margin: 0 auto; background: #fff; padding: 0; color:#212529; }
-                    
-                    /* Hybrid Header Styles */
-                    .hybrid-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; }
-                    .header-left { flex: 1; padding-bottom: 5px; text-align: center; }
-                    .title { font-size: 34px; font-weight: 700; color: #212529; margin: 0 0 25px 0; letter-spacing: 12px; text-decoration: underline; text-underline-offset: 8px; padding-left: 12px; }
-                    .date-text { font-size: 15px; color: #495057; margin-bottom: 25px; text-align: center; }
-                    .recipient-text { font-size: 18px; text-align: left; margin-left: 20px; }
-                    .header-right { width: 420px; }
-                    
-                    .supplier-table { width: 100%; border-collapse: collapse; font-size: 13px; border: 2px solid #212529; }
-                    .supplier-table th, .supplier-table td { border: 1px solid #dee2e6; padding: 6px 8px; }
-                    .supplier-table th { background-color: #f8f9fa; color: #495057; text-align: center; font-weight: 600; }
-                    .supplier-table td { color: #212529; }
-                    .supplier-th { width: 30px; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: 5px; padding: 10px 5px !important; }
-                    .stamp-cell { position: relative; }
-                    .stamp { position: absolute; top: 50%; right: 5px; transform: translateY(-50%); width: 45px; height: 45px; opacity: 0.85; mix-blend-mode: multiply; }
-                    
-                    .amount-bar { display: flex; border: 2px solid #212529; border-bottom: none; align-items: stretch; font-size: 16px; }
-                    .amount-label { width: 120px; background-color: #f8f9fa; display: flex; align-items: center; justify-content: center; font-weight: 600; border-right: 1px solid #dee2e6; letter-spacing: 10px; padding: 12px 0; }
-                    .amount-ko { flex: 1; display: flex; align-items: center; justify-content: center; font-weight: 600; letter-spacing: 1px; }
-                    .amount-num { width: 150px; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; font-weight: 700; font-size: 17px; }
-                    
-                    .hybrid-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; border: 2px solid #212529; }
-                    .hybrid-table th, .hybrid-table td { border: 1px solid #dee2e6; padding: 8px 6px; }
-                    .hybrid-table th { background-color: #f8f9fa; font-weight: 600; color: #495057; text-align: center; border-bottom: 2px solid #212529; }
-                    .hybrid-table td { height: 32px; }
-                    .footer-row { background-color: #e9ecef; border-top: 2px solid #212529 !important; }
-                    .footer-row td { color: #212529; padding: 10px 6px; font-size: 14px; }
-                    .text-center { text-align: center !important; }
-                    .text-right { text-align: right !important; }
-                    
-                    .signature-area { margin-top: 40px; text-align: right; font-size: 16px; font-weight: 600; }
-                    
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm 10mm 15mm 10mm;
+                    }
+                    html, body {
+                        height: auto !important;
+                        min-height: auto !important;
+                        background: #ffffff !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        overflow: visible !important;
+                        font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+                        color: #000000;
+                        font-size: 11px;
+                        line-height: 1.25;
+                        -webkit-font-smoothing: antialiased;
+                    }
+                    .print-wrapper {
+                        width: 100%;
+                        max-width: 100%;
+                        margin: 0 auto;
+                        background: #ffffff;
+                        padding: 0;
+                    }
+
+                    /* ── 정산장부 동일 상단 헤더 ── */
+                    .header-container {
+                        display: flex;
+                        justify-content: space-between;
+                        margin-bottom: 6px;
+                        align-items: flex-end;
+                        width: 100%;
+                    }
+                    .header-left {
+                        flex: 1;
+                        text-align: center;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .title-box {
+                        padding-bottom: 4px;
+                        margin-bottom: 8px;
+                    }
+                    .title-box h1 {
+                        margin: 0;
+                        font-size: 26px;
+                        letter-spacing: 4px;
+                        font-weight: 800;
+                        white-space: nowrap;
+                        color: #000000;
+                    }
+                    .recipient-box {
+                        margin-bottom: 8px;
+                    }
+                    .recipient-name {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #000000;
+                    }
+                    .date-info {
+                        font-size: 12px;
+                        color: #333333;
+                    }
+
+                    /* ── 정산장부 동일 공급자 표 ── */
+                    .supplier-table {
+                        border-collapse: collapse;
+                        border: 2px solid black;
+                        width: 380px;
+                        font-size: 11px;
+                        margin-left: auto;
+                    }
+                    .supplier-table th, .supplier-table td {
+                        border: 1px solid black;
+                        padding: 3px 4px;
+                        text-align: center;
+                        height: 24px;
+                        white-space: nowrap;
+                    }
+                    .supplier-table th {
+                        background-color: #f9f9f9 !important;
+                        font-weight: bold;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                        color: #000000;
+                    }
+                    .vertical-th {
+                        width: 22px;
+                        writing-mode: vertical-lr;
+                        letter-spacing: 6px;
+                        padding-top: 6px !important;
+                        text-align: center;
+                    }
+                    .stamp-cell {
+                        position: relative;
+                    }
+                    .stamp {
+                        position: absolute;
+                        right: 2px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        width: 40px;
+                        height: 40px;
+                        opacity: 0.9;
+                        mix-blend-mode: multiply;
+                    }
+                    .address-cell {
+                        white-space: normal !important;
+                        text-align: left !important;
+                        padding-left: 6px !important;
+                        font-size: 10px;
+                        line-height: 1.2;
+                    }
+
+                    /* ── 금액 및 요약 박스 ── */
+                    .amount-box, .summary-box {
+                        border: 2px solid black;
+                        padding: 6px 12px;
+                        margin-bottom: 8px;
+                        display: flex;
+                        justify-content: space-between;
+                        font-size: 13px;
+                        font-weight: bold;
+                        background: #ffffff;
+                    }
+
+                    /* ── 메인 데이터 표 (정산장부 회계 시트 그리드) ── */
+                    .sheet-table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        font-size: 11px !important;
+                        margin-bottom: 6px !important;
+                        table-layout: fixed !important;
+                        border-top: 2px solid #000000 !important;
+                        border-bottom: 2px solid #000000 !important;
+                        page-break-inside: auto !important;
+                    }
+                    .sheet-table thead {
+                        display: table-header-group !important;
+                    }
+                    .sheet-table tbody tr {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    .sheet-table th {
+                        border-top: none !important;
+                        border-left: none !important;
+                        border-bottom: 1.5px solid #000000 !important;
+                        border-right: 1px solid #cccccc !important;
+                        background-color: #f9f9f9 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                        font-weight: bold !important;
+                        color: #000000 !important;
+                        text-align: center !important;
+                        vertical-align: middle !important;
+                        height: 24px !important;
+                        padding: 2px 4px !important;
+                    }
+                    .sheet-table th:last-child, .sheet-table td:last-child {
+                        border-right: none !important;
+                    }
+                    .sheet-table td {
+                        border-left: none !important;
+                        border-top: none !important;
+                        border-right: 1px solid #cccccc !important;
+                        border-bottom: 1px solid #aaaaaa !important;
+                        padding: 3px 4px !important;
+                        text-align: center;
+                        vertical-align: middle;
+                        height: 24px !important;
+                        line-height: 1.2;
+                    }
+                    .sheet-table td.text-start {
+                        text-align: left !important;
+                        padding-left: 6px !important;
+                        white-space: normal !important;
+                        word-break: break-all !important;
+                    }
+                    .sheet-table td.text-end {
+                        text-align: right !important;
+                        padding-right: 6px !important;
+                        font-variant-numeric: tabular-nums;
+                    }
+                    .sheet-table td.spec-cell {
+                        text-align: center !important;
+                        font-size: 10px !important;
+                        letter-spacing: -0.3px !important;
+                        white-space: normal !important;
+                        word-break: break-all !important;
+                    }
+
+                    /* 합계행 */
+                    .sheet-table tr.total-row td {
+                        border-top: 2px solid #000000 !important;
+                        border-bottom: none !important;
+                        background-color: #f9f9f9 !important;
+                        font-weight: bold !important;
+                        font-size: 11px !important;
+                        padding: 4px 4px !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+
+                    .meta-info-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        font-size: 11px;
+                        color: #333333;
+                        margin-top: 4px;
+                        padding: 2px 2px;
+                    }
+
+                    /* 물류 검수/인수 확인 영역 */
+                    .signature-box {
+                        margin-top: 14px;
+                        text-align: right;
+                        font-size: 12px;
+                        font-weight: bold;
+                        padding-right: 10px;
+                        letter-spacing: 0.5px;
+                    }
+
                     @media print {
-                        body { padding: 0; margin: 0; }
-                        .print-wrapper { max-width: 100%; width: 100%; padding: 0 !important; margin: 0; }
-                        .supplier-table th, .amount-label, .hybrid-table th, .footer-row { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        body { padding: 0 !important; margin: 0 !important; }
+                        .print-wrapper { width: 100% !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
                     }
                 </style>
             </head>
             <body>
             <div class="print-wrapper">`;
-            
-        // 공통 공급자 정보 HTML
-        const supplierHtml = `
-            <table class="supplier-table">
-                <tr>
-                    <th rowspan="4" class="supplier-th">공급자</th>
-                    <th style="width: 25%">등록번호</th>
-                    <td colspan="3">${bizNo}</td>
-                </tr>
-                <tr>
-                    <th>상호</th>
-                    <td style="width: 35%">${bizName}</td>
-                    <th style="width: 15%">대표자</th>
-                    <td class="stamp-cell">${ceo} <img src="../../assets/images/stamp.png" class="stamp" alt="직인" onerror="this.style.display='none'"></td>
-                </tr>
-                <tr>
-                    <th>주소</th>
-                    <td colspan="3">${address}</td>
-                </tr>
-                <tr>
-                    <th>업태</th>
-                    <td>${bizType}</td>
-                    <th>종목</th>
-                    <td>${bizItem}</td>
-                </tr>
-            </table>`;
-            
-        const items = data.items || [data];
-        
+
+        // =========================================================================
+        // 1. 거래명세서 (정산장부 회계 시트 양식 100% 동기화, 헤더 "거래명세서", 인수자 서명 제외)
+        // =========================================================================
         if (printType === 'transaction_statement') {
-            function numberToKorean(number) {
-                const inputNumber = parseInt(number, 10);
-                const hanA = ["", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"];
-                const danA = ["", "십", "백", "천"];
-                const danG = ["", "만", "억", "조"];
-                let result = "";
-                let numStr = inputNumber.toString();
-                let length = numStr.length;
-                for (let i = 0; i < length; i++) {
-                    let n = parseInt(numStr.charAt(i));
-                    let pos = length - i - 1;
-                    if (n > 0) result += hanA[n] + danA[pos % 4];
-                    if (pos % 4 === 0 && pos > 0) {
-                        let chunk = numStr.substring(Math.max(0, i - 3), i + 1);
-                        if (parseInt(chunk) > 0) result += danG[pos / 4];
-                    }
-                }
-                return result + " 원정";
-            }
-            
             let totalAmount = 0;
             let totalVat = 0;
             let totalSum = 0;
             let itemRowsHtml = "";
-            
+
             items.forEach((item, idx) => {
-                const itemQty = data.type === 'inbound' ? (item.qty_initial || item.qty) : item.qty;
-                const price = data.type === 'inbound' ? item.unit_price : item.selling_price;
-                const amount = price * itemQty;
-                const vat = Math.floor(amount * 0.1);
+                const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty) : (Number(item.qty_initial) || 0);
+                const price = (item.selling_price != null && !isNaN(item.selling_price)) 
+                    ? Number(item.selling_price) 
+                    : ((item.price != null && !isNaN(item.price)) ? Number(item.price) : (Number(item.unit_price) || 0));
+
+                const amount = Math.round(itemQty * price);
+                const isVatFree = item.tax_type === '면세' || item.vat_free === 1 || item.is_tax_free === 1;
+                const vat = isVatFree ? 0 : Math.floor(amount * 0.1);
                 const total = amount + vat;
-                
+
                 totalAmount += amount;
                 totalVat += vat;
                 totalSum += total;
-                
+
                 itemRowsHtml += `
-                        <tr>
-                            <td class="text-center">${idx + 1}</td>
-                            <td>${item.item}</td>
-                            <td class="text-center">${item.spec}</td>
-                            <td class="text-center">${item.unit}</td>
-                            <td class="text-right">${itemQty.toLocaleString()}</td>
-                            <td class="text-right">${price.toLocaleString()}</td>
-                            <td class="text-right">${amount.toLocaleString()}</td>
-                            <td class="text-right">${vat.toLocaleString()}</td>
-                            <td class="text-right">${total.toLocaleString()}</td>
-                        </tr>`;
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="text-start">${item.item || '-'}</td>
+                        <td class="spec-cell">${item.spec || '-'}</td>
+                        <td>${item.unit || 'EA'}</td>
+                        <td class="text-end">${itemQty.toLocaleString()}</td>
+                        <td class="text-end">${price.toLocaleString()}</td>
+                        <td class="text-end">${amount.toLocaleString()}</td>
+                        <td class="text-end">${vat.toLocaleString()}</td>
+                        <td class="text-end fw-bold">${total.toLocaleString()}</td>
+                    </tr>`;
             });
-            
-            if (data.shipping_fee && data.shipping_fee > 0) {
+
+            // 배송비가 등록되어 있는 경우 행 추가
+            if (data.shipping_fee && Number(data.shipping_fee) > 0) {
+                const shipFeeNum = Number(data.shipping_fee);
                 const isVatIncluded = data.shipping_fee_vat_included === 1;
                 let shipAmount, shipVat, shipTotal;
-                
                 if (isVatIncluded) {
-                    shipTotal = data.shipping_fee;
+                    shipTotal = shipFeeNum;
                     shipAmount = Math.round(shipTotal / 1.1);
                     shipVat = shipTotal - shipAmount;
                 } else {
-                    shipAmount = data.shipping_fee;
+                    shipAmount = shipFeeNum;
                     shipVat = Math.floor(shipAmount * 0.1);
                     shipTotal = shipAmount + shipVat;
                 }
-                
+
                 totalAmount += shipAmount;
                 totalVat += shipVat;
                 totalSum += shipTotal;
-                
+
                 itemRowsHtml += `
-                        <tr>
-                            <td class="text-center">${items.length + 1}</td>
-                            <td>배송비</td>
-                            <td class="text-center"></td>
-                            <td class="text-center">건</td>
-                            <td class="text-right">1</td>
-                            <td class="text-right">${shipAmount.toLocaleString()}</td>
-                            <td class="text-right">${shipAmount.toLocaleString()}</td>
-                            <td class="text-right">${shipVat.toLocaleString()}</td>
-                            <td class="text-right">${shipTotal.toLocaleString()}</td>
-                        </tr>`;
-                
-                // Add an empty item to items length so emptyRowsCount calculation is correct
-                items.push({});
+                    <tr>
+                        <td>${items.length + 1}</td>
+                        <td class="text-start">배송비</td>
+                        <td class="spec-cell">-</td>
+                        <td>건</td>
+                        <td class="text-end">1</td>
+                        <td class="text-end">${shipAmount.toLocaleString()}</td>
+                        <td class="text-end">${shipAmount.toLocaleString()}</td>
+                        <td class="text-end">${shipVat.toLocaleString()}</td>
+                        <td class="text-end fw-bold">${shipTotal.toLocaleString()}</td>
+                    </tr>`;
             }
-            
-            const koTotalAmount = numberToKorean(totalSum);
-            const emptyRowsCount = Math.max(0, 12 - items.length);
-            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-            
+
+            // 빈 행 채우기 (정산장부와 동일한 A4 레이아웃 볼륨 유지)
+            const currentCount = items.length + (data.shipping_fee && Number(data.shipping_fee) > 0 ? 1 : 0);
+            const emptyRowsCount = Math.max(0, 10 - currentCount);
+            let emptyRowsHtml = "";
+            for (let i = 0; i < emptyRowsCount; i++) {
+                emptyRowsHtml += `
+                    <tr>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>`;
+            }
+
             htmlContent += `
-                <div class="hybrid-header">
+                <!-- 헤더 영역 -->
+                <div class="header-container">
                     <div class="header-left">
-                        <h1 class="title">거 래 명 세 서</h1>
-                        <div class="date-text">${data.date}</div>
-                        <div class="recipient-text"><strong>${data.destination}</strong> 귀하</div>
+                        <div class="title-box">
+                            <h1 id="printTitle">거 래 명 세 서</h1>
+                        </div>
+                        <div class="recipient-box">
+                            <span class="recipient-name">${recipientName}</span> 貴中
+                        </div>
+                        <div class="date-info">
+                            거래일자 : ${data.date || ''}
+                        </div>
                     </div>
                     <div class="header-right">
                         ${supplierHtml}
                     </div>
                 </div>
-                
-                <div class="amount-bar">
-                    <div class="amount-label">금 액</div>
-                    <div class="amount-ko">${koTotalAmount}</div>
-                    <div class="amount-num">₩ ${totalSum.toLocaleString()}</div>
+
+                <!-- 금액란 (정산장부 듀얼 금액 표기) -->
+                <div class="amount-box">
+                    <span>합 계 금 액 : 금 ${numberToKorean(totalSum)} 원 정</span>
+                    <span>(₩ ${totalSum.toLocaleString()})</span>
                 </div>
-                
-                <table class="hybrid-table">
+
+                <!-- 품목 상세 테이블 (정산장부 9개 컬럼 양식) -->
+                <table class="sheet-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">순번</th>
-                            <th style="width: 25%">품명</th>
-                            <th style="width: 15%">규격</th>
-                            <th style="width: 8%">단위</th>
-                            <th style="width: 8%">수량</th>
-                            <th style="width: 10%">단가</th>
-                            <th style="width: 12%">금액</th>
-                            <th style="width: 10%">부가세</th>
-                            <th style="width: 12%">합계금액</th>
+                            <th style="width: 5%;">순번</th>
+                            <th style="width: 25%;">품목명</th>
+                            <th style="width: 15%;">규격</th>
+                            <th style="width: 5%;">단위</th>
+                            <th style="width: 6%;">수량</th>
+                            <th style="width: 10%;">단가</th>
+                            <th style="width: 11%;">공급가액</th>
+                            <th style="width: 10%;">세액</th>
+                            <th style="width: 13%;">합계</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemRowsHtml}
-                        <tr>
-                            <td class="text-center"></td>
-                            <td class="text-center">- 이하여백 -</td>
-                            <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        ${emptyRowsHtml}
+                        <tr class="total-row">
+                            <td colspan="6" style="text-align: center;">[ 총   합   계 ]</td>
+                            <td class="text-end">${totalAmount.toLocaleString()}</td>
+                            <td class="text-end">${totalVat.toLocaleString()}</td>
+                            <td class="text-end" style="font-weight: 800;">${totalSum.toLocaleString()}</td>
                         </tr>
-                        ${emptyRows}
                     </tbody>
-                    <tfoot>
-                        <tr class="footer-row">
-                            <td colspan="6" class="text-center"><strong>계</strong></td>
-                            <td class="text-right"><strong>${totalAmount.toLocaleString()}</strong></td>
-                            <td class="text-right"><strong>${totalVat.toLocaleString()}</strong></td>
-                            <td class="text-right"><strong>${totalSum.toLocaleString()}</strong></td>
-                        </tr>
-                    </tfoot>
                 </table>
-                
-                <div style="font-size:13px; color:#495057; text-align:right;">
-                    ${data.note ? '비고: ' + data.note : ''}
+
+                <!-- 하단 비고 및 출력일시 (금전 거래 내역이므로 인수자 서명 제외) -->
+                <div class="meta-info-row">
+                    <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
+                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
                 </div>
             `;
+
+        // =========================================================================
+        // 2. 입고내역서 (물류 실물 검수 특화 전표)
+        // =========================================================================
         } else if (printType === 'inbound_receipt') {
+            let totalQty = 0;
             let itemRowsHtml = "";
+
             items.forEach((item, idx) => {
-                const itemQty = item.qty_initial || item.qty;
+                const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty) : (Number(item.qty_initial) || 0);
+                totalQty += itemQty;
+                const locName = item.location_name || data.location_name || '-';
+                const tradeType = item.trade_type || data.trade_type || '내수';
+
                 itemRowsHtml += `
-                        <tr>
-                            <td class="text-center">${idx + 1}</td>
-                            <td>${item.item}</td>
-                            <td class="text-center">${item.spec}</td>
-                            <td class="text-center">${item.unit}</td>
-                            <td class="text-right">${itemQty.toLocaleString()}</td>
-                            <td class="text-center">${item.location_name || '-'}</td>
-                            <td class="text-center">${item.note || ''}</td>
-                        </tr>`;
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="text-start">${item.item || '-'}</td>
+                        <td class="spec-cell">${item.spec || '-'}</td>
+                        <td>${item.unit || 'EA'}</td>
+                        <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
+                        <td>${locName}</td>
+                        <td>${tradeType}</td>
+                        <td>정상입고</td>
+                    </tr>`;
             });
-            const emptyRowsCount = Math.max(0, 13 - items.length);
-            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-            
+
+            const emptyRowsCount = Math.max(0, 11 - items.length);
+            let emptyRowsHtml = "";
+            for (let i = 0; i < emptyRowsCount; i++) {
+                emptyRowsHtml += `
+                    <tr>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>`;
+            }
+
             htmlContent += `
-                <div class="hybrid-header">
+                <!-- 헤더 영역 -->
+                <div class="header-container">
                     <div class="header-left">
-                        <h1 class="title">입 고 내 역 서</h1>
-                        <div class="date-text">${data.date}</div>
-                        <div class="recipient-text"><strong>${data.supplier}</strong> 귀하</div>
+                        <div class="title-box">
+                            <h1 id="printTitle">입 고 내 역 서</h1>
+                        </div>
+                        <div class="recipient-box">
+                            <span class="recipient-name">${data.supplier || recipientName}</span> 貴中
+                        </div>
+                        <div class="date-info">
+                            입고일자 : ${data.date || ''}
+                        </div>
                     </div>
                     <div class="header-right">
                         ${supplierHtml}
                     </div>
                 </div>
-                
-                <table class="hybrid-table">
+
+                <!-- 물류 요약 박스 -->
+                <div class="summary-box">
+                    <span>총 입고 품목 : ${items.length} 종</span>
+                    <span>총 입고 수량 : ${totalQty.toLocaleString()} EA</span>
+                </div>
+
+                <!-- 물류 실물 검수 테이블 -->
+                <table class="sheet-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">순번</th>
-                            <th style="width: 30%">품명</th>
-                            <th style="width: 15%">규격</th>
-                            <th style="width: 10%">단위</th>
-                            <th style="width: 10%">수량</th>
-                            <th style="width: 15%">입고창고</th>
-                            <th style="width: 15%">비고</th>
+                            <th style="width: 5%;">순번</th>
+                            <th style="width: 28%;">품목명</th>
+                            <th style="width: 16%;">규격</th>
+                            <th style="width: 6%;">단위</th>
+                            <th style="width: 9%;">입고수량</th>
+                            <th style="width: 16%;">입고창고</th>
+                            <th style="width: 8%;">구분</th>
+                            <th style="width: 12%;">검수확인</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemRowsHtml}
-                        <tr>
-                            <td class="text-center"></td>
-                            <td class="text-center">- 이하여백 -</td>
-                            <td></td><td></td><td></td><td></td><td></td>
+                        ${emptyRowsHtml}
+                        <tr class="total-row">
+                            <td colspan="4" style="text-align: center;">[ 총  입  고  수  량 ]</td>
+                            <td class="text-end" style="font-weight: 800;">${totalQty.toLocaleString()}</td>
+                            <td colspan="3"></td>
                         </tr>
-                        ${emptyRows}
                     </tbody>
                 </table>
+
+                <div class="meta-info-row">
+                    <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
+                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
+                </div>
+
+                <div class="signature-box">
+                    입고 검수자 : _____________________ (서명/인)
+                </div>
             `;
-        } else if (printType === 'outbound_receipt') {
+
+        // =========================================================================
+        // 3. 출고내역서 (물류 실물 인수증 특화 전표)
+        // =========================================================================
+        } else {
+            let totalQty = 0;
             let itemRowsHtml = "";
+
             items.forEach((item, idx) => {
+                const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty) : (Number(item.qty_initial) || 0);
+                totalQty += itemQty;
+
                 let lotsInfo = (item.consumed_lots && item.consumed_lots.length > 0) 
                     ? item.consumed_lots.map(l => l.location_name || l.lot_number || '').filter(Boolean).join(', ') 
-                    : (item.location_name || '-');
-                
-                const itemQty = (item.qty != null && !isNaN(item.qty)) ? Number(item.qty).toLocaleString() : '0';
-                const shipFeeVal = (item.shipping_fee != null && !isNaN(item.shipping_fee)) 
-                    ? Number(item.shipping_fee) 
-                    : (idx === 0 && data.shipping_fee != null && !isNaN(data.shipping_fee) ? Number(data.shipping_fee) : null);
-                const shipFeeStr = shipFeeVal != null ? shipFeeVal.toLocaleString() : '-';
+                    : (item.location_name || data.location_name || '-');
 
                 itemRowsHtml += `
-                        <tr>
-                            <td class="text-center">${idx + 1}</td>
-                            <td>${item.item || '-'}</td>
-                            <td class="text-center">${item.spec || '-'}</td>
-                            <td class="text-center">${item.unit || 'EA'}</td>
-                            <td class="text-right">${itemQty}</td>
-                            <td class="text-right">${shipFeeStr}</td>
-                            <td class="text-center">${lotsInfo}</td>
-                        </tr>`;
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td class="text-start">${item.item || '-'}</td>
+                        <td class="spec-cell">${item.spec || '-'}</td>
+                        <td>${item.unit || 'EA'}</td>
+                        <td class="text-end fw-bold">${itemQty.toLocaleString()}</td>
+                        <td class="spec-cell">${lotsInfo}</td>
+                        <td>${idx === 0 && data.shipping_fee ? Number(data.shipping_fee).toLocaleString() + '원' : '-'}</td>
+                        <td>출고완료</td>
+                    </tr>`;
             });
-            const emptyRowsCount = Math.max(0, 13 - items.length);
-            const emptyRows = Array(emptyRowsCount).fill('<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
-            const recipientName = data.destination || data.party || data.actual_destination || data.supplier || '-';
+
+            const emptyRowsCount = Math.max(0, 11 - items.length);
+            let emptyRowsHtml = "";
+            for (let i = 0; i < emptyRowsCount; i++) {
+                emptyRowsHtml += `
+                    <tr>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    </tr>`;
+            }
+
+            const shipSummary = (data.shipping_fee && Number(data.shipping_fee) > 0)
+                ? ` | 배송비 : ${Number(data.shipping_fee).toLocaleString()}원 (${data.shipping_fee_vat_included === 1 ? 'VAT포함' : '별도'})`
+                : '';
 
             htmlContent += `
-                <div class="hybrid-header">
+                <!-- 헤더 영역 -->
+                <div class="header-container">
                     <div class="header-left">
-                        <h1 class="title">출 고 내 역 서</h1>
-                        <div class="date-text">${data.date || ''}</div>
-                        <div class="recipient-text"><strong>${recipientName}</strong> 귀하</div>
+                        <div class="title-box">
+                            <h1 id="printTitle">출 고 내 역 서</h1>
+                        </div>
+                        <div class="recipient-box">
+                            <span class="recipient-name">${recipientName}</span> 貴中
+                        </div>
+                        <div class="date-info">
+                            출고일자 : ${data.date || ''}
+                            ${data.actual_destination ? `<br><span style="font-size:11px;color:#555;">실출고지 : ${data.actual_destination}</span>` : ''}
+                        </div>
                     </div>
                     <div class="header-right">
                         ${supplierHtml}
                     </div>
                 </div>
-                
-                <table class="hybrid-table">
+
+                <!-- 물류 요약 박스 -->
+                <div class="summary-box">
+                    <span>총 출고 품목 : ${items.length} 종</span>
+                    <span>총 출고 수량 : ${totalQty.toLocaleString()} EA${shipSummary}</span>
+                </div>
+
+                <!-- 물류 실물 출고 테이블 -->
+                <table class="sheet-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">순번</th>
-                            <th style="width: 30%">품명</th>
-                            <th style="width: 15%">규격</th>
-                            <th style="width: 10%">단위</th>
-                            <th style="width: 10%">수량</th>
-                            <th style="width: 15%">배송비</th>
-                            <th style="width: 15%">출고창고</th>
+                            <th style="width: 5%;">순번</th>
+                            <th style="width: 27%;">품목명</th>
+                            <th style="width: 15%;">규격</th>
+                            <th style="width: 5%;">단위</th>
+                            <th style="width: 9%;">출고수량</th>
+                            <th style="width: 17%;">출고창고/로트</th>
+                            <th style="width: 11%;">배송비</th>
+                            <th style="width: 11%;">상태</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemRowsHtml}
-                        <tr>
-                            <td class="text-center"></td>
-                            <td class="text-center">- 이하여백 -</td>
-                            <td></td><td></td><td></td><td></td><td></td>
+                        ${emptyRowsHtml}
+                        <tr class="total-row">
+                            <td colspan="4" style="text-align: center;">[ 총  출  고  수  량 ]</td>
+                            <td class="text-end" style="font-weight: 800;">${totalQty.toLocaleString()}</td>
+                            <td colspan="3"></td>
                         </tr>
-                        ${emptyRows}
                     </tbody>
                 </table>
-                <div class="signature-area">
-                    인수자 서명 : _____________________ (인)
+
+                <div class="meta-info-row">
+                    <div>${data.note ? '<strong>비고:</strong> ' + data.note : ''}</div>
+                    <div style="color: #666; font-size: 10px;">출력일시: ${new Date().toLocaleString('ko-KR')}</div>
+                </div>
+
+                <!-- 물류 실물 인수자 서명란 -->
+                <div class="signature-box">
+                    위 물품을 정히 영수(인수)함. &nbsp;&nbsp;&nbsp;&nbsp; 인수자 : _____________________ (서명/인)
                 </div>
             `;
         }
-        
+
         htmlContent += `
             </div>
             <script>
-                window.addEventListener('afterprint', function() { window.close(); });
-                window.onload = function() {
+                window.addEventListener('afterprint', function() {
+                    window.close();
+                });
+                function doPrint() {
                     setTimeout(function() {
                         window.focus();
                         window.print();
-                    }, 200);
-                };
+                    }, 250);
+                }
+                if (document.readyState === 'complete' || document.readyState === 'interactive') {
+                    doPrint();
+                } else {
+                    window.addEventListener('DOMContentLoaded', doPrint);
+                    window.addEventListener('load', doPrint);
+                }
             </script>
             </body>
             </html>
         `;
-        
+
+        printWindow.document.open();
         printWindow.document.write(htmlContent);
         printWindow.document.close();
     },
