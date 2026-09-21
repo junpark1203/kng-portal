@@ -25,7 +25,16 @@ let state = {
         otherCosts: [],
         remarks: ''
     },
-    activeForwarderIdx: 0
+    activeForwarderIdx: 0,
+    filters: {
+        preset: 'all',
+        startDate: '',
+        endDate: '',
+        target: '',
+        keyword: '',
+        subKeyword: '',
+        status: ''
+    }
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -144,7 +153,8 @@ function checkTransferData() {
                 document.getElementById('docPod').value = transfer.data.pod || '';
                 
                 const terms = transfer.data.incoterms || 'FOB';
-                document.getElementById('docIncoterms').value = terms;
+                const incotermsEl = document.getElementById('docIncoterms');
+                if (incotermsEl) incotermsEl.value = terms;
                 state.doc.incoterms = [terms];
                 
                 // 품목
@@ -206,6 +216,7 @@ function initEvents() {
     // 목록 액션
     document.getElementById('selectAll').addEventListener('change', e => {
         document.querySelectorAll('.row-chk').forEach(cb => cb.checked = e.target.checked);
+        updateSelectionUI();
     });
     document.getElementById('btnDeleteSelected').addEventListener('click', deleteSelected);
     
@@ -659,53 +670,325 @@ function closeEdit() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 렌더링 (List)
+// ECOUNT ERP 스타일 필터 & 검색 헬퍼
+// ─────────────────────────────────────────────────────────────
+function getFilteredList() {
+    return state.list.filter(item => {
+        // 1. 상태 필터
+        if (state.filters.status && item.status !== state.filters.status) return false;
+
+        // 2. 날짜 필터 (quoteDate 또는 createdAt 기준)
+        const dateVal = item.quoteDate || (item.createdAt ? item.createdAt.split('T')[0] : '');
+        if (state.filters.startDate && dateVal < state.filters.startDate) return false;
+        if (state.filters.endDate && dateVal > state.filters.endDate) return false;
+
+        // 3. 메인 검색 (공백 구분 다중 AND 교집합 검색)
+        if (state.filters.keyword) {
+            const tokens = state.filters.keyword.toLowerCase().split(/\s+/).filter(Boolean);
+            let targetText = '';
+            if (state.filters.target === 'title') {
+                targetText = (item.title || '').toLowerCase();
+            } else if (state.filters.target === 'pol') {
+                targetText = (item.pol || '').toLowerCase();
+            } else if (state.filters.target === 'pod') {
+                targetText = (item.pod || '').toLowerCase();
+            } else if (state.filters.target === 'remarks') {
+                targetText = (item.remarks || '').toLowerCase();
+            } else {
+                targetText = [
+                    item.title, item.pol, item.pod, item.remarks,
+                    ...(item.forwarders || []).map(f => f.name),
+                    ...(item.items || []).map(i => i.name)
+                ].filter(Boolean).join(' ').toLowerCase();
+            }
+            const match = tokens.every(token => targetText.includes(token));
+            if (!match) return false;
+        }
+
+        // 4. 결과 내 재검색 (Sub-search)
+        if (state.filters.subKeyword) {
+            const subTokens = state.filters.subKeyword.split(/\s+/).filter(Boolean);
+            const allText = [
+                item.title, item.quoteDate, item.status, item.pol, item.pod, item.remarks,
+                ...(item.forwarders || []).map(f => f.name),
+                ...(item.items || []).map(i => i.name)
+            ].filter(Boolean).join(' ').toLowerCase();
+            const matchSub = subTokens.every(t => allText.includes(t));
+            if (!matchSub) return false;
+        }
+
+        return true;
+    });
+}
+
+function updateSelectionUI() {
+    const checked = document.querySelectorAll('.row-chk:checked');
+    const btnDel = document.getElementById('btnDeleteSelected');
+    const countSpan = document.getElementById('selectedQuoteCount');
+    const selectAll = document.getElementById('selectAll');
+    
+    if (countSpan) countSpan.textContent = checked.length;
+    if (btnDel) {
+        btnDel.classList.toggle('d-none', checked.length === 0);
+    }
+    const allChks = document.querySelectorAll('.row-chk');
+    if (selectAll && allChks.length > 0) {
+        selectAll.checked = (checked.length === allChks.length);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 렌더링 (List - ECOUNT ERP High-Density Grid)
 // ─────────────────────────────────────────────────────────────
 function renderList() {
     const tbody = document.getElementById('quoteListBody');
-    if (state.list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem;">저장된 견적이 없습니다.</td></tr>';
+    if (!tbody) return;
+
+    const filtered = getFilteredList();
+
+    // 1. 상단 통계 뱃지 갱신
+    const totalBadge = document.getElementById('quoteTotalCountBadge');
+    if (totalBadge) {
+        const isFiltering = state.filters.keyword || state.filters.subKeyword || state.filters.startDate || state.filters.endDate || state.filters.status;
+        totalBadge.textContent = isFiltering
+            ? `조회 ${filtered.length}건 / 총 ${state.list.length}건`
+            : `관리 ${state.list.length}건`;
+    }
+
+    const fclLclBadge = document.getElementById('fclLclBadge');
+    if (fclLclBadge) {
+        let fclCount = 0, lclCount = 0;
+        filtered.forEach(it => {
+            if (it.shipmentType === 'LCL') lclCount++;
+            else fclCount++;
+        });
+        fclLclBadge.textContent = `FCL ${fclCount}건 / LCL ${lclCount}건`;
+    }
+
+    // 결과 내 재검색 뱃지 갱신
+    const subBadge = document.getElementById('subSearchCountBadge');
+    if (subBadge) {
+        if (state.filters.subKeyword) {
+            subBadge.textContent = `${filtered.length}건 일치`;
+            subBadge.classList.remove('d-none');
+        } else {
+            subBadge.classList.add('d-none');
+        }
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted" style="height: 60px;">조건에 일치하는 견적이 없습니다.</td></tr>';
+        updateSelectionUI();
         return;
     }
-    
+
     let html = '';
-    state.list.forEach(item => {
+    filtered.forEach(item => {
         const statusMap = { 'draft': '초안', 'confirmed': '확정', 'expired': '만료' };
-        
-        let containerInfo = `${item.containerType} × ${item.containerQty}`;
+
+        let containerInfo = `${item.containerType || '20ft'} × ${item.containerQty || 1}`;
         if (item.shipmentType === 'LCL') {
             let totalRt = 0;
             (item.items || []).forEach(i => totalRt += (i.rt || 0));
-            containerInfo = totalRt > 0 ? `${totalRt.toFixed(3)} R/T` : 'LCL';
+            containerInfo = totalRt > 0 ? `${totalRt.toFixed(2)} R/T` : 'LCL';
         }
 
         let ratesHtml = '-';
         if (item.exchangeRates) {
             const arr = [];
             ['USD', 'CNY', 'EUR', 'JPY'].forEach(c => {
-                if(item.exchangeRates[c]) arr.push(`<b>${c}</b> ${formatNum(item.exchangeRates[c], 2)}`);
+                if (item.exchangeRates[c]) arr.push(`<b>${c}</b> ${formatNum(item.exchangeRates[c], 1)}`);
             });
-            if(arr.length > 0) ratesHtml = `<div style="font-size:12px; color:#475569; white-space:nowrap;">${arr.join(' &nbsp;|&nbsp; ')}</div>`;
+            if (arr.length > 0) ratesHtml = `<div style="font-size:11px; color:#475569; white-space:nowrap;">${arr.join(' | ')}</div>`;
         }
 
+        const dateStr = item.quoteDate || '-';
+        const createdDate = item.createdAt ? item.createdAt.split('T')[0] : '-';
+
         html += `
-            <tr style="cursor: pointer" onclick="window.editQuote('${item.id}')">
-                <td class="col-check" onclick="event.stopPropagation()"><input type="checkbox" class="row-chk" value="${item.id}"></td>
-                <td><span class="status-badge ${item.status}">${statusMap[item.status] || item.status}</span></td>
-                <td style="font-weight: 500;">${item.title}</td>
-                <td>${item.quoteDate}</td>
-                <td>${ratesHtml}</td>
-                <td>${(item.forwarders || []).length} 곳</td>
-                <td>${containerInfo}</td>
-                <td>${item.createdAt.split('T')[0]}</td>
-                <td class="col-action">
-                    <button class="btn-icon" onclick="event.stopPropagation(); window.editQuote('${item.id}')"><i class='bx bx-edit'></i></button>
+            <tr style="cursor: pointer;" onclick="window.editQuote('${item.id}')">
+                <td class="col-check th-no text-center" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="row-chk" value="${item.id}" onchange="window.updateSelectionUI()">
+                </td>
+                <td class="text-center">
+                    <span class="status-badge ${item.status}">${statusMap[item.status] || item.status}</span>
+                </td>
+                <td class="text-start ps-2" style="font-weight: 600; color: #1e293b;">
+                    ${item.title || '(무제 견적)'}
+                </td>
+                <td class="text-center tabular-nums">${dateStr}</td>
+                <td class="text-start ps-2">${ratesHtml}</td>
+                <td class="text-center fw-semibold text-primary">${(item.forwarders || []).length}곳</td>
+                <td class="text-center">${containerInfo}</td>
+                <td class="text-center tabular-nums text-muted">${createdDate}</td>
+                <td class="col-action text-center" onclick="event.stopPropagation()">
+                    <button type="button" class="btn-icon" onclick="window.editQuote('${item.id}')" title="견적 수정"><i class='bx bx-edit'></i></button>
                 </td>
             </tr>
         `;
     });
     tbody.innerHTML = html;
+    updateSelectionUI();
+
+    // 열 너비 조절기 초기화
+    if (window.ErpGridResizer && typeof window.ErpGridResizer.init === 'function') {
+        setTimeout(() => window.ErpGridResizer.init('quoteListTable'), 50);
+    }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 글로벌 이벤트 핸들러 바인딩 (window 객체)
+// ─────────────────────────────────────────────────────────────
+window.updateSelectionUI = updateSelectionUI;
+
+window.setDatePreset = function(presetKey) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const pad = n => String(n).padStart(2, '0');
+    const toDateStr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    let start = '', end = '';
+    if (presetKey === 'thisMonth') {
+        start = toDateStr(new Date(y, m, 1));
+        end = toDateStr(new Date(y, m + 1, 0));
+    } else if (presetKey === 'prevMonth') {
+        start = toDateStr(new Date(y, m - 1, 1));
+        end = toDateStr(new Date(y, m, 0));
+    } else if (presetKey === 'thisYear') {
+        start = `${y}-01-01`;
+        end = `${y}-12-31`;
+    } else if (presetKey === 'prevYear') {
+        start = `${y - 1}-01-01`;
+        end = `${y - 1}-12-31`;
+    } else if (presetKey === 'all') {
+        start = '';
+        end = '';
+    }
+
+    state.filters.preset = presetKey;
+    state.filters.startDate = start;
+    state.filters.endDate = end;
+
+    const startEl = document.getElementById('searchStartDate');
+    const endEl = document.getElementById('searchEndDate');
+    if (startEl) startEl.value = start;
+    if (endEl) endEl.value = end;
+
+    document.querySelectorAll('#datePresetGroup .erp-preset-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.id === `btnPreset_${presetKey}`);
+    });
+
+    renderList();
+};
+
+window.onDateInputChange = function() {
+    const startEl = document.getElementById('searchStartDate');
+    const endEl = document.getElementById('searchEndDate');
+    state.filters.startDate = startEl ? startEl.value : '';
+    state.filters.endDate = endEl ? endEl.value : '';
+
+    document.querySelectorAll('#datePresetGroup .erp-preset-btn').forEach(btn => btn.classList.remove('active'));
+    renderList();
+};
+
+window.onSearchTargetChange = function() {
+    const targetEl = document.getElementById('searchTarget');
+    state.filters.target = targetEl ? targetEl.value : '';
+    renderList();
+};
+
+window.onSearchInputKeyup = function(event) {
+    const searchInput = document.getElementById('searchInput');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn && searchInput) clearBtn.classList.toggle('d-none', !searchInput.value);
+
+    if (event.key === 'Enter') {
+        window.applyFiltersAndRender();
+    }
+};
+
+window.clearSearchInput = function() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = '';
+        document.getElementById('clearSearchBtn')?.classList.add('d-none');
+    }
+    window.applyFiltersAndRender();
+};
+
+window.applyFiltersAndRender = function() {
+    const searchInput = document.getElementById('searchInput');
+    const targetEl = document.getElementById('searchTarget');
+    state.filters.keyword = searchInput ? searchInput.value.trim() : '';
+    state.filters.target = targetEl ? targetEl.value : '';
+    renderList();
+};
+
+window.resetSearch = function() {
+    const searchInput = document.getElementById('searchInput');
+    const targetEl = document.getElementById('searchTarget');
+    const subSearchInput = document.getElementById('subSearchInput');
+    if (searchInput) searchInput.value = '';
+    if (targetEl) targetEl.value = '';
+    if (subSearchInput) subSearchInput.value = '';
+    document.getElementById('clearSearchBtn')?.classList.add('d-none');
+    document.getElementById('clearSubSearchBtn')?.classList.add('d-none');
+
+    state.filters.keyword = '';
+    state.filters.subKeyword = '';
+    state.filters.target = '';
+    window.setDatePreset('all');
+};
+
+window.onSubSearchInput = function(val) {
+    state.filters.subKeyword = (val || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('clearSubSearchBtn');
+    if (clearBtn) clearBtn.classList.toggle('d-none', !val);
+    renderList();
+};
+
+window.clearSubSearch = function() {
+    const subSearchInput = document.getElementById('subSearchInput');
+    if (subSearchInput) subSearchInput.value = '';
+    document.getElementById('clearSubSearchBtn')?.classList.add('d-none');
+    state.filters.subKeyword = '';
+    renderList();
+};
+
+window.setStatusFilter = function(status) {
+    state.filters.status = status;
+    document.querySelectorAll('#statusTabGroup .erp-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.status || '') === status);
+    });
+    renderList();
+};
+
+window.exportQuoteListExcel = function() {
+    const filtered = getFilteredList();
+    if (!filtered || filtered.length === 0) {
+        showToast('내보낼 견적 데이터가 없습니다.', true);
+        return;
+    }
+    const data = filtered.map((item, idx) => ({
+        'No': idx + 1,
+        '상태': item.status === 'confirmed' ? '확정' : (item.status === 'expired' ? '만료' : '초안'),
+        '견적명': item.title || '',
+        '견적일자': item.quoteDate || '',
+        '선적형태': item.shipmentType || '',
+        '컨테이너규격': item.containerType || '',
+        '컨테이너수량': item.containerQty || 1,
+        '출발항(POL)': item.pol || '',
+        '도착항(POD)': item.pod || '',
+        '포워더수': (item.forwarders || []).length,
+        '등록일시': (item.createdAt || '').replace('T', ' ').substring(0, 19),
+        '비고': item.remarks || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '포워더견적목록');
+    XLSX.writeFile(wb, `포워더견적목록_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
 
 // ─────────────────────────────────────────────────────────────
 // 렌더링 (Edit - Incoterms & Items)

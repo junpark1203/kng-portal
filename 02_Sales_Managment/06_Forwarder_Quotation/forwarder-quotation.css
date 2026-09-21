@@ -1,370 +1,809 @@
-/* forwarder-quotation.css */
+/* ==========================================================================
+   포워더 견적목록 (Forwarder Quotation) ECOUNT ERP 고밀도 스타일시트
+   물류관리 디자인 시스템(erp-grid, logistics-theme) 100% 동기화 테마
+   ========================================================================== */
 
-.fq-container {
-    padding: 20px;
-    height: 100%;
-    overflow-y: auto;
+:root {
+    --erp-primary: #2563eb;
+    --erp-primary-hover: #1d4ed8;
+    --erp-primary-light: #eff6ff;
+    --erp-success: #10b981;
+    --erp-warning: #f59e0b;
+    --erp-danger: #ef4444;
+    --erp-dark: #1e293b;
+    --erp-header-bg: #1e293b;
+    --erp-th-bg: #f8fafc;
+    --erp-border: #cbd5e1;
+    --erp-border-light: #e2e8f0;
+    --erp-text: #1e293b;
+    --erp-text-muted: #64748b;
+    --erp-row-hover: #f1f5f9;
+    --erp-row-active: #eff6ff;
+    --erp-row-height: 26px;
+    --erp-font-size: 11.5px;
 }
 
-/* 뷰 전환 */
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+    background-color: #f8fafc;
+    color: var(--erp-text);
+    margin: 0;
+    padding: 6px 10px;
+    font-size: var(--erp-font-size);
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+
+.fq-container {
+    padding: 0;
+    height: 100%;
+}
+
+/* ── 뷰 전환 ── */
 .view-panel {
     display: none;
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fadeIn 0.2s ease-in-out;
 }
 .view-panel.active {
     display: block;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* 견적 에디터 레이아웃 */
+/* ── 1. ECOUNT ERP 1행 탑 툴바 (.erp-top-toolbar) ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-title-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 10px;
+    border-right: 1px solid var(--erp-border-light);
+    letter-spacing: -0.3px;
+}
+
+/* 실시간 통계 뱃지 */
+.erp-badge-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-stat-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1.3;
+}
+
+.erp-stat-badge.badge-dark {
+    background: #1e293b;
+    color: #ffffff;
+}
+
+.erp-stat-badge.badge-blue {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.erp-stat-badge.badge-green {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+/* 탭 버튼 그룹 (상태 퀵 필터) */
+.erp-tab-group {
+    display: inline-flex;
+    gap: 2px;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 2px;
+}
+
+.erp-tab-btn {
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 18px;
+    user-select: none;
+}
+
+.erp-tab-btn:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.erp-tab-btn.active {
+    background: #ffffff !important;
+    color: var(--erp-primary) !important;
+    border-color: var(--erp-border) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ── 2. ECOUNT ERP 2행 필터 리본 (.erp-filter-ribbon) ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    padding: 4px 8px;
+    min-height: 34px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+/* 날짜 프리셋 버튼군 */
+.erp-preset-group {
+    display: inline-flex;
+}
+
+.erp-preset-btn {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    padding: 0 8px !important;
+    background-color: #ffffff !important;
+    border: 1px solid var(--erp-border) !important;
+    color: #475569 !important;
+    border-radius: 0 !important;
+    line-height: 24px !important;
+    transition: all 0.12s ease !important;
+}
+
+.erp-preset-btn:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+    z-index: 1;
+}
+
+.erp-preset-btn.active,
+.erp-preset-btn.btn-primary {
+    background-color: var(--erp-primary) !important;
+    border-color: var(--erp-primary) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3) !important;
+    z-index: 2;
+}
+
+/* 날짜 인풋 */
+.erp-input-date {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    width: 125px !important;
+}
+
+.erp-select-target {
+    width: 120px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 1px 20px 1px 6px !important;
+    border: 1px solid var(--erp-border) !important;
+    border-radius: 2px !important;
+    background-color: #ffffff !important;
+    color: #1e293b !important;
+    cursor: pointer;
+}
+
+.erp-search-box {
+    width: 230px;
+    position: relative;
+}
+
+.erp-search-box .form-control {
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding-left: 7px;
+    padding-right: 22px;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+}
+
+.erp-search-box .form-control:focus {
+    border-color: var(--erp-primary);
+    box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.2);
+}
+
+.erp-subsearch-group {
+    width: 170px;
+}
+
+.erp-subsearch-group .input-group-text {
+    height: 24px;
+    font-size: 11px;
+    padding: 0 5px;
+    background: #f8fafc;
+    border-color: var(--erp-border);
+}
+
+.erp-subsearch-group .form-control {
+    height: 24px !important;
+    font-size: 11.5px !important;
+    padding: 1px 6px;
+    border-color: var(--erp-border);
+}
+
+/* ── 3. ECOUNT ERP 버튼 시스템 ── */
+.btn-erp {
+    height: 26px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 0 9px;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+}
+
+.btn-erp:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.btn-erp-primary {
+    background: var(--erp-primary);
+    border-color: var(--erp-primary);
+    color: #ffffff;
+}
+
+.btn-erp-primary:hover {
+    background: var(--erp-primary-hover);
+    border-color: var(--erp-primary-hover);
+    color: #ffffff;
+}
+
+.btn-erp-success {
+    background: #10b981;
+    border-color: #059669;
+    color: #ffffff;
+}
+
+.btn-erp-success:hover {
+    background: #059669;
+    border-color: #047857;
+    color: #ffffff;
+}
+
+.btn-erp-warning {
+    background: #f59e0b;
+    border-color: #d97706;
+    color: #ffffff;
+}
+
+.btn-erp-warning:hover {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.btn-del {
+    border-color: #fecaca;
+    color: #ef4444;
+}
+
+.btn-del:hover {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+/* ── 4. 윈도우 타이틀바 & 에디터 헤더 ── */
+.erp-window-header {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    padding: 6px 12px !important;
+    border-bottom: 2px solid #0f172a !important;
+    border-radius: 2px 2px 0 0 !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.erp-window-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .editor-body {
-    background: var(--bg-primary);
-    border-radius: 8px;
-    padding: 24px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    border-radius: 0 0 2px 2px;
+    padding: 10px 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 
 .edit-section {
-    margin-bottom: 40px;
-    padding-bottom: 30px;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
 }
+
 .edit-section:last-child {
     border-bottom: none;
     margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .edit-section h3 {
     margin-top: 0;
-    margin-bottom: 20px;
-    color: var(--text-primary);
-    font-size: 1.1rem;
+    margin-bottom: 8px;
+    color: #0f172a;
+    font-size: 12.5px;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    letter-spacing: -0.2px;
 }
 
 .section-header-flex {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 6px;
 }
+
 .section-header-flex h3 {
     margin-bottom: 0;
 }
 
-/* 입력 그리드 */
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-}
-
-/* 환율 섹션 */
-.exchange-rate-box {
-    margin-top: 24px;
-    padding: 16px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-.ex-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-.ex-header h4 {
-    margin: 0;
-    color: var(--text-primary);
-    font-size: 1rem;
-}
-.ex-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-}
-.input-with-symbol {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-.input-with-symbol span {
-    position: absolute;
-    left: 12px;
-    color: var(--text-secondary);
-}
-.input-with-symbol input {
-    padding-left: 28px;
+/* ── 5. ECOUNT ERP 전표 폼 테이블 (.erp-form-table) ── */
+.erp-form-table {
     width: 100%;
-}
-.help-text {
-    font-size: 0.8rem;
-    color: var(--text-tertiary);
-    margin-top: 10px;
+    table-layout: fixed;
+    border-collapse: collapse;
+    background: #ffffff;
+    border: 1px solid var(--erp-border);
+    margin-bottom: 6px;
 }
 
-/* 인코텀즈 칩 */
+.erp-form-table th {
+    background-color: var(--erp-th-bg);
+    color: #334155;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border: 1px solid var(--erp-border);
+    white-space: nowrap;
+    vertical-align: middle;
+    text-align: center;
+    height: 26px;
+}
+
+.erp-form-table td {
+    padding: 0;
+    border: 1px solid var(--erp-border);
+    vertical-align: middle;
+    background-color: #ffffff;
+    height: 26px;
+    position: relative;
+}
+
+.erp-form-table .form-control,
+.erp-form-table .form-select {
+    width: 100%;
+    height: 26px !important;
+    font-size: 11.5px !important;
+    padding: 2px 6px !important;
+    border-radius: 0 !important;
+    border: none !important;
+    outline: none !important;
+    color: #1e293b;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+
+.erp-form-table .form-control:focus,
+.erp-form-table .form-select:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.erp-form-table input[type=number]::-webkit-inner-spin-button,
+.erp-form-table input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.erp-form-table input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.erp-form-table td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--erp-primary) !important;
+    background-color: var(--erp-primary-light) !important;
+    position: relative !important;
+    z-index: 5 !important;
+}
+
+.erp-form-table .input-group {
+    flex-wrap: nowrap;
+    width: 100%;
+    height: 26px;
+}
+
+.erp-form-table .input-group .form-control {
+    border-radius: 0 !important;
+}
+
+.erp-form-table .input-group-text {
+    height: 26px;
+    padding: 0 6px;
+    font-size: 11px;
+    background-color: #f8fafc;
+    border: none;
+    border-right: 1px solid var(--erp-border);
+    color: #475569;
+}
+
+/* ── 6. 인코텀즈 칩 및 관리 ── */
 .incoterms-manager {
     display: flex;
     align-items: center;
-    gap: 12px;
-}
-.chip-container {
-    display: flex;
     gap: 8px;
 }
-.incoterm-chip {
-    padding: 4px 12px;
-    border-radius: 16px;
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    font-weight: 500;
+
+.chip-container {
     display: flex;
+    gap: 4px;
+}
+
+.incoterm-chip {
+    padding: 1px 8px;
+    border-radius: 2px;
+    background: #f1f5f9;
+    border: 1px solid var(--erp-border);
+    color: #475569;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    cursor: default;
+    gap: 4px;
+    line-height: 20px;
 }
+
 .incoterm-chip.active {
-    background: rgba(79, 70, 229, 0.1);
-    color: var(--brand-color);
-    border: 1px solid var(--brand-color);
+    background: #eff6ff;
+    color: var(--erp-primary);
+    border-color: #bfdbfe;
 }
+
 .incoterm-chip .btn-remove {
     background: none;
     border: none;
-    color: inherit;
+    color: #94a3b8;
     cursor: pointer;
     padding: 0;
-    font-size: 1.1rem;
+    font-size: 12px;
     display: flex;
     align-items: center;
-}
-.incoterm-chip .btn-remove:hover {
-    color: var(--danger-color);
 }
 
-/* 포워더 탭 */
+.incoterm-chip .btn-remove:hover {
+    color: #ef4444;
+}
+
+/* ── 7. 포워더 탭 및 컨텐츠 영역 ── */
 .forwarder-tabs {
     display: flex;
-    gap: 8px;
+    gap: 3px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    padding-bottom: 2px;
 }
+
 .tab-btn {
-    padding: 8px 16px;
-    background: var(--gray-100);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--gray-600);
-    font-weight: 500;
+    padding: 2px 10px;
+    background: #f1f5f9;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
+    color: #334155;
+    font-size: 11.5px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
+    transition: all 0.1s ease;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     white-space: nowrap;
+    height: 26px;
 }
+
 .tab-btn:hover {
-    background: var(--gray-50);
+    background: #e2e8f0;
 }
+
 .tab-btn.active {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
+    background: var(--erp-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--erp-primary) !important;
 }
+
 .tab-btn.add-tab {
-    background: transparent;
+    background: #ffffff;
     border-style: dashed;
-    color: var(--gray-600);
+    border-color: #94a3b8;
+    color: #64748b;
 }
+
 .tab-btn.add-tab:hover {
-    background: var(--gray-50);
+    background: #eff6ff;
+    border-color: var(--erp-primary);
+    color: var(--erp-primary);
 }
 
 .forwarder-content {
-    background: var(--bg-secondary);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-}
-.empty-state {
-    text-align: center;
-    padding: 40px;
-    color: var(--text-tertiary);
+    background: #ffffff;
+    padding: 6px;
+    border: 1px solid var(--erp-border);
+    border-radius: 2px;
 }
 
-/* 체크박스 셀 */
-.chk-cell {
+.empty-state {
+    text-align: center;
+    padding: 24px;
+    color: var(--erp-text-muted);
+    font-size: 12px;
+}
+
+/* ── 8. 상태 뱃지 ── */
+.status-badge {
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 10.5px;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.status-badge.draft {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
+.status-badge.confirmed {
+    background: #ecfdf5;
+    color: #059669;
+    border: 1px solid #a7f3d0;
+}
+
+.status-badge.expired {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+/* ── 9. 그리드 테이블 내부 인풋 및 숫자 ── */
+.item-table, .cost-table, .summary-table {
+    width: 100%;
+    border-collapse: collapse !important;
+    font-size: 11.5px;
+    table-layout: fixed;
+    border: 1px solid var(--erp-border) !important;
+}
+
+.item-table th, .cost-table th, .summary-table th {
+    background-color: var(--erp-th-bg) !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
     text-align: center !important;
     vertical-align: middle !important;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    border: 1px solid var(--erp-border) !important;
+    height: 26px !important;
+    white-space: nowrap !important;
 }
-.chk-cell input[type="checkbox"] {
-    width: 18px !important;
-    height: 18px !important;
-    min-width: 18px !important;
-    max-width: 18px !important;
-    margin: 0 auto !important;
-    display: inline-block !important;
+
+.item-table td, .cost-table td, .summary-table td {
+    padding: 0 4px !important;
+    border: 1px solid var(--erp-border) !important;
+    vertical-align: middle !important;
+    background-color: #ffffff;
+    height: 26px !important;
+    font-size: 11.5px;
+}
+
+.item-table td input, .cost-table td input {
+    width: 100% !important;
+    height: 24px !important;
+    border: none !important;
+    outline: none !important;
+    padding: 0 4px !important;
+    font-size: 11.5px !important;
+    background: transparent !important;
+}
+
+.item-table td:focus-within, .cost-table td:focus-within {
+    box-shadow: inset 0 0 0 2px var(--erp-primary) !important;
+    background-color: var(--erp-primary-light) !important;
+}
+
+.col-num {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.col-action {
+    text-align: center !important;
+    padding: 0 !important;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: #64748b;
     cursor: pointer;
+    font-size: 15px;
+    padding: 2px;
+    border-radius: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    color: var(--erp-primary);
+    background-color: #eff6ff;
+}
+
+.highlight-section {
+    background: #f8fafc;
+    padding: 8px;
+    border-radius: 2px;
+    border: 1px solid var(--erp-border);
+}
+
+.highlight-col {
+    background-color: #eff6ff !important;
+    font-weight: 700;
+    color: #1d4ed8;
 }
 
 /* 툴팁 */
 .tooltip-icon {
-    color: var(--text-tertiary);
+    color: #94a3b8;
     cursor: help;
     position: relative;
-    margin-left: 6px;
+    margin-left: 3px;
+    vertical-align: middle;
 }
+
 .tooltip-text {
     visibility: hidden;
-    width: 250px;
-    background-color: #333;
-    color: #fff;
+    width: 240px;
+    background-color: #1e293b;
+    color: #ffffff;
     text-align: left;
-    border-radius: 6px;
-    padding: 10px;
+    border-radius: 3px;
+    padding: 6px 8px;
     position: absolute;
-    z-index: 1;
+    z-index: 20;
     bottom: 125%;
     left: 50%;
-    margin-left: -125px;
+    margin-left: -120px;
     opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.8rem;
-    font-family: var(--font-family);
+    transition: opacity 0.2s;
+    font-size: 11px;
     font-weight: normal;
-    line-height: 1.4;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    line-height: 1.35;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
+
 .tooltip-icon:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
 }
-.tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
+
+/* 토스트 */
+.toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 9999;
 }
 
-/* 테이블 강제 스타일 (인코텀즈 등) */
-.item-table {
-    table-layout: fixed;
-    width: 100%;
-}
-.item-table th, .item-table td,
-.cost-table th, .cost-table td,
-.summary-table th, .summary-table td {
-    padding: 10px;
-    vertical-align: middle;
-}
-.item-table input,
-.cost-table input {
-    width: 100%;
-    min-width: 80px;
-}
-.col-num {
-    text-align: right;
-}
-
-.highlight-section {
-    background: rgba(79, 70, 229, 0.03);
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid rgba(79, 70, 229, 0.1);
-}
-
-.summary-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-.summary-table th {
-    background: var(--bg-tertiary);
+.toast {
+    padding: 8px 14px;
+    border-radius: 3px;
+    color: #fff;
+    font-size: 12px;
     font-weight: 600;
-    text-align: center;
-    border: 1px solid var(--border-color);
-}
-.summary-table td {
-    border: 1px solid var(--border);
-    text-align: right;
-}
-.summary-table td:first-child {
-    text-align: left;
-    font-weight: 500;
-    background: var(--gray-50);
-}
-.summary-table .total-row td {
-    font-weight: 700;
-    background: rgba(79, 70, 229, 0.05);
-}
-.summary-table .grand-total-row td {
-    font-weight: 700;
-    background: var(--primary);
-    color: white;
-}
-
-.highlight-col {
-    background: rgba(79, 70, 229, 0.1) !important;
-    font-weight: 700;
-}
-
-.bottom-actions {
+    margin-bottom: 6px;
     display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 40px;
-}
-.btn-large {
-    padding: 12px 24px;
-    font-size: 1rem;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
 }
 
-/* ───────────────────────────────────────────────────────────── */
-/* 인쇄 전용 (Print Only) */
-/* ───────────────────────────────────────────────────────────── */
+.toast.success { background-color: #10b981; }
+.toast.error { background-color: #ef4444; }
+
+/* ── 10. 인쇄 전용 (Print Only) ── */
 .print-only {
     display: none;
 }
 
 @media print {
-    /* 기존 화면 요소 공간 완전히 제거하여 빈 페이지 방지 */
-    .fq-container, .toast-container {
+    .fq-container, .toast-container, .erp-top-toolbar, .erp-filter-ribbon {
         display: none !important;
     }
-    
-    /* 기존 화면 숨김 */
     body * {
         visibility: hidden;
     }
-    
-    /* 화면 여백 초기화 및 레이아웃 수정 */
     @page {
         margin: 1cm;
         size: A4 landscape;
     }
-    
     body {
         background: #fff;
         margin: 0;
         padding: 0;
     }
-    
-    /* 인쇄 컨테이너만 보이기 */
     #printContainer, #printContainer * {
         visibility: visible;
     }
-    
     #printContainer {
         position: absolute;
         left: 0;
@@ -374,44 +813,24 @@
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
-    /* 인쇄용 표 스타일 지정 (Premium Design) */
     #printContainer table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 24px;
-        font-size: 11px;
+        margin-bottom: 16px;
+        font-size: 10.5px;
     }
-    
     #printContainer th, #printContainer td {
-        border: 1px solid #e2e8f0 !important;
-        padding: 8px;
+        border: 1px solid #cbd5e1 !important;
+        padding: 4px 6px;
         text-align: right;
-        color: #334155;
+        color: #1e293b;
     }
-    
     #printContainer th {
         text-align: center;
-        font-weight: 600;
+        font-weight: 700;
         background-color: #f8fafc;
-        color: #0f172a;
     }
-    
     #printContainer td:first-child {
         text-align: left;
-    }
-    
-    #printContainer h2 {
-        text-align: center;
-        margin-bottom: 20px;
-        font-size: 18px;
-    }
-    
-    #printContainer h3 {
-        margin-top: 20px;
-        margin-bottom: 10px;
-        font-size: 14px;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 4px;
     }
 }

@@ -4,192 +4,307 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>포워더 견적목록</title>
-    <!-- 공통 리소스 (상위 경로에서 가져옴) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Pretendard 웹폰트 및 아이콘 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    
+    <!-- 공통 디자인 시스템 (물류관리 ECOUNT ERP 동기화) -->
     <link rel="stylesheet" href="../../styles.css">
-    <link rel="stylesheet" href="../supply-common.css">
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
+    <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css">
+    
     <!-- 전용 CSS -->
-    <link rel="stylesheet" href="forwarder-quotation.css">
+    <link rel="stylesheet" href="forwarder-quotation.css?v=20260921_1">
+    
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="../../Common/js/erp-grid-resizer.js"></script>
 </head>
 <body>
     <div class="fq-container">
-        <!-- 뷰 1: 견적 목록 -->
+        <!-- ── 뷰 1: 견적 목록 (ECOUNT ERP High-Density Grid) ── -->
         <div id="listView" class="view-panel active">
-            <div class="panel-header">
-                <h2><i class='bx bx-anchor'></i> 포워더 견적목록</h2>
-                <div class="header-actions">
-                    <button id="btnNewQuote" class="btn-primary"><i class='bx bx-plus'></i> 신규 견적</button>
-                    <button id="btnDeleteSelected" class="btn-outline btn-outline-danger"><i class='bx bx-trash'></i> 선택 삭제</button>
+            <!-- 1행 탑 툴바: 타이틀 + 통계 + 상태 탭 + 액션 버튼 -->
+            <div class="erp-top-toolbar no-print">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="erp-title-tag">
+                        <i class='bx bx-anchor text-primary'></i> 포워더 견적목록
+                    </span>
+
+                    <div class="erp-badge-group">
+                        <span class="erp-stat-badge badge-dark" id="quoteTotalCountBadge">관리 0 건</span>
+                        <span class="erp-stat-badge badge-blue" id="fclLclBadge">FCL 0 / LCL 0</span>
+                    </div>
+
+                    <!-- 상태 퀵 필터 탭 -->
+                    <div class="erp-tab-group ms-1" id="statusTabGroup">
+                        <button type="button" class="erp-tab-btn active" data-status="" onclick="window.setStatusFilter('')">전체</button>
+                        <button type="button" class="erp-tab-btn" data-status="draft" onclick="window.setStatusFilter('draft')">초안</button>
+                        <button type="button" class="erp-tab-btn" data-status="confirmed" onclick="window.setStatusFilter('confirmed')">확정</button>
+                        <button type="button" class="erp-tab-btn" data-status="expired" onclick="window.setStatusFilter('expired')">만료</button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <button type="button" class="btn-erp btn-erp-primary" id="btnNewQuote">
+                        <i class='bx bx-plus'></i> 신규 견적
+                    </button>
+                    <button type="button" class="btn-erp" id="btnExportExcelList" onclick="window.exportQuoteListExcel()" title="조회된 견적 목록 엑셀 다운로드">
+                        <i class='bx bx-download'></i> 엑셀 다운로드
+                    </button>
+                    <button type="button" class="btn-erp btn-del d-none" id="btnDeleteSelected">
+                        <i class='bx bx-trash text-danger'></i> 선택 삭제 (<span id="selectedQuoteCount">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2행 필터 리본: 날짜 프리셋 + 피커 + 검색대상 + 스마트 검색 + 결과내 재검색 + 그리드 도구 -->
+            <div class="erp-filter-ribbon no-print">
+                <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <!-- 날짜 프리셋 버튼군 -->
+                    <div class="btn-group btn-group-sm erp-preset-group" role="group" id="datePresetGroup">
+                        <button type="button" class="btn erp-preset-btn" id="btnPreset_prevMonth" onclick="window.setDatePreset('prevMonth')">전월</button>
+                        <button type="button" class="btn erp-preset-btn" id="btnPreset_thisMonth" onclick="window.setDatePreset('thisMonth')">당월</button>
+                        <button type="button" class="btn erp-preset-btn" id="btnPreset_prevYear" onclick="window.setDatePreset('prevYear')">전년도</button>
+                        <button type="button" class="btn erp-preset-btn" id="btnPreset_thisYear" onclick="window.setDatePreset('thisYear')">금년도</button>
+                        <button type="button" class="btn erp-preset-btn active" id="btnPreset_all" onclick="window.setDatePreset('all')">전체</button>
+                    </div>
+
+                    <!-- 날짜 피커 -->
+                    <div class="d-flex align-items-center gap-1">
+                        <input type="date" class="erp-input-date" id="searchStartDate" title="시작일" onchange="window.onDateInputChange()">
+                        <span class="text-muted" style="font-size: 11px;">~</span>
+                        <input type="date" class="erp-input-date" id="searchEndDate" title="종료일" onchange="window.onDateInputChange()">
+                    </div>
+
+                    <!-- 검색 대상 선택 -->
+                    <select class="form-select erp-select-target" id="searchTarget" onchange="window.onSearchTargetChange()">
+                        <option value="">전체 대상</option>
+                        <option value="title">견적명 / 제목</option>
+                        <option value="pol">출발항 (POL)</option>
+                        <option value="pod">도착항 (POD)</option>
+                        <option value="remarks">비고</option>
+                    </select>
+
+                    <!-- 스마트 다중 검색창 -->
+                    <div class="position-relative erp-search-box">
+                        <input type="text" class="form-control form-control-sm" id="searchInput" 
+                               placeholder="스마트 다중 검색 (공백 구분)..." autocomplete="off"
+                               onkeyup="window.onSearchInputKeyup(event)" 
+                               title="공백으로 여러 단어를 입력하면 스마트 교집합(AND) 검색이 지원됩니다">
+                        <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" 
+                                id="clearSearchBtn" onclick="window.clearSearchInput()" title="검색어 지우기" style="font-size: 0.75rem;">
+                            <i class='bx bx-x-circle'></i>
+                        </button>
+                    </div>
+
+                    <button type="button" class="btn-erp btn-erp-primary" onclick="window.applyFiltersAndRender()"><i class='bx bx-search'></i> 검색</button>
+                    <button type="button" class="btn-erp" onclick="window.resetSearch()"><i class='bx bx-reset'></i> 초기화</button>
+                </div>
+
+                <div class="d-flex align-items-center gap-1 flex-wrap">
+                    <!-- 결과 내 재검색 인풋 -->
+                    <div class="input-group input-group-sm erp-subsearch-group">
+                        <span class="input-group-text bg-white border-end-0 py-0 text-muted" style="padding: 0 4px;"><i class='bx bx-filter'></i></span>
+                        <input type="text" id="subSearchInput" class="form-control border-start-0 border-end-0 py-0" placeholder="결과 내 재검색..." oninput="window.onSubSearchInput(this.value)" style="font-size: 11.5px; height: 24px;">
+                        <button class="btn btn-outline-secondary border-start-0 py-0 text-muted d-none" type="button" id="clearSubSearchBtn" onclick="window.clearSubSearch()" style="height: 24px; padding: 0 4px;"><i class='bx bx-x'></i></button>
+                    </div>
+                    <span id="subSearchCountBadge" class="badge bg-danger bg-opacity-10 text-danger border border-danger px-1 py-0 d-none" style="font-size: 0.72rem; height: 22px; line-height: 20px;"></span>
+
+                    <!-- 열 너비 조절 도구 버튼 -->
+                    <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.autoFitAll('quoteListTable')" title="데이터 길이에 맞춰 모든 열 너비를 자동으로 맞춥니다">
+                        <i class='bx bx-expand-horizontal text-primary'></i> 열 자동맞춤
+                    </button>
+                    <button type="button" class="erp-tool-btn" onclick="window.ErpGridResizer.resetWidths('quoteListTable')" title="열 너비를 기본값으로 초기화합니다">
+                        <i class='bx bx-reset text-secondary'></i> 기본값 초기화
+                    </button>
                 </div>
             </div>
             
-            <div class="table-responsive">
-                <table class="data-table">
+            <!-- ERP 고밀도 시트 그리드 (26px 초고밀도) -->
+            <div class="erp-grid-wrapper shadow-sm" id="quoteGridWrapper">
+                <table class="erp-sheet-table" id="quoteListTable">
                     <thead>
                         <tr>
-                            <th class="col-check"><input type="checkbox" id="selectAll"></th>
-                            <th>상태</th>
-                            <th>견적명 / 제목</th>
-                            <th>견적일자</th>
-                            <th>적용 환율</th>
-                            <th>등록 포워더 수</th>
-                            <th>컨테이너</th>
-                            <th>등록일시</th>
-                            <th class="col-action">관리</th>
+                            <th class="col-check th-no" style="width: 34px;"><input type="checkbox" id="selectAll"></th>
+                            <th style="width: 65px;" class="text-center">상태</th>
+                            <th style="min-width: 220px;" class="text-start ps-2">견적명 / 프로젝트명</th>
+                            <th style="width: 90px;" class="text-center">견적일자</th>
+                            <th style="min-width: 220px;" class="text-start ps-2">적용 환율</th>
+                            <th style="width: 85px;" class="text-center">등록 포워더</th>
+                            <th style="width: 110px;" class="text-center">선적 / 컨테이너</th>
+                            <th style="width: 90px;" class="text-center">등록일시</th>
+                            <th class="col-action" style="width: 55px; text-align: center;">관리</th>
                         </tr>
                     </thead>
                     <tbody id="quoteListBody">
-                        <tr><td colspan="8" style="text-align: center; padding: 2rem;">데이터를 불러오는 중...</td></tr>
+                        <tr><td colspan="9" class="text-center py-4 text-muted"><i class='bx bx-loader-alt bx-spin'></i> 견적 데이터를 불러오는 중입니다...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- 뷰 2: 견적 편집기 -->
+        <!-- ── 뷰 2: 견적 편집기 (ECOUNT ERP 전표/시트 양식) ── -->
         <div id="editView" class="view-panel">
-            <div class="panel-header">
-                <h2 id="editTitle"><i class='bx bx-edit-alt'></i> 견적 입력/수정</h2>
-                <div class="header-actions">
-                    <button id="btnCancelEdit" class="btn-outline"><i class='bx bx-arrow-back'></i> 목록으로</button>
-                    <button id="btnPrint" class="btn-outline"><i class='bx bx-printer'></i> 인쇄</button>
-                    <button id="btnExportExcel" class="btn-outline" style="color: #107c41; border-color: #107c41;"><i class='bx bx-spreadsheet'></i> 엑셀 내보내기</button>
-                    <button id="btnSaveCopy" class="btn-outline btn-outline-primary" style="display: none;"><i class='bx bx-copy'></i> 복사본으로 저장</button>
-                    <button id="btnSaveQuote" class="btn-primary"><i class='bx bx-save'></i> 저장하기</button>
+            <div class="erp-window-header">
+                <div class="erp-window-title" id="editTitle">
+                    <i class='bx bx-edit-alt'></i> 견적 입력/수정
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" id="btnCancelEdit" class="btn-erp"><i class='bx bx-arrow-back'></i> 목록으로</button>
+                    <button type="button" id="btnPrint" class="btn-erp text-muted"><i class='bx bx-printer'></i> 인쇄</button>
+                    <button type="button" id="btnExportExcel" class="btn-erp" style="color: #059669;"><i class='bx bx-spreadsheet'></i> 엑셀 내보내기</button>
+                    <button type="button" id="btnSaveCopy" class="btn-erp btn-erp-warning" style="display: none;"><i class='bx bx-copy'></i> 복사본 저장</button>
+                    <button type="button" id="btnSaveQuote" class="btn-erp btn-erp-primary"><i class='bx bx-save'></i> 견적 전표 저장</button>
                 </div>
             </div>
 
             <div class="editor-body">
-                <!-- SECTION 1: 기본 정보 및 환율 -->
+                <!-- SECTION 1: 기본 정보 및 환율 (ERP 전표 폼 테이블) -->
                 <section class="edit-section">
-                    <h3>1. 기본 정보 및 환율</h3>
-                    <div class="form-grid">
-                        <div class="fg">
-                            <label>견적명 / 프로젝트명 <span class="req">*</span></label>
-                            <input type="text" id="docTitle" placeholder="예: 26년 7월 TBM 장비 수입">
-                        </div>
-                        <div class="fg">
-                            <label>견적일자 <span class="req">*</span></label>
-                            <input type="date" id="docDate">
-                        </div>
-                        <div class="fg">
-                            <label>진행 상태</label>
-                            <select id="docStatus">
-                                <option value="draft">초안 (Draft)</option>
-                                <option value="confirmed">확정 (Confirmed)</option>
-                                <option value="expired">만료 (Expired)</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-grid" style="margin-top: 15px;">
-                        <div class="fg">
-                            <label>선적 형태</label>
-                            <div class="radio-group" style="display:flex; gap:15px; margin-top:5px; height: 35px; align-items: center;">
-                                <label style="display:flex; gap:5px; align-items:center; cursor:pointer;"><input type="radio" name="docShipmentType" value="FCL" checked> FCL</label>
-                                <label style="display:flex; gap:5px; align-items:center; cursor:pointer;"><input type="radio" name="docShipmentType" value="LCL"> LCL</label>
-                            </div>
-                        </div>
-                        <div class="fg fcl-only">
-                            <label>컨테이너 규격</label>
-                            <select id="docContainerType">
-                                <option value="20ft">20ft</option>
-                                <option value="40ft">40ft</option>
-                                <option value="40ftHC">40ft HC</option>
-                            </select>
-                        </div>
-                        <div class="fg fcl-only">
-                            <label>컨테이너 수량</label>
-                            <input type="number" id="docContainerQty" min="1" value="1">
-                        </div>
-                        <div class="fg">
-                            <label>출발항 (POL)</label>
-                            <input type="text" id="docPol" placeholder="예: Shanghai">
-                        </div>
-                        <div class="fg">
-                            <label>도착항 (POD)</label>
-                            <input type="text" id="docPod" placeholder="예: Incheon">
-                        </div>
-                        <div class="fg">
-                            <label>비고</label>
-                            <input type="text" id="docRemarks" placeholder="추가 메모 입력">
-                        </div>
-                    </div>
+                    <h3>1. 기본 정보 및 적용 환율</h3>
+                    <table class="erp-form-table mb-1">
+                        <colgroup>
+                            <col style="width: 130px;">
+                            <col style="width: 25%;">
+                            <col style="width: 100px;">
+                            <col style="width: 16%;">
+                            <col style="width: 90px;">
+                            <col style="width: 16%;">
+                            <col style="width: 90px;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>견적명 / 프로젝트 <span class="text-danger">*</span></th>
+                                <td><input type="text" class="form-control" id="docTitle" placeholder="예: 26년 7월 TBM 장비 수입" autocomplete="off"></td>
+                                <th>견적일자 <span class="text-danger">*</span></th>
+                                <td><input type="date" class="form-control text-center" id="docDate"></td>
+                                <th>진행 상태</th>
+                                <td>
+                                    <select class="form-select text-center" id="docStatus">
+                                        <option value="draft">초안 (Draft)</option>
+                                        <option value="confirmed">확정 (Confirmed)</option>
+                                        <option value="expired">만료 (Expired)</option>
+                                    </select>
+                                </td>
+                                <th>선적 형태</th>
+                                <td>
+                                    <div class="d-flex align-items-center gap-3 px-2">
+                                        <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;"><input type="radio" name="docShipmentType" value="FCL" checked> FCL</label>
+                                        <label class="d-flex align-items-center gap-1 mb-0" style="cursor: pointer;"><input type="radio" name="docShipmentType" value="LCL"> LCL</label>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>출발항 (POL)</th>
+                                <td><input type="text" class="form-control" id="docPol" placeholder="예: Shanghai"></td>
+                                <th>도착항 (POD)</th>
+                                <td><input type="text" class="form-control" id="docPod" placeholder="예: Incheon"></td>
+                                <th class="fcl-only">컨테이너 규격</th>
+                                <td class="fcl-only">
+                                    <select class="form-select text-center" id="docContainerType">
+                                        <option value="20ft">20ft</option>
+                                        <option value="40ft">40ft</option>
+                                        <option value="40ftHC">40ft HC</option>
+                                    </select>
+                                </td>
+                                <th class="fcl-only">컨테이너 수량</th>
+                                <td class="fcl-only">
+                                    <input type="number" class="form-control text-end pe-2" id="docContainerQty" min="1" value="1">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>비고 (추가 메모)</th>
+                                <td colspan="7">
+                                    <input type="text" class="form-control" id="docRemarks" placeholder="추가 메모 또는 특이사항 입력">
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    <div class="exchange-rate-box">
-                        <div class="ex-header">
-                            <h4><i class='bx bx-money'></i> 적용 환율 (외화 → KRW)</h4>
-                            <button id="btnReloadRates" class="btn-small"><i class='bx bx-refresh'></i> 서버 최신 환율 로드</button>
-                        </div>
-                        <div class="ex-grid">
-                            <div class="ex-item">
-                                <label>USD</label>
-                                <div class="input-with-symbol">
-                                    <span>₩</span>
-                                    <input type="number" id="rateUSD" step="0.01" value="1380">
-                                </div>
-                            </div>
-                            <div class="ex-item">
-                                <label>CNY</label>
-                                <div class="input-with-symbol">
-                                    <span>₩</span>
-                                    <input type="number" id="rateCNY" step="0.01" value="190">
-                                </div>
-                            </div>
-                            <div class="ex-item">
-                                <label>EUR</label>
-                                <div class="input-with-symbol">
-                                    <span>₩</span>
-                                    <input type="number" id="rateEUR" step="0.01" value="1500">
-                                </div>
-                            </div>
-                            <div class="ex-item">
-                                <label>JPY (100엔당)</label>
-                                <div class="input-with-symbol">
-                                    <span>₩</span>
-                                    <input type="number" id="rateJPY" step="0.01" value="950">
-                                </div>
-                            </div>
-                        </div>
-                        <p class="help-text">* 환율은 수동으로 수정할 수 있으며, 이 견적서에만 적용됩니다.</p>
-                    </div>
+                    <!-- 적용 환율 설정 폼 테이블 -->
+                    <table class="erp-form-table">
+                        <colgroup>
+                            <col style="width: 140px;">
+                            <col style="width: 18%;">
+                            <col style="width: 18%;">
+                            <col style="width: 18%;">
+                            <col style="width: 18%;">
+                            <col>
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th class="bg-light text-dark"><i class='bx bx-money text-primary'></i> 적용 환율 (외화 → KRW)</th>
+                                <td>
+                                    <div class="input-group">
+                                        <span class="input-group-text fw-bold">USD</span>
+                                        <input type="number" class="form-control text-end pe-2" id="rateUSD" step="0.01" value="1380">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group">
+                                        <span class="input-group-text fw-bold">CNY</span>
+                                        <input type="number" class="form-control text-end pe-2" id="rateCNY" step="0.01" value="190">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group">
+                                        <span class="input-group-text fw-bold">EUR</span>
+                                        <input type="number" class="form-control text-end pe-2" id="rateEUR" step="0.01" value="1500">
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="input-group">
+                                        <span class="input-group-text fw-bold">JPY(100¥)</span>
+                                        <input type="number" class="form-control text-end pe-2" id="rateJPY" step="0.01" value="950">
+                                    </div>
+                                </td>
+                                <td class="text-center px-1">
+                                    <button type="button" class="btn-erp btn-erp-primary w-100" id="btnReloadRates" title="서버 최신 고시환율을 로드합니다">
+                                        <i class='bx bx-refresh'></i> 환율 동기화
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </section>
 
-                <!-- SECTION 2: 수입 품목 & 인코텀즈 단가 -->
+                <!-- SECTION 2: 수입 품목 & 인코텀즈 단가 (고밀도 시트 테이블) -->
                 <section class="edit-section">
                     <div class="section-header-flex">
                         <h3>2. 수입 대상 품목 및 인코텀즈 단가</h3>
                         <div class="incoterms-manager">
-                            <span class="lcl-only" id="dimUnitWrapper" style="margin-right:15px; display:none; align-items:center;">
+                            <span class="lcl-only" id="dimUnitWrapper" style="margin-right:10px; display:none; align-items:center; font-size:11.5px;">
                                 치수 단위:
-                                <select id="docDimUnit" style="padding: 3px 6px; margin-left: 5px; border-radius:4px; border:1px solid var(--border-color);">
+                                <select id="docDimUnit" class="form-select form-select-sm" style="width:65px; height:24px; padding:1px 4px; display:inline-block; margin-left:4px;">
                                     <option value="cm">cm</option>
                                     <option value="mm">mm</option>
                                     <option value="m">m</option>
                                 </select>
                             </span>
-                            <label>비교 대상 인코텀즈:</label>
+                            <span class="text-muted" style="font-size:11px;">비교 인코텀즈:</span>
                             <div id="incotermsChips" class="chip-container">
-                                <!-- JS로 렌더링 (기본: EXW, FOB) -->
+                                <!-- JS 동적 렌더링 -->
                             </div>
-                            <button id="btnAddIncoterm" class="btn-small"><i class='bx bx-plus'></i> 추가</button>
+                            <button type="button" id="btnAddIncoterm" class="btn-erp" style="height:22px; font-size:11px;"><i class='bx bx-plus'></i> 인코텀즈 추가</button>
+                            <button type="button" id="btnAddItem" class="btn-erp btn-erp-primary" style="height:22px; font-size:11px;"><i class='bx bx-plus'></i> 품목 라인 추가</button>
                         </div>
                     </div>
                     
-                    <div class="table-responsive">
-                        <table class="item-table" id="itemTable">
+                    <div class="erp-grid-wrapper" style="min-height: 120px;">
+                        <table class="erp-sheet-table item-table" id="itemTable">
                             <thead>
                                 <tr id="itemTableHead">
-                                    <th>HS CODE</th>
+                                    <th style="width: 110px;">HS CODE</th>
                                     <th>품명</th>
-                                    <th class="col-num">수량</th>
-                                    <th>단위</th>
-                                    <th class="col-num">총중량(kg)</th>
-                                    <th class="col-num" style="width: 110px;">최대적재량<br><span style="font-weight:normal;font-size:10px;">(Max/CNTR)</span></th>
+                                    <th class="col-num" style="width: 75px;">수량</th>
+                                    <th style="width: 55px;">단위</th>
+                                    <th class="col-num" style="width: 90px;">총중량(kg)</th>
+                                    <th class="col-num" style="width: 115px;">최대적재량<br><span style="font-weight:normal;font-size:9.5px;">(Max/CNTR)</span></th>
                                     <!-- 인코텀즈 단가 컬럼들이 여기에 동적으로 추가됨 -->
-                                    <th class="col-action">삭제</th>
+                                    <th class="col-action" style="width: 45px;">삭제</th>
                                 </tr>
                             </thead>
                             <tbody id="itemTableBody">
@@ -200,16 +315,15 @@
                             </tfoot>
                         </table>
                     </div>
-                    <button id="btnAddItem" class="btn-outline" style="margin-top: 10px;"><i class='bx bx-plus'></i> 품목 라인 추가</button>
                 </section>
 
-                <!-- SECTION 3: 포워더별 부대비용 입력 -->
+                <!-- SECTION 3: 포워더별 부대비용 입력 (포워더 탭 + 시트 그리드) -->
                 <section class="edit-section">
                     <div class="section-header-flex">
                         <h3>3. 포워더별 수입 부대비용 산출</h3>
                         <div class="forwarder-tabs" id="forwarderTabs">
                             <!-- 탭 동적 렌더링 -->
-                            <button id="btnAddForwarder" class="tab-btn add-tab"><i class='bx bx-plus'></i> 포워더 추가</button>
+                            <button type="button" id="btnAddForwarder" class="tab-btn add-tab"><i class='bx bx-plus'></i> 포워더 추가</button>
                         </div>
                     </div>
                     
@@ -224,19 +338,19 @@
                     <div class="section-header-flex">
                         <h3>4. 기타 금융 및 추가 부대비용</h3>
                         <div>
-                            <button id="btnAddInterest" class="btn-small btn-outline"><i class='bx bx-plus'></i> 금융비용 추가</button>
-                            <button id="btnAddOtherCost" class="btn-small btn-outline" style="margin-left:5px;"><i class='bx bx-plus'></i> 일반 항목 추가</button>
+                            <button type="button" id="btnAddInterest" class="btn-erp" style="height:22px; font-size:11px;"><i class='bx bx-plus'></i> 금융비용 추가</button>
+                            <button type="button" id="btnAddOtherCost" class="btn-erp" style="height:22px; font-size:11px; margin-left:3px;"><i class='bx bx-plus'></i> 일반 항목 추가</button>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="item-table" id="otherCostTable">
+                    <div class="erp-grid-wrapper" style="min-height: 90px;">
+                        <table class="erp-sheet-table" id="otherCostTable">
                             <thead>
                                 <tr>
                                     <th>비용 항목명</th>
-                                    <th>유형</th>
+                                    <th style="width: 120px;">유형</th>
                                     <th>계산 조건 (자동계산 시)</th>
-                                    <th class="col-num" style="width:150px;">금액 (KRW)</th>
-                                    <th class="col-action">관리</th>
+                                    <th class="col-num" style="width: 140px;">금액 (KRW)</th>
+                                    <th class="col-action" style="width: 50px;">관리</th>
                                 </tr>
                             </thead>
                             <tbody id="otherCostTableBody">
@@ -247,16 +361,13 @@
                             </tfoot>
                         </table>
                     </div>
-                    <p class="help-text" style="margin-top:10px; color: var(--text-secondary);">
-                        * <strong>이자비용</strong>은 아래 <strong>5번 요약표</strong> 및 <strong>6번 산출표</strong>에 명시된 포워더+인코텀즈 조합을 기준으로 실시간 자동 산출되어 합산됩니다.
-                    </p>
                 </section>
 
-                <!-- SECTION 5: 비용 요약 비교 -->
+                <!-- SECTION 5: 비용 요약 비교 (포워더 / 인코텀즈) -->
                 <section class="edit-section highlight-section">
-                    <h3>5. 비용 요약 (포워더 / 인코텀즈 비교)</h3>
-                    <div class="table-responsive">
-                        <table class="summary-table" id="summaryTable">
+                    <h3>5. 비용 요약 (포워더 / 인코텀즈 견적 비교 매트릭스)</h3>
+                    <div class="erp-grid-wrapper" style="min-height: 140px;">
+                        <table class="erp-sheet-table summary-table" id="summaryTable">
                             <thead>
                                 <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
                             </thead>
@@ -267,40 +378,42 @@
                     </div>
                 </section>
 
-                <!-- SECTION 6: 실수입원가 -->
+                <!-- SECTION 6: 대상 품목 실제 수입원가 산출 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
                         <h3>6. 대상 품목 실제 수입원가 산출</h3>
-                        <div class="cost-selector">
-                            <label>기준 선택:</label>
-                            <select id="costResultSelector">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted" style="font-size:11px; font-weight:600;">원가 산출 기준 선택:</span>
+                            <select id="costResultSelector" class="form-select form-select-sm" style="width: auto; height: 24px; font-size: 11px; padding: 1px 22px 1px 6px;">
                                 <!-- 선택 가능한 포워더+인코텀즈 조합 렌더링 -->
                             </select>
                         </div>
                     </div>
                     
-                    <h4 style="margin-top:15px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
-                        6-1. 실수입원가 (가치비례 배분법)
-                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
-                            <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
-                        </i>
-                    </h4>
-                    <div class="table-responsive">
-                        <table class="cost-table" id="costTableValue">
+                    <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
+                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
+                            6-1. 실수입원가 (가치비례 배분법)
+                            <i class='bx bx-info-circle tooltip-icon'>
+                                <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
+                            </i>
+                        </span>
+                    </div>
+                    <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
+                        <table class="erp-sheet-table cost-table" id="costTableValue">
                             <thead>
                                 <tr>
                                     <th>품명</th>
-                                    <th class="col-num">수량</th>
-                                    <th class="col-num">단위당 단가 (외화)</th>
-                                    <th class="col-num">배분된 부대비용 (외화)</th>
-                                    <th class="col-num">실수입원가 (외화)</th>
-                                    <th class="col-num">
+                                    <th class="col-num" style="width: 90px;">수량</th>
+                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                    <th class="col-num" style="width: 120px;">
                                         관세 (KRW)
-                                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal; margin-left:3px;">
-                                            <span class="tooltip-text" style="width:250px;">과세표준(CIF 가액) 기준 산출:<br>(물품대금 + 수입항 도착 전까지의 부대비용) × 관세율<br>*수입항 도착 후 국내 발생비용(하역비, 내륙운송 등)은 과세표준에서 제외</span>
+                                        <i class='bx bx-info-circle tooltip-icon'>
+                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
                                         </i>
                                     </th>
-                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyValue">
@@ -309,28 +422,30 @@
                         </table>
                     </div>
 
-                    <h4 style="margin-top:30px; margin-bottom:10px; color:var(--primary); display:flex; align-items:center;">
-                        6-2. 실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
-                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal;">
-                            <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.<br>FCL 화물의 부피/중량 편차를 보정할 때 유리합니다.</span>
-                        </i>
-                    </h4>
-                    <div class="table-responsive">
-                        <table class="cost-table" id="costTableVolume">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
+                            6-2. 실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
+                            <i class='bx bx-info-circle tooltip-icon'>
+                                <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.</span>
+                            </i>
+                        </span>
+                    </div>
+                    <div class="erp-grid-wrapper" style="min-height: 100px;">
+                        <table class="erp-sheet-table cost-table" id="costTableVolume">
                             <thead>
                                 <tr>
                                     <th>품명</th>
-                                    <th class="col-num">수량 / 점유율</th>
-                                    <th class="col-num">단위당 단가 (외화)</th>
-                                    <th class="col-num">배분된 부대비용 (외화)</th>
-                                    <th class="col-num">실수입원가 (외화)</th>
-                                    <th class="col-num">
+                                    <th class="col-num" style="width: 110px;">수량 / 점유율</th>
+                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                    <th class="col-num" style="width: 120px;">
                                         관세 (KRW)
-                                        <i class='bx bx-info-circle tooltip-icon' style="font-size:1.1em; font-weight:normal; margin-left:3px;">
-                                            <span class="tooltip-text" style="width:250px;">과세표준(CIF 가액) 기준 산출:<br>(물품대금 + 수입항 도착 전까지의 부대비용) × 관세율<br>*수입항 도착 후 국내 발생비용(하역비, 내륙운송 등)은 과세표준에서 제외</span>
+                                        <i class='bx bx-info-circle tooltip-icon'>
+                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
                                         </i>
                                     </th>
-                                    <th class="col-num highlight-col">최종 실수입원가 (KRW)</th>
+                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
                                 </tr>
                             </thead>
                             <tbody id="costTableBodyVolume">
@@ -340,29 +455,32 @@
                     </div>
                 </section>
                 
-                <div class="bottom-actions">
-                    <button class="btn-outline btn-large" id="btnCancelEditBottom">취소</button>
-                    <button class="btn-outline btn-outline-primary btn-large" id="btnSaveCopyBottom" style="display: none;"><i class='bx bx-copy'></i> 복사본으로 저장</button>
-                    <button class="btn-primary btn-large" id="btnSaveQuoteBottom"><i class='bx bx-save'></i> 견적 저장</button>
+                <div class="d-flex justify-content-end gap-2 mt-3 pt-2 border-top">
+                    <button type="button" class="btn-erp" id="btnCancelEditBottom">취소</button>
+                    <button type="button" class="btn-erp btn-erp-warning" id="btnSaveCopyBottom" style="display: none;"><i class='bx bx-copy'></i> 복사본으로 저장</button>
+                    <button type="button" class="btn-erp btn-erp-primary" id="btnSaveQuoteBottom"><i class='bx bx-save'></i> 견적 전표 저장</button>
                 </div>
             </div>
         </div>
     </div>
     
     <!-- 모달: 포워더 추가/이름변경 -->
-    <div id="forwarderModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2 id="fwModalTitle">포워더 추가</h2>
-                <button class="btn-close" id="btnCloseFwModal"><i class='bx bx-x'></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="fg">
-                    <label>포워더 이름</label>
-                    <input type="text" id="fwNameInput" placeholder="예: 한진해운, DHL">
+    <div id="forwarderModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+            <div class="modal-content">
+                <div class="erp-window-header">
+                    <span class="erp-window-title" id="fwModalTitle">포워더 추가</span>
+                    <button type="button" class="btn-close btn-close-white" id="btnCloseFwModal" style="font-size: 10px;"></button>
                 </div>
-                <div class="form-actions" style="margin-top: 20px; text-align: right;">
-                    <button class="btn-primary" id="btnConfirmFw">확인</button>
+                <div class="modal-body p-3">
+                    <div class="mb-3">
+                        <label class="form-label" style="font-size: 11.5px; font-weight: 600;">포워더 이름 (운송사명)</label>
+                        <input type="text" class="form-control form-control-sm" id="fwNameInput" placeholder="예: 한진해운, DHL, 현대글로비스">
+                    </div>
+                    <div class="d-flex justify-content-end gap-1">
+                        <button type="button" class="btn-erp" onclick="document.getElementById('btnCloseFwModal').click()">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" id="btnConfirmFw">확인</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -374,6 +492,7 @@
     <!-- 인쇄 전용 영역 -->
     <div id="printContainer" class="print-only"></div>
 
-    <script type="module" src="forwarder-quotation.js"></script>
+    <!-- 스크립트 모듈 -->
+    <script type="module" src="forwarder-quotation.js?v=20260921_1"></script>
 </body>
 </html>
