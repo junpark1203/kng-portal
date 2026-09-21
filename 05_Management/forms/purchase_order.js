@@ -1323,11 +1323,10 @@ const app = {
                                     <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">
                                         ${po.seller_name || 'Manufacturer / Supplier'}
                                     </div>
-                                    <div class="po-stamp-box" style="justify-content: center; align-items: center; color: #777; font-size: 10px;">
-                                        <span style="border: 1px dashed #999; padding: 4px 10px; border-radius: 3px; letter-spacing: 0.3px;">Authorized Signature & Official Stamp</span>
+                                    <div class="po-stamp-box">
                                     </div>
                                     <div class="po-sign-footer">
-                                        <span>Authorized Signature</span>
+                                        <span>&nbsp;</span>
                                         <span class="po-sign-date">Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
                                     </div>
                                 </td>
