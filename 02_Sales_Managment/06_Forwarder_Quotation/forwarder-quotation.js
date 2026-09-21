@@ -1936,17 +1936,19 @@ function renderCostResultTable() {
         const exRate = state.doc.exchangeRates[p.currency] || 1;
         const dutyRate = item.dutyRate || 0;
         
-        // --- 5-1 로직 ---
+        // --- 5-1 로직 (대안 A: 표시 외화 단가 기준 원화 계산) ---
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
         const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
         
-        const baseCostFC_Value = unitPriceFC + allocatedFC_Value_Total;
-        const baseCostKrw_Value = baseCostFC_Value * exRate; // 전체 부대비용 포함 원가
+        const dispAllocatedFC_Value = Math.round(allocatedFC_Value_Total * 100) / 100;
+        const dispBaseCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+        const baseCostKrw_Value = Math.round(dispBaseCostFC_Value * exRate); // 전체 부대비용 포함 원가 (표시 외화 기준)
         
         // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
-        const cifValueKrw_Value = (unitPriceFC + allocatedFC_Value_Dutiable) * exRate;
-        const dutyKrw_Value = cifValueKrw_Value * (dutyRate / 100);
+        const dispAllocatedFC_Dutiable = Math.round(allocatedFC_Value_Dutiable * 100) / 100;
+        const cifValueKrw_Value = Math.round((unitPriceFC + dispAllocatedFC_Dutiable) * exRate);
+        const dutyKrw_Value = Math.round(cifValueKrw_Value * (dutyRate / 100));
         
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
         
@@ -1955,14 +1957,14 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Value_Total, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Value, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Value, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
             </tr>
         `;
         
-        // --- 5-2 로직 ---
+        // --- 5-2 로직 (대안 A: 표시 외화 단가 기준 원화 계산) ---
         let allocatedFC_Volume_Total = 0;
         let allocatedFC_Volume_Dutiable = 0;
         let volumeShareRatio = 0;
@@ -1982,12 +1984,14 @@ function renderCostResultTable() {
             allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
         }
         
-        const baseCostFC_Volume = unitPriceFC + allocatedFC_Volume_Total;
-        const baseCostKrw_Volume = baseCostFC_Volume * exRate; // 전체 부대비용 포함 원가
+        const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume_Total * 100) / 100;
+        const dispBaseCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+        const baseCostKrw_Volume = Math.round(dispBaseCostFC_Volume * exRate); // 전체 부대비용 포함 원가 (표시 외화 기준)
         
         // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
-        const cifValueKrw_Volume = (unitPriceFC + allocatedFC_Volume_Dutiable) * exRate;
-        const dutyKrw_Volume = cifValueKrw_Volume * (dutyRate / 100);
+        const dispDutiableAllocated_Volume = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+        const cifValueKrw_Volume = Math.round((unitPriceFC + dispDutiableAllocated_Volume) * exRate);
+        const dutyKrw_Volume = Math.round(cifValueKrw_Volume * (dutyRate / 100));
         
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
         
@@ -2000,8 +2004,8 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${shareText}</td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(allocatedFC_Volume_Total, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(baseCostFC_Volume, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Volume, 2)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
             </tr>
@@ -2304,16 +2308,17 @@ function generatePrintHTML() {
                 const unitPriceFC = p.unitPrice;
                 const exRate = state.doc.exchangeRates[p.currency] || 1;
                 const allocatedFC_Value = unitPriceFC * allocationRatio;
-                const realCostFC_Value = unitPriceFC + allocatedFC_Value;
-                const realCostKrw_Value = realCostFC_Value * exRate;
+                const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
+                const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+                const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
 
                 html += `
                     <tr>
                         <td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td>
                         <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${formatNum(item.qty)}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#f8fafc; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#0f172a;">₩ ${formatNum(realCostKrw_Value)}</td>
                     </tr>
                 `;
@@ -2350,16 +2355,17 @@ function generatePrintHTML() {
                     allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
                 }
 
-                const realCostFC_Volume = unitPriceFC + allocatedFC_Volume;
-                const realCostKrw_Volume = realCostFC_Volume * exRate;
+                const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
+                const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+                const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
 
                 html += `
                     <tr>
                         <td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td>
                         <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#f8fafc; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#0f172a;">₩ ${formatNum(realCostKrw_Volume)}</td>
                     </tr>
                 `;
@@ -2790,16 +2796,17 @@ function generateExcelHTML() {
                 const unitPriceFC = p.unitPrice;
                 const exRate = state.doc.exchangeRates[p.currency] || 1;
                 const allocatedFC_Value = unitPriceFC * allocationRatio;
-                const realCostFC_Value = unitPriceFC + allocatedFC_Value;
-                const realCostKrw_Value = realCostFC_Value * exRate;
+                const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
+                const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+                const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
 
                 html += `
                     <tr>
                         <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
                         <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(allocatedFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(realCostFC_Value, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
                     </tr>
                 `;
@@ -2836,16 +2843,17 @@ function generateExcelHTML() {
                     allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
                 }
 
-                const realCostFC_Volume = unitPriceFC + allocatedFC_Volume;
-                const realCostKrw_Volume = realCostFC_Volume * exRate;
+                const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
+                const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+                const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
 
                 html += `
                     <tr>
                         <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
                         <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
                         <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(allocatedFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(realCostFC_Volume, 2)}</td>
+                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
+                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
                         <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Volume)}</td>
                     </tr>
                 `;
