@@ -1,5 +1,37 @@
 // 05_Management/forms/purchase_order.js
 
+// --- 서버 URL 및 API 설정 ---
+const SERVER_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3000'
+    : 'https://kng.junparks.com';
+
+const API_BASE = `${SERVER_URL}/api/purchase-orders`;
+
+// 상대 경로 URL(/api/...)을 전체 URL로 변환하는 헬퍼
+function resolveUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+        return url;
+    }
+    if (url.startsWith('/api/')) {
+        return `${SERVER_URL}${url}`;
+    }
+    return url;
+}
+
+// 안전한 JSON 파싱 헬퍼 (Unexpected token '<' 에러 방지 및 친절한 안내)
+async function parseJsonResponse(res) {
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        if (text.includes('<!DOCTYPE') || text.includes('<html') || text.trim().startsWith('<')) {
+            throw new Error(`API 서버 연결 실패 (${res.status}): 백엔드 서버가 아직 최신 버전으로 재배포(재시작)되지 않았거나 엔드포인트를 찾을 수 없습니다.`);
+        }
+        throw new Error(`서버 응답 형식 오류 (${res.status}): ${text.slice(0, 100)}`);
+    }
+    return res.json();
+}
+
 // --- authFetch 래퍼 ---
 async function authFetch(url, options = {}) {
     let token = null;
@@ -19,10 +51,10 @@ async function authFetch(url, options = {}) {
     if (token && !options.headers['Authorization']) {
         options.headers['Authorization'] = 'Bearer ' + token;
     }
-    return fetch(url, options);
-}
 
-const API_BASE = '/api/purchase-orders';
+    const targetUrl = (url.startsWith('/api/')) ? `${SERVER_URL}${url}` : url;
+    return fetch(targetUrl, options);
+}
 
 const app = {
     poList: [],
@@ -49,7 +81,7 @@ const app = {
         try {
             const res = await authFetch(`${API_BASE}/config/settings`);
             if (res.ok) {
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 if (data.seal_url) this.settings.seal_url = data.seal_url;
                 if (data.sign_url) this.settings.sign_url = data.sign_url;
                 if (data.ceo_name) this.settings.ceo_name = data.ceo_name;
@@ -60,11 +92,11 @@ const app = {
     },
 
     openSettingsModal: function() {
-        document.getElementById('settingSealImg').src = this.settings.seal_url || '../../assets/images/stamp.png';
+        document.getElementById('settingSealImg').src = resolveUrl(this.settings.seal_url || '../../assets/images/stamp.png');
         const signImg = document.getElementById('settingSignImg');
         const signEmptyText = document.getElementById('settingSignEmptyText');
         if (this.settings.sign_url) {
-            signImg.src = this.settings.sign_url;
+            signImg.src = resolveUrl(this.settings.sign_url);
             signImg.style.display = 'block';
             signEmptyText.style.display = 'none';
         } else {
@@ -85,10 +117,10 @@ const app = {
                 method: 'POST',
                 body: formData
             });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             if (data.url) {
                 this.settings.seal_url = data.url;
-                document.getElementById('settingSealImg').src = data.url;
+                document.getElementById('settingSealImg').src = resolveUrl(data.url);
             }
         } catch (err) {
             alert('직인 파일 업로드 실패: ' + err.message);
@@ -105,11 +137,11 @@ const app = {
                 method: 'POST',
                 body: formData
             });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             if (data.url) {
                 this.settings.sign_url = data.url;
                 const signImg = document.getElementById('settingSignImg');
-                signImg.src = data.url;
+                signImg.src = resolveUrl(data.url);
                 signImg.style.display = 'block';
                 document.getElementById('settingSignEmptyText').style.display = 'none';
             }
@@ -154,8 +186,11 @@ const app = {
 
         try {
             const res = await authFetch(`${API_BASE}?${params.toString()}`);
-            if (!res.ok) throw new Error('목록을 불러오지 못했습니다.');
-            const data = await res.json();
+            if (!res.ok) {
+                const errData = await parseJsonResponse(res).catch(() => null);
+                throw new Error(errData?.error || `목록을 불러오지 못했습니다. (HTTP ${res.status})`);
+            }
+            const data = await parseJsonResponse(res);
             this.poList = data || [];
             this.renderPoList();
             this.updateKpiStats();
@@ -329,8 +364,11 @@ const app = {
     openEditModal: async function(id) {
         try {
             const res = await authFetch(`${API_BASE}/${id}`);
-            if (!res.ok) throw new Error('발주서 데이터를 가져오지 못했습니다.');
-            const po = await res.json();
+            if (!res.ok) {
+                const errData = await parseJsonResponse(res).catch(() => null);
+                throw new Error(errData?.error || '발주서 데이터를 가져오지 못했습니다.');
+            }
+            const po = await parseJsonResponse(res);
             this.currentPo = po;
 
             document.getElementById('poModalTitle').innerHTML = `<i class='bx bx-edit-alt text-primary'></i> 발주서 수정 (${po.po_number})`;
@@ -389,8 +427,11 @@ const app = {
     duplicatePo: async function(id) {
         try {
             const res = await authFetch(`${API_BASE}/${id}`);
-            if (!res.ok) throw new Error('발주서 데이터를 가져오지 못했습니다.');
-            const po = await res.json();
+            if (!res.ok) {
+                const errData = await parseJsonResponse(res).catch(() => null);
+                throw new Error(errData?.error || '발주서 데이터를 가져오지 못했습니다.');
+            }
+            const po = await parseJsonResponse(res);
             
             this.openCreateModal();
             // 데이터 복사
@@ -435,7 +476,8 @@ const app = {
                 alert('발주서가 삭제되었습니다.');
                 this.loadPurchaseOrders();
             } else {
-                alert('삭제 실패');
+                const errData = await parseJsonResponse(res).catch(() => null);
+                alert('삭제 실패: ' + (errData?.error || '오류가 발생했습니다.'));
             }
         } catch (err) {
             alert('오류 발생: ' + err.message);
@@ -672,7 +714,7 @@ const app = {
         formData.append('file', file);
         try {
             const res = await authFetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             if (data.url) {
                 this.setDrawingPreview(data.url);
             }
@@ -683,7 +725,7 @@ const app = {
 
     setDrawingPreview: function(url) {
         this.drawingUrl = url;
-        document.getElementById('drawingPreviewImg').src = url;
+        document.getElementById('drawingPreviewImg').src = resolveUrl(url);
         document.getElementById('drawingImgWrap').classList.remove('d-none');
         document.getElementById('drawingEmptyNotice').classList.add('d-none');
     },
@@ -803,7 +845,7 @@ const app = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const resData = await res.json();
+            const resData = await parseJsonResponse(res).catch(e => ({ error: e.message }));
             if (!res.ok) {
                 alert('저장 실패: ' + (resData.error || '오류가 발생했습니다.'));
                 return;
@@ -822,8 +864,11 @@ const app = {
     preparePrint: async function(id) {
         try {
             const res = await authFetch(`${API_BASE}/${id}`);
-            if (!res.ok) throw new Error('발주서 데이터를 가져오지 못했습니다.');
-            const po = await res.json();
+            if (!res.ok) {
+                const errData = await parseJsonResponse(res).catch(() => null);
+                throw new Error(errData?.error || '발주서 데이터를 가져오지 못했습니다.');
+            }
+            const po = await parseJsonResponse(res);
             this.currentPrintPo = po;
 
             // 직인 포함 여부 기본 체크 설정
@@ -894,7 +939,7 @@ const app = {
         if (po.drawing_image_url) {
             drawingHtml = `
                 <div class="po-drawing-wrap">
-                    <img src="${po.drawing_image_url}" alt="Specification Drawing">
+                    <img src="${resolveUrl(po.drawing_image_url)}" alt="Specification Drawing">
                 </div>
             `;
         }
@@ -902,10 +947,10 @@ const app = {
         // 직인/사인 날인 HTML
         let stampHtml = '';
         if (includeSeal && this.settings.seal_url) {
-            stampHtml = `<img src="${this.settings.seal_url}" class="po-stamp-img" alt="직인">`;
+            stampHtml = `<img src="${resolveUrl(this.settings.seal_url)}" class="po-stamp-img" alt="직인">`;
         }
         if (includeSeal && this.settings.sign_url) {
-            stampHtml += `<img src="${this.settings.sign_url}" class="po-stamp-img" style="opacity: 0.95;" alt="서명">`;
+            stampHtml += `<img src="${resolveUrl(this.settings.sign_url)}" class="po-stamp-img" style="opacity: 0.95;" alt="서명">`;
         }
 
         return `
