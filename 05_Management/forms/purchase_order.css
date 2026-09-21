@@ -216,6 +216,7 @@ body {
 .btn-action {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     padding: 4px 8px;
     font-size: 11px;
@@ -225,6 +226,9 @@ body {
     background: #ffffff;
     color: #334155;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1.2;
     transition: all 0.15s;
 }
 .btn-action:hover {
@@ -235,6 +239,8 @@ body {
     background: var(--primary-color);
     color: #ffffff;
     border-color: var(--primary-color);
+    padding: 4px 10px;
+    font-weight: 600;
 }
 .btn-action-primary:hover {
     background: var(--primary-hover);

@@ -257,8 +257,8 @@ const app = {
                     <td class="text-center"><span class="badge bg-light text-dark border">${po.currency || 'USD'}</span></td>
                     <td class="text-end fw-bold text-primary">${formattedAmount}</td>
                     <td class="text-center"><span class="badge-status ${statusBadgeClass}">${po.status || '작성중'}</span></td>
-                    <td class="text-center">
-                        <div class="d-inline-flex gap-1">
+                    <td class="text-center" style="white-space: nowrap;">
+                        <div class="d-inline-flex gap-1 align-items-center" style="white-space: nowrap;">
                             <button type="button" class="btn-action btn-action-primary" onclick="app.preparePrint('${po.id}')" title="인쇄 및 PDF">
                                 <i class='bx bx-printer'></i> 인쇄
                             </button>
