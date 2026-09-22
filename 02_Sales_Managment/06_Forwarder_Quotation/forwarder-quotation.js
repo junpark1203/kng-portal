@@ -199,6 +199,16 @@ function initEvents() {
     // 인쇄 및 엑셀
     document.getElementById('btnPrint').addEventListener('click', () => window.print());
     document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
+
+    // 가치비례 배분법 토글 버튼
+    const btnToggleVal = document.getElementById('btnToggleValueAlloc');
+    if (btnToggleVal) {
+        btnToggleVal.addEventListener('click', () => {
+            state.doc.showValueAlloc = !state.doc.showValueAlloc;
+            updateValueAllocUI();
+            generatePrintHTML();
+        });
+    }
     
     // Drag and Drop CSS Injection
     if (!document.getElementById('dnd-styles')) {
@@ -568,6 +578,7 @@ async function editQuote(id) {
         if (!state.doc.otherCosts) {
             state.doc.otherCosts = [];
         }
+        state.doc.showValueAlloc = !!data.showValueAlloc;
         state.activeForwarderIdx = 0;
         
         // 폼 채우기
@@ -605,10 +616,26 @@ async function editQuote(id) {
         renderForwarderTabs();
         renderForwarderContent();
         renderOtherCosts();
+        updateValueAllocUI();
         
         switchView('edit');
     } catch (err) {
         showToast(err.message, true);
+    }
+}
+
+function updateValueAllocUI() {
+    const block = document.getElementById('valAllocationBlock');
+    const btn = document.getElementById('btnToggleValueAlloc');
+    if (!block || !btn) return;
+    if (state.doc.showValueAlloc) {
+        block.style.display = 'block';
+        btn.innerHTML = "<i class='bx bx-minus'></i> 가치비례 배분법 제외";
+        btn.className = "btn-secondary btn-sm text-danger";
+    } else {
+        block.style.display = 'none';
+        btn.innerHTML = "<i class='bx bx-plus'></i> 가치비례 배분법 추가";
+        btn.className = "btn-secondary btn-sm";
     }
 }
 
@@ -629,7 +656,8 @@ function openNewQuote() {
         items: [],
         forwarders: [],
         otherCosts: [],
-        remarks: ''
+        remarks: '',
+        showValueAlloc: false
     };
     state.activeForwarderIdx = 0;
     
@@ -663,6 +691,7 @@ function openNewQuote() {
     renderForwarderTabs();
     renderForwarderContent();
     renderOtherCosts();
+    updateValueAllocUI();
     
     switchView('edit');
 }
@@ -2030,87 +2059,84 @@ function generatePrintHTML() {
         return;
     }
 
-    // A4 width filling via table-layout:fixed and 9-column grid
-    let html = `<table style="width:100%; border-collapse:collapse; font-size:11px; font-family:\'Inter\', \'Pretendard\', sans-serif; table-layout:fixed; color:#000;">`;
-    
-    // 9 columns definition -> 10 columns
-    html += `
-        <colgroup>
-            <col style="width:10%;">
-            <col style="width:12%;">
-            <col style="width:9%;">
-            <col style="width:9%;">
-            <col style="width:10%;">
-            <col style="width:9%;">
-            <col style="width:9%;">
-            <col style="width:9%;">
-            <col style="width:10%;">
-            <col style="width:13%;">
-        </colgroup>
+    const isLCL = state.doc.shipmentType === 'LCL';
+    const printTerms = state.doc.incoterms.slice(0, 3); // 세로 폭을 고려해 최대 3개 조건 표시
+    const hasMoreTerms = state.doc.incoterms.length > 3;
+
+    let html = `
+        <div style="font-family:'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color:#0f172a; font-size:10px; line-height:1.4;">
+            
+            <!-- [HEADER] 문서 타이틀 및 개요 정보 -->
+            <div style="margin-bottom:12px; border-bottom:2px solid #0f172a; padding-bottom:6px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+                    <h1 style="margin:0; font-size:20px; font-weight:800; color:#0f172a; letter-spacing:-0.5px;">
+                        포워더 견적 비교서 <span style="font-size:14px; font-weight:500; color:#475569;">(${state.doc.title || '무제'})</span>
+                    </h1>
+                    <div style="font-size:10px; color:#64748b;">
+                        문서상태: <strong style="color:#0f172a;">${state.doc.status === 'confirmed' ? '확정' : '작성중'}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 기본 정보 테이블 -->
+            <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9.5px;">
+                <colgroup>
+                    <col style="width:14%;">
+                    <col style="width:36%;">
+                    <col style="width:14%;">
+                    <col style="width:36%;">
+                </colgroup>
+                <tr>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">견적일자</th>
+                    <td style="padding:5px 8px; border:1px solid #cbd5e1;">${state.doc.quoteDate || ''}</td>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">선적 / 규격</th>
+                    <td style="padding:5px 8px; border:1px solid #cbd5e1;">${isLCL ? 'LCL (소량화물)' : `FCL (${state.doc.containerType || '20ft'} × ${state.doc.containerQty || 1}대)`}</td>
+                </tr>
+                <tr>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">출발항 (POL)</th>
+                    <td style="padding:5px 8px; border:1px solid #cbd5e1;">${state.doc.pol || '—'}</td>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">도착항 (POD)</th>
+                    <td style="padding:5px 8px; border:1px solid #cbd5e1;">${state.doc.pod || '—'}</td>
+                </tr>
+                <tr>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">적용 환율</th>
+                    <td colspan="3" style="padding:5px 8px; border:1px solid #cbd5e1; background:#fffdf5;">
+                        <span style="display:inline-block; margin-right:15px;"><strong>USD:</strong> ₩${formatNum(state.doc.exchangeRates.USD, 2)}</span>
+                        <span style="display:inline-block; margin-right:15px;"><strong>CNY:</strong> ₩${formatNum(state.doc.exchangeRates.CNY, 2)}</span>
+                        <span style="display:inline-block; margin-right:15px;"><strong>EUR:</strong> ₩${formatNum(state.doc.exchangeRates.EUR, 2)}</span>
+                        <span style="display:inline-block;"><strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY, 2)}</span>
+                    </td>
+                </tr>
+                ${state.doc.remarks ? `
+                <tr>
+                    <th style="background:#f8fafc; color:#334155; padding:5px 8px; border:1px solid #cbd5e1; text-align:center;">상단 비고</th>
+                    <td colspan="3" style="padding:5px 8px; border:1px solid #cbd5e1; white-space:pre-line; color:#334155;">${state.doc.remarks}</td>
+                </tr>` : ''}
+            </table>
+
+            <!-- ──────────────── [1. 수입 대상 품목] ──────────────── -->
+            <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0; display:flex; justify-content:space-between; align-items:baseline;">
+                <span>1. 수입 대상 품목 및 인코텀즈 단가</span>
+                ${hasMoreTerms ? `<span style="font-size:8.5px; color:#ef4444; font-weight:normal;">* 인쇄 지면 폭 제한으로 앞 3개 인코텀즈 조건(${printTerms.join(', ')})만 표시됩니다.</span>` : ''}
+            </div>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9px; table-layout:fixed;">
+                <thead>
+                    <tr style="background:#f1f5f9; color:#0f172a;">
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:75px; text-align:center;">HS CODE</th>
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:35px; text-align:center;">단위</th>
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:55px; text-align:right;">총중량(kg)</th>
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">${isLCL ? 'CBM / R/T' : '최대적재량'}</th>
+                        ${printTerms.map(term => `
+                            <th style="padding:5px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">단가/총액<br>(${term})</th>
+                        `).join('')}
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:80px; text-align:center;">비고</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
 
-    // 1. 헤더 (견적 정보)
-    html += `
-        <thead>
-            <tr>
-                <th colspan="10" style="font-size:24px; font-weight:800; letter-spacing:-0.5px; color:#0f172a; padding:15px; text-align:left; border-bottom:2px solid #0f172a; background:white;">
-                    포워더 견적서 (${state.doc.title || ''})
-                </th>
-            </tr>
-            <tr>
-                <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:8px; border:1px solid #cbd5e1; text-align:center;">견적일자</th>
-                <td colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">${state.doc.quoteDate || ''}</td>
-                <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:8px; border:1px solid #cbd5e1; text-align:center;">선적 / 규격</th>
-                <td colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">${state.doc.shipmentType === 'LCL' ? 'LCL 화물' : `FCL (${state.doc.containerType || ''} x ${state.doc.containerQty || 1})`}</td>
-            </tr>
-            <tr>
-                <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:8px; border:1px solid #cbd5e1; text-align:center;">출발항 (POL)</th>
-                <td colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">${state.doc.pol || ''}</td>
-                <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:8px; border:1px solid #cbd5e1; text-align:center;">도착항 (POD)</th>
-                <td colspan="3" style="padding:8px; border:1px solid #e2e8f0; text-align:center;">${state.doc.pod || ''}</td>
-            </tr>
-            <tr>
-                <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:8px; border:1px solid #cbd5e1; text-align:center;">적용 환율</th>
-                <td colspan="8" style="padding:8px; border:1px solid #e2e8f0; text-align:left; background:#fff2cc;">
-                    <strong>USD:</strong> ₩${formatNum(state.doc.exchangeRates.USD, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>CNY:</strong> ₩${formatNum(state.doc.exchangeRates.CNY, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>EUR:</strong> ₩${formatNum(state.doc.exchangeRates.EUR, 2)} &nbsp;&nbsp;|&nbsp;&nbsp; 
-                    <strong>JPY:</strong> ₩${formatNum(state.doc.exchangeRates.JPY, 2)}
-                </td>
-            </tr>
-            <tr><th colspan="10" style="height:20px; border:none; background:white;"></th></tr>
-        </thead>
-        <tbody>
-    `;
-
-    // 2. 수입 대상 품목
-    const printTerms = state.doc.incoterms.slice(0, 4);
-    const hasMoreTerms = state.doc.incoterms.length > 4;
-    const remainingCols = 4 - printTerms.length;
-
-    html += `
-        <tr>
-            <th colspan="10" style="font-size:15px; color:#0f172a; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #0f172a; background:white;">
-                1. 수입 대상 품목
-                ${hasMoreTerms ? `<span style="font-size:12px; color:red; margin-left:15px; font-weight:normal;">* 인쇄 여백 제한으로 최대 4개의 인코텀즈 단가만 표시됩니다.</span>` : ''}
-            </th>
-        </tr>
-        <tr>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">HS CODE</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">품명</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">수량</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">단위</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">총중량(kg)</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">${state.doc.shipmentType === 'LCL' ? 'CBM / R/T' : '최대적재량'}</th>
-    `;
-    printTerms.forEach(term => {
-        html += `<th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1; font-size:10px;">단가/총액<br>(${term})</th>`;
-    });
-    if (remainingCols > 0) {
-        html += `<th colspan="${remainingCols}" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">비고</th>`;
-    }
-    html += `</tr>`;
-    
     let sumQty = 0;
     let sumWeight = 0;
     let sumPerTerm = {};
@@ -2119,47 +2145,49 @@ function generatePrintHTML() {
     state.doc.items.forEach(item => {
         sumQty += (item.qty || 0);
         sumWeight += (item.weight || 0);
+
         html += `
             <tr>
-                <td style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.hsCode || ''}</td>
-                <td style="padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name || ''}</td>
-                <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">
-                    ${formatNum(item.qty)}
-                    ${state.doc.shipmentType === 'LCL' ? `<br><span style="font-size:10px; color:#555;">[CTN: ${formatNum(item.ctn || 1)}]</span>` : ''}
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center;">${item.hsCode || '—'}</td>
+                <td style="padding:4px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name || ''}</td>
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center;">${item.unit || ''}</td>
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.weight)}</td>
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">
+                    ${isLCL ? `${formatNum(item.cbm || 0, 2)} / ${formatNum(item.rt || 0, 2)}` : `${formatNum(item.maxLoad)} /대`}
                 </td>
-                <td style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${item.unit || ''}</td>
-                <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${formatNum(item.weight)}</td>
-                <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${state.doc.shipmentType === 'LCL' ? `${formatNum(item.cbm || 0, 3)} / ${formatNum(item.rt || 0, 3)}` : `${formatNum(item.maxLoad)} /cntr`}</td>
         `;
-        
+
         printTerms.forEach(term => {
             const p = item.prices[term];
-            if (p && p.unitPrice) {
+            if (p && p.unitPrice > 0) {
                 const total = p.unitPrice * (item.qty || 0);
                 sumPerTerm[term] += total;
-                html += `<td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; font-size:10px;">
-                    ${p.currency || ''} ${formatNum(p.unitPrice, 2)}<br>
-                    <span style="color:#555;">(총액 ${p.currency || ''} ${formatNum(total, 2)})</span>
-                </td>`;
+                html += `
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-size:8.5px;">
+                        ${p.currency} ${formatNum(p.unitPrice, 2)}<br>
+                        <span style="color:#64748b;">(${p.currency} ${formatNum(total, 1)})</span>
+                    </td>
+                `;
             } else {
-                html += `<td style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#aaa;">—</td>`;
+                html += `<td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">—</td>`;
             }
         });
 
-        if (remainingCols > 0) {
-            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.remarks || ''}</td>`;
-        }
-        
-        html += `</tr>`;
+        html += `
+                <td style="padding:4px 4px; border:1px solid #e2e8f0; font-size:8.5px; color:#475569;">${item.remarks || ''}</td>
+            </tr>
+        `;
     });
-    
+
+    // 품목 합계
     html += `
-        <tr>
-            <th colspan="2" style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0; text-align:center;">합계</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0; text-align:right;">${formatNum(sumQty)}</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0;"></th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0; text-align:right;">${formatNum(sumWeight)} kg</th>
-            <th style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0;"></th>
+            <tr style="background:#f8fafc; font-weight:700;">
+                <td colspan="2" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">합계</td>
+                <td style="padding:4px; border:1px solid #cbd5e1; text-align:right;">${formatNum(sumQty)}</td>
+                <td style="padding:4px; border:1px solid #cbd5e1;"></td>
+                <td style="padding:4px; border:1px solid #cbd5e1; text-align:right;">${formatNum(sumWeight)} kg</td>
+                <td style="padding:4px; border:1px solid #cbd5e1;"></td>
     `;
     printTerms.forEach(term => {
         let currency = '';
@@ -2173,64 +2201,53 @@ function generatePrintHTML() {
         }
         const sumVal = sumPerTerm[term] || 0;
         const sumKrw = sumVal * exRate;
-
-        html += `<th style="text-align:right; padding:6px; border:1px solid #e2e8f0; background:#f8fafc; font-size:10px;">
-            <span style="font-weight:bold; font-size:11px;">${currency} ${formatNum(sumVal, 2)}</span><br>
-            <span style="color:#555; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
-        </th>`;
+        html += `
+            <td style="padding:4px; border:1px solid #cbd5e1; text-align:right; font-size:8.5px;">
+                ${currency} ${formatNum(sumVal, 1)}<br>
+                <span style="color:#64748b; font-weight:normal;">(₩${formatNum(sumKrw)})</span>
+            </td>
+        `;
     });
-    if (remainingCols > 0) {
-        html += `<th colspan="${remainingCols}" style="background:#f8fafc; padding:6px; border:1px solid #e2e8f0;"></th>`;
-    }
     html += `
-        </tr>
-        <tr><td colspan="10" style="height:20px; border:none; background:white;"></td></tr>
+                <td style="padding:4px; border:1px solid #cbd5e1;"></td>
+            </tr>
+        </tbody>
+    </table>
     `;
 
-    // 3. 비용 요약 (행/열 반전 Transpose 로직)
-    const getInvoiceSumKrw = (term) => {
-        let sum = 0;
-        state.doc.items.forEach(item => {
-            const p = item.prices[term];
-            if (p && p.currency && p.unitPrice) {
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                sum += (p.unitPrice * item.qty * exRate);
-            }
-        });
-        return sum;
-    };
-
+    // ──────────────── [2. 비용 요약 비교] ────────────────
     html += `
-        <tr>
-            <th colspan="10" style="font-size:15px; color:#0f172a; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #0f172a; background:white;">
-                2. 비용 요약 (원화 환산)
-            </th>
-        </tr>
-        <tr>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">구분 (포워더 / 조건)</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">물품 대금</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">해상 운임 (O/F)</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">수출국 부대비용</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">수입국 부대비용</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">적하보험료</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">수입 통관수수료</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">포워더 소계</th>
-            <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">기타 추가비용</th>
-            <th style="background:#e2e8f0; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">총 비용 (KRW)</th>
-        </tr>
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0;">
+            2. 비용 요약 비교 (원화 환산, KRW)
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9px; table-layout:fixed;">
+            <thead>
+                <tr style="background:#f1f5f9; color:#0f172a;">
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:center; width:85px;">포워더 / 조건</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">물품 대금</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">해상운임 (O/F)</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">수출국비용</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">수입국비용</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">적하보험료</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">통관수수료</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right; background:#f8fafc;">부대비용 소계</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right;">기타비용</th>
+                    <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:right; background:#e2e8f0; font-weight:bold;">총 비용 (KRW)</th>
+                </tr>
+            </thead>
+            <tbody>
     `;
 
-    state.doc.forwarders.forEach((fw) => {
+    state.doc.forwarders.forEach(fw => {
         state.doc.incoterms.forEach(term => {
             if (!fw.calculated || !fw.calculated[term]) return;
             const calc = fw.calculated[term];
-            const invKrw = calc.invoiceKrw;
-            const sub = calc.ancillaryKrw;
+            const invKrw = calc.invoiceKrw || 0;
+            const sub = calc.ancillaryKrw || 0;
             const totalOther = calc.otherCostsKrw || 0;
-            const grand = calc.totalKrw;
-            
-            let oceanKrw = 0, exportKrw = 0, importKrw = 0, insKrw = 0, customsKrw = 0;
+            const grand = calc.totalKrw || 0;
 
+            let oceanKrw = 0, exportKrw = 0, importKrw = 0, insKrw = 0, customsKrw = 0;
             fw.costs.forEach(c => {
                 if (c.applyTo[term]) {
                     const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
@@ -2244,139 +2261,448 @@ function generatePrintHTML() {
 
             html += `
                 <tr>
-                    <td style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; font-weight:bold; word-break:keep-all;">${fw.name}<br>(${term})</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${invKrw > 0 ? '₩ ' + formatNum(invKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${oceanKrw > 0 ? '₩ ' + formatNum(oceanKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${exportKrw > 0 ? '₩ ' + formatNum(exportKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${importKrw > 0 ? '₩ ' + formatNum(importKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${insKrw > 0 ? '₩ ' + formatNum(insKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${customsKrw > 0 ? '₩ ' + formatNum(customsKrw) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; background:#f8fafc; font-weight:bold;">${sub > 0 ? '₩ ' + formatNum(sub) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; background:#f8fafc; font-weight:bold;">${totalOther > 0 ? '₩ ' + formatNum(totalOther) : '—'}</td>
-                    <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; font-weight:bold; background:#e2e8f0; color:#0f172a;">${grand > 0 ? '₩ ' + formatNum(grand) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; font-weight:600; text-align:center; background:#f8fafc;">
+                        ${fw.name} <span style="font-weight:normal; color:#475569;">(${term})</span>
+                    </td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">₩${formatNum(invKrw)}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${oceanKrw > 0 ? '₩' + formatNum(oceanKrw) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${exportKrw > 0 ? '₩' + formatNum(exportKrw) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${importKrw > 0 ? '₩' + formatNum(importKrw) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${insKrw > 0 ? '₩' + formatNum(insKrw) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${customsKrw > 0 ? '₩' + formatNum(customsKrw) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-weight:600; background:#f8fafc;">₩${formatNum(sub)}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${totalOther > 0 ? '₩' + formatNum(totalOther) : '—'}</td>
+                    <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f1f5f9; color:#0f172a;">₩${formatNum(grand)}</td>
                 </tr>
             `;
         });
     });
 
-    html += `<tr><td colspan="10" style="border-top:1px solid #e2e8f0; height:20px; border-left:none; border-right:none; background:white;"></td></tr>`;
+    html += `
+            </tbody>
+        </table>
+    `;
 
-    // 4. 모든 인코텀즈 실수입원가 (5-1, 5-2)
-    state.doc.forwarders.forEach((fw, fIdx) => {
+    // ──────────────── [3. 대상 품목 실제 수입원가 산출 결과] ────────────────
+    // 기본 필수: (1) 컨테이너 적재비율 배분법 (부피/무게 기준)
+    // 조건부: (2) 가치비례 배분법 (state.doc.showValueAlloc 이 true 일 때만)
+    html += `
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0;">
+            3. 대상 품목 실제 수입원가 산출 결과
+        </div>
+    `;
+
+    state.doc.forwarders.forEach((fw) => {
+        state.doc.incoterms.forEach(term => {
+            if (!fw.calculated || !fw.calculated[term]) return;
+            const calc = fw.calculated[term];
+            const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
+            const totalDutiableAncillaryKrw = calc.dutiableAncillaryKrw || 0;
+            const totalInvoiceKrw = calc.invoiceKrw || 0;
+
+            // 적재비율 / 운임톤 기준 계산
+            let totalModulus = 0;
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (p && p.unitPrice > 0) {
+                    if (isLCL) totalModulus += (item.rt || 0);
+                    else if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
+                }
+            });
+
+            html += `
+                <div style="margin-bottom:10px;">
+                    <div style="font-weight:700; font-size:9.5px; color:#1e293b; margin-bottom:2px;">
+                        ■ ${fw.name} - ${term} 조건
+                    </div>
+
+                    <!-- 3-1. 컨테이너 적재비율(부피/체적) 배분법 (기본 필수) -->
+                    <div style="font-size:9px; color:#475569; font-weight:600; margin:2px 0;">
+                        (1) ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/무게 기준)'}
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#0f172a;">
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">점유율</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (!p || !p.unitPrice || p.unitPrice === 0) {
+                    html += `
+                        <tr>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                            <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const unitPriceFC = p.unitPrice;
+                const exRate = state.doc.exchangeRates[p.currency] || 1;
+                const dutyRate = item.dutyRate || 0;
+
+                let allocatedFC_Volume_Total = 0;
+                let allocatedFC_Volume_Dutiable = 0;
+                let volumeShareRatio = 0;
+
+                if (totalModulus > 0 && item.qty > 0) {
+                    if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
+                    else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+
+                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+                    const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+                    allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+                    allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+                }
+
+                const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
+                const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+                const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                const realCostKrw = baseCostKrw + dutyKrw;
+
+                const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
+
+                html += `
+                    <tr>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${shareText}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+            `;
+
+            // 3-2. 가치비례 배분법: state.doc.showValueAlloc 이 활성화된 경우에만 출력!
+            if (state.doc.showValueAlloc) {
+                const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+                const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+
+                html += `
+                    <div style="font-size:9px; color:#475569; font-weight:600; margin:4px 0 2px 0;">
+                        (2) 가치비례 배분법 (가액 기준)
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#0f172a;">
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">배분비율</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `
+                            <tr>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                                <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const dutyRate = item.dutyRate || 0;
+
+                    const allocatedFC_Total = unitPriceFC * allocationRatio;
+                    const allocatedFC_Dutiable = unitPriceFC * dutiableAllocationRatio;
+
+                    const dispAllocatedFC = Math.round(allocatedFC_Total * 100) / 100;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                    const dispDutiableAllocated = Math.round(allocatedFC_Dutiable * 100) / 100;
+                    const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                    const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                    const realCostKrw = baseCostKrw + dutyKrw;
+
+                    html += `
+                        <tr>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                `;
+            }
+
+            html += `</div>`;
+        });
+    });
+
+    // ──────────────── [PAGE BREAK: 요약과 상세 분할] ────────────────
+    html += `
+        <div class="print-page-break" style="page-break-before:always; break-before:page; height:1px; margin-top:20px;"></div>
+
+        <!-- [2페이지 헤더] -->
+        <div style="margin-bottom:12px; border-bottom:1.5px solid #475569; padding-bottom:4px; display:flex; justify-content:space-between; align-items:baseline;">
+            <div style="font-size:14px; font-weight:700; color:#0f172a;">
+                실무 증빙용 상세 명세서 <span style="font-size:11px; font-weight:normal; color:#64748b;">(${state.doc.title || ''})</span>
+            </div>
+            <div style="font-size:9px; color:#64748b;">(0원 항목 제외 상세 명세)</div>
+        </div>
+
+        <!-- ──────────────── [4. 포워더별 수입 부대비용 상세 명세 (0원 제외)] ──────────────── -->
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:10px 0 5px 0;">
+            4. 포워더별 수입 부대비용 상세 명세 (실제 발생 항목)
+        </div>
+    `;
+
+    state.doc.forwarders.forEach(fw => {
         state.doc.incoterms.forEach(term => {
             if (!fw.calculated || !fw.calculated[term]) return;
 
-            const calc = fw.calculated[term];
-            const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
-            const totalInvoiceKrw = calc.invoiceKrw;
-            
-            const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
-            
-            let totalContainers = 0;
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (p && p.unitPrice > 0 && item.maxLoad > 0) {
-                    totalContainers += (item.qty / item.maxLoad);
-                }
-            });
+            // 0원 제외 필터링
+            const validCosts = (fw.costs || []).filter(c => c.applyTo && c.applyTo[term] && (c.amount || 0) > 0);
 
             html += `
-                <tr>
-                    <th colspan="10" style="font-size:15px; color:#0f172a; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #0f172a; background:white;">
-                        3. 실수입원가 - ${fw.name} (${term})
-                    </th>
-                </tr>
+                <div style="margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
+                    <div style="font-weight:700; font-size:9.5px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1; border-bottom:none;">
+                        ■ ${fw.name} — ${term} 조건 부대비용 명세 (${validCosts.length}건)
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#334155;">
+                                <th style="padding:4px 5px; border:1px solid #cbd5e1; text-align:left;">부대비용 항목명</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:70px; text-align:center;">비용 구분</th>
+                                <th style="padding:4px 5px; border:1px solid #cbd5e1; width:80px; text-align:right;">외화 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:center;">수량 / 단위</th>
+                                <th style="padding:4px 5px; border:1px solid #cbd5e1; width:85px; text-align:right;">적용 환율</th>
+                                <th style="padding:4px 5px; border:1px solid #cbd5e1; width:95px; text-align:right; font-weight:bold;">원화 환산액 (KRW)</th>
+                                <th style="padding:4px 5px; border:1px solid #cbd5e1; width:100px; text-align:left;">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
 
-            // 5-1 가치비례
-            html += `
-                <tr><td colspan="10" style="background:#e2e8f0; color:#0f172a; font-weight:bold; padding:6px; border:1px solid #cbd5e1;">(1) 가치비례 배분법 (가액 기준)</td></tr>
-                <tr>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">품명</th>
-                    <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">수량</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">순수 물품대금 (단위당)</th>
-                    <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">실수입원가 (KRW)</th>
-                </tr>
-            `;
-            
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#666;">단가 없음</td></tr>`;
-                    return;
-                }
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                const allocatedFC_Value = unitPriceFC * allocationRatio;
-                const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
-                const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
-                const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
-
+            if (validCosts.length === 0) {
                 html += `
                     <tr>
-                        <td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${formatNum(item.qty)}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f8fafc; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#0f172a;">₩ ${formatNum(realCostKrw_Value)}</td>
+                        <td colspan="7" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
+                            입력된 부대비용이 없거나 0원입니다.
+                        </td>
                     </tr>
                 `;
-            });
+            } else {
+                let fwTermSubtotal = 0;
+                validCosts.forEach(c => {
+                    const exRate = state.doc.exchangeRates[c.currency] || 1;
+                    const amtKrw = (c.amount || 0) * (c.unitQty || 1) * exRate;
+                    fwTermSubtotal += amtKrw;
 
-            // 5-2 적재비율
-            html += `
-                <tr><td colspan="10" style="background:#e2e8f0; color:#0f172a; font-weight:bold; padding:6px; border:1px solid #cbd5e1;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
-                <tr>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">품명</th>
-                    <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">점유율</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">순수 물품대금 (단위당)</th>
-                    <th style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#f8fafc; color:#0f172a; padding:6px; border:1px solid #cbd5e1;">실수입원가 (KRW)</th>
-                </tr>
-            `;
+                    let groupLabel = '기타';
+                    if (c.group === 'ocean') groupLabel = '해상운임';
+                    else if (c.group === 'export') groupLabel = '수출국';
+                    else if (c.group === 'logistics') groupLabel = '물류할증';
+                    else if (c.group === 'import') groupLabel = '수입국';
+                    else if (c.key === 'INS') groupLabel = '보험료';
+                    else if (c.key === 'CUST_I') groupLabel = '통관료';
 
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">-</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#666;">단가 없음</td></tr>`;
-                    return;
-                }
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                
-                let allocatedFC_Volume = 0;
-                let volumeShareRatio = 0;
-                if (item.maxLoad > 0 && totalContainers > 0 && item.qty > 0) {
-                    const itemContainerUsage = item.qty / item.maxLoad;
-                    volumeShareRatio = itemContainerUsage / totalContainers;
-                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-                    allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
-                }
-
-                const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
-                const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
-                const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
+                    html += `
+                        <tr>
+                            <td style="padding:3px 5px; border:1px solid #e2e8f0; font-weight:500;">${c.label}</td>
+                            <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${groupLabel}</td>
+                            <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right;">${c.currency} ${formatNum(c.amount, 2)}</td>
+                            <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center;">${c.unitQty || 1} ${c.unit || ''}</td>
+                            <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">₩${formatNum(exRate, 1)}</td>
+                            <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(amtKrw)}</td>
+                            <td style="padding:3px 5px; border:1px solid #e2e8f0; color:#64748b;">${c.remarks || ''}</td>
+                        </tr>
+                    `;
+                });
 
                 html += `
-                    <tr>
-                        <td colspan="2" style="padding:6px; border-bottom:1px solid #e2e8f0; border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f8fafc; padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; color:#0f172a;">₩ ${formatNum(realCostKrw_Volume)}</td>
+                    <tr style="background:#f8fafc; font-weight:700;">
+                        <td colspan="5" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
+                            ${fw.name} (${term}) 부대비용 합계
+                        </td>
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#0f172a;">
+                            ₩${formatNum(fwTermSubtotal)}
+                        </td>
+                        <td style="padding:4px 5px; border:1px solid #cbd5e1;"></td>
                     </tr>
                 `;
-            });
-            html += `<tr><td colspan="10" style="border-top:1px solid #e2e8f0; height:20px; border-left:none; border-right:none; background:white;"></td></tr>`;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
         });
     });
 
-    html += `</tbody></table>`;
+    // ──────────────── [5. 기타 금융 및 추가 부대비용 상세] ────────────────
+    const calculatedCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'calculated');
+    const manualCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'manual' && (oc.amount || 0) > 0);
+
+    html += `
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
+            5. 기타 금융 및 추가 부대비용 산출 근거
+        </div>
+    `;
+
+    // 5-1. 금융비용 (자동산출 조건 및 내역)
+    if (calculatedCosts.length > 0) {
+        calculatedCosts.forEach(oc => {
+            const duration = oc.durationMonths || 0;
+            const colDays = oc.collectionDays || 0;
+            const rate = oc.interestRate || 0;
+            const avgMonths = ((duration + 1) / 2) + (colDays / 30);
+
+            html += `
+                <div style="margin-bottom:10px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
+                    <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
+                        ■ 금융비용 (이자비용) 산출 조건 및 산출액
+                    </div>
+                    <div style="padding:5px 8px; font-size:9px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; gap:16px; flex-wrap:wrap;">
+                        <div>사업기간: <strong>${duration}개월</strong></div>
+                        <div>연 이자율: <strong>${rate}%</strong></div>
+                        <div>대금회수: <strong>${colDays}일</strong></div>
+                        <div>평균 자금묶임기간: <strong>${avgMonths.toFixed(2)}개월</strong> <span style="font-size:8px; color:#64748b;">( = ((사업기간+1)/2) + (대금회수/30) )</span></div>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                        <thead>
+                            <tr style="background:#f1f5f9; color:#334155;">
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">포워더 / 조건</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:right;">적용 원금 (물품대금 + 부대비용)</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">산출 공식</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; font-weight:bold; width:120px;">산출 금융비용 (KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            state.doc.forwarders.forEach(fw => {
+                state.doc.incoterms.forEach(term => {
+                    if (!fw.calculated || !fw.calculated[term]) return;
+                    const calc = fw.calculated[term];
+                    const principal = (calc.invoiceKrw || 0) + (calc.ancillaryKrw || 0);
+                    const interestAmt = Math.round(principal * (avgMonths / 12) * (rate / 100));
+
+                    html += `
+                        <tr>
+                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:500;">
+                                ${fw.name} (${term})
+                            </td>
+                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">
+                                ₩${formatNum(principal)}
+                            </td>
+                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b; font-size:8.5px;">
+                                원금 × (${avgMonths.toFixed(2)}/12) × ${rate}%
+                            </td>
+                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc;">
+                                ₩${formatNum(interestAmt)}
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        });
+    }
+
+    // 5-2. 수동 추가 부대비용
+    if (manualCosts.length > 0) {
+        html += `
+            <div style="margin-bottom:12px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
+                <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
+                    ■ 기타 추가 부대비용 명세
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                    <thead>
+                        <tr style="background:#f1f5f9; color:#334155;">
+                            <th style="padding:4px; border:1px solid #cbd5e1; text-align:left;">항목명</th>
+                            <th style="padding:4px; border:1px solid #cbd5e1; width:80px; text-align:center;">구분</th>
+                            <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; width:120px;">금액 (KRW)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        let manualTotal = 0;
+        manualCosts.forEach(oc => {
+            manualTotal += (oc.amount || 0);
+            html += `
+                <tr>
+                    <td style="padding:4px 6px; border:1px solid #e2e8f0; font-weight:500;">${oc.name}</td>
+                    <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">수동 추가</td>
+                    <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(oc.amount)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    <tr style="background:#f8fafc; font-weight:700;">
+                        <td colspan="2" style="padding:4px 6px; border:1px solid #cbd5e1; text-align:center;">추가비용 합계</td>
+                        <td style="padding:4px 6px; border:1px solid #cbd5e1; text-align:right;">₩${formatNum(manualTotal)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        `;
+    }
+
+    if (calculatedCosts.length === 0 && manualCosts.length === 0) {
+        html += `
+            <div style="padding:10px; border:1px solid #cbd5e1; background:#f8fafc; text-align:center; color:#94a3b8; font-size:9px; margin-bottom:12px;">
+                등록된 기타 금융 및 추가 부대비용이 없습니다.
+            </div>
+        `;
+    }
+
+    html += `</div>`; // End container wrapper
+
     container.innerHTML = html;
 }
 
@@ -2776,43 +3102,45 @@ function generateExcelHTML() {
                 </tr>
             `;
 
-            // 5-1 가치비례
-            html += `
-                <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(1) 가치비례 배분법 (가액 기준)</td></tr>
-                <tr>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
-                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
-                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
-                </tr>
-            `;
-            
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
-                    return;
-                }
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                const allocatedFC_Value = unitPriceFC * allocationRatio;
-                const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
-                const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
-                const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
-
+            // 5-1 가치비례 (토글 활성화 시만)
+            if (state.doc.showValueAlloc) {
                 html += `
+                    <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(1) 가치비례 배분법 (가액 기준)</td></tr>
                     <tr>
-                        <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
                     </tr>
                 `;
-            });
+                
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.qty}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
+                        return;
+                    }
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const allocatedFC_Value = unitPriceFC * allocationRatio;
+                    const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
+                    const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+                    const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
+
+                    html += `
+                        <tr>
+                            <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                            <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
+                        </tr>
+                    `;
+                });
+            }
 
             // 5-2 적재비율
             html += `

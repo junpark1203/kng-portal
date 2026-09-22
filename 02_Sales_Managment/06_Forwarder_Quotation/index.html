@@ -318,10 +318,109 @@
                     </div>
                 </section>
 
-                <!-- SECTION 3: 포워더별 부대비용 입력 (포워더 탭 + 시트 그리드) -->
+                <!-- SECTION 3: 비용 요약 비교 (포워더 / 인코텀즈) -->
+                <section class="edit-section highlight-section">
+                    <h3>3. 비용 요약 (포워더 / 인코텀즈 견적 비교 매트릭스)</h3>
+                    <div class="erp-grid-wrapper" style="min-height: 140px;">
+                        <table class="erp-sheet-table summary-table" id="summaryTable">
+                            <thead>
+                                <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
+                            </thead>
+                            <tbody>
+                                <!-- 내용 동적 생성 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SECTION 4: 대상 품목 실제 수입원가 산출 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
-                        <h3>3. 포워더별 수입 부대비용 산출</h3>
+                        <h3>4. 대상 품목 실제 수입원가 산출</h3>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" id="btnToggleValueAlloc" class="btn-erp" style="height:24px; font-size:11px;">
+                                <i class='bx bx-plus'></i> 가치비례 배분법 추가
+                            </button>
+                            <span class="text-muted" style="font-size:11px; font-weight:600;">원가 산출 기준 선택:</span>
+                            <select id="costResultSelector" class="form-select form-select-sm" style="width: auto; height: 24px; font-size: 11px; padding: 1px 22px 1px 6px;">
+                                <!-- 선택 가능한 포워더+인코텀즈 조합 렌더링 -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 4-1. 컨테이너 적재비율 배분법 (기본 권장 배분법) -->
+                    <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
+                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
+                            실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
+                            <i class='bx bx-info-circle tooltip-icon'>
+                                <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.</span>
+                            </i>
+                        </span>
+                    </div>
+                    <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
+                        <table class="erp-sheet-table cost-table" id="costTableVolume">
+                            <thead>
+                                <tr>
+                                    <th>품명</th>
+                                    <th class="col-num" style="width: 110px;">수량 / 점유율</th>
+                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                    <th class="col-num" style="width: 120px;">
+                                        관세 (KRW)
+                                        <i class='bx bx-info-circle tooltip-icon'>
+                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
+                                        </i>
+                                    </th>
+                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costTableBodyVolume">
+                                <!-- 결과 동적 렌더링 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 4-2. 가치비례 배분법 (토글로 손쉽게 추가/삭제 가능) -->
+                    <div id="valAllocationBlock" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
+                            <span class="fw-bold text-secondary" style="font-size: 11.5px;">
+                                실수입원가 (가치비례 배분법)
+                                <i class='bx bx-info-circle tooltip-icon'>
+                                    <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
+                                </i>
+                            </span>
+                        </div>
+                        <div class="erp-grid-wrapper" style="min-height: 100px;">
+                            <table class="erp-sheet-table cost-table" id="costTableValue">
+                                <thead>
+                                    <tr>
+                                        <th>품명</th>
+                                        <th class="col-num" style="width: 90px;">수량</th>
+                                        <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                        <th class="col-num" style="width: 120px;">
+                                            관세 (KRW)
+                                            <i class='bx bx-info-circle tooltip-icon'>
+                                                <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
+                                            </i>
+                                        </th>
+                                        <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="costTableBodyValue">
+                                    <!-- 결과 동적 렌더링 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SECTION 5: 포워더별 부대비용 상세 입력 (포워더 탭 + 시트 그리드) -->
+                <section class="edit-section">
+                    <div class="section-header-flex">
+                        <h3>5. 포워더별 수입 부대비용 산출 (상세 입력)</h3>
                         <div class="forwarder-tabs" id="forwarderTabs">
                             <!-- 탭 동적 렌더링 -->
                             <button type="button" id="btnAddForwarder" class="tab-btn add-tab"><i class='bx bx-plus'></i> 포워더 추가</button>
@@ -334,10 +433,10 @@
                     </div>
                 </section>
 
-                <!-- SECTION 4: 기타 금융 및 추가 부대비용 -->
+                <!-- SECTION 6: 기타 금융 및 추가 부대비용 상세 입력 -->
                 <section class="edit-section">
                     <div class="section-header-flex">
-                        <h3>4. 기타 금융 및 추가 부대비용</h3>
+                        <h3>6. 기타 금융 및 추가 부대비용 (상세 입력)</h3>
                         <div>
                             <button type="button" id="btnAddInterest" class="btn-erp" style="height:22px; font-size:11px;"><i class='bx bx-plus'></i> 금융비용 추가</button>
                             <button type="button" id="btnAddOtherCost" class="btn-erp" style="height:22px; font-size:11px; margin-left:3px;"><i class='bx bx-plus'></i> 일반 항목 추가</button>
@@ -360,98 +459,6 @@
                             <tfoot id="otherCostTableFoot">
                                 <!-- 합계 렌더링 -->
                             </tfoot>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- SECTION 5: 비용 요약 비교 (포워더 / 인코텀즈) -->
-                <section class="edit-section highlight-section">
-                    <h3>5. 비용 요약 (포워더 / 인코텀즈 견적 비교 매트릭스)</h3>
-                    <div class="erp-grid-wrapper" style="min-height: 140px;">
-                        <table class="erp-sheet-table summary-table" id="summaryTable">
-                            <thead>
-                                <!-- 헤더 동적 생성 (포워더 × 인코텀즈) -->
-                            </thead>
-                            <tbody>
-                                <!-- 내용 동적 생성 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <!-- SECTION 6: 대상 품목 실제 수입원가 산출 -->
-                <section class="edit-section">
-                    <div class="section-header-flex">
-                        <h3>6. 대상 품목 실제 수입원가 산출</h3>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted" style="font-size:11px; font-weight:600;">원가 산출 기준 선택:</span>
-                            <select id="costResultSelector" class="form-select form-select-sm" style="width: auto; height: 24px; font-size: 11px; padding: 1px 22px 1px 6px;">
-                                <!-- 선택 가능한 포워더+인코텀즈 조합 렌더링 -->
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
-                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
-                            6-1. 실수입원가 (가치비례 배분법)
-                            <i class='bx bx-info-circle tooltip-icon'>
-                                <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
-                            </i>
-                        </span>
-                    </div>
-                    <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
-                        <table class="erp-sheet-table cost-table" id="costTableValue">
-                            <thead>
-                                <tr>
-                                    <th>품명</th>
-                                    <th class="col-num" style="width: 90px;">수량</th>
-                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
-                                    <th class="col-num" style="width: 120px;">
-                                        관세 (KRW)
-                                        <i class='bx bx-info-circle tooltip-icon'>
-                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
-                                        </i>
-                                    </th>
-                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="costTableBodyValue">
-                                <!-- 결과 동적 렌더링 -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
-                            6-2. 실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
-                            <i class='bx bx-info-circle tooltip-icon'>
-                                <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.</span>
-                            </i>
-                        </span>
-                    </div>
-                    <div class="erp-grid-wrapper" style="min-height: 100px;">
-                        <table class="erp-sheet-table cost-table" id="costTableVolume">
-                            <thead>
-                                <tr>
-                                    <th>품명</th>
-                                    <th class="col-num" style="width: 110px;">수량 / 점유율</th>
-                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
-                                    <th class="col-num" style="width: 120px;">
-                                        관세 (KRW)
-                                        <i class='bx bx-info-circle tooltip-icon'>
-                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
-                                        </i>
-                                    </th>
-                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="costTableBodyVolume">
-                                <!-- 결과 동적 렌더링 -->
-                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -494,6 +501,6 @@
     <div id="printContainer" class="print-only"></div>
 
     <!-- 스크립트 모듈 -->
-    <script type="module" src="forwarder-quotation.js?v=20260922_1"></script>
+    <script type="module" src="forwarder-quotation.js?v=20260922_3"></script>
 </body>
 </html>

@@ -811,7 +811,7 @@ body {
     }
     @page {
         margin: 1cm;
-        size: A4 landscape;
+        size: A4 portrait;
     }
     body {
         background: #fff;
@@ -833,13 +833,12 @@ body {
     #printContainer table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 16px;
-        font-size: 10.5px;
+        margin-bottom: 14px;
+        font-size: 10px;
     }
     #printContainer th, #printContainer td {
         border: 1px solid #cbd5e1 !important;
         padding: 4px 6px;
-        text-align: right;
         color: #1e293b;
     }
     #printContainer th {
@@ -847,7 +846,13 @@ body {
         font-weight: 700;
         background-color: #f8fafc;
     }
-    #printContainer td:first-child {
-        text-align: left;
+    .print-page-break {
+        page-break-before: always;
+        break-before: page;
+        margin-top: 15px;
+    }
+    .print-avoid-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
     }
 }
