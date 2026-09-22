@@ -190,21 +190,23 @@
                         <!-- 2. Buyer & Seller 정보 (2단 그리드) -->
                         <div class="form-section-title">
                             <span>2. 거래 당사자 (Buyer & Manufacturer/Seller)</span>
-                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="app.loadBuyerPreset()">
-                                <i class='bx bx-reset'></i> K&G 기본정보 불러오기
-                            </button>
                         </div>
                         <div class="row g-3 mb-3">
                             <!-- Buyer (K&G) -->
-                            <div class="col-md-6 border-end">
-                                <h6 class="fw-bold text-dark mb-2" style="font-size: 12px;">Official Distributor (Buyer)</h6>
+                            <div class="col-md-6 border-end pe-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2" style="height: 26px;">
+                                    <h6 class="fw-bold text-dark mb-0" style="font-size: 12px;">Official Distributor (Buyer)</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 fw-semibold" onclick="app.loadBuyerPreset()" style="font-size: 11px; height: 26px;" title="K&G 기본 정보 자동 입력">
+                                        <i class='bx bx-reset'></i> K&G 기본정보 불러오기
+                                    </button>
+                                </div>
                                 <div class="mb-2">
                                     <label class="form-label mb-0" style="font-size: 11px;">Company Name</label>
                                     <input type="text" class="form-control form-control-sm" id="formBuyerName" value="K&G CO., LTD.">
                                 </div>
                                 <div class="mb-2">
                                     <label class="form-label mb-0" style="font-size: 11px;">Address</label>
-                                    <input type="text" class="form-control form-control-sm" id="formBuyerAddress" value="2-ho, 159, Gucheonmyeon-ro, Gangdong-gu, Seoul, Republic of Korea">
+                                    <textarea class="form-control form-control-sm" id="formBuyerAddress" rows="3" style="resize: vertical; font-size: 11.5px; line-height: 1.45;">2-ho, 159, Gucheonmyeon-ro, Gangdong-gu, Seoul, Republic of Korea</textarea>
                                 </div>
                                 <div class="row g-2">
                                     <div class="col-4">
@@ -222,10 +224,10 @@
                                 </div>
                             </div>
                             <!-- Seller -->
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="col-md-6 ps-3">
+                                <div class="d-flex align-items-center justify-content-between mb-2" style="height: 26px;">
                                     <h6 class="fw-bold text-dark mb-0" style="font-size: 12px;">Manufacturer (Seller)</h6>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" onclick="app.openPartnerSearchModal()" style="font-size: 11px; height: 26px;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fw-semibold" onclick="app.openPartnerSearchModal()" style="font-size: 11px; height: 26px;" title="등록된 거래처에서 영문 정보 검색 및 적용">
                                         <i class='bx bx-search'></i> 거래처 검색
                                     </button>
                                 </div>
@@ -235,7 +237,7 @@
                                 </div>
                                 <div class="mb-2">
                                     <label class="form-label mb-0" style="font-size: 11px;">Address</label>
-                                    <input type="text" class="form-control form-control-sm" id="formSellerAddress" placeholder="예: No.4 Factory Building, Block D...">
+                                    <textarea class="form-control form-control-sm" id="formSellerAddress" rows="3" placeholder="예: No. 4 Factory Building, Block D, 3P Factory Building, Iron and Steel Industry Service Area..." style="resize: vertical; font-size: 11.5px; line-height: 1.45;"></textarea>
                                 </div>
                                 <div class="row g-2">
                                     <div class="col-4">

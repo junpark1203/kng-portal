@@ -775,3 +775,10 @@ input::placeholder, textarea::placeholder {
     font-weight: 600;
 }
 
+/* ── 거래 당사자 (Buyer & Seller) 주소 3줄 textarea ── */
+#formBuyerAddress, #formSellerAddress {
+    resize: vertical;
+    font-size: 11.5px;
+    line-height: 1.45;
+    min-height: 62px;
+}
