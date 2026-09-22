@@ -2580,6 +2580,10 @@ function generatePrintHTML() {
                 groupCounters[catNo] = (groupCounters[catNo] || 0) + 1;
                 const costNo = `${catNo}-${groupCounters[catNo]}`;
 
+                const isKrw = (c.currency === 'KRW');
+                const exRateDisplay = isKrw ? '<span style="color:#94a3b8;">-</span>' : `₩${formatNum(exRate, 1)}`;
+                const exRateAlign = isKrw ? 'center' : 'right';
+
                 html += `
                     <tr style="page-break-inside:avoid; break-inside:avoid;">
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600; color:#64748b;">${costNo}</td>
@@ -2587,7 +2591,7 @@ function generatePrintHTML() {
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">[${catNo}] ${meta.label}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right;">${c.currency} ${formatNum(c.amount, 2)}</td>
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center;">${c.unitQty || 1} ${c.unit || ''}</td>
-                        <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">₩${formatNum(exRate, 1)}</td>
+                        <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:${exRateAlign}; color:#64748b;">${exRateDisplay}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(amtKrw)}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; color:#64748b;">${c.remarks || ''}</td>
                     </tr>
