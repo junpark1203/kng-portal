@@ -840,7 +840,7 @@ body {
         display: table-header-group;
     }
     #printContainer tfoot {
-        display: table-footer-group;
+        display: table-row-group;
     }
     #printContainer tr {
         page-break-inside: avoid;

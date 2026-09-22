@@ -2443,8 +2443,6 @@ function generatePrintHTML() {
             });
 
             html += `
-                    </tbody>
-                    <tfoot>
                         <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
                             <td colspan="5" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
                                 ${t.fw.name} (${t.term}) 부대비용 합계
@@ -2454,7 +2452,7 @@ function generatePrintHTML() {
                             </td>
                             <td style="padding:4px 5px; border:1px solid #cbd5e1;"></td>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
             </div>
             `;
@@ -2551,10 +2549,8 @@ function generatePrintHTML() {
                 html += `</tr>`;
             });
 
-            // 합계 행 (tfoot)
+            // 합계 행 (테이블 맨 마지막 행에서 1회만 출력되도록 tbody 끝에 배치)
             html += `
-                    </tbody>
-                    <tfoot>
                         <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
                             <td colspan="2" style="padding:5px 8px; border:1px solid #cbd5e1; text-align:center; color:#0f172a;">
                                 부대비용 합계
@@ -2570,7 +2566,7 @@ function generatePrintHTML() {
             });
             html += `
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
             </div>
             `;
