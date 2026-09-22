@@ -198,8 +198,13 @@ function initEvents() {
     
     // 인쇄 및 엑셀
     document.getElementById('btnPrint').addEventListener('click', () => {
+        renderAllCalculations();
         generatePrintHTML();
         window.print();
+    });
+    window.addEventListener('beforeprint', () => {
+        renderAllCalculations();
+        generatePrintHTML();
     });
     document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
 
@@ -620,6 +625,7 @@ async function editQuote(id) {
         renderForwarderContent();
         renderOtherCosts();
         updateValueAllocUI();
+        renderAllCalculations();
         
         switchView('edit');
     } catch (err) {
@@ -695,6 +701,7 @@ function openNewQuote() {
     renderForwarderContent();
     renderOtherCosts();
     updateValueAllocUI();
+    renderAllCalculations();
     
     switchView('edit');
 }
