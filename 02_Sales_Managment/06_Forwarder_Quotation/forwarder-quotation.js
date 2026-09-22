@@ -2078,6 +2078,10 @@ function generatePrintHTML() {
                 </div>
             </div>
 
+            <!-- ──────────────── [1. 기본정보] ──────────────── -->
+            <div style="font-size:11px; font-weight:700; color:#0f172a; margin:4px 0 5px 0;">
+                1. 기본정보
+            </div>
             <!-- 기본 정보 테이블 -->
             <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9.5px;">
                 <colgroup>
@@ -2114,9 +2118,9 @@ function generatePrintHTML() {
                 </tr>` : ''}
             </table>
 
-            <!-- ──────────────── [1. 수입 대상 품목] ──────────────── -->
+            <!-- ──────────────── [2. 수입 대상 품목 및 인코텀즈 단가] ──────────────── -->
             <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0; display:flex; justify-content:space-between; align-items:baseline;">
-                <span>1. 수입 대상 품목 및 인코텀즈 단가</span>
+                <span>2. 수입 대상 품목 및 인코텀즈 단가</span>
                 ${hasMoreTerms ? `<span style="font-size:8.5px; color:#ef4444; font-weight:normal;">* 인쇄 지면 폭 제한으로 앞 3개 인코텀즈 조건(${printTerms.join(', ')})만 표시됩니다.</span>` : ''}
             </div>
             <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9px; table-layout:fixed;">
@@ -2215,10 +2219,10 @@ function generatePrintHTML() {
     </table>
     `;
 
-    // ──────────────── [2. 비용 요약 비교] ────────────────
+    // ──────────────── [3. 비용요약(원화환산)] ────────────────
     html += `
         <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0;">
-            2. 비용 요약 비교 (원화 환산, KRW)
+            3. 비용요약(원화환산)
         </div>
         <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9px; table-layout:fixed;">
             <thead>
@@ -2283,213 +2287,21 @@ function generatePrintHTML() {
         </table>
     `;
 
-    // ──────────────── [3. 대상 품목 실제 수입원가 산출 결과] ────────────────
-    // 기본 필수: (1) 컨테이너 적재비율 배분법 (부피/무게 기준)
-    // 조건부: (2) 가치비례 배분법 (state.doc.showValueAlloc 이 true 일 때만)
-    html += `
-        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:12px 0 5px 0;">
-            3. 대상 품목 실제 수입원가 산출 결과
-        </div>
-    `;
-
-    state.doc.forwarders.forEach((fw) => {
-        state.doc.incoterms.forEach(term => {
-            if (!fw.calculated || !fw.calculated[term]) return;
-            const calc = fw.calculated[term];
-            const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
-            const totalDutiableAncillaryKrw = calc.dutiableAncillaryKrw || 0;
-            const totalInvoiceKrw = calc.invoiceKrw || 0;
-
-            // 적재비율 / 운임톤 기준 계산
-            let totalModulus = 0;
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (p && p.unitPrice > 0) {
-                    if (isLCL) totalModulus += (item.rt || 0);
-                    else if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
-                }
-            });
-
-            html += `
-                <div style="margin-bottom:10px;">
-                    <div style="font-weight:700; font-size:9.5px; color:#1e293b; margin-bottom:2px;">
-                        ■ ${fw.name} - ${term} 조건
-                    </div>
-
-                    <!-- 3-1. 컨테이너 적재비율(부피/체적) 배분법 (기본 필수) -->
-                    <div style="font-size:9px; color:#475569; font-weight:600; margin:2px 0;">
-                        (1) ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/무게 기준)'}
-                    </div>
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
-                        <thead>
-                            <tr style="background:#f8fafc; color:#0f172a;">
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">점유율</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `
-                        <tr>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                            <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
-                        </tr>
-                    `;
-                    return;
-                }
-
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                const dutyRate = item.dutyRate || 0;
-
-                let allocatedFC_Volume_Total = 0;
-                let allocatedFC_Volume_Dutiable = 0;
-                let volumeShareRatio = 0;
-
-                if (totalModulus > 0 && item.qty > 0) {
-                    if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
-                    else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
-
-                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-                    const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
-                    allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
-                    allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
-                }
-
-                const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
-                const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
-                const baseCostKrw = Math.round(dispBaseCostFC * exRate);
-
-                const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
-                const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
-                const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
-                const realCostKrw = baseCostKrw + dutyKrw;
-
-                const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
-
-                html += `
-                    <tr>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${shareText}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                        </tbody>
-                    </table>
-            `;
-
-            // 3-2. 가치비례 배분법: state.doc.showValueAlloc 이 활성화된 경우에만 출력!
-            if (state.doc.showValueAlloc) {
-                const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
-                const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
-
-                html += `
-                    <div style="font-size:9px; color:#475569; font-weight:600; margin:4px 0 2px 0;">
-                        (2) 가치비례 배분법 (가액 기준)
-                    </div>
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
-                        <thead>
-                            <tr style="background:#f8fafc; color:#0f172a;">
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">배분비율</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
-                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-
-                state.doc.items.forEach(item => {
-                    const p = item.prices[term];
-                    if (!p || !p.unitPrice || p.unitPrice === 0) {
-                        html += `
-                            <tr>
-                                <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
-                                <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                                <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
-                            </tr>
-                        `;
-                        return;
-                    }
-
-                    const unitPriceFC = p.unitPrice;
-                    const exRate = state.doc.exchangeRates[p.currency] || 1;
-                    const dutyRate = item.dutyRate || 0;
-
-                    const allocatedFC_Total = unitPriceFC * allocationRatio;
-                    const allocatedFC_Dutiable = unitPriceFC * dutiableAllocationRatio;
-
-                    const dispAllocatedFC = Math.round(allocatedFC_Total * 100) / 100;
-                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
-                    const baseCostKrw = Math.round(dispBaseCostFC * exRate);
-
-                    const dispDutiableAllocated = Math.round(allocatedFC_Dutiable * 100) / 100;
-                    const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
-                    const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
-                    const realCostKrw = baseCostKrw + dutyKrw;
-
-                    html += `
-                        <tr>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
-                        </tr>
-                    `;
-                });
-
-                html += `
-                            </tbody>
-                        </table>
-                `;
-            }
-
-            html += `</div>`;
-        });
-    });
-
-    // ──────────────── [PAGE BREAK: 요약과 상세 분할] ────────────────
+    // ──────────────── [PAGE BREAK: 1페이지 요약과 2페이지 상세 분할] ────────────────
     html += `
         <div class="print-page-break" style="page-break-before:always; break-before:page; height:1px; margin-top:20px;"></div>
 
         <!-- [2페이지 헤더] -->
         <div style="margin-bottom:12px; border-bottom:1.5px solid #475569; padding-bottom:4px; display:flex; justify-content:space-between; align-items:baseline;">
-            <div style="font-size:14px; font-weight:700; color:#0f172a;">
-                실무 증빙용 상세 명세서 <span style="font-size:11px; font-weight:normal; color:#64748b;">(${state.doc.title || ''})</span>
+            <div style="font-size:13px; font-weight:700; color:#0f172a;">
+                포워더 견적 비교서 - 세부 산출 명세 <span style="font-size:11px; font-weight:normal; color:#64748b;">(${state.doc.title || ''})</span>
             </div>
-            <div style="font-size:9px; color:#64748b;">(0원 항목 제외 상세 명세)</div>
+            <div style="font-size:9px; color:#64748b;">(0원 항목 제외 상세 명세 및 실제 원가 산출)</div>
         </div>
 
-        <!-- ──────────────── [4. 포워더별 수입 부대비용 상세 명세 (0원 제외)] ──────────────── -->
+        <!-- ──────────────── [4. 포워더별 수입 부대비용 산출] ──────────────── -->
         <div style="font-size:11px; font-weight:700; color:#0f172a; margin:10px 0 5px 0;">
-            4. 포워더별 수입 부대비용 상세 명세 (실제 발생 항목)
+            4. 포워더별 수입 부대비용 산출 (실제 발생 항목)
         </div>
     `;
 
@@ -2577,13 +2389,13 @@ function generatePrintHTML() {
         });
     });
 
-    // ──────────────── [5. 기타 금융 및 추가 부대비용 상세] ────────────────
+    // ──────────────── [5. 기타 금융 및 추가 부대비용] ────────────────
     const calculatedCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'calculated');
     const manualCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'manual' && (oc.amount || 0) > 0);
 
     html += `
         <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
-            5. 기타 금융 및 추가 부대비용 산출 근거
+            5. 기타 금융 및 추가 부대비용
         </div>
     `;
 
@@ -2700,6 +2512,198 @@ function generatePrintHTML() {
             </div>
         `;
     }
+
+    // ──────────────── [6. 대상 품목 실제 수입 원가 산출] ────────────────
+    // 기본 필수: (1) 컨테이너 적재비율 배분법 (부피/무게 기준)
+    // 조건부: (2) 가치비례 배분법 (state.doc.showValueAlloc 이 true 일 때만)
+    html += `
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
+            6. 대상 품목 실제 수입 원가 산출
+        </div>
+    `;
+
+    state.doc.forwarders.forEach((fw) => {
+        state.doc.incoterms.forEach(term => {
+            if (!fw.calculated || !fw.calculated[term]) return;
+            const calc = fw.calculated[term];
+            const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
+            const totalDutiableAncillaryKrw = calc.dutiableAncillaryKrw || 0;
+            const totalInvoiceKrw = calc.invoiceKrw || 0;
+
+            // 적재비율 / 운임톤 기준 계산
+            let totalModulus = 0;
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (p && p.unitPrice > 0) {
+                    if (isLCL) totalModulus += (item.rt || 0);
+                    else if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
+                }
+            });
+
+            html += `
+                <div style="margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
+                    <div style="font-weight:700; font-size:9.5px; color:#1e293b; margin-bottom:2px;">
+                        ■ ${fw.name} - ${term} 조건
+                    </div>
+
+                    <!-- 6-1. 컨테이너 적재비율(부피/체적) 배분법 (기본 필수) -->
+                    <div style="font-size:9px; color:#475569; font-weight:600; margin:2px 0;">
+                        (1) ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/무게 기준)'}
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#0f172a;">
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">점유율</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (!p || !p.unitPrice || p.unitPrice === 0) {
+                    html += `
+                        <tr>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                            <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const unitPriceFC = p.unitPrice;
+                const exRate = state.doc.exchangeRates[p.currency] || 1;
+                const dutyRate = item.dutyRate || 0;
+
+                let allocatedFC_Volume_Total = 0;
+                let allocatedFC_Volume_Dutiable = 0;
+                let volumeShareRatio = 0;
+
+                if (totalModulus > 0 && item.qty > 0) {
+                    if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
+                    else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+
+                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+                    const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+                    allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+                    allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+                }
+
+                const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
+                const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+                const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                const realCostKrw = baseCostKrw + dutyKrw;
+
+                const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
+
+                html += `
+                    <tr>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${shareText}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+            `;
+
+            // 6-2. 가치비례 배분법: state.doc.showValueAlloc 이 활성화된 경우에만 출력!
+            if (state.doc.showValueAlloc) {
+                const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+                const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+
+                html += `
+                    <div style="font-size:9px; color:#475569; font-weight:600; margin:4px 0 2px 0;">
+                        (2) 가치비례 배분법 (가액 기준)
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#0f172a;">
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:50px; text-align:right;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:right;">배분비율</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:80px; text-align:right;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:75px; text-align:right;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `
+                            <tr>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                                <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const dutyRate = item.dutyRate || 0;
+
+                    const allocatedFC_Total = unitPriceFC * allocationRatio;
+                    const allocatedFC_Dutiable = unitPriceFC * dutiableAllocationRatio;
+
+                    const dispAllocatedFC = Math.round(allocatedFC_Total * 100) / 100;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                    const dispDutiableAllocated = Math.round(allocatedFC_Dutiable * 100) / 100;
+                    const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                    const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                    const realCostKrw = baseCostKrw + dutyKrw;
+
+                    html += `
+                        <tr>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                `;
+            }
+
+            html += `</div>`;
+        });
+    });
 
     html += `</div>`; // End container wrapper
 
@@ -3097,7 +3101,7 @@ function generateExcelHTML() {
             html += `
                 <tr>
                     <th colspan="10" style="font-size:15px; color:#203864; text-align:left; padding:10px 0 5px 0; border-bottom:2px solid #203864; background:white;">
-                        3. 실수입원가 - ${fw.name} (${term})
+                        4. 대상 품목 실제 수입원가 산출 - ${fw.name} (${term})
                     </th>
                 </tr>
             `;
