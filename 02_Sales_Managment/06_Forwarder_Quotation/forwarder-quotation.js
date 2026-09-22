@@ -2166,7 +2166,7 @@ function renderCostResultTable() {
         const dispBaseCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
         const baseCostKrw_Value = Math.round(dispBaseCostFC_Value * exRate);
         const dispDutiableAllocated_Value = Math.round(allocatedFC_Value_Dutiable * 100) / 100;
-        const cifValueKrw_Value = Math.round((unitPriceFC + dispAllocatedFC_Dutiable) * exRate);
+        const cifValueKrw_Value = Math.round((unitPriceFC + dispDutiableAllocated_Value) * exRate);
         const dutyKrw_Value = Math.round(cifValueKrw_Value * (dutyRate / 100));
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
 
