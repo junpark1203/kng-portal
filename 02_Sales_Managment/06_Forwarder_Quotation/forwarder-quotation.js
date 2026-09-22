@@ -2070,7 +2070,7 @@ function generatePrintHTML() {
             <div style="margin-bottom:12px; border-bottom:2px solid #0f172a; padding-bottom:6px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-end;">
                     <h1 style="margin:0; font-size:20px; font-weight:800; color:#0f172a; letter-spacing:-0.5px;">
-                        포워더 견적 비교서 <span style="font-size:14px; font-weight:500; color:#475569;">(${state.doc.title || '무제'})</span>
+                        포워더 견적 및 실수입원가 산출 <span style="font-size:14px; font-weight:500; color:#475569;">(${state.doc.title || '무제'})</span>
                     </h1>
                     <div style="font-size:10px; color:#64748b;">
                         문서상태: <strong style="color:#0f172a;">${state.doc.status === 'confirmed' ? '확정' : '작성중'}</strong>
@@ -2294,7 +2294,7 @@ function generatePrintHTML() {
         <!-- [2페이지 헤더] -->
         <div style="margin-bottom:12px; border-bottom:1.5px solid #475569; padding-bottom:4px; display:flex; justify-content:space-between; align-items:baseline;">
             <div style="font-size:13px; font-weight:700; color:#0f172a;">
-                포워더 견적 비교서 - 세부 산출 명세 <span style="font-size:11px; font-weight:normal; color:#64748b;">(${state.doc.title || ''})</span>
+                포워더 견적 및 실수입원가 산출 - 세부 산출 명세 <span style="font-size:11px; font-weight:normal; color:#64748b;">(${state.doc.title || ''})</span>
             </div>
             <div style="font-size:9px; color:#64748b;">(0원 항목 제외 상세 명세 및 실제 원가 산출)</div>
         </div>
@@ -2744,7 +2744,7 @@ function generateExcelHTML() {
         <thead>
             <tr>
                 <th colspan="10" style="font-size:18px; color:#203864; padding:15px; text-align:left; border-bottom:2px solid #203864; background:white;">
-                    포워더 견적서 (${state.doc.title || ''})
+                    포워더 견적 및 실수입원가 산출 (${state.doc.title || ''})
                 </th>
             </tr>
             <tr>
@@ -3216,10 +3216,10 @@ function exportToExcel() {
     const table = tempDiv.querySelector('#exportMasterTable');
 
     try {
-        const wb = XLSX.utils.table_to_book(table, { sheet: "포워더 견적서", raw: true });
+        const wb = XLSX.utils.table_to_book(table, { sheet: "견적및실수입원가", raw: true });
         const dateStr = state.doc.quoteDate ? state.doc.quoteDate.replace(/-/g, '') : new Date().toISOString().split('T')[0].replace(/-/g, '');
         const title = state.doc.title || 'Untitled';
-        XLSX.writeFile(wb, `포워더견적서_${title}_${dateStr}.xlsx`);
+        XLSX.writeFile(wb, `포워더견적_및_실수입원가산출_${title}_${dateStr}.xlsx`);
     } catch (err) {
         console.error(err);
         showToast('엑셀 변환 중 오류가 발생했습니다.', true);
