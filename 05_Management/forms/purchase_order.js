@@ -1073,7 +1073,7 @@ const app = {
 
     loadBuyerPreset: function() {
         document.getElementById('formBuyerName').value = 'K&G CO., LTD.';
-        document.getElementById('formBuyerAddress').value = '#2302, 87, Ogeum-ro, Songpa-gu, Seoul, Republic of Korea';
+        document.getElementById('formBuyerAddress').value = '2-ho, 159, Gucheonmyeon-ro, Gangdong-gu, Seoul, Republic of Korea';
         document.getElementById('formBuyerAttn').value = 'Joon Park';
         document.getElementById('formBuyerTel').value = '+82-10-5949-5249';
         document.getElementById('formBuyerEmail').value = 'jpark120325@gmail.com';
