@@ -774,6 +774,37 @@ body {
     opacity: 1;
 }
 
+/* 테이블 헤더(th) 내 툴팁: 상단 overflow 잘림 방지 (하단 드롭다운) */
+.erp-sheet-table th .tooltip-text,
+.cost-table th .tooltip-text,
+thead th .tooltip-text {
+    bottom: auto !important;
+    top: calc(100% + 7px) !important;
+    right: -10px !important;
+    left: auto !important;
+    margin-left: 0 !important;
+    width: 260px !important;
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    border-radius: 5px !important;
+    padding: 7px 10px !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+    z-index: 1000 !important;
+    pointer-events: none;
+}
+
+.erp-sheet-table th .tooltip-text::before,
+.cost-table th .tooltip-text::before,
+thead th .tooltip-text::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    right: 14px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #0f172a;
+}
+
 /* 산출법 선택 버튼 및 전용 툴팁 */
 .alloc-btn-group {
     display: inline-flex;
