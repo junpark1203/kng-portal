@@ -10,96 +10,92 @@
 </head>
 <body>
 
-    <!-- 상단 페이지 헤더 -->
-    <div class="page-header">
-        <div class="page-title-area">
-            <h1><i class='bx bx-cart-alt text-primary'></i> 발주서 관리 (Purchase Order)</h1>
-            <p>해외 및 국내 공급처 발주서 작성, 이력 보관 및 A4 표준 무역 서식 인쇄 모듈</p>
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바: 타이틀 + 진행상태 탭 + 액션 버튼군 ── -->
+    <div class="erp-top-toolbar mb-2">
+        <div class="toolbar-left d-flex align-items-center gap-2 flex-wrap">
+            <span class="erp-title-tag">
+                <i class='bx bx-file-blank text-primary'></i> 발주서 관리
+            </span>
+
+            <div class="erp-tab-group" id="statusTabGroup">
+                <input type="radio" class="btn-check" name="statusFilter" id="btnFilterAll" value="전체" checked onchange="app.onStatusFilterChange('전체')">
+                <label class="erp-tab-btn" for="btnFilterAll">전체 보기</label>
+                
+                <input type="radio" class="btn-check" name="statusFilter" id="btnFilterDraft" value="작성중" onchange="app.onStatusFilterChange('작성중')">
+                <label class="erp-tab-btn" for="btnFilterDraft">작성중</label>
+                
+                <input type="radio" class="btn-check" name="statusFilter" id="btnFilterIssued" value="발주완료" onchange="app.onStatusFilterChange('발주완료')">
+                <label class="erp-tab-btn" for="btnFilterIssued">발주완료</label>
+                
+                <input type="radio" class="btn-check" name="statusFilter" id="btnFilterShipped" value="선적진행" onchange="app.onStatusFilterChange('선적진행')">
+                <label class="erp-tab-btn" for="btnFilterShipped">선적진행</label>
+                
+                <input type="radio" class="btn-check" name="statusFilter" id="btnFilterCompleted" value="입고완료" onchange="app.onStatusFilterChange('입고완료')">
+                <label class="erp-tab-btn" for="btnFilterCompleted">입고완료</label>
+            </div>
         </div>
-        <div class="header-actions">
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="app.openSettingsModal()">
-                <i class='bx bx-cog'></i> 직인 / 서명 설정
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="app.openCreateModal()">
+
+        <div class="toolbar-right d-flex align-items-center gap-1 flex-wrap">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openCreateModal()" title="새로운 발주서 작성">
                 <i class='bx bx-plus'></i> 신규 발주서 작성
             </button>
+            <button type="button" class="btn-erp" onclick="app.openSettingsModal()" title="직인 / 서명 설정">
+                <i class='bx bx-cog'></i> 직인 / 서명 설정
+            </button>
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="발주서 목록 엑셀 다운로드">
+                <i class='bx bx-download'></i> 엑셀 다운로드
+            </button>
         </div>
     </div>
 
-    <!-- KPI 요약 통계 카드 -->
-    <div class="kpi-container">
-        <div class="kpi-card">
-            <div class="kpi-icon-wrap kpi-icon-blue">
-                <i class='bx bx-file'></i>
+    <!-- ── 2. ECOUNT ERP 2행 필터 리본: 날짜 프리셋 + 기간 + 검색창 ── -->
+    <div class="erp-filter-ribbon mb-2">
+        <div class="filter-left d-flex align-items-center gap-1 flex-wrap">
+            <!-- 날짜 프리셋 -->
+            <div class="btn-group btn-group-sm erp-preset-group" role="group" id="datePresetGroup">
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_prevMonth" onclick="app.setDatePreset('prevMonth')">전월</button>
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisMonth" onclick="app.setDatePreset('thisMonth')">당월</button>
+                <button type="button" class="btn btn-outline-secondary text-nowrap" id="btnPreset_thisYear" onclick="app.setDatePreset('thisYear')">금년도</button>
+                <button type="button" class="btn btn-primary text-white fw-bold text-nowrap" id="btnPreset_all" onclick="app.setDatePreset('all')">전체</button>
             </div>
-            <div class="kpi-content">
-                <div class="kpi-label">전체 발주 건수</div>
-                <div class="kpi-value" id="kpiTotalCount">0 건</div>
-                <div class="kpi-sub" id="kpiThisMonthCount">이번 달: 0 건</div>
-            </div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon-wrap kpi-icon-green">
-                <i class='bx bx-dollar-circle'></i>
-            </div>
-            <div class="kpi-content">
-                <div class="kpi-label">총 발주 금액 (USD)</div>
-                <div class="kpi-value" id="kpiTotalUsd">$0.00</div>
-                <div class="kpi-sub" id="kpiTotalKrw">원화 환산 약 0 원</div>
-            </div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon-wrap kpi-icon-amber">
-                <i class='bx bx-time-five'></i>
-            </div>
-            <div class="kpi-content">
-                <div class="kpi-label">진행 중 발주 (발주/선적)</div>
-                <div class="kpi-value" id="kpiActiveCount">0 건</div>
-                <div class="kpi-sub">선적 및 통관 대기</div>
-            </div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon-wrap kpi-icon-purple">
-                <i class='bx bx-check-double'></i>
-            </div>
-            <div class="kpi-content">
-                <div class="kpi-label">입고 완료 건수</div>
-                <div class="kpi-value" id="kpiCompletedCount">0 건</div>
-                <div class="kpi-sub">물류창고 입고 완료</div>
-            </div>
-        </div>
-    </div>
 
-    <!-- 검색 및 필터 바 -->
-    <div class="filter-card">
-        <form id="filterForm" onsubmit="app.onSearch(event)">
-            <div class="filter-row">
-                <div class="filter-item flex-grow-1" style="min-width: 240px;">
-                    <label>검색어</label>
-                    <input type="text" class="form-control form-control-sm" id="searchKeyword" placeholder="발주번호, 공급사(Seller), 품명 등">
-                </div>
-                <div class="filter-item">
-                    <label>진행상태</label>
-                    <select class="form-select form-select-sm" id="filterStatus" style="width: 120px;">
-                        <option value="전체">전체 상태</option>
-                        <option value="작성중">작성중 (Draft)</option>
-                        <option value="발주완료">발주완료 (Issued)</option>
-                        <option value="선적진행">선적진행 (Shipped)</option>
-                        <option value="입고완료">입고완료 (Completed)</option>
-                    </select>
-                </div>
-                <div class="filter-item">
-                    <label>발행일자</label>
-                    <input type="date" class="form-control form-control-sm" id="filterStartDate">
-                    <span>~</span>
-                    <input type="date" class="form-control form-control-sm" id="filterEndDate">
-                </div>
-                <div class="filter-item ms-auto">
-                    <button type="submit" class="btn btn-primary btn-sm"><i class='bx bx-search'></i> 조회</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="app.resetFilters()"><i class='bx bx-refresh'></i> 초기화</button>
-                </div>
+            <!-- 날짜 피커 -->
+            <div class="d-flex align-items-center gap-1">
+                <input type="date" class="form-control form-control-sm erp-input-date" id="filterStartDate" title="시작일" onchange="app.onDateInputChange()">
+                <span class="text-muted" style="font-size: 11px;">~</span>
+                <input type="date" class="form-control form-control-sm erp-input-date" id="filterEndDate" title="종료일" onchange="app.onDateInputChange()">
             </div>
-        </form>
+
+            <!-- 검색 대상 선택 -->
+            <select class="form-select form-select-sm erp-select-target" id="searchTarget" onchange="app.onSearchTargetChange()">
+                <option value="">전체 대상</option>
+                <option value="po_number">발주번호</option>
+                <option value="seller">공급처 (Seller)</option>
+                <option value="item">대표 품목</option>
+                <option value="references">참조계약</option>
+                <option value="notes">비고</option>
+            </select>
+
+            <!-- 스마트 다중 검색창 -->
+            <div class="position-relative erp-search-box">
+                <input type="text" class="form-control form-control-sm pe-4" id="searchKeyword" placeholder="스마트 다중 검색..." onkeyup="app.onSearchInputKeyup(event)" title="공백으로 여러 단어를 입력하면 교집합 검색이 가능합니다">
+                <button type="button" class="btn btn-link btn-sm text-muted position-absolute end-0 top-50 translate-middle-y text-decoration-none p-0 pe-1 d-none" id="clearSearchBtn" onclick="app.clearSearchInput()" title="검색어 지우기" style="font-size: 0.8rem;">
+                    <i class='bx bx-x-circle'></i>
+                </button>
+            </div>
+
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.applyFilters()"><i class='bx bx-search'></i> 조회</button>
+            <button type="button" class="btn-erp" onclick="app.resetFilters()"><i class='bx bx-reset'></i> 초기화</button>
+        </div>
+
+        <div class="filter-right d-flex align-items-center gap-1 ms-auto">
+            <span class="text-muted small me-1" id="filterCountBadge">총 0건</span>
+            <select class="form-select form-select-sm erp-limit-select" id="pageLimit" onchange="app.onLimitChange()">
+                <option value="50">50개</option>
+                <option value="100">100개</option>
+                <option value="999999">전체</option>
+            </select>
+        </div>
     </div>
 
     <!-- 발주서 목록 그리드 카드 -->
@@ -164,7 +160,7 @@
                             <div class="col-md-3">
                                 <label class="form-label mb-1 fw-bold text-primary">PO Number (사용자 직접 입력) *</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control" id="formPoNumber" placeholder="예: KNG25-TSG001" required>
+                                    <input type="text" class="form-control" id="formPoNumber" placeholder="예: KNG-OO-YYMM-####" required>
                                     <button class="btn btn-outline-secondary" type="button" onclick="app.generateRecommendPoNumber()" title="추천 번호 생성">
                                         <i class='bx bx-magic-wand'></i>
                                     </button>
@@ -172,7 +168,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Issue Date (발행일자) *</label>
-                                <input type="date" class="form-control form-control-sm" id="formIssueDate" required>
+                                <input type="date" class="form-control form-control-sm" id="formIssueDate" required onchange="app.onIssueDateChange()">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">References (참조계약)</label>
@@ -220,7 +216,12 @@
                             </div>
                             <!-- Seller -->
                             <div class="col-md-6">
-                                <h6 class="fw-bold text-dark mb-2" style="font-size: 12px;">Manufacturer (Seller)</h6>
+                                <div class="d-flex align-items-center justify-content-between mb-2">
+                                    <h6 class="fw-bold text-dark mb-0" style="font-size: 12px;">Manufacturer (Seller)</h6>
+                                    <select id="sellerPartnerSelect" class="form-select form-select-sm py-0" style="font-size: 11px; width: 230px;" onchange="app.onSelectSellerPartner(this.value)">
+                                        <option value="">-- 거래처 관리에서 공급처 불러오기 --</option>
+                                    </select>
+                                </div>
                                 <div class="mb-2">
                                     <label class="form-label mb-0" style="font-size: 11px;">Company Name *</label>
                                     <input type="text" class="form-control form-control-sm" id="formSellerName" placeholder="예: XINYU RECORD TECHNOLOGY CO., LTD." required>
@@ -253,7 +254,7 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label mb-1">Terms of Payment (결제조건)</label>
-                                <input type="text" class="form-control form-control-sm" id="formPaymentTerms" placeholder="예: 30% T/T in advance, 70% within 15 business days after the delivery is completed">
+                                <input type="text" class="form-control form-control-sm" id="formPaymentTerms" placeholder="예: 30% T/T in advance, 70% within 15 business days after delivery">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Terms of Delivery (인코텀즈)</label>
@@ -261,7 +262,7 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Country of Origin (원산지)</label>
-                                <input type="text" class="form-control form-control-sm" id="formCountryOfOrigin" value="China">
+                                <input type="text" class="form-control form-control-sm" id="formCountryOfOrigin" placeholder="예: China">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Loading Port (선적항)</label>
@@ -269,11 +270,11 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Discharging Port (도착항)</label>
-                                <input type="text" class="form-control form-control-sm" id="formDischargingPort" value="Incheon, S.Korea">
+                                <input type="text" class="form-control form-control-sm" id="formDischargingPort" placeholder="예: Incheon, S.Korea">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Delivery Date (납기)</label>
-                                <input type="text" class="form-control form-control-sm" id="formDeliveryDate" placeholder="예: Within 15 days after the advance payment">
+                                <input type="text" class="form-control form-control-sm" id="formDeliveryDate" placeholder="예: Within 15 days after advance payment">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1 text-primary fw-bold">Shipment Spec (선적 규격)</label>
@@ -597,6 +598,7 @@
     <div id="printContainer"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="./purchase_order.js"></script>
 </body>
 </html>

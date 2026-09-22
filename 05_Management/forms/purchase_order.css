@@ -62,93 +62,178 @@ body {
     gap: 8px;
 }
 
-/* KPI Summary Cards */
-.kpi-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 14px;
-    margin-bottom: 20px;
-}
-
-.kpi-card {
+/* ── ECOUNT ERP 스타일 메인 리본 툴바 & 컨트롤 CSS ── */
+.erp-top-toolbar {
     background: #ffffff;
-    border: 1px solid var(--card-border);
-    border-radius: 8px;
-    padding: 14px 18px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.kpi-icon-wrap {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-}
-
-.kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
-.kpi-icon-green { background: #dcfce7; color: #15803d; }
-.kpi-icon-amber { background: #fef3c7; color: #b45309; }
-.kpi-icon-purple { background: #ede9fe; color: #6d28d9; }
-
-.kpi-content {
-    flex: 1;
-}
-
-.kpi-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 2px;
-}
-
-.kpi-value {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-dark);
-}
-
-.kpi-sub {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 2px;
-}
-
-/* Filter Bar */
-.filter-card {
-    background: #ffffff;
-    border: 1px solid var(--card-border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-}
-
-.filter-item {
-    display: flex;
-    align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    min-height: 40px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.filter-item label {
-    font-weight: 600;
-    font-size: 12px;
-    color: var(--text-muted);
+.erp-title-tag {
+    font-weight: 800;
+    font-size: 13.5px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     white-space: nowrap;
+    padding-right: 12px;
+    border-right: 1px solid #e2e8f0;
+}
+
+/* 상태별 세그먼트 탭 */
+.erp-tab-group {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 4px;
+    gap: 2px;
+    border: 1px solid #e2e8f0;
+}
+
+.erp-tab-group .btn-check + .erp-tab-btn {
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    user-select: none;
+    line-height: 20px;
+    display: inline-block;
+}
+
+.erp-tab-group .btn-check:checked + .erp-tab-btn {
+    background: #ffffff;
+    color: #2563eb;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* 콤팩트 버튼 & 인풋 */
+.btn-erp {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-erp:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.btn-erp-primary {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #1d4ed8;
+}
+
+.btn-erp-primary:hover {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1e40af;
+}
+
+/* 2행 필터 리본 */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: 38px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.erp-preset-group .btn {
+    height: 28px;
+    font-size: 11.5px;
+    padding: 0 9px;
+    border-radius: 0;
+    line-height: 26px;
+    border-color: #cbd5e1;
+}
+
+.erp-preset-group .btn:first-child { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.erp-preset-group .btn:last-child { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+
+.erp-input-date {
+    width: 125px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+.erp-select-target {
+    width: 120px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+.erp-search-box {
+    width: 220px;
+    min-width: 160px;
+}
+
+.erp-search-box .form-control {
+    height: 28px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 2px 8px !important;
+}
+
+.erp-search-box .form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.erp-limit-select {
+    width: 85px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* 입력 필드 안내 플레이스홀더 (연한 회색, 이탤릭) */
+input::placeholder, textarea::placeholder {
+    color: #94a3b8 !important;
+    font-style: italic;
+    opacity: 0.85;
 }
 
 /* Table Card */

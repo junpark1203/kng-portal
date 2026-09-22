@@ -36,6 +36,7 @@ const app = {
             filtered = filtered.filter(p => 
                 (p.name && p.name.toLowerCase().includes(searchWord)) || 
                 (p.company_name && p.company_name.toLowerCase().includes(searchWord)) ||
+                (p.company_name_en && p.company_name_en.toLowerCase().includes(searchWord)) ||
                 (p.note && p.note.toLowerCase().includes(searchWord)) ||
                 (p.phone && p.phone.includes(searchWord)) ||
                 (p.manager1_name && p.manager1_name.includes(searchWord))
@@ -58,6 +59,7 @@ const app = {
                 <td>
                     <div class="fw-bold">${p.name}</div>
                     <div class="small text-muted">${p.company_name || '-'}</div>
+                    ${p.company_name_en ? `<div class="small text-primary" style="font-size:11px;">${p.company_name_en}</div>` : ''}
                 </td>
                 <td>${p.ceoName || p.ceo_name || '-'}</td>
                 <td>
@@ -76,6 +78,9 @@ const app = {
     openAddModal() {
         document.getElementById('partnerForm').reset();
         document.getElementById('partnerId').value = '';
+        document.getElementById('companyNameEn').value = '';
+        document.getElementById('addressEn').value = '';
+        document.getElementById('managerEn').value = '';
         document.getElementById('modalTitle').innerText = '새 거래처 등록';
         this.modal.show();
     },
@@ -107,6 +112,10 @@ const app = {
         document.getElementById('manager2Phone').value = partner.manager2_phone || '';
         document.getElementById('manager2Email').value = partner.manager2_email || '';
         
+        document.getElementById('companyNameEn').value = partner.company_name_en || '';
+        document.getElementById('addressEn').value = partner.address_en || '';
+        document.getElementById('managerEn').value = partner.manager_en || '';
+
         document.getElementById('partnerNote').value = partner.note || '';
         
         document.getElementById('modalTitle').innerText = '거래처 수정';
@@ -137,6 +146,10 @@ const app = {
         const manager2_phone = document.getElementById('manager2Phone').value.trim();
         const manager2_email = document.getElementById('manager2Email').value.trim();
         
+        const company_name_en = document.getElementById('companyNameEn').value.trim();
+        const address_en = document.getElementById('addressEn').value.trim();
+        const manager_en = document.getElementById('managerEn').value.trim();
+
         const note = document.getElementById('partnerNote').value.trim();
 
         if (!name || !company_name) {
@@ -149,6 +162,7 @@ const app = {
             phone, fax,
             manager1_name, manager1_phone, manager1_email,
             manager2_name, manager2_phone, manager2_email,
+            company_name_en, address_en, manager_en,
             note 
         };
 

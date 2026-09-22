@@ -58,7 +58,12 @@ async function authFetch(url, options = {}) {
 
 const app = {
     poList: [],
+    filteredPoList: [],
+    partnersList: [],
     currentPo: null,
+    currentStatusFilter: '전체',
+    currentDatePreset: 'all',
+    currentLimit: 50,
     settings: {
         seal_url: '../../assets/images/stamp.png',
         eng_sign_url: '',
@@ -71,8 +76,58 @@ const app = {
 
     init: async function() {
         await this.loadSettings();
+        await this.loadPartners();
         await this.loadPurchaseOrders();
         this.setupDragAndDrop();
+    },
+
+    // -------------------------------------------------------------
+    // 0. 거래처 프리셋 연동 (03_monthly_closing/partners API 연동)
+    // -------------------------------------------------------------
+    loadPartners: async function() {
+        try {
+            const res = await authFetch('/api/partners');
+            if (res.ok) {
+                const data = await parseJsonResponse(res);
+                this.partnersList = Array.isArray(data) ? data : (data.partners || []);
+                this.populateSellerPartnerSelect();
+            }
+        } catch (e) {
+            console.warn('거래처 목록을 불러오지 못했습니다:', e);
+        }
+    },
+
+    populateSellerPartnerSelect: function() {
+        const select = document.getElementById('sellerPartnerSelect');
+        if (!select) return;
+        let html = '<option value="">-- [선택] 등록된 거래처에서 불러오기 --</option>';
+        if (this.partnersList && this.partnersList.length > 0) {
+            this.partnersList.forEach(p => {
+                const korName = p.company_name || p.name || '';
+                const engName = p.company_name_en ? ` (${p.company_name_en})` : '';
+                html += `<option value="${p.id}">${korName}${engName}</option>`;
+            });
+        }
+        select.innerHTML = html;
+    },
+
+    onSelectSellerPartner: function(partnerId) {
+        if (!partnerId) return;
+        const p = this.partnersList.find(x => String(x.id) === String(partnerId));
+        if (!p) return;
+
+        // 영문 필드 우선 적용 (없으면 국문 fallback)
+        const companyName = p.company_name_en || p.company_name || p.name || '';
+        const address = p.address_en || p.address || '';
+        const attn = p.manager_en || p.manager1_name || p.manager || '';
+        const tel = p.manager1_phone || p.phone || '';
+        const email = p.manager1_email || p.email || '';
+
+        if (companyName) document.getElementById('formSellerName').value = companyName;
+        if (address) document.getElementById('formSellerAddress').value = address;
+        if (attn) document.getElementById('formSellerAttn').value = attn;
+        if (tel) document.getElementById('formSellerTel').value = tel;
+        if (email) document.getElementById('formSellerEmail').value = email;
     },
 
     // -------------------------------------------------------------
@@ -263,30 +318,18 @@ const app = {
     },
 
     // -------------------------------------------------------------
-    // 2. 발주서 목록 조회 및 KPI 통계
+    // 2. 발주서 목록 조회 및 ECOUNT ERP 필터링 시스템
     // -------------------------------------------------------------
     loadPurchaseOrders: async function() {
-        const keyword = document.getElementById('searchKeyword').value.trim();
-        const status = document.getElementById('filterStatus').value;
-        const startDate = document.getElementById('filterStartDate').value;
-        const endDate = document.getElementById('filterEndDate').value;
-
-        const params = new URLSearchParams();
-        if (keyword) params.append('keyword', keyword);
-        if (status && status !== '전체') params.append('status', status);
-        if (startDate) params.append('startDate', startDate);
-        if (endDate) params.append('endDate', endDate);
-
         try {
-            const res = await authFetch(`${API_BASE}?${params.toString()}`);
+            const res = await authFetch(API_BASE);
             if (!res.ok) {
                 const errData = await parseJsonResponse(res).catch(() => null);
                 throw new Error(errData?.error || `목록을 불러오지 못했습니다. (HTTP ${res.status})`);
             }
             const data = await parseJsonResponse(res);
             this.poList = data || [];
-            this.renderPoList();
-            this.updateKpiStats();
+            this.applyFilters();
         } catch (err) {
             document.getElementById('poTableBody').innerHTML = `
                 <tr><td colspan="10" class="text-center py-4 text-danger">
@@ -296,32 +339,265 @@ const app = {
         }
     },
 
-    onSearch: function(e) {
-        e.preventDefault();
-        this.loadPurchaseOrders();
+    onStatusFilterChange: function(status) {
+        this.currentStatusFilter = status;
+        this.applyFilters();
+    },
+
+    setDatePreset: function(preset) {
+        this.currentDatePreset = preset;
+        const group = document.getElementById('datePresetGroup');
+        if (group) {
+            group.querySelectorAll('.btn').forEach(btn => {
+                btn.className = 'btn btn-outline-secondary text-nowrap';
+            });
+            const targetBtn = document.getElementById(`btnPreset_${preset}`);
+            if (targetBtn) {
+                targetBtn.className = 'btn btn-primary text-white fw-bold text-nowrap';
+            }
+        }
+
+        const now = new Date();
+        const startInput = document.getElementById('filterStartDate');
+        const endInput = document.getElementById('filterEndDate');
+
+        const formatDate = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+
+        if (preset === 'thisMonth') {
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            startInput.value = formatDate(start);
+            endInput.value = formatDate(end);
+        } else if (preset === 'prevMonth') {
+            const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const end = new Date(now.getFullYear(), now.getMonth(), 0);
+            startInput.value = formatDate(start);
+            endInput.value = formatDate(end);
+        } else if (preset === 'thisYear') {
+            const start = new Date(now.getFullYear(), 0, 1);
+            const end = new Date(now.getFullYear(), 11, 31);
+            startInput.value = formatDate(start);
+            endInput.value = formatDate(end);
+        } else if (preset === 'all') {
+            startInput.value = '';
+            endInput.value = '';
+        }
+
+        this.applyFilters();
+    },
+
+    onDateInputChange: function() {
+        const group = document.getElementById('datePresetGroup');
+        if (group) {
+            group.querySelectorAll('.btn').forEach(btn => {
+                btn.className = 'btn btn-outline-secondary text-nowrap';
+            });
+        }
+        this.applyFilters();
+    },
+
+    onSearchTargetChange: function() {
+        this.applyFilters();
+    },
+
+    onSearchInputKeyup: function(e) {
+        const val = (document.getElementById('searchKeyword').value || '').trim();
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) {
+            clearBtn.classList.toggle('d-none', !val);
+        }
+        if (e.key === 'Enter') {
+            this.applyFilters();
+        }
+    },
+
+    clearSearchInput: function() {
+        const input = document.getElementById('searchKeyword');
+        if (input) input.value = '';
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+        this.applyFilters();
+    },
+
+    onLimitChange: function() {
+        const limitVal = parseInt(document.getElementById('pageLimit').value, 10) || 50;
+        this.currentLimit = limitVal;
+        this.applyFilters();
+    },
+
+    applyFilters: function() {
+        const keyword = (document.getElementById('searchKeyword') ? document.getElementById('searchKeyword').value : '').trim().toLowerCase();
+        const searchTarget = document.getElementById('searchTarget') ? document.getElementById('searchTarget').value : '';
+        const startDate = document.getElementById('filterStartDate') ? document.getElementById('filterStartDate').value : '';
+        const endDate = document.getElementById('filterEndDate') ? document.getElementById('filterEndDate').value : '';
+        const status = this.currentStatusFilter || '전체';
+
+        // 단어별 분리 (교집합 다중 검색 지원)
+        const words = keyword ? keyword.split(/\s+/).filter(Boolean) : [];
+
+        let filtered = this.poList.filter(po => {
+            // 1. 상태 필터
+            if (status !== '전체' && po.status !== status) {
+                return false;
+            }
+
+            // 2. 날짜 범위 필터 (issue_date 기준)
+            if (startDate && po.issue_date && po.issue_date < startDate) {
+                return false;
+            }
+            if (endDate && po.issue_date && po.issue_date > endDate) {
+                return false;
+            }
+
+            // 3. 다중 키워드 교집합 검색
+            if (words.length > 0) {
+                let targetText = '';
+                if (searchTarget === 'po_number') {
+                    targetText = `${po.po_number || ''}`;
+                } else if (searchTarget === 'seller') {
+                    targetText = `${po.seller_name || ''} ${po.seller_attn || ''} ${po.seller_email || ''}`;
+                } else if (searchTarget === 'item') {
+                    targetText = `${po.first_item_name || ''}`;
+                } else if (searchTarget === 'references') {
+                    targetText = `${po.references_text || ''}`;
+                } else if (searchTarget === 'notes') {
+                    targetText = `${po.notes_instructions || ''}`;
+                } else {
+                    // 전체 대상
+                    targetText = `${po.po_number || ''} ${po.seller_name || ''} ${po.first_item_name || ''} ${po.references_text || ''} ${po.notes_instructions || ''} ${po.buyer_name || ''}`;
+                }
+                targetText = targetText.toLowerCase();
+
+                const matchesAll = words.every(word => targetText.includes(word));
+                if (!matchesAll) return false;
+            }
+
+            return true;
+        });
+
+        this.filteredPoList = filtered;
+
+        // 개수 뱃지 갱신
+        const badge = document.getElementById('filterCountBadge');
+        if (badge) {
+            badge.innerText = `총 ${filtered.length.toLocaleString()}건`;
+        }
+
+        // 페이지 리미트 적용 후 렌더링
+        const displayList = filtered.slice(0, this.currentLimit);
+        this.renderPoList(displayList);
     },
 
     resetFilters: function() {
-        document.getElementById('searchKeyword').value = '';
-        document.getElementById('filterStatus').value = '전체';
-        document.getElementById('filterStartDate').value = '';
-        document.getElementById('filterEndDate').value = '';
-        this.loadPurchaseOrders();
+        const input = document.getElementById('searchKeyword');
+        if (input) input.value = '';
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) clearBtn.classList.add('d-none');
+
+        const target = document.getElementById('searchTarget');
+        if (target) target.value = '';
+
+        const radioAll = document.getElementById('btnFilterAll');
+        if (radioAll) radioAll.checked = true;
+        this.currentStatusFilter = '전체';
+
+        this.setDatePreset('all');
     },
 
-    renderPoList: function() {
+    exportExcel: function() {
+        const list = (this.filteredPoList && this.filteredPoList.length > 0) ? this.filteredPoList : this.poList;
+        if (!list || list.length === 0) {
+            alert('내보낼 발주서 데이터가 없습니다.');
+            return;
+        }
+
+        const headers = [
+            'No', '발주번호(PO No.)', '발행일자', '유효일자', '공급처(Seller)', 
+            '대표 품목', '품목수', '통화', '총 금액', '진행상태', '참조계약', '인도조건', '결제조건', '비고'
+        ];
+
+        const rows = list.map((po, idx) => [
+            idx + 1,
+            po.po_number || '',
+            po.issue_date || '',
+            po.validity_date || '',
+            po.seller_name || '',
+            po.first_item_name || '',
+            po.item_count || 1,
+            po.currency || 'USD',
+            po.total_amount != null ? Number(po.total_amount) : 0,
+            po.status || '작성중',
+            po.references_text || '',
+            po.delivery_terms || '',
+            po.payment_terms || '',
+            po.notes_instructions || ''
+        ]);
+
+        if (typeof XLSX !== 'undefined') {
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+            ws['!cols'] = [
+                { wch: 6 },  // No
+                { wch: 18 }, // 발주번호
+                { wch: 12 }, // 발행일자
+                { wch: 12 }, // 유효일자
+                { wch: 26 }, // 공급처
+                { wch: 30 }, // 대표 품목
+                { wch: 8 },  // 품목수
+                { wch: 8 },  // 통화
+                { wch: 14 }, // 총 금액
+                { wch: 10 }, // 진행상태
+                { wch: 20 }, // 참조계약
+                { wch: 16 }, // 인도조건
+                { wch: 30 }, // 결제조건
+                { wch: 40 }  // 비고
+            ];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '발주서목록');
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            XLSX.writeFile(wb, `발주서목록_${today}.xlsx`);
+        } else {
+            // CSV Fallback (UTF-8 BOM 포함)
+            let csvContent = '\uFEFF' + headers.join(',') + '\n';
+            rows.forEach(r => {
+                const escaped = r.map(cell => {
+                    const str = String(cell == null ? '' : cell).replace(/"/g, '""');
+                    return `"${str}"`;
+                });
+                csvContent += escaped.join(',') + '\n';
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.download = `발주서목록_${today}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    },
+
+    renderPoList: function(listToRender = null) {
         const tbody = document.getElementById('poTableBody');
-        if (!this.poList || this.poList.length === 0) {
+        const list = listToRender || this.filteredPoList || this.poList;
+
+        if (!list || list.length === 0) {
             tbody.innerHTML = `
                 <tr><td colspan="10" class="text-center py-5 text-muted">
-                    <i class='bx bx-file-blank fs-2 mb-2'></i><br>등록된 발주서가 없습니다. 새 발주서를 작성해보세요!
+                    <i class='bx bx-file-blank fs-2 mb-2'></i><br>조회된 발주서가 없습니다.
                 </td></tr>
             `;
             return;
         }
 
         let html = '';
-        this.poList.forEach((po, idx) => {
+        list.forEach((po, idx) => {
             let statusBadgeClass = 'badge-draft';
             if (po.status === '발주완료') statusBadgeClass = 'badge-issued';
             else if (po.status === '선적진행') statusBadgeClass = 'badge-shipped';
@@ -372,83 +648,67 @@ const app = {
         tbody.innerHTML = html;
     },
 
-    updateKpiStats: function() {
-        const totalCount = this.poList.length;
-        document.getElementById('kpiTotalCount').innerText = `${totalCount.toLocaleString()} 건`;
-
-        const now = new Date();
-        const curYearMonth = now.toISOString().slice(0, 7);
-        const thisMonthCount = this.poList.filter(p => p.issue_date && p.issue_date.startsWith(curYearMonth)).length;
-        document.getElementById('kpiThisMonthCount').innerText = `이번 달: ${thisMonthCount} 건`;
-
-        let totalUsd = 0;
-        let activeCount = 0;
-        let completedCount = 0;
-
-        this.poList.forEach(p => {
-            if (p.currency === 'USD') {
-                totalUsd += Number(p.total_amount) || 0;
-            }
-            if (p.status === '발주완료' || p.status === '선적진행') {
-                activeCount++;
-            } else if (p.status === '입고완료') {
-                completedCount++;
-            }
-        });
-
-        document.getElementById('kpiTotalUsd').innerText = `$${totalUsd.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        const approxKrw = Math.round(totalUsd * 1350);
-        document.getElementById('kpiTotalKrw').innerText = `원화 환산 약 ${approxKrw.toLocaleString()} 원 (환율 1,350 기준)`;
-
-        document.getElementById('kpiActiveCount').innerText = `${activeCount} 건`;
-        document.getElementById('kpiCompletedCount').innerText = `${completedCount} 건`;
-    },
-
     // -------------------------------------------------------------
     // 3. 발주서 작성/수정 모달 로직
     // -------------------------------------------------------------
+    onIssueDateChange: function() {
+        const issueDateVal = document.getElementById('formIssueDate').value;
+        if (!issueDateVal) return;
+        const d = new Date(issueDateVal);
+        if (isNaN(d.getTime())) return;
+        d.setDate(d.getDate() + 7);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        document.getElementById('formValidityDate').value = `${yyyy}-${mm}-${dd}`;
+    },
+
     openCreateModal: function() {
         this.currentPo = null;
         document.getElementById('poModalTitle').innerHTML = "<i class='bx bx-plus-circle text-primary'></i> 신규 발주서 작성 (New Purchase Order)";
         document.getElementById('poId').value = '';
         
-        // 날짜 기본값: 오늘
+        // 날짜 기본값: 오늘 & 유효일자 = 오늘 + 7일
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('formIssueDate').value = today;
-        document.getElementById('formValidityDate').value = '';
+        this.onIssueDateChange();
+        
         document.getElementById('formReferences').value = '';
         document.getElementById('formStatus').value = '작성중';
 
-        // 발주번호 추천 생성 (사용자가 자유롭게 수정 가능)
+        // 발주번호 추천 생성 (KNG-OO-YYMM-#### 포맷)
         this.generateRecommendPoNumber();
 
         // 바이어 기본값
         this.loadBuyerPreset();
 
-        // 셀러 및 무역조건 초기화
+        // 거래처 드롭다운 초기화
+        const partnerSelect = document.getElementById('sellerPartnerSelect');
+        if (partnerSelect) partnerSelect.value = '';
+
+        // 셀러 및 무역조건 초기화 (예시 텍스트가 value로 남아있지 않도록 모두 공란 처리, 플레이스홀더 안내)
         document.getElementById('formSellerName').value = '';
         document.getElementById('formSellerAddress').value = '';
         document.getElementById('formSellerAttn').value = '';
         document.getElementById('formSellerTel').value = '';
         document.getElementById('formSellerEmail').value = '';
 
-        document.getElementById('formPaymentTerms').value = '30% T/T in advance, 70% within 15 business days after the delivery is completed';
-        document.getElementById('formDeliveryTerms').value = 'CIF Incheon';
-        document.getElementById('formCountryOfOrigin').value = 'China';
-        document.getElementById('formLoadingPort').value = 'Any port in China';
-        document.getElementById('formDischargingPort').value = 'Incheon, S.Korea';
-        document.getElementById('formDeliveryDate').value = 'Within 15 days after the advance payment';
-        document.getElementById('formShipmentSpec').value = '1 x 20ft FCL';
+        document.getElementById('formPaymentTerms').value = '';
+        document.getElementById('formDeliveryTerms').value = '';
+        document.getElementById('formCountryOfOrigin').value = '';
+        document.getElementById('formLoadingPort').value = '';
+        document.getElementById('formDischargingPort').value = '';
+        document.getElementById('formDeliveryDate').value = '';
+        document.getElementById('formShipmentSpec').value = '';
 
         document.getElementById('formCurrency').value = 'USD';
         document.getElementById('formNotes').value = '';
         this.removeDrawingImage();
         document.getElementById('formIncludeSeal').checked = true;
 
-        // 품목 기본 2행 생성
+        // 품목 기본 1행 생성 (공란 상태로 플레이스홀더 표시)
         document.getElementById('itemsTableBody').innerHTML = '';
-        this.addItemRow({ product_name: '', hs_code: '', packaging_unit: '25 kg/drum', order_qty: 0, unit: 'KG', unit_price: 0, packaging_qty: '' });
-        this.addItemRow({ product_name: '', hs_code: '', packaging_unit: '25 kg/drum', order_qty: 0, unit: 'KG', unit_price: 0, packaging_qty: '' });
+        this.addItemRow({ product_name: '', hs_code: '', packaging_unit: '', order_qty: 0, unit: 'KG', unit_price: 0, packaging_qty: '' });
         this.recalculateTotals();
 
         new bootstrap.Modal(document.getElementById('poFormModal')).show();
@@ -477,6 +737,9 @@ const app = {
             document.getElementById('formBuyerAttn').value = po.buyer_attn || '';
             document.getElementById('formBuyerTel').value = po.buyer_tel || '';
             document.getElementById('formBuyerEmail').value = po.buyer_email || '';
+            
+            const partnerSelect = document.getElementById('sellerPartnerSelect');
+            if (partnerSelect) partnerSelect.value = '';
 
             document.getElementById('formSellerName').value = po.seller_name || '';
             document.getElementById('formSellerAddress').value = po.seller_address || '';
@@ -605,10 +868,12 @@ const app = {
     },
 
     generateRecommendPoNumber: function() {
-        const year = new Date().getFullYear().toString().slice(-2);
+        const now = new Date();
+        const yy = now.getFullYear().toString().slice(-2);
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
         const count = this.poList.length + 1;
-        const seq = String(count).padStart(3, '0');
-        document.getElementById('formPoNumber').value = `KNG${year}-PO${seq}`;
+        const seq = String(count).padStart(4, '0');
+        document.getElementById('formPoNumber').value = `KNG-OO-${yy}${mm}-${seq}`;
     },
 
     // -------------------------------------------------------------
@@ -621,7 +886,7 @@ const app = {
 
         const pName = data ? (data.product_name || '') : '';
         const hsCode = data ? (data.hs_code || '') : '';
-        const pkgUnit = data ? (data.packaging_unit || '25 kg/drum') : '25 kg/drum';
+        const pkgUnit = data ? (data.packaging_unit || '') : '';
         const orderQty = data ? (data.order_qty || 0) : 0;
         const unit = data ? (data.unit || 'KG') : 'KG';
         const unitPrice = data ? (data.unit_price || 0) : 0;
