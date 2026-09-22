@@ -2208,13 +2208,13 @@ function generatePrintHTML() {
                         <th style="padding:5px 3px; border:1px solid #e2e8f0; width:35px; text-align:center; font-weight:600;">No.</th>
                         <th style="padding:5px 3px; border:1px solid #e2e8f0; width:72px; text-align:center; font-weight:600;">HS CODE</th>
                         <th style="padding:5px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">품명</th>
-                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:45px; text-align:right; font-weight:600;">수량</th>
+                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:45px; text-align:center; font-weight:600;">수량</th>
                         <th style="padding:5px 3px; border:1px solid #e2e8f0; width:30px; text-align:center; font-weight:600;">단위</th>
-                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:52px; text-align:right; font-weight:600;">총중량(kg)</th>
-                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:62px; text-align:right; font-weight:600;">${isLCL ? 'CBM / R/T' : '최대적재량'}</th>
+                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:52px; text-align:center; font-weight:600;">총중량(kg)</th>
+                        <th style="padding:5px 3px; border:1px solid #e2e8f0; width:62px; text-align:center; font-weight:600;">${isLCL ? 'CBM / R/T' : '최대적재량'}</th>
                         ${printTerms.map(term => `
-                            <th style="padding:5px 3px; border:1px solid #e2e8f0; width:65px; text-align:right; font-weight:600;">단가<br>(${term})</th>
-                            <th style="padding:5px 3px; border:1px solid #e2e8f0; width:78px; text-align:right; font-weight:600;">총액<br>(${term})</th>
+                            <th style="padding:5px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">단가<br>(${term})</th>
+                            <th style="padding:5px 3px; border:1px solid #e2e8f0; width:78px; text-align:center; font-weight:600;">총액<br>(${term})</th>
                         `).join('')}
                         <th style="padding:5px 3px; border:1px solid #e2e8f0; width:75px; text-align:center; font-weight:600;">비고</th>
                     </tr>
@@ -2392,9 +2392,9 @@ function generatePrintHTML() {
             <thead>
                 <tr style="background:#f8fafc; color:#334155;">
                     <th style="padding:5px 4px; border:1px solid #e2e8f0; text-align:center; width:35px; font-weight:600;">No.</th>
-                    <th style="padding:5px 8px; border:1px solid #e2e8f0; text-align:left; width:150px; font-weight:600;">비용 항목 구분</th>
+                    <th style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; width:150px; font-weight:600;">비용 항목 구분</th>
                     ${targets.map(t => `
-                        <th style="padding:5px 8px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">
+                        <th style="padding:5px 8px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">
                             ${t.fw.name}<br>
                             <span style="font-size:8.5px; font-weight:normal; color:#475569;">(${t.term})</span>
                         </th>
@@ -2455,13 +2455,13 @@ function generatePrintHTML() {
                     <thead style="display:table-header-group;">
                         <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
                             <th style="padding:4px 3px; border:1px solid #e2e8f0; width:35px; text-align:center; font-weight:600;">No.</th>
-                            <th style="padding:4px 5px; border:1px solid #e2e8f0; text-align:left; font-weight:600;">부대비용 항목명</th>
+                            <th style="padding:4px 5px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #e2e8f0; width:70px; text-align:center; font-weight:600;">비용 구분</th>
-                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">외화 단가</th>
+                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">외화 단가</th>
                             <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">수량 / 단위</th>
-                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:85px; text-align:right; font-weight:600;">적용 환율</th>
-                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:95px; text-align:right; font-weight:bold;">원화 환산액 (KRW)</th>
-                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:100px; text-align:left; font-weight:600;">비고</th>
+                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:85px; text-align:center; font-weight:600;">적용 환율</th>
+                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:95px; text-align:center; font-weight:bold;">원화 환산액 (KRW)</th>
+                            <th style="padding:4px 5px; border:1px solid #e2e8f0; width:100px; text-align:center; font-weight:600;">비고</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2554,10 +2554,10 @@ function generatePrintHTML() {
                     <thead style="display:table-header-group;">
                         <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
                             <th style="padding:4px 3px; border:1px solid #e2e8f0; width:35px; text-align:center; font-weight:600;">No.</th>
-                            <th style="padding:4px 6px; border:1px solid #e2e8f0; text-align:left; width:140px; font-weight:600;">부대비용 항목명</th>
+                            <th style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; width:140px; font-weight:600;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">비용 구분</th>
                             ${targets.map(t => `
-                                <th style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">
+                                <th style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">
                                     ${t.fw.name}<br>
                                     <span style="font-size:8.5px; font-weight:normal; color:#475569;">(${t.term})</span>
                                 </th>
@@ -2676,9 +2676,9 @@ function generatePrintHTML() {
                             <thead>
                                 <tr style="background:#f8fafc; color:#334155;">
                                     <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">포워더 / 조건</th>
-                                    <th style="padding:4px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">적용 원금 (물품대금 + 부대비용)</th>
+                                    <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">적용 원금 (물품대금 + 부대비용)</th>
                                     <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">산출 공식</th>
-                                    <th style="padding:4px; border:1px solid #e2e8f0; text-align:right; font-weight:bold; width:120px;">산출 금융비용 (KRW)</th>
+                                    <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; font-weight:bold; width:120px;">산출 금융비용 (KRW)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2729,9 +2729,9 @@ function generatePrintHTML() {
                         <thead>
                             <tr style="background:#f1f5f9; color:#334155;">
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; width:35px; text-align:center; font-weight:600;">No.</th>
-                                <th style="padding:4px; border:1px solid #e2e8f0; text-align:left; font-weight:600;">항목명</th>
+                                <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">항목명</th>
                                 <th style="padding:4px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">구분</th>
-                                <th style="padding:4px; border:1px solid #e2e8f0; text-align:right; width:120px; font-weight:600;">금액 (KRW)</th>
+                                <th style="padding:4px; border:1px solid #e2e8f0; text-align:center; width:120px; font-weight:600;">금액 (KRW)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2803,13 +2803,13 @@ function generatePrintHTML() {
                         <thead>
                             <tr style="background:#f8fafc; color:#0f172a;">
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">품명</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:right; font-weight:600;">수량</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:right; font-weight:600;">점유율</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">단위당 단가</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">배분 부대비용</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">실수입원가(외화)</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:75px; text-align:right; font-weight:600;">관세(KRW)</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:center; font-weight:600;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">점유율</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:75px; text-align:center; font-weight:600;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:95px; text-align:center; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2889,13 +2889,13 @@ function generatePrintHTML() {
                         <thead>
                             <tr style="background:#f8fafc; color:#0f172a;">
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">품명</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:right; font-weight:600;">수량</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:right; font-weight:600;">배분비율</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">단위당 단가</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">배분 부대비용</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:right; font-weight:600;">실수입원가(외화)</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:75px; text-align:right; font-weight:600;">관세(KRW)</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:95px; text-align:right; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:center; font-weight:600;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">배분비율</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:75px; text-align:center; font-weight:600;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:95px; text-align:center; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
                             </tr>
                         </thead>
                         <tbody>
