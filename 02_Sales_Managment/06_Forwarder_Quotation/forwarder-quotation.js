@@ -203,7 +203,9 @@ function initEvents() {
     document.getElementById('btnPrint').addEventListener('click', () => {
         renderAllCalculations();
         generatePrintHTML();
-        window.print();
+        setTimeout(() => {
+            window.print();
+        }, 30);
     });
     window.addEventListener('beforeprint', () => {
         renderAllCalculations();
@@ -214,7 +216,8 @@ function initEvents() {
     // 3대 실수입원가 산출법 토글 버튼들
     const btnToggleVol = document.getElementById('btnToggleVolumeAlloc');
     if (btnToggleVol) {
-        btnToggleVol.addEventListener('click', () => {
+        btnToggleVol.addEventListener('click', (e) => {
+            if (e.target.closest('.tooltip-icon')) return;
             state.doc.showVolumeAlloc = !state.doc.showVolumeAlloc;
             updateAllocationUI();
             generatePrintHTML();
@@ -222,7 +225,8 @@ function initEvents() {
     }
     const btnToggleWeight = document.getElementById('btnToggleWeightAlloc');
     if (btnToggleWeight) {
-        btnToggleWeight.addEventListener('click', () => {
+        btnToggleWeight.addEventListener('click', (e) => {
+            if (e.target.closest('.tooltip-icon')) return;
             state.doc.showWeightAlloc = !state.doc.showWeightAlloc;
             updateAllocationUI();
             generatePrintHTML();
@@ -230,7 +234,8 @@ function initEvents() {
     }
     const btnToggleVal = document.getElementById('btnToggleValueAlloc');
     if (btnToggleVal) {
-        btnToggleVal.addEventListener('click', () => {
+        btnToggleVal.addEventListener('click', (e) => {
+            if (e.target.closest('.tooltip-icon')) return;
             state.doc.showValueAlloc = !state.doc.showValueAlloc;
             updateAllocationUI();
             generatePrintHTML();
@@ -2909,7 +2914,7 @@ function generatePrintHTML() {
             `;
 
             // ──────────────── [1] 컨테이너 적재비율(부피/체적) 배분법 ────────────────
-            if (state.doc.showVolumeAlloc !== false) {
+            if (state.doc.showVolumeAlloc === true) {
                 const titleNum = `(${printAllocSeq++})`;
                 html += `
                     <div style="font-size:9px; color:#475569; font-weight:600; margin:2px 0;">
@@ -2994,7 +2999,7 @@ function generatePrintHTML() {
             }
 
             // ──────────────── [2] 순수 중량 배분법 (실중량 kg 기준 - 신규) ────────────────
-            if (state.doc.showWeightAlloc !== false) {
+            if (state.doc.showWeightAlloc === true) {
                 const titleNum = `(${printAllocSeq++})`;
                 html += `
                     <div style="font-size:9px; color:#0284c7; font-weight:600; margin:4px 0 2px 0;">
@@ -3078,7 +3083,7 @@ function generatePrintHTML() {
             }
 
             // ──────────────── [3] 가치비례 배분법 (가액 기준) ────────────────
-            if (state.doc.showValueAlloc !== false) {
+            if (state.doc.showValueAlloc === true) {
                 const titleNum = `(${printAllocSeq++})`;
                 html += `
                     <div style="font-size:9px; color:#475569; font-weight:600; margin:4px 0 2px 0;">
@@ -3149,6 +3154,14 @@ function generatePrintHTML() {
                 html += `
                             </tbody>
                         </table>
+                `;
+            }
+
+            if (!state.doc.showVolumeAlloc && !state.doc.showWeightAlloc && !state.doc.showValueAlloc) {
+                html += `
+                    <div style="padding:8px; border:1px dashed #cbd5e1; text-align:center; color:#64748b; font-size:8.5px; margin:4px 0 8px 0; background:#f8fafc;">
+                        * 선택된 원가 산출 방법이 없습니다. (화면 상단의 산출법 버튼을 활성화하세요)
+                    </div>
                 `;
             }
 
@@ -3530,24 +3543,39 @@ function generateExcelHTML() {
 
     });
 
-    // 4. 모든 인코텀즈 실수입원가 (5-1, 5-2)
-    state.doc.forwarders.forEach((fw, fIdx) => {
+    // 4. 모든 인코텀즈 실수입원가 (3대 산출법 연동)
+    state.doc.forwarders.forEach((fw) => {
         state.doc.incoterms.forEach(term => {
             if (!fw.calculated || !fw.calculated[term]) return;
 
             const calc = fw.calculated[term];
             const totalAncillaryKrw = calc.ancillaryKrw + (calc.otherCostsKrw || 0);
-            const totalInvoiceKrw = calc.invoiceKrw;
+            const totalInvoiceKrw = calc.invoiceKrw || 0;
+            const isLCL = state.doc.shipmentType === 'LCL';
             
-            const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
-            
-            let totalContainers = 0;
+            // ── 사전 계산 1: 적재비율 / 운임톤 기준 계수 ──
+            let totalModulus = 0;
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
-                if (p && p.unitPrice > 0 && item.maxLoad > 0) {
-                    totalContainers += (item.qty / item.maxLoad);
+                if (p && p.unitPrice > 0) {
+                    if (isLCL) totalModulus += (item.rt || 0);
+                    else if (item.maxLoad > 0) totalModulus += (item.qty / item.maxLoad);
                 }
             });
+
+            // ── 사전 계산 2: 순수 총중량 기준 계수 ──
+            let totalWeight = 0;
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (p && p.unitPrice > 0) {
+                    totalWeight += (item.weight > 0 ? item.weight : (item.qty || 0));
+                }
+            });
+
+            // ── 사전 계산 3: 가치비례 배분비율 ──
+            const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+
+            let excelAllocSeq = 1;
 
             html += `
                 <tr>
@@ -3557,20 +3585,127 @@ function generateExcelHTML() {
                 </tr>
             `;
 
-            // 5-1 가치비례 (토글 활성화 시만)
-            if (state.doc.showValueAlloc) {
+            // (1) 적재비율 (공간/부피 기준)
+            if (state.doc.showVolumeAlloc === true) {
+                const titleNum = `(${excelAllocSeq++})`;
                 html += `
-                    <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(1) 가치비례 배분법 (가액 기준)</td></tr>
+                    <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">${titleNum} ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/공간 기준)'}</td></tr>
                     <tr>
                         <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
                         <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
-                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">점유율</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
                         <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
                         <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
                         <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
                     </tr>
                 `;
-                
+
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
+                        return;
+                    }
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+
+                    let allocatedFC_Volume = 0;
+                    let volumeShareRatio = 0;
+                    if (totalModulus > 0 && item.qty > 0) {
+                        if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
+                        else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+                        const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+                        allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
+                    }
+
+                    const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
+                    const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+                    const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
+                    const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
+
+                    html += `
+                        <tr>
+                            <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                            <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${shareText}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Volume)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // (2) 순수 중량 배분법 (실중량 kg 기준)
+            if (state.doc.showWeightAlloc === true) {
+                const titleNum = `(${excelAllocSeq++})`;
+                html += `
+                    <tr><td colspan="10" style="background:#E0F2FE; color:#0369A1; font-weight:bold; padding:6px; border:1px solid #0284C7;">${titleNum} 순수 중량 배분법 (실중량 kg 기준)</td></tr>
+                    <tr>
+                        <th colspan="2" style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">품명</th>
+                        <th style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">수량</th>
+                        <th style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">중량점유율</th>
+                        <th style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">순수 물품대금 (단위당)</th>
+                        <th style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">부대비용 (단위당)</th>
+                        <th colspan="2" style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">실수입원가 (외화)</th>
+                        <th colspan="2" style="background:#0284C7; color:white; padding:6px; border:1px solid #0284C7;">실수입원가 (KRW)</th>
+                    </tr>
+                `;
+
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
+                        return;
+                    }
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const itemW = (item.weight > 0 ? item.weight : (item.qty || 0));
+
+                    let allocatedFC_Weight = 0;
+                    let weightShareRatio = 0;
+                    if (totalWeight > 0 && item.qty > 0) {
+                        weightShareRatio = itemW / totalWeight;
+                        const itemTotalAncillaryKrw = totalAncillaryKrw * weightShareRatio;
+                        allocatedFC_Weight = (itemTotalAncillaryKrw / exRate) / item.qty;
+                    }
+
+                    const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight * 100) / 100;
+                    const dispRealCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 100) / 100;
+                    const realCostKrw_Weight = Math.round(dispRealCostFC_Weight * exRate);
+
+                    html += `
+                        <tr>
+                            <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
+                            <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${(weightShareRatio * 100).toFixed(2)}%</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Weight, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Weight, 2)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#0369A1;">₩ ${formatNum(realCostKrw_Weight)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // (3) 가치비례 배분법 (가액 기준)
+            if (state.doc.showValueAlloc === true) {
+                const titleNum = `(${excelAllocSeq++})`;
+                html += `
+                    <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">${titleNum} 가치비례 배분법 (가액 기준)</td></tr>
+                    <tr>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">수량</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">가액점유율</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
+                        <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
+                        <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
+                    </tr>
+                `;
+
                 state.doc.items.forEach(item => {
                     const p = item.prices[term];
                     if (!p || !p.unitPrice || p.unitPrice === 0) {
@@ -3579,6 +3714,9 @@ function generateExcelHTML() {
                     }
                     const unitPriceFC = p.unitPrice;
                     const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const itemAmountKrw = item.qty * unitPriceFC * exRate;
+                    const valueShareRatio = totalInvoiceKrw > 0 ? (itemAmountKrw / totalInvoiceKrw) : 0;
+
                     const allocatedFC_Value = unitPriceFC * allocationRatio;
                     const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
                     const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
@@ -3588,7 +3726,8 @@ function generateExcelHTML() {
                         <tr>
                             <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
-                            <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${(valueShareRatio * 100).toFixed(2)}%</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
                             <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
                             <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
@@ -3597,52 +3736,6 @@ function generateExcelHTML() {
                 });
             }
 
-            // 5-2 적재비율
-            html += `
-                <tr><td colspan="10" style="background:#D9E1F2; color:#203864; font-weight:bold; padding:6px; border:1px solid #203864;">(2) 컨테이너 적재비율 배분법 (부피/무게 기준)</td></tr>
-                <tr>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">품명</th>
-                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">점유율</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">순수 물품대금 (단위당)</th>
-                    <th style="background:#203864; color:white; padding:6px; border:1px solid #203864;">부대비용 (단위당)</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (외화)</th>
-                    <th colspan="2" style="background:#203864; color:white; padding:6px; border:1px solid #203864;">실수입원가 (KRW)</th>
-                </tr>
-            `;
-
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
-                    html += `<tr><td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td><td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">-</td><td colspan="7" style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#666;">단가 없음</td></tr>`;
-                    return;
-                }
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                
-                let allocatedFC_Volume = 0;
-                let volumeShareRatio = 0;
-                if (item.maxLoad > 0 && totalContainers > 0 && item.qty > 0) {
-                    const itemContainerUsage = item.qty / item.maxLoad;
-                    volumeShareRatio = itemContainerUsage / totalContainers;
-                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-                    allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
-                }
-
-                const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
-                const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
-                const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
-
-                html += `
-                    <tr>
-                        <td colspan="2" style="padding:6px; border-bottom:1px dashed #ccc; border-left:1px solid #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.name}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '누락'}</td>
-                        <td colspan="2" style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
-                        <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Volume)}</td>
-                    </tr>
-                `;
-            });
             html += `<tr><td colspan="10" style="border-top:1px solid #ccc; height:20px; border-left:none; border-right:none; background:white;"></td></tr>`;
         });
     });

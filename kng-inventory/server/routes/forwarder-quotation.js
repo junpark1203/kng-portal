@@ -69,7 +69,10 @@ function initForwarderQuotationTables(database) {
                         'dimUnit TEXT DEFAULT "cm"',
                         'otherCosts TEXT DEFAULT "[]"',
                         'pol TEXT DEFAULT ""',
-                        'pod TEXT DEFAULT ""'
+                        'pod TEXT DEFAULT ""',
+                        'showVolumeAlloc INTEGER DEFAULT 1',
+                        'showWeightAlloc INTEGER DEFAULT 1',
+                        'showValueAlloc INTEGER DEFAULT 1'
                     ];
                     let completed = 0;
                     columns.forEach(col => {
@@ -103,6 +106,9 @@ router.get('/', async (req, res) => {
             try { r.items = JSON.parse(r.items || '[]'); } catch(e) { r.items = []; }
             try { r.forwarders = JSON.parse(r.forwarders || '[]'); } catch(e) { r.forwarders = []; }
             try { r.otherCosts = JSON.parse(r.otherCosts || '[]'); } catch(e) { r.otherCosts = []; }
+            r.showVolumeAlloc = (r.showVolumeAlloc !== null && r.showVolumeAlloc !== undefined) ? (r.showVolumeAlloc == 1 || r.showVolumeAlloc === true || r.showVolumeAlloc === '1') : true;
+            r.showWeightAlloc = (r.showWeightAlloc !== null && r.showWeightAlloc !== undefined) ? (r.showWeightAlloc == 1 || r.showWeightAlloc === true || r.showWeightAlloc === '1') : true;
+            r.showValueAlloc = (r.showValueAlloc !== null && r.showValueAlloc !== undefined) ? (r.showValueAlloc == 1 || r.showValueAlloc === true || r.showValueAlloc === '1') : true;
             return r;
         });
         res.json(result);
@@ -124,6 +130,9 @@ router.get('/:id', async (req, res) => {
         try { row.otherCosts = JSON.parse(row.otherCosts || '[]'); } catch(e) { row.otherCosts = []; }
         row.shipmentType = row.shipmentType || 'FCL';
         row.dimUnit = row.dimUnit || 'cm';
+        row.showVolumeAlloc = (row.showVolumeAlloc !== null && row.showVolumeAlloc !== undefined) ? (row.showVolumeAlloc == 1 || row.showVolumeAlloc === true || row.showVolumeAlloc === '1') : true;
+        row.showWeightAlloc = (row.showWeightAlloc !== null && row.showWeightAlloc !== undefined) ? (row.showWeightAlloc == 1 || row.showWeightAlloc === true || row.showWeightAlloc === '1') : true;
+        row.showValueAlloc = (row.showValueAlloc !== null && row.showValueAlloc !== undefined) ? (row.showValueAlloc == 1 || row.showValueAlloc === true || row.showValueAlloc === '1') : true;
         
         res.json(row);
     } catch (err) {
@@ -141,8 +150,9 @@ router.post('/', async (req, res) => {
             id, title, quoteDate, status, containerType, containerQty,
             exchangeRates, incoterms, items, forwarders, remarks,
             shipmentType, dimUnit, otherCosts, pol, pod,
+            showVolumeAlloc, showWeightAlloc, showValueAlloc,
             createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const params = [
             id,
             p.title || '',
@@ -160,6 +170,9 @@ router.post('/', async (req, res) => {
             JSON.stringify(p.otherCosts || []),
             p.pol || '',
             p.pod || '',
+            p.showVolumeAlloc === false ? 0 : 1,
+            p.showWeightAlloc === false ? 0 : 1,
+            p.showValueAlloc === false ? 0 : 1,
             now, now
         ];
         await dbRun(sql, params);
@@ -179,6 +192,7 @@ router.put('/:id', async (req, res) => {
             title=?, quoteDate=?, status=?, containerType=?, containerQty=?,
             exchangeRates=?, incoterms=?, items=?, forwarders=?, remarks=?,
             shipmentType=?, dimUnit=?, otherCosts=?, pol=?, pod=?,
+            showVolumeAlloc=?, showWeightAlloc=?, showValueAlloc=?,
             updatedAt=?
         WHERE id=?`;
         const params = [
@@ -197,6 +211,9 @@ router.put('/:id', async (req, res) => {
             JSON.stringify(p.otherCosts || []),
             p.pol || '',
             p.pod || '',
+            p.showVolumeAlloc === false ? 0 : 1,
+            p.showWeightAlloc === false ? 0 : 1,
+            p.showValueAlloc === false ? 0 : 1,
             now, id
         ];
         const result = await dbRun(sql, params);
