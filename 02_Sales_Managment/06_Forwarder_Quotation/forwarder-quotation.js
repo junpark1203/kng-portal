@@ -308,7 +308,7 @@ function initEvents() {
     document.getElementById('btnAddItem').addEventListener('click', () => {
         const prices = {};
         state.doc.incoterms.forEach(term => prices[term] = { unitPrice: 0, currency: 'USD' });
-        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', ctn: 1, weight: 0, maxLoad: 0, l: 0, w: 0, h: 0, pkgWeight: 0, dutyRate: 0, cbm: 0, rt: 0, prices });
+        state.doc.items.push({ hsCode: '', name: '', qty: 1, unit: 'EA', ctn: 1, weight: 0, maxLoad: 0, l: 0, w: 0, h: 0, pkgWeight: 0, dutyRate: 0, cbm: 0, rt: 0, remarks: '', prices });
         updateDefaultCostQuantities();
         renderItems();
         renderForwarderContent();
@@ -1065,13 +1065,14 @@ function renderItems() {
     state.doc.incoterms.forEach(term => {
         thHtml += `<th class="col-num" style="width: 150px;">${term} 단가</th>`;
     });
+    thHtml += `<th style="width: 130px;">비고</th>`;
     thHtml += `<th class="col-action">삭제</th>`;
     thead.innerHTML = thHtml;
 
     // 바디 재생성
     const tbody = document.getElementById('itemTableBody');
     if (state.doc.items.length === 0) {
-        let colSpan = isLCL ? (9 + 1 + state.doc.incoterms.length) : (6 + 1 + state.doc.incoterms.length);
+        let colSpan = (isLCL ? 13 : 9) + state.doc.incoterms.length;
         tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
         renderItemFooter();
         renderAllCalculations();
@@ -1134,6 +1135,7 @@ function renderItems() {
         });
         
         bHtml += `
+                <td><input type="text" value="${item.remarks || ''}" placeholder="비고 입력" onchange="updateItem(${idx}, 'remarks', this.value)"></td>
                 <td class="col-action">
                     <button class="btn-icon" style="color:var(--danger-color)" onclick="removeItem(${idx})"><i class='bx bx-trash'></i></button>
                 </td>
@@ -1260,7 +1262,7 @@ function renderItemFooter() {
         fHtml += `<td class="col-num" style="font-size:0.9rem;">${str}</td>`;
     });
     
-    fHtml += `<td></td></tr>`;
+    fHtml += `<td></td><td></td></tr>`;
     tfoot.innerHTML = fHtml;
 }
 
@@ -2145,7 +2147,7 @@ function generatePrintHTML() {
         });
 
         if (remainingCols > 0) {
-            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0;"></td>`;
+            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px solid #e2e8f0; border-right:1px solid #e2e8f0; word-break:keep-all;">${item.remarks || ''}</td>`;
         }
         
         html += `</tr>`;
@@ -2505,7 +2507,7 @@ function generateExcelHTML() {
         });
 
         if (remainingCols > 0) {
-            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;"></td>`;
+            html += `<td colspan="${remainingCols}" style="padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; word-break:keep-all;">${item.remarks || ''}</td>`;
         }
         
         html += `</tr>`;
