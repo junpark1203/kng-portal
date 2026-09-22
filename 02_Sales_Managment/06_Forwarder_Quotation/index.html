@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="../../01_Logistics/logistics-theme.css">
     
     <!-- 전용 CSS -->
-    <link rel="stylesheet" href="forwarder-quotation.css?v=20260922_15">
+    <link rel="stylesheet" href="forwarder-quotation.css?v=20260922_16">
     
     <!-- SheetJS for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -385,57 +385,139 @@
                 <section class="edit-section">
                     <div class="section-header-flex">
                         <h3>6. 대상 품목 실제 수입 원가 산출</h3>
-                        <div class="d-flex align-items-center gap-2">
-                            <button type="button" id="btnToggleValueAlloc" class="btn-erp" style="height:24px; font-size:11px;">
-                                <i class='bx bx-plus'></i> 가치비례 배분법 추가
-                            </button>
-                            <span class="text-muted" style="font-size:11px; font-weight:600;">원가 산출 기준 선택:</span>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="text-muted" style="font-size:11px; font-weight:600;">산출법 선택:</span>
+                            <div class="alloc-btn-group" id="allocMethodToggleGroup">
+                                <button type="button" id="btnToggleVolumeAlloc" class="alloc-method-btn active">
+                                    <i class='bx bx-check-square text-primary check-icon'></i>
+                                    <span>(1) 적재비율(공간)</span>
+                                    <i class='bx bx-info-circle tooltip-icon'>
+                                        <span class="tooltip-text alloc-tip">
+                                            <strong>[컨테이너 적재비율 배분법]</strong><br>
+                                            • <strong>원리</strong>: 품목별 컨테이너 점유 대수[수량 ÷ 최대적재량] 또는 CBM에 비례하여 부대비용을 배분합니다.<br>
+                                            • <strong>적용 권장</strong>: 부피가 크거나, 파렛트/포장 규격 차이로 1대에 실리는 양이 품목마다 크게 다른 화물(완제품, 부피화물 등)에 적합합니다.
+                                        </span>
+                                    </i>
+                                </button>
+                                <button type="button" id="btnToggleWeightAlloc" class="alloc-method-btn active">
+                                    <i class='bx bx-check-square text-primary check-icon'></i>
+                                    <span>(2) 순수 중량(kg)</span>
+                                    <i class='bx bx-info-circle tooltip-icon'>
+                                        <span class="tooltip-text alloc-tip">
+                                            <strong>[순수 중량 배분법]</strong><br>
+                                            • <strong>원리</strong>: 전체 화물 총중량(kg) 대비 각 품목의 실중량 비율에 따라 부대비용을 균등 배분합니다. (kg당 부대비용 동일)<br>
+                                            • <strong>적용 권장</strong>: 그리스, 케미컬, 실란트, 철강, 원자재 등 단위 무게당 물류비를 공평하게 원가에 반영해야 하는 중량 중심 화물에 가장 권장됩니다.
+                                        </span>
+                                    </i>
+                                </button>
+                                <button type="button" id="btnToggleValueAlloc" class="alloc-method-btn active">
+                                    <i class='bx bx-check-square text-primary check-icon'></i>
+                                    <span>(3) 가치비례(가액)</span>
+                                    <i class='bx bx-info-circle tooltip-icon'>
+                                        <span class="tooltip-text alloc-tip">
+                                            <strong>[가치비례 배분법]</strong><br>
+                                            • <strong>원리</strong>: 전체 인보이스 물품 대금 대비 각 품목의 물품 가액(단가) 비율에 따라 부대비용을 배분합니다.<br>
+                                            • <strong>적용 권장</strong>: 고가 부품과 저가 소모품이 혼적되어 저가 제품에 물류비가 과도하게 몰리는 것을 방지하거나, 보험료/금융비용처럼 가격 비례 성격이 강할 때 적합합니다.
+                                        </span>
+                                    </i>
+                                </button>
+                            </div>
+                            <span class="text-muted ms-2" style="font-size:11px; font-weight:600;">기준 조건:</span>
                             <select id="costResultSelector" class="form-select form-select-sm" style="width: auto; height: 24px; font-size: 11px; padding: 1px 22px 1px 6px;">
                                 <!-- 선택 가능한 포워더+인코텀즈 조합 렌더링 -->
                             </select>
                         </div>
                     </div>
 
-                    <!-- 6-1. 컨테이너 적재비율 배분법 (기본 권장 배분법) -->
-                    <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
-                        <span class="fw-bold text-primary" style="font-size: 11.5px;">
-                            실수입원가 (FCL: 컨테이너 적재비율 / LCL: 운임톤 배분법)
-                            <i class='bx bx-info-circle tooltip-icon'>
-                                <span class="tooltip-text">품목별 [수량 ÷ 최대적재량]으로 계산된 점유 비율에 따라 전체 부대비용을 배분합니다.</span>
-                            </i>
-                        </span>
-                    </div>
-                    <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
-                        <table class="erp-sheet-table cost-table" id="costTableVolume">
-                            <thead>
-                                <tr>
-                                    <th>품명</th>
-                                    <th class="col-num" style="width: 110px;">수량 / 점유율</th>
-                                    <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
-                                    <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
-                                    <th class="col-num" style="width: 120px;">
-                                        관세 (KRW)
-                                        <i class='bx bx-info-circle tooltip-icon'>
-                                            <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
-                                        </i>
-                                    </th>
-                                    <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="costTableBodyVolume">
-                                <!-- 결과 동적 렌더링 -->
-                            </tbody>
-                        </table>
+                    <!-- 6-1. 컨테이너 적재비율 배분법 (부피/공간 기준) -->
+                    <div id="volumeAllocationBlock">
+                        <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
+                            <span class="fw-bold text-primary" style="font-size: 11.5px;">
+                                <span id="volAllocTitleNumber">(1)</span> 실수입원가 (컨테이너 적재비율 배분법 — 부피/공간 기준)
+                                <i class='bx bx-info-circle tooltip-icon'>
+                                    <span class="tooltip-text alloc-tip">
+                                        <strong>[컨테이너 적재비율 배분법]</strong><br>
+                                        • <strong>원리</strong>: 품목별 [수량 ÷ 최대적재량] 컨테이너 점유율에 비례하여 부대비용을 배분합니다.<br>
+                                        • <strong>적용 권장</strong>: 적재 규격이나 부피 차이가 큰 화물에 적합합니다.
+                                    </span>
+                                </i>
+                            </span>
+                        </div>
+                        <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
+                            <table class="erp-sheet-table cost-table" id="costTableVolume">
+                                <thead>
+                                    <tr>
+                                        <th>품명</th>
+                                        <th class="col-num" style="width: 110px;">수량 / 점유율</th>
+                                        <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                        <th class="col-num" style="width: 120px;">
+                                            관세 (KRW)
+                                            <i class='bx bx-info-circle tooltip-icon'>
+                                                <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
+                                            </i>
+                                        </th>
+                                        <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="costTableBodyVolume">
+                                    <!-- 결과 동적 렌더링 -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <!-- 6-2. 가치비례 배분법 (토글로 손쉽게 추가/삭제 가능) -->
-                    <div id="valAllocationBlock" style="display: none;">
+                    <!-- 6-2. 순수 중량 배분법 (총중량 kg 기준 - 신규) -->
+                    <div id="weightAllocationBlock">
+                        <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
+                            <span class="fw-bold" style="font-size: 11.5px; color: #0284c7;">
+                                <span id="weightAllocTitleNumber">(2)</span> 실수입원가 (순수 중량 배분법 — 실중량 kg 기준)
+                                <i class='bx bx-info-circle tooltip-icon'>
+                                    <span class="tooltip-text alloc-tip">
+                                        <strong>[순수 중량 배분법]</strong><br>
+                                        • <strong>원리</strong>: 총중량(kg) 비율로 배분하여 모든 품목의 kg당 부대비용이 균등하게 산출됩니다.<br>
+                                        • <strong>적용 권장</strong>: 그리스, 실란트, 화학 원료, 철강 등 중량 중심 화물에 적극 권장됩니다.
+                                    </span>
+                                </i>
+                            </span>
+                        </div>
+                        <div class="erp-grid-wrapper mb-3" style="min-height: 100px;">
+                            <table class="erp-sheet-table cost-table" id="costTableWeight">
+                                <thead>
+                                    <tr>
+                                        <th>품명</th>
+                                        <th class="col-num" style="width: 110px;">수량 / 중량점유율</th>
+                                        <th class="col-num" style="width: 120px;">단위당 단가 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">배분 부대비용 (외화)</th>
+                                        <th class="col-num" style="width: 130px;">실수입원가 (외화)</th>
+                                        <th class="col-num" style="width: 120px;">
+                                            관세 (KRW)
+                                            <i class='bx bx-info-circle tooltip-icon'>
+                                                <span class="tooltip-text">과세표준(CIF) 기준:<br>(물품대금 + 수입항 도착 전 부대비용) × 관세율</span>
+                                            </i>
+                                        </th>
+                                        <th class="col-num highlight-col" style="width: 150px;">최종 실수입원가 (KRW)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="costTableBodyWeight">
+                                    <!-- 결과 동적 렌더링 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 6-3. 가치비례 배분법 (가액 기준) -->
+                    <div id="valAllocationBlock">
                         <div class="d-flex align-items-center justify-content-between mb-1 mt-2">
                             <span class="fw-bold text-secondary" style="font-size: 11.5px;">
-                                실수입원가 (가치비례 배분법)
+                                <span id="valAllocTitleNumber">(3)</span> 실수입원가 (가치비례 배분법 — 가액 기준)
                                 <i class='bx bx-info-circle tooltip-icon'>
-                                    <span class="tooltip-text">각 품목의 단가(가치) 비율에 따라 전체 부대비용을 배분합니다.</span>
+                                    <span class="tooltip-text alloc-tip">
+                                        <strong>[가치비례 배분법]</strong><br>
+                                        • <strong>원리</strong>: 물품 가액(단가) 비율에 따라 전체 부대비용을 배분합니다.<br>
+                                        • <strong>적용 권장</strong>: 고가/저가 혼적 시 저가 제품의 원가 보호 또는 보험료/금융비 배분에 적합합니다.
+                                    </span>
                                 </i>
                             </span>
                         </div>
@@ -503,6 +585,6 @@
     <div id="printContainer" class="print-only"></div>
 
     <!-- 스크립트 모듈 -->
-    <script type="module" src="forwarder-quotation.js?v=20260922_15"></script>
+    <script type="module" src="forwarder-quotation.js?v=20260922_16"></script>
 </body>
 </html>

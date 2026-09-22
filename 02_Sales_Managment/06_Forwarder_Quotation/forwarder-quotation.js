@@ -23,7 +23,10 @@ let state = {
         items: [],
         forwarders: [],
         otherCosts: [],
-        remarks: ''
+        remarks: '',
+        showVolumeAlloc: true,
+        showWeightAlloc: true,
+        showValueAlloc: true
     },
     activeForwarderIdx: 0,
     filters: {
@@ -208,12 +211,28 @@ function initEvents() {
     });
     document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
 
-    // 가치비례 배분법 토글 버튼
+    // 3대 실수입원가 산출법 토글 버튼들
+    const btnToggleVol = document.getElementById('btnToggleVolumeAlloc');
+    if (btnToggleVol) {
+        btnToggleVol.addEventListener('click', () => {
+            state.doc.showVolumeAlloc = !state.doc.showVolumeAlloc;
+            updateAllocationUI();
+            generatePrintHTML();
+        });
+    }
+    const btnToggleWeight = document.getElementById('btnToggleWeightAlloc');
+    if (btnToggleWeight) {
+        btnToggleWeight.addEventListener('click', () => {
+            state.doc.showWeightAlloc = !state.doc.showWeightAlloc;
+            updateAllocationUI();
+            generatePrintHTML();
+        });
+    }
     const btnToggleVal = document.getElementById('btnToggleValueAlloc');
     if (btnToggleVal) {
         btnToggleVal.addEventListener('click', () => {
             state.doc.showValueAlloc = !state.doc.showValueAlloc;
-            updateValueAllocUI();
+            updateAllocationUI();
             generatePrintHTML();
         });
     }
@@ -586,7 +605,9 @@ async function editQuote(id) {
         if (!state.doc.otherCosts) {
             state.doc.otherCosts = [];
         }
-        state.doc.showValueAlloc = !!data.showValueAlloc;
+        state.doc.showVolumeAlloc = (data.showVolumeAlloc !== undefined) ? !!data.showVolumeAlloc : true;
+        state.doc.showWeightAlloc = (data.showWeightAlloc !== undefined) ? !!data.showWeightAlloc : true;
+        state.doc.showValueAlloc = (data.showValueAlloc !== undefined) ? !!data.showValueAlloc : true;
         state.activeForwarderIdx = 0;
         
         // 폼 채우기
@@ -624,7 +645,7 @@ async function editQuote(id) {
         renderForwarderTabs();
         renderForwarderContent();
         renderOtherCosts();
-        updateValueAllocUI();
+        updateAllocationUI();
         renderAllCalculations();
         
         switchView('edit');
@@ -633,18 +654,48 @@ async function editQuote(id) {
     }
 }
 
-function updateValueAllocUI() {
-    const block = document.getElementById('valAllocationBlock');
-    const btn = document.getElementById('btnToggleValueAlloc');
-    if (!block || !btn) return;
+function updateAllocationUI() {
+    const blockVol = document.getElementById('volumeAllocationBlock');
+    const blockWeight = document.getElementById('weightAllocationBlock');
+    const blockVal = document.getElementById('valAllocationBlock');
+
+    const btnVol = document.getElementById('btnToggleVolumeAlloc');
+    const btnWeight = document.getElementById('btnToggleWeightAlloc');
+    const btnVal = document.getElementById('btnToggleValueAlloc');
+
+    if (btnVol) {
+        btnVol.classList.toggle('active', !!state.doc.showVolumeAlloc);
+        const icon = btnVol.querySelector('.check-icon');
+        if (icon) icon.className = `bx ${state.doc.showVolumeAlloc ? 'bx-check-square text-primary' : 'bx-square text-muted'} check-icon`;
+    }
+    if (btnWeight) {
+        btnWeight.classList.toggle('active', !!state.doc.showWeightAlloc);
+        const icon = btnWeight.querySelector('.check-icon');
+        if (icon) icon.className = `bx ${state.doc.showWeightAlloc ? 'bx-check-square text-primary' : 'bx-square text-muted'} check-icon`;
+    }
+    if (btnVal) {
+        btnVal.classList.toggle('active', !!state.doc.showValueAlloc);
+        const icon = btnVal.querySelector('.check-icon');
+        if (icon) icon.className = `bx ${state.doc.showValueAlloc ? 'bx-check-square text-primary' : 'bx-square text-muted'} check-icon`;
+    }
+
+    if (blockVol) blockVol.style.display = state.doc.showVolumeAlloc ? 'block' : 'none';
+    if (blockWeight) blockWeight.style.display = state.doc.showWeightAlloc ? 'block' : 'none';
+    if (blockVal) blockVal.style.display = state.doc.showValueAlloc ? 'block' : 'none';
+
+    // 3가지 배분법 활성화된 표에 (1), (2), (3) 순차적 동적 넘버링 부여
+    let seq = 1;
+    if (state.doc.showVolumeAlloc) {
+        const el = document.getElementById('volAllocTitleNumber');
+        if (el) el.innerText = `(${seq++})`;
+    }
+    if (state.doc.showWeightAlloc) {
+        const el = document.getElementById('weightAllocTitleNumber');
+        if (el) el.innerText = `(${seq++})`;
+    }
     if (state.doc.showValueAlloc) {
-        block.style.display = 'block';
-        btn.innerHTML = "<i class='bx bx-minus'></i> 가치비례 배분법 제외";
-        btn.className = "btn-secondary btn-sm text-danger";
-    } else {
-        block.style.display = 'none';
-        btn.innerHTML = "<i class='bx bx-plus'></i> 가치비례 배분법 추가";
-        btn.className = "btn-secondary btn-sm";
+        const el = document.getElementById('valAllocTitleNumber');
+        if (el) el.innerText = `(${seq++})`;
     }
 }
 
@@ -666,9 +717,12 @@ function openNewQuote() {
         forwarders: [],
         otherCosts: [],
         remarks: '',
-        showValueAlloc: false
+        showVolumeAlloc: true,
+        showWeightAlloc: true,
+        showValueAlloc: true
     };
     state.activeForwarderIdx = 0;
+    updateAllocationUI();
     
     document.getElementById('docTitle').value = '';
     document.getElementById('docDate').value = state.doc.quoteDate;
@@ -1967,13 +2021,16 @@ function populateCostResultSelector() {
 }
 
 function renderCostResultTable() {
-    const tbodyValue = document.getElementById('costTableBodyValue');
     const tbodyVolume = document.getElementById('costTableBodyVolume');
+    const tbodyWeight = document.getElementById('costTableBodyWeight');
+    const tbodyValue = document.getElementById('costTableBodyValue');
     const selVal = document.getElementById('costResultSelector').value;
     
     if (!selVal || state.doc.items.length === 0) {
-        tbodyValue.innerHTML = '<tr><td colspan="7" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
-        tbodyVolume.innerHTML = '<tr><td colspan="7" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        const emptyRow = '<tr><td colspan="7" style="text-align:center;">선택된 조건이 없거나 품목이 없습니다.</td></tr>';
+        if (tbodyVolume) tbodyVolume.innerHTML = emptyRow;
+        if (tbodyWeight) tbodyWeight.innerHTML = emptyRow;
+        if (tbodyValue) tbodyValue.innerHTML = emptyRow;
         return;
     }
     
@@ -1989,11 +2046,7 @@ function renderCostResultTable() {
     
     const isLCL = state.doc.shipmentType === 'LCL';
     
-    // --- 5-1. 가치비례 배분법 렌더링 ---
-    const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
-    let htmlValue = '';
-    
-    // --- 5-2. 체적/운임톤 배분법 사전 계산 ---
+    // ── 사전 계산 1: 적재비율 / 운임톤 기준 계수 ──
     let totalModulus = 0;
     state.doc.items.forEach(item => {
         const p = item.prices[term];
@@ -2005,36 +2058,118 @@ function renderCostResultTable() {
             }
         }
     });
+
+    // ── 사전 계산 2: 순수 총중량 기준 계수 ──
+    let totalWeight = 0;
+    state.doc.items.forEach(item => {
+        const p = item.prices[term];
+        if (p && p.unitPrice > 0) {
+            totalWeight += (item.weight > 0 ? item.weight : (item.qty || 0));
+        }
+    });
+
+    // ── 사전 계산 3: 가치비례 배분비율 ──
+    const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+    const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+
     let htmlVolume = '';
+    let htmlWeight = '';
+    let htmlValue = '';
 
     state.doc.items.forEach(item => {
         const p = item.prices[term];
         if (!p || !p.unitPrice || p.unitPrice === 0) {
-            htmlValue += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
-            htmlVolume += `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            const noPriceRow = `<tr><td>${item.name}</td><td class="col-num">${item.qty}</td><td colspan="5" style="text-align:center; color:var(--text-tertiary)">해당 인코텀즈 단가 없음</td></tr>`;
+            htmlVolume += noPriceRow;
+            htmlWeight += noPriceRow;
+            htmlValue += noPriceRow;
             return;
         }
         
         const unitPriceFC = p.unitPrice;
         const exRate = state.doc.exchangeRates[p.currency] || 1;
         const dutyRate = item.dutyRate || 0;
-        
-        // --- 5-1 로직 (대안 A: 표시 외화 단가 기준 원화 계산) ---
+
+        // ── 1. 컨테이너 적재비율 (공간/CBM) 배분 ──
+        let allocatedFC_Volume_Total = 0;
+        let allocatedFC_Volume_Dutiable = 0;
+        let volumeShareRatio = 0;
+        if (totalModulus > 0 && item.qty > 0) {
+            if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
+            else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+
+            const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+            const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+        }
+        const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume_Total * 100) / 100;
+        const dispBaseCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+        const baseCostKrw_Volume = Math.round(dispBaseCostFC_Volume * exRate);
+        const dispDutiableAllocated_Volume = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+        const cifValueKrw_Volume = Math.round((unitPriceFC + dispDutiableAllocated_Volume) * exRate);
+        const dutyKrw_Volume = Math.round(cifValueKrw_Volume * (dutyRate / 100));
+        const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
+        const shareTextVol = isLCL ? 
+            ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
+            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
+
+        htmlVolume += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextVol})</span></td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Volume, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
+            </tr>
+        `;
+
+        // ── 2. 순수 중량 배분법 (총중량 kg 기준) ──
+        let allocatedFC_Weight_Total = 0;
+        let allocatedFC_Weight_Dutiable = 0;
+        let weightShareRatio = 0;
+        const itemW = (item.weight > 0 ? item.weight : (item.qty || 0));
+        if (totalWeight > 0 && item.qty > 0) {
+            weightShareRatio = itemW / totalWeight;
+            const itemTotalAncillaryKrw = totalAncillaryKrw * weightShareRatio;
+            const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * weightShareRatio;
+            allocatedFC_Weight_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+            allocatedFC_Weight_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+        }
+        const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight_Total * 100) / 100;
+        const dispBaseCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 100) / 100;
+        const baseCostKrw_Weight = Math.round(dispBaseCostFC_Weight * exRate);
+        const dispDutiableAllocated_Weight = Math.round(allocatedFC_Weight_Dutiable * 100) / 100;
+        const cifValueKrw_Weight = Math.round((unitPriceFC + dispDutiableAllocated_Weight) * exRate);
+        const dutyKrw_Weight = Math.round(cifValueKrw_Weight * (dutyRate / 100));
+        const realCostKrw_Weight = baseCostKrw_Weight + dutyKrw_Weight;
+        const shareTextWeight = `${(weightShareRatio * 100).toFixed(2)}%`;
+
+        htmlWeight += `
+            <tr>
+                <td>${item.name}</td>
+                <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextWeight})</span></td>
+                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Weight, 2)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Weight, 2)}</td>
+                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Weight)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
+                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Weight)}</td>
+            </tr>
+        `;
+
+        // ── 3. 가치비례 배분법 (가액 기준) ──
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
-        const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
-        
         const dispAllocatedFC_Value = Math.round(allocatedFC_Value_Total * 100) / 100;
         const dispBaseCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
-        const baseCostKrw_Value = Math.round(dispBaseCostFC_Value * exRate); // 전체 부대비용 포함 원가 (표시 외화 기준)
-        
-        // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
-        const dispAllocatedFC_Dutiable = Math.round(allocatedFC_Value_Dutiable * 100) / 100;
+        const baseCostKrw_Value = Math.round(dispBaseCostFC_Value * exRate);
+        const dispDutiableAllocated_Value = Math.round(allocatedFC_Value_Dutiable * 100) / 100;
         const cifValueKrw_Value = Math.round((unitPriceFC + dispAllocatedFC_Dutiable) * exRate);
         const dutyKrw_Value = Math.round(cifValueKrw_Value * (dutyRate / 100));
-        
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
-        
+
         htmlValue += `
             <tr>
                 <td>${item.name}</td>
@@ -2046,57 +2181,11 @@ function renderCostResultTable() {
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
             </tr>
         `;
-        
-        // --- 5-2 로직 (대안 A: 표시 외화 단가 기준 원화 계산) ---
-        let allocatedFC_Volume_Total = 0;
-        let allocatedFC_Volume_Dutiable = 0;
-        let volumeShareRatio = 0;
-        
-        if (totalModulus > 0 && item.qty > 0) {
-            if (isLCL) {
-                volumeShareRatio = (item.rt || 0) / totalModulus;
-            } else {
-                if (item.maxLoad > 0) {
-                    volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
-                }
-            }
-            const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-            const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
-            
-            allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
-            allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
-        }
-        
-        const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume_Total * 100) / 100;
-        const dispBaseCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
-        const baseCostKrw_Volume = Math.round(dispBaseCostFC_Volume * exRate); // 전체 부대비용 포함 원가 (표시 외화 기준)
-        
-        // 관세 계산: CIF 가액 기준 (물품대금 + 과세대상 부대비용)
-        const dispDutiableAllocated_Volume = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
-        const cifValueKrw_Volume = Math.round((unitPriceFC + dispDutiableAllocated_Volume) * exRate);
-        const dutyKrw_Volume = Math.round(cifValueKrw_Volume * (dutyRate / 100));
-        
-        const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
-        
-        const shareText = isLCL ? 
-            ((volumeShareRatio * 100).toFixed(1) + '% (R/T)') : 
-            (item.maxLoad > 0 ? (volumeShareRatio * 100).toFixed(1) + '%' : '<span style="color:var(--danger);font-size:0.85em">적재량 누락</span>');
-
-        htmlVolume += `
-            <tr>
-                <td>${item.name}</td>
-                <td class="col-num">${shareText}</td>
-                <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Volume, 2)}</td>
-                <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
-                <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
-            </tr>
-        `;
     });
     
-    tbodyValue.innerHTML = htmlValue;
-    tbodyVolume.innerHTML = htmlVolume;
+    if (tbodyVolume) tbodyVolume.innerHTML = htmlVolume;
+    if (tbodyWeight) tbodyWeight.innerHTML = htmlWeight;
+    if (tbodyValue) tbodyValue.innerHTML = htmlValue;
 }
 
 // 전역 노출
@@ -2779,7 +2868,7 @@ function generatePrintHTML() {
             const totalDutiableAncillaryKrw = calc.dutiableAncillaryKrw || 0;
             const totalInvoiceKrw = calc.invoiceKrw || 0;
 
-            // 적재비율 / 운임톤 기준 계산
+            // ── 사전 계산 1: 적재비율 / 운임톤 기준 계수 ──
             let totalModulus = 0;
             state.doc.items.forEach(item => {
                 const p = item.prices[term];
@@ -2789,15 +2878,34 @@ function generatePrintHTML() {
                 }
             });
 
+            // ── 사전 계산 2: 순수 총중량 기준 계수 ──
+            let totalWeight = 0;
+            state.doc.items.forEach(item => {
+                const p = item.prices[term];
+                if (p && p.unitPrice > 0) {
+                    totalWeight += (item.weight > 0 ? item.weight : (item.qty || 0));
+                }
+            });
+
+            // ── 사전 계산 3: 가치비례 배분비율 ──
+            const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
+            const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+
+            let printAllocSeq = 1;
+
             html += `
                 <div style="margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
                     <div style="font-weight:700; font-size:9.5px; color:#1e293b; margin-bottom:2px;">
                         ■ ${fw.name} - ${term} 조건
                     </div>
+            `;
 
-                    <!-- 컨테이너 적재비율(부피/체적) 배분법 (기본 필수) -->
+            // ──────────────── [1] 컨테이너 적재비율(부피/체적) 배분법 ────────────────
+            if (state.doc.showVolumeAlloc !== false) {
+                const titleNum = `(${printAllocSeq++})`;
+                html += `
                     <div style="font-size:9px; color:#475569; font-weight:600; margin:2px 0;">
-                        (1) ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/무게 기준)'}
+                        ${titleNum} ${isLCL ? 'LCL 체적/운임톤(R/T) 배분법' : '컨테이너 적재비율 배분법 (부피/공간 기준)'}
                     </div>
                     <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
                         <thead>
@@ -2813,77 +2921,160 @@ function generatePrintHTML() {
                             </tr>
                         </thead>
                         <tbody>
-            `;
+                `;
 
-            state.doc.items.forEach(item => {
-                const p = item.prices[term];
-                if (!p || !p.unitPrice || p.unitPrice === 0) {
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `
+                            <tr>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                                <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                            </tr>
+                        `;
+                        return;
+                    }
+
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const dutyRate = item.dutyRate || 0;
+
+                    let allocatedFC_Volume_Total = 0;
+                    let allocatedFC_Volume_Dutiable = 0;
+                    let volumeShareRatio = 0;
+
+                    if (totalModulus > 0 && item.qty > 0) {
+                        if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
+                        else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
+
+                        const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
+                        const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
+                        allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+                        allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+                    }
+
+                    const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                    const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+                    const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                    const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                    const realCostKrw = baseCostKrw + dutyKrw;
+
+                    const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
+
                     html += `
                         <tr>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                            <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${shareText}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
                         </tr>
                     `;
-                    return;
-                }
-
-                const unitPriceFC = p.unitPrice;
-                const exRate = state.doc.exchangeRates[p.currency] || 1;
-                const dutyRate = item.dutyRate || 0;
-
-                let allocatedFC_Volume_Total = 0;
-                let allocatedFC_Volume_Dutiable = 0;
-                let volumeShareRatio = 0;
-
-                if (totalModulus > 0 && item.qty > 0) {
-                    if (isLCL) volumeShareRatio = (item.rt || 0) / totalModulus;
-                    else if (item.maxLoad > 0) volumeShareRatio = (item.qty / item.maxLoad) / totalModulus;
-
-                    const itemTotalAncillaryKrw = totalAncillaryKrw * volumeShareRatio;
-                    const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * volumeShareRatio;
-                    allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
-                    allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
-                }
-
-                const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
-                const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
-                const baseCostKrw = Math.round(dispBaseCostFC * exRate);
-
-                const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
-                const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
-                const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
-                const realCostKrw = baseCostKrw + dutyKrw;
-
-                const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
+                });
 
                 html += `
-                    <tr>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${shareText}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
-                        <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
-                    </tr>
+                            </tbody>
+                        </table>
                 `;
-            });
+            }
 
-            html += `
-                        </tbody>
-                    </table>
-            `;
+            // ──────────────── [2] 순수 중량 배분법 (실중량 kg 기준 - 신규) ────────────────
+            if (state.doc.showWeightAlloc !== false) {
+                const titleNum = `(${printAllocSeq++})`;
+                html += `
+                    <div style="font-size:9px; color:#0284c7; font-weight:600; margin:4px 0 2px 0;">
+                        ${titleNum} 순수 중량 배분법 (실중량 kg 기준)
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#0f172a;">
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">품명</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:center; font-weight:600;">수량</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">중량점유율</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">단위당 단가</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">배분 부대비용</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">실수입원가(외화)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:75px; text-align:center; font-weight:600;">관세(KRW)</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:95px; text-align:center; background:#f1f5f9; font-weight:bold;">최종 원가(KRW)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
 
-            // 가치비례 배분법: state.doc.showValueAlloc 이 활성화된 경우에만 출력
-            if (state.doc.showValueAlloc) {
-                const allocationRatio = totalInvoiceKrw > 0 ? (totalAncillaryKrw / totalInvoiceKrw) : 0;
-                const dutiableAllocationRatio = totalInvoiceKrw > 0 ? (totalDutiableAncillaryKrw / totalInvoiceKrw) : 0;
+                state.doc.items.forEach(item => {
+                    const p = item.prices[term];
+                    if (!p || !p.unitPrice || p.unitPrice === 0) {
+                        html += `
+                            <tr>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0;">${item.name}</td>
+                                <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                                <td colspan="6" style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">해당 조건 단가 없음</td>
+                            </tr>
+                        `;
+                        return;
+                    }
 
+                    const unitPriceFC = p.unitPrice;
+                    const exRate = state.doc.exchangeRates[p.currency] || 1;
+                    const dutyRate = item.dutyRate || 0;
+                    const itemW = (item.weight > 0 ? item.weight : (item.qty || 0));
+
+                    let allocatedFC_Weight_Total = 0;
+                    let allocatedFC_Weight_Dutiable = 0;
+                    let weightShareRatio = 0;
+
+                    if (totalWeight > 0 && item.qty > 0) {
+                        weightShareRatio = itemW / totalWeight;
+                        const itemTotalAncillaryKrw = totalAncillaryKrw * weightShareRatio;
+                        const itemDutiableAncillaryKrw = totalDutiableAncillaryKrw * weightShareRatio;
+                        allocatedFC_Weight_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
+                        allocatedFC_Weight_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
+                    }
+
+                    const dispAllocatedFC = Math.round(allocatedFC_Weight_Total * 100) / 100;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const baseCostKrw = Math.round(dispBaseCostFC * exRate);
+
+                    const dispDutiableAllocated = Math.round(allocatedFC_Weight_Dutiable * 100) / 100;
+                    const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
+                    const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
+                    const realCostKrw = baseCostKrw + dutyKrw;
+
+                    const weightShareText = `${(weightShareRatio * 100).toFixed(2)}%`;
+
+                    html += `
+                        <tr>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${weightShareText}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                `;
+            }
+
+            // ──────────────── [3] 가치비례 배분법 (가액 기준) ────────────────
+            if (state.doc.showValueAlloc !== false) {
+                const titleNum = `(${printAllocSeq++})`;
                 html += `
                     <div style="font-size:9px; color:#475569; font-weight:600; margin:4px 0 2px 0;">
-                        (2) 가치비례 배분법 (가액 기준)
+                        ${titleNum} 가치비례 배분법 (가액 기준)
                     </div>
                     <table style="width:100%; border-collapse:collapse; margin-bottom:6px; font-size:9px; table-layout:fixed;">
                         <thead>
@@ -2934,7 +3125,7 @@ function generatePrintHTML() {
                         <tr>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>

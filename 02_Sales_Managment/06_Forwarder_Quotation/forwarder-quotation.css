@@ -756,7 +756,7 @@ body {
     border-radius: 3px;
     padding: 6px 8px;
     position: absolute;
-    z-index: 20;
+    z-index: 100;
     bottom: 125%;
     left: 50%;
     margin-left: -120px;
@@ -766,11 +766,64 @@ body {
     font-weight: normal;
     line-height: 1.35;
     box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    pointer-events: none;
 }
 
 .tooltip-icon:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+}
+
+/* 산출법 선택 버튼 및 전용 툴팁 */
+.alloc-btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.alloc-method-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--erp-border);
+    border-radius: 3px;
+    background: #ffffff;
+    color: var(--erp-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.alloc-method-btn:hover {
+    background: #f8fafc;
+    color: var(--erp-text);
+    border-color: #94a3b8;
+}
+.alloc-method-btn.active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+.alloc-method-btn .check-icon {
+    font-size: 13px;
+}
+.alloc-tip {
+    width: 310px !important;
+    white-space: normal !important;
+    text-align: left !important;
+    line-height: 1.45 !important;
+    padding: 8px 10px !important;
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4) !important;
+    bottom: 130% !important;
+    margin-left: -155px !important;
+}
+.alloc-tip strong {
+    color: #60a5fa;
 }
 
 /* 토스트 */
