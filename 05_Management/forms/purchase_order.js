@@ -81,6 +81,7 @@ const app = {
         await this.loadForwarderQuotes();
         await this.loadPurchaseOrders();
         this.setupDragAndDrop();
+        this.setupRecentHistoryDropdowns();
     },
 
     // -------------------------------------------------------------
@@ -318,24 +319,94 @@ const app = {
         // 7. Items (품목 리스트 주입)
         if (q.items && q.items.length > 0) {
             document.getElementById('itemsTableBody').innerHTML = '';
+            let detectedCurrency = '';
+
             q.items.forEach(item => {
                 const pkgUnit = item.packaging_spec || (item.weight ? `${Number(item.weight).toLocaleString()} kg` : '');
                 const pkgQty = item.cbm ? `${item.cbm} CBM` : '';
+
+                // HS CODE: 앞에 여섯자리만 ####.## 형식으로 변환 (10자리 ####.##-#### 등에서 추출)
+                const rawHs = item.hsCode || item.hs_code || '';
+                let formattedHs = '';
+                if (rawHs) {
+                    const digits = String(rawHs).replace(/[^0-9]/g, '');
+                    if (digits.length >= 6) {
+                        formattedHs = `${digits.slice(0, 4)}.${digits.slice(4, 6)}`;
+                    } else if (digits.length > 4) {
+                        formattedHs = `${digits.slice(0, 4)}.${digits.slice(4)}`;
+                    } else if (digits.length > 0) {
+                        formattedHs = digits;
+                    } else {
+                        formattedHs = String(rawHs).trim();
+                    }
+                }
+
+                // Unit Price & Currency 추출
+                let uPrice = 0;
+                let itemCurrency = '';
+
+                // 1순위: 현재 quote의 incoterm에 해당하는 prices
+                if (item.prices) {
+                    if (incoterm && item.prices[incoterm] && typeof item.prices[incoterm].unitPrice === 'number' && item.prices[incoterm].unitPrice > 0) {
+                        uPrice = item.prices[incoterm].unitPrice;
+                        itemCurrency = item.prices[incoterm].currency || '';
+                    } else {
+                        // 2순위: 다른 incoterm 조건 중 0보다 큰 단가
+                        for (const t of Object.keys(item.prices)) {
+                            const pObj = item.prices[t];
+                            if (pObj && typeof pObj.unitPrice === 'number' && pObj.unitPrice > 0) {
+                                uPrice = pObj.unitPrice;
+                                itemCurrency = pObj.currency || '';
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 3순위: item 자체에 unitPrice / unit_price 필드가 있는 경우
+                if (!uPrice) {
+                    if (typeof item.unitPrice === 'number' && item.unitPrice > 0) {
+                        uPrice = item.unitPrice;
+                    } else if (typeof item.unit_price === 'number' && item.unit_price > 0) {
+                        uPrice = item.unit_price;
+                    } else if (item.unitPrice && !isNaN(Number(item.unitPrice)) && Number(item.unitPrice) > 0) {
+                        uPrice = Number(item.unitPrice);
+                    } else if (item.unit_price && !isNaN(Number(item.unit_price)) && Number(item.unit_price) > 0) {
+                        uPrice = Number(item.unit_price);
+                    }
+                }
+
+                if (!detectedCurrency && itemCurrency) {
+                    detectedCurrency = itemCurrency;
+                }
+
+                const orderQty = Number(item.qty) || 0;
+                const totalPrice = Math.round(orderQty * uPrice * 100) / 100;
+
                 this.addItemRow({
                     product_name: item.name || item.description || '',
-                    hs_code: item.hs_code || '',
+                    hs_code: formattedHs,
                     packaging_unit: pkgUnit,
-                    order_qty: Number(item.qty) || 0,
+                    order_qty: orderQty,
                     unit: item.unit || 'KG',
-                    unit_price: 0,
-                    total_price: 0,
+                    unit_price: uPrice,
+                    total_price: totalPrice,
                     packaging_qty: pkgQty
                 });
             });
+
+            // 통화 자동 연동
+            if (detectedCurrency) {
+                const currencyEl = document.getElementById('formCurrency');
+                if (currencyEl) {
+                    currencyEl.value = detectedCurrency;
+                }
+            }
+
             this.recalculateTotals();
         }
 
-        alert(`포워더 견적 [${q.title}] 데이터가 성공적으로 반영되었습니다.\n공급처(Seller) 선택 및 단가(Unit Price)를 입력해 주세요.`);
+        alert(`포워더 견적 [${q.title}] 품목 데이터(HS Code 6자리 및 단가 포함)가 성공적으로 반영되었습니다.\n공급처(Seller)를 선택하고 세부 내용을 확인해 주세요.`);
     },
 
     // -------------------------------------------------------------
@@ -1813,6 +1884,126 @@ const app = {
                 </div>
             </div>
         `;
+    },
+
+    // -------------------------------------------------------------
+    // 9. 최근 입력 기록 자동완성 드롭다운 (References, Terms of Payment, Delivery Date)
+    // -------------------------------------------------------------
+    setupRecentHistoryDropdowns: function() {
+        const fields = [
+            { inputId: 'formReferences', containerId: 'suggest_formReferences', key: 'references_text', label: 'References' },
+            { inputId: 'formPaymentTerms', containerId: 'suggest_formPaymentTerms', key: 'payment_terms', label: 'Terms of Payment' },
+            { inputId: 'formDeliveryDate', containerId: 'suggest_formDeliveryDate', key: 'delivery_date', label: 'Delivery Date' }
+        ];
+
+        fields.forEach(field => {
+            const input = document.getElementById(field.inputId);
+            const container = document.getElementById(field.containerId);
+            if (!input || !container) return;
+
+            const showDropdown = () => {
+                // 빈칸일 경우에만 노출
+                if (input.value && input.value.trim() !== '') {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                const recentValues = this.getRecentUniqueValues(field.key, 5);
+                if (!recentValues || recentValues.length === 0) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                let html = `
+                    <div class="recent-history-header">
+                        <span><i class='bx bx-history text-primary'></i> 최근 ${field.label} 기록 (최대 5개)</span>
+                        <span class="text-muted" style="font-size:10px;">클릭 시 자동완성</span>
+                    </div>
+                `;
+
+                recentValues.forEach(val => {
+                    const escapedVal = val.replace(/"/g, '&quot;');
+                    html += `
+                        <div class="recent-history-item" title="${escapedVal}">
+                            ${val}
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                container.style.display = 'block';
+
+                // 각 아이템 mousedown 이벤트 (blur보다 먼저 실행되도록)
+                container.querySelectorAll('.recent-history-item').forEach((itemEl, idx) => {
+                    itemEl.addEventListener('mousedown', (e) => {
+                        e.preventDefault(); // input blur 방지
+                        input.value = recentValues[idx];
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        container.style.display = 'none';
+                    });
+                });
+            };
+
+            const hideDropdown = () => {
+                container.style.display = 'none';
+            };
+
+            // 사용자가 클릭하거나 탭 키 등으로 커서가 활성화(focus)될 때
+            input.addEventListener('focus', showDropdown);
+            input.addEventListener('click', showDropdown);
+
+            // 입력 시 값이 생기면 즉시 숨김
+            input.addEventListener('input', () => {
+                if (input.value && input.value.trim() !== '') {
+                    hideDropdown();
+                } else {
+                    showDropdown();
+                }
+            });
+
+            // 포커스 해제 시 닫기
+            input.addEventListener('blur', () => {
+                setTimeout(hideDropdown, 150);
+            });
+
+            // ESC 키 누를 시 닫기
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideDropdown();
+                }
+            });
+        });
+
+        // 외부 영역 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            fields.forEach(field => {
+                const input = document.getElementById(field.inputId);
+                const container = document.getElementById(field.containerId);
+                if (input && container && !input.contains(e.target) && !container.contains(e.target)) {
+                    container.style.display = 'none';
+                }
+            });
+        });
+    },
+
+    getRecentUniqueValues: function(fieldKey, maxCount = 5) {
+        if (!this.poList || !Array.isArray(this.poList)) return [];
+        const result = [];
+        const seen = new Set();
+
+        for (const po of this.poList) {
+            const rawVal = po[fieldKey];
+            if (rawVal && typeof rawVal === 'string') {
+                const trimmed = rawVal.trim();
+                if (trimmed && !seen.has(trimmed)) {
+                    seen.add(trimmed);
+                    result.push(trimmed);
+                    if (result.length >= maxCount) break;
+                }
+            }
+        }
+        return result;
     }
 };
 

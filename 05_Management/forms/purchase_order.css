@@ -726,3 +726,52 @@ input::placeholder, textarea::placeholder {
     font-weight: normal;
     color: #333;
 }
+
+/* ── 최근 입력 기록 드롭다운 (References, Terms of Payment, Delivery Date 등) ── */
+.recent-history-dropdown {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    right: 0;
+    z-index: 1095;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    max-height: 180px;
+    overflow-y: auto;
+    display: none;
+}
+
+.recent-history-header {
+    padding: 4px 8px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.recent-history-item {
+    padding: 5px 8px;
+    font-size: 11.5px;
+    color: #1e293b;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background-color 0.1s, color 0.1s;
+    word-break: break-word;
+}
+
+.recent-history-item:last-child {
+    border-bottom: none;
+}
+
+.recent-history-item:hover {
+    background-color: #eff6ff;
+    color: #2563eb;
+    font-weight: 600;
+}
+

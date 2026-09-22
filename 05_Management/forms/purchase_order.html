@@ -176,9 +176,10 @@
                                 <label class="form-label mb-1">Issue Date (발행일자) *</label>
                                 <input type="date" class="form-control form-control-sm" id="formIssueDate" required onchange="app.onIssueDateChange()">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 position-relative">
                                 <label class="form-label mb-1">References (참조계약)</label>
-                                <input type="text" class="form-control form-control-sm" id="formReferences" placeholder="예: Sales Agreement (June 30, 2025)">
+                                <input type="text" class="form-control form-control-sm" id="formReferences" placeholder="예: Sales Agreement (June 30, 2025)" autocomplete="off">
+                                <div id="suggest_formReferences" class="recent-history-dropdown"></div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Validity Date (유효일자)</label>
@@ -258,9 +259,10 @@
                             <span>3. 무역 및 운송 조건 (Trade & Shipping Terms)</span>
                         </div>
                         <div class="row g-2 mb-3">
-                            <div class="col-md-6">
+                            <div class="col-md-6 position-relative">
                                 <label class="form-label mb-1">Terms of Payment (결제조건)</label>
-                                <input type="text" class="form-control form-control-sm" id="formPaymentTerms" placeholder="예: 30% T/T in advance, 70% within 15 business days after delivery">
+                                <input type="text" class="form-control form-control-sm" id="formPaymentTerms" placeholder="예: 30% T/T in advance, 70% within 15 business days after delivery" autocomplete="off">
+                                <div id="suggest_formPaymentTerms" class="recent-history-dropdown"></div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1">Terms of Delivery (인코텀즈)</label>
@@ -278,9 +280,10 @@
                                 <label class="form-label mb-1">Discharging Port (도착항)</label>
                                 <input type="text" class="form-control form-control-sm" id="formDischargingPort" placeholder="예: Incheon, S.Korea">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-3 position-relative">
                                 <label class="form-label mb-1">Delivery Date (납기)</label>
-                                <input type="text" class="form-control form-control-sm" id="formDeliveryDate" placeholder="예: Within 15 days after advance payment">
+                                <input type="text" class="form-control form-control-sm" id="formDeliveryDate" placeholder="예: Within 15 days after advance payment" autocomplete="off">
+                                <div id="suggest_formDeliveryDate" class="recent-history-dropdown"></div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label mb-1 text-primary fw-bold">Shipment Spec (선적 규격)</label>
