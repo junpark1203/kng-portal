@@ -92,44 +92,137 @@ const app = {
             if (res.ok) {
                 const data = await parseJsonResponse(res);
                 this.partnersList = Array.isArray(data) ? data : (data.partners || []);
-                this.populateSellerPartnerSelect();
             }
         } catch (e) {
             console.warn('거래처 목록을 불러오지 못했습니다:', e);
         }
     },
 
-    populateSellerPartnerSelect: function() {
-        const select = document.getElementById('sellerPartnerSelect');
-        if (!select) return;
-        let html = '<option value="">-- [선택] 등록된 거래처에서 불러오기 --</option>';
-        if (this.partnersList && this.partnersList.length > 0) {
-            this.partnersList.forEach(p => {
-                const korName = p.company_name || p.name || '';
-                const engName = p.company_name_en ? ` (${p.company_name_en})` : '';
-                html += `<option value="${p.id}">${korName}${engName}</option>`;
-            });
-        }
-        select.innerHTML = html;
+    openPartnerSearchModal: function() {
+        const modalEl = document.getElementById('partnerSearchModal');
+        if (!modalEl) return;
+        const input = document.getElementById('partnerModalSearchInput');
+        if (input) input.value = '';
+        this.renderPartnerSearchResults(this.partnersList || []);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
     },
 
-    onSelectSellerPartner: function(partnerId) {
+    onPartnerModalSearch: function(keyword) {
+        const term = (keyword || '').toLowerCase().trim();
+        if (!term) {
+            this.renderPartnerSearchResults(this.partnersList || []);
+            return;
+        }
+        const filtered = (this.partnersList || []).filter(p => {
+            return (p.name && p.name.toLowerCase().includes(term)) ||
+                   (p.company_name && p.company_name.toLowerCase().includes(term)) ||
+                   (p.company_name_en && p.company_name_en.toLowerCase().includes(term)) ||
+                   (p.address && p.address.toLowerCase().includes(term)) ||
+                   (p.address_en && p.address_en.toLowerCase().includes(term)) ||
+                   (p.manager1_name && p.manager1_name.toLowerCase().includes(term)) ||
+                   (p.manager_en && p.manager_en.toLowerCase().includes(term)) ||
+                   (p.phone && p.phone.includes(term)) ||
+                   (p.phone_en && p.phone_en.includes(term)) ||
+                   (p.manager1_phone && p.manager1_phone.includes(term)) ||
+                   (p.manager1_email && p.manager1_email.toLowerCase().includes(term)) ||
+                   (p.email_en && p.email_en.toLowerCase().includes(term));
+        });
+        this.renderPartnerSearchResults(filtered);
+    },
+
+    renderPartnerSearchResults: function(list) {
+        const tbody = document.getElementById('partnerModalTableBody');
+        const countSpan = document.getElementById('partnerModalCount');
+        if (!tbody) return;
+
+        if (countSpan) {
+            countSpan.innerHTML = `총 <strong>${list.length}</strong>개 거래처`;
+        }
+
+        if (!list || list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">일치하는 거래처가 없습니다.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.map(p => {
+            const typeBadge = p.type === '매입처' 
+                ? '<span class="badge bg-danger bg-opacity-75">매입처</span>'
+                : (p.type === '매출처' ? '<span class="badge bg-primary bg-opacity-75">매출처</span>' : `<span class="badge bg-secondary bg-opacity-75">${p.type || '기타'}</span>`);
+            
+            const korTitle = p.company_name || p.name || '-';
+            const engTitle = p.company_name_en ? `<div class="small text-primary" style="font-size:11px;"><i class='bx bx-globe'></i> ${p.company_name_en}</div>` : '';
+            const addr = (p.address_en || p.address) ? `<div class="small text-muted text-truncate" style="max-width: 260px; font-size: 10.5px;">${p.address_en || p.address}</div>` : '';
+
+            const mgrKor = p.manager1_name || '-';
+            const mgrEn = p.manager_en ? `<div class="small text-primary" style="font-size:11px;">ATTN: ${p.manager_en}</div>` : '';
+
+            const tel = p.phone_en || p.manager1_phone || p.phone || '-';
+            const email = p.email_en || p.manager1_email || '-';
+
+            return `
+                <tr>
+                    <td class="text-center">${typeBadge}</td>
+                    <td>
+                        <div class="fw-bold">${korTitle}</div>
+                        ${engTitle}
+                        ${addr}
+                    </td>
+                    <td>
+                        <div>${mgrKor}</div>
+                        ${mgrEn}
+                    </td>
+                    <td style="font-size: 11.5px;">
+                        <div><i class='bx bx-phone text-muted'></i> ${tel}</div>
+                        ${email !== '-' ? `<div class="text-muted"><i class='bx bx-envelope'></i> ${email}</div>` : ''}
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-primary py-0 px-2 fw-semibold" style="font-size: 11.5px; height: 26px;" onclick="app.selectPartnerFromModal('${p.id}')">
+                            선택
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
+    selectPartnerFromModal: function(partnerId) {
         if (!partnerId) return;
         const p = this.partnersList.find(x => String(x.id) === String(partnerId));
         if (!p) return;
 
-        // 영문 필드 우선 적용 (없으면 국문 fallback)
+        // 영문 정보 최우선 적용 (해외 발주서용)
         const companyName = p.company_name_en || p.company_name || p.name || '';
         const address = p.address_en || p.address || '';
         const attn = p.manager_en || p.manager1_name || p.manager || '';
-        const tel = p.manager1_phone || p.phone || '';
-        const email = p.manager1_email || p.email || '';
+        const tel = p.phone_en || p.manager1_phone || p.phone || '';
+        const email = p.email_en || p.manager1_email || p.email || '';
 
         if (companyName) document.getElementById('formSellerName').value = companyName;
         if (address) document.getElementById('formSellerAddress').value = address;
         if (attn) document.getElementById('formSellerAttn').value = attn;
         if (tel) document.getElementById('formSellerTel').value = tel;
         if (email) document.getElementById('formSellerEmail').value = email;
+
+        // 모달 닫기
+        const modalEl = document.getElementById('partnerSearchModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        // 성공 토스트 알림
+        if (window.Swal) {
+            Swal.fire({
+                icon: 'success',
+                title: '공급처 정보 적용 완료',
+                text: `${p.company_name_en || p.company_name || p.name} 정보가 반영되었습니다.`,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }
     },
 
     // -------------------------------------------------------------

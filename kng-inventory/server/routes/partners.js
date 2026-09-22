@@ -23,7 +23,8 @@ module.exports = (database) => {
             'phone TEXT', 'fax TEXT',
             'manager1_name TEXT', 'manager1_phone TEXT', 'manager1_email TEXT',
             'manager2_name TEXT', 'manager2_phone TEXT', 'manager2_email TEXT',
-            'company_name_en TEXT', 'address_en TEXT', 'manager_en TEXT'
+            'company_name_en TEXT', 'address_en TEXT', 'manager_en TEXT',
+            'phone_en TEXT', 'email_en TEXT'
         ];
         columns.forEach(col => {
             const colName = col.split(' ')[0];
@@ -50,6 +51,7 @@ module.exports = (database) => {
             manager1_name, manager1_phone, manager1_email,
             manager2_name, manager2_phone, manager2_email,
             company_name_en, address_en, manager_en,
+            phone_en, email_en,
             type, contact, note 
         } = req.body;
         
@@ -63,8 +65,9 @@ module.exports = (database) => {
                 manager1_name, manager1_phone, manager1_email,
                 manager2_name, manager2_phone, manager2_email,
                 company_name_en, address_en, manager_en,
+                phone_en, email_en,
                 type, contact, note
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         
         stmt.run([
@@ -74,6 +77,7 @@ module.exports = (database) => {
             manager1_name || '', manager1_phone || '', manager1_email || '',
             manager2_name || '', manager2_phone || '', manager2_email || '',
             company_name_en || '', address_en || '', manager_en || '',
+            phone_en || '', email_en || '',
             type || 'ALL', contact || '', note || ''
         ], function(err) {
             if (err) {
@@ -96,6 +100,7 @@ module.exports = (database) => {
             manager1_name, manager1_phone, manager1_email,
             manager2_name, manager2_phone, manager2_email,
             company_name_en, address_en, manager_en,
+            phone_en, email_en,
             type, contact, note 
         } = req.body;
         const id = req.params.id;
@@ -110,6 +115,7 @@ module.exports = (database) => {
                 manager1_name = ?, manager1_phone = ?, manager1_email = ?,
                 manager2_name = ?, manager2_phone = ?, manager2_email = ?,
                 company_name_en = ?, address_en = ?, manager_en = ?,
+                phone_en = ?, email_en = ?,
                 type = ?, contact = ?, note = ?
             WHERE id = ?
         `);
@@ -121,6 +127,7 @@ module.exports = (database) => {
             manager1_name || '', manager1_phone || '', manager1_email || '',
             manager2_name || '', manager2_phone || '', manager2_email || '',
             company_name_en || '', address_en || '', manager_en || '',
+            phone_en || '', email_en || '',
             type || 'ALL', contact || '', note || '',
             id
         ], function(err) {

@@ -37,6 +37,10 @@ const app = {
                 (p.name && p.name.toLowerCase().includes(searchWord)) || 
                 (p.company_name && p.company_name.toLowerCase().includes(searchWord)) ||
                 (p.company_name_en && p.company_name_en.toLowerCase().includes(searchWord)) ||
+                (p.address_en && p.address_en.toLowerCase().includes(searchWord)) ||
+                (p.manager_en && p.manager_en.toLowerCase().includes(searchWord)) ||
+                (p.phone_en && p.phone_en.includes(searchWord)) ||
+                (p.email_en && p.email_en.toLowerCase().includes(searchWord)) ||
                 (p.note && p.note.toLowerCase().includes(searchWord)) ||
                 (p.phone && p.phone.includes(searchWord)) ||
                 (p.manager1_name && p.manager1_name.includes(searchWord))
@@ -59,7 +63,7 @@ const app = {
                 <td>
                     <div class="fw-bold">${p.name}</div>
                     <div class="small text-muted">${p.company_name || '-'}</div>
-                    ${p.company_name_en ? `<div class="small text-primary" style="font-size:11px;">${p.company_name_en}</div>` : ''}
+                    ${p.company_name_en ? `<div class="small text-primary" style="font-size:11px;"><i class='bx bx-globe'></i> ${p.company_name_en}</div>` : ''}
                 </td>
                 <td>${p.ceoName || p.ceo_name || '-'}</td>
                 <td>
@@ -68,8 +72,8 @@ const app = {
                 </td>
                 <td class="text-muted small">${p.note || ''}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm btn-outline-primary me-1" onclick="app.openEditModal(${p.id})">수정</button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="app.deletePartner(${p.id})">삭제</button>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="app.openEditModal('${p.id}')">수정</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="app.deletePartner('${p.id}')">삭제</button>
                 </td>
             </tr>
         `).join('');
@@ -81,12 +85,14 @@ const app = {
         document.getElementById('companyNameEn').value = '';
         document.getElementById('addressEn').value = '';
         document.getElementById('managerEn').value = '';
+        document.getElementById('phoneEn').value = '';
+        document.getElementById('emailEn').value = '';
         document.getElementById('modalTitle').innerText = '새 거래처 등록';
         this.modal.show();
     },
 
     openEditModal(id) {
-        const partner = this.data.find(p => p.id === id);
+        const partner = this.data.find(p => String(p.id) === String(id));
         if (!partner) return;
 
         document.getElementById('partnerId').value = partner.id;
@@ -115,6 +121,8 @@ const app = {
         document.getElementById('companyNameEn').value = partner.company_name_en || '';
         document.getElementById('addressEn').value = partner.address_en || '';
         document.getElementById('managerEn').value = partner.manager_en || '';
+        document.getElementById('phoneEn').value = partner.phone_en || '';
+        document.getElementById('emailEn').value = partner.email_en || '';
 
         document.getElementById('partnerNote').value = partner.note || '';
         
@@ -149,6 +157,8 @@ const app = {
         const company_name_en = document.getElementById('companyNameEn').value.trim();
         const address_en = document.getElementById('addressEn').value.trim();
         const manager_en = document.getElementById('managerEn').value.trim();
+        const phone_en = document.getElementById('phoneEn').value.trim();
+        const email_en = document.getElementById('emailEn').value.trim();
 
         const note = document.getElementById('partnerNote').value.trim();
 
@@ -163,12 +173,18 @@ const app = {
             manager1_name, manager1_phone, manager1_email,
             manager2_name, manager2_phone, manager2_email,
             company_name_en, address_en, manager_en,
+            phone_en, email_en,
             note 
         };
 
         try {
             if (id) {
-                // 수정
+                // 수정 - Optimistic In-memory update
+                const pIndex = this.data.findIndex(p => String(p.id) === String(id));
+                if (pIndex !== -1) {
+                    this.data[pIndex] = { ...this.data[pIndex], ...payload };
+                }
+
                 const res = await window.authFetch(`${API_BASE}/partners/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -190,10 +206,14 @@ const app = {
                     const errData = await res.json().catch(() => ({}));
                     throw new Error(errData.error || '등록 중 오류가 발생했습니다.');
                 }
+                const newPartner = await res.json().catch(() => null);
+                if (newPartner && newPartner.id) {
+                    this.data.push({ ...payload, id: newPartner.id });
+                }
                 Swal.fire({ title: '등록 완료', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
             }
             this.modal.hide();
-            this.loadData(); // 리로드
+            await this.loadData(); // 최신 DB 상태 동기화
         } catch (error) {
             console.error(error);
             Swal.fire('오류', error.message || '저장 중 오류가 발생했습니다.', 'error');
@@ -201,7 +221,7 @@ const app = {
     },
 
     async deletePartner(id) {
-        const partner = this.data.find(p => p.id === id);
+        const partner = this.data.find(p => String(p.id) === String(id));
         if (!partner) return;
 
         const result = await Swal.fire({
