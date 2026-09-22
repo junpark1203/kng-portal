@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>거래처 관리</title>
+    <title>거래처 관리 - KNG ERP</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,222 +12,313 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Boxicons -->
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-    <!-- Custom CSS -->
+    <!-- Custom CSS (ECOUNT ERP Theme) -->
     <link rel="stylesheet" href="../../css/iframe-common.css">
-    <style>
-        .page-header { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1rem; }
-        .table-responsive { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    </style>
+    <link rel="stylesheet" href="./partners.css?v=20260922_01">
 </head>
-<body class="bg-light">
+<body>
 
-<div class="container-fluid py-4">
-    <div class="page-header d-flex justify-content-between align-items-center">
-        <div>
-            <h4 class="mb-1 fw-bold text-dark"><i class='bx bx-buildings text-primary'></i> 거래처 관리</h4>
-            <p class="text-muted mb-0 small">모든 모듈(물류, 월정산 등)에서 공통으로 사용되는 거래처 목록입니다.</p>
+    <!-- ========================================================================= -->
+    <!-- 1행 상단 ECOUNT ERP 메인 툴바 -->
+    <!-- ========================================================================= -->
+    <div class="erp-top-toolbar">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="erp-title-tag">
+                <i class='bx bx-buildings text-primary'></i> 거래처 관리
+            </div>
+            <!-- 거래처 유형 세그먼트 탭 -->
+            <div class="erp-tab-group" role="group">
+                <input type="radio" class="btn-check" name="filterTab" id="tabAll" value="ALL" checked onchange="app.onTabChange(this.value)">
+                <label class="erp-tab-btn" for="tabAll">
+                    전체 <span class="tab-badge" id="badgeCountAll">0</span>
+                </label>
+
+                <input type="radio" class="btn-check" name="filterTab" id="tabPurchase" value="매입처" onchange="app.onTabChange(this.value)">
+                <label class="erp-tab-btn" for="tabPurchase">
+                    매입처 <span class="tab-badge" id="badgeCountPurchase">0</span>
+                </label>
+
+                <input type="radio" class="btn-check" name="filterTab" id="tabSales" value="매출처" onchange="app.onTabChange(this.value)">
+                <label class="erp-tab-btn" for="tabSales">
+                    매출처 <span class="tab-badge" id="badgeCountSales">0</span>
+                </label>
+
+                <input type="radio" class="btn-check" name="filterTab" id="tabOverseas" value="OVERSEAS" onchange="app.onTabChange(this.value)">
+                <label class="erp-tab-btn" for="tabOverseas">
+                    해외/무역 <span class="tab-badge" id="badgeCountOverseas">0</span>
+                </label>
+
+                <input type="radio" class="btn-check" name="filterTab" id="tabEtc" value="기타" onchange="app.onTabChange(this.value)">
+                <label class="erp-tab-btn" for="tabEtc">
+                    기타 <span class="tab-badge" id="badgeCountEtc">0</span>
+                </label>
+            </div>
         </div>
-        <div>
-            <button class="btn btn-primary fw-bold shadow-sm" onclick="app.openAddModal()">
+
+        <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="app.openAddModal()">
                 <i class='bx bx-plus'></i> 새 거래처 등록
+            </button>
+            <button type="button" class="btn-erp" onclick="app.exportExcel()" title="현재 목록을 엑셀로 다운로드">
+                <i class='bx bx-download'></i> 엑셀 다운로드
             </button>
         </div>
     </div>
 
-    <!-- 검색 영역 -->
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body py-2">
-            <div class="row g-2">
-                <div class="col-md-3">
-                    <select id="typeFilter" class="form-select form-select-sm" onchange="app.renderTable()">
-                        <option value="ALL">전체 유형</option>
-                        <option value="매입처">매입처</option>
-                        <option value="매출처">매출처</option>
-                        <option value="기타">기타</option>
-                    </select>
+    <!-- ========================================================================= -->
+    <!-- 2행 필터 리본 -->
+    <!-- ========================================================================= -->
+    <div class="erp-filter-ribbon">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- 검색 대상 -->
+            <select id="searchTargetSelect" class="form-select form-select-sm erp-select-target" onchange="app.renderTable()">
+                <option value="ALL">전체 대상</option>
+                <option value="name">거래처명/사업자명</option>
+                <option value="company_name_en">영문 상호명</option>
+                <option value="ceo_name">대표자</option>
+                <option value="business_number">사업자번호</option>
+                <option value="manager">담당자 (국문/영문)</option>
+                <option value="phone">연락처 (전화/이메일)</option>
+                <option value="address">주소 (국문/영문)</option>
+                <option value="note">비고</option>
+            </select>
+
+            <!-- 스마트 다중 검색창 -->
+            <div class="input-group input-group-sm erp-search-box position-relative">
+                <input type="text" id="searchInput" class="form-control pe-4" 
+                    placeholder="검색어 입력 (공백 다중검색)..." 
+                    oninput="app.onSearchInput(this.value)"
+                    onkeydown="if(event.key==='Enter') app.renderTable();">
+                <button type="button" class="btn btn-link text-muted position-absolute end-0 top-50 translate-middle-y p-0 pe-2 text-decoration-none" 
+                    id="searchClearBtn" style="display:none; z-index: 5;" onclick="app.clearSearch()">
+                    <i class='bx bx-x' style="font-size: 16px;"></i>
+                </button>
+            </div>
+
+            <!-- 조회 및 초기화 버튼 -->
+            <button type="button" class="btn-erp" onclick="app.renderTable()">
+                <i class='bx bx-search'></i> 조회
+            </button>
+            <button type="button" class="btn-erp" onclick="app.resetFilters()">
+                <i class='bx bx-reset'></i> 초기화
+            </button>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <!-- 건수 뱃지 -->
+            <span class="text-muted small" id="totalCountBadge" style="font-size: 11.5px;"></span>
+            <!-- 페이지 제한 셀렉터 -->
+            <select id="limitSelect" class="form-select form-select-sm erp-limit-select" onchange="app.onChangeLimit(this.value)">
+                <option value="50">50개씩</option>
+                <option value="100">100개씩</option>
+                <option value="all">전체보기</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 데이터 그리드 (Sticky Header 테이블) -->
+    <!-- ========================================================================= -->
+    <div class="table-card">
+        <div class="table-container">
+            <table class="erp-table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">No</th>
+                        <th style="width: 75px;">유형</th>
+                        <th style="min-width: 240px; text-align: left;">거래처명 / 사업자명 (영문상호)</th>
+                        <th style="width: 140px;">사업자번호 / 대표자</th>
+                        <th style="width: 180px;">국내 연락처 / 결제계좌</th>
+                        <th style="width: 170px;">담당자 (국문 / 영문 ATTN)</th>
+                        <th style="min-width: 210px; text-align: left;">영문 무역 정보 (Tel / Email / Address)</th>
+                        <th style="min-width: 120px; text-align: left;">비고</th>
+                        <th style="width: 95px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="partnersTableBody">
+                    <tr><td colspan="9" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- 거래처 등록 / 수정 모달 -->
+    <!-- ========================================================================= -->
+    <div class="modal fade" id="partnerModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h6 class="modal-title fw-bold" id="modalTitle" style="font-size: 13.5px;">
+                        <i class='bx bx-building'></i> 새 거래처 등록
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="col-md-9">
-                    <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="거래처명 또는 비고 검색..." onkeyup="app.renderTable()">
+                <div class="modal-body p-3">
+                    <form id="partnerForm" onsubmit="event.preventDefault(); app.savePartner();">
+                        <input type="hidden" id="partnerId">
+                        
+                        <!-- 1. 기본 및 사업자 정보 -->
+                        <div class="erp-modal-section-card">
+                            <div class="erp-section-title">
+                                <i class='bx bx-building text-primary'></i> 기본 및 사업자 정보
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold">거래처명 (약칭) <span class="text-danger">*</span></label>
+                                    <input type="text" id="partnerName" class="form-control form-control-sm" required placeholder="예: 신유테크">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">사업자명 (공식상호) <span class="text-danger">*</span></label>
+                                    <input type="text" id="companyName" class="form-control form-control-sm" required placeholder="예: 신유테크놀로지 주식회사">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">거래 유형 <span class="text-danger">*</span></label>
+                                    <select id="partnerType" class="form-select form-select-sm">
+                                        <option value="매입처">매입처 (공급처)</option>
+                                        <option value="매출처">매출처 (고객사)</option>
+                                        <option value="ALL">전체 / 공통</option>
+                                        <option value="기타">기타</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">사업자등록번호</label>
+                                    <input type="text" id="businessNumber" class="form-control form-control-sm" placeholder="예: 000-00-00000">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">대표자명</label>
+                                    <input type="text" id="ceoName" class="form-control form-control-sm" placeholder="예: 홍길동">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">국문 사업장 주소</label>
+                                    <input type="text" id="address" class="form-control form-control-sm" placeholder="사업장 소재지 주소">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 결제 및 계좌 정보 -->
+                        <div class="erp-modal-section-card">
+                            <div class="erp-section-title">
+                                <i class='bx bx-credit-card text-success'></i> 결제 및 계좌 정보
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">은행명</label>
+                                    <input type="text" id="bankName" class="form-control form-control-sm" placeholder="예: 신한은행">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">계좌번호</label>
+                                    <input type="text" id="accountNumber" class="form-control form-control-sm" placeholder="'-' 포함 또는 숫자만 입력">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">예금주</label>
+                                    <input type="text" id="accountHolder" class="form-control form-control-sm" placeholder="예금주 성명 / 법인명">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 국내 연락처 및 담당자 -->
+                        <div class="erp-modal-section-card">
+                            <div class="erp-section-title">
+                                <i class='bx bx-phone text-secondary'></i> 국내 연락처 및 담당자
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">대표 전화</label>
+                                    <input type="text" id="phone" class="form-control form-control-sm" placeholder="예: 02-123-4567">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">팩스 (FAX)</label>
+                                    <input type="text" id="fax" class="form-control form-control-sm" placeholder="예: 02-123-4568">
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6 border-end pe-md-2">
+                                    <span class="badge bg-light text-secondary border mb-1">담당자 1 (정산/영업)</span>
+                                    <div class="mb-1">
+                                        <input type="text" id="manager1Name" class="form-control form-control-sm" placeholder="성명 및 직급">
+                                    </div>
+                                    <div class="mb-1">
+                                        <input type="text" id="manager1Phone" class="form-control form-control-sm" placeholder="연락처 (핸드폰/직통)">
+                                    </div>
+                                    <div>
+                                        <input type="email" id="manager1Email" class="form-control form-control-sm" placeholder="이메일 주소">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 ps-md-2">
+                                    <span class="badge bg-light text-secondary border mb-1">담당자 2 (물류/기타)</span>
+                                    <div class="mb-1">
+                                        <input type="text" id="manager2Name" class="form-control form-control-sm" placeholder="성명 및 직급">
+                                    </div>
+                                    <div class="mb-1">
+                                        <input type="text" id="manager2Phone" class="form-control form-control-sm" placeholder="연락처 (핸드폰/직통)">
+                                    </div>
+                                    <div>
+                                        <input type="email" id="manager2Email" class="form-control form-control-sm" placeholder="이메일 주소">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. 영문 정보 (해외 공급처 / 발주서(PO) 발행 시 사용) -->
+                        <div class="erp-modal-section-card border-primary border-opacity-25" style="background-color: #fcfdfe;">
+                            <div class="erp-section-title text-primary">
+                                <i class='bx bx-globe'></i> 영문 정보 <span class="text-muted fw-normal" style="font-size: 11px;">(해외 공급처 / 발주서(PO) 발행 시 자동 연동)</span>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">영문 상호명 (Company Name)</label>
+                                    <input type="text" id="companyNameEn" class="form-control form-control-sm" placeholder="예: XINYU RECORD TECHNOLOGY CO., LTD.">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">영문 담당자 (ATTN)</label>
+                                    <input type="text" id="managerEn" class="form-control form-control-sm" placeholder="예: Mr. Felix Feng">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">영문 전화번호 (Tel)</label>
+                                    <input type="text" id="phoneEn" class="form-control form-control-sm" placeholder="예: +86-790-6861288">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">영문 이메일 (E-mail)</label>
+                                    <input type="email" id="emailEn" class="form-control form-control-sm" placeholder="예: overseas@partner.com">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold">영문 사업장 주소 (Address)</label>
+                                    <input type="text" id="addressEn" class="form-control form-control-sm" placeholder="예: No.4 Factory Building, Block D, High-Tech Zone, Jiangxi, China">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. 비고 및 추가 정보 -->
+                        <div class="erp-modal-section-card mb-0">
+                            <div class="erp-section-title">
+                                <i class='bx bx-note text-secondary'></i> 비고 및 특기사항
+                            </div>
+                            <textarea id="partnerNote" class="form-control form-control-sm" rows="2" placeholder="기타 거래조건, 취급 품목, 참고사항 입력..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer py-2 bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">취소</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold px-3" onclick="app.savePartner()">
+                        <i class='bx bx-check'></i> 저장
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 데이터 테이블 -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
-            <thead class="table-light">
-                <tr>
-                    <th class="text-center" style="width: 60px;">No</th>
-                    <th style="width: 100px;">유형</th>
-                    <th style="width: 250px;">거래처명 / 사업자명</th>
-                    <th style="width: 150px;">대표자</th>
-                    <th style="width: 200px;">주요 연락처</th>
-                    <th>비고</th>
-                    <th class="text-center" style="width: 120px;">관리</th>
-                </tr>
-            </thead>
-            <tbody id="partnersTableBody">
-                <tr><td colspan="7" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- 거래처 모달 -->
-<div class="modal fade" id="partnerModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title fw-bold" id="modalTitle">거래처 등록</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="partnerForm">
-                    <input type="hidden" id="partnerId">
-                    
-                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-building'></i> 기본 정보</h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">거래처명 <span class="text-danger">*</span></label>
-                            <input type="text" id="partnerName" class="form-control" required placeholder="예: 구글">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">사업자명 <span class="text-danger">*</span></label>
-                            <input type="text" id="companyName" class="form-control" required placeholder="예: 구글 주식회사">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">대표자</label>
-                            <input type="text" id="ceoName" class="form-control" placeholder="대표자명">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">사업자번호</label>
-                            <input type="text" id="businessNumber" class="form-control" placeholder="000-00-00000">
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label fw-bold">주소</label>
-                            <input type="text" id="address" class="form-control" placeholder="사업장 주소">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">유형</label>
-                            <select id="partnerType" class="form-select">
-                                <option value="ALL">전체/공통</option>
-                                <option value="매입처">매입처 (주로 물품 공급)</option>
-                                <option value="매출처">매출처 (주로 납품 대상)</option>
-                                <option value="기타">기타</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-credit-card'></i> 결제 정보</h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">은행명</label>
-                            <input type="text" id="bankName" class="form-control" placeholder="예: 신한은행">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">계좌번호</label>
-                            <input type="text" id="accountNumber" class="form-control" placeholder="계좌번호 입력">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">예금주</label>
-                            <input type="text" id="accountHolder" class="form-control" placeholder="예금주명">
-                        </div>
-                    </div>
-
-                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-phone'></i> 연락처 정보</h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">대표 전화</label>
-                            <input type="text" id="phone" class="form-control" placeholder="02-000-0000">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">팩스</label>
-                            <input type="text" id="fax" class="form-control" placeholder="02-000-0000">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6 border-end">
-                            <h6 class="fw-bold pb-2 text-secondary">담당자 1</h6>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">이름</label>
-                                <input type="text" id="manager1Name" class="form-control form-control-sm">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">연락처</label>
-                                <input type="text" id="manager1Phone" class="form-control form-control-sm">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">이메일</label>
-                                <input type="text" id="manager1Email" class="form-control form-control-sm">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="fw-bold pb-2 text-secondary">담당자 2</h6>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">이름</label>
-                                <input type="text" id="manager2Name" class="form-control form-control-sm">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">연락처</label>
-                                <input type="text" id="manager2Phone" class="form-control form-control-sm">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label small text-muted mb-1">이메일</label>
-                                <input type="text" id="manager2Email" class="form-control form-control-sm">
-                            </div>
-                        </div>
-                    </div>
-
-                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-globe'></i> 영문 정보 <span class="text-muted fw-normal" style="font-size:11px;">(해외 공급처 / 발주서(PO) 발행 시 사용)</span></h6>
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">영문 상호명 (Company Name)</label>
-                            <input type="text" id="companyNameEn" class="form-control" placeholder="예: XINYU RECORD TECHNOLOGY CO., LTD.">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">영문 담당자 (ATTN)</label>
-                            <input type="text" id="managerEn" class="form-control" placeholder="예: Mr. Felix Feng">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">영문 전화번호 (Tel)</label>
-                            <input type="text" id="phoneEn" class="form-control" placeholder="예: +86-790-6861288">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">영문 이메일 (E-mail)</label>
-                            <input type="email" id="emailEn" class="form-control" placeholder="예: overseas@partner.com">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">영문 사업장 주소 (Address)</label>
-                            <input type="text" id="addressEn" class="form-control" placeholder="예: No.4 Factory Building, Block D, High-Tech Zone, Jiangxi, China">
-                        </div>
-                    </div>
-
-                    <h6 class="fw-bold border-bottom pb-2 text-primary"><i class='bx bx-note'></i> 추가 정보</h6>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">비고</label>
-                        <textarea id="partnerNote" class="form-control" rows="2" placeholder="기타 참고사항 입력..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary fw-bold" onclick="app.savePartner()">저장</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Bootstrap JS Bundle -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<!-- SweetAlert2 -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script type="module">
-    import { authFetch } from '../../js/auth.js';
-    window.authFetch = authFetch;
-</script>
-<script src="app.js?v=20260922_01"></script>
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SheetJS (Excel Download) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script type="module">
+        import { authFetch } from '../../js/auth.js';
+        window.authFetch = authFetch;
+    </script>
+    <script src="./app.js?v=20260922_02"></script>
 
 </body>
 </html>

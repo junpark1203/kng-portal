@@ -1,0 +1,335 @@
+/* 03_monthly_closing/partners/partners.css */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css');
+
+:root {
+    --primary-color: #2b579a;
+    --primary-hover: #1e3f70;
+    --secondary-color: #4f6b8a;
+    --bg-light: #f4f6f9;
+    --card-border: #e2e8f0;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #cbd5e1;
+    --table-header-bg: #f8fafc;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --info-color: #0284c7;
+    --danger-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+/* ── 1행 상단 ECOUNT ERP 툴바 ── */
+.erp-top-toolbar {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 40px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    margin-bottom: 6px;
+}
+
+.erp-title-tag {
+    font-weight: 800;
+    font-size: 13.5px;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    padding-right: 12px;
+    border-right: 1px solid #e2e8f0;
+}
+
+/* 상태/유형별 세그먼트 탭 */
+.erp-tab-group {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 2px;
+    border-radius: 4px;
+    gap: 2px;
+    border: 1px solid #e2e8f0;
+}
+
+.erp-tab-group .btn-check + .erp-tab-btn {
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 3px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    user-select: none;
+    line-height: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-tab-group .btn-check:checked + .erp-tab-btn {
+    background: #ffffff;
+    color: #2563eb;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.tab-badge {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 0 5px;
+    border-radius: 10px;
+    line-height: 16px;
+}
+
+.erp-tab-group .btn-check:checked + .erp-tab-btn .tab-badge {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+/* 콤팩트 버튼 & 컨트롤 */
+.btn-erp {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-erp:hover {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.btn-erp-primary {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #1d4ed8;
+}
+
+.btn-erp-primary:hover {
+    background: #1d4ed8;
+    color: #ffffff;
+    border-color: #1e40af;
+}
+
+.btn-erp-success {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #059669;
+}
+
+.btn-erp-success:hover {
+    background: #059669;
+    color: #ffffff;
+    border-color: #047857;
+}
+
+/* ── 2행 필터 리본 ── */
+.erp-filter-ribbon {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-height: 38px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    margin-bottom: 8px;
+}
+
+.erp-select-target {
+    width: 125px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+.erp-search-box {
+    width: 250px;
+    min-width: 180px;
+}
+
+.erp-search-box .form-control {
+    height: 28px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 2px 8px !important;
+}
+
+.erp-search-box .form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.erp-limit-select {
+    width: 90px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* 안내 플레이스홀더 (연한 회색, 이탤릭) */
+input::placeholder, textarea::placeholder {
+    color: #94a3b8 !important;
+    font-style: italic;
+    opacity: 0.85;
+}
+
+/* ── 데이터 그리드 테이블 ── */
+.table-card {
+    background: #ffffff;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-container {
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.erp-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+}
+
+.erp-table thead th {
+    background: var(--table-header-bg);
+    color: #475569;
+    font-weight: 700;
+    padding: 8px 10px;
+    text-align: center;
+    border-bottom: 1.5px solid #cbd5e1;
+    border-right: 1px solid #e2e8f0;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.erp-table thead th:last-child {
+    border-right: none;
+}
+
+.erp-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f8fafc;
+    vertical-align: middle;
+    color: #334155;
+}
+
+.erp-table td:last-child {
+    border-right: none;
+}
+
+.erp-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* ── 유형별 뱃지 ── */
+.badge-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+}
+
+.badge-type-purchase {
+    background-color: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.badge-type-sales {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+}
+
+.badge-type-overseas {
+    background-color: #f5f3ff;
+    color: #7c3aed;
+    border: 1px solid #ddd6fe;
+}
+
+.badge-type-etc {
+    background-color: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+
+/* ── 모달 개선 스타일 ── */
+.erp-modal-section-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+
+.erp-section-title {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 6px;
+}
+
+.modal-body label.form-label {
+    font-size: 11.5px;
+    margin-bottom: 3px;
+    color: #475569;
+}
