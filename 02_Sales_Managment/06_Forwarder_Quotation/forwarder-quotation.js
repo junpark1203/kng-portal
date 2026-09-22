@@ -1071,11 +1071,23 @@ window.removeIncoterm = function(term) {
     renderForwarderContent();
 };
 
+// 비용 그룹 및 정렬 메타데이터 헬퍼 (요약-상세 일대일 매핑용)
+function getCostGroupMeta(cost) {
+    const k = cost.key || '';
+    const g = cost.group || '';
+    if (k === 'OF' || g === 'ocean') return { grpNo: 2, label: '해상운임', sortOrder: 20 };
+    if (g === 'export' || k.endsWith('_E') || ['CY', 'PORT', 'EDI', 'VGM', 'CUST_E', 'TRK_E'].includes(k)) return { grpNo: 3, label: '수출국', sortOrder: 30 };
+    if (k === 'INS') return { grpNo: 5, label: '보험료', sortOrder: 50 };
+    if (k === 'CUST_I') return { grpNo: 6, label: '통관료', sortOrder: 60 };
+    return { grpNo: 4, label: '수입국/물류', sortOrder: 40 }; // import + logistics
+}
+
 function renderItems() {
     const isLCL = state.doc.shipmentType === 'LCL';
     // 헤더 재생성
     const thead = document.getElementById('itemTableHead');
     let thHtml = `
+        <th style="width: 45px; text-align: center;">No.</th>
         <th>HS CODE</th>
         <th>품명</th>
         <th class="col-num" style="width: 80px;">수량</th>
@@ -1111,7 +1123,7 @@ function renderItems() {
     // 바디 재생성
     const tbody = document.getElementById('itemTableBody');
     if (state.doc.items.length === 0) {
-        let colSpan = (isLCL ? 13 : 9) + state.doc.incoterms.length;
+        let colSpan = (isLCL ? 14 : 10) + state.doc.incoterms.length;
         tbody.innerHTML = `<tr><td colspan="${colSpan}" style="text-align:center;">등록된 품목이 없습니다.</td></tr>`;
         renderItemFooter();
         renderAllCalculations();
@@ -1125,6 +1137,7 @@ function renderItems() {
 
         bHtml += `
             <tr>
+                <td style="text-align:center; font-weight:600; color:var(--text-secondary); font-size:0.85rem;">1-${idx + 1}</td>
                 <td><input type="text" value="${item.hsCode}" onchange="updateItem(${idx}, 'hsCode', this.value)"></td>
                 <td><input type="text" value="${item.name}" onchange="updateItem(${idx}, 'name', this.value)"></td>
                 <td><input type="number" value="${item.qty}" min="1" class="col-num" oninput="updateItem(${idx}, 'qty', this.value)"></td>
@@ -1272,7 +1285,7 @@ function renderItemFooter() {
 
     let fHtml = `
         <tr style="background:var(--bg-tertiary); font-weight:600;">
-            <td colspan="2" style="text-align:center;">합계</td>
+            <td colspan="3" style="text-align:center;">합계</td>
             <td class="col-num">${formatNum(totalQty)}</td>
             <td></td>
     `;
@@ -1364,13 +1377,31 @@ function renderForwarderContent() {
     const fw = state.doc.forwarders[state.activeForwarderIdx];
     
     const groups = [
-        { id: 'ocean', title: '🚢 해상 운임 및 할증료' },
-        { id: 'export', title: '🛫 수출국 부대비용' },
-        { id: 'logistics', title: '🌐 물류 부대비용' },
-        { id: 'import', title: '🛬 수입국 부대비용' },
-        { id: 'customs', title: '📋 적하보험 및 수입통관' }
+        { id: 'ocean', title: '🚢 [2] 해상 운임 및 할증료 (O/F)' },
+        { id: 'export', title: '🛫 [3] 수출국 부대비용 (Export Charges)' },
+        { id: 'logistics', title: '🌐 [4] 물류 부대비용 (Logistics & Handling)' },
+        { id: 'import', title: '🛬 [4] 수입국 부대비용 (Import Local Charges)' },
+        { id: 'customs', title: '📋 [5,6] 적하보험 [5] 및 수입통관 [6]' }
     ];
     
+    // 포워더 견적 항목별 [그룹-순번] 번호 산출
+    const costCounters = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    const fwCostNumbers = [];
+    fw.costs.forEach((c, idx) => {
+        let costGroup = c.group;
+        if (!costGroup) {
+            if (c.key === 'OF') costGroup = 'ocean';
+            else if (c.key === 'INS' || c.key === 'CUST_I') costGroup = 'customs';
+            else if (c.key.endsWith('_E') || ['CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) costGroup = 'export';
+            else if (['PSS', 'LSS', 'BAF', 'CAF', 'HNDL', 'DOC'].includes(c.key)) costGroup = 'logistics';
+            else costGroup = 'import';
+            c.group = costGroup;
+        }
+        const meta = getCostGroupMeta(c);
+        costCounters[meta.grpNo] = (costCounters[meta.grpNo] || 0) + 1;
+        fwCostNumbers[idx] = `${meta.grpNo}-${costCounters[meta.grpNo]}`;
+    });
+
     let html = '';
     
     groups.forEach(g => {
@@ -1383,6 +1414,7 @@ function renderForwarderContent() {
                 <table class="item-table" style="margin:0; border:none; box-shadow:none;">
                     <thead>
                         <tr>
+                            <th style="width:45px; text-align:center;">No.</th>
                             <th>비용 항목 (약어 / 한글)</th>
                             <th class="col-num" style="width:120px;">단가</th>
                             <th style="width:80px;">통화</th>
@@ -1459,6 +1491,9 @@ function renderForwarderContent() {
                         ondragleave="handleDragLeave(event)"
                         ondrop="handleDrop(event, ${idx})"
                         ondragend="handleDragEnd(event)">
+                        <td style="text-align:center; font-weight:600; color:var(--text-secondary); font-size:0.85rem;">
+                            ${fwCostNumbers[idx]}
+                        </td>
                         <td>
                             <div style="display:flex; align-items:center; width: 100%;">
                                 <i class='bx bx-grid-vertical drag-handle' title="드래그하여 순서 변경"></i>
@@ -1501,7 +1536,7 @@ function renderForwarderContent() {
         });
         
         if (!hasItems) {
-            let colSpan = 6 + state.doc.incoterms.length + 1;
+            let colSpan = 7 + state.doc.incoterms.length + 1;
             html += `<tr ondragover="handleDragOver(event)" ondragenter="handleDragEnter(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, -1, '${g.id}')">
                 <td colspan="${colSpan}" style="text-align:center; color:var(--text-tertiary); padding: 15px; border: 2px dashed #e2e8f0;">이곳으로 항목을 드래그하여 추가하세요.</td>
             </tr>`;
@@ -1640,7 +1675,7 @@ function renderOtherCosts() {
     if (!tbody) return;
     
     if (!state.doc.otherCosts || state.doc.otherCosts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">추가된 항목이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">추가된 항목이 없습니다.</td></tr>';
         if (tfoot) tfoot.innerHTML = '';
         return;
     }
@@ -1668,6 +1703,7 @@ function renderOtherCosts() {
         
         html += `
             <tr>
+                <td style="text-align:center; font-weight:600; color:var(--text-secondary); font-size:0.85rem;">7-${idx + 1}</td>
                 <td><input type="text" value="${cost.name}" onchange="updateOtherCost(${idx}, 'name', this.value)" ${cost.type==='calculated'?'readonly':''}></td>
                 <td><span class="status-badge ${cost.type==='calculated'?'confirmed':'draft'}">${cost.type==='calculated'?'자동계산':'수동입력'}</span></td>
                 <td>${conditionHtml}</td>
@@ -1713,12 +1749,12 @@ function renderSummaryTable() {
     
     if (state.doc.forwarders.length === 0 || state.doc.items.length === 0) {
         thead.innerHTML = '';
-        tbody.innerHTML = '<tr><td style="text-align:center; padding:20px;">비용 요약을 계산할 데이터가 부족합니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px;">비용 요약을 계산할 데이터가 부족합니다.</td></tr>';
         return;
     }
 
     // 1. 헤더 (포워더 × 인코텀즈)
-    let hHtml = '<tr><th>비용 구분</th>';
+    let hHtml = '<tr><th style="width:45px; text-align:center;">No.</th><th>비용 구분</th>';
     state.doc.forwarders.forEach(fw => {
         state.doc.incoterms.forEach(term => {
             hHtml += `<th>${fw.name}<br><span style="font-size:0.85rem; color:var(--text-secondary)">${term}</span></th>`;
@@ -1745,16 +1781,16 @@ function renderSummaryTable() {
     // 그룹: 해상운임(OF), 수출국(THC_E 등), 수입국(THC_I 등), 적하보험(INS), 통관수수료(CUST_I)
     
     let rows = {
-        invoice: { label: '물품 대금 (KRW 환산)', values: [], details: {} },
-        ocean: { label: '해상 운임 (O/F)', values: [], details: {}, expandable: true },
-        export: { label: '수출국 부대비용', values: [], details: {}, expandable: true },
-        logistics: { label: '물류 부대비용', values: [], details: {}, expandable: true },
-        import: { label: '수입국 부대비용', values: [], details: {}, expandable: true },
-        ins: { label: '적하보험료', values: [], details: {}, expandable: true },
-        customs: { label: '수입 통관수수료', values: [], details: {}, expandable: true },
-        interestCost: { label: '금융비용 (이자비용)', values: [] },
-        manualOther: { label: '기타 추가 부대비용 (수동)', values: [], details: {}, expandable: true },
-        grandtotal: { label: '총 비용 (KRW)', values: [], isGrand: true }
+        invoice: { no: '1', label: '물품 대금 (KRW 환산)', values: [], details: {} },
+        ocean: { no: '2', label: '해상 운임 (O/F)', values: [], details: {}, expandable: true },
+        export: { no: '3', label: '수출국 부대비용', values: [], details: {}, expandable: true },
+        logistics: { no: '4', label: '물류 부대비용', values: [], details: {}, expandable: true },
+        import: { no: '4', label: '수입국 부대비용', values: [], details: {}, expandable: true },
+        ins: { no: '5', label: '적하보험료', values: [], details: {}, expandable: true },
+        customs: { no: '6', label: '수입 통관수수료', values: [], details: {}, expandable: true },
+        interestCost: { no: '7', label: '금융비용 (이자비용)', values: [] },
+        manualOther: { no: '7', label: '기타 추가 부대비용 (수동)', values: [], details: {}, expandable: true },
+        grandtotal: { no: '—', label: '총 비용 (KRW)', values: [], isGrand: true }
     };
 
     let colIdx = 0;
@@ -1854,6 +1890,7 @@ function renderSummaryTable() {
         
         const cls = r.isGrand ? 'grand-total-row' : (r.isTotal ? 'total-row' : '');
         let rowHtml = `<tr class="${cls}" ${r.expandable ? `style="cursor:pointer;" onclick="toggleSummaryDetails('${key}')"` : ''}>`;
+        rowHtml += `<td style="text-align:center; font-weight:700; color:var(--text-secondary);">${r.no}</td>`;
         rowHtml += `<td>${r.label} ${r.expandable ? '<span style="font-size:0.8rem; color:var(--primary); margin-left:5px;">[+]</span>' : ''}</td>`;
         
         r.values.forEach(v => {
@@ -1870,6 +1907,7 @@ function renderSummaryTable() {
                 if (!hasValue) return;
                 
                 bHtml += `<tr class="summary_details_${key}" style="display:none; background-color: #f9fbfd; font-size: 0.85rem; color: #555;">
+                    <td style="text-align:center; color:#94a3b8; font-size:0.8rem;">${r.no}</td>
                     <td style="padding-left: 25px; border-right: 1px solid #eee;">
                         <span style="color:#aaa; margin-right:8px;">└</span>${dRow.label}
                     </td>`;
@@ -2163,6 +2201,7 @@ function generatePrintHTML() {
             <table style="width:100%; border-collapse:collapse; margin-bottom:12px; font-size:9px; table-layout:fixed;">
                 <thead>
                     <tr style="background:#f1f5f9; color:#0f172a;">
+                        <th style="padding:5px 3px; border:1px solid #cbd5e1; width:35px; text-align:center;">No.</th>
                         <th style="padding:5px 3px; border:1px solid #cbd5e1; width:72px; text-align:center;">HS CODE</th>
                         <th style="padding:5px 3px; border:1px solid #cbd5e1; text-align:center;">품명</th>
                         <th style="padding:5px 3px; border:1px solid #cbd5e1; width:45px; text-align:right;">수량</th>
@@ -2184,12 +2223,13 @@ function generatePrintHTML() {
     let sumPerTerm = {};
     printTerms.forEach(t => sumPerTerm[t] = 0);
 
-    state.doc.items.forEach(item => {
+    state.doc.items.forEach((item, itemIdx) => {
         sumQty += (item.qty || 0);
         sumWeight += (item.weight || 0);
 
         html += `
             <tr>
+                <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600; color:#64748b;">1-${itemIdx + 1}</td>
                 <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center;">${item.hsCode || '—'}</td>
                 <td style="padding:4px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name || ''}</td>
                 <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
@@ -2230,7 +2270,7 @@ function generatePrintHTML() {
     // 품목 합계
     html += `
             <tr style="background:#f8fafc; font-weight:700;">
-                <td colspan="2" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">합계</td>
+                <td colspan="3" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">합계</td>
                 <td style="padding:4px; border:1px solid #cbd5e1; text-align:right;">${formatNum(sumQty)}</td>
                 <td style="padding:4px; border:1px solid #cbd5e1;"></td>
                 <td style="padding:4px; border:1px solid #cbd5e1; text-align:right;">${formatNum(sumWeight)} kg</td>
@@ -2278,11 +2318,12 @@ function generatePrintHTML() {
             (fw.costs || []).forEach(c => {
                 if (c.applyTo && c.applyTo[term]) {
                     const amtKrw = (c.amount || 0) * (c.unitQty || 0) * (state.doc.exchangeRates[c.currency] || 1);
-                    if (c.key === 'OF') oceanKrw += amtKrw;
-                    else if (c.key === 'INS') insKrw += amtKrw;
-                    else if (c.key === 'CUST_I') customsKrw += amtKrw;
-                    else if (c.key.endsWith('_E') || ['PSS', 'LSS', 'CY', 'PORT', 'EDI', 'VGM'].includes(c.key)) exportKrw += amtKrw;
-                    else importKrw += amtKrw;
+                    const meta = getCostGroupMeta(c);
+                    if (meta.grpNo === 2) oceanKrw += amtKrw;
+                    else if (meta.grpNo === 3) exportKrw += amtKrw;
+                    else if (meta.grpNo === 5) insKrw += amtKrw;
+                    else if (meta.grpNo === 6) customsKrw += amtKrw;
+                    else importKrw += amtKrw; // grpNo 4
                 }
             });
 
@@ -2311,6 +2352,7 @@ function generatePrintHTML() {
         <table style="width:100%; border-collapse:collapse; margin-bottom:14px; font-size:9px; table-layout:fixed;">
             <thead>
                 <tr style="background:#f1f5f9; color:#0f172a;">
+                    <th style="padding:5px 4px; border:1px solid #cbd5e1; text-align:center; width:35px;">No.</th>
                     <th style="padding:5px 8px; border:1px solid #cbd5e1; text-align:left; width:150px;">비용 항목 구분</th>
                     ${targets.map(t => `
                         <th style="padding:5px 8px; border:1px solid #cbd5e1; text-align:right;">
@@ -2324,15 +2366,15 @@ function generatePrintHTML() {
     `;
 
     const summaryRows = [
-        { label: '물품 대금', getVal: t => t.invKrw, isSub: false, isGrand: false },
-        { label: '해상운임 (O/F)', getVal: t => t.oceanKrw, isSub: false, isGrand: false },
-        { label: '수출국 부대비용', getVal: t => t.exportKrw, isSub: false, isGrand: false },
-        { label: '수입국 부대비용', getVal: t => t.importKrw, isSub: false, isGrand: false },
-        { label: '적하보험료', getVal: t => t.insKrw, isSub: false, isGrand: false },
-        { label: '수입 통관수수료', getVal: t => t.customsKrw, isSub: false, isGrand: false },
-        { label: '부대비용 소계', getVal: t => t.sub, isSub: true, isGrand: false },
-        { label: '기타비용 (금융/추가)', getVal: t => t.totalOther, isSub: false, isGrand: false },
-        { label: '총 비용 (KRW)', getVal: t => t.grand, isSub: false, isGrand: true }
+        { no: '1', label: '물품 대금', getVal: t => t.invKrw, isSub: false, isGrand: false },
+        { no: '2', label: '해상운임 (O/F)', getVal: t => t.oceanKrw, isSub: false, isGrand: false },
+        { no: '3', label: '수출국 부대비용', getVal: t => t.exportKrw, isSub: false, isGrand: false },
+        { no: '4', label: '수입국 및 물류 부대비용', getVal: t => t.importKrw, isSub: false, isGrand: false },
+        { no: '5', label: '적하보험료', getVal: t => t.insKrw, isSub: false, isGrand: false },
+        { no: '6', label: '수입 통관수수료', getVal: t => t.customsKrw, isSub: false, isGrand: false },
+        { no: '—', label: '부대비용 소계 (2~6번 합계)', getVal: t => t.sub, isSub: true, isGrand: false },
+        { no: '7', label: '기타 금융 및 추가 부대비용', getVal: t => t.totalOther, isSub: false, isGrand: false },
+        { no: '—', label: '총 비용 (KRW) (1~7번 합계)', getVal: t => t.grand, isSub: false, isGrand: true }
     ];
 
     summaryRows.forEach(row => {
@@ -2347,6 +2389,7 @@ function generatePrintHTML() {
         }
 
         html += `<tr style="${trStyle}">`;
+        html += `<td style="${labelStyle} text-align:center; font-weight:700;">${row.no}</td>`;
         html += `<td style="${labelStyle}">${row.label}</td>`;
         targets.forEach(t => {
             const val = row.getVal(t);
@@ -2382,9 +2425,11 @@ function generatePrintHTML() {
     `;
 
     if (targets.length === 1) {
-        // 단일 견적: 기존과 동일하게 상세 7개 컬럼(외화단가, 수량/단위, 환율, 원화환산액, 비고) 표시
+        // 단일 견적: 기존과 동일하게 상세 8개 컬럼(No, 부대비용 항목명, 비용구분, 외화단가, 수량/단위, 환율, 원화환산액, 비고) 표시
         const t = targets[0];
         const validCosts = (t.fw.costs || []).filter(c => c.applyTo && c.applyTo[t.term] && (c.amount || 0) > 0);
+        validCosts.sort((a, b) => getCostGroupMeta(a).sortOrder - getCostGroupMeta(b).sortOrder);
+        const groupCounters = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
 
         html += `
             <div style="margin-bottom:12px;">
@@ -2394,6 +2439,7 @@ function generatePrintHTML() {
                 <table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
                     <thead style="display:table-header-group;">
                         <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
+                            <th style="padding:4px 3px; border:1px solid #cbd5e1; width:35px; text-align:center;">No.</th>
                             <th style="padding:4px 5px; border:1px solid #cbd5e1; text-align:left;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #cbd5e1; width:70px; text-align:center;">비용 구분</th>
                             <th style="padding:4px 5px; border:1px solid #cbd5e1; width:80px; text-align:right;">외화 단가</th>
@@ -2409,7 +2455,7 @@ function generatePrintHTML() {
         if (validCosts.length === 0) {
             html += `
                 <tr style="page-break-inside:avoid; break-inside:avoid;">
-                    <td colspan="7" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
+                    <td colspan="8" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
                         입력된 부대비용이 없거나 0원입니다.
                     </td>
                 </tr>
@@ -2421,18 +2467,15 @@ function generatePrintHTML() {
                 const amtKrw = (c.amount || 0) * (c.unitQty || 1) * exRate;
                 fwTermSubtotal += amtKrw;
 
-                let groupLabel = '기타';
-                if (c.group === 'ocean') groupLabel = '해상운임';
-                else if (c.group === 'export') groupLabel = '수출국';
-                else if (c.group === 'logistics') groupLabel = '물류할증';
-                else if (c.group === 'import') groupLabel = '수입국';
-                else if (c.key === 'INS') groupLabel = '보험료';
-                else if (c.key === 'CUST_I') groupLabel = '통관료';
+                const meta = getCostGroupMeta(c);
+                groupCounters[meta.grpNo] = (groupCounters[meta.grpNo] || 0) + 1;
+                const costNo = `${meta.grpNo}-${groupCounters[meta.grpNo]}`;
 
                 html += `
                     <tr style="page-break-inside:avoid; break-inside:avoid;">
+                        <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600; color:#64748b;">${costNo}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; font-weight:500;">${c.label}</td>
-                        <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${groupLabel}</td>
+                        <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">[${meta.grpNo}] ${meta.label}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right;">${c.currency} ${formatNum(c.amount, 2)}</td>
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center;">${c.unitQty || 1} ${c.unit || ''}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right; color:#64748b;">₩${formatNum(exRate, 1)}</td>
@@ -2444,7 +2487,7 @@ function generatePrintHTML() {
 
             html += `
                         <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
-                            <td colspan="5" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
+                            <td colspan="6" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
                                 ${t.fw.name} (${t.term}) 부대비용 합계
                             </td>
                             <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#0f172a;">
@@ -2465,23 +2508,24 @@ function generatePrintHTML() {
                 if (c.applyTo && c.applyTo[t.term] && (c.amount || 0) > 0) {
                     const itemKey = c.key || c.label;
                     if (!itemMap.has(itemKey)) {
-                        let groupLabel = '기타';
-                        if (c.group === 'ocean') groupLabel = '해상운임';
-                        else if (c.group === 'export') groupLabel = '수출국';
-                        else if (c.group === 'logistics') groupLabel = '물류할증';
-                        else if (c.group === 'import') groupLabel = '수입국';
-                        else if (c.key === 'INS') groupLabel = '보험료';
-                        else if (c.key === 'CUST_I') groupLabel = '통관료';
-
+                        const meta = getCostGroupMeta(c);
                         itemMap.set(itemKey, {
                             key: itemKey,
                             label: c.label,
-                            groupLabel: groupLabel,
-                            order: c.order || 99
+                            grpNo: meta.grpNo,
+                            groupLabel: `[${meta.grpNo}] ${meta.label}`,
+                            sortOrder: meta.sortOrder
                         });
                     }
                 }
             });
+        });
+
+        const sortedItems = Array.from(itemMap.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+        const groupCounters = { 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+        sortedItems.forEach(item => {
+            groupCounters[item.grpNo] = (groupCounters[item.grpNo] || 0) + 1;
+            item.costNo = `${item.grpNo}-${groupCounters[item.grpNo]}`;
         });
 
         html += `
@@ -2492,6 +2536,7 @@ function generatePrintHTML() {
                 <table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
                     <thead style="display:table-header-group;">
                         <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
+                            <th style="padding:4px 3px; border:1px solid #cbd5e1; width:35px; text-align:center;">No.</th>
                             <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left; width:140px;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:center;">비용 구분</th>
                             ${targets.map(t => `
@@ -2508,7 +2553,7 @@ function generatePrintHTML() {
         if (itemMap.size === 0) {
             html += `
                 <tr style="page-break-inside:avoid; break-inside:avoid;">
-                    <td colspan="${2 + targets.length}" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
+                    <td colspan="${3 + targets.length}" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
                         입력된 부대비용이 없거나 0원입니다.
                     </td>
                 </tr>
@@ -2517,9 +2562,10 @@ function generatePrintHTML() {
         </div>
             `;
         } else {
-            Array.from(itemMap.values()).forEach(item => {
+            sortedItems.forEach(item => {
                 html += `
                     <tr style="page-break-inside:avoid; break-inside:avoid;">
+                        <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600; color:#64748b;">${item.costNo}</td>
                         <td style="padding:3px 6px; border:1px solid #e2e8f0; font-weight:500;">${item.label}</td>
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${item.groupLabel}</td>
                 `;
@@ -2552,7 +2598,7 @@ function generatePrintHTML() {
             // 합계 행 (테이블 맨 마지막 행에서 1회만 출력되도록 tbody 끝에 배치)
             html += `
                         <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
-                            <td colspan="2" style="padding:5px 8px; border:1px solid #cbd5e1; text-align:center; color:#0f172a;">
+                            <td colspan="3" style="padding:5px 8px; border:1px solid #cbd5e1; text-align:center; color:#0f172a;">
                                 부대비용 합계
                             </td>
             `;
@@ -2600,7 +2646,7 @@ function generatePrintHTML() {
                 html += `
                     <div style="margin-bottom:10px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
                         <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
-                            ■ 금융비용 (이자비용) 산출 조건 및 산출액
+                            ■ [7-1] 금융비용 (이자비용) 산출 조건 및 산출액
                         </div>
                         <div style="padding:5px 8px; font-size:9px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; gap:16px; flex-wrap:wrap;">
                             <div>사업기간: <strong>${duration}개월</strong></div>
@@ -2659,11 +2705,12 @@ function generatePrintHTML() {
             html += `
                 <div style="margin-bottom:12px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
                     <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
-                        ■ 기타 추가 부대비용 명세
+                        ■ [7-2] 기타 추가 부대비용 명세
                     </div>
                     <table style="width:100%; border-collapse:collapse; font-size:9px;">
                         <thead>
                             <tr style="background:#f1f5f9; color:#334155;">
+                                <th style="padding:4px 3px; border:1px solid #cbd5e1; width:35px; text-align:center;">No.</th>
                                 <th style="padding:4px; border:1px solid #cbd5e1; text-align:left;">항목명</th>
                                 <th style="padding:4px; border:1px solid #cbd5e1; width:80px; text-align:center;">구분</th>
                                 <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; width:120px;">금액 (KRW)</th>
@@ -2673,10 +2720,12 @@ function generatePrintHTML() {
             `;
 
             let manualTotal = 0;
-            manualCosts.forEach(oc => {
+            manualCosts.forEach((oc, mIdx) => {
                 manualTotal += (oc.amount || 0);
+                const costNo = `7-${calculatedCosts.length + mIdx + 1}`;
                 html += `
                     <tr>
+                        <td style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600; color:#64748b;">${costNo}</td>
                         <td style="padding:4px 6px; border:1px solid #e2e8f0; font-weight:500;">${oc.name}</td>
                         <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">수동 추가</td>
                         <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(oc.amount)}</td>
@@ -2686,7 +2735,7 @@ function generatePrintHTML() {
 
             html += `
                         <tr style="background:#f8fafc; font-weight:700;">
-                            <td colspan="2" style="padding:4px 6px; border:1px solid #cbd5e1; text-align:center;">추가비용 합계</td>
+                            <td colspan="3" style="padding:4px 6px; border:1px solid #cbd5e1; text-align:center;">추가비용 합계</td>
                             <td style="padding:4px 6px; border:1px solid #cbd5e1; text-align:right;">₩${formatNum(manualTotal)}</td>
                         </tr>
                     </tbody>
