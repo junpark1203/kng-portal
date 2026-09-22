@@ -2108,10 +2108,10 @@ function renderCostResultTable() {
             allocatedFC_Volume_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
             allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
         }
-        const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume_Total * 100) / 100;
-        const dispBaseCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+        const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume_Total * 10000) / 10000;
+        const dispBaseCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 10000) / 10000;
         const baseCostKrw_Volume = Math.round(dispBaseCostFC_Volume * exRate);
-        const dispDutiableAllocated_Volume = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+        const dispDutiableAllocated_Volume = Math.round(allocatedFC_Volume_Dutiable * 10000) / 10000;
         const cifValueKrw_Volume = Math.round((unitPriceFC + dispDutiableAllocated_Volume) * exRate);
         const dutyKrw_Volume = Math.round(cifValueKrw_Volume * (dutyRate / 100));
         const realCostKrw_Volume = baseCostKrw_Volume + dutyKrw_Volume;
@@ -2124,8 +2124,8 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextVol})</span></td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Volume, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Volume, 4)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Volume, 4)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Volume)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Volume)}</td>
             </tr>
@@ -2143,10 +2143,10 @@ function renderCostResultTable() {
             allocatedFC_Weight_Total = (itemTotalAncillaryKrw / exRate) / item.qty;
             allocatedFC_Weight_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
         }
-        const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight_Total * 100) / 100;
-        const dispBaseCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 100) / 100;
+        const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight_Total * 10000) / 10000;
+        const dispBaseCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 10000) / 10000;
         const baseCostKrw_Weight = Math.round(dispBaseCostFC_Weight * exRate);
-        const dispDutiableAllocated_Weight = Math.round(allocatedFC_Weight_Dutiable * 100) / 100;
+        const dispDutiableAllocated_Weight = Math.round(allocatedFC_Weight_Dutiable * 10000) / 10000;
         const cifValueKrw_Weight = Math.round((unitPriceFC + dispDutiableAllocated_Weight) * exRate);
         const dutyKrw_Weight = Math.round(cifValueKrw_Weight * (dutyRate / 100));
         const realCostKrw_Weight = baseCostKrw_Weight + dutyKrw_Weight;
@@ -2157,8 +2157,8 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextWeight})</span></td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Weight, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Weight, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Weight, 4)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Weight, 4)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Weight)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Weight)}</td>
             </tr>
@@ -2171,10 +2171,10 @@ function renderCostResultTable() {
 
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
-        const dispAllocatedFC_Value = Math.round(allocatedFC_Value_Total * 100) / 100;
-        const dispBaseCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+        const dispAllocatedFC_Value = Math.round(allocatedFC_Value_Total * 10000) / 10000;
+        const dispBaseCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 10000) / 10000;
         const baseCostKrw_Value = Math.round(dispBaseCostFC_Value * exRate);
-        const dispDutiableAllocated_Value = Math.round(allocatedFC_Value_Dutiable * 100) / 100;
+        const dispDutiableAllocated_Value = Math.round(allocatedFC_Value_Dutiable * 10000) / 10000;
         const cifValueKrw_Value = Math.round((unitPriceFC + dispDutiableAllocated_Value) * exRate);
         const dutyKrw_Value = Math.round(cifValueKrw_Value * (dutyRate / 100));
         const realCostKrw_Value = baseCostKrw_Value + dutyKrw_Value;
@@ -2184,8 +2184,8 @@ function renderCostResultTable() {
                 <td>${item.name}</td>
                 <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextValue})</span></td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
-                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Value, 2)}</td>
+                <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Value, 4)}</td>
+                <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Value, 4)}</td>
                 <td class="col-num" style="color:var(--text-secondary);">₩ ${formatNum(dutyKrw_Value)}<br><span style="font-size:10px;">(${dutyRate}%)</span></td>
                 <td class="col-num highlight-col">₩ ${formatNum(realCostKrw_Value)}</td>
             </tr>
@@ -2967,11 +2967,11 @@ function generatePrintHTML() {
                         allocatedFC_Volume_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
                     }
 
-                    const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 100) / 100;
-                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const dispAllocatedFC = Math.round(allocatedFC_Volume_Total * 10000) / 10000;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 10000) / 10000;
                     const baseCostKrw = Math.round(dispBaseCostFC * exRate);
 
-                    const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 100) / 100;
+                    const dispDutiableAllocated = Math.round(allocatedFC_Volume_Dutiable * 10000) / 10000;
                     const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
                     const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
                     const realCostKrw = baseCostKrw + dutyKrw;
@@ -2984,8 +2984,8 @@ function generatePrintHTML() {
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${shareText}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 4)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 4)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
                         </tr>
@@ -3051,11 +3051,11 @@ function generatePrintHTML() {
                         allocatedFC_Weight_Dutiable = (itemDutiableAncillaryKrw / exRate) / item.qty;
                     }
 
-                    const dispAllocatedFC = Math.round(allocatedFC_Weight_Total * 100) / 100;
-                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const dispAllocatedFC = Math.round(allocatedFC_Weight_Total * 10000) / 10000;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 10000) / 10000;
                     const baseCostKrw = Math.round(dispBaseCostFC * exRate);
 
-                    const dispDutiableAllocated = Math.round(allocatedFC_Weight_Dutiable * 100) / 100;
+                    const dispDutiableAllocated = Math.round(allocatedFC_Weight_Dutiable * 10000) / 10000;
                     const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
                     const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
                     const realCostKrw = baseCostKrw + dutyKrw;
@@ -3068,8 +3068,8 @@ function generatePrintHTML() {
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${weightShareText}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 4)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 4)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
                         </tr>
@@ -3128,11 +3128,11 @@ function generatePrintHTML() {
                     const allocatedFC_Total = unitPriceFC * allocationRatio;
                     const allocatedFC_Dutiable = unitPriceFC * dutiableAllocationRatio;
 
-                    const dispAllocatedFC = Math.round(allocatedFC_Total * 100) / 100;
-                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 100) / 100;
+                    const dispAllocatedFC = Math.round(allocatedFC_Total * 10000) / 10000;
+                    const dispBaseCostFC = Math.round((unitPriceFC + dispAllocatedFC) * 10000) / 10000;
                     const baseCostKrw = Math.round(dispBaseCostFC * exRate);
 
-                    const dispDutiableAllocated = Math.round(allocatedFC_Dutiable * 100) / 100;
+                    const dispDutiableAllocated = Math.round(allocatedFC_Dutiable * 10000) / 10000;
                     const cifValueKrw = Math.round((unitPriceFC + dispDutiableAllocated) * exRate);
                     const dutyKrw = Math.round(cifValueKrw * (dutyRate / 100));
                     const realCostKrw = baseCostKrw + dutyKrw;
@@ -3143,8 +3143,8 @@ function generatePrintHTML() {
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${(valueShareRatio * 100).toFixed(2)}%</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 4)}</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 4)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; color:#475569;">₩${formatNum(dutyKrw)} <span style="font-size:8px;">(${dutyRate}%)</span></td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc; color:#0f172a;">₩${formatNum(realCostKrw)}</td>
                         </tr>
@@ -3619,8 +3619,8 @@ function generateExcelHTML() {
                         allocatedFC_Volume = (itemTotalAncillaryKrw / exRate) / item.qty;
                     }
 
-                    const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 100) / 100;
-                    const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 100) / 100;
+                    const dispAllocatedFC_Volume = Math.round(allocatedFC_Volume * 10000) / 10000;
+                    const dispRealCostFC_Volume = Math.round((unitPriceFC + dispAllocatedFC_Volume) * 10000) / 10000;
                     const realCostKrw_Volume = Math.round(dispRealCostFC_Volume * exRate);
                     const shareText = isLCL ? `${(volumeShareRatio * 100).toFixed(1)}%` : (item.maxLoad > 0 ? `${(volumeShareRatio * 100).toFixed(1)}%` : '누락');
 
@@ -3630,8 +3630,8 @@ function generateExcelHTML() {
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
                             <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${shareText}</td>
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 2)}</td>
-                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Volume, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Volume, 4)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Volume, 4)}</td>
                             <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Volume)}</td>
                         </tr>
                     `;
@@ -3672,8 +3672,8 @@ function generateExcelHTML() {
                         allocatedFC_Weight = (itemTotalAncillaryKrw / exRate) / item.qty;
                     }
 
-                    const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight * 100) / 100;
-                    const dispRealCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 100) / 100;
+                    const dispAllocatedFC_Weight = Math.round(allocatedFC_Weight * 10000) / 10000;
+                    const dispRealCostFC_Weight = Math.round((unitPriceFC + dispAllocatedFC_Weight) * 10000) / 10000;
                     const realCostKrw_Weight = Math.round(dispRealCostFC_Weight * exRate);
 
                     html += `
@@ -3682,8 +3682,8 @@ function generateExcelHTML() {
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
                             <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${(weightShareRatio * 100).toFixed(2)}%</td>
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Weight, 2)}</td>
-                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Weight, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Weight, 4)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Weight, 4)}</td>
                             <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#0369A1;">₩ ${formatNum(realCostKrw_Weight)}</td>
                         </tr>
                     `;
@@ -3718,8 +3718,8 @@ function generateExcelHTML() {
                     const valueShareRatio = totalInvoiceKrw > 0 ? (itemAmountKrw / totalInvoiceKrw) : 0;
 
                     const allocatedFC_Value = unitPriceFC * allocationRatio;
-                    const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 100) / 100;
-                    const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 100) / 100;
+                    const dispAllocatedFC_Value = Math.round(allocatedFC_Value * 10000) / 10000;
+                    const dispRealCostFC_Value = Math.round((unitPriceFC + dispAllocatedFC_Value) * 10000) / 10000;
                     const realCostKrw_Value = Math.round(dispRealCostFC_Value * exRate);
 
                     html += `
@@ -3728,8 +3728,8 @@ function generateExcelHTML() {
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${formatNum(item.qty)}</td>
                             <td style="text-align:center; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${(valueShareRatio * 100).toFixed(2)}%</td>
                             <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
-                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
-                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 2)}</td>
+                            <td style="text-align:right; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispAllocatedFC_Value, 4)}</td>
+                            <td colspan="2" style="text-align:right; font-weight:bold; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc;">${p.currency} ${formatNum(dispRealCostFC_Value, 4)}</td>
                             <td colspan="2" style="text-align:right; font-weight:bold; background:#f2f2f2; padding:6px; border-bottom:1px dashed #ccc; border-right:1px solid #ccc; color:#203864;">₩ ${formatNum(realCostKrw_Value)}</td>
                         </tr>
                     `;
