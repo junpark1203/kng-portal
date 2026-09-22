@@ -2367,9 +2367,9 @@ function generatePrintHTML() {
     `;
 
     // ──────────────── [4. 포워더별 수입 부대비용 산출] ────────────────
-    // (강제 페이지 넘김을 제거하여 첫 페이지 여백을 없애고 내용이 자연스럽게 이어지도록 처리)
+    // (표가 중간에 자연스럽게 나누어져 이어지도록 설정: 행 단위 절단 방지 + 2페이지 상단 헤더 자동 반복)
     html += `
-        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
+        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0; break-after:avoid; page-break-after:avoid;">
             4. 포워더별 수입 부대비용 산출 (실제 발생 항목)
         </div>
     `;
@@ -2380,13 +2380,13 @@ function generatePrintHTML() {
         const validCosts = (t.fw.costs || []).filter(c => c.applyTo && c.applyTo[t.term] && (c.amount || 0) > 0);
 
         html += `
-            <div style="margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
-                <div style="font-weight:700; font-size:9.5px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1; border-bottom:none;">
+            <div style="margin-bottom:12px;">
+                <div style="font-weight:700; font-size:9.5px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1; border-bottom:none; break-after:avoid; page-break-after:avoid;">
                     ■ ${t.fw.name} — ${t.term} 조건 부대비용 명세 (${validCosts.length}건)
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
-                    <thead>
-                        <tr style="background:#f8fafc; color:#334155;">
+                    <thead style="display:table-header-group;">
+                        <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
                             <th style="padding:4px 5px; border:1px solid #cbd5e1; text-align:left;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #cbd5e1; width:70px; text-align:center;">비용 구분</th>
                             <th style="padding:4px 5px; border:1px solid #cbd5e1; width:80px; text-align:right;">외화 단가</th>
@@ -2401,7 +2401,7 @@ function generatePrintHTML() {
 
         if (validCosts.length === 0) {
             html += `
-                <tr>
+                <tr style="page-break-inside:avoid; break-inside:avoid;">
                     <td colspan="7" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
                         입력된 부대비용이 없거나 0원입니다.
                     </td>
@@ -2423,7 +2423,7 @@ function generatePrintHTML() {
                 else if (c.key === 'CUST_I') groupLabel = '통관료';
 
                 html += `
-                    <tr>
+                    <tr style="page-break-inside:avoid; break-inside:avoid;">
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; font-weight:500;">${c.label}</td>
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${groupLabel}</td>
                         <td style="padding:3px 5px; border:1px solid #e2e8f0; text-align:right;">${c.currency} ${formatNum(c.amount, 2)}</td>
@@ -2436,23 +2436,22 @@ function generatePrintHTML() {
             });
 
             html += `
-                <tr style="background:#f8fafc; font-weight:700;">
-                    <td colspan="5" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
-                        ${t.fw.name} (${t.term}) 부대비용 합계
-                    </td>
-                    <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#0f172a;">
-                        ₩${formatNum(fwTermSubtotal)}
-                    </td>
-                    <td style="padding:4px 5px; border:1px solid #cbd5e1;"></td>
-                </tr>
-            `;
-        }
-
-        html += `
                     </tbody>
+                    <tfoot>
+                        <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
+                            <td colspan="5" style="padding:4px; border:1px solid #cbd5e1; text-align:center;">
+                                ${t.fw.name} (${t.term}) 부대비용 합계
+                            </td>
+                            <td style="padding:4px 5px; border:1px solid #cbd5e1; text-align:right; color:#0f172a;">
+                                ₩${formatNum(fwTermSubtotal)}
+                            </td>
+                            <td style="padding:4px 5px; border:1px solid #cbd5e1;"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-        `;
+            `;
+        }
     } else {
         // 복수 견적 (2개 이상): 하나의 통합 테이블에서 우측에 열(컬럼)이 추가되어 가로로 한눈에 비교
         const itemMap = new Map();
@@ -2481,13 +2480,13 @@ function generatePrintHTML() {
         });
 
         html += `
-            <div style="margin-bottom:12px; page-break-inside:avoid; break-inside:avoid;">
-                <div style="font-weight:700; font-size:9.5px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1; border-bottom:none;">
+            <div style="margin-bottom:12px;">
+                <div style="font-weight:700; font-size:9.5px; color:#1e293b; background:#f1f5f9; padding:4px 8px; border:1px solid #cbd5e1; border-bottom:none; break-after:avoid; page-break-after:avoid;">
                     ■ 포워더별 부대비용 비교 명세 (${targets.map(t => `${t.fw.name}(${t.term})`).join(', ')})
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:9px; table-layout:fixed;">
-                    <thead>
-                        <tr style="background:#f8fafc; color:#334155;">
+                    <thead style="display:table-header-group;">
+                        <tr style="background:#f8fafc; color:#334155; page-break-inside:avoid; break-inside:avoid;">
                             <th style="padding:4px 6px; border:1px solid #cbd5e1; text-align:left; width:140px;">부대비용 항목명</th>
                             <th style="padding:4px 3px; border:1px solid #cbd5e1; width:65px; text-align:center;">비용 구분</th>
                             ${targets.map(t => `
@@ -2503,16 +2502,19 @@ function generatePrintHTML() {
 
         if (itemMap.size === 0) {
             html += `
-                <tr>
+                <tr style="page-break-inside:avoid; break-inside:avoid;">
                     <td colspan="${2 + targets.length}" style="padding:8px; border:1px solid #e2e8f0; text-align:center; color:#94a3b8;">
                         입력된 부대비용이 없거나 0원입니다.
                     </td>
                 </tr>
+                </tbody>
+            </table>
+        </div>
             `;
         } else {
             Array.from(itemMap.values()).forEach(item => {
                 html += `
-                    <tr>
+                    <tr style="page-break-inside:avoid; break-inside:avoid;">
                         <td style="padding:3px 6px; border:1px solid #e2e8f0; font-weight:500;">${item.label}</td>
                         <td style="padding:3px 3px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${item.groupLabel}</td>
                 `;
@@ -2542,12 +2544,14 @@ function generatePrintHTML() {
                 html += `</tr>`;
             });
 
-            // 합계 행
+            // 합계 행 (tfoot)
             html += `
-                <tr style="background:#f8fafc; font-weight:700;">
-                    <td colspan="2" style="padding:5px 8px; border:1px solid #cbd5e1; text-align:center; color:#0f172a;">
-                        부대비용 합계
-                    </td>
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#f8fafc; font-weight:700; page-break-inside:avoid; break-inside:avoid;">
+                            <td colspan="2" style="padding:5px 8px; border:1px solid #cbd5e1; text-align:center; color:#0f172a;">
+                                부대비용 합계
+                            </td>
             `;
             targets.forEach(t => {
                 const subTotal = t.fw.calculated[t.term].ancillaryKrw || 0;
@@ -2557,14 +2561,13 @@ function generatePrintHTML() {
                     </td>
                 `;
             });
-            html += `</tr>`;
-        }
-
-        html += `
-                    </tbody>
+            html += `
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-        `;
+            `;
+        }
     }
 
     // ──────────────── [5. 기타 금융 및 추가 부대비용] ────────────────

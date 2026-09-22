@@ -836,6 +836,16 @@ body {
         margin-bottom: 14px;
         font-size: 10px;
     }
+    #printContainer thead {
+        display: table-header-group;
+    }
+    #printContainer tfoot {
+        display: table-footer-group;
+    }
+    #printContainer tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
     #printContainer th, #printContainer td {
         border: 1px solid #cbd5e1 !important;
         padding: 4px 6px;
