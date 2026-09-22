@@ -42,7 +42,7 @@ const app = {
         const purchase = this.data.filter(p => p.type === '매입처').length;
         const sales = this.data.filter(p => p.type === '매출처').length;
         const overseas = this.data.filter(p => 
-            p.company_name_en || p.address_en || p.manager_en || p.phone_en || p.email_en
+            p.company_name_en || p.address_en || p.manager_en || p.phone_en || p.email_en || p.type === '해외/무역'
         ).length;
         const etc = this.data.filter(p => p.type !== '매입처' && p.type !== '매출처').length;
 
@@ -111,7 +111,7 @@ const app = {
         // 1) 유형 탭 필터링
         if (this.currentFilterTab === 'OVERSEAS') {
             filtered = filtered.filter(p => 
-                p.company_name_en || p.address_en || p.manager_en || p.phone_en || p.email_en
+                p.company_name_en || p.address_en || p.manager_en || p.phone_en || p.email_en || p.type === '해외/무역'
             );
         } else if (this.currentFilterTab === '기타') {
             filtered = filtered.filter(p => p.type !== '매입처' && p.type !== '매출처');
@@ -139,12 +139,12 @@ const app = {
                             return `${p.ceo_name || ''} ${p.ceoName || ''}`;
                         case 'business_number':
                             return p.business_number || '';
+                        case 'address':
+                            return `${p.address || ''} ${p.address_en || ''}`;
                         case 'manager':
                             return `${p.manager1_name || ''} ${p.manager2_name || ''} ${p.manager_en || ''}`;
                         case 'phone':
                             return `${p.phone || ''} ${p.fax || ''} ${p.manager1_phone || ''} ${p.manager1_email || ''} ${p.phone_en || ''} ${p.email_en || ''}`;
-                        case 'address':
-                            return `${p.address || ''} ${p.address_en || ''}`;
                         case 'note':
                             return p.note || '';
                         case 'ALL':
@@ -178,12 +178,12 @@ const app = {
         if (countBadge) {
             const isFiltered = filtered.length !== this.data.length;
             countBadge.innerHTML = isFiltered 
-                ? `총 <strong>${filtered.length}</strong>개 거래처 <span class="text-secondary fw-normal">(전체 ${this.data.length}개 중)</span>`
+                ? `총 <strong>${filtered.length}</strong>개 <span class="text-secondary fw-normal">(${this.data.length}개 중)</span>`
                 : `총 <strong>${filtered.length}</strong>개 거래처`;
         }
 
         if (filtered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-5 text-muted"><i class='bx bx-search-alt-2 fs-2 d-block mb-2 text-secondary'></i>일치하는 거래처 데이터가 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5 text-muted"><i class='bx bx-search-alt-2 fs-2 d-block mb-2 text-secondary'></i>일치하는 거래처 데이터가 없습니다.</td></tr>`;
             return;
         }
 
@@ -195,86 +195,185 @@ const app = {
         tbody.innerHTML = displayList.map((p, index) => {
             // 뱃지 클래스
             let badgeClass = 'badge-type-etc';
-            if (p.type === '매입처') badgeClass = 'badge-type-purchase';
-            else if (p.type === '매출처') badgeClass = 'badge-type-sales';
-            else if (p.type === '해외/무역' || p.company_name_en) badgeClass = 'badge-type-overseas';
+            let badgeText = p.type || '기타';
+
+            if (p.type === '매입처') {
+                badgeClass = 'badge-type-purchase';
+                badgeText = '매입처';
+            } else if (p.type === '매출처') {
+                badgeClass = 'badge-type-sales';
+                badgeText = '매출처';
+            } else if (p.type === 'ALL' || !p.type) {
+                badgeClass = 'badge-type-common';
+                badgeText = '공통';
+            } else if (p.company_name_en) {
+                badgeClass = 'badge-type-overseas';
+                badgeText = p.type || '해외';
+            }
 
             // 상호명 영역
             const korTitle = p.name || '-';
-            const compTitle = p.company_name && p.company_name !== p.name ? `<div class="text-secondary small" style="font-size:11px;">${p.company_name}</div>` : '';
-            const engTitle = p.company_name_en ? `<div class="text-primary small" style="font-size:11px;"><i class='bx bx-globe'></i> ${p.company_name_en}</div>` : '';
+            const compTitle = p.company_name && p.company_name !== p.name 
+                ? `<div class="text-secondary text-truncate" style="max-width:210px; font-size:10.5px;">${p.company_name}</div>` 
+                : '';
+            const engTitle = p.company_name_en 
+                ? `<div class="text-primary text-truncate" style="max-width:210px; font-size:10.5px;"><i class='bx bx-globe'></i> ${p.company_name_en}</div>` 
+                : '';
 
             // 사업자 / 대표자
-            const bNum = p.business_number ? `<div class="font-monospace small" style="font-size:11px;">${p.business_number}</div>` : '';
-            const ceo = p.ceo_name || p.ceoName ? `<div>${p.ceo_name || p.ceoName}</div>` : '<div class="text-muted small">-</div>';
+            const bNum = p.business_number ? `<div class="font-monospace text-secondary" style="font-size:10.5px;">${p.business_number}</div>` : '';
+            const ceo = p.ceo_name || p.ceoName ? `<div>${p.ceo_name || p.ceoName}</div>` : '';
+            const bizCeoHtml = (ceo || bNum) ? `${ceo}${bNum}` : '<span class="text-muted small">-</span>';
 
-            // 국내 연락처 / 결제계좌
+            // 사업장 주소 (국문 / 영문)
+            const korAddr = p.address ? `<div class="text-truncate text-dark" style="max-width:210px;" title="${p.address}"><i class='bx bx-map-pin text-muted'></i> ${p.address}</div>` : '';
+            const engAddr = p.address_en ? `<div class="text-truncate text-muted" style="max-width:210px; font-size:10px;" title="${p.address_en}"><i class='bx bx-globe text-primary'></i> ${p.address_en}</div>` : '';
+            const addressHtml = (korAddr || engAddr) ? `${korAddr}${engAddr}` : '<span class="text-muted small">-</span>';
+
+            // 국내 대표 연락처 (전화 / 팩스)
             const mainPhone = p.phone ? `<div><i class='bx bx-phone text-muted'></i> ${p.phone}</div>` : '';
-            const mainFax = p.fax ? `<div class="text-muted small" style="font-size:11px;">FAX: ${p.fax}</div>` : '';
-            const bankInfo = (p.bank_name || p.account_number) 
-                ? `<div class="text-success small text-truncate" style="max-width:170px; font-size:10.5px;" title="${p.bank_name || ''} ${p.account_number || ''} ${p.account_holder ? '('+p.account_holder+')' : ''}">
-                    <i class='bx bx-credit-card'></i> ${p.bank_name || ''} ${p.account_number || ''}
-                   </div>` 
-                : '';
+            const mainFax = p.fax ? `<div class="text-muted small" style="font-size:10.5px;">FAX: ${p.fax}</div>` : '';
+            const contactHtml = (mainPhone || mainFax) ? `${mainPhone}${mainFax}` : '<span class="text-muted small">-</span>';
 
-            // 담당자
+            // 결제 계좌정보
+            const bankName = p.bank_name ? `<div class="fw-semibold text-dark">${p.bank_name}</div>` : '';
+            const accNum = p.account_number ? `<div class="font-monospace text-success small" style="font-size:10.5px;">${p.account_number}</div>` : '';
+            const accHolder = p.account_holder ? `<div class="text-muted small" style="font-size:10px;">(${p.account_holder})</div>` : '';
+            const bankHtml = (bankName || accNum) ? `${bankName}${accNum}${accHolder}` : '<span class="text-muted small">-</span>';
+
+            // 담당자 (국문 / 영문 ATTN)
             const mgr1 = p.manager1_name 
-                ? `<div><strong>${p.manager1_name}</strong> ${p.manager1_phone ? `<span class="text-muted small">(${p.manager1_phone})</span>` : ''}</div>` 
+                ? `<div><strong>${p.manager1_name}</strong> ${p.manager1_phone ? `<span class="text-secondary small">(${p.manager1_phone})</span>` : ''}</div>` 
                 : '';
-            const mgr1Mail = p.manager1_email ? `<div class="text-muted small text-truncate" style="max-width:160px; font-size:10.5px;">${p.manager1_email}</div>` : '';
-            const mgrEn = p.manager_en ? `<div class="text-primary small" style="font-size:11px;"><i class='bx bx-user-pin'></i> ATTN: ${p.manager_en}</div>` : '';
+            const mgr1Mail = p.manager1_email ? `<div class="text-muted small text-truncate" style="max-width:145px; font-size:10px;">${p.manager1_email}</div>` : '';
+            const mgrEn = p.manager_en ? `<div class="text-primary small" style="font-size:10.5px;"><i class='bx bx-user-pin'></i> ATTN: ${p.manager_en}</div>` : '';
+            const managerHtml = (mgr1 || mgr1Mail || mgrEn) ? `${mgr1}${mgr1Mail}${mgrEn}` : '<span class="text-muted small">-</span>';
 
-            // 영문 무역 정보 (PO 연동)
-            const hasTrade = p.phone_en || p.email_en || p.address_en;
-            let tradeInfoHtml = '<span class="text-muted small">-</span>';
-            if (hasTrade) {
-                const enTel = p.phone_en ? `<div><i class='bx bx-phone-call text-primary'></i> ${p.phone_en}</div>` : '';
-                const enEmail = p.email_en ? `<div class="text-muted text-truncate" style="max-width:190px; font-size:10.5px;"><i class='bx bx-envelope'></i> ${p.email_en}</div>` : '';
-                const enAddr = p.address_en ? `<div class="text-secondary small text-truncate" style="max-width:190px; font-size:10px;" title="${p.address_en}"><i class='bx bx-map-pin'></i> ${p.address_en}</div>` : '';
-                tradeInfoHtml = `${enTel}${enEmail}${enAddr}`;
-            }
+            // 영문 무역 정보 (Tel / Email)
+            const enTel = p.phone_en ? `<div><i class='bx bx-phone-call text-primary'></i> ${p.phone_en}</div>` : '';
+            const enEmail = p.email_en ? `<div class="text-muted text-truncate" style="max-width:155px; font-size:10px;"><i class='bx bx-envelope'></i> ${p.email_en}</div>` : '';
+            const tradeHtml = (enTel || enEmail) ? `${enTel}${enEmail}` : '<span class="text-muted small">-</span>';
 
             // 비고
-            const noteHtml = p.note ? `<div class="text-muted small text-truncate" style="max-width:140px;" title="${p.note}">${p.note}</div>` : '<span class="text-muted small">-</span>';
+            const noteHtml = p.note ? `<div class="text-muted small text-truncate" style="max-width:120px;" title="${p.note}">${p.note}</div>` : '<span class="text-muted small">-</span>';
 
             return `
-                <tr>
-                    <td class="text-center font-monospace text-muted" style="font-size: 11px;">${index + 1}</td>
+                <tr onclick="app.openEditModal('${p.id}')" title="클릭 시 '${p.name}' 거래처 상세/수정">
+                    <td class="text-center font-monospace text-muted" style="font-size: 10.5px;">${index + 1}</td>
                     <td class="text-center">
-                        <span class="badge-type ${badgeClass}">${p.type || '기타'}</span>
+                        <span class="badge-type ${badgeClass}">${badgeText}</span>
                     </td>
                     <td>
-                        <div class="fw-bold text-dark">${korTitle}</div>
+                        <div class="fw-bold text-dark text-truncate" style="max-width: 210px;">${korTitle}</div>
                         ${compTitle}
                         ${engTitle}
                     </td>
-                    <td class="text-center">
-                        ${ceo}
-                        ${bNum}
+                    <td>
+                        ${bizCeoHtml}
                     </td>
                     <td>
-                        ${mainPhone || mainFax || bankInfo ? `${mainPhone}${mainFax}${bankInfo}` : '<span class="text-muted small">-</span>'}
+                        ${addressHtml}
                     </td>
                     <td>
-                        ${mgr1 || mgr1Mail || mgrEn ? `${mgr1}${mgr1Mail}${mgrEn}` : '<span class="text-muted small">-</span>'}
+                        ${contactHtml}
                     </td>
                     <td>
-                        ${tradeInfoHtml}
+                        ${bankHtml}
+                    </td>
+                    <td>
+                        ${managerHtml}
+                    </td>
+                    <td>
+                        ${tradeHtml}
                     </td>
                     <td>
                         ${noteHtml}
                     </td>
-                    <td class="text-center">
-                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 fw-semibold me-1" style="font-size: 11px; height: 24px;" onclick="app.openEditModal('${p.id}')">
-                            수정
-                        </button>
-                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" style="font-size: 11px; height: 24px;" onclick="app.deletePartner('${p.id}')">
-                            삭제
-                        </button>
+                    <td class="text-center" style="white-space: nowrap;">
+                        <div class="action-btn-group">
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" 
+                                onclick="event.stopPropagation(); app.openEditModal('${p.id}')">
+                                수정
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm fw-semibold" 
+                                onclick="event.stopPropagation(); app.deletePartner('${p.id}')">
+                                삭제
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
+    },
+
+    // ── 실시간 중복/유사 거래처 감지 기능 ──
+    onCheckDuplicate() {
+        const alertEl = document.getElementById('duplicatePartnerAlert');
+        if (!alertEl) return;
+
+        const nameInput = document.getElementById('partnerName');
+        const compInput = document.getElementById('companyName');
+        const currentId = document.getElementById('partnerId').value;
+
+        const typedName = (nameInput ? nameInput.value : '').trim().toLowerCase();
+        const typedComp = (compInput ? compInput.value : '').trim().toLowerCase();
+
+        // 1글자 이상 입력되었을 때 기존 등록 목록과 비교
+        if (!typedName && !typedComp) {
+            alertEl.style.display = 'none';
+            alertEl.innerHTML = '';
+            return;
+        }
+
+        const matches = this.data.filter(p => {
+            // 현재 수정 중인 본인 거래처는 제외
+            if (currentId && String(p.id) === String(currentId)) return false;
+
+            const pName = (p.name || '').toLowerCase();
+            const pComp = (p.company_name || '').toLowerCase();
+
+            const matchName = typedName && (pName.includes(typedName) || pComp.includes(typedName));
+            const matchComp = typedComp && (pName.includes(typedComp) || pComp.includes(typedComp));
+
+            return matchName || matchComp;
+        });
+
+        if (matches.length === 0) {
+            alertEl.style.display = 'none';
+            alertEl.innerHTML = '';
+            return;
+        }
+
+        // 완전 일치 여부 체크
+        const isExactMatch = matches.some(p => {
+            const pName = (p.name || '').toLowerCase();
+            const pComp = (p.company_name || '').toLowerCase();
+            return (typedName && (pName === typedName || pComp === typedName)) ||
+                   (typedComp && (pName === typedComp || pComp === typedComp));
+        });
+
+        alertEl.style.display = 'block';
+        alertEl.innerHTML = `
+            <div class="duplicate-alert-box">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="fw-bold ${isExactMatch ? 'text-danger' : 'text-warning-emphasis'}">
+                        <i class='bx ${isExactMatch ? 'bx-error-circle' : 'bx-info-circle'}'></i>
+                        ${isExactMatch ? '주의: 동일한 거래처명 또는 사업자명이 이미 등록되어 있습니다!' : `유사한 등록 거래처 감지 (${matches.length}건)`}
+                    </span>
+                    <span class="text-muted" style="font-size: 10px;">칩 클릭 시 기존 거래처 정보 열람</span>
+                </div>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                    ${matches.slice(0, 6).map(m => `
+                        <span class="duplicate-chip" onclick="app.openEditModal('${m.id}')" title="클릭 시 '${m.name}' 정보 확인">
+                            <strong>${m.name}</strong> 
+                            ${m.company_name && m.company_name !== m.name ? `<span class="text-secondary">(${m.company_name})</span>` : ''}
+                            ${m.business_number ? `<span class="badge bg-light text-secondary border font-monospace" style="font-size:10px;">${m.business_number}</span>` : ''}
+                            <i class='bx bx-link-external text-primary'></i>
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        `;
     },
 
     openAddModal() {
@@ -288,6 +387,12 @@ const app = {
         document.getElementById('phoneEn').value = '';
         document.getElementById('emailEn').value = '';
         
+        const alertEl = document.getElementById('duplicatePartnerAlert');
+        if (alertEl) {
+            alertEl.style.display = 'none';
+            alertEl.innerHTML = '';
+        }
+
         document.getElementById('modalTitle').innerHTML = "<i class='bx bx-building text-primary'></i> 새 거래처 등록";
         if (this.modal) this.modal.show();
     },
@@ -302,7 +407,7 @@ const app = {
         document.getElementById('ceoName').value = partner.ceo_name || partner.ceoName || '';
         document.getElementById('businessNumber').value = partner.business_number || '';
         document.getElementById('address').value = partner.address || '';
-        document.getElementById('partnerType').value = partner.type || '매입처';
+        document.getElementById('partnerType').value = partner.type || 'ALL';
         
         document.getElementById('bankName').value = partner.bank_name || '';
         document.getElementById('accountNumber').value = partner.account_number || '';
@@ -327,6 +432,12 @@ const app = {
 
         document.getElementById('partnerNote').value = partner.note || '';
         
+        const alertEl = document.getElementById('duplicatePartnerAlert');
+        if (alertEl) {
+            alertEl.style.display = 'none';
+            alertEl.innerHTML = '';
+        }
+
         document.getElementById('modalTitle').innerHTML = `<i class='bx bx-edit-alt text-primary'></i> 거래처 수정 (${partner.name})`;
         if (this.modal) this.modal.show();
     },
@@ -462,7 +573,7 @@ const app = {
 
         const excelRows = filtered.map((p, index) => ({
             'No': index + 1,
-            '유형': p.type || '',
+            '유형': p.type || '공통',
             '거래처명': p.name || '',
             '사업자명(공식상호)': p.company_name || '',
             '영문상호명': p.company_name_en || '',

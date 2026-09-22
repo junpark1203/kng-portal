@@ -26,9 +26,9 @@ body {
     background-color: var(--bg-light);
     color: var(--text-dark);
     margin: 0;
-    padding: 12px 16px;
-    font-size: 12.5px;
-    line-height: 1.5;
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.45;
 }
 
 /* ── 1행 상단 ECOUNT ERP 툴바 ── */
@@ -36,25 +36,25 @@ body {
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
-    padding: 6px 12px;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    min-height: 40px;
+    min-height: 38px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
 }
 
 .erp-title-tag {
     font-weight: 800;
-    font-size: 13.5px;
+    font-size: 13px;
     color: #0f172a;
     display: flex;
     align-items: center;
     gap: 6px;
     white-space: nowrap;
-    padding-right: 12px;
+    padding-right: 10px;
     border-right: 1px solid #e2e8f0;
 }
 
@@ -71,15 +71,15 @@ body {
 .erp-tab-group .btn-check + .erp-tab-btn {
     border: none;
     background: transparent;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
-    padding: 3px 10px;
+    padding: 2px 8px;
     border-radius: 3px;
     color: #475569;
     cursor: pointer;
     transition: all 0.1s ease;
     user-select: none;
-    line-height: 20px;
+    line-height: 18px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -95,11 +95,11 @@ body {
 .tab-badge {
     background: #e2e8f0;
     color: #475569;
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     padding: 0 5px;
     border-radius: 10px;
-    line-height: 16px;
+    line-height: 15px;
 }
 
 .erp-tab-group .btn-check:checked + .erp-tab-btn .tab-badge {
@@ -109,9 +109,9 @@ body {
 
 /* 콤팩트 버튼 & 컨트롤 */
 .btn-erp {
-    height: 28px;
-    padding: 0 10px;
-    font-size: 12px;
+    height: 26px;
+    padding: 0 9px;
+    font-size: 11.5px;
     font-weight: 600;
     border-radius: 4px;
     display: inline-flex;
@@ -144,51 +144,39 @@ body {
     border-color: #1e40af;
 }
 
-.btn-erp-success {
-    background: #10b981;
-    color: #ffffff;
-    border-color: #059669;
-}
-
-.btn-erp-success:hover {
-    background: #059669;
-    color: #ffffff;
-    border-color: #047857;
-}
-
 /* ── 2행 필터 리본 ── */
 .erp-filter-ribbon {
     background: #ffffff;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
-    padding: 6px 12px;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     flex-wrap: wrap;
-    min-height: 38px;
+    min-height: 36px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .erp-select-target {
     width: 125px !important;
-    height: 28px !important;
-    font-size: 12px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
     padding: 2px 6px !important;
     border-radius: 4px !important;
     border: 1px solid #cbd5e1 !important;
 }
 
 .erp-search-box {
-    width: 250px;
-    min-width: 180px;
+    width: 240px;
+    min-width: 160px;
 }
 
 .erp-search-box .form-control {
-    height: 28px !important;
-    font-size: 12px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
     border-radius: 4px !important;
     border: 1px solid #cbd5e1 !important;
     padding: 2px 8px !important;
@@ -200,9 +188,9 @@ body {
 }
 
 .erp-limit-select {
-    width: 90px !important;
-    height: 28px !important;
-    font-size: 12px !important;
+    width: 85px !important;
+    height: 26px !important;
+    font-size: 11.5px !important;
     padding: 2px 6px !important;
     border-radius: 4px !important;
     border: 1px solid #cbd5e1 !important;
@@ -224,7 +212,7 @@ input::placeholder, textarea::placeholder {
 }
 
 .table-container {
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 125px);
     overflow-y: auto;
     overflow-x: auto;
 }
@@ -233,14 +221,14 @@ input::placeholder, textarea::placeholder {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 12px;
+    font-size: 11.5px;
 }
 
 .erp-table thead th {
     background: var(--table-header-bg);
     color: #475569;
     font-weight: 700;
-    padding: 8px 10px;
+    padding: 6px 8px;
     text-align: center;
     border-bottom: 1.5px solid #cbd5e1;
     border-right: 1px solid #e2e8f0;
@@ -248,6 +236,7 @@ input::placeholder, textarea::placeholder {
     position: sticky;
     top: 0;
     z-index: 2;
+    line-height: 1.3;
 }
 
 .erp-table thead th:last-child {
@@ -255,19 +244,45 @@ input::placeholder, textarea::placeholder {
 }
 
 .erp-table td {
-    padding: 7px 10px;
+    padding: 4px 7px;
     border-bottom: 1px solid #f1f5f9;
     border-right: 1px solid #f8fafc;
     vertical-align: middle;
     color: #334155;
+    line-height: 1.35;
 }
 
 .erp-table td:last-child {
     border-right: none;
 }
 
+/* 테이블 행 클릭 및 호버 효과 */
+.erp-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+}
+
 .erp-table tbody tr:hover {
-    background-color: #f8fafc;
+    background-color: #eff6ff !important;
+}
+
+/* ── 액션 버튼 그룹 (완벽한 1행 가로 정렬 & 줄바꿈 방지) ── */
+.action-btn-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    white-space: nowrap;
+}
+
+.action-btn-group .btn {
+    height: 22px;
+    font-size: 11px;
+    line-height: 20px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ── 유형별 뱃지 ── */
@@ -275,9 +290,9 @@ input::placeholder, textarea::placeholder {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 2px 7px;
+    padding: 1px 6px;
     border-radius: 3px;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
     white-space: nowrap;
     letter-spacing: -0.2px;
@@ -301,35 +316,73 @@ input::placeholder, textarea::placeholder {
     border: 1px solid #ddd6fe;
 }
 
+.badge-type-common {
+    background-color: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+}
+
 .badge-type-etc {
     background-color: #f8fafc;
     color: #64748b;
     border: 1px solid #e2e8f0;
 }
 
-/* ── 모달 개선 스타일 ── */
+/* ── 모달 스타일 ── */
 .erp-modal-section-card {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
 }
 
 .erp-section-title {
-    font-size: 12.5px;
+    font-size: 12px;
     font-weight: 700;
     color: #1e293b;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     gap: 6px;
     border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 6px;
+    padding-bottom: 5px;
 }
 
 .modal-body label.form-label {
-    font-size: 11.5px;
-    margin-bottom: 3px;
+    font-size: 11px;
+    margin-bottom: 2px;
     color: #475569;
+}
+
+/* ── 실시간 중복/유사 거래처 감지 박스 ── */
+.duplicate-alert-box {
+    border-radius: 4px;
+    padding: 7px 10px;
+    margin-top: 6px;
+    font-size: 11px;
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 3px solid #f59e0b;
+}
+
+.duplicate-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 10.5px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    text-decoration: none;
+    color: #1e293b;
+}
+
+.duplicate-chip:hover {
+    background: #eff6ff;
+    border-color: #2563eb;
+    color: #2563eb;
 }

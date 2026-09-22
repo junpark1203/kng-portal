@@ -14,7 +14,7 @@
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <!-- Custom CSS (ECOUNT ERP Theme) -->
     <link rel="stylesheet" href="../../css/iframe-common.css">
-    <link rel="stylesheet" href="./partners.css?v=20260922_01">
+    <link rel="stylesheet" href="./partners.css?v=20260922_02">
 </head>
 <body>
 
@@ -50,7 +50,7 @@
 
                 <input type="radio" class="btn-check" name="filterTab" id="tabEtc" value="기타" onchange="app.onTabChange(this.value)">
                 <label class="erp-tab-btn" for="tabEtc">
-                    기타 <span class="tab-badge" id="badgeCountEtc">0</span>
+                    공통/기타 <span class="tab-badge" id="badgeCountEtc">0</span>
                 </label>
             </div>
         </div>
@@ -77,9 +77,9 @@
                 <option value="company_name_en">영문 상호명</option>
                 <option value="ceo_name">대표자</option>
                 <option value="business_number">사업자번호</option>
+                <option value="address">사업장 주소</option>
                 <option value="manager">담당자 (국문/영문)</option>
                 <option value="phone">연락처 (전화/이메일)</option>
-                <option value="address">주소 (국문/영문)</option>
                 <option value="note">비고</option>
             </select>
 
@@ -106,7 +106,7 @@
 
         <div class="d-flex align-items-center gap-2">
             <!-- 건수 뱃지 -->
-            <span class="text-muted small" id="totalCountBadge" style="font-size: 11.5px;"></span>
+            <span class="text-muted small" id="totalCountBadge" style="font-size: 11px;"></span>
             <!-- 페이지 제한 셀렉터 -->
             <select id="limitSelect" class="form-select form-select-sm erp-limit-select" onchange="app.onChangeLimit(this.value)">
                 <option value="50">50개씩</option>
@@ -117,26 +117,28 @@
     </div>
 
     <!-- ========================================================================= -->
-    <!-- 데이터 그리드 (Sticky Header 테이블) -->
+    <!-- 데이터 그리드 (Sticky Header 테이블 - 행 클릭 시 즉시 수정 모달 오픈) -->
     <!-- ========================================================================= -->
     <div class="table-card">
         <div class="table-container">
             <table class="erp-table align-middle mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">No</th>
-                        <th style="width: 75px;">유형</th>
-                        <th style="min-width: 240px; text-align: left;">거래처명 / 사업자명 (영문상호)</th>
-                        <th style="width: 140px;">사업자번호 / 대표자</th>
-                        <th style="width: 180px;">국내 연락처 / 결제계좌</th>
-                        <th style="width: 170px;">담당자 (국문 / 영문 ATTN)</th>
-                        <th style="min-width: 210px; text-align: left;">영문 무역 정보 (Tel / Email / Address)</th>
-                        <th style="min-width: 120px; text-align: left;">비고</th>
-                        <th style="width: 95px;">관리</th>
+                        <th style="width: 40px;">No</th>
+                        <th style="width: 60px;">유형</th>
+                        <th style="min-width: 170px; text-align: left;">거래처명 / 공식상호</th>
+                        <th style="width: 120px;">사업자번호 / 대표자</th>
+                        <th style="min-width: 170px; text-align: left;">사업장 소재지 (주소)</th>
+                        <th style="width: 125px;">대표 연락처</th>
+                        <th style="width: 150px;">결제 계좌정보</th>
+                        <th style="width: 150px;">담당자 (국문 / ATTN)</th>
+                        <th style="min-width: 160px; text-align: left;">영문 무역 정보</th>
+                        <th style="min-width: 100px; text-align: left;">비고</th>
+                        <th style="width: 80px; text-align: center;">관리</th>
                     </tr>
                 </thead>
                 <tbody id="partnersTableBody">
-                    <tr><td colspan="9" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
+                    <tr><td colspan="11" class="text-center py-4 text-muted">데이터를 불러오는 중입니다...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -166,21 +168,25 @@
                             <div class="row g-2">
                                 <div class="col-md-5">
                                     <label class="form-label fw-bold">거래처명 (약칭) <span class="text-danger">*</span></label>
-                                    <input type="text" id="partnerName" class="form-control form-control-sm" required placeholder="예: 신유테크">
+                                    <input type="text" id="partnerName" class="form-control form-control-sm" required placeholder="예: 신유테크" oninput="app.onCheckDuplicate()">
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label fw-bold">사업자명 (공식상호) <span class="text-danger">*</span></label>
-                                    <input type="text" id="companyName" class="form-control form-control-sm" required placeholder="예: 신유테크놀로지 주식회사">
+                                    <input type="text" id="companyName" class="form-control form-control-sm" required placeholder="예: 신유테크놀로지 주식회사" oninput="app.onCheckDuplicate()">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label fw-bold">거래 유형 <span class="text-danger">*</span></label>
                                     <select id="partnerType" class="form-select form-select-sm">
-                                        <option value="매입처">매입처 (공급처)</option>
-                                        <option value="매출처">매출처 (고객사)</option>
-                                        <option value="ALL">전체 / 공통</option>
+                                        <option value="매입처">매입처 (공급처/제조사)</option>
+                                        <option value="매출처">매출처 (고객사/납품처)</option>
+                                        <option value="ALL">공통 / 전체 (ALL)</option>
                                         <option value="기타">기타</option>
                                     </select>
                                 </div>
+
+                                <!-- 실시간 중복/유사 거래처 감지 알림 박스 -->
+                                <div class="col-12" id="duplicatePartnerAlert" style="display: none;"></div>
+
                                 <div class="col-md-4">
                                     <label class="form-label">사업자등록번호</label>
                                     <input type="text" id="businessNumber" class="form-control form-control-sm" placeholder="예: 000-00-00000">
@@ -318,7 +324,7 @@
         import { authFetch } from '../../js/auth.js';
         window.authFetch = authFetch;
     </script>
-    <script src="./app.js?v=20260922_02"></script>
+    <script src="./app.js?v=20260922_03"></script>
 
 </body>
 </html>
