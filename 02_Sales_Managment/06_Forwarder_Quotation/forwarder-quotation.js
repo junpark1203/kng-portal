@@ -2390,135 +2390,135 @@ function generatePrintHTML() {
     });
 
     // ──────────────── [5. 기타 금융 및 추가 부대비용] ────────────────
-    const calculatedCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'calculated');
-    const manualCosts = (state.doc.otherCosts || []).filter(oc => oc.type === 'manual' && (oc.amount || 0) > 0);
+    const calculatedCosts = (state.doc.otherCosts || []).filter(oc =>
+        oc.type === 'calculated' && (oc.interestRate || 0) > 0 && (oc.durationMonths || 0) > 0
+    );
+    const manualCosts = (state.doc.otherCosts || []).filter(oc =>
+        oc.type === 'manual' && (oc.amount || 0) > 0
+    );
+    const hasOtherCosts = calculatedCosts.length > 0 || manualCosts.length > 0;
 
-    html += `
-        <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
-            5. 기타 금융 및 추가 부대비용
-        </div>
-    `;
+    if (hasOtherCosts) {
+        html += `
+            <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
+                5. 기타 금융 및 추가 부대비용
+            </div>
+        `;
 
-    // 5-1. 금융비용 (자동산출 조건 및 내역)
-    if (calculatedCosts.length > 0) {
-        calculatedCosts.forEach(oc => {
-            const duration = oc.durationMonths || 0;
-            const colDays = oc.collectionDays || 0;
-            const rate = oc.interestRate || 0;
-            const avgMonths = ((duration + 1) / 2) + (colDays / 30);
+        // 5-1. 금융비용 (자동산출 조건 및 내역)
+        if (calculatedCosts.length > 0) {
+            calculatedCosts.forEach(oc => {
+                const duration = oc.durationMonths || 0;
+                const colDays = oc.collectionDays || 0;
+                const rate = oc.interestRate || 0;
+                const avgMonths = ((duration + 1) / 2) + (colDays / 30);
 
-            html += `
-                <div style="margin-bottom:10px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
-                    <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
-                        ■ 금융비용 (이자비용) 산출 조건 및 산출액
+                html += `
+                    <div style="margin-bottom:10px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
+                        <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
+                            ■ 금융비용 (이자비용) 산출 조건 및 산출액
+                        </div>
+                        <div style="padding:5px 8px; font-size:9px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; gap:16px; flex-wrap:wrap;">
+                            <div>사업기간: <strong>${duration}개월</strong></div>
+                            <div>연 이자율: <strong>${rate}%</strong></div>
+                            <div>대금회수: <strong>${colDays}일</strong></div>
+                            <div>평균 자금묶임기간: <strong>${avgMonths.toFixed(2)}개월</strong> <span style="font-size:8px; color:#64748b;">( = ((사업기간+1)/2) + (대금회수/30) )</span></div>
+                        </div>
+                        <table style="width:100%; border-collapse:collapse; font-size:9px;">
+                            <thead>
+                                <tr style="background:#f1f5f9; color:#334155;">
+                                    <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">포워더 / 조건</th>
+                                    <th style="padding:4px; border:1px solid #cbd5e1; text-align:right;">적용 원금 (물품대금 + 부대비용)</th>
+                                    <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">산출 공식</th>
+                                    <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; font-weight:bold; width:120px;">산출 금융비용 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                state.doc.forwarders.forEach(fw => {
+                    state.doc.incoterms.forEach(term => {
+                        if (!fw.calculated || !fw.calculated[term]) return;
+                        const calc = fw.calculated[term];
+                        const principal = (calc.invoiceKrw || 0) + (calc.ancillaryKrw || 0);
+                        const interestAmt = Math.round(principal * (avgMonths / 12) * (rate / 100));
+
+                        html += `
+                            <tr>
+                                <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:500;">
+                                    ${fw.name} (${term})
+                                </td>
+                                <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">
+                                    ₩${formatNum(principal)}
+                                </td>
+                                <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b; font-size:8.5px;">
+                                    원금 × (${avgMonths.toFixed(2)}/12) × ${rate}%
+                                </td>
+                                <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc;">
+                                    ₩${formatNum(interestAmt)}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+
+                html += `
+                            </tbody>
+                        </table>
                     </div>
-                    <div style="padding:5px 8px; font-size:9px; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; gap:16px; flex-wrap:wrap;">
-                        <div>사업기간: <strong>${duration}개월</strong></div>
-                        <div>연 이자율: <strong>${rate}%</strong></div>
-                        <div>대금회수: <strong>${colDays}일</strong></div>
-                        <div>평균 자금묶임기간: <strong>${avgMonths.toFixed(2)}개월</strong> <span style="font-size:8px; color:#64748b;">( = ((사업기간+1)/2) + (대금회수/30) )</span></div>
+                `;
+            });
+        }
+
+        // 5-2. 수동 추가 부대비용
+        if (manualCosts.length > 0) {
+            html += `
+                <div style="margin-bottom:12px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
+                    <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
+                        ■ 기타 추가 부대비용 명세
                     </div>
                     <table style="width:100%; border-collapse:collapse; font-size:9px;">
                         <thead>
                             <tr style="background:#f1f5f9; color:#334155;">
-                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">포워더 / 조건</th>
-                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:right;">적용 원금 (물품대금 + 부대비용)</th>
-                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:center;">산출 공식</th>
-                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; font-weight:bold; width:120px;">산출 금융비용 (KRW)</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:left;">항목명</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; width:80px; text-align:center;">구분</th>
+                                <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; width:120px;">금액 (KRW)</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
 
-            state.doc.forwarders.forEach(fw => {
-                state.doc.incoterms.forEach(term => {
-                    if (!fw.calculated || !fw.calculated[term]) return;
-                    const calc = fw.calculated[term];
-                    const principal = (calc.invoiceKrw || 0) + (calc.ancillaryKrw || 0);
-                    const interestAmt = Math.round(principal * (avgMonths / 12) * (rate / 100));
-
-                    html += `
-                        <tr>
-                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; font-weight:500;">
-                                ${fw.name} (${term})
-                            </td>
-                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right;">
-                                ₩${formatNum(principal)}
-                            </td>
-                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b; font-size:8.5px;">
-                                원금 × (${avgMonths.toFixed(2)}/12) × ${rate}%
-                            </td>
-                            <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:700; background:#f8fafc;">
-                                ₩${formatNum(interestAmt)}
-                            </td>
-                        </tr>
-                    `;
-                });
+            let manualTotal = 0;
+            manualCosts.forEach(oc => {
+                manualTotal += (oc.amount || 0);
+                html += `
+                    <tr>
+                        <td style="padding:4px 6px; border:1px solid #e2e8f0; font-weight:500;">${oc.name}</td>
+                        <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">수동 추가</td>
+                        <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(oc.amount)}</td>
+                    </tr>
+                `;
             });
 
             html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        });
-    }
-
-    // 5-2. 수동 추가 부대비용
-    if (manualCosts.length > 0) {
-        html += `
-            <div style="margin-bottom:12px; border:1px solid #cbd5e1; background:#fff; page-break-inside:avoid; break-inside:avoid;">
-                <div style="background:#f8fafc; padding:5px 8px; font-weight:700; font-size:9.5px; border-bottom:1px solid #cbd5e1; color:#0f172a;">
-                    ■ 기타 추가 부대비용 명세
-                </div>
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <thead>
-                        <tr style="background:#f1f5f9; color:#334155;">
-                            <th style="padding:4px; border:1px solid #cbd5e1; text-align:left;">항목명</th>
-                            <th style="padding:4px; border:1px solid #cbd5e1; width:80px; text-align:center;">구분</th>
-                            <th style="padding:4px; border:1px solid #cbd5e1; text-align:right; width:120px;">금액 (KRW)</th>
+                        <tr style="background:#f8fafc; font-weight:700;">
+                            <td colspan="2" style="padding:4px 6px; border:1px solid #cbd5e1; text-align:center;">추가비용 합계</td>
+                            <td style="padding:4px 6px; border:1px solid #cbd5e1; text-align:right;">₩${formatNum(manualTotal)}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        let manualTotal = 0;
-        manualCosts.forEach(oc => {
-            manualTotal += (oc.amount || 0);
-            html += `
-                <tr>
-                    <td style="padding:4px 6px; border:1px solid #e2e8f0; font-weight:500;">${oc.name}</td>
-                    <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">수동 추가</td>
-                    <td style="padding:4px 6px; border:1px solid #e2e8f0; text-align:right; font-weight:600;">₩${formatNum(oc.amount)}</td>
-                </tr>
-            `;
-        });
-
-        html += `
-                    <tr style="background:#f8fafc; font-weight:700;">
-                        <td colspan="2" style="padding:4px 6px; border:1px solid #cbd5e1; text-align:center;">추가비용 합계</td>
-                        <td style="padding:4px 6px; border:1px solid #cbd5e1; text-align:right;">₩${formatNum(manualTotal)}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        `;
-    }
-
-    if (calculatedCosts.length === 0 && manualCosts.length === 0) {
-        html += `
-            <div style="padding:10px; border:1px solid #cbd5e1; background:#f8fafc; text-align:center; color:#94a3b8; font-size:9px; margin-bottom:12px;">
-                등록된 기타 금융 및 추가 부대비용이 없습니다.
+                    </tbody>
+                </table>
             </div>
-        `;
+            `;
+        }
     }
 
-    // ──────────────── [6. 대상 품목 실제 수입 원가 산출] ────────────────
+    // ──────────────── [대상 품목 실제 수입 원가 산출] ────────────────
     // 기본 필수: (1) 컨테이너 적재비율 배분법 (부피/무게 기준)
     // 조건부: (2) 가치비례 배분법 (state.doc.showValueAlloc 이 true 일 때만)
+    const costSectionNum = hasOtherCosts ? '6' : '5';
     html += `
         <div style="font-size:11px; font-weight:700; color:#0f172a; margin:14px 0 5px 0;">
-            6. 대상 품목 실제 수입 원가 산출
+            ${costSectionNum}. 대상 품목 실제 수입 원가 산출
         </div>
     `;
 
