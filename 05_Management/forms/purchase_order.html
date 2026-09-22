@@ -146,9 +146,15 @@
                         <!-- 1. 기본 헤더 정보 -->
                         <div class="form-section-title">
                             <span>1. 기본 발주 정보 (PO Header)</span>
-                            <div class="d-flex align-items-center gap-2">
-                                <label class="text-muted fw-normal" style="font-size: 11px;">진행상태:</label>
-                                <select class="form-select form-select-sm py-0" id="formStatus" style="width: 110px;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <label class="text-primary fw-bold" style="font-size: 11px;">
+                                    <i class='bx bx-anchor'></i> 포워더 견적 연동:
+                                </label>
+                                <select class="form-select form-select-sm py-0" id="forwarderQuoteSelect" style="font-size: 11px; width: 260px;" onchange="app.onSelectForwarderQuote(this.value)">
+                                    <option value="">-- [선택] 포워더 견적서에서 불러오기 --</option>
+                                </select>
+                                <label class="text-muted fw-normal ms-2" style="font-size: 11px;">진행상태:</label>
+                                <select class="form-select form-select-sm py-0" id="formStatus" style="width: 100px;">
                                     <option value="작성중">작성중</option>
                                     <option value="발주완료">발주완료</option>
                                     <option value="선적진행">선적진행</option>

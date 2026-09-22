@@ -60,6 +60,7 @@ const app = {
     poList: [],
     filteredPoList: [],
     partnersList: [],
+    forwarderQuotes: [],
     currentPo: null,
     currentStatusFilter: '전체',
     currentDatePreset: 'all',
@@ -77,6 +78,7 @@ const app = {
     init: async function() {
         await this.loadSettings();
         await this.loadPartners();
+        await this.loadForwarderQuotes();
         await this.loadPurchaseOrders();
         this.setupDragAndDrop();
     },
@@ -128,6 +130,119 @@ const app = {
         if (attn) document.getElementById('formSellerAttn').value = attn;
         if (tel) document.getElementById('formSellerTel').value = tel;
         if (email) document.getElementById('formSellerEmail').value = email;
+    },
+
+    // -------------------------------------------------------------
+    // 0-1. 포워더 견적서 연동 (/api/forwarder-quotation API 연동)
+    // -------------------------------------------------------------
+    loadForwarderQuotes: async function() {
+        try {
+            const res = await authFetch('/api/forwarder-quotation');
+            if (res.ok) {
+                const data = await parseJsonResponse(res);
+                this.forwarderQuotes = Array.isArray(data) ? data : [];
+                this.populateForwarderQuoteSelect();
+            }
+        } catch (e) {
+            console.warn('포워더 견적 목록을 불러오지 못했습니다:', e);
+        }
+    },
+
+    populateForwarderQuoteSelect: function() {
+        const select = document.getElementById('forwarderQuoteSelect');
+        if (!select) return;
+        let html = '<option value="">-- [선택] 포워더 견적서에서 불러오기 --</option>';
+        if (this.forwarderQuotes && this.forwarderQuotes.length > 0) {
+            this.forwarderQuotes.forEach(q => {
+                const dateStr = q.quoteDate ? `[${q.quoteDate}] ` : '';
+                const routeStr = (q.pol || q.pod) ? ` (${q.pol || '-'} ➔ ${q.pod || '-'})` : '';
+                html += `<option value="${q.id}">${dateStr}${q.title}${routeStr}</option>`;
+            });
+        }
+        select.innerHTML = html;
+    },
+
+    onSelectForwarderQuote: function(quoteId) {
+        if (!quoteId) return;
+        const q = this.forwarderQuotes.find(x => String(x.id) === String(quoteId));
+        if (!q) return;
+
+        // 기존에 작성된 품목이 있는 경우 덮어쓰기 확인
+        const existingRows = document.querySelectorAll('#itemsTableBody tr');
+        let hasCustomData = false;
+        existingRows.forEach(tr => {
+            const name = tr.querySelector('.item-name')?.value.trim();
+            if (name) hasCustomData = true;
+        });
+
+        if (hasCustomData) {
+            if (!confirm(`선택하신 포워더 견적 [${q.title}]의 운송 조건 및 품목 리스트를 발주서에 불러오시겠습니까?\n(기존 입력된 품목 행은 견적서의 품목으로 교체됩니다)`)) {
+                const sel = document.getElementById('forwarderQuoteSelect');
+                if (sel) sel.value = '';
+                return;
+            }
+        }
+
+        // 1. References (참조계약) 자동 세팅
+        const refDate = q.quoteDate ? ` (${q.quoteDate})` : '';
+        document.getElementById('formReferences').value = `[포워더견적] ${q.title}${refDate}`;
+
+        // 2. Loading Port & Discharging Port
+        if (q.pol) document.getElementById('formLoadingPort').value = q.pol;
+        if (q.pod) document.getElementById('formDischargingPort').value = q.pod;
+
+        // 3. Terms of Delivery (인도조건 / 인코텀즈)
+        const incoterm = (q.incoterms && q.incoterms.length > 0) ? q.incoterms[0] : 'FOB';
+        const portForTerms = (incoterm.toUpperCase() === 'CIF' || incoterm.toUpperCase() === 'DDP' || incoterm.toUpperCase() === 'DAP') ? (q.pod || '') : (q.pol || '');
+        document.getElementById('formDeliveryTerms').value = `${incoterm} ${portForTerms}`.trim();
+
+        // 4. Country of Origin (원산지)
+        const polUpper = (q.pol || '').toUpperCase();
+        if (polUpper.includes('CHINA') || polUpper.includes('CN') || polUpper.includes('SHANGHAI') || polUpper.includes('QINGDAO') || polUpper.includes('NINGBO') || polUpper.includes('SHENZHEN') || polUpper.includes('GUANGZHOU') || polUpper.includes('TIANJIN') || polUpper.includes('XIAMEN')) {
+            document.getElementById('formCountryOfOrigin').value = 'China';
+        } else if (polUpper.includes('KOREA') || polUpper.includes('INCHEON') || polUpper.includes('BUSAN')) {
+            document.getElementById('formCountryOfOrigin').value = 'Republic of Korea';
+        } else if (q.pol) {
+            document.getElementById('formCountryOfOrigin').value = q.pol;
+        }
+
+        // 5. Shipment Spec (선적 규격)
+        const qty = q.containerQty || 1;
+        const type = q.containerType || '20ft';
+        const sType = q.shipmentType || 'FCL';
+        document.getElementById('formShipmentSpec').value = `${qty} x ${type} ${sType}`;
+
+        // 6. Notes (특약사항 및 지시사항)
+        if (q.remarks) {
+            const currentNotes = document.getElementById('formNotes').value.trim();
+            if (!currentNotes) {
+                document.getElementById('formNotes').value = q.remarks;
+            } else if (!currentNotes.includes(q.remarks)) {
+                document.getElementById('formNotes').value = currentNotes + '\n\n[포워더 견적 참고사항]\n' + q.remarks;
+            }
+        }
+
+        // 7. Items (품목 리스트 주입)
+        if (q.items && q.items.length > 0) {
+            document.getElementById('itemsTableBody').innerHTML = '';
+            q.items.forEach(item => {
+                const pkgUnit = item.packaging_spec || (item.weight ? `${Number(item.weight).toLocaleString()} kg` : '');
+                const pkgQty = item.cbm ? `${item.cbm} CBM` : '';
+                this.addItemRow({
+                    product_name: item.name || item.description || '',
+                    hs_code: item.hs_code || '',
+                    packaging_unit: pkgUnit,
+                    order_qty: Number(item.qty) || 0,
+                    unit: item.unit || 'KG',
+                    unit_price: 0,
+                    total_price: 0,
+                    packaging_qty: pkgQty
+                });
+            });
+            this.recalculateTotals();
+        }
+
+        alert(`포워더 견적 [${q.title}] 데이터가 성공적으로 반영되었습니다.\n공급처(Seller) 선택 및 단가(Unit Price)를 입력해 주세요.`);
     },
 
     // -------------------------------------------------------------
@@ -682,9 +797,11 @@ const app = {
         // 바이어 기본값
         this.loadBuyerPreset();
 
-        // 거래처 드롭다운 초기화
+        // 거래처 및 포워더 견적 드롭다운 초기화
         const partnerSelect = document.getElementById('sellerPartnerSelect');
         if (partnerSelect) partnerSelect.value = '';
+        const fqSelect = document.getElementById('forwarderQuoteSelect');
+        if (fqSelect) fqSelect.value = '';
 
         // 셀러 및 무역조건 초기화 (예시 텍스트가 value로 남아있지 않도록 모두 공란 처리, 플레이스홀더 안내)
         document.getElementById('formSellerName').value = '';
@@ -740,6 +857,8 @@ const app = {
             
             const partnerSelect = document.getElementById('sellerPartnerSelect');
             if (partnerSelect) partnerSelect.value = '';
+            const fqSelectEdit = document.getElementById('forwarderQuoteSelect');
+            if (fqSelectEdit) fqSelectEdit.value = '';
 
             document.getElementById('formSellerName').value = po.seller_name || '';
             document.getElementById('formSellerAddress').value = po.seller_address || '';
