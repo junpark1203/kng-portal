@@ -2160,6 +2160,10 @@ function renderCostResultTable() {
         `;
 
         // ── 3. 가치비례 배분법 (가액 기준) ──
+        const itemAmountKrw = item.qty * unitPriceFC * exRate;
+        const valueShareRatio = totalInvoiceKrw > 0 ? (itemAmountKrw / totalInvoiceKrw) : 0;
+        const shareTextValue = `${(valueShareRatio * 100).toFixed(2)}%`;
+
         const allocatedFC_Value_Total = unitPriceFC * allocationRatio;
         const allocatedFC_Value_Dutiable = unitPriceFC * dutiableAllocationRatio;
         const dispAllocatedFC_Value = Math.round(allocatedFC_Value_Total * 100) / 100;
@@ -2173,7 +2177,7 @@ function renderCostResultTable() {
         htmlValue += `
             <tr>
                 <td>${item.name}</td>
-                <td class="col-num">${formatNum(item.qty)}</td>
+                <td class="col-num">${formatNum(item.qty)} <span style="font-size:10px; color:#64748b;">(${shareTextValue})</span></td>
                 <td class="col-num">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                 <td class="col-num">${p.currency} ${formatNum(dispAllocatedFC_Value, 2)}</td>
                 <td class="col-num" style="font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC_Value, 2)}</td>
@@ -3081,7 +3085,7 @@ function generatePrintHTML() {
                             <tr style="background:#f8fafc; color:#0f172a;">
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; text-align:center; font-weight:600;">품명</th>
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; width:50px; text-align:center; font-weight:600;">수량</th>
-                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">배분비율</th>
+                                <th style="padding:4px 3px; border:1px solid #e2e8f0; width:65px; text-align:center; font-weight:600;">가액점유율</th>
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">단위당 단가</th>
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">배분 부대비용</th>
                                 <th style="padding:4px 3px; border:1px solid #e2e8f0; width:80px; text-align:center; font-weight:600;">실수입원가(외화)</th>
@@ -3109,6 +3113,9 @@ function generatePrintHTML() {
                     const exRate = state.doc.exchangeRates[p.currency] || 1;
                     const dutyRate = item.dutyRate || 0;
 
+                    const itemAmountKrw = item.qty * unitPriceFC * exRate;
+                    const valueShareRatio = totalInvoiceKrw > 0 ? (itemAmountKrw / totalInvoiceKrw) : 0;
+
                     const allocatedFC_Total = unitPriceFC * allocationRatio;
                     const allocatedFC_Dutiable = unitPriceFC * dutiableAllocationRatio;
 
@@ -3125,7 +3132,7 @@ function generatePrintHTML() {
                         <tr>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; font-weight:500;">${item.name}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${formatNum(item.qty)}</td>
-                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${(allocationRatio * 100).toFixed(1)}%</td>
+                            <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:center; color:#64748b;">${(valueShareRatio * 100).toFixed(2)}%</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(unitPriceFC, 2)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right;">${p.currency} ${formatNum(dispAllocatedFC, 2)}</td>
                             <td style="padding:3px 4px; border:1px solid #e2e8f0; text-align:right; font-weight:500;">${p.currency} ${formatNum(dispBaseCostFC, 2)}</td>
