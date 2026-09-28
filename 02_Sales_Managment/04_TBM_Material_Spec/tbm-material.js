@@ -196,6 +196,8 @@ function initEvents() {
     });
     ['inpQty', 'inpPrice'].forEach(id => $(id)?.addEventListener('input', updateCalc));
     $('inpCategory')?.addEventListener('change', onCategoryChange);
+    $('modalAddSectionBtn')?.addEventListener('click', () => modalAddSection());
+    $('modalAddFieldBtn')?.addEventListener('click', () => modalAddField());
 
     // 국내 / 수입 구분 라디오
     document.querySelectorAll('input[name="sourceType"]').forEach(r => r.addEventListener('change', toggleSourceType));
@@ -531,12 +533,18 @@ function renderGrid() {
         // 주요 사양 요약 텍스트 (커스텀 필드 요약)
         let cfSummary = '';
         if (d.customFields && typeof d.customFields === 'object') {
-            const entries = Object.entries(d.customFields).filter(([k, v]) => v != null && v !== '');
+            let savedLabels = {};
+            try {
+                if (d.customFieldNotes && d.customFieldNotes['__labels__']) {
+                    savedLabels = JSON.parse(d.customFieldNotes['__labels__']);
+                }
+            } catch(e) {}
+            const entries = Object.entries(d.customFields).filter(([k, v]) => !k.startsWith('__') && v != null && v !== '');
             if (entries.length > 0) {
                 const preset = presetsData.find(p => p.category === d.category);
                 const fieldLabelMap = {};
                 (preset?.fields || []).forEach(f => { fieldLabelMap[f.key] = (f.label || '').replace(/\n/g, ' '); });
-                cfSummary = entries.slice(0, 3).map(([k, v]) => `${fieldLabelMap[k] || k}: ${v}`).join(' · ');
+                cfSummary = entries.slice(0, 3).map(([k, v]) => `${savedLabels[k] || fieldLabelMap[k] || k.replace(/_/g, ' ')}: ${v}`).join(' · ');
                 if (entries.length > 3) cfSummary += ` (+${entries.length - 3})`;
             }
         }
@@ -659,22 +667,47 @@ function buildAccordionContentHtml(d, thumbUrl, filesArr) {
 
     // 1) 스펙 테이블 (섹션별 그룹)
     let specTableHtml = '<div class="text-muted small">등록된 커스텀 사양이 없습니다.</div>';
+    let rowsHtml = '';
+    const renderedKeys = new Set();
+    let savedLabels = {};
+    try {
+        if (cfNotes['__labels__']) savedLabels = JSON.parse(cfNotes['__labels__']);
+    } catch(e) {}
+
     if (preset && Array.isArray(preset.fields) && Object.keys(customFields).length > 0) {
-        let rowsHtml = '';
         preset.fields.forEach(f => {
             if (f.type === 'section') {
                 rowsHtml += `<tr class="table-light"><th colspan="2" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}</th></tr>`;
             } else {
+                renderedKeys.add(f.key);
                 const val = customFields[f.key];
                 if (val != null && val !== '') {
-                    const note = cfNotes[f.key] ? ` <span class="badge bg-light text-secondary border ms-1" title="${escapeHtml(cfNotes[f.key])}">${escapeHtml(cfNotes[f.key])}</span>` : '';
-                    rowsHtml += `<tr><th>${escapeHtml((f.label || '').replace(/\n/g, ' '))}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
+                    const lbl = savedLabels[f.key] || (f.label || '').replace(/\n/g, ' ');
+                    const noteText = (cfNotes[f.key] && !f.key.startsWith('__')) ? cfNotes[f.key] : '';
+                    const note = noteText ? ` <span class="badge bg-light text-secondary border ms-1" title="${escapeHtml(noteText)}">${escapeHtml(noteText)}</span>` : '';
+                    rowsHtml += `<tr><th>${escapeHtml(lbl)}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
                 }
             }
         });
-        if (rowsHtml) {
-            specTableHtml = `<table class="acc-spec-table"><tbody>${rowsHtml}</tbody></table>`;
-        }
+    }
+
+    // 프리셋 외 개별 추가된 사양 항목 (기타 특화 사양) 표시
+    const orphanKeys = Object.keys(customFields).filter(k => 
+        !k.startsWith('__') && !renderedKeys.has(k) && customFields[k] != null && String(customFields[k]).trim() !== ''
+    );
+    if (orphanKeys.length > 0) {
+        rowsHtml += `<tr class="table-light"><th colspan="2" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> 기타 특화 사양</th></tr>`;
+        orphanKeys.forEach(k => {
+            const val = customFields[k];
+            const lbl = savedLabels[k] || k.replace(/_/g, ' ');
+            const noteText = (cfNotes[k] && !k.startsWith('__')) ? cfNotes[k] : '';
+            const note = noteText ? ` <span class="badge bg-light text-secondary border ms-1" title="${escapeHtml(noteText)}">${escapeHtml(noteText)}</span>` : '';
+            rowsHtml += `<tr><th>${escapeHtml(lbl)}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
+        });
+    }
+
+    if (rowsHtml) {
+        specTableHtml = `<table class="acc-spec-table"><tbody>${rowsHtml}</tbody></table>`;
     }
 
     // 2) 첨부파일 다운로드 리스트
@@ -902,11 +935,13 @@ function getFormSnapshot() {
     const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'].map(id => $(id)?.value || '');
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
     const cfVals = [];
-    $('customFieldsGrid')?.querySelectorAll('[data-cf-key]')?.forEach(inp => cfVals.push(inp.value || ''));
-    const cfNoteVals = [];
-    $('customFieldsGrid')?.querySelectorAll('[data-cf-note-key]')?.forEach(inp => cfNoteVals.push(inp.value || ''));
+    const container = $('modalCustomSectionsContainer');
+    if (container) {
+        container.querySelectorAll('input').forEach(inp => cfVals.push(inp.value || ''));
+    }
     const pkgSnap = JSON.stringify(collectPackagingGroups());
-    return JSON.stringify([...vals, src, ...cfVals, ...cfNoteVals, pkgSnap, currentFiles.length]);
+    const syncCheck = $('syncPresetCheck')?.checked ? '1' : '0';
+    return JSON.stringify([...vals, src, ...cfVals, pkgSnap, syncCheck, currentFiles.length]);
 }
 
 window.openModal = function(id = null, isDuplicate = false) {
@@ -914,7 +949,9 @@ window.openModal = function(id = null, isDuplicate = false) {
     $('inpTotal').value = '';
     currentFiles = [];
     $('customFieldsSection').style.display = 'none';
-    $('customFieldsGrid').innerHTML = '';
+    if ($('modalCustomSectionsContainer')) $('modalCustomSectionsContainer').innerHTML = '';
+    if ($('presetSyncBanner')) $('presetSyncBanner').style.display = 'none';
+    if ($('syncPresetCheck')) $('syncPresetCheck').checked = false;
     $('packagingGroupsContainer').innerHTML = '';
     $('srcDomestic').checked = true;
     toggleSourceType();
@@ -957,7 +994,15 @@ window.openModal = function(id = null, isDuplicate = false) {
         }
         updateCalc();
         renderFileList();
-        if (d.category) { onCategoryChange(null, d.customFields || {}, d.customFieldNotes || {}); }
+        if (d.category) {
+            let savedLabels = {};
+            try {
+                if (d.customFieldNotes && d.customFieldNotes['__labels__']) {
+                    savedLabels = JSON.parse(d.customFieldNotes['__labels__']);
+                }
+            } catch(e) {}
+            onCategoryChange(null, d.customFields || {}, d.customFieldNotes || {}, savedLabels);
+        }
     } else {
         $('modalTitle').textContent = '신규 자재 등록';
         $('editId').value = '';
@@ -997,10 +1042,12 @@ async function saveItem() {
 
     try {
         const id = $('editId')?.value || '';
-        const customFields = {};
-        $('customFieldsGrid')?.querySelectorAll('[data-cf-key]').forEach(inp => { customFields[inp.dataset.cfKey] = inp.value; });
-        const customFieldNotes = {};
-        $('customFieldsGrid')?.querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
+        const { customFields, customFieldNotes, customFieldLabels, specFieldList } = modalCollectSpecs();
+        if (Object.keys(customFieldLabels).length > 0) {
+            customFieldNotes['__labels__'] = JSON.stringify(customFieldLabels);
+        }
+
+        const category = $('inpCategory')?.value.trim() || '';
         const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
         const isImport = sourceType === 'import';
         const qty = isImport ? 0 : (parseFloat($('inpQty')?.value) || 0);
@@ -1012,7 +1059,7 @@ async function saveItem() {
         const payload = {
             site: $('inpSite')?.value.trim() || '',
             equipment: $('inpEquipment')?.value.trim() || '',
-            category: $('inpCategory')?.value.trim() || '',
+            category,
             itemName,
             spec: $('inpSpec')?.value.trim() || '',
             unit: $('inpUnit')?.value || 'EA',
@@ -1033,6 +1080,29 @@ async function saveItem() {
         const method = id ? 'PUT' : 'POST';
         const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if (res.ok) {
+            // Optional: Preset sync if user checked syncPresetCheck
+            if (category && $('syncPresetCheck')?.checked) {
+                try {
+                    let existingPreset = presetsData.find(x => x.category === category);
+                    const presetPayload = {
+                        id: existingPreset ? existingPreset.id : `preset_${Date.now()}`,
+                        category,
+                        fields: specFieldList
+                    };
+                    const pRes = await authFetch(`${API}/presets`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(presetPayload)
+                    });
+                    if (pRes.ok) {
+                        await loadPresets();
+                    }
+                } catch(presetErr) {
+                    console.error('Preset sync error:', presetErr);
+                }
+            }
+
+            modalSnapshot = getFormSnapshot();
             showToast(id ? '수정되었습니다.' : '등록되었습니다.', 'success');
             closeModal();
             if (!id) currentPage = 1;
@@ -1191,66 +1261,240 @@ function collectPackagingGroups() {
     return groups;
 }
 
-// ── 11. 커스텀 필드 동적 생성 ──
-function onCategoryChange(e, existingValues, existingNotes) {
-    const cat = $('inpCategory').value;
-    const section = $('customFieldsSection'), grid = $('customFieldsGrid');
-    const preset = presetsData.find(p => p.category === cat);
+// ── 11. 커스텀 사양 필드 모달 인라인 편집 및 프리셋 연동 ──
 
-    if (!preset || !Array.isArray(preset.fields) || !preset.fields.length) {
+function modalAddFieldRow(fieldsBox, fieldData = {}, val = '', note = '') {
+    const row = document.createElement('div');
+    row.className = 'modal-spec-row';
+    const key = fieldData.key || `tmp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    row.dataset.fieldKey = key;
+
+    const initialLabel = fieldData.label || '';
+    const initialVal = val != null ? String(val) : '';
+    const initialNote = note != null && note !== '' ? String(note) : (fieldData.note || '');
+
+    row.innerHTML = `
+        <button type="button" class="f-drag" title="순서 드래그"><i class='bx bx-grid-vertical'></i></button>
+        <input type="text" class="spec-field-label" value="${escapeHtml(initialLabel)}" placeholder="사양 항목명 (예: 비중)">
+        <input type="text" class="spec-field-val" value="${escapeHtml(initialVal)}" placeholder="측정값 / 규격치">
+        <input type="text" class="spec-field-note" value="${escapeHtml(initialNote)}" placeholder="시험규격/단위/비고">
+        <button type="button" class="btn-grid-action btn-grid-action-danger f-del-btn" title="항목 삭제"><i class='bx bx-x'></i></button>
+    `;
+
+    row.querySelector('.f-del-btn').addEventListener('click', () => {
+        row.remove();
+    });
+
+    fieldsBox.appendChild(row);
+    setupDragAndDrop(fieldsBox, '.modal-spec-row', '.f-drag', 'field');
+    return row;
+}
+
+function modalRenderSection(sectionData, vals = {}, notes = {}, labels = {}) {
+    const container = $('modalCustomSectionsContainer');
+    if (!container) return null;
+
+    const sec = document.createElement('div');
+    sec.className = 'modal-spec-section';
+
+    sec.innerHTML = `
+        <div class="modal-spec-sec-header">
+            <button type="button" class="sec-drag" title="섹션 순서 드래그"><i class='bx bx-grid-vertical'></i></button>
+            <i class='bx bx-folder text-primary' style="font-size:13px;"></i>
+            <input type="text" class="sec-title-inp" value="${escapeHtml(sectionData.label || '기본 사양')}" placeholder="섹션 그룹명 (예: 물리적 특성, 배합비 등)">
+            <button type="button" class="btn-erp btn-erp-sm sec-add-f-btn ms-auto" title="이 섹션에 사양 항목 추가">
+                <i class='bx bx-plus'></i> 항목 추가
+            </button>
+            <button type="button" class="btn-grid-action btn-grid-action-danger sec-del-btn" title="섹션 삭제">
+                <i class='bx bx-trash'></i>
+            </button>
+        </div>
+        <div class="modal-spec-sec-body p-1" style="background:#f8fafc;">
+            <div class="modal-spec-fields-box d-flex flex-column gap-1"></div>
+        </div>
+    `;
+
+    const fieldsBox = sec.querySelector('.modal-spec-fields-box');
+    const addFieldBtn = sec.querySelector('.sec-add-f-btn');
+    const delSecBtn = sec.querySelector('.sec-del-btn');
+
+    addFieldBtn.addEventListener('click', () => {
+        const newRow = modalAddFieldRow(fieldsBox);
+        newRow.querySelector('.spec-field-label')?.focus();
+    });
+
+    delSecBtn.addEventListener('click', () => {
+        const rowCount = fieldsBox.querySelectorAll('.modal-spec-row').length;
+        if (rowCount > 0 && !confirm(`'${sec.querySelector('.sec-title-inp')?.value || '이 섹션'}' 및 포함된 ${rowCount}개 항목을 모두 삭제하시겠습니까?`)) {
+            return;
+        }
+        sec.remove();
+    });
+
+    if (Array.isArray(sectionData.fields) && sectionData.fields.length > 0) {
+        sectionData.fields.forEach(f => {
+            const v = vals[f.key];
+            const n = notes[f.key] || f.note || '';
+            const lbl = (labels && labels[f.key]) || f.label || '';
+            modalAddFieldRow(fieldsBox, { ...f, label: lbl }, v, n);
+        });
+    } else {
+        modalAddFieldRow(fieldsBox);
+    }
+
+    container.appendChild(sec);
+    setupDragAndDrop(container, '.modal-spec-section', '.sec-drag', 'section');
+    return sec;
+}
+
+function modalAddSection(title = '신규 사양 그룹') {
+    const sec = modalRenderSection({ label: title, fields: [] });
+    if (sec) {
+        const titleInp = sec.querySelector('.sec-title-inp');
+        titleInp?.focus();
+        titleInp?.select();
+    }
+}
+
+function modalAddField() {
+    const container = $('modalCustomSectionsContainer');
+    if (!container) return;
+    let lastSec = container.querySelector('.modal-spec-section:last-child');
+    if (!lastSec) {
+        lastSec = modalRenderSection({ label: '기본 사양', fields: [] });
+    }
+    const fieldsBox = lastSec.querySelector('.modal-spec-fields-box');
+    const newRow = modalAddFieldRow(fieldsBox);
+    newRow.querySelector('.spec-field-label')?.focus();
+}
+
+function modalCollectSpecs() {
+    const customFields = {};
+    const customFieldNotes = {};
+    const customFieldLabels = {};
+    const specFieldList = [];
+    
+    const container = $('modalCustomSectionsContainer');
+    if (!container) return { customFields, customFieldNotes, customFieldLabels, specFieldList };
+
+    const sections = container.querySelectorAll('.modal-spec-section');
+    sections.forEach(secEl => {
+        const secTitle = secEl.querySelector('.sec-title-inp')?.value.trim() || '기본 사양';
+        specFieldList.push({
+            key: '_section_' + specFieldList.length,
+            label: secTitle,
+            type: 'section'
+        });
+
+        const rows = secEl.querySelectorAll('.modal-spec-row');
+        rows.forEach(row => {
+            const label = row.querySelector('.spec-field-label')?.value.trim();
+            const val = row.querySelector('.spec-field-val')?.value.trim() || '';
+            const note = row.querySelector('.spec-field-note')?.value.trim() || '';
+            let key = row.dataset.fieldKey;
+
+            if (!label) return; // 항목명이 빈 행은 스킵
+
+            if (!key || key.startsWith('tmp_')) {
+                const baseKey = label.replace(/[^a-zA-Z0-9가-힣]/g, '_').toLowerCase() || 'field_' + specFieldList.length;
+                key = baseKey;
+                let counter = 1;
+                while (specFieldList.some(f => f.key === key)) {
+                    key = `${baseKey}_${counter++}`;
+                }
+                row.dataset.fieldKey = key;
+            }
+
+            customFields[key] = val;
+            if (note) customFieldNotes[key] = note;
+            customFieldLabels[key] = label;
+
+            specFieldList.push({
+                key,
+                label,
+                type: 'text',
+                note
+            });
+        });
+    });
+
+    return { customFields, customFieldNotes, customFieldLabels, specFieldList };
+}
+
+function onCategoryChange(e, existingValues = {}, existingNotes = {}, existingLabels = {}) {
+    const cat = $('inpCategory')?.value.trim();
+    const section = $('customFieldsSection');
+    const container = $('modalCustomSectionsContainer');
+    const syncBanner = $('presetSyncBanner');
+    const syncCatName = $('syncPresetCatName');
+    const syncCheck = $('syncPresetCheck');
+
+    if (!section || !container) return;
+
+    if (!cat) {
         section.style.display = 'none';
-        grid.innerHTML = '';
+        container.innerHTML = '';
+        if (syncBanner) syncBanner.style.display = 'none';
         return;
     }
 
     section.style.display = '';
-    $('customFieldsSectionTitle').textContent = `${cat} — 커스텀 사양 필드`;
-    grid.innerHTML = '';
+    $('customFieldsSectionTitle').textContent = `${cat} — 사양 필드 구성`;
+    container.innerHTML = '';
+
+    if (syncBanner) {
+        syncBanner.style.display = 'flex';
+        if (syncCatName) syncCatName.textContent = cat;
+        if (syncCheck) syncCheck.checked = false;
+    }
+
+    const preset = presetsData.find(p => p.category === cat);
+    const sections = groupFieldsIntoSections(preset?.fields || []);
 
     const vals = existingValues || {};
     const notes = existingNotes || {};
+    let labels = existingLabels || {};
 
-    preset.fields.forEach(f => {
-        if (f.type === 'section') {
-            const divider = document.createElement('div');
-            divider.className = 'fg-full modal-section-title mt-2';
-            divider.innerHTML = `<i class='bx bx-chevrons-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}`;
-            grid.appendChild(divider);
-            return;
-        }
+    if (notes['__labels__']) {
+        try {
+            labels = { ...JSON.parse(notes['__labels__']), ...labels };
+        } catch(err) {}
+    }
 
-        const div = document.createElement('div');
-        div.className = 'fg';
-
-        const lbl = document.createElement('label');
-        lbl.textContent = (f.label || '').replace(/\n/g, ' ');
-        if (f.note) {
-            const hint = document.createElement('small');
-            hint.className = 'text-muted ms-1';
-            hint.textContent = `(${f.note})`;
-            lbl.appendChild(hint);
-        }
-
-        const inp = document.createElement('input');
-        inp.type = f.type || 'text';
-        inp.dataset.cfKey = f.key;
-        inp.placeholder = (f.label || '').replace(/\n/g, ' ');
-        inp.value = vals[f.key] || '';
-        if (f.required) inp.required = true;
-
-        const noteInp = document.createElement('input');
-        noteInp.type = 'text';
-        noteInp.className = 'mt-1 text-muted';
-        noteInp.style.fontSize = '10.5px';
-        noteInp.placeholder = '비고 (시험방법 등)';
-        noteInp.dataset.cfNoteKey = f.key;
-        noteInp.value = notes[f.key] || '';
-
-        div.appendChild(lbl);
-        div.appendChild(inp);
-        div.appendChild(noteInp);
-        grid.appendChild(div);
+    const presetKeys = new Set();
+    (preset?.fields || []).forEach(f => {
+        if (f.key && f.type !== 'section') presetKeys.add(f.key);
     });
+
+    const orphanKeys = Object.keys(vals).filter(k => 
+        !k.startsWith('__') && !presetKeys.has(k) && vals[k] != null && String(vals[k]).trim() !== ''
+    );
+
+    if (sections.length === 0) {
+        if (orphanKeys.length > 0) {
+            const orphanFields = orphanKeys.map(k => ({
+                key: k,
+                label: labels[k] || k.replace(/_/g, ' '),
+                type: 'text',
+                note: notes[k] || ''
+            }));
+            modalRenderSection({ label: '사양 정보', fields: orphanFields }, vals, notes, labels);
+        } else {
+            modalRenderSection({ label: '기본 사양', fields: [] }, vals, notes, labels);
+        }
+    } else {
+        sections.forEach(sec => modalRenderSection(sec, vals, notes, labels));
+
+        if (orphanKeys.length > 0) {
+            const orphanFields = orphanKeys.map(k => ({
+                key: k,
+                label: labels[k] || k.replace(/_/g, ' '),
+                type: 'text',
+                note: notes[k] || ''
+            }));
+            modalRenderSection({ label: '기타 특화 사양', fields: orphanFields }, vals, notes, labels);
+        }
+    }
 }
 
 // ── 12. 첨부파일 업로드 및 관리 ──
@@ -1735,16 +1979,18 @@ function renderCompareTable() {
         html += '</tr>';
     });
 
+    const presetKeySet = new Set();
     if (fields.length) {
         fields.forEach(f => {
             if (f.type === 'section') {
                 html += `<tr class="table-light"><td colspan="${n + 1}" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}</td></tr>`;
             } else {
+                presetKeySet.add(f.key);
                 const lbl = (f.label || '').replace(/\n/g, ' / ');
                 const vals = compareItems.map(d => {
                     const v = (d.customFields || {})[f.key] || '-';
                     const note = (d.customFieldNotes || {})[f.key];
-                    return note ? `${escapeHtml(v)} <span class="badge bg-light text-secondary border">${escapeHtml(note)}</span>` : escapeHtml(v);
+                    return (note && !f.key.startsWith('__')) ? `${escapeHtml(v)} <span class="badge bg-light text-secondary border">${escapeHtml(note)}</span>` : escapeHtml(v);
                 });
                 const rawVals = compareItems.map(d => (d.customFields || {})[f.key] || '-');
                 const allSame = rawVals.every(v => v === rawVals[0]);
@@ -1752,6 +1998,41 @@ function renderCompareTable() {
                 vals.forEach(v => { html += `<td class="${allSame ? '' : 'compare-diff'}">${v}</td>`; });
                 html += '</tr>';
             }
+        });
+    }
+
+    // 비교 대상 자재들에 포함된 기타 특화 사양 수집
+    const extraKeysMap = new Map();
+    compareItems.forEach(d => {
+        let savedLabels = {};
+        try {
+            if (d.customFieldNotes && d.customFieldNotes['__labels__']) {
+                savedLabels = JSON.parse(d.customFieldNotes['__labels__']);
+            }
+        } catch(e) {}
+        const cfs = d.customFields || {};
+        Object.keys(cfs).forEach(k => {
+            if (!k.startsWith('__') && !presetKeySet.has(k) && cfs[k] != null && String(cfs[k]).trim() !== '') {
+                if (!extraKeysMap.has(k)) {
+                    extraKeysMap.set(k, savedLabels[k] || k.replace(/_/g, ' '));
+                }
+            }
+        });
+    });
+
+    if (extraKeysMap.size > 0) {
+        html += `<tr class="table-light"><td colspan="${n + 1}" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> 기타 특화 사양</td></tr>`;
+        extraKeysMap.forEach((lbl, k) => {
+            const vals = compareItems.map(d => {
+                const v = (d.customFields || {})[k] || '-';
+                const note = (d.customFieldNotes || {})[k];
+                return (note && !k.startsWith('__')) ? `${escapeHtml(v)} <span class="badge bg-light text-secondary border">${escapeHtml(note)}</span>` : escapeHtml(v);
+            });
+            const rawVals = compareItems.map(d => (d.customFields || {})[k] || '-');
+            const allSame = rawVals.every(v => v === rawVals[0]);
+            html += `<tr><td class="compare-label">${escapeHtml(lbl)}</td>`;
+            vals.forEach(v => { html += `<td class="${allSame ? '' : 'compare-diff'}">${v}</td>`; });
+            html += '</tr>';
         });
     }
 
@@ -1772,13 +2053,40 @@ function exportCompare() {
         rows.push([lbl, ...compareItems.map(d => key === 'price' || key === 'total' ? d[key] || 0 : d[key] || '-')]);
     });
 
+    const presetKeySet = new Set();
     fields.forEach(f => {
         if (f.type === 'section') {
             rows.push([`[${(f.label || '').replace(/\n/g, ' ')}]`]);
         } else {
+            presetKeySet.add(f.key);
             rows.push([(f.label || '').replace(/\n/g, ' '), ...compareItems.map(d => (d.customFields || {})[f.key] || '-')]);
         }
     });
+
+    const extraKeysMap = new Map();
+    compareItems.forEach(d => {
+        let savedLabels = {};
+        try {
+            if (d.customFieldNotes && d.customFieldNotes['__labels__']) {
+                savedLabels = JSON.parse(d.customFieldNotes['__labels__']);
+            }
+        } catch(e) {}
+        const cfs = d.customFields || {};
+        Object.keys(cfs).forEach(k => {
+            if (!k.startsWith('__') && !presetKeySet.has(k) && cfs[k] != null && String(cfs[k]).trim() !== '') {
+                if (!extraKeysMap.has(k)) {
+                    extraKeysMap.set(k, savedLabels[k] || k.replace(/_/g, ' '));
+                }
+            }
+        });
+    });
+
+    if (extraKeysMap.size > 0) {
+        rows.push(['[기타 특화 사양]']);
+        extraKeysMap.forEach((lbl, k) => {
+            rows.push([lbl, ...compareItems.map(d => (d.customFields || {})[k] || '-')]);
+        });
+    }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();

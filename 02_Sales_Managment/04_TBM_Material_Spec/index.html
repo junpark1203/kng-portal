@@ -832,6 +832,117 @@
             padding-right: 20px !important;
         }
 
+        /* 모달 인라인 커스텀 사양 섹션 & 필드 행 */
+        .modal-spec-section {
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+            background: #f8fafc;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .modal-spec-section.drag-over {
+            border: 2px dashed #2563eb !important;
+            background: #eff6ff !important;
+        }
+        .modal-spec-sec-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+            border-left: 3px solid #2563eb;
+        }
+        .modal-spec-sec-header .sec-drag,
+        .modal-spec-row .f-drag {
+            cursor: grab;
+            color: #94a3b8;
+            border: none;
+            background: transparent;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-spec-sec-header .sec-drag:active,
+        .modal-spec-row .f-drag:active {
+            cursor: grabbing;
+        }
+        .modal-spec-sec-header .sec-title-inp {
+            height: 24px;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #1e293b;
+            padding: 1px 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            border-radius: 2px;
+            flex: 1;
+        }
+        .modal-spec-sec-header .sec-title-inp:focus {
+            background: #ffffff;
+            border-color: #2563eb;
+            outline: none;
+        }
+        .modal-spec-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 4px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 2px;
+            margin-bottom: 3px;
+            transition: all 0.1s ease;
+        }
+        .modal-spec-row:last-child {
+            margin-bottom: 0;
+        }
+        .modal-spec-row:hover {
+            border-color: #94a3b8;
+        }
+        .modal-spec-row.drag-over {
+            border: 2px dashed #2563eb !important;
+            background: #eff6ff !important;
+        }
+        .modal-spec-row .spec-field-label {
+            width: 140px;
+            min-width: 110px;
+            height: 24px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+        }
+        .modal-spec-row .spec-field-val {
+            flex: 1;
+            height: 24px;
+            font-size: 11px;
+            padding: 1px 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+        }
+        .modal-spec-row .spec-field-note {
+            width: 130px;
+            min-width: 90px;
+            height: 24px;
+            font-size: 10.5px;
+            color: #64748b;
+            padding: 1px 5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 2px;
+        }
+        .modal-spec-row input:focus {
+            border-color: #2563eb;
+            outline: none;
+        }
+        .btn-erp-sm {
+            height: 22px !important;
+            font-size: 10.5px !important;
+            padding: 0 6px !important;
+        }
+
         /* 자재 비교 테이블 */
         .compare-table {
             width: 100%; border-collapse: collapse; font-size: 11.5px;
@@ -1146,10 +1257,29 @@
                             </div>
                         </div>
 
-                        <!-- Dynamic Custom Fields (populated by preset selection) -->
+                        <!-- Dynamic Custom Fields (populated by preset selection & editable in-modal) -->
                         <div class="custom-fields-section mt-2" id="customFieldsSection" style="display:none;">
-                            <div class="modal-section-title"><i class='bx bx-customize'></i> <span id="customFieldsSectionTitle">커스텀 필드</span></div>
-                            <div class="erp-form-grid" id="customFieldsGrid"></div>
+                            <div class="d-flex align-items-center justify-content-between pb-1 border-bottom mb-2">
+                                <div class="modal-section-title m-0 p-0 border-0">
+                                    <i class='bx bx-customize'></i> <span id="customFieldsSectionTitle">커스텀 사양 필드</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <button type="button" class="btn-erp btn-erp-sm" id="modalAddSectionBtn" title="새 섹션 그룹 추가">
+                                        <i class='bx bx-folder-plus'></i> 섹션 추가
+                                    </button>
+                                    <button type="button" class="btn-erp btn-erp-primary btn-erp-sm" id="modalAddFieldBtn" title="사양 항목 추가">
+                                        <i class='bx bx-plus'></i> 항목 추가
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center justify-content-between px-2 py-1 mb-2 bg-light border rounded text-muted" style="font-size:10.5px;">
+                                <span><i class='bx bx-info-circle text-primary'></i> 제조사 TDS 문서 순서에 맞게 항목명/순서를 자유롭게 변경할 수 있습니다.</span>
+                                <span class="text-secondary">(항목명 · 측정값 · 시험규격/비고)</span>
+                            </div>
+
+                            <!-- 섹션 및 필드들이 동적으로 렌더링되는 컨테이너 -->
+                            <div id="modalCustomSectionsContainer" class="d-flex flex-column gap-2"></div>
                         </div>
 
                         <div class="modal-section-title">비고 및 첨부파일</div>
@@ -1167,6 +1297,17 @@
                                 <input type="file" id="fileInput" multiple hidden>
                                 <div class="file-list mt-1" id="fileList"></div>
                             </div>
+                        </div>
+
+                        <!-- 프리셋 동기화 배너 -->
+                        <div class="p-2 mt-3 border border-primary border-opacity-25 rounded bg-primary bg-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2" id="presetSyncBanner" style="display:none;">
+                            <div class="form-check m-0">
+                                <input class="form-check-input" type="checkbox" id="syncPresetCheck" style="cursor:pointer;">
+                                <label class="form-check-label fw-bold text-primary" for="syncPresetCheck" style="font-size:11.5px; cursor:pointer;">
+                                    <i class='bx bx-sync'></i> 현재 사양 구성(항목/순서/섹션)을 '<span id="syncPresetCatName"></span>' 분류의 기본 프리셋으로도 업데이트
+                                </label>
+                            </div>
+                            <span class="text-muted" style="font-size:10.5px;">* 체크 시 다음 등록 자재부터 이 사양 템플릿이 기본 적용됩니다.</span>
                         </div>
 
                         <div class="modal-footer mt-3">
@@ -1238,6 +1379,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_7"></script>
+    <script src="tbm-material.js?v=20260928_8"></script>
 </body>
 </html>
