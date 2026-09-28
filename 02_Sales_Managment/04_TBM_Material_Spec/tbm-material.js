@@ -11,6 +11,11 @@ async function authFetch(url, opts = {}, _retries = 3) {
             token = await window.parent.getAuthToken();
         }
     } catch(e) {}
+    if (!token) {
+        try {
+            token = localStorage.getItem('kng_token') || sessionStorage.getItem('kng_token') || localStorage.getItem('token');
+        } catch(e) {}
+    }
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, opts);
@@ -181,6 +186,10 @@ function initEvents() {
     });
 
     // 폼 저장 및 계산 이벤트
+    $('saveItemBtn')?.addEventListener('click', async e => {
+        e.preventDefault();
+        await saveItem();
+    });
     $('itemForm')?.addEventListener('submit', async e => {
         e.preventDefault();
         await saveItem();
@@ -972,40 +981,54 @@ function closeModal() {
 }
 
 async function saveItem() {
-    const id = $('editId').value;
-    const customFields = {};
-    $('customFieldsGrid').querySelectorAll('[data-cf-key]').forEach(inp => { customFields[inp.dataset.cfKey] = inp.value; });
-    const customFieldNotes = {};
-    $('customFieldsGrid').querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
-    const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
-    const isImport = sourceType === 'import';
-    const qty = isImport ? 0 : (parseInt($('inpQty').value) || 0);
-    const price = isImport ? 0 : (parseInt($('inpPrice').value) || 0);
-    const packagingGroups = isImport ? collectPackagingGroups() : [];
-    const incoterms = packagingGroups.length ? packagingGroups[0].incoterms || [] : [];
-    const perUnitBasis = 0;
+    const itemName = $('inpItemName')?.value.trim();
+    if (!itemName) {
+        showToast('품목명을 입력해 주세요.', 'warning');
+        $('inpItemName')?.focus();
+        return;
+    }
 
-    const payload = {
-        site: $('inpSite').value.trim(),
-        equipment: $('inpEquipment').value.trim(),
-        category: $('inpCategory').value.trim(),
-        itemName: $('inpItemName').value.trim(),
-        spec: $('inpSpec').value.trim(),
-        unit: $('inpUnit').value,
-        qty, price,
-        manufacturer: $('inpManufacturer').value.trim(),
-        remarks: $('inpRemarks').value.trim(),
-        customFields,
-        customFieldNotes,
-        files: currentFiles,
-        sourceType,
-        quoteDate: $('inpQuoteDate').value || '',
-        perUnitBasis,
-        incoterms,
-        packagingGroups
-    };
+    const saveBtn = $('saveItemBtn') || document.querySelector('#itemForm button[type="submit"]') || document.querySelector('#itemForm button.btn-erp-primary');
+    const originalBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 저장 중...";
+    }
 
     try {
+        const id = $('editId')?.value || '';
+        const customFields = {};
+        $('customFieldsGrid')?.querySelectorAll('[data-cf-key]').forEach(inp => { customFields[inp.dataset.cfKey] = inp.value; });
+        const customFieldNotes = {};
+        $('customFieldsGrid')?.querySelectorAll('[data-cf-note-key]').forEach(inp => { if (inp.value.trim()) customFieldNotes[inp.dataset.cfNoteKey] = inp.value.trim(); });
+        const sourceType = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
+        const isImport = sourceType === 'import';
+        const qty = isImport ? 0 : (parseFloat($('inpQty')?.value) || 0);
+        const price = isImport ? 0 : (parseFloat($('inpPrice')?.value) || 0);
+        const packagingGroups = isImport ? collectPackagingGroups() : [];
+        const incoterms = packagingGroups.length ? packagingGroups[0].incoterms || [] : [];
+        const perUnitBasis = 0;
+
+        const payload = {
+            site: $('inpSite')?.value.trim() || '',
+            equipment: $('inpEquipment')?.value.trim() || '',
+            category: $('inpCategory')?.value.trim() || '',
+            itemName,
+            spec: $('inpSpec')?.value.trim() || '',
+            unit: $('inpUnit')?.value || 'EA',
+            qty, price,
+            manufacturer: $('inpManufacturer')?.value.trim() || '',
+            remarks: $('inpRemarks')?.value.trim() || '',
+            customFields,
+            customFieldNotes,
+            files: currentFiles || [],
+            sourceType,
+            quoteDate: $('inpQuoteDate')?.value || '',
+            perUnitBasis,
+            incoterms,
+            packagingGroups
+        };
+
         const url = id ? `${API}/materials/${id}` : `${API}/materials`;
         const method = id ? 'PUT' : 'POST';
         const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -1015,14 +1038,24 @@ async function saveItem() {
             if (!id) currentPage = 1;
             loadData();
         } else {
-            const err = await res.json();
-            showToast('저장 실패: ' + err.error, 'error');
+            let errMsg = '저장 실패';
+            try {
+                const err = await res.json();
+                if (err && err.error) errMsg += ': ' + err.error;
+            } catch(e) {}
+            showToast(errMsg, 'error');
         }
     } catch(e) {
-        console.error(e);
-        showToast('서버 연결 오류', 'error');
+        console.error('saveItem error:', e);
+        showToast('서버 연결 오류: ' + (e.message || ''), 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnHtml || "<i class='bx bx-save'></i> 저장";
+        }
     }
 }
+window.saveItem = saveItem;
 
 // 단일 삭제
 async function deleteSingle(id) {
@@ -1141,14 +1174,16 @@ function addIncotermToGroup(groupEl, term, price, currency) {
 function collectPackagingGroups() {
     const groups = [];
     $('packagingGroupsContainer')?.querySelectorAll('.pkg-group').forEach(g => {
-        const packaging = g.querySelector('.pkg-name').value.trim();
-        const qty = parseFloat(g.querySelector('.pkg-qty').value) || 0;
-        const unit = g.querySelector('.pkg-unit').value || 'EA';
+        const packaging = g.querySelector('.pkg-name')?.value.trim() || '';
+        const qty = parseFloat(g.querySelector('.pkg-qty')?.value) || 0;
+        const unit = g.querySelector('.pkg-unit')?.value || 'EA';
         const incoterms = [];
         g.querySelectorAll('.it-term').forEach((termEl, i) => {
             const term = termEl.value;
-            const currency = g.querySelectorAll('.it-currency')[i].value;
-            const p = parseFloat(g.querySelectorAll('.it-price')[i].value) || 0;
+            const currencyEl = g.querySelectorAll('.it-currency')[i];
+            const currency = currencyEl ? currencyEl.value : 'USD';
+            const priceEl = g.querySelectorAll('.it-price')[i];
+            const p = parseFloat(priceEl?.value) || 0;
             if (term && p > 0) incoterms.push({ term, price: p, currency });
         });
         groups.push({ packaging, qty, unit, incoterms });
