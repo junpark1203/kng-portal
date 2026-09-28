@@ -1074,6 +1074,9 @@ window.openModal = function(id = null, isDuplicate = false) {
     }
 
     $('itemModal').classList.add('active');
+    $('itemModal').scrollTop = 0;
+    const mBody = $('itemModal').querySelector('.modal-body');
+    if (mBody) mBody.scrollTop = 0;
     document.body.style.overflow = 'hidden';
     modalSnapshot = getFormSnapshot();
 };
@@ -2180,6 +2183,9 @@ function openCompare() {
     compareItems = items;
     renderCompareTable();
     $('compareModal').classList.add('active');
+    $('compareModal').scrollTop = 0;
+    const cmpWrap = $('compareTableWrap');
+    if (cmpWrap) cmpWrap.scrollTop = 0;
 }
 
 function renderCompareTable() {

@@ -723,24 +723,58 @@
         .sec-drag:active, .f-drag:active { cursor: grabbing; }
 
         /* ── 7. 등록/수정 모달 & 비교 모달 (ERP 전표 스타일) ── */
-        .modal { z-index: 1055 !important; }
+        .modal {
+            z-index: 1055 !important;
+            display: none;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: rgba(15, 23, 42, 0.6) !important;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            padding: 24px 16px !important;
+            box-sizing: border-box !important;
+        }
+        .modal.active {
+            display: flex !important;
+            align-items: flex-start !important; /* 모달 상단 잘림 원천 방지: 항상 화면 상단 여백(24px)에서 시작 */
+            justify-content: center !important;
+        }
         .modal-backdrop { z-index: 1050 !important; }
         .modal-dialog.erp-modal-lg {
-            max-width: 820px;
-            width: 92vw;
-            margin: 1.5rem auto;
+            max-width: 860px !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+        }
+        .modal-dialog.modal-xl {
+            max-width: 1100px !important;
+            width: 100% !important;
+            margin: 0 auto !important;
         }
         .modal-content {
+            max-height: calc(100vh - 48px) !important;
+            display: flex !important;
+            flex-direction: column !important;
             border: 1px solid #475569 !important;
-            border-radius: 2px !important;
-            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3) !important;
-            background: #ffffff;
+            border-radius: 4px !important;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4) !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
         }
         .modal-header {
-            background: #1e293b;
-            color: #ffffff;
-            padding: 8px 14px !important;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 20 !important;
+            background: #1e293b !important;
+            color: #ffffff !important;
+            padding: 10px 16px !important;
             border-radius: 0 !important;
+            border-bottom: 1px solid #334155 !important;
         }
         .modal-header h2, .modal-header .modal-title {
             font-size: 13.5px;
@@ -752,11 +786,20 @@
             gap: 6px;
         }
         .modal-header .btn-close { filter: invert(1); }
-        .modal-body { padding: 12px 16px !important; }
+        .modal-body {
+            flex: 1 1 auto !important;
+            overflow-y: auto !important;
+            padding: 14px 18px !important;
+            background: #ffffff;
+        }
         .modal-footer {
-            padding: 8px 14px !important;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
+            flex-shrink: 0 !important;
+            position: sticky !important;
+            bottom: 0 !important;
+            z-index: 20 !important;
+            padding: 10px 16px !important;
+            background: #f8fafc !important;
+            border-top: 1px solid #e2e8f0 !important;
         }
 
         .erp-form-grid {
@@ -1214,7 +1257,7 @@
 
     <!-- ═══ 7. Add/Edit Modal (신규/수정 모달) ═══ -->
     <div id="itemModal" class="modal">
-        <div class="modal-dialog erp-modal-lg modal-dialog-centered">
+        <div class="modal-dialog erp-modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h2><i class='bx bx-cog'></i> <span id="modalTitle">신규 자재 등록</span></h2>
@@ -1379,16 +1422,16 @@
                             <span class="text-muted" style="font-size:10.5px;">* 체크 시 다음 등록 자재부터 이 사양 템플릿이 기본 적용됩니다.</span>
                         </div>
 
-                        <div class="modal-footer mt-3 d-flex align-items-center justify-content-between">
-                            <button type="button" class="btn-erp" id="saveAsCopyBtn" style="display:none; color:#1d4ed8; border-color:#93c5fd; background:#eff6ff;" onclick="window.saveAsCopy ? window.saveAsCopy() : false;" title="현재 입력된 사양으로 기존 자재를 수정하지 않고 새로운 자재(복사본)로 등록합니다.">
-                                <i class='bx bx-copy'></i> 복사하여 신규 저장
-                            </button>
-                            <div class="d-flex gap-1 ms-auto">
-                                <button type="button" class="btn-erp" id="cancelBtn">취소</button>
-                                <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
-                            </div>
-                        </div>
                     </form>
+                </div>
+                <div class="modal-footer d-flex align-items-center justify-content-between">
+                    <button type="button" class="btn-erp" id="saveAsCopyBtn" style="display:none; color:#1d4ed8; border-color:#93c5fd; background:#eff6ff;" onclick="window.saveAsCopy ? window.saveAsCopy() : false;" title="현재 입력된 사양으로 기존 자재를 수정하지 않고 새로운 자재(복사본)로 등록합니다.">
+                        <i class='bx bx-copy'></i> 복사하여 신규 저장
+                    </button>
+                    <div class="d-flex gap-1 ms-auto">
+                        <button type="button" class="btn-erp" id="cancelBtn">취소</button>
+                        <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" form="itemForm" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1428,7 +1471,7 @@
 
     <!-- ═══ 9. Compare Modal (자재 비교 모달) ═══ -->
     <div id="compareModal" class="modal">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header" style="background:#1e293b;">
                     <h2><i class='bx bx-transfer'></i> 자재 사양 비교</h2>
@@ -1453,6 +1496,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_11"></script>
+    <script src="tbm-material.js?v=20260928_12"></script>
 </body>
 </html>
