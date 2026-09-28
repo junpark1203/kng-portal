@@ -6,7 +6,11 @@
 // --- Auth Fetch (with retry for iframe auth race condition) ---
 async function authFetch(url, opts = {}, _retries = 3) {
     let token = null;
-    try { if (window.parent && window.parent.getAuthToken) token = await window.parent.getAuthToken(); } catch(e){}
+    try {
+        if (window.parent && window.parent !== window && window.parent.getAuthToken) {
+            token = await window.parent.getAuthToken();
+        }
+    } catch(e) {}
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, opts);
@@ -27,6 +31,36 @@ let activeSourceTypeFilter = 'all';
 let currentFiles = [];
 let subSearchText = '';
 let subSearchTimer = null;
+let modalSnapshot = '';
+let selectedPresetId = null;
+let compareItems = [];
+
+// ── 통화 및 무역조건 상수 (최상단 즉시 초기화) ──
+const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+const CURRENCY_LIST = [
+    { code: 'USD', symbol: '$', label: 'USD ($)' },
+    { code: 'CNY', symbol: '¥', label: 'CNY (¥)' },
+    { code: 'EUR', symbol: '€', label: 'EUR (€)' },
+    { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
+    { code: 'KRW', symbol: '₩', label: 'KRW (₩)' },
+    { code: 'GBP', symbol: '£', label: 'GBP (£)' },
+];
+
+function currencySymbol(code) {
+    return (CURRENCY_LIST.find(c => c.code === code) || {}).symbol || code + ' ';
+}
+function fmtN(n) {
+    return (n === 0 || n == null) ? '0' : Number(n).toLocaleString();
+}
+function fmtDec(n) {
+    if (n == null || n === 0) return '0';
+    return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+}
+function formatKrwApprox(price, currency) {
+    if (currency === 'KRW' || !window.exchangeRates || !window.exchangeRates[currency]) return '';
+    const krwValue = price * (1 / window.exchangeRates[currency]);
+    return ` <em style="font-size:10px;color:#9ca3af;font-style:normal">(약 ₩${fmtN(Math.round(krwValue))})</em>`;
+}
 
 const $ = id => document.getElementById(id);
 const escapeHtml = str => {
@@ -38,6 +72,19 @@ const escapeHtml = str => {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 };
+
+// 안전한 페이지네이션 계산 헬퍼 (Common/js/kng-table-utils.js 호환)
+function calcPagination(totalItems, currentPage, pageSize) {
+    if (typeof window.calcPagination === 'function' && window.calcPagination !== calcPagination) {
+        return window.calcPagination(totalItems, currentPage, pageSize);
+    }
+    const size = pageSize <= 0 ? (totalItems || 1) : pageSize;
+    const totalPages = Math.ceil(totalItems / size) || 1;
+    const page = Math.max(1, Math.min(currentPage, totalPages));
+    const startIdx = (page - 1) * size;
+    const endIdx = pageSize <= 0 ? totalItems : Math.min(startIdx + size, totalItems);
+    return { page, totalPages, startIdx, endIdx };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initEvents();
@@ -185,6 +232,7 @@ function clearSearch() {
     activeCategoryFilter = 'all';
     activeSourceTypeFilter = 'all';
     currentPage = 1;
+    renderCategoryTabs();
     applyFiltersAndSort();
 }
 
@@ -200,18 +248,26 @@ async function loadData() {
             authFetch(`${API}/materials?t=${Date.now()}`),
             authFetch(`https://kng.junparks.com/api/exchange-rates?t=${Date.now()}`).catch(() => ({ok: false}))
         ]);
-        if (!res.ok) throw new Error('fetch failed');
+        if (!res.ok) throw new Error(`API 응답 실패 (HTTP ${res.status})`);
         allData = await res.json();
-        if (rateRes.ok) {
-            window.exchangeRates = await rateRes.json();
-            updateExchangeRateUI();
+        if (rateRes && rateRes.ok) {
+            try {
+                window.exchangeRates = await rateRes.json();
+                updateExchangeRateUI();
+            } catch(e) {}
         }
         renderCategoryTabs();
         updateDatalists();
         applyFiltersAndSort();
     } catch(e) {
-        console.error(e);
-        $('tbmTbody').innerHTML = '<tr><td colspan="17" class="text-center text-danger py-4"><i class="bx bx-error-circle fs-3 d-block mb-1"></i>데이터를 불러오는 중 오류가 발생했습니다.</td></tr>';
+        console.error('loadData error:', e);
+        const tbody = $('tbmTbody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-4">
+                <i class="bx bx-error-circle fs-3 d-block mb-1"></i>
+                데이터를 불러오는 중 오류가 발생했습니다. (${escapeHtml(e.message)})
+            </td></tr>`;
+        }
     }
 }
 
@@ -232,7 +288,7 @@ async function loadPresets() {
         if (res.ok) {
             presetsData = await res.json();
             presetsData.forEach(p => {
-                if (p.fields) {
+                if (Array.isArray(p.fields)) {
                     const seen = new Set();
                     p.fields.forEach(f => {
                         if (f.type !== 'section') {
@@ -249,7 +305,7 @@ async function loadPresets() {
                 }
             });
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error('loadPresets error:', e); }
     updateCategorySelect();
 }
 
@@ -337,11 +393,13 @@ function applyFiltersAndSort() {
         if (queryTokens.length > 0) {
             let searchableText = '';
             if (searchTarget === 'all') {
+                const cfValues = Object.values(item.customFields || {}).map(v => (v != null && typeof v === 'object') ? JSON.stringify(v) : String(v || ''));
+                const cfNotes = Object.values(item.customFieldNotes || {}).map(v => String(v || ''));
                 searchableText = [
                     item.site, item.equipment, item.category, item.itemName,
                     item.spec, item.manufacturer, item.remarks,
-                    ...Object.values(item.customFields || {}),
-                    ...Object.values(item.customFieldNotes || {})
+                    ...cfValues,
+                    ...cfNotes
                 ].join(' ').toLowerCase();
             } else {
                 searchableText = String(item[searchTarget] || '').toLowerCase();
@@ -353,10 +411,11 @@ function applyFiltersAndSort() {
 
         // 4. 결과 내 재검색 (Sub-search)
         if (subSearchText) {
+            const cfValues = Object.values(item.customFields || {}).map(v => String(v || ''));
             const rowContent = [
                 item.site, item.equipment, item.category, item.itemName,
                 item.spec, item.manufacturer, item.remarks, item.qty, item.price, item.total,
-                ...Object.values(item.customFields || {})
+                ...cfValues
             ].join(' ').toLowerCase();
             if (!rowContent.includes(subSearchText)) return false;
         }
@@ -375,8 +434,8 @@ function applyFiltersAndSort() {
                 return currentSort.asc ? va - vb : vb - va;
             }
             if (currentSort.column === 'createdAt') {
-                va = new Date(va || 0).getTime();
-                vb = new Date(vb || 0).getTime();
+                va = new Date(va || a.updatedAt || 0).getTime();
+                vb = new Date(vb || b.updatedAt || 0).getTime();
                 return currentSort.asc ? va - vb : vb - va;
             }
             va = String(va || '').toLowerCase();
@@ -425,12 +484,12 @@ function renderGrid() {
     const tbody = $('tbmTbody');
     if (!tbody) return;
 
-    $('selectAll').checked = false;
+    if ($('selectAll')) $('selectAll').checked = false;
     updateFloatingBar();
 
     if (!filteredData.length) {
         tbody.innerHTML = '<tr><td colspan="17" class="text-center text-muted py-4"><i class="bx bx-package fs-3 d-block mb-1"></i>조회된 자재 규격 데이터가 없습니다.</td></tr>';
-        $('pagination').innerHTML = '';
+        if ($('pagination')) $('pagination').innerHTML = '';
         return;
     }
 
@@ -444,6 +503,7 @@ function renderGrid() {
         const num = pg.startIdx + idx + 1;
         const filesArr = Array.isArray(d.files) ? d.files : [];
         const thumbFile = filesArr.find(f => {
+            if (!f || typeof f !== 'object') return false;
             const ext = (f.originalName || f.filename || '').split('.').pop().toLowerCase();
             return imgExts.includes(ext);
         });
@@ -475,6 +535,15 @@ function renderGrid() {
 
         // 날짜 포맷
         const dateStr = d.quoteDate || (d.updatedAt ? new Date(d.updatedAt).toISOString().split('T')[0] : '-');
+
+        // 아코디언 콘텐츠 안전 생성
+        let accordionHtml = '';
+        try {
+            accordionHtml = buildAccordionContentHtml(d, thumbUrl, filesArr);
+        } catch (accErr) {
+            console.error('Accordion render error for item', d.id, accErr);
+            accordionHtml = `<div class="p-2 text-danger">상세 정보를 렌더링하는 중 오류가 발생했습니다: ${escapeHtml(accErr.message)}</div>`;
+        }
 
         // 메인 데이터 행
         html += `
@@ -540,7 +609,7 @@ function renderGrid() {
         <!-- 아코디언 상세 전표 서브 행 -->
         <tr class="erp-sub-row d-none" id="subRow_${d.id}">
             <td colspan="17" class="p-0">
-                ${buildAccordionContentHtml(d, thumbUrl, filesArr)}
+                ${accordionHtml}
             </td>
         </tr>`;
     });
@@ -548,21 +617,23 @@ function renderGrid() {
     tbody.innerHTML = html;
 
     // 페이지네이션 렌더링
-    renderPagination({
-        container: $('pagination'),
-        totalFiltered: filteredData.length,
-        totalAll: allData.length,
-        totalPages: pg.totalPages,
-        currentPage,
-        pageSize,
-        startIdx: pg.startIdx,
-        endIdx: pg.endIdx,
-        onPageChange: p => { currentPage = p; renderGrid(); },
-        onPageSizeChange: s => { pageSize = s; currentPage = 1; renderGrid(); }
-    });
+    if (typeof window.renderPagination === 'function' && $('pagination')) {
+        window.renderPagination({
+            container: $('pagination'),
+            totalFiltered: filteredData.length,
+            totalAll: allData.length,
+            totalPages: pg.totalPages,
+            currentPage,
+            pageSize,
+            startIdx: pg.startIdx,
+            endIdx: pg.endIdx,
+            onPageChange: p => { currentPage = p; renderGrid(); },
+            onPageSizeChange: s => { pageSize = s; currentPage = 1; renderGrid(); }
+        });
+    }
 
     // 그리드 열 너비 리사이저 초기화
-    if (window.ErpGridResizer) {
+    if (window.ErpGridResizer && typeof window.ErpGridResizer.init === 'function') {
         window.ErpGridResizer.init('tbmTable');
     }
 }
@@ -574,20 +645,21 @@ function renderSidebar() { renderCategoryTabs(); }
 // ── 6. 아코디언 상세 뷰 빌더 ──
 function buildAccordionContentHtml(d, thumbUrl, filesArr) {
     const preset = presetsData.find(p => p.category === d.category);
-    const cfNotes = d.customFieldNotes || {};
+    const cfNotes = (d.customFieldNotes && typeof d.customFieldNotes === 'object') ? d.customFieldNotes : {};
+    const customFields = (d.customFields && typeof d.customFields === 'object') ? d.customFields : {};
 
     // 1) 스펙 테이블 (섹션별 그룹)
     let specTableHtml = '<div class="text-muted small">등록된 커스텀 사양이 없습니다.</div>';
-    if (preset && preset.fields && d.customFields) {
+    if (preset && Array.isArray(preset.fields) && Object.keys(customFields).length > 0) {
         let rowsHtml = '';
         preset.fields.forEach(f => {
             if (f.type === 'section') {
                 rowsHtml += `<tr class="table-light"><th colspan="2" class="text-primary fw-bold" style="background:#eff6ff !important;"><i class='bx bx-chevron-right'></i> ${(f.label || '').replace(/\n/g, ' / ')}</th></tr>`;
             } else {
-                const val = d.customFields[f.key];
+                const val = customFields[f.key];
                 if (val != null && val !== '') {
-                    const note = cfNotes[f.key] ? ` <span class="badge bg-light text-secondary border ms-1" title="${cfNotes[f.key]}">${cfNotes[f.key]}</span>` : '';
-                    rowsHtml += `<tr><th>${(f.label || '').replace(/\n/g, ' ')}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
+                    const note = cfNotes[f.key] ? ` <span class="badge bg-light text-secondary border ms-1" title="${escapeHtml(cfNotes[f.key])}">${escapeHtml(cfNotes[f.key])}</span>` : '';
+                    rowsHtml += `<tr><th>${escapeHtml((f.label || '').replace(/\n/g, ' '))}</th><td><strong>${escapeHtml(val)}</strong>${note}</td></tr>`;
                 }
             }
         });
@@ -598,7 +670,7 @@ function buildAccordionContentHtml(d, thumbUrl, filesArr) {
 
     // 2) 첨부파일 다운로드 리스트
     let filesHtml = '<div class="text-muted" style="font-size:10.5px;">첨부파일 없음</div>';
-    if (filesArr.length > 0) {
+    if (Array.isArray(filesArr) && filesArr.length > 0) {
         filesHtml = `<div class="d-flex flex-column gap-1">` + filesArr.map(f => {
             const ext = (f.originalName || f.filename || '').split('.').pop().toLowerCase();
             let icon = 'bx-file';
@@ -618,28 +690,55 @@ function buildAccordionContentHtml(d, thumbUrl, filesArr) {
     let pricingHtml = '';
     if (d.sourceType === 'import') {
         const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
-        pricingHtml = `
-            <div class="acc-price-box">
-                <div class="fw-bold text-warning-emphasis mb-1"><i class='bx bx-globe'></i> 수입 견적 사양</div>
-                ${groups.length ? groups.map(g => {
-                    const its = (g.incoterms || []).map(it => {
-                        const sym = currencySymbol(it.currency || 'KRW');
-                        const approx = formatKrwApprox(it.price, it.currency);
-                        return `<div>- <strong>${it.term}</strong>: ${sym}${fmtDec(it.price)}${approx}</div>`;
-                    }).join('');
-                    return `<div class="mb-2 p-1 border border-warning rounded bg-white">
-                        <div class="fw-bold" style="color:#92400e;">📦 ${escapeHtml(g.packaging || '포장단위')} (${g.qty || 0} ${g.unit || ''})</div>
-                        <div class="ps-2" style="font-size:11px;">${its || '<span class="text-muted">가격 미입력</span>'}</div>
+        if (groups.length > 0) {
+            const groupsHtml = groups.map(g => {
+                const its = (g.incoterms || []).map(it => {
+                    const sym = currencySymbol(it.currency || 'KRW');
+                    const approx = formatKrwApprox(it.price, it.currency);
+                    return `<div>- <strong>${escapeHtml(it.term)}</strong>: ${sym}${fmtDec(it.price)}${approx}</div>`;
+                }).join('');
+                return `<div class="mb-2 p-1 border border-warning rounded bg-white">
+                    <div class="fw-bold" style="color:#92400e;">📦 ${escapeHtml(g.packaging || '포장단위')} (${g.qty || 0} ${escapeHtml(g.unit || '')})</div>
+                    <div class="ps-2" style="font-size:11px;">${its || '<span class="text-muted">가격 미입력</span>'}</div>
+                </div>`;
+            }).join('');
+            pricingHtml = `
+                <div class="acc-price-box">
+                    <div class="fw-bold text-warning-emphasis mb-1"><i class='bx bx-globe'></i> 수입 견적 사양</div>
+                    ${groupsHtml}
+                </div>`;
+        } else {
+            // Backward compatibility: old flat incoterms
+            const oldIts = Array.isArray(d.incoterms) ? d.incoterms : [];
+            if (oldIts.length > 0) {
+                const its = oldIts.map(it => {
+                    const sym = currencySymbol(it.currency || 'KRW');
+                    const approx = formatKrwApprox(it.price, it.currency);
+                    return `<div>- <strong>${escapeHtml(it.term)}</strong>: ${sym}${fmtDec(it.price)}${approx}</div>`;
+                }).join('');
+                pricingHtml = `
+                    <div class="acc-price-box">
+                        <div class="fw-bold text-warning-emphasis mb-1"><i class='bx bx-globe'></i> 수입 견적 사양</div>
+                        <div class="p-1 border border-warning rounded bg-white">
+                            <div class="fw-bold" style="color:#92400e;">📦 기본 견적</div>
+                            <div class="ps-2" style="font-size:11px;">${its}</div>
+                        </div>
                     </div>`;
-                }).join('') : '<div class="text-muted">포장단위 정보 없음</div>'}
-            </div>`;
+            } else {
+                pricingHtml = `
+                    <div class="acc-price-box">
+                        <div class="fw-bold text-warning-emphasis mb-1"><i class='bx bx-globe'></i> 수입 견적 사양</div>
+                        <div class="text-muted" style="font-size:11px;">가격 미입력</div>
+                    </div>`;
+            }
+        }
     } else {
         pricingHtml = `
             <div class="acc-price-box">
                 <div class="fw-bold text-primary mb-1"><i class='bx bx-won'></i> 국내 단가 정보</div>
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-muted">수량:</span>
-                    <strong>${fmtN(d.qty)} ${d.unit || 'EA'}</strong>
+                    <strong>${fmtN(d.qty)} ${escapeHtml(d.unit || 'EA')}</strong>
                 </div>
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-muted">단가:</span>
@@ -764,8 +863,8 @@ function updateFloatingBar(event) {
             }
         });
 
-        $('floatingCount').textContent = checked.length;
-        $('floatingDomesticTotal').textContent = '₩' + domesticTotal.toLocaleString();
+        if ($('floatingCount')) $('floatingCount').textContent = checked.length;
+        if ($('floatingDomesticTotal')) $('floatingDomesticTotal').textContent = '₩' + domesticTotal.toLocaleString();
     } else {
         bar.classList.remove('show');
         if (deleteBtn) deleteBtn.classList.add('d-none');
@@ -774,8 +873,6 @@ function updateFloatingBar(event) {
 }
 
 // ── 9. 등록 / 수정 모달 로직 ──
-let modalSnapshot = '';
-
 function getFormSnapshot() {
     const vals = ['inpSite','inpEquipment','inpCategory','inpItemName','inpSpec','inpUnit','inpQty','inpPrice','inpManufacturer','inpRemarks','inpQuoteDate'].map(id => $(id)?.value || '');
     const src = document.querySelector('input[name="sourceType"]:checked')?.value || 'domestic';
@@ -968,24 +1065,6 @@ function updateCalc() {
     $('inpTotal').value = (q * p) > 0 ? '₩' + (q * p).toLocaleString() : '';
 }
 
-const INCOTERMS_LIST = ['EXW','FCA','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
-const CURRENCY_LIST = [
-    { code: 'USD', symbol: '$', label: 'USD ($)' },
-    { code: 'CNY', symbol: '¥', label: 'CNY (¥)' },
-    { code: 'EUR', symbol: '€', label: 'EUR (€)' },
-    { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
-    { code: 'KRW', symbol: '₩', label: 'KRW (₩)' },
-    { code: 'GBP', symbol: '£', label: 'GBP (£)' },
-];
-function currencySymbol(code) { return (CURRENCY_LIST.find(c => c.code === code) || {}).symbol || code + ' '; }
-function fmtN(n) { return (n === 0 || n == null) ? '0' : Number(n).toLocaleString(); }
-function fmtDec(n) { if (n == null || n === 0) return '0'; return Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 }); }
-function formatKrwApprox(price, currency) {
-    if (currency === 'KRW' || !window.exchangeRates || !window.exchangeRates[currency]) return '';
-    const krwValue = price * (1 / window.exchangeRates[currency]);
-    return ` <em style="font-size:10px;color:#9ca3af;font-style:normal">(약 ₩${fmtN(Math.round(krwValue))})</em>`;
-}
-
 function addPackagingGroup(data) {
     const container = $('packagingGroupsContainer');
     const group = document.createElement('div');
@@ -1067,7 +1146,7 @@ function onCategoryChange(e, existingValues, existingNotes) {
     const section = $('customFieldsSection'), grid = $('customFieldsGrid');
     const preset = presetsData.find(p => p.category === cat);
 
-    if (!preset || !preset.fields || !preset.fields.length) {
+    if (!preset || !Array.isArray(preset.fields) || !preset.fields.length) {
         section.style.display = 'none';
         grid.innerHTML = '';
         return;
@@ -1184,8 +1263,6 @@ window.removeFile = function(idx) {
 };
 
 // ── 13. 프리셋 드로어 (Preset Drawer) ──
-let selectedPresetId = null;
-
 function openPresetDrawer() {
     $('drawerOverlay').classList.add('active');
     $('presetDrawer').classList.add('open');
@@ -1503,8 +1580,6 @@ function exportExcel() {
 }
 
 // ── 15. 자재 비교 (Compare Modal) ──
-let compareItems = [];
-
 function openCompare() {
     const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
     if (ids.length < 2) return showToast('비교할 항목을 2개 이상 선택해주세요.', 'warning');
@@ -1537,13 +1612,20 @@ function renderCompareTable() {
         ['수입 견적 (포장 및 조건별)', d => {
             if (d.sourceType !== 'import') return '-';
             const groups = Array.isArray(d.packagingGroups) ? d.packagingGroups : [];
-            if (!groups.length) return '<span class="text-muted">가격 미입력</span>';
+            if (!groups.length) {
+                const oldIts = Array.isArray(d.incoterms) ? d.incoterms : [];
+                if (!oldIts.length) return '<span class="text-muted">가격 미입력</span>';
+                return oldIts.map(it => {
+                    const sym = currencySymbol(it.currency || 'KRW');
+                    return `<div>- <strong>${escapeHtml(it.term)}</strong>: ${sym}${fmtDec(it.price)}${formatKrwApprox(it.price, it.currency)}</div>`;
+                }).join('');
+            }
             return groups.map(g => {
                 const label = g.packaging || '미지정';
                 const qtyStr = g.qty ? `(${fmtDec(g.qty)} ${g.unit || ''})` : '';
                 const itsHtml = (g.incoterms || []).map(it => {
                     const sym = currencySymbol(it.currency || 'KRW');
-                    return `<div>- <strong>${it.term}</strong>: ${sym}${fmtDec(it.price)}${formatKrwApprox(it.price, it.currency)}</div>`;
+                    return `<div>- <strong>${escapeHtml(it.term)}</strong>: ${sym}${fmtDec(it.price)}${formatKrwApprox(it.price, it.currency)}</div>`;
                 }).join('');
                 return `<div class="mb-1"><strong>📦 ${escapeHtml(label)} ${qtyStr}</strong>${itsHtml || '<div class="text-muted">미입력</div>'}</div>`;
             }).join('');
