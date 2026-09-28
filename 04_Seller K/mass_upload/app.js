@@ -226,62 +226,67 @@ function initSidebar() {
 // ════════════════════════════════════════
 function initWizard() {
     // Action Buttons
-    document.getElementById('btnSave').addEventListener('click', saveProduct);
-    document.getElementById('btnDraft').addEventListener('click', saveDraft);
-    document.getElementById('btnPreview').addEventListener('click', function() {
-        // Collect all data and show preview
-        [1, 2, 3, 4, 5].forEach(function(s) { collectStepData(s); });
-        renderPreview();
-        // Since step 6 is gone, we might want to scroll to the bottom or open a modal
-        // For now, let's just alert or implement a modal later if needed
-    });
+    var btnSave = document.getElementById('btnSave');
+    if (btnSave) btnSave.addEventListener('click', saveProduct);
+    var btnDraft = document.getElementById('btnDraft');
+    if (btnDraft) btnDraft.addEventListener('click', saveDraft);
+    var btnPreview = document.getElementById('btnPreview');
+    if (btnPreview) {
+        btnPreview.addEventListener('click', function() {
+            // Collect all data and show preview
+            [1, 2, 3, 4, 5].forEach(function(s) { collectStepData(s); });
+            renderPreview();
+        });
+    }
 
     // Scroll Spy Logic
     var navItems = document.querySelectorAll('.scroll-spy-nav li');
-    var sections = Array.from(navItems).map(function(li) {
-        return document.getElementById(li.dataset.target);
-    }).filter(Boolean);
+    if (navItems.length > 0) {
+        var sections = Array.from(navItems).map(function(li) {
+            return document.getElementById(li.dataset.target);
+        }).filter(Boolean);
 
-    // Scroll to section on nav click
-    navItems.forEach(function(item) {
-        item.addEventListener('click', function() {
-            var targetId = this.dataset.target;
-            var targetSection = document.getElementById(targetId);
-            var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
-            if (targetSection && pageBody) {
-                var targetRect = targetSection.getBoundingClientRect();
-                var containerRect = pageBody.getBoundingClientRect();
-                var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 20;
-                pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
-            }
-        });
-    });
-
-    // IntersectionObserver to highlight nav items on scroll
-    if ('IntersectionObserver' in window) {
-        var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
-        var observerOptions = {
-            root: pageBody,
-            rootMargin: '-50px 0px -50% 0px',
-            threshold: 0
-        };
-
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) {
-                    navItems.forEach(function(li) {
-                        li.classList.remove('active');
-                        if (li.dataset.target === entry.target.id) {
-                            li.classList.add('active');
-                        }
-                    });
+        // Scroll to section on nav click
+        navItems.forEach(function(item) {
+            item.addEventListener('click', function() {
+                var targetId = this.dataset.target;
+                var targetSection = document.getElementById(targetId);
+                var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+                if (targetSection && pageBody) {
+                    var targetRect = targetSection.getBoundingClientRect();
+                    var containerRect = pageBody.getBoundingClientRect();
+                    var topOffset = targetRect.top - containerRect.top + pageBody.scrollTop - 20;
+                    pageBody.scrollTo({ top: topOffset, behavior: 'smooth' });
                 }
             });
-        }, observerOptions);
-
-        sections.forEach(function(section) {
-            observer.observe(section);
         });
+
+        // IntersectionObserver to highlight nav items on scroll
+        if ('IntersectionObserver' in window) {
+            var pageBody = document.getElementById('pageBody') || document.querySelector('.page-body');
+            var observerOptions = {
+                root: pageBody,
+                rootMargin: '-50px 0px -50% 0px',
+                threshold: 0
+            };
+
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        navItems.forEach(function(li) {
+                            li.classList.remove('active');
+                            if (li.dataset.target === entry.target.id) {
+                                li.classList.add('active');
+                            }
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(function(section) {
+                observer.observe(section);
+            });
+        }
     }
 }
 
@@ -352,9 +357,9 @@ function startNewProduct() {
 function saveFromEditMode() {
     // 모든 스텝 데이터 수집 후 저장
     [1, 2, 3, 4, 5].forEach(function(s) { collectStepData(s); });
-    if (!currentProduct.productName) { showToast('스토어 상품명을 입력하세요.', 'warning'); goToStep(1); return; }
-    if (!currentProduct.categoryId) { showToast('카테고리를 선택하세요.', 'warning'); goToStep(1); return; }
-    if (!currentProduct.salePrice) { showToast('판매가를 입력하세요.', 'warning'); goToStep(2); return; }
+    if (!currentProduct.productName) { showToast('스토어 상품명을 입력하세요.', 'warning'); if (location.hash !== '#register') location.hash = '#register'; goToStep(1); return; }
+    if (!currentProduct.categoryId) { showToast('카테고리를 선택하세요.', 'warning'); if (location.hash !== '#register') location.hash = '#register'; goToStep(1); return; }
+    if (!currentProduct.salePrice) { showToast('판매가를 입력하세요.', 'warning'); if (location.hash !== '#register') location.hash = '#register'; goToStep(2); return; }
 
     currentProduct.updatedAt = new Date().toISOString();
     currentProduct._images = currentImages;
@@ -366,6 +371,9 @@ function saveFromEditMode() {
         refreshProductList();
         _isDirty = false;
         _editMode = false;
+        document.querySelectorAll('.btn-edit-save').forEach(function(btn) {
+            btn.classList.add('hidden');
+        });
         location.hash = 'products';
     }).catch(function(err) {
         showToast('저장 실패: ' + err.message, 'error');

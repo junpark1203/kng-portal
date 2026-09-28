@@ -91,86 +91,20 @@
     background: #10b981;
 }
 
-/* ── 2. 등록 페이지 2열 레이아웃 & 스크롤 스파이 사이드바 ── */
+/* ── 2. 등록 페이지 전폭 레이아웃 ── */
 .registration-layout {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
+    display: block;
+    width: 100%;
 }
 
-.registration-sidebar {
-    width: 200px;
-    flex-shrink: 0;
-}
-
-.scroll-spy-nav {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    background: #ffffff;
-    border: 1px solid var(--erp-border);
-    border-radius: 2px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-    overflow: hidden;
-}
-
-.scroll-spy-nav li {
-    padding: 9px 12px;
-    font-size: 11.5px;
-    font-weight: 600;
-    color: #475569;
-    cursor: pointer;
-    border-left: 3px solid transparent;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #ffffff;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.scroll-spy-nav li:last-child {
-    border-bottom: none;
-}
-
-.scroll-spy-nav li:hover {
-    background: #f8fafc;
-    color: #0f172a;
-}
-
-.scroll-spy-nav li.active {
-    background: #eff6ff;
-    color: var(--erp-primary);
-    border-left-color: var(--erp-primary);
-    font-weight: 700;
-}
-
-.scroll-spy-nav .step-num {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #e2e8f0;
-    color: #475569;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.scroll-spy-nav li.active .step-num {
-    background: var(--erp-primary);
-    color: #ffffff;
-}
-
+.registration-sidebar,
+.scroll-spy-nav,
 .registration-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    display: none !important;
 }
 
 .registration-content {
-    flex: 1;
+    width: 100%;
     min-width: 0;
     display: flex;
     flex-direction: column;

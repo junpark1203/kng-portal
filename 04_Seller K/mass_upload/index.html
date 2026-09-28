@@ -47,7 +47,7 @@
         </div>
 
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <button type="button" class="btn-erp btn-erp-primary" onclick="location.hash='#register'; if(typeof startNewProduct==='function') startNewProduct();" title="새로운 상품 등록">
+            <button type="button" class="btn-erp" onclick="location.hash='#register'; if(typeof startNewProduct==='function') startNewProduct();" title="새로운 상품 등록">
                 <i class='bx bx-plus'></i> 신규 등록
             </button>
             <button type="button" class="btn-erp" onclick="location.hash='#products'" title="등록 상품 목록">
@@ -55,6 +55,12 @@
             </button>
             <button type="button" class="btn-erp btn-erp-success" onclick="location.hash='#export'" title="엑셀 출력 대기열">
                 <i class='bx bx-spreadsheet'></i> 엑셀 생성
+            </button>
+            <button type="button" class="btn-erp btn-erp-primary" id="btnSave" title="상품 저장">
+                <i class='bx bx-save'></i> 저장
+            </button>
+            <button type="button" class="btn-erp btn-erp-success btn-edit-save hidden" onclick="saveFromEditMode()" title="수정 완료">
+                <i class='bx bx-check-circle'></i> 수정완료
             </button>
         </div>
     </div>
@@ -67,25 +73,6 @@
                 <!-- ═══ PAGE: 상품 등록 ═══ -->
                 <div class="page-view" id="pageRegister">
                     <div class="registration-layout">
-                        <!-- Sidebar Navigation -->
-                        <div class="registration-sidebar">
-                            <div style="position: sticky; top: 50px;">
-                                <ul class="scroll-spy-nav" id="scrollSpyNav">
-                                    <li class="active" data-target="step1"><span class="step-num">1</span> 상품 기본</li>
-                                    <li data-target="step2"><span class="step-num">2</span> 가격 및 배송</li>
-                                    <li data-target="step3"><span class="step-num">3</span> 옵션 및 재고</li>
-                                    <li data-target="step4"><span class="step-num">4</span> 이미지 관리</li>
-                                    <li data-target="step5"><span class="step-num">5</span> 상품 상세 정보</li>
-                                </ul>
-                                <div class="registration-actions" style="margin-top: 14px;">
-                                    <button type="button" class="btn-erp" id="btnDraft" style="width: 100%; justify-content: center; margin-bottom: 6px;"><i class='bx bx-save text-primary'></i> 임시저장</button>
-                                    <button type="button" class="btn-erp btn-erp-primary" id="btnSave" style="width: 100%; justify-content: center; margin-bottom: 6px;"><i class='bx bx-check'></i> 저장</button>
-                                    <button type="button" class="btn-erp" id="btnPreview" style="width: 100%; justify-content: center;"><i class='bx bx-show'></i> 미리보기</button>
-                                    <button type="button" class="btn-erp btn-erp-success btn-edit-save hidden" onclick="saveFromEditMode()" style="width: 100%; justify-content: center; margin-top: 6px;"><i class='bx bx-check-circle'></i> 수정완료</button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="registration-content" id="registrationContent">
                         <!-- Step 1: 상품 기본 -->
                         <div class="step-panel active" id="step1">
