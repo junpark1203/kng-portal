@@ -170,6 +170,7 @@ function initEvents() {
 
     // 하단 플로팅 바 버튼
     $('floatingCompareBtn')?.addEventListener('click', openCompare);
+    $('floatingDuplicateBtn')?.addEventListener('click', duplicateSelected);
     $('floatingDeleteBtn')?.addEventListener('click', deleteSelected);
     $('floatingClearBtn')?.addEventListener('click', () => {
         $('selectAll').checked = false;
@@ -1036,7 +1037,7 @@ window.openModal = function(id = null, isDuplicate = false) {
         $('inpManufacturer').value = d.manufacturer || '';
         $('inpRemarks').value = d.remarks || '';
         $('inpQuoteDate').value = d.quoteDate || '';
-        currentFiles = isDuplicate ? [] : (Array.isArray(d.files) ? [...d.files] : []);
+        currentFiles = Array.isArray(d.files) ? JSON.parse(JSON.stringify(d.files)) : [];
 
         if (d.sourceType === 'import') {
             $('srcImport').checked = true;
@@ -1065,6 +1066,11 @@ window.openModal = function(id = null, isDuplicate = false) {
     } else {
         $('modalTitle').textContent = '신규 자재 등록';
         $('editId').value = '';
+    }
+
+    const copyBtn = $('saveAsCopyBtn');
+    if (copyBtn) {
+        copyBtn.style.display = (id && !isDuplicate) ? 'inline-flex' : 'none';
     }
 
     $('itemModal').classList.add('active');
@@ -1233,6 +1239,102 @@ async function saveItem() {
     }
 }
 window.saveItem = saveItem;
+
+// ── 복사하여 신규 저장 ──
+async function saveAsCopy() {
+    const currentId = $('editId')?.value;
+    if (!currentId) return;
+
+    let itemName = $('inpItemName')?.value.trim();
+    if (!itemName) {
+        showToast('품목명을 입력해 주세요.', 'warning');
+        $('inpItemName')?.focus();
+        return;
+    }
+
+    const orig = allData.find(x => x.id === currentId);
+    if (orig && orig.itemName === itemName) {
+        itemName += ' (복사본)';
+        $('inpItemName').value = itemName;
+    }
+
+    if (!confirm(`현재 입력된 내용으로 "${itemName}" 신규 자재(복사본)를 등록하시겠습니까?\n(기존 원본 자재는 변경되지 않고 안전하게 보존됩니다.)`)) {
+        return;
+    }
+
+    // 기존 ID를 비워 신규 등록(POST)으로 분기
+    $('editId').value = '';
+    $('modalTitle').textContent = '자재 규격 복사 등록';
+
+    const saveAsCopyBtn = $('saveAsCopyBtn');
+    const origBtnHtml = saveAsCopyBtn ? saveAsCopyBtn.innerHTML : '';
+    if (saveAsCopyBtn) {
+        saveAsCopyBtn.disabled = true;
+        saveAsCopyBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 복사 저장 중...";
+    }
+
+    try {
+        await saveItem();
+    } finally {
+        if (saveAsCopyBtn) {
+            saveAsCopyBtn.disabled = false;
+            saveAsCopyBtn.innerHTML = origBtnHtml || "<i class='bx bx-copy'></i> 복사하여 신규 저장";
+        }
+    }
+}
+window.saveAsCopy = saveAsCopy;
+
+// ── 선택 항목 복사 (단일/일괄) ──
+async function duplicateSelected() {
+    const ids = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.value);
+    if (!ids.length) return showToast('복사할 항목을 선택해주세요.', 'warning');
+    if (ids.length === 1) {
+        openModal(ids[0], true);
+        return;
+    }
+    if (!confirm(`선택한 ${ids.length}개 항목을 모두 복사본으로 일괄 등록하시겠습니까?`)) return;
+
+    let successCount = 0;
+    showToast(`${ids.length}개 항목 일괄 복사 중...`, 'info');
+    for (const id of ids) {
+        const d = allData.find(x => x.id === id);
+        if (!d) continue;
+        const payload = {
+            site: d.site || '',
+            equipment: d.equipment || '',
+            category: d.category || '',
+            itemName: (d.itemName || '자재') + ' (복사본)',
+            spec: d.spec || '',
+            unit: d.unit || 'EA',
+            qty: d.qty || 0,
+            price: d.price || 0,
+            manufacturer: d.manufacturer || '',
+            remarks: d.remarks || '',
+            customFields: d.customFields || {},
+            customFieldNotes: d.customFieldNotes || {},
+            files: Array.isArray(d.files) ? JSON.parse(JSON.stringify(d.files)) : [],
+            sourceType: d.sourceType || 'domestic',
+            quoteDate: d.quoteDate || '',
+            perUnitBasis: d.perUnitBasis || 0,
+            incoterms: Array.isArray(d.incoterms) ? d.incoterms : [],
+            packagingGroups: Array.isArray(d.packagingGroups) ? d.packagingGroups : []
+        };
+        try {
+            const res = await authFetch(`${API}/materials`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) successCount++;
+        } catch(e) {}
+    }
+    showToast(`✅ ${successCount}개 항목이 성공적으로 복사 등록되었습니다.`, 'success');
+    $('selectAll').checked = false;
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
+    updateFloatingBar();
+    await loadData();
+}
+window.duplicateSelected = duplicateSelected;
 
 // 단일 삭제
 async function deleteSingle(id) {

@@ -1193,6 +1193,9 @@
                 <button type="button" class="btn-erp btn-erp-primary" id="floatingCompareBtn">
                     <i class='bx bx-transfer'></i> 비교하기
                 </button>
+                <button type="button" class="btn-erp text-white" id="floatingDuplicateBtn" style="background:#0284c7; border-color:#0369a1;" title="선택한 항목을 복사 등록합니다.">
+                    <i class='bx bx-copy'></i> 선택 복사
+                </button>
                 <button type="button" class="btn-erp btn-erp-danger" id="floatingDeleteBtn">
                     <i class='bx bx-trash'></i> 선택삭제
                 </button>
@@ -1376,9 +1379,14 @@
                             <span class="text-muted" style="font-size:10.5px;">* 체크 시 다음 등록 자재부터 이 사양 템플릿이 기본 적용됩니다.</span>
                         </div>
 
-                        <div class="modal-footer mt-3">
-                            <button type="button" class="btn-erp" id="cancelBtn">취소</button>
-                            <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
+                        <div class="modal-footer mt-3 d-flex align-items-center justify-content-between">
+                            <button type="button" class="btn-erp" id="saveAsCopyBtn" style="display:none; color:#1d4ed8; border-color:#93c5fd; background:#eff6ff;" onclick="window.saveAsCopy ? window.saveAsCopy() : false;" title="현재 입력된 사양으로 기존 자재를 수정하지 않고 새로운 자재(복사본)로 등록합니다.">
+                                <i class='bx bx-copy'></i> 복사하여 신규 저장
+                            </button>
+                            <div class="d-flex gap-1 ms-auto">
+                                <button type="button" class="btn-erp" id="cancelBtn">취소</button>
+                                <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -1445,6 +1453,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_10"></script>
+    <script src="tbm-material.js?v=20260928_11"></script>
 </body>
 </html>
