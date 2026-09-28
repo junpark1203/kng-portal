@@ -6,14 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="K&G 셀러K 스마트스토어 대량 업로드 툴 — 상품 등록, 엑셀 생성, 이미지 관리">
     <title>K&G 셀러K — 스마트스토어 대량 업로드</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@600;700;800&display=swap"
-        rel="stylesheet">
+    <!-- Pretendard & Boxicons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css">
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="uploader.css">
+    <!-- Common Design Systems -->
+    <link rel="stylesheet" href="../../Common/css/erp-grid.css">
+    <link rel="stylesheet" href="styles.css?v=20260928_2">
+    <link rel="stylesheet" href="uploader.css?v=20260928_2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -24,6 +23,42 @@
 </head>
 
 <body>
+    <!-- ── 1. ECOUNT ERP 1행 탑 툴바 ── -->
+    <div class="erp-top-toolbar no-print">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="erp-title-tag">
+                <i class='bx bxs-store text-primary'></i> 스마트스토어 대량등록
+            </span>
+
+            <div class="erp-badge-group">
+                <span class="erp-stat-badge badge-dark" id="productCountBadge">등록 상품: 0건</span>
+            </div>
+
+            <!-- 네비게이션 탭 버튼군 (app.js의 router와 완벽 동기화) -->
+            <div class="erp-tab-group ms-1" id="portalTabs">
+                <a href="#register" class="erp-tab-btn active"><i class='bx bx-edit'></i> 상품 등록</a>
+                <a href="#products" class="erp-tab-btn"><i class='bx bx-list-ul'></i> 상품 목록</a>
+                <a href="#export" class="erp-tab-btn"><i class='bx bx-download'></i> 엑셀 생성</a>
+                <a href="#presets" class="erp-tab-btn"><i class='bx bx-slider'></i> 배송 프리셋</a>
+                <a href="#marginPresets" class="erp-tab-btn"><i class='bx bx-calculator'></i> 마진 프리셋</a>
+                <a href="#addresses" class="erp-tab-btn"><i class='bx bx-map'></i> 주소록</a>
+                <a href="#footerImages" class="erp-tab-btn"><i class='bx bx-images'></i> 안내 이미지</a>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn-erp btn-erp-primary" onclick="location.hash='#register'; if(typeof startNewProduct==='function') startNewProduct();" title="새로운 상품 등록">
+                <i class='bx bx-plus'></i> 신규 등록
+            </button>
+            <button type="button" class="btn-erp" onclick="location.hash='#products'" title="등록 상품 목록">
+                <i class='bx bx-list-ul'></i> 상품 목록
+            </button>
+            <button type="button" class="btn-erp btn-erp-success" onclick="location.hash='#export'" title="엑셀 출력 대기열">
+                <i class='bx bx-spreadsheet'></i> 엑셀 생성
+            </button>
+        </div>
+    </div>
+
     <!-- 메인 앱 (포털 iframe 전용 — 네비게이션은 포털 사이드바에서 처리) -->
     <div class="app-container" id="mainApp">
         <main class="main-content">
@@ -34,7 +69,7 @@
                     <div class="registration-layout">
                         <!-- Sidebar Navigation -->
                         <div class="registration-sidebar">
-                            <div style="position: sticky; top: 20px;">
+                            <div style="position: sticky; top: 50px;">
                                 <ul class="scroll-spy-nav" id="scrollSpyNav">
                                     <li class="active" data-target="step1"><span class="step-num">1</span> 상품 기본</li>
                                     <li data-target="step2"><span class="step-num">2</span> 가격 및 배송</li>
@@ -42,11 +77,11 @@
                                     <li data-target="step4"><span class="step-num">4</span> 이미지 관리</li>
                                     <li data-target="step5"><span class="step-num">5</span> 상품 상세 정보</li>
                                 </ul>
-                                <div class="registration-actions" style="margin-top: 24px;">
-                                    <button type="button" class="btn-outline" id="btnDraft" style="width: 100%; justify-content: center; margin-bottom: 8px; border-color: var(--primary); color: var(--primary);"><i class='bx bx-save'></i> 임시저장</button>
-                                    <button type="button" class="btn-primary" id="btnSave" style="width: 100%; justify-content: center; margin-bottom: 8px;"><i class='bx bx-check'></i> 저장</button>
-                                    <button type="button" class="btn-secondary" id="btnPreview" style="width: 100%; justify-content: center;"><i class='bx bx-show'></i> 미리보기</button>
-                                    <button type="button" class="btn-edit-save hidden" onclick="saveFromEditMode()" style="width: 100%; justify-content: center; margin-top: 8px; background-color: var(--primary); color: white;"><i class='bx bx-check-circle'></i> 수정완료</button>
+                                <div class="registration-actions" style="margin-top: 14px;">
+                                    <button type="button" class="btn-erp" id="btnDraft" style="width: 100%; justify-content: center; margin-bottom: 6px;"><i class='bx bx-save text-primary'></i> 임시저장</button>
+                                    <button type="button" class="btn-erp btn-erp-primary" id="btnSave" style="width: 100%; justify-content: center; margin-bottom: 6px;"><i class='bx bx-check'></i> 저장</button>
+                                    <button type="button" class="btn-erp" id="btnPreview" style="width: 100%; justify-content: center;"><i class='bx bx-show'></i> 미리보기</button>
+                                    <button type="button" class="btn-erp btn-erp-success btn-edit-save hidden" onclick="saveFromEditMode()" style="width: 100%; justify-content: center; margin-top: 6px;"><i class='bx bx-check-circle'></i> 수정완료</button>
                                 </div>
                             </div>
                         </div>
@@ -356,37 +391,35 @@
                                             <option value="가나다순">가나다순</option>
                                         </select>
                                     </div>
-                                    <button class="btn-primary" id="btnApplyOptions"
-                                        style="margin-top:auto;height:38px;">
+                                    <button class="btn-erp btn-erp-primary" id="btnApplyOptions"
+                                        style="margin-top:auto;height:26px;">
                                         <i class='bx bx-list-check'></i> 옵션목록으로 적용
                                     </button>
                                 </div>
 
                                 <!-- 옵션 조합 테이블 -->
-                                <div id="optionTableWrap" class="hidden" style="margin-top:16px;">
-                                    <div
-                                        style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                                        <span style="font-size:13px;font-weight:700;">옵션목록 (<span
-                                                id="optionCombCount">0</span>개)</span>
-                                        <span style="font-size:10px;color:var(--gray-400);">셀 더블클릭으로 개별 수정</span>
+                                <div id="optionTableWrap" class="hidden" style="margin-top:12px;">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                        <span style="font-size:12px;font-weight:700;"><i class='bx bx-grid-alt text-primary'></i> 옵션목록 (<span id="optionCombCount">0</span>개)</span>
+                                        <span class="text-muted" style="font-size:10.5px;">셀 더블클릭으로 개별 수정</span>
                                     </div>
-                                    <div class="option-table-scroll">
-                                        <table class="option-comb-table" id="optionCombTable">
+                                    <div class="erp-grid-wrapper shadow-sm option-table-scroll">
+                                        <table class="erp-sheet-table option-comb-table" id="optionCombTable">
                                             <thead id="optionCombHead"></thead>
                                             <tbody id="optionCombBody"></tbody>
                                         </table>
                                     </div>
                                     <div class="option-bulk-bar">
-                                        <label class="bulk-label">일괄적용</label>
+                                        <label class="bulk-label"><i class='bx bx-check-double text-primary'></i> 일괄적용:</label>
                                         <div class="bulk-group">
                                             <span class="bulk-tag">재고</span>
-                                            <input type="number" id="bulkStock" min="0" value="0" style="width:80px;">
-                                            <button class="btn-outline btn-sm" id="btnBulkStock">적용</button>
+                                            <input type="number" id="bulkStock" min="0" value="0" style="width:70px;">
+                                            <button class="btn-erp btn-sm" id="btnBulkStock">적용</button>
                                         </div>
                                         <div class="bulk-group">
                                             <span class="bulk-tag">옵션가</span>
-                                            <input type="number" id="bulkPrice" min="0" value="0" style="width:80px;">
-                                            <button class="btn-outline btn-sm" id="btnBulkPrice">적용</button>
+                                            <input type="number" id="bulkPrice" min="0" value="0" style="width:70px;">
+                                            <button class="btn-erp btn-sm" id="btnBulkPrice">적용</button>
                                         </div>
                                     </div>
                                 </div>
@@ -572,76 +605,76 @@
                 <!-- ═══ PAGE: 상품 목록 ═══ -->
                 <div class="page-view" id="pageProducts">
                     <div class="product-list-header">
-                        <h2 style="font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;">등록 상품</h2>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <button class="btn-outline btn-sm" id="btnLoadProject" style="border-color:var(--gray-400);color:var(--gray-600);"><i class='bx bx-folder-open'></i> 불러오기</button>
+                        <h2><i class='bx bx-list-ul text-primary'></i> 등록 상품 목록</h2>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                            <button class="btn-erp btn-sm" id="btnLoadProject" title="저장된 프로젝트 JSON 파일 불러오기"><i class='bx bx-folder-open'></i> 불러오기</button>
                             <input type="file" id="fileLoadProject" accept=".json" style="display:none;">
-                            <button class="btn-outline btn-sm" id="btnSaveProject" style="border-color:var(--gray-400);color:var(--gray-600);"><i class='bx bx-save'></i> 저장</button>
-                            <span style="border-left:1px solid var(--gray-200);margin:0 2px;"></span>
-                            <button class="btn-outline btn-sm" id="btnDeleteSelected"><i class='bx bx-trash'></i> 선택 삭제</button>
-                            <button class="btn-primary btn-sm" id="btnAddExportCart"><i class='bx bx-list-plus'></i> 엑셀 추출 대상으로 지정</button>
-                            <button class="btn-outline btn-sm" id="btnExportToInventory" style="border-color:var(--success); color:var(--success);"><i class='bx bx-link-external'></i> 매입 상품 목록으로 내보내기</button>
+                            <button class="btn-erp btn-sm" id="btnSaveProject" title="현재 작업 내역을 JSON 파일로 백업 저장"><i class='bx bx-save'></i> 저장</button>
+                            <span style="border-left:1px solid var(--erp-border);height:16px;margin:0 2px;"></span>
+                            <button class="btn-erp btn-erp-danger btn-sm" id="btnDeleteSelected"><i class='bx bx-trash'></i> 선택 삭제</button>
+                            <button class="btn-erp btn-erp-primary btn-sm" id="btnAddExportCart"><i class='bx bx-list-plus'></i> 엑셀 추출 대상으로 지정</button>
+                            <button class="btn-erp btn-erp-success btn-sm" id="btnExportToInventory" title="물류관리 매입 상품 목록으로 연동 내보내기"><i class='bx bx-link-external'></i> 매입 상품 목록으로 내보내기</button>
                         </div>
                     </div>
-                    <div class="product-table-wrap"
-                        style="background:var(--surface-container-lowest);border-radius:var(--radius-lg);border:1px solid var(--surface-container-high);overflow:hidden;">
-                        <table class="data-table" id="productTable" style="table-layout:fixed;width:100%;">
+                    <div class="erp-grid-wrapper shadow-sm product-table-wrap">
+                        <table class="erp-sheet-table data-table" id="productTable" style="table-layout:fixed;width:100%;">
                             <thead>
                                 <tr>
-                                    <th width="40" style="text-align:center;"><input type="checkbox" id="checkAll"
-                                            style="margin:0;"></th>
+                                    <th width="38" class="th-no" style="text-align:center;"><input type="checkbox" id="checkAll" style="margin:0;"></th>
                                     <th width="12%" class="sortable" data-sort="code">관리번호 <i class='bx bx-sort'></i></th>
-                                    <th width="18%" class="sortable" data-sort="productName">상품명 <i class='bx bx-sort'></i></th>
+                                    <th width="20%" class="sortable" data-sort="productName">상품명 <i class='bx bx-sort'></i></th>
                                     <th width="10%" class="sortable" data-sort="salePrice" style="text-align:right;">판매가(원) <i class='bx bx-sort'></i></th>
-                                    <th width="10%" class="sortable" data-sort="commission" style="text-align:right;">수수료 <i class='bx bx-sort'></i></th>
-                                    <th width="11%" class="sortable" data-sort="profit" style="text-align:right;">이익 <i class='bx bx-sort'></i></th>
-                                    <th width="9%" class="sortable" data-sort="profitRate" style="text-align:center;">수익률 <i class='bx bx-sort'></i></th>
+                                    <th width="9%" class="sortable" data-sort="commission" style="text-align:right;">수수료 <i class='bx bx-sort'></i></th>
+                                    <th width="10%" class="sortable" data-sort="profit" style="text-align:right;">이익 <i class='bx bx-sort'></i></th>
+                                    <th width="8%" class="sortable" data-sort="profitRate" style="text-align:center;">수익률 <i class='bx bx-sort'></i></th>
                                     <th width="6%" class="sortable" data-sort="isLowestPrice" style="text-align:center;">최저가 <i class='bx bx-sort'></i></th>
-                                    <th width="8%" class="sortable" data-sort="isDraft" style="text-align:center;">상태 <i class='bx bx-sort'></i></th>
+                                    <th width="7%" class="sortable" data-sort="isDraft" style="text-align:center;">상태 <i class='bx bx-sort'></i></th>
                                     <th width="10%" class="sortable" data-sort="createdAt" style="text-align:center;">등록일 <i class='bx bx-sort'></i></th>
-                                    <th width="50" style="text-align:center;">편집</th>
+                                    <th width="44" style="text-align:center;">편집</th>
                                 </tr>
                             </thead>
                             <tbody id="productTableBody"></tbody>
                         </table>
                         <div class="empty-state" id="emptyProducts">
-                            <i class='bx bx-package' style="font-size:48px;color:var(--gray-300);"></i>
+                            <i class='bx bx-package'></i>
                             <p>등록된 상품이 없습니다.</p>
-                            <button class="btn-primary btn-sm" onclick="location.hash='#register'">상품 등록하기</button>
+                            <button class="btn-erp btn-erp-primary btn-sm" onclick="location.hash='#register'">상품 등록하기</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- ═══ PAGE: 엑셀 생성 ═══ -->
                 <div class="page-view" id="pageExport">
-                    <div class="export-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-                        <div class="wizard-section-title" style="margin-bottom:0;">
-                            <i class='bx bx-list-ul'></i> 엑셀 출력 대기열
+                    <div class="export-header">
+                        <div class="d-flex align-items-center gap-2">
+                            <h2 style="font-size:13px;font-weight:700;color:#0f172a;margin:0;display:inline-flex;align-items:center;gap:6px;">
+                                <i class='bx bx-spreadsheet text-primary'></i> 엑셀 출력 대기열
+                            </h2>
                         </div>
-                        <div style="display:flex;gap:8px;">
-                            <button class="btn-outline btn-sm" id="btnRemoveFromCart"><i class='bx bx-minus'></i> 대상에서 제외</button>
-                            <button class="btn-outline-danger btn-sm" id="btnClearCart"><i class='bx bx-trash'></i> 대기열 전체 비우기</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-erp btn-sm" id="btnRemoveFromCart"><i class='bx bx-minus'></i> 대상에서 제외</button>
+                            <button class="btn-erp btn-erp-danger btn-sm" id="btnClearCart"><i class='bx bx-trash'></i> 대기열 전체 비우기</button>
                         </div>
                     </div>
                     
                     <!-- Cart Table Wrap -->
-                    <div class="product-table-wrap" style="background:var(--surface-container-lowest);border-radius:var(--radius-lg);border:1px solid var(--surface-container-high);overflow:hidden; margin-bottom: 20px;">
-                        <table class="data-table" id="exportCartTable" style="table-layout:fixed;width:100%;">
+                    <div class="erp-grid-wrapper shadow-sm product-table-wrap" style="margin-bottom: 14px;">
+                        <table class="erp-sheet-table data-table" id="exportCartTable" style="table-layout:fixed;width:100%;">
                             <thead>
                                 <tr>
-                                    <th width="40" style="text-align:center;"><input type="checkbox" id="checkAllCart" style="margin:0;"></th>
-                                    <th width="12%">관리번호</th>
-                                    <th width="35%">상품명</th>
-                                    <th width="15%">카테고리</th>
-                                    <th width="15%" style="text-align:right;">판매가(원)</th>
+                                    <th width="38" class="th-no" style="text-align:center;"><input type="checkbox" id="checkAllCart" style="margin:0;"></th>
+                                    <th width="14%">관리번호</th>
+                                    <th width="38%">상품명</th>
+                                    <th width="24%">카테고리</th>
+                                    <th width="20%" style="text-align:right;">판매가(원)</th>
                                 </tr>
                             </thead>
                             <tbody id="exportCartTableBody"></tbody>
                         </table>
                         <div class="empty-state" id="emptyCart" style="display:none;">
-                            <i class='bx bx-list-ul' style="font-size:48px;color:var(--gray-300);"></i>
+                            <i class='bx bx-list-ul'></i>
                             <p>엑셀 출력 대기열에 지정된 상품이 없습니다.</p>
-                            <button class="btn-primary btn-sm" onclick="location.hash='#products'">상품 목록으로 가기</button>
+                            <button class="btn-erp btn-erp-primary btn-sm" onclick="location.hash='#products'">상품 목록으로 가기</button>
                         </div>
                     </div>
 
@@ -652,14 +685,14 @@
                         </div>
                         <div class="export-card">
                             <div class="export-card-value" id="exportImageCount">0</div>
-                            <div class="export-card-label">체크된 옵션(예상)수</div>
+                            <div class="export-card-label">체크된 이미지/옵션 수</div>
                         </div>
                     </div>
                     <div class="export-actions">
-                        <button class="btn-primary btn-lg" id="btnDownloadExcel">
+                        <button class="btn-erp btn-erp-primary btn-lg" id="btnDownloadExcel">
                             <i class='bx bx-spreadsheet'></i> 선택 내역 엑셀 파일 추출
                         </button>
-                        <button class="btn-outline btn-lg" id="btnDownloadZip">
+                        <button class="btn-erp btn-lg" id="btnDownloadZip">
                             <i class='bx bx-archive'></i> 선택 내역 이미지 ZIP 추출
                         </button>
                     </div>
@@ -667,14 +700,12 @@
 
                 <!-- ═══ PAGE: 프리셋 관리 ═══ -->
                 <div class="page-view" id="pagePresets">
-                    <div class="wizard-section-title">
-                        <i class='bx bx-slider'></i> 배송 프리셋 관리
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <button class="btn-primary btn-sm" id="btnAddPreset"><i class='bx bx-plus'></i> 프리셋 추가</button>
+                    <div class="product-list-header">
+                        <h2><i class='bx bx-slider text-primary'></i> 배송 프리셋 관리</h2>
+                        <button class="btn-erp btn-erp-primary btn-sm" id="btnAddPreset"><i class='bx bx-plus'></i> 프리셋 추가</button>
                     </div>
                     <div id="presetList"></div>
-                    <div id="presetForm" class="hidden" style="margin-top:16px;" onclick="event.stopPropagation()">
+                    <div id="presetForm" class="hidden preset-override-panel" style="margin-top:10px;" onclick="event.stopPropagation()">
                         <div class="form-grid">
                             <div class="fg">
                                 <label>프리셋명 <span class="required">*</span></label>
@@ -766,23 +797,21 @@
                                 <input type="number" id="fldPresetExchangeFee" min="0" value="6000">
                             </div>
                         </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn-primary btn-sm" id="btnSavePreset">저장</button>
-                            <button class="btn-outline btn-sm" id="btnCancelPreset">취소</button>
+                        <div style="display:flex;gap:6px;margin-top:12px;">
+                            <button class="btn-erp btn-erp-primary btn-sm" id="btnSavePreset">저장</button>
+                            <button class="btn-erp btn-sm" id="btnCancelPreset">취소</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- ═══ PAGE: 마진 프리셋 관리 ═══ -->
                 <div class="page-view" id="pageMarginPresets">
-                    <div class="wizard-section-title">
-                        <i class='bx bx-calculator'></i> 마진 프리셋 관리
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <button class="btn-primary btn-sm" id="btnAddMarginPreset"><i class='bx bx-plus'></i> 마진 프리셋 추가</button>
+                    <div class="product-list-header">
+                        <h2><i class='bx bx-calculator text-primary'></i> 마진 프리셋 관리</h2>
+                        <button class="btn-erp btn-erp-primary btn-sm" id="btnAddMarginPreset"><i class='bx bx-plus'></i> 마진 프리셋 추가</button>
                     </div>
                     <div id="marginPresetList"></div>
-                    <div id="marginPresetForm" class="hidden" style="margin-top:16px;" onclick="event.stopPropagation()">
+                    <div id="marginPresetForm" class="hidden preset-override-panel" style="margin-top:10px;" onclick="event.stopPropagation()">
                         <div class="form-grid">
                             <div class="fg">
                                 <label>마진 프리셋명 <span class="required">*</span></label>
@@ -804,23 +833,21 @@
                                 <input type="number" id="fldMarginPresetMax" min="0" placeholder="예: 2000 (선택사항)">
                             </div>
                         </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn-primary btn-sm" id="btnSaveMarginPreset">저장</button>
-                            <button class="btn-outline btn-sm" id="btnCancelMarginPreset">취소</button>
+                        <div style="display:flex;gap:6px;margin-top:12px;">
+                            <button class="btn-erp btn-erp-primary btn-sm" id="btnSaveMarginPreset">저장</button>
+                            <button class="btn-erp btn-sm" id="btnCancelMarginPreset">취소</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- ═══ PAGE: 주소 관리 ═══ -->
                 <div class="page-view" id="pageAddresses">
-                    <div class="wizard-section-title">
-                        <i class='bx bx-map'></i> 주소 관리
-                    </div>
-                    <div style="margin-bottom:16px;">
-                        <button class="btn-primary btn-sm" id="btnAddAddress"><i class='bx bx-plus'></i> 주소 추가</button>
+                    <div class="product-list-header">
+                        <h2><i class='bx bx-map text-primary'></i> 주소 관리</h2>
+                        <button class="btn-erp btn-erp-primary btn-sm" id="btnAddAddress"><i class='bx bx-plus'></i> 주소 추가</button>
                     </div>
                     <div id="addressList"></div>
-                    <div id="addressForm" class="hidden" style="margin-top:16px;">
+                    <div id="addressForm" class="hidden preset-override-panel" style="margin-top:10px;">
                         <div class="form-grid">
                             <div class="fg">
                                 <label>주소 이름</label>
@@ -835,40 +862,40 @@
                                 <input type="text" id="fldAddrPhone" placeholder="02-000-0000">
                             </div>
                         </div>
-                        <div style="display:flex;gap:8px;margin-top:12px;">
-                            <button class="btn-primary btn-sm" id="btnSaveAddress">저장</button>
-                            <button class="btn-outline btn-sm" id="btnCancelAddress">취소</button>
+                        <div style="display:flex;gap:6px;margin-top:12px;">
+                            <button class="btn-erp btn-erp-primary btn-sm" id="btnSaveAddress">저장</button>
+                            <button class="btn-erp btn-sm" id="btnCancelAddress">취소</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- ═══ PAGE: 공통 안내 이미지 관리 ═══ -->
                 <div class="page-view" id="pageFooterImages">
-                    <div class="wizard-section-title">
-                        <i class='bx bx-images'></i> 안내 이미지 관리 (공지 / 정보제공동의)
+                    <div class="product-list-header">
+                        <h2><i class='bx bx-images text-primary'></i> 안내 이미지 관리 (공지 / 정보제공동의)</h2>
                     </div>
-                    <p style="font-size:13px; color:var(--gray-500); margin-bottom:20px;">상품 상세페이지 하단에 일괄 적용할 공지사항이나 개인정보 동의서 이미지를 창고에 업로드하세요. <br>별점(⭐) 버튼을 눌러 기본값으로 설정해두면 상품 등록 시 자동으로 첨부됩니다.</p>
+                    <p class="text-muted" style="font-size:11.5px; margin:4px 0 10px 0;">상품 상세페이지 하단에 일괄 적용할 공지사항이나 개인정보 동의서 이미지를 업로드하세요. 별점(⭐) 버튼으로 기본값을 지정해두면 상품 등록 시 자동으로 첨부됩니다.</p>
                     
-                    <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:14px; flex-wrap:wrap;">
                         <!-- 공지사항 창고 -->
-                        <div style="flex:1; border:1px solid var(--border-color); border-radius:8px; padding:16px; background:var(--surface);">
-                            <h3 style="font-size:14px; font-weight:700; margin-top:0; margin-bottom:12px; color:var(--on-surface);">📣 공지사항</h3>
+                        <div style="flex:1; min-width:280px; border:1px solid var(--erp-border); border-radius:2px; padding:12px 14px; background:#ffffff;">
+                            <h3 style="font-size:12.5px; font-weight:700; margin-top:0; margin-bottom:10px; color:#1e293b;"><i class='bx bx-bell text-primary'></i> 공지사항 이미지</h3>
                             <div class="image-grid" id="noticeLibGrid">
                                 <div class="image-upload-small" id="noticeLibUpload">
                                     <i class='bx bx-cloud-upload'></i>
-                                    <span style="font-size:10px;">클릭 또는 드래그</span>
+                                    <span>클릭 또는 드래그</span>
                                     <input type="file" accept="image/*" id="noticeLibInput" multiple>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- 개인정보 제공동의 창고 -->
-                        <div style="flex:1; border:1px solid var(--border-color); border-radius:8px; padding:16px; background:var(--surface);">
-                            <h3 style="font-size:14px; font-weight:700; margin-top:0; margin-bottom:12px; color:var(--on-surface);">🤝 개인정보 제공동의</h3>
+                        <div style="flex:1; min-width:280px; border:1px solid var(--erp-border); border-radius:2px; padding:12px 14px; background:#ffffff;">
+                            <h3 style="font-size:12.5px; font-weight:700; margin-top:0; margin-bottom:10px; color:#1e293b;"><i class='bx bx-shield-check text-primary'></i> 개인정보 제공동의 이미지</h3>
                             <div class="image-grid" id="consentLibGrid">
                                 <div class="image-upload-small" id="consentLibUpload">
                                     <i class='bx bx-cloud-upload'></i>
-                                    <span style="font-size:10px;">클릭 또는 드래그</span>
+                                    <span>클릭 또는 드래그</span>
                                     <input type="file" accept="image/*" id="consentLibInput" multiple>
                                 </div>
                             </div>
@@ -899,20 +926,20 @@
 
 <!-- Preview Modal -->
 <div id="previewModal" class="modal-overlay hidden" style="z-index: 9999;">
-    <div class="modal-content" style="max-width: 600px; width: 90%;">
+    <div class="modal-content" style="max-width: 640px; width: 92%;">
         <div class="modal-header">
-            <h3 class="modal-title">상품 미리보기</h3>
+            <h2 class="modal-title"><i class='bx bx-show text-primary'></i> 상품 미리보기</h2>
             <button class="btn-close" onclick="document.getElementById('previewModal').classList.add('hidden')"><i class='bx bx-x'></i></button>
         </div>
-        <div class="modal-body" style="padding: 0;">
+        <div class="modal-body" style="padding: 12px 16px;">
             <div class="preview-card" id="previewContent">
-                <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
+                <p style="text-align:center;color:var(--gray-400);padding:30px 0;">
                     상품 정보를 입력하면 미리보기가 표시됩니다.
                 </p>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" onclick="document.getElementById('previewModal').classList.add('hidden')">닫기</button>
+            <button type="button" class="btn-erp" onclick="document.getElementById('previewModal').classList.add('hidden')">닫기</button>
         </div>
     </div>
 </div>
