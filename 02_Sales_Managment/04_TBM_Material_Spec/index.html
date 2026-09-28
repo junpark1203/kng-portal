@@ -1264,7 +1264,7 @@
                     <button type="button" class="btn-close" id="closeModalBtn"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="itemForm" autocomplete="off" novalidate onsubmit="event.preventDefault(); window.saveItem ? window.saveItem() : false;">
+                    <form id="itemForm" autocomplete="off" novalidate>
                         <input type="hidden" id="editId">
                         
                         <div class="modal-section-title">장비 및 기본 정보</div>
@@ -1430,7 +1430,7 @@
                     </button>
                     <div class="d-flex gap-1 ms-auto">
                         <button type="button" class="btn-erp" id="cancelBtn">취소</button>
-                        <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn" form="itemForm" onclick="window.saveItem ? window.saveItem() : false;"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
+                        <button type="button" class="btn-erp btn-erp-primary" id="saveItemBtn"><i class='bx bx-save'></i> 저장 <span class="opacity-75 ms-1" style="font-size:10px;">(Ctrl+S)</span></button>
                     </div>
                 </div>
             </div>
@@ -1496,6 +1496,6 @@
     <script src="../../Common/js/kng-table-utils.js"></script>
     <script src="../../Common/js/erp-grid-resizer.js"></script>
     <script src="../../Common/js/search-engine.js"></script>
-    <script src="tbm-material.js?v=20260928_12"></script>
+    <script src="tbm-material.js?v=20260928_13"></script>
 </body>
 </html>

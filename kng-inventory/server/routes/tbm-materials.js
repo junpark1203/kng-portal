@@ -239,9 +239,21 @@ router.put('/materials/:id', async (req, res) => {
             now, id
         ];
         const result = await dbRun(sql, params);
-        if (result.changes === 0) return res.status(404).json({ error: '자재를 찾을 수 없습니다.' });
+        if (result.changes === 0) {
+            // DB에 해당 id가 존재하는지 확인 (필드값 차이가 없거나 sqlite 상태에 따른 changes 0 대비)
+            const existing = await dbGet('SELECT id FROM tbm_materials WHERE id = ?', [id]);
+            if (existing) {
+                return res.json({ message: '수정 성공', id });
+            }
+            // 미존재 시 안전하게 신규 삽입
+            const insertSql = `INSERT INTO tbm_materials (id, site, equipment, category, itemName, spec, unit, qty, price, total, manufacturer, remarks, customFields, customFieldNotes, files, sourceType, quoteDate, perUnitBasis, incoterms, packagingGroups, createdAt, updatedAt)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+            await dbRun(insertSql, [id, ...params.slice(0, 19), now, now]);
+            return res.json({ message: '수정 완료', id });
+        }
         res.json({ message: '수정 성공', id });
     } catch (err) {
+        console.error('TBM PUT /materials/:id error:', err);
         res.status(500).json({ error: err.message });
     }
 });

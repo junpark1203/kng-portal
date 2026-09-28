@@ -28,12 +28,28 @@ async function authFetch(url, opts = {}, _retries = 3) {
     const token = await getToken();
     if (!opts.headers) opts.headers = {};
     if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-    const res = await fetch(url, opts);
-    if (res.status === 401 && _retries > 0) {
-        await new Promise(r => setTimeout(r, 800));
-        return authFetch(url, opts, _retries - 1);
+
+    // 타임아웃 방지 (기본 15초 초과 시 자동 abort)
+    const controller = new AbortController();
+    const timeoutMs = opts.timeout || 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const fetchOpts = { ...opts, signal: opts.signal || controller.signal };
+
+    try {
+        const res = await fetch(url, fetchOpts);
+        clearTimeout(timeoutId);
+        if (res.status === 401 && _retries > 0) {
+            await new Promise(r => setTimeout(r, 800));
+            return authFetch(url, opts, _retries - 1);
+        }
+        return res;
+    } catch(err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+            throw new Error('서버 응답 시간 초과 (15초 이상 응답 없음)');
+        }
+        throw err;
     }
-    return res;
 }
 
 const API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
@@ -1132,7 +1148,13 @@ function highlightSavedRow(id) {
     }, 150);
 }
 
+let isSavingItem = false;
+
 async function saveItem() {
+    if (isSavingItem) {
+        console.warn('saveItem: 이미 저장이 진행 중입니다.');
+        return;
+    }
     const itemName = $('inpItemName')?.value.trim();
     if (!itemName) {
         showToast('품목명을 입력해 주세요.', 'warning');
@@ -1140,12 +1162,12 @@ async function saveItem() {
         return;
     }
 
-    const saveBtn = $('saveItemBtn') || document.querySelector('#itemForm button[type="submit"]') || document.querySelector('#itemForm button.btn-erp-primary');
-    const originalBtnHtml = saveBtn ? saveBtn.innerHTML : '';
+    const saveBtn = $('saveItemBtn');
     if (saveBtn) {
         saveBtn.disabled = true;
         saveBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 저장 중...";
     }
+    isSavingItem = true;
 
     try {
         const id = $('editId')?.value || '';
@@ -1183,7 +1205,7 @@ async function saveItem() {
             packagingGroups
         };
 
-        const url = id ? `${API}/materials/${id}` : `${API}/materials`;
+        const url = id ? `${API}/materials/${encodeURIComponent(id)}` : `${API}/materials`;
         const method = id ? 'PUT' : 'POST';
         const res = await authFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         if (res.ok) {
@@ -1235,9 +1257,10 @@ async function saveItem() {
         console.error('saveItem error:', e);
         showToast('서버 연결 오류: ' + (e.message || ''), 'error');
     } finally {
+        isSavingItem = false;
         if (saveBtn) {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = originalBtnHtml || "<i class='bx bx-save'></i> 저장";
+            saveBtn.innerHTML = "<i class='bx bx-save'></i> 저장 <span class=\"opacity-75 ms-1\" style=\"font-size:10px;\">(Ctrl+S)</span>";
         }
     }
 }
@@ -1245,6 +1268,7 @@ window.saveItem = saveItem;
 
 // ── 복사하여 신규 저장 ──
 async function saveAsCopy() {
+    if (isSavingItem) return;
     const currentId = $('editId')?.value;
     if (!currentId) return;
 
@@ -1270,7 +1294,6 @@ async function saveAsCopy() {
     $('modalTitle').textContent = '자재 규격 복사 등록';
 
     const saveAsCopyBtn = $('saveAsCopyBtn');
-    const origBtnHtml = saveAsCopyBtn ? saveAsCopyBtn.innerHTML : '';
     if (saveAsCopyBtn) {
         saveAsCopyBtn.disabled = true;
         saveAsCopyBtn.innerHTML = "<i class='bx bx-loader-alt bx-spin'></i> 복사 저장 중...";
@@ -1281,7 +1304,7 @@ async function saveAsCopy() {
     } finally {
         if (saveAsCopyBtn) {
             saveAsCopyBtn.disabled = false;
-            saveAsCopyBtn.innerHTML = origBtnHtml || "<i class='bx bx-copy'></i> 복사하여 신규 저장";
+            saveAsCopyBtn.innerHTML = "<i class='bx bx-copy'></i> 복사하여 신규 저장";
         }
     }
 }
